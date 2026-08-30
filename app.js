@@ -167,6 +167,19 @@ function getInitialData() {
         ],
         users: [
         {
+            "id": "usr-mineduc-super",
+            "name": "Super Administrador Institucional MINEDUC",
+            "username": "22-01-0014-46@mineduc.edu.gt",
+            "email": "22-01-0014-46@mineduc.edu.gt",
+            "password": "admin",
+            "role": "admin",
+            "title": "Super Administrador del Sistema / MINEDUC Sede 22-01-0014-46",
+            "classes": "",
+            "renglon": "011",
+            "gender": "Masculino",
+            "active": true
+        },
+        {
             "id": "usr-aux-01",
             "name": "PEM. Profesor Auxiliar Disciplinario",
             "username": "auxiliar",
@@ -15043,6 +15056,7 @@ function saveQuickGuideTeacher(e) {
 function openGradesDirectoryModal(event) {
     if (event && event.preventDefault) event.preventDefault();
     ensureGuideTeachersAssigned();
+    ensureMineducSuperUser();
     renderGradesDirectory();
     showModalById('gradesDirectoryModal');
 }
@@ -15172,4 +15186,27 @@ function executeCyclePromotion(e) {
     closeCyclePromotionModal();
     if (typeof renderCyclesTable === 'function') renderCyclesTable();
     showToast(`Promoción académica ejecutada exitosamente para ${selectedBoxes.length} estudiantes al ciclo ${targetCycle}.`, 'success');
+}
+
+
+
+function ensureMineducSuperUser() {
+    if (!Array.isArray(STATE.users)) return;
+    const exists = STATE.users.some(u => (u.email && u.email.toLowerCase() === '22-01-0014-46@mineduc.edu.gt') || (u.username && u.username.toLowerCase() === '22-01-0014-46@mineduc.edu.gt'));
+    if (!exists) {
+        STATE.users.unshift({
+            id: 'usr-mineduc-super',
+            name: 'Super Administrador Institucional MINEDUC',
+            username: '22-01-0014-46@mineduc.edu.gt',
+            email: '22-01-0014-46@mineduc.edu.gt',
+            password: 'admin',
+            role: 'admin',
+            title: 'Super Administrador del Sistema / MINEDUC Sede 22-01-0014-46',
+            classes: '',
+            renglon: '011',
+            gender: 'Masculino',
+            active: true
+        });
+        saveStateToLocalStorage();
+    }
 }
