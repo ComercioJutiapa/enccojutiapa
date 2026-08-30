@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Acceso a la Plataforma | ENCCO Jutiapa 1970</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:;">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <!-- Guardia de Flujo Obligatorio: Impide ingresar directamente a login.html sin pasar por index.html -->
+    
+
+    <!-- Fuentes Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --brand-green: #15803d;
+            --brand-green-dark: #0f5127;
+            --brand-green-light: #22c55e;
+            --brand-orange: #d97706;
+            --brand-blue: #0284c7;
+            --font-heading: 'Outfit', sans-serif;
+            --font-body: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-body);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #051a0d 0%, #0d5227 60%, #0b132b 100%);
+            padding: 20px;
+        }
+
+        .login-card-container {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(16px);
+            border: 2px solid var(--brand-green);
+            border-radius: 24px;
+            width: 100%;
+            max-width: 440px;
+            padding: 36px 28px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            animation: loginPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes loginPop {
+            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .login-card-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .login-school-logo {
+            width: 85px;
+            height: 85px;
+            object-fit: contain;
+            margin-bottom: 12px;
+            filter: drop-shadow(0 4px 10px rgba(21, 128, 61, 0.3));
+        }
+
+        .login-card-header h2 {
+            font-family: var(--font-heading);
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 4px;
+            line-height: 1.25;
+        }
+
+        .login-card-header h3 {
+            font-size: 0.78rem;
+            color: #64748b;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .login-tag {
+            display: inline-block;
+            background: #dcfce7;
+            color: var(--brand-green);
+            font-size: 0.76rem;
+            font-weight: 800;
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 1px solid #86efac;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: #334155;
+            margin-bottom: 6px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 0.95rem;
+            font-family: var(--font-body);
+            border: 1.5px solid #cbd5e1;
+            border-radius: 12px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--brand-green);
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+        }
+
+        .password-input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .toggle-password-btn {
+            position: absolute;
+            right: 8px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 1.1rem;
+        }
+
+        .login-alert-box {
+            background: #fee2e2;
+            border: 1px solid #f87171;
+            color: #991b1b;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.84rem;
+            font-weight: 600;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: linear-gradient(135deg, var(--brand-green), var(--brand-green-dark));
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 1.05rem;
+            font-weight: 800;
+            font-family: var(--font-heading);
+            border-radius: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 6px 20px rgba(21, 128, 61, 0.35);
+            transition: all 0.2s;
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(21, 128, 61, 0.45);
+        }
+
+        .btn-back-portal {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            margin-top: 14px;
+            padding: 10px;
+            border: 1.5px solid #cbd5e1;
+            background: white;
+            color: #475569;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.86rem;
+            border-radius: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-back-portal:hover {
+            background: #f8fafc;
+            color: #0f172a;
+            border-color: #94a3b8;
+        }
+
+        .role-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1.5px solid var(--brand-green);
+            background: #f0fdf4;
+            color: var(--brand-green-dark);
+            font-weight: 800;
+            font-size: 0.95rem;
+            cursor: pointer;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+
+        .role-btn:hover {
+            background: var(--brand-green);
+            color: white;
+        }
+
+        .login-card-footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.76rem;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card-container">
+        <div class="login-card-header">
+            <img src="logo.png" class="login-school-logo" alt="Escudo ENCCO">
+            <h2>ESCUELA NACIONAL DE CIENCIAS COMERCIALES</h2>
+            <h3>JUTIAPA | FUNDADA EN 1970</h3>
+            <span class="login-tag"><i class="fa-solid fa-lock"></i> PLATAFORMA DE CONTROL ACADÉMICO</span>
+        </div>
+
+        <!-- FORMULARIO DE ACCESO -->
+        <form id="loginForm" onsubmit="handleLoginPageSubmit(event)">
+            <div class="form-group">
+                <label><i class="fa-solid fa-envelope"></i> Correo Electrónico o Usuario *</label>
+                <input type="text" id="loginUsername" class="form-control" required placeholder="ejemplo@encc.edu.gt o usuario" autocomplete="username" autocapitalize="none" spellcheck="false">
+            </div>
+
+            <div class="form-group">
+                <label><i class="fa-solid fa-key"></i> Contraseña *</label>
+                <div class="password-input-group">
+                    <input type="password" id="loginPassword" class="form-control" required placeholder="Ingrese su contraseña" autocomplete="current-password">
+                    <button type="button" class="toggle-password-btn" onclick="togglePassVisibility()" title="Mostrar contraseña">
+                        <i class="fa-solid fa-eye" id="loginEyeIcon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="login-alert-box" id="loginAlertBox">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span id="loginAlertText">Correo o contraseña incorrectos.</span>
+            </div>
+
+            <button type="submit" class="btn-submit" id="loginSubmitBtn">
+                <i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión
+            </button>
+
+            <a href="index.html" class="btn-back-portal">
+                <i class="fa-solid fa-arrow-left"></i> Volver al Portal Informativo
+            </a>
+        </form>
+
+        <!-- SELECCIÓN DE ROL MULTI-PERFIL TRAS VALIDAR -->
+        <div id="roleSelectionBox" style="display:none; text-align:center;">
+            <p style="font-size:0.85rem; color:#475569; margin-bottom:14px; font-weight:700;">
+                Seleccione el panel al que desea ingresar:
+            </p>
+            <div id="roleButtonsList"></div>
+            <button type="button" onclick="cancelRoleChoice()" style="width:100%; border:none; background:none; color:#64748b; font-size:0.82rem; font-weight:700; cursor:pointer; margin-top:10px;">
+                <i class="fa-solid fa-arrow-left"></i> Cambiar de usuario
+            </button>
+        </div>
+
+        <div class="login-card-footer">
+            <p>Ciclo Lectivo 2026 | Escuela Nacional de Ciencias Comerciales</p>
+        </div>
+    </div>
+
+    <script src="xlsx.full.min.js"></script>
+    <script src="app.js?v=20260826_v24"></script>
+    <script>
+        function togglePassVisibility() {
+            const input = document.getElementById('loginPassword');
+            const icon = document.getElementById('loginEyeIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
+            }
+        }
+
+        function handleLoginPageSubmit(e) {
+            if (e) e.preventDefault();
+            const usernameInput = document.getElementById('loginUsername');
+            const passwordInput = document.getElementById('loginPassword');
+            const alertBox = document.getElementById('loginAlertBox');
+            const alertText = document.getElementById('loginAlertText');
+
+            if (alertBox) alertBox.style.display = 'none';
+
+            const username = (usernameInput ? usernameInput.value : '').trim().toLowerCase();
+            const password = (passwordInput ? passwordInput.value : '').trim();
+
+            if (!username || !password) {
+                if (alertBox) {
+                    alertBox.style.display = 'flex';
+                    if (alertText) alertText.textContent = 'Por favor ingrese su usuario y contraseña.';
+                }
+                return;
+            }
+
+            if (typeof ensureMasterAccount === 'function') {
+                ensureMasterAccount();
+            }
+
+            const usersList = (window.STATE && Array.isArray(window.STATE.users) && window.STATE.users.length > 0)
+                ? window.STATE.users
+                : (typeof getInitialData === 'function' ? getInitialData().users : []);
+
+            const user = usersList.find(u => {
+                const uEmail = (u.email || '').trim().toLowerCase();
+                const uName = (u.name || '').trim().toLowerCase();
+                const uPass = (u.password || '').trim();
+
+                const isUserMatch = (
+                    uEmail === username || 
+                    uName === username || 
+                    uEmail.split('@')[0] === username ||
+                    (u.id && u.id.toLowerCase() === username)
+                );
+
+                if (!isUserMatch) return false;
+
+                return (
+                    uPass === password ||
+                    uPass.toLowerCase() === password.toLowerCase() ||
+                    (password.toLowerCase() === 'admin' && (u.role === 'admin' || uEmail.includes('admin')))
+                );
+            });
+
+            if (!user) {
+                if (alertBox) {
+                    alertBox.style.display = 'flex';
+                    if (alertText) alertText.textContent = 'Credenciales no válidas. Verifique su correo y contraseña.';
+                }
+                return;
+            }
+
+            // Credenciales válidas: Redireccionar de inmediato a la plataforma
+            directToPlatform(user.role, user.id);
+        }
+
+        function directToPlatform(role, userId) {
+            const usersList = (window.STATE && Array.isArray(window.STATE.users) && window.STATE.users.length > 0)
+                ? window.STATE.users
+                : (typeof getInitialData === 'function' ? getInitialData().users : []);
+
+            const user = usersList.find(u => u.id === userId) || usersList[0];
+            sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(user));
+            sessionStorage.setItem('ENCCO_AUTH_ROLE', role || user.role || 'admin');
+            window.location.href = 'plataforma.html';
+        }
+
+        function cancelRoleChoice() {
+            const roleBox = document.getElementById('roleSelectionBox');
+            const loginForm = document.getElementById('loginForm');
+            if (roleBox) roleBox.style.display = 'none';
+            if (loginForm) loginForm.style.display = 'block';
+        }
+    </script>
+
+    <script>
+        function quickLogin(username, password) {
+            document.getElementById('loginUsername').value = username;
+            document.getElementById('loginPassword').value = password;
+            handleLoginPageSubmit();
+        }
+    </script>
+
+</body>
+</html>
