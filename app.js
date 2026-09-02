@@ -1568,20 +1568,23 @@ function saveStateToLocalStorage() {
         dismissedAlerts: STATE.dismissedAlerts || {},
         schoolHeader: STATE.schoolHeader || getInitialData().schoolHeader
     };
+    payload.lastModified = Date.now();
+    STATE.lastModified = payload.lastModified;
     try {
         const jsonStr = JSON.stringify(payload);
         localStorage.setItem(DB_STORAGE_KEY, jsonStr);
         // 🛡️ Copia de Respaldo Inmediata Antipérdida de Datos
         localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', jsonStr);
+        localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
         // 🔄 Notificación de Sincronización Inmediata entre pestañas
         window.dispatchEvent(new Event('storage'));
     } catch (e) {
         console.warn("Storage warning:", e);
     }
     
-    // Si Supabase está conectado, sincronizar en segundo plano
+    // Si Supabase está conectado, sincronizar inmediatamente en la nube
     if (window.supabaseClient) {
-        syncStateToSupabaseBackground(payload);
+        syncStateToSupabaseImmediate(false);
     }
 }
 
@@ -7214,7 +7217,7 @@ async function pullStateFromSupabaseCloud(showSuccessToast = false) {
                 STATE.disciplineReports = remoteData.disciplineReports || STATE.disciplineReports;
                 STATE.attendanceRecords = remoteData.attendanceRecords || STATE.attendanceRecords || {};
                 
-                localStorage.setItem('ENCC_PLATFORM_STATE_V2', JSON.stringify(STATE));
+                localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(STATE)); localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', JSON.stringify(STATE));
                 updateCycleSelects();
                 updateCareerSelects();
                 updateGradeSelects();
@@ -7324,18 +7327,85 @@ async function testSupabaseConnection() {
     }
 }
 
-async function syncStateToSupabaseBackground(payload) {
+// SISTEMA DE SINCRONIZACIÓN INMEDIATA EN LA NUBE CON SUPABASE
+function updateDbSyncStatus(status) {
+    const topBtn = document.getElementById('topDbStatusBtn');
+    const topText = document.getElementById('topDbStatusText');
+    const topIcon = document.getElementById('topDbStatusIcon');
+    if (!topBtn) return;
+
+    if (status === 'syncing') {
+        topBtn.style.background = 'rgba(234, 179, 8, 0.35)';
+        if (topIcon) topIcon.className = 'fa-solid fa-arrows-rotate fa-spin';
+        if (topText) topText.textContent = 'Sincronizando con Supabase...';
+    } else if (status === 'synced') {
+        topBtn.style.background = 'rgba(34, 197, 94, 0.3)';
+        if (topIcon) topIcon.className = 'fa-solid fa-cloud-check';
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        if (topText) topText.textContent = `Supabase Conectada (${timeStr})`;
+    } else if (status === 'error') {
+        topBtn.style.background = 'rgba(239, 68, 68, 0.3)';
+        if (topIcon) topIcon.className = 'fa-solid fa-triangle-exclamation';
+        if (topText) topText.textContent = 'Reintentando Sincronización';
+    }
+}
+
+async function syncStateToSupabaseImmediate(showSuccessToast = false) {
     if (!window.supabaseClient) return;
+    updateDbSyncStatus('syncing');
+
+    STATE.lastModified = Date.now();
+    const payload = {
+        config: STATE.config,
+        activeCycle: STATE.activeCycle,
+        cycles: STATE.cycles || [],
+        theme: STATE.theme,
+        users: STATE.users,
+        careers: STATE.careers,
+        gradesList: STATE.gradesList,
+        pensumCatalog: STATE.pensumCatalog,
+        students: STATE.students,
+        pensum: STATE.pensum,
+        announcements: STATE.announcements,
+        disciplineReports: STATE.disciplineReports,
+        attendanceRecords: STATE.attendanceRecords || {},
+        dismissedAlerts: STATE.dismissedAlerts || {},
+        schoolHeader: STATE.schoolHeader || getInitialData().schoolHeader,
+        lastModified: STATE.lastModified
+    };
+
     try {
-        // 1. Sincronizar instantáneamente la instantánea global de la base de datos
-        await window.supabaseClient.from('school_settings').upsert({
+        // 1. Instantánea maestra atómica en school_settings
+        const { error } = await window.supabaseClient.from('school_settings').upsert({
             id: 'encc-jutiapa-main-state',
             key: 'ENCCO_DATABASE_SNAPSHOT',
             value: JSON.stringify(payload),
             updated_at: new Date().toISOString()
         });
 
-        // 2. Sincronizar tabla de estudiantes en segundo plano si la tabla existe
+        if (error) {
+            console.error("Error al guardar snapshot en Supabase:", error);
+            updateDbSyncStatus('error');
+            return;
+        }
+
+        // 2. Sincronizar tabla relacional de usuarios si existe en Supabase
+        if (Array.isArray(payload.users) && payload.users.length > 0) {
+            const userRows = payload.users.map(u => ({
+                id: u.id,
+                name: u.name,
+                email: u.email || '',
+                role: u.role,
+                title: u.title || '',
+                renglon: u.renglon || '011',
+                gender: u.gender || 'Masculino',
+                active: u.active !== false
+            }));
+            await window.supabaseClient.from('users').upsert(userRows, { onConflict: 'id' }).catch(() => {});
+        }
+
+        // 3. Sincronizar tabla relacional de estudiantes si existe en Supabase
         if (Array.isArray(payload.students) && payload.students.length > 0) {
             const stuRows = payload.students.map(s => ({
                 id: s.id,
@@ -7359,8 +7429,35 @@ async function syncStateToSupabaseBackground(payload) {
             }));
             await window.supabaseClient.from('students').upsert(stuRows, { onConflict: 'id' }).catch(() => {});
         }
+
+        updateDbSyncStatus('synced');
+        if (showSuccessToast) {
+            showToast("☁️ Cambios sincronizados inmediatamente en Supabase.", "success");
+        }
     } catch (e) {
-        console.warn("Sincronización en segundo plano con base de datos remota:", e);
+        console.warn("Excepción al sincronizar con Supabase:", e);
+        updateDbSyncStatus('error');
+    }
+}
+
+// Forzar subida de todo el estado local a la nube de Supabase
+async function forcePushLocalStateToSupabase(showToastAlert = true) {
+    if (!window.supabaseClient) {
+        initSupabaseConnection();
+    }
+    if (!window.supabaseClient) {
+        if (showToastAlert) showToast("Iniciando conexión con Supabase... por favor espere.", "warning");
+        return;
+    }
+
+    if (showToastAlert) showToast("Subiendo información completa a Supabase...", "info");
+    await syncStateToSupabaseImmediate(false);
+
+    if (showToastAlert) {
+        const stuCount = (STATE.students || []).length;
+        const userCount = (STATE.users || []).length;
+        const pensumCount = (STATE.pensum || []).length;
+        showToast(`✅ Base de datos respaldada en Supabase tal cual la tienes aquí: ${stuCount} alumnos, ${userCount} docentes, ${pensumCount} clases asignadas.`, "success");
     }
 }
 
@@ -14248,11 +14345,35 @@ function saveUserForm(e) {
         });
     }
 
+    // Actualización en cascada para docentes en cátedras
+    if (userId) {
+        (STATE.pensum || []).forEach(a => {
+            if (a.teacherId === userId || a.teacher === name) {
+                a.teacher = name;
+                a.teacherId = userId;
+            }
+        });
+        (STATE.gradesList || []).forEach(g => {
+            if (g.guideTeacherId === userId || g.guideTeacher === name) {
+                g.guideTeacher = name;
+                g.guideTeacherId = userId;
+            }
+        });
+    }
+
+    STATE.lastModified = Date.now();
     saveStateToLocalStorage();
+    synchronizeGlobalDynamicUI();
     closeUserModal();
     renderUsersTable();
     if (typeof renderDashboard === 'function') renderDashboard();
-    showToast(`Usuario "${name}" guardado exitosamente con rol "${role}".`, 'success');
+
+    // Sincronizar inmediatamente a la base de datos
+    if (typeof syncStateToSupabaseImmediate === 'function') {
+        syncStateToSupabaseImmediate(true);
+    }
+
+    showToast(`Usuario "${name}" guardado y sincronizado exitosamente en la base de datos.`, 'success');
 }
 
 
