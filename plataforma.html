@@ -2807,9 +2807,65 @@
             </div>
             <form onsubmit="saveDisciplineForm(event)">
                 <div class="modal-body">
-                    <div class="form-group">
-                        <label>Seleccionar Estudiante</label>
-                        <select id="discStudentSelect" class="form-control" required></select>
+                    <!-- RECUADRO DE BÚSQUEDA Y SELECCIÓN DINÁMICA POR GRADO, SECCIÓN Y NOMBRE -->
+                    <div class="discipline-student-filter-card" style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:10px; padding:12px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                            <label style="font-weight:800; color:#0f172a; font-size:0.86rem; margin:0; display:flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-user-gear" style="color:var(--brand-green);"></i> Búsqueda Dinámica de Estudiante
+                            </label>
+                            <span id="discStudentCountBadge" class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.74rem;">
+                                412 alumnos
+                            </span>
+                        </div>
+
+                        <!-- Fila 1: Selectores Dinámicos de Grado y Sección -->
+                        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:8px; margin-bottom:8px;">
+                            <div>
+                                <label style="font-size:0.75rem; font-weight:700; color:#475569; margin-bottom:2px; display:block;">
+                                    <i class="fa-solid fa-graduation-cap"></i> Filtrar Grado:
+                                </label>
+                                <select id="discGradeFilter" class="form-control form-control-sm" onchange="filterDisciplineStudentList()" style="font-size:0.82rem; font-weight:700; background:#ffffff; border-color:#94a3b8; height:34px;">
+                                    <option value="ALL">-- Todos los Grados --</option>
+                                    <option value="4to Perito Contador">4to Perito Contador</option>
+                                    <option value="5to Perito Contador">5to Perito Contador</option>
+                                    <option value="6to Perito Contador">6to Perito Contador</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size:0.75rem; font-weight:700; color:#475569; margin-bottom:2px; display:block;">
+                                    <i class="fa-solid fa-layer-group"></i> Sección:
+                                </label>
+                                <select id="discSectionFilter" class="form-control form-control-sm" onchange="filterDisciplineStudentList()" style="font-size:0.82rem; font-weight:700; background:#ffffff; border-color:#94a3b8; height:34px;">
+                                    <option value="ALL">Todas</option>
+                                    <option value="A">Sección A</option>
+                                    <option value="B">Sección B</option>
+                                    <option value="C">Sección C</option>
+                                    <option value="D">Sección D</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Fila 2: Búsqueda Dinámica por Nombre / Apellido / Carné -->
+                        <div style="margin-bottom:8px;">
+                            <label style="font-size:0.75rem; font-weight:700; color:#475569; margin-bottom:2px; display:block;">
+                                <i class="fa-solid fa-magnifying-glass"></i> Buscar por Nombre, Apellido o Carné:
+                            </label>
+                            <div style="position:relative;">
+                                <input type="text" id="discStudentSearchInput" class="form-control form-control-sm" placeholder="Escriba el nombre del alumno para filtrar en tiempo real..." oninput="filterDisciplineStudentList()" style="font-size:0.82rem; background:#ffffff; padding-left:30px; height:34px;">
+                                <i class="fa-solid fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.82rem;"></i>
+                                <button type="button" id="discClearSearchBtn" onclick="clearDisciplineStudentSearch()" style="display:none; position:absolute; right:8px; top:50%; transform:translateY(-50%); border:none; background:transparent; color:#94a3b8; cursor:pointer; font-size:0.9rem;" title="Limpiar búsqueda">✕</button>
+                            </div>
+                        </div>
+
+                        <!-- Fila 3: Selector del Estudiante (Filtrado en tiempo real) -->
+                        <div>
+                            <label style="font-size:0.76rem; font-weight:800; color:#0f172a; margin-bottom:2px; display:block;">
+                                <i class="fa-solid fa-user-check" style="color:var(--brand-green);"></i> Seleccionar Estudiante (*):
+                            </label>
+                            <select id="discStudentSelect" class="form-control" required style="font-weight:700; font-size:0.85rem; border-color:#0284c7; background:#ffffff; color:#0f172a;">
+                                <option value="">-- Seleccione Estudiante --</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Gravedad de la Falta</label>
@@ -2995,7 +3051,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260831_v74_supervision_director_secretaria"></script>
+    <script src="app.js?v=20260831_v75_dynamic_discipline_filter"></script>
     <script>
         // CÁLCULO DINÁMICO DE PROMOCIONES Y AÑOS DE FUNDACIÓN (BASE 1970)
         (function updateDynamicStats() {

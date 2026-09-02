@@ -11295,6 +11295,115 @@ function checkDisciplineResolvePermission() {
     return ['admin', 'director', 'profesor_auxiliar'].includes(role);
 }
 
+// ==========================================================================
+// ⚠️ GESTOR DINÁMICO DE REPORTES DISCIPLINARIOS Y LLAMADAS DE ATENCIÓN (V75)
+// ==========================================================================
+
+function populateDisciplineGradeFilter() {
+    const gradeSelect = document.getElementById('discGradeFilter');
+    if (!gradeSelect) return;
+
+    const gradesList = Array.isArray(STATE.gradesList) && STATE.gradesList.length > 0 
+        ? STATE.gradesList 
+        : [
+            { code: '4to Perito Contador', name: '4to Perito Contador' },
+            { code: '5to Perito Contador', name: '5to Perito Contador' },
+            { code: '6to Perito Contador', name: '6to Perito Contador' }
+        ];
+
+    const currentVal = gradeSelect.value || 'ALL';
+    let optionsHtml = '<option value="ALL">-- Todos los Grados --</option>';
+    gradesList.forEach(g => {
+        const val = g.name || g.code;
+        optionsHtml += `<option value="${val}">${g.name} (${g.code})</option>`;
+    });
+
+    gradeSelect.innerHTML = optionsHtml;
+    if (gradesList.some(g => (g.name || g.code) === currentVal)) {
+        gradeSelect.value = currentVal;
+    }
+}
+
+function clearDisciplineStudentSearch() {
+    const input = document.getElementById('discStudentSearchInput');
+    const btn = document.getElementById('discClearSearchBtn');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+    if (btn) btn.style.display = 'none';
+    filterDisciplineStudentList();
+}
+
+function filterDisciplineStudentList() {
+    const gradeFilter = (document.getElementById('discGradeFilter')?.value || 'ALL').trim();
+    const sectionFilter = (document.getElementById('discSectionFilter')?.value || 'ALL').trim().toUpperCase();
+    const searchInput = document.getElementById('discStudentSearchInput');
+    const q = (searchInput?.value || '').trim().toLowerCase();
+    const clearBtn = document.getElementById('discClearSearchBtn');
+    if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+
+    const select = document.getElementById('discStudentSelect');
+    const badge = document.getElementById('discStudentCountBadge');
+    if (!select) return;
+
+    let students = (STATE.students || []).filter(s => s.status === 'Activo');
+
+    // Filtro de grado
+    if (gradeFilter && gradeFilter !== 'ALL') {
+        const gfLower = gradeFilter.toLowerCase();
+        students = students.filter(s => {
+            const sg = (s.grade || s.gradeCode || '').toLowerCase();
+            return sg === gfLower || sg.includes(gfLower) || gfLower.includes(sg);
+        });
+    }
+
+    // Filtro de sección
+    if (sectionFilter && sectionFilter !== 'ALL') {
+        students = students.filter(s => {
+            const sec = (s.section || '').toUpperCase().trim();
+            return sec === sectionFilter || sec === `SECCIÓN ${sectionFilter}` || sec === `SECCION ${sectionFilter}` || sec.endsWith(sectionFilter);
+        });
+    }
+
+    // Búsqueda en vivo por nombre, apellido, carné o cui
+    if (q) {
+        students = students.filter(s => {
+            const fullName = `${s.lastName || ''} ${s.firstName || ''} ${s.name || ''}`.toLowerCase();
+            const carne = (s.carne || '').toLowerCase();
+            const cui = (s.cui || '').toLowerCase();
+            return fullName.includes(q) || carne.includes(q) || cui.includes(q);
+        });
+    }
+
+    // Ordenar alfabéticamente por apellidos
+    students.sort((a, b) => (a.lastName || a.name || '').localeCompare(b.lastName || b.name || ''));
+
+    if (badge) {
+        badge.textContent = `${students.length} alumno(s) encontrado(s)`;
+        badge.style.background = students.length > 0 ? '#e0f2fe' : '#fee2e2';
+        badge.style.color = students.length > 0 ? '#0369a1' : '#dc2626';
+    }
+
+    if (students.length === 0) {
+        select.innerHTML = '<option value="">⚠️ No hay estudiantes con este filtro</option>';
+        select.disabled = true;
+    } else {
+        select.disabled = false;
+        select.innerHTML = `<option value="">-- Seleccione Estudiante (${students.length} disponibles) --</option>` + students.map(s => {
+            const fullName = `${s.lastName || ''}, ${s.firstName || ''}`.trim() || s.name || 'Estudiante';
+            const gradeDisplay = s.grade || s.gradeCode || 'Grado Oficial';
+            const secDisplay = (s.section || 'A').replace(/secci[oó]n\s*/i, '');
+            return `<option value="${s.id}">${fullName} • [${gradeDisplay} - Sec ${secDisplay}] (Carné: ${s.carne || 'S/C'})</option>`;
+        }).join('');
+
+        // Si solo hay un estudiante tras la búsqueda, seleccionarlo automáticamente
+        if (students.length === 1 && q) {
+            select.value = students[0].id;
+        }
+    }
+}
+
 function openDisciplineModal() {
     if (!checkDisciplineCreatePermission()) {
         showToast('No tiene permisos para registrar reportes disciplinarios.', 'warning');
@@ -11304,18 +11413,20 @@ function openDisciplineModal() {
     const form = document.querySelector('#disciplineModal form');
     if (form) form.reset();
 
-    const select = document.getElementById('discStudentSelect');
-    if (select) {
-        const students = STATE.students || [];
-        select.innerHTML = '<option value="">-- Seleccione Estudiante --</option>' + students.map(s => {
-            const name = s.name || `${s.firstName || ''} ${s.lastName || ''}`.trim() || 'Estudiante';
-            const grade = s.grade || s.gradeCode || '';
-            const sec = s.section || '';
-            return `<option value="${s.id}">${name} — (${grade} ${sec})</option>`;
-        }).join('');
-    }
+    // 1. Poblar y reiniciar filtros dinámicos
+    populateDisciplineGradeFilter();
+    const gradeSelect = document.getElementById('discGradeFilter');
+    const secSelect = document.getElementById('discSectionFilter');
+    const searchInput = document.getElementById('discStudentSearchInput');
 
-    // Fecha actual por defecto
+    if (gradeSelect) gradeSelect.value = 'ALL';
+    if (secSelect) secSelect.value = 'ALL';
+    if (searchInput) searchInput.value = '';
+
+    // 2. Filtrar lista de estudiantes
+    filterDisciplineStudentList();
+
+    // 3. Fecha actual por defecto si existe campo
     const dateInput = document.getElementById('discDate');
     if (dateInput) {
         dateInput.value = new Date().toISOString().split('T')[0];
@@ -11337,13 +11448,36 @@ function openDisciplineModalForStudent(studentId) {
     closeStudentProfileModal();
     openDisciplineModal();
     
-    setTimeout(() => {
-        const studentSelect = document.getElementById('discStudentSelect');
-        if (studentSelect && studentId) {
-            studentSelect.value = studentId;
+    if (studentId) {
+        const s = (STATE.students || []).find(x => x.id === studentId);
+        if (s) {
+            const gradeSelect = document.getElementById('discGradeFilter');
+            const secSelect = document.getElementById('discSectionFilter');
+            if (gradeSelect && s.grade) {
+                // Ajustar al grado del alumno
+                Array.from(gradeSelect.options).forEach(opt => {
+                    if (opt.value && s.grade.toLowerCase().includes(opt.value.toLowerCase())) {
+                        gradeSelect.value = opt.value;
+                    }
+                });
+            }
+            if (secSelect && s.section) {
+                const cleanSec = s.section.replace(/secci[oó]n\s*/i, '').trim().toUpperCase();
+                secSelect.value = cleanSec || 'ALL';
+            }
+            filterDisciplineStudentList();
         }
-    }, 100);
+
+        setTimeout(() => {
+            const studentSelect = document.getElementById('discStudentSelect');
+            if (studentSelect && studentId) {
+                studentSelect.value = studentId;
+            }
+        }, 100);
+    }
 }
+
+
 
 function saveDisciplineForm(e) {
     if (e && e.preventDefault) e.preventDefault();
