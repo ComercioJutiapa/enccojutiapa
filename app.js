@@ -8842,23 +8842,44 @@ function toggleSelectAllGradebook(master, tabKey) {
     tbody.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = isChecked);
 }
 
-function getSortedGradebookStudents(gradeCode) {
+function getSortedGradebookStudents(gradeCode, targetPensum = null) {
     const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode);
+
+    const rawG = `${gradeCode || ''} ${targetGradeObj ? (targetGradeObj.name + ' ' + targetGradeObj.section) : ''} ${targetPensum ? (targetPensum.grade + ' ' + targetPensum.section + ' ' + (targetPensum.gradeCode || '')) : ''}`.toUpperCase();
+    let gGradeNum = 0;
+    if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+    else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+    else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
+
+    const gSec = getCleanSectionLetter(targetGradeObj ? targetGradeObj.section : (targetPensum ? (targetPensum.section || targetPensum.gradeCode) : gradeCode));
+
     const students = (STATE.students || []).filter(s => {
-        if (!s.grade && !s.gradeLabel) return false;
-        if (s.grade === gradeCode) return true;
-        if (targetGradeObj && s.gradeLabel) {
-            const expectedLabel = `${targetGradeObj.name} (${targetGradeObj.section})`.trim().toLowerCase();
-            if (s.gradeLabel.trim().toLowerCase() === expectedLabel) return true;
-        }
-        return false;
+        if (s.status && s.status !== 'Activo') return false;
+
+        // Coincidencia directa por código exacto
+        if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
+
+        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+        let sGradeNum = 0;
+        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+
+        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
+
+        if (gGradeNum > 0 && sGradeNum > 0 && gGradeNum !== sGradeNum) return false;
+        if (gSec && sSec && gSec !== sSec) return false;
+
+        return (gGradeNum === sGradeNum) && (!gSec || !sSec || gSec === sSec);
     });
+
     return students.sort((a, b) => {
         const nameA = `${a.lastName || ''} ${a.firstName || ''}`.toUpperCase().trim();
         const nameB = `${b.lastName || ''} ${b.firstName || ''}`.toUpperCase().trim();
         return gradebookSortAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
     });
 }
+
 
 function ensureStudentGradebookStructure(student, subjectName) {
     if (!student.grades) student.grades = {};
@@ -9210,7 +9231,7 @@ function loadTeacherGradebook() {
     if (hn) hn.textContent = `Nota ${currentUnit}`;
     if (ha) ha.textContent = `Acumulado ${currentUnit}`;
 
-    const students = getSortedGradebookStudents(gradeCode);
+    const students = getSortedGradebookStudents(gradeCode, targetPensum);
 
     if (students.length === 0) {
         ['gradebookActivitiesTableBody', 'gradebookSummaryTableBody', 'gradebookAveragesTableBody'].forEach(id => {
@@ -9307,26 +9328,36 @@ function loadTeacherGradebook() {
             const sumGrades = activeGrades.reduce((a, b) => a + (parseInt(b) || 0), 0);
             const acumulado = isInactive ? '—' : (sumGrades / currentUnit).toFixed(2);
 
+            // Zona bloqueada con suma automática de actividades e icono de bloqueo
+            const lockedZonaInput = isInactive ? 
+                `<input type="text" class="grade-box-input-exam" value="—" disabled readonly style="background:#f1f5f9; color:#94a3b8; border:1px dashed #cbd5e1; cursor:not-allowed; text-align:center;">` :
+                `<div style="display:inline-flex; align-items:center; justify-content:center; gap:4px; width:100%;">
+                    <input type="text" class="grade-box-input-exam" value="${zonaSum}" readonly disabled 
+                        style="background:#f8fafc; font-weight:800; color:#047857; border:1.5px solid #cbd5e1; cursor:not-allowed; text-align:center; width:65px;" 
+                        title="Zona calculada automáticamente de las 10 actividades (Bloqueada para no modificar)">
+                    <i class="fa-solid fa-lock" style="font-size:0.75rem; color:#64748b;" title="Zona bloqueada para edición directa"></i>
+                </div>`;
+
             return `
                 <tr data-student-id="${s.id}" style="${isInactive ? 'background:rgba(241,245,249,0.6); opacity:0.85;' : ''}">
                     <td style="text-align:center;"><input type="checkbox" ${isInactive ? 'disabled' : ''}></td>
                     <td><strong>${idx + 1}. ${studentFullName}</strong>${statusTag}</td>
                     <td style="text-align:center; font-weight:700;">
-                        ${isInactive ? 
-                            `<input type="text" class="grade-box-input-exam" value="—" disabled readonly style="background:#f1f5f9; color:#94a3b8; border:1px dashed #cbd5e1; cursor:not-allowed;">` :
-                            `<input type="number" min="0" max="${cfg.zonaMax}" class="grade-box-input-exam" value="${zonaSum}" onchange="handleDirectZonaChange('${s.id}', this.value, '${subjectName}', ${currentUnit})">`
-                        }
+                        ${lockedZonaInput}
                     </td>
                     <td style="text-align:center;">
                         ${isInactive ? 
-                            `<input type="text" class="grade-box-input-exam" value="—" disabled readonly style="background:#f1f5f9; color:#94a3b8; border:1px dashed #cbd5e1; cursor:not-allowed;">` :
-                            `<input type="number" min="0" max="${cfg.examMax}" class="grade-box-input-exam" value="${exam}" onchange="handleExamScoreChange('${s.id}', this.value, '${subjectName}', ${currentUnit})">`
+                            `<input type="text" class="grade-box-input-exam" value="—" disabled readonly style="background:#f1f5f9; color:#94a3b8; border:1px dashed #cbd5e1; cursor:not-allowed; text-align:center;">` :
+                            `<input type="number" min="0" max="${cfg.examMax}" class="grade-box-input-exam" value="${exam}" 
+                                onchange="handleExamScoreChange('${s.id}', this.value, '${subjectName}', ${currentUnit})"
+                                onkeyup="if(event.key==='Enter') this.blur();"
+                                style="text-align:center; font-weight:700; width:65px;">`
                         }
                     </td>
-                    <td style="text-align:center; font-weight:800; font-size:1rem;" class="${isInactive ? '' : (total < 60 ? 'grade-score-fail' : 'grade-score-pass')}">
+                    <td style="text-align:center; font-weight:800; font-size:1.05rem;" class="${isInactive ? '' : (total < 60 ? 'grade-score-fail' : 'grade-score-pass')}">
                         ${isInactive ? `<span class="badge ${s.status === 'Retirado' ? 'badge-danger' : 'badge-warning'}" style="font-size:0.75rem;">${s.status}</span>` : total}
                     </td>
-                    <td style="text-align:center; font-weight:600; color:var(--text-secondary);">
+                    <td style="text-align:center; font-weight:800; color:var(--text-primary); font-size:0.95rem;">
                         ${acumulado}
                     </td>
                 </tr>
@@ -9446,17 +9477,26 @@ function handleExamScoreChange(studentId, value, subjectName, unit) {
     if (!student) return;
     ensureStudentGradebookStructure(student, subjectName);
 
-    const examVal = Math.max(0, parseInt(value) || 0);
+    const selectedId = document.getElementById('teacherCourseSelect')?.value;
+    const targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
+    const cfg = getGradingConfig(targetPensum, unit);
+
+    const examVal = Math.max(0, Math.min(cfg.examMax || 40, parseInt(value) || 0));
     student.gradebookDetails[subjectName][unit].exam = examVal;
 
-    const zona = parseInt(student.gradebookDetails[subjectName][unit].zona) || 0;
-    const total = zona + examVal;
+    // Obtener la zona sumada exactamente de las actividades
+    const acts = student.gradebookDetails[subjectName][unit].activities || [0,0,0,0,0,0,0,0,0,0];
+    const zonaSum = acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
+    student.gradebookDetails[subjectName][unit].zona = zonaSum;
+
+    const total = zonaSum + examVal;
     student.gradebookDetails[subjectName][unit].total = total;
     student.grades[subjectName][unit - 1] = total;
 
     saveStateToLocalStorage();
     loadTeacherGradebook();
 }
+
 
 function saveGradebookChanges() {
     const isDocente = (STATE.currentRole === 'docente');
