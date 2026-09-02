@@ -4012,109 +4012,117 @@ function onPrintModelSubjectChange(subjectName) {
     }
 }
 
-function generateOfficialPrintList() {
-    const career = document.getElementById('printModelCareerSelect')?.value;
-    const gradeCode = document.getElementById('printModelGradeSelect')?.value;
-    const modelType = document.getElementById('printModelTypeSelect')?.value || 'CUADRO_CALIFICACIONES_EXCEL';
+function generateOfficialPrintList(opts = null) {
+    let career = opts?.career || document.getElementById('printModelCareerSelect')?.value;
+    let gradeCode = opts?.gradeCode || document.getElementById('printModelGradeSelect')?.value;
+    let modelType = opts?.modelType || document.getElementById('printModelTypeSelect')?.value || 'CUADRO_CALIFICACIONES_EXCEL';
     const subjectSelect = document.getElementById('printModelSubjectSelect');
-    const rawSubVal = (subjectSelect ? subjectSelect.value : (document.getElementById('printModelSubjectName')?.value || '')).trim();
-    const teacherName = (document.getElementById('printModelTeacherName')?.value || '').trim();
-    const bimestreNum = document.getElementById('printModelBimestreSelect')?.value || '1';
+    let rawSubVal = opts?.subjectName || (subjectSelect ? subjectSelect.value : (document.getElementById('printModelSubjectName')?.value || '')).trim();
+    let teacherName = opts?.teacherName || (document.getElementById('printModelTeacherName')?.value || '').trim();
+    let bimestreNum = opts?.bimestreNum || document.getElementById('printModelBimestreSelect')?.value || '1';
 
-    if (!career || !gradeCode) {
+    let targetPensum = opts?.targetPensum || null;
+
+    if (!targetPensum && (!career || !gradeCode)) {
         showToast("Por favor seleccione la Carrera y el Grado/Sección para generar el documento.", "warning");
         return;
     }
 
     const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode);
-    const gradeTitle = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : gradeCode;
-    const rawGradeName = gradeObj ? gradeObj.name : '4to Perito';
-    const rawSection = gradeObj ? gradeObj.section : 'A';
+    const gradeTitle = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : (targetPensum ? `${targetPensum.grade} (${targetPensum.section || 'A'})` : gradeCode);
+    const rawGradeName = gradeObj ? gradeObj.name : (targetPensum ? targetPensum.grade : '4to Perito');
+    const rawSection = gradeObj ? gradeObj.section : (targetPensum ? (targetPensum.section || 'A') : 'A');
 
-    const rawG = `${gradeCode || ''} ${gradeObj ? (gradeObj.name + ' ' + gradeObj.section) : ''}`.toUpperCase();
+    const rawG = `${gradeCode || ''} ${gradeObj ? (gradeObj.name + ' ' + gradeObj.section) : ''} ${targetPensum ? (targetPensum.grade + ' ' + targetPensum.section) : ''}`.toUpperCase();
     let gGradeNum = 0;
     if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
     else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
     else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
 
-    const gSec = getCleanSectionLetter(gradeObj ? gradeObj.section : gradeCode);
+    const gSec = getCleanSectionLetter(gradeObj ? gradeObj.section : (targetPensum ? targetPensum.section : gradeCode));
 
     const subjectName = getFullOfficialSubjectName(rawSubVal, gGradeNum || 0);
 
-    if (!subjectName) {
+    if (!subjectName && !targetPensum) {
         showToast("Por favor seleccione la Asignatura correspondiente a su cátedra.", "warning");
         return;
     }
 
-    // 🔒 SEGURIDAD Y VALIDACIÓN ESTRICTA PARA DOCENTES:
-    const isDocente = (STATE.currentRole === 'docente');
-    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+    // Identificar el pensum si no fue provisto
+    if (!targetPensum) {
+        const isDocente = (STATE.currentRole === 'docente');
+        const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
 
-    let targetPensum = null;
+        if (isDocente && currentDocenteUser) {
+            const uName = (currentDocenteUser.name || '').trim().toLowerCase();
+            const uId = currentDocenteUser.id || '';
 
-    if (isDocente && currentDocenteUser) {
-        const uName = (currentDocenteUser.name || '').trim().toLowerCase();
-        const uId = currentDocenteUser.id || '';
+            targetPensum = (STATE.pensum || []).find(a => {
+                const tName = (a.teacher || '').trim().toLowerCase();
+                const isMyTeacher = (uId && a.teacherId === uId) || (tName && (tName === uName || uName.includes(tName) || tName.includes(uName)));
+                if (!isMyTeacher) return false;
 
-        targetPensum = (STATE.pensum || []).find(a => {
-            const tName = (a.teacher || '').trim().toLowerCase();
-            const isMyTeacher = (uId && a.teacherId === uId) || (tName && (tName === uName || uName.includes(tName) || tName.includes(uName)));
-            if (!isMyTeacher) return false;
+                const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+                let aGradeNum = 0;
+                if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+                else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+                else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
 
-            const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
-            let aGradeNum = 0;
-            if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
-            else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
-            else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+                const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
+                const aOfficial = getFullOfficialSubjectName(a.subject || a.name || '', aGradeNum).toLowerCase();
+                const sOfficial = subjectName.toLowerCase();
+                const aRaw = (a.subject || a.name || '').trim().toLowerCase();
+                const sRaw = rawSubVal.toLowerCase();
 
-            const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
-            
-            // Comparar ambos nombres normalizados por getFullOfficialSubjectName
-            const aOfficial = getFullOfficialSubjectName(a.subject || a.name || '', aGradeNum).toLowerCase();
-            const sOfficial = subjectName.toLowerCase();
-            const aRaw = (a.subject || a.name || '').trim().toLowerCase();
-            const sRaw = rawSubVal.toLowerCase();
+                const isMatchGrade = (gGradeNum === 0 || aGradeNum === 0 || gGradeNum === aGradeNum);
+                const isMatchSec = (!gSec || !aSec || gSec === aSec);
+                const isMatchSub = (aOfficial === sOfficial || aOfficial.includes(sOfficial) || sOfficial.includes(aOfficial) || aRaw === sRaw || aRaw.includes(sRaw) || sRaw.includes(aRaw));
 
-            const isMatchGrade = (gGradeNum === 0 || aGradeNum === 0 || gGradeNum === aGradeNum);
-            const isMatchSec = (!gSec || !aSec || gSec === aSec);
-            const isMatchSub = (aOfficial === sOfficial || aOfficial.includes(sOfficial) || sOfficial.includes(aOfficial) || aRaw === sRaw || aRaw.includes(sRaw) || sRaw.includes(aRaw));
+                return isMatchGrade && isMatchSec && isMatchSub;
+            });
 
-            return isMatchGrade && isMatchSec && isMatchSub;
-        });
+            if (!targetPensum) {
+                showToast("Acceso Denegado: Como docente, únicamente tiene autorización para generar e imprimir listas de sus propias clases asignadas.", "danger");
+                return;
+            }
+        } else {
+            targetPensum = (STATE.pensum || []).find(a => {
+                const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+                let aGradeNum = 0;
+                if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+                else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+                else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
 
-        if (!targetPensum) {
-            showToast("Acceso Denegado: Como docente, únicamente tiene autorización para generar e imprimir listas de sus propias clases asignadas.", "danger");
-            return;
+                const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
+                const aOfficial = getFullOfficialSubjectName(a.subject || a.name || '', aGradeNum).toLowerCase();
+                const sOfficial = subjectName.toLowerCase();
+                const aRaw = (a.subject || a.name || '').trim().toLowerCase();
+                const sRaw = rawSubVal.toLowerCase();
+
+                const isMatchGrade = (gGradeNum === 0 || aGradeNum === 0 || gGradeNum === aGradeNum);
+                const isMatchSec = (!gSec || !aSec || gSec === aSec);
+                const isMatchSub = (aOfficial === sOfficial || aOfficial.includes(sOfficial) || sOfficial.includes(aOfficial) || aRaw === sRaw || aRaw.includes(sRaw) || sRaw.includes(aRaw));
+
+                return isMatchGrade && isMatchSec && isMatchSub;
+            });
         }
-    } else {
-        targetPensum = (STATE.pensum || []).find(a => {
-            const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
-            let aGradeNum = 0;
-            if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
-            else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
-            else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
-
-            const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
-            const aOfficial = getFullOfficialSubjectName(a.subject || a.name || '', aGradeNum).toLowerCase();
-            const sOfficial = subjectName.toLowerCase();
-            const aRaw = (a.subject || a.name || '').trim().toLowerCase();
-            const sRaw = rawSubVal.toLowerCase();
-
-            const isMatchGrade = (gGradeNum === 0 || aGradeNum === 0 || gGradeNum === aGradeNum);
-            const isMatchSec = (!gSec || !aSec || gSec === aSec);
-            const isMatchSub = (aOfficial === sOfficial || aOfficial.includes(sOfficial) || sOfficial.includes(aOfficial) || aRaw === sRaw || aRaw.includes(sRaw) || sRaw.includes(aRaw));
-
-            return isMatchGrade && isMatchSec && isMatchSub;
-        });
     }
 
-    // 🎯 DETERMINACIÓN DINÁMICA DE ACTIVIDADES:
+    const bNum = parseInt(bimestreNum) || 1;
+    const finalSubjectName = targetPensum ? targetPensum.subject : subjectName;
+    const effectiveTeacher = targetPensum ? (targetPensum.teacher || teacherName) : (teacherName || 'Catedrático Titular');
+
+    // Determinación dinámica de actividades de zona
     let activitiesList = [];
-    if (targetPensum && STATE.gradingConfigs) {
-        const key = getGradingConfigKey(targetPensum, bimestreNum);
-        const savedCfg = STATE.gradingConfigs[key];
-        if (savedCfg && Array.isArray(savedCfg.activities)) {
-            const assignedActs = savedCfg.activities.filter(act => {
+    let cfgZonaMax = 60;
+    let cfgExamMax = 40;
+
+    if (targetPensum && typeof getGradingConfig === 'function') {
+        const cfg = getGradingConfig(targetPensum, bNum);
+        cfgZonaMax = cfg.zonaMax || 60;
+        cfgExamMax = cfg.examMax || 40;
+        if (Array.isArray(cfg.activities)) {
+            const assignedActs = cfg.activities.filter(act => {
                 const maxPts = parseFloat(act.max) || 0;
                 const customName = (act.name || '').trim();
                 return maxPts > 0 || (customName && !customName.startsWith('Act. ') && !customName.startsWith('Actividad '));
@@ -4124,7 +4132,7 @@ function generateOfficialPrintList() {
                 activitiesList = assignedActs.map((act, idx) => ({
                     num: idx + 1,
                     label: act.name || `Act ${idx + 1}`,
-                    shortLabel: `Act ${idx + 1}`,
+                    shortLabel: (act.name && act.name.length > 9) ? act.name.slice(0, 9) + '.' : (act.name || `Act ${idx + 1}`),
                     pts: parseFloat(act.max) || 0
                 }));
             }
@@ -4132,70 +4140,34 @@ function generateOfficialPrintList() {
     }
 
     if (activitiesList.length === 0) {
-        activitiesList = Array.from({ length: 8 }, (_, idx) => ({
-            num: idx + 1,
-            label: `Actividad ${idx + 1}`,
-            shortLabel: `Act ${idx + 1}`,
-            pts: 0
-        }));
+        // Fallback estándar a 5 actividades
+        activitiesList = [
+            { num: 1, label: 'Actividad 1', shortLabel: 'Act 1', pts: 10 },
+            { num: 2, label: 'Actividad 2', shortLabel: 'Act 2', pts: 10 },
+            { num: 3, label: 'Actividad 3', shortLabel: 'Act 3', pts: 15 },
+            { num: 4, label: 'Actividad 4', shortLabel: 'Act 4', pts: 15 },
+            { num: 5, label: 'Actividad 5', shortLabel: 'Act 5', pts: 10 }
+        ];
     }
 
-    const numActivities = activitiesList.length;
-
-    let gradeDisplayNum = '4°';
-    const gradeMatch = rawGradeName.match(/\d+/);
-    if (gradeMatch) {
-        gradeDisplayNum = gradeMatch[0] + '°';
-    } else {
-        gradeDisplayNum = rawGradeName.substring(0, 3);
+    // Obtener estudiantes de la cátedra
+    let students = (typeof getSortedGradebookStudents === 'function') ? getSortedGradebookStudents(gradeCode, targetPensum) : [];
+    if (!students || students.length === 0) {
+        students = (STATE.students || []).filter(s => {
+            if (s.status && s.status !== 'Activo') return false;
+            if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
+            const sg = `${s.grade || ''} ${s.section || ''}`.toLowerCase();
+            const tg = `${rawGradeName} ${rawSection}`.toLowerCase();
+            return sg.includes(tg);
+        });
     }
 
-    const sectionDisplay = getCleanSectionLetter(rawSection) || 'A';
-    const bimestreDisplay = bimestreNum + '°';
-
-    // Obtener estudiantes estrictamente de este grado y sección
-    let students = (STATE.students || []).filter(s => {
-        if (s.status && s.status !== 'Activo') return false;
-
-        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
-        let sGradeNum = 0;
-        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
-        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
-        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
-
-        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
-
-        if (gGradeNum > 0 && sGradeNum > 0 && gGradeNum !== sGradeNum) return false;
-        if (gSec && sSec && gSec !== sSec) return false;
-
-        return (gGradeNum === sGradeNum) && (gSec === sSec);
-    });
-
-    students.sort((a, b) => {
-        const lastA = (a.lastName || '').trim().toLowerCase();
-        const lastB = (b.lastName || '').trim().toLowerCase();
-        if (lastA !== lastB) return lastA.localeCompare(lastB);
-        return (a.firstName || '').trim().toLowerCase().localeCompare((b.firstName || '').trim().toLowerCase());
-    });
+    // Ordenar alfabéticamente por apellidos
+    students.sort((a, b) => (a.lastName || a.name || '').localeCompare(b.lastName || b.name || ''));
 
     const totalStudents = students.length;
-
-    // 📏 CALIBRACIÓN DINÁMICA: Ajuste perfecto para que hasta 45 alumnos ocupen exactamente 1 sola hoja de oficio (8.5x13 in)
-    const cellPadding = totalStudents <= 30 ? '2px 1.5px' : (totalStudents <= 40 ? '1.5px 1.2px' : '1px 1px');
-    const rowFontSize = totalStudents <= 30 ? '8.5px' : (totalStudents <= 40 ? '8px' : '7.5px');
-    const rowLineHeight = '1.05';
-    const rowHeight = totalStudents <= 30 ? '16px' : (totalStudents <= 40 ? '14.5px' : '13.5px');
-
-    const h = STATE.schoolHeader || (typeof getInitialSchoolHeader === 'function' ? getInitialSchoolHeader() : {});
-    const effectiveTeacher = isDocente ? (currentDocenteUser ? currentDocenteUser.name : teacherName) : (targetPensum?.teacher || teacherName);
-
-    const printWin = window.open('', '_blank');
-    if (!printWin) {
-        showToast("Por favor permita las ventanas emergentes (popups) para imprimir.", "warning");
-        return;
-    }
-
-    const colWidth = Math.max(20, Math.min(32, Math.floor(230 / numActivities)));
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
+    const bimestreDisplay = ['I', 'II', 'III', 'IV'][bNum - 1] || 'I';
 
     const STUDENTS_PER_PAGE = 45;
     const pages = [];
@@ -4204,21 +4176,111 @@ function generateOfficialPrintList() {
     }
     if (pages.length === 0) pages.push([]);
 
+    const numActivities = activitiesList.length;
+    const colWidth = Math.max(22, Math.min(36, Math.floor(240 / numActivities)));
+    const cellPadding = totalStudents > 35 ? '1px 2px' : '2px 3px';
+    const rowFontSize = totalStudents > 35 ? '7px' : '7.5px';
+    const rowHeight = totalStudents > 35 ? '15px' : '17px';
+    const rowLineHeight = totalStudents > 35 ? '1.05' : '1.1';
+
     const renderPageTable = (pageStudents, pageIdx, totalPages) => {
         const startNo = pageIdx * STUDENTS_PER_PAGE;
-        const rowsHtml = pageStudents.map((s, idx) => `
+        const isLastPage = (pageIdx === totalPages - 1);
+
+        const rowsHtml = pageStudents.map((s, idx) => {
+            const uData = (s.gradebookDetails && s.gradebookDetails[finalSubjectName] && s.gradebookDetails[finalSubjectName][bNum])
+                ? s.gradebookDetails[finalSubjectName][bNum]
+                : null;
+
+            const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
+
+            let actCells = '';
+            let zonaVal = '';
+            let examVal = '';
+            let totalVal = '';
+
+            if (isInactive) {
+                actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#94a3b8; font-size:${rowFontSize};">-</td>`).join('');
+                zonaVal = '-';
+                examVal = '-';
+                totalVal = `<span style="color:#94a3b8; font-size:6.5px; font-weight:700;">${s.status.toUpperCase()}</span>`;
+            } else if (uData) {
+                const acts = uData.activities || [];
+                let sumZona = 0;
+                let hasAnyAct = false;
+
+                actCells = activitiesList.map((a, actIdx) => {
+                    const score = acts[actIdx];
+                    if (score !== undefined && score !== null && score !== '' && !isNaN(score)) {
+                        const numScore = parseFloat(score);
+                        sumZona += numScore;
+                        hasAnyAct = true;
+                        return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; font-weight:700; color:#0f172a;">${numScore}</td>`;
+                    }
+                    return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; color:#94a3b8;"></td>`;
+                }).join('');
+
+                const hasExam = (uData.exam !== undefined && uData.exam !== null && uData.exam !== '' && !isNaN(uData.exam));
+                const examNum = hasExam ? parseFloat(uData.exam) : null;
+
+                if (hasAnyAct || hasExam) {
+                    zonaVal = sumZona > 0 || hasAnyAct ? sumZona : '';
+                    examVal = hasExam ? examNum : '';
+                    const calcTotal = sumZona + (hasExam ? examNum : 0);
+                    const isApproved = calcTotal >= 60;
+                    totalVal = `<strong style="${isApproved ? 'color:#15803d;' : 'color:#dc2626;'}">${calcTotal}</strong>`;
+                } else {
+                    const recordedGrade = (s.grades && s.grades[finalSubjectName] && s.grades[finalSubjectName][bNum - 1] !== undefined)
+                        ? parseFloat(s.grades[finalSubjectName][bNum - 1])
+                        : null;
+                    if (recordedGrade !== null && recordedGrade > 0) {
+                        const isApproved = recordedGrade >= 60;
+                        totalVal = `<strong style="${isApproved ? 'color:#15803d;' : 'color:#dc2626;'}">${recordedGrade}</strong>`;
+                    }
+                }
+            } else {
+                const recordedGrade = (s.grades && s.grades[finalSubjectName] && s.grades[finalSubjectName][bNum - 1] !== undefined)
+                    ? parseFloat(s.grades[finalSubjectName][bNum - 1])
+                    : null;
+
+                actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding};"></td>`).join('');
+                if (recordedGrade !== null && recordedGrade > 0) {
+                    const isApproved = recordedGrade >= 60;
+                    totalVal = `<strong style="${isApproved ? 'color:#15803d;' : 'color:#dc2626;'}">${recordedGrade}</strong>`;
+                }
+            }
+
+            const fullNameDisplay = `${s.lastName || ''}, ${s.firstName || ''}`.trim() || s.name || 'Estudiante';
+
+            return `
             <tr style="height:${rowHeight};">
                 <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
                 <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
-                <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${s.fullName || (s.lastName + ' ' + s.firstName)}</td>
-                ${activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding};"></td>`).join('')}
-                <td style="width:30px; background:#f8fafc; padding:${cellPadding};"></td>
-                <td style="width:30px; background:#f8fafc; padding:${cellPadding};"></td>
-                <td style="width:40px; background:#f1f5f9; font-weight:bold; padding:${cellPadding};"></td>
+                <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
+                ${actCells}
+                <td style="width:32px; background:#f8fafc; padding:${cellPadding}; text-align:center; font-weight:700; font-size:${rowFontSize};">${zonaVal}</td>
+                <td style="width:32px; background:#f8fafc; padding:${cellPadding}; text-align:center; font-weight:700; font-size:${rowFontSize};">${examVal}</td>
+                <td style="width:40px; background:#f1f5f9; text-align:center; padding:${cellPadding}; font-size:${rowFontSize};">${totalVal}</td>
             </tr>
-        `).join('');
+            `;
+        }).join('');
 
         const pageIndicator = totalPages > 1 ? `<div style="text-align:right; font-size:7px; color:#64748b; margin:1px 0 0 0; line-height:1;">Página ${pageIdx + 1} de ${totalPages}</div>` : '';
+
+        const signatureBlock = isLastPage ? `
+        <div style="display:flex; justify-content:space-around; margin-top:22px; padding:0 20px; page-break-inside:avoid; break-inside:avoid;">
+            <div style="text-align:center; width:220px;">
+                <div style="border-bottom:1px solid #000; height:32px;"></div>
+                <div style="font-size:8px; font-weight:700; margin-top:4px; text-transform:uppercase;">${effectiveTeacher}</div>
+                <div style="font-size:7.5px; color:#475569;">Catedrático(a) Titular</div>
+            </div>
+            <div style="text-align:center; width:220px;">
+                <div style="border-bottom:1px solid #000; height:32px;"></div>
+                <div style="font-size:8px; font-weight:700; margin-top:4px; text-transform:uppercase;">Vo.Bo. Dirección / Secretaría</div>
+                <div style="font-size:7.5px; color:#475569;">Escuela Nacional de Ciencias Comerciales</div>
+            </div>
+        </div>
+        ` : '';
 
         return `
         <div class="print-page-wrapper"${totalPages > 1 && pageIdx > 0 ? ' style="page-break-before:always;"' : ''}>
@@ -4243,13 +4305,13 @@ function generateOfficialPrintList() {
             <table class="meta-grid">
                 <tr>
                     <td class="meta-label">CARRERA:</td>
-                    <td class="meta-val">${career}</td>
+                    <td class="meta-val">${career || 'Perito Contador'}</td>
                     <td class="meta-label">GRADO Y SECCIÓN:</td>
                     <td class="meta-val"><strong>${gradeTitle}</strong></td>
                 </tr>
                 <tr>
                     <td class="meta-label">CÁTEDRA / MATERIA:</td>
-                    <td class="meta-val"><strong style="color:#047857;">${subjectName}</strong></td>
+                    <td class="meta-val"><strong style="color:#047857;">${finalSubjectName}</strong></td>
                     <td class="meta-label">CATEDRÁTICO(A):</td>
                     <td class="meta-val"><strong>${effectiveTeacher}</strong></td>
                 </tr>
@@ -4261,31 +4323,38 @@ function generateOfficialPrintList() {
                         <th rowspan="2" style="width:24px;">No.</th>
                         <th rowspan="2" style="width:75px;">CÓDIGO PERSONAL</th>
                         <th rowspan="2" style="width:210px;">APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
-                        <th colspan="${numActivities}">ACTIVIDADES / TAREAS</th>
+                        <th colspan="${numActivities}">ACTIVIDADES DE ZONA (${cfgZonaMax} PTS)</th>
                         <th colspan="2">EVALUACIONES</th>
                         <th rowspan="2" style="width:40px;">TOTAL<br>100 pts</th>
                     </tr>
                     <tr>
                         ${activitiesList.map(a => `<th style="width:${colWidth}px;" title="${a.label}${a.pts > 0 ? ` (${a.pts} pts)` : ''}">${a.shortLabel}${a.pts > 0 ? `<br><span style="font-size:6.5px; font-weight:normal;">${a.pts}pts</span>` : ''}</th>`).join('')}
-                        <th style="width:30px;">Zona</th>
-                        <th style="width:30px;">Examen</th>
+                        <th style="width:32px;">Zona<br><span style="font-size:6.5px; font-weight:normal;">${cfgZonaMax}p</span></th>
+                        <th style="width:32px;">Examen<br><span style="font-size:6.5px; font-weight:normal;">${cfgExamMax}p</span></th>
                     </tr>
                 </thead>
                 <tbody>
                     ${rowsHtml}
                 </tbody>
             </table>
+            ${signatureBlock}
             ${pageIndicator}
         </div>`;
     };
 
     const allPagesHtml = pages.map((pageStudents, idx) => renderPageTable(pageStudents, idx, pages.length)).join('');
 
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast("Por favor permita las ventanas emergentes (popups) para imprimir.", "warning");
+        return;
+    }
+
     const htmlContent = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Listado Oficial - ${gradeTitle} - ${subjectName}</title>
+<title>Cuadro Oficial de Calificaciones - ${gradeTitle} - ${finalSubjectName}</title>
 <style>
 @page {
     size: 8.5in 13in portrait;
@@ -4409,7 +4478,43 @@ window.onload = function() {
     printWin.document.open();
     printWin.document.write(htmlContent);
     printWin.document.close();
-    showToast(`Formato Oficial de '${subjectName}' (${gradeTitle}) generado dinámicamente.`, "success");
+    showToast(`Cuadro Oficial de '${finalSubjectName}' (${gradeTitle}) generado con calificaciones asentadas.`, "success");
+}
+
+function printGradebookOfficialList() {
+    const courseSelect = document.getElementById('teacherCourseSelect');
+    const selectedCourseId = courseSelect ? courseSelect.value : null;
+    let targetPensum = (STATE.pensum || []).find(p => p.id === selectedCourseId);
+
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente');
+
+    if (!targetPensum && isDocente && currentUser) {
+        targetPensum = (STATE.pensum || []).find(p => 
+            p.teacherId === currentUser.id || 
+            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())
+        );
+    } else if (!targetPensum) {
+        targetPensum = (STATE.pensum || [])[0];
+    }
+
+    if (!targetPensum) {
+        showToast("Seleccione una clase para imprimir su cuadro de calificaciones oficial.", "warning");
+        return;
+    }
+
+    const currentUnit = isDocente ? 
+        (parseInt(STATE.config?.activeBimestre) || 2) : 
+        (parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 2);
+
+    generateOfficialPrintList({
+        targetPensum: targetPensum,
+        career: targetPensum.career || 'Perito Contador',
+        gradeCode: targetPensum.gradeCode || targetPensum.grade,
+        subjectName: targetPensum.subject,
+        teacherName: targetPensum.teacher,
+        bimestreNum: String(currentUnit)
+    });
 }
 
 
@@ -12544,9 +12649,7 @@ function exportGradebookOfficialExcel() {
     exportGradebookToCSV();
 }
 
-function printGradebookOfficialList() {
-    window.print();
-}
+// printGradebookOfficialList implementado arriba con soporte completo de notas
 
 
 
