@@ -7159,9 +7159,12 @@ function copyFallbackSQL() {
 // ==========================================================================
 window.supabaseClient = null;
 
+const ENCCO_OFFICIAL_SUPABASE_URL = 'https://uphgktnkcwrjunxdzhnp.supabase.co';
+const ENCCO_OFFICIAL_SUPABASE_KEY = 'sb_publishable_PrTtclsUq354-M-ykNO7Mw_wLYD4DwB';
+
 function initSupabaseConnection() {
-    const url = localStorage.getItem('ENCCO_SUPABASE_URL') || 'https://uphgktnkcwrjunxdzhnp.supabase.co';
-    const key = localStorage.getItem('ENCCO_SUPABASE_KEY') || '';
+    const url = localStorage.getItem('ENCCO_SUPABASE_URL') || ENCCO_OFFICIAL_SUPABASE_URL;
+    const key = localStorage.getItem('ENCCO_SUPABASE_KEY') || ENCCO_OFFICIAL_SUPABASE_KEY;
 
     if (url && key && window.supabase && window.supabase.createClient) {
         try {
@@ -7251,8 +7254,8 @@ function updateDbStatusIndicator(isConnected) {
 function openDbConfigModal() {
     const urlInput = document.getElementById('supabaseUrlInput');
     const keyInput = document.getElementById('supabaseKeyInput');
-    if (urlInput) urlInput.value = localStorage.getItem('ENCCO_SUPABASE_URL') || 'https://uphgktnkcwrjunxdzhnp.supabase.co';
-    if (keyInput) keyInput.value = localStorage.getItem('ENCCO_SUPABASE_KEY') || '';
+    if (urlInput) urlInput.value = localStorage.getItem('ENCCO_SUPABASE_URL') || ENCCO_OFFICIAL_SUPABASE_URL;
+    if (keyInput) keyInput.value = localStorage.getItem('ENCCO_SUPABASE_KEY') || ENCCO_OFFICIAL_SUPABASE_KEY;
     const modal = document.getElementById('dbConfigModal');
     if (modal) {
         modal.style.display = 'flex';
