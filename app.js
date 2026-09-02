@@ -989,7 +989,8 @@ function initApp() {
         const authRoleStr = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
         
         if (!authUserStr) {
-            window.location.replace('index.html');
+            const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
+            window.location.replace(baseUrl + '/index.html?v=' + Date.now());
             return;
         }
         try {
@@ -1502,8 +1503,11 @@ function performLogout() {
         sessionStorage.removeItem('ENCCO_AUTH_USER');
         sessionStorage.removeItem('ENCCO_AUTH_ROLE');
     } catch(e) {}
-    // Redirección obligatoria y definitiva a la página de inicio index.html para todos los roles
-    window.location.href = 'index.html';
+    
+    // Redirección segura anti-caché para romper cualquier redirección 301 anterior de CNAME
+    const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
+    window.location.replace(baseUrl + '/index.html?v=' + Date.now());
+    window.location.replace('index.html');
 }
 
 function logoutUser() {
