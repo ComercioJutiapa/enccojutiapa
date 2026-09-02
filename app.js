@@ -6366,73 +6366,7 @@ function closeUserModal() {
     }
 }
 
-function saveUserForm(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    if (!checkEnrolmentPermissions()) return;
-    const userId = document.getElementById('userFormId').value;
-    const name = document.getElementById('userFormName').value.trim();
-    const renglon = document.getElementById('userFormRenglon')?.value || '011';
-    const gender = document.getElementById('userFormGender')?.value || 'Masculino';
-    const email = document.getElementById('userFormEmail')?.value.trim() || '';
-    const password = document.getElementById('userFormPassword')?.value || generateTeacherPassword(name);
-    const role = document.getElementById('userFormRole')?.value || 'docente';
-    const title = document.getElementById('userFormTitle')?.value.trim() || 'PEM / Catedrático Titular';
-
-    if (!name) {
-        showToast("Por favor ingrese el nombre del usuario o docente.", "warning");
-        return;
-    }
-
-    if (userId) {
-        const user = STATE.users.find(u => u.id === userId);
-        if (user) {
-            const oldName = user.name;
-            user.name = name;
-            user.renglon = renglon;
-            user.gender = gender;
-            user.email = email;
-            user.password = password;
-            user.role = role;
-            user.title = title;
-
-            // Actualización en cascada para cátedras asignadas
-            (STATE.pensum || []).forEach(a => {
-                if (a.teacherId === userId || a.teacher === oldName) {
-                    a.teacher = name;
-                    a.teacherId = userId;
-                }
-            });
-
-            // Actualización en cascada para docentes guías de grado
-            (STATE.gradesList || []).forEach(g => {
-                if (g.guideTeacherId === userId || g.guideTeacher === oldName) {
-                    g.guideTeacher = name;
-                    g.guideTeacherId = userId;
-                }
-            });
-
-            showToast(`Datos del docente/usuario ${name} actualizados correctamente en toda la plataforma.`, "success");
-        }
-    } else {
-        const newId = 'usr-' + Date.now();
-        STATE.users.push({
-            id: newId,
-            name,
-            renglon,
-            gender,
-            email,
-            password,
-            role,
-            title,
-            active: true
-        });
-        showToast(`Nuevo docente/usuario ${name} creado con éxito.`, "success");
-    }
-
-    closeUserModal();
-    renderUsersTable();
-    synchronizeGlobalDynamicUI();
-}
+// saveUserForm redirigido a la definición maestra unificada al final de app.js
 
 function deleteUser(userId) {
     if (!checkEnrolmentPermissions()) return;
@@ -7300,131 +7234,13 @@ window.supabaseClient = null;
 const ENCCO_OFFICIAL_SUPABASE_URL = 'https://uphgktnkcwrjunxdzhnp.supabase.co';
 const ENCCO_OFFICIAL_SUPABASE_KEY = 'sb_publishable_PrTtclsUq354-M-ykNO7Mw_wLYD4DwB';
 
-function initSupabaseConnection() {
-    const url = localStorage.getItem('ENCCO_SUPABASE_URL') || ENCCO_OFFICIAL_SUPABASE_URL;
-    const key = localStorage.getItem('ENCCO_SUPABASE_KEY') || ENCCO_OFFICIAL_SUPABASE_KEY;
-
-    if (url && key && window.supabase && window.supabase.createClient) {
-        try {
-            window.supabaseClient = window.supabase.createClient(url, key);
-            updateDbStatusIndicator(true);
-            pullStateFromSupabaseCloud(false);
-
-            // Escuchar cambios de Supabase en tiempo real (Multi-dispositivo)
-            try {
-                if (typeof window.supabaseClient.channel === 'function') {
-                    window.supabaseClient
-                        .channel('realtime:school_settings')
-                        .on('postgres_changes', { event: '*', schema: 'public', table: 'school_settings' }, () => {
-                            pullStateFromSupabaseCloud(false);
-                        })
-                        .subscribe();
-                }
-            } catch (chanErr) {
-                console.warn("Realtime channel no disponible:", chanErr);
-            }
-        } catch (e) {
-            console.warn("Supabase init error:", e);
-            updateDbStatusIndicator(false);
-        }
-    } else {
-        updateDbStatusIndicator(false);
-    }
-}
-
-async function pullStateFromSupabaseCloud(showSuccessToast = false) {
-    if (!window.supabaseClient) {
-        if (typeof initSupabaseConnection === 'function') initSupabaseConnection();
-    }
-    if (!window.supabaseClient) {
-        if (showSuccessToast && typeof showToast === 'function') showToast("No hay conexión con el servidor Supabase.", "warning");
-        return null;
-    }
-
-    try {
-        const { data, error } = await window.supabaseClient
-            .from('school_settings')
-            .select('value, updated_at')
-            .eq('key', 'ENCCO_DATABASE_SNAPSHOT')
-            .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') {
-            console.warn("Error al consultar datos de Supabase:", error);
-            if (showSuccessToast && typeof showToast === 'function') showToast("Error al consultar datos remotos del servidor.", "danger");
-            return null;
-        }
-
-        if (data && data.value) {
-            const remoteData = JSON.parse(data.value);
-            if (remoteData && (remoteData.users || remoteData.students)) {
-                if (!window.STATE) window.STATE = {};
-                STATE.users = remoteData.users || STATE.users || [];
-                STATE.careers = remoteData.careers || STATE.careers || [];
-                STATE.cycles = remoteData.cycles || STATE.cycles || [];
-                STATE.activeCycle = remoteData.activeCycle || STATE.activeCycle || '2026';
-                STATE.gradesList = remoteData.gradesList || STATE.gradesList || [];
-                STATE.pensumCatalog = remoteData.pensumCatalog || STATE.pensumCatalog || [];
-                STATE.students = remoteData.students || STATE.students || [];
-                STATE.pensum = remoteData.pensum || STATE.pensum || [];
-                STATE.announcements = remoteData.announcements || STATE.announcements || [];
-                STATE.disciplineReports = remoteData.disciplineReports || STATE.disciplineReports || [];
-                STATE.attendanceRecords = remoteData.attendanceRecords || STATE.attendanceRecords || {};
-                STATE.dismissedAlerts = remoteData.dismissedAlerts || STATE.dismissedAlerts || {};
-                STATE.schoolHeader = remoteData.schoolHeader || STATE.schoolHeader;
-                STATE.lastModified = remoteData.lastModified || Date.now();
-                
-                try {
-                    localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(STATE));
-                    localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', JSON.stringify(STATE));
-                } catch(e) {}
-
-                if (typeof updateCycleSelects === 'function') updateCycleSelects();
-                if (typeof updateCareerSelects === 'function') updateCareerSelects();
-                if (typeof updateGradeSelects === 'function') updateGradeSelects();
-                if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
-                if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
-                if (typeof renderCurrentView === 'function') renderCurrentView();
-                if (typeof updateDbSyncStatus === 'function') updateDbSyncStatus('synced');
-                if (showSuccessToast && typeof showToast === 'function') showToast("☁️ ¡Datos actualizados desde Supabase!", "success");
-                return remoteData;
-            }
-        }
-    } catch (err) {
-        console.warn("Excepción al descargar datos de Supabase:", err);
-    }
-    return null;
-}
-
-
-function updateDbStatusIndicator(isConnected) {
-    const topBtn = document.getElementById('topDbStatusBtn');
-    const topText = document.getElementById('topDbStatusText');
-    const topIcon = document.getElementById('topDbStatusIcon');
-    const badge = document.getElementById('dbConnectionStatusBadge');
-
-    if (isConnected) {
-        if (topBtn) topBtn.style.background = 'rgba(34,197,94,0.3)';
-        if (topText) topText.textContent = 'BD Supabase Conectada';
-        if (topIcon) topIcon.className = 'fa-solid fa-cloud-check';
-        if (badge) {
-            badge.innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--success);"></i> <strong>Conectado a Supabase (PostgreSQL en la Nube):</strong> Sincronización en tiempo real activa.`;
-        }
-    } else {
-        if (topBtn) topBtn.style.background = 'rgba(2,132,199,0.2)';
-        if (topText) topText.textContent = 'BD Local Persistente';
-        if (topIcon) topIcon.className = 'fa-solid fa-database';
-        if (badge) {
-            badge.innerHTML = `<i class="fa-solid fa-hard-drive" style="color:var(--brand-blue);"></i> <strong>Modo Local Persistente Activo:</strong> Todos los datos se guardan de forma permanente e instantánea en el almacenamiento local del navegador.`;
-        }
-    }
-}
-
 function openDbConfigModal() {
+    const modal = document.getElementById('dbConfigModal');
     const urlInput = document.getElementById('supabaseUrlInput');
     const keyInput = document.getElementById('supabaseKeyInput');
-    if (urlInput) urlInput.value = localStorage.getItem('ENCCO_SUPABASE_URL') || ENCCO_OFFICIAL_SUPABASE_URL;
-    if (keyInput) keyInput.value = localStorage.getItem('ENCCO_SUPABASE_KEY') || ENCCO_OFFICIAL_SUPABASE_KEY;
-    const modal = document.getElementById('dbConfigModal');
+    if (urlInput) urlInput.value = localStorage.getItem('ENCCO_SUPABASE_URL') || (typeof SUPABASE_CONFIG !== 'undefined' ? SUPABASE_CONFIG.url : '');
+    if (keyInput) keyInput.value = localStorage.getItem('ENCCO_SUPABASE_KEY') || (typeof SUPABASE_CONFIG !== 'undefined' ? SUPABASE_CONFIG.anonKey : '');
+
     if (modal) {
         modal.style.display = 'flex';
         modal.classList.add('active');
@@ -7492,33 +7308,144 @@ async function testSupabaseConnection() {
     }
 }
 
-// MOTOR DE SINCRONIZACIÓN AUTOMÁTICA EN TIEMPO REAL CON SUPABASE (V71)
-let _autoCloudSyncTimer = null;
-let _isSyncInProgress = false;
-let _pendingSyncRequest = false;
+function initSupabaseConnection() {
+    const url = localStorage.getItem('ENCCO_SUPABASE_URL') || ENCCO_OFFICIAL_SUPABASE_URL;
+    const key = localStorage.getItem('ENCCO_SUPABASE_KEY') || ENCCO_OFFICIAL_SUPABASE_KEY;
 
-function updateDbSyncStatus(status) {
-    const topBtn = document.getElementById('topDbStatusBtn');
-    const topText = document.getElementById('topDbStatusText');
-    const topIcon = document.getElementById('topDbStatusIcon');
-    if (!topBtn) return;
+    if (url && key && window.supabase && window.supabase.createClient) {
+        try {
+            window.supabaseClient = window.supabase.createClient(url, key);
+            updateDbStatusIndicator(true);
+            pullStateFromSupabaseCloud(false);
 
-    if (status === 'syncing') {
-        topBtn.style.background = 'rgba(234, 179, 8, 0.35)';
-        if (topIcon) topIcon.className = 'fa-solid fa-arrows-rotate fa-spin';
-        if (topText) topText.textContent = 'Guardando en Supabase...';
-    } else if (status === 'synced') {
-        topBtn.style.background = 'rgba(34, 197, 94, 0.3)';
-        if (topIcon) topIcon.className = 'fa-solid fa-cloud-check';
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        if (topText) topText.textContent = `Supabase Conectada (${timeStr})`;
-    } else if (status === 'error') {
-        topBtn.style.background = 'rgba(239, 68, 68, 0.3)';
-        if (topIcon) topIcon.className = 'fa-solid fa-triangle-exclamation';
-        if (topText) topText.textContent = 'Error Sincronizando (Reintentando)';
+            // Escuchar cambios de Supabase en tiempo real (Multi-dispositivo)
+            try {
+                if (typeof window.supabaseClient.channel === 'function') {
+                    window.supabaseClient
+                        .channel('realtime:school_settings')
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'school_settings' }, () => {
+                            pullStateFromSupabaseCloud(false);
+                        })
+                        .subscribe();
+                }
+            } catch (chanErr) {
+                console.warn("Realtime channel no disponible:", chanErr);
+            }
+        } catch (e) {
+            console.warn("Supabase init error:", e);
+            updateDbStatusIndicator(false);
+        }
+    } else {
+        updateDbStatusIndicator(false);
     }
 }
+
+
+function mergeUserCollections(localUsers, remoteUsers, deletedUserIds = []) {
+    const deletedSet = new Set(deletedUserIds || []);
+    const map = new Map();
+
+    // 1. Cargar usuarios remotos de Supabase
+    (remoteUsers || []).forEach(u => {
+        if (!u || !u.id) return;
+        if (deletedSet.has(u.id)) return;
+        map.set(u.id, { ...u });
+    });
+
+    // 2. Preservar TODOS los usuarios locales (no permitir que ninguno se borre)
+    (localUsers || []).forEach(u => {
+        if (!u || !u.id) return;
+        if (deletedSet.has(u.id)) return;
+        if (!map.has(u.id)) {
+            // Usuario creado localmente que no está en el servidor remoto: ¡PRESERVARLO!
+            map.set(u.id, { ...u });
+        } else {
+            // Usuario en ambos: conservar los cambios más completos
+            const existing = map.get(u.id);
+            map.set(u.id, { ...existing, ...u });
+        }
+    });
+
+    return Array.from(map.values());
+}
+
+async function pullStateFromSupabaseCloud(showSuccessToast = false) {
+    if (!window.supabaseClient) {
+        if (typeof initSupabaseConnection === 'function') initSupabaseConnection();
+    }
+    if (!window.supabaseClient) {
+        if (showSuccessToast && typeof showToast === 'function') showToast("No hay conexión con el servidor Supabase.", "warning");
+        return null;
+    }
+
+    try {
+        const { data, error } = await window.supabaseClient
+            .from('school_settings')
+            .select('value, updated_at')
+            .eq('key', 'ENCCO_DATABASE_SNAPSHOT')
+            .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+            console.warn("Error al consultar datos de Supabase:", error);
+            if (showSuccessToast && typeof showToast === 'function') showToast("Error al consultar datos remotos del servidor.", "danger");
+            return null;
+        }
+
+        if (data && data.value) {
+            const remoteData = JSON.parse(data.value);
+            if (remoteData && (remoteData.users || remoteData.students)) {
+                if (!window.STATE) window.STATE = {};
+
+                // Fusión inteligente que NUNCA borra usuarios creados localmente
+                const currentLocalUsers = Array.isArray(STATE.users) && STATE.users.length > 0 
+                    ? STATE.users 
+                    : (JSON.parse(localStorage.getItem(DB_STORAGE_KEY) || '{}').users || []);
+                
+                const mergedUsers = mergeUserCollections(currentLocalUsers, remoteData.users, STATE.deletedUserIds);
+                const hadLocalOnlyUsers = currentLocalUsers.some(lu => !remoteData.users.some(ru => ru.id === lu.id));
+
+                STATE.users = mergedUsers;
+                STATE.careers = remoteData.careers || STATE.careers || [];
+                STATE.cycles = remoteData.cycles || STATE.cycles || [];
+                STATE.activeCycle = remoteData.activeCycle || STATE.activeCycle || '2026';
+                STATE.gradesList = remoteData.gradesList || STATE.gradesList || [];
+                STATE.pensumCatalog = remoteData.pensumCatalog || STATE.pensumCatalog || [];
+                STATE.students = remoteData.students || STATE.students || [];
+                STATE.pensum = remoteData.pensum || STATE.pensum || [];
+                STATE.announcements = remoteData.announcements || STATE.announcements || [];
+                STATE.disciplineReports = remoteData.disciplineReports || STATE.disciplineReports || [];
+                STATE.attendanceRecords = remoteData.attendanceRecords || STATE.attendanceRecords || {};
+                STATE.dismissedAlerts = remoteData.dismissedAlerts || STATE.dismissedAlerts || {};
+                STATE.schoolHeader = remoteData.schoolHeader || STATE.schoolHeader;
+                STATE.lastModified = Math.max(remoteData.lastModified || 0, STATE.lastModified || 0);
+
+                try {
+                    localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(STATE));
+                    localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', JSON.stringify(STATE));
+                } catch(e) {}
+
+                // Si teníamos usuarios locales nuevos que la nube aún no tenía, subirlos de inmediato
+                if (hadLocalOnlyUsers) {
+                    if (typeof autoSyncToSupabase === 'function') autoSyncToSupabase(true, false);
+                }
+
+                if (typeof updateCycleSelects === 'function') updateCycleSelects();
+                if (typeof updateCareerSelects === 'function') updateCareerSelects();
+                if (typeof updateGradeSelects === 'function') updateGradeSelects();
+                if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
+                if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
+                if (typeof renderCurrentView === 'function') renderCurrentView();
+                if (typeof updateDbSyncStatus === 'function') updateDbSyncStatus('synced');
+                if (showSuccessToast && typeof showToast === 'function') showToast("🔄 ¡Datos y usuarios sincronizados con Supabase!", "success");
+                return remoteData;
+            }
+        }
+    } catch (err) {
+        console.warn("Excepción al descargar datos de Supabase:", err);
+    }
+    return null;
+}
+
 
 function autoSyncToSupabase(immediate = false, showToastOnSuccess = false) {
     if (!window.supabaseClient) return;
@@ -14852,7 +14779,7 @@ function closeUserModal() {
     }
 }
 
-function saveUserForm(e) {
+async function saveUserForm(e) {
     if (e && e.preventDefault) e.preventDefault();
     if (!checkEnrolmentPermissions()) return;
 
@@ -14875,16 +14802,19 @@ function saveUserForm(e) {
     const gender = genderSelect ? genderSelect.value : 'Masculino';
 
     if (!name) {
-        showToast('El nombre del usuario es obligatorio.', 'warning');
+        showToast('El nombre del usuario o docente es obligatorio.', 'warning');
         return;
     }
 
     if (!Array.isArray(STATE.users)) STATE.users = [];
 
+    let savedUserObj = null;
+
     if (userId) {
         // Edición de usuario existente
         const idx = STATE.users.findIndex(u => u.id === userId);
         if (idx !== -1) {
+            const oldName = STATE.users[idx].name;
             STATE.users[idx].name = name;
             STATE.users[idx].email = email;
             STATE.users[idx].password = password;
@@ -14892,6 +14822,23 @@ function saveUserForm(e) {
             STATE.users[idx].title = title;
             STATE.users[idx].renglon = renglon;
             STATE.users[idx].gender = gender;
+            savedUserObj = STATE.users[idx];
+
+            // Cascada en cátedras
+            (STATE.pensum || []).forEach(a => {
+                if (a.teacherId === userId || a.teacher === oldName) {
+                    a.teacher = name;
+                    a.teacherId = userId;
+                }
+            });
+
+            // Cascada en docentes guías
+            (STATE.gradesList || []).forEach(g => {
+                if (g.guideTeacherId === userId || g.guideTeacher === oldName) {
+                    g.guideTeacher = name;
+                    g.guideTeacherId = userId;
+                }
+            });
 
             // Si se editó el usuario activo actual
             if (STATE.currentUser && STATE.currentUser.id === userId) {
@@ -14910,7 +14857,7 @@ function saveUserForm(e) {
         // Creación de nuevo usuario
         const usernameBase = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'user' + Date.now();
         const newId = 'usr-' + Date.now() + '-' + Math.floor(Math.random()*1000);
-        STATE.users.push({
+        savedUserObj = {
             id: newId,
             name: name,
             username: usernameBase,
@@ -14922,23 +14869,13 @@ function saveUserForm(e) {
             gender: gender,
             active: true,
             classes: ''
-        });
+        };
+        STATE.users.push(savedUserObj);
     }
 
-    // Actualización en cascada para docentes en cátedras
-    if (userId) {
-        (STATE.pensum || []).forEach(a => {
-            if (a.teacherId === userId || a.teacher === name) {
-                a.teacher = name;
-                a.teacherId = userId;
-            }
-        });
-        (STATE.gradesList || []).forEach(g => {
-            if (g.guideTeacherId === userId || g.guideTeacher === name) {
-                g.guideTeacher = name;
-                g.guideTeacherId = userId;
-            }
-        });
+    // Asegurar que no esté en la lista de eliminados
+    if (savedUserObj && Array.isArray(STATE.deletedUserIds)) {
+        STATE.deletedUserIds = STATE.deletedUserIds.filter(id => id !== savedUserObj.id);
     }
 
     STATE.lastModified = Date.now();
@@ -14948,90 +14885,63 @@ function saveUserForm(e) {
     renderUsersTable();
     if (typeof renderDashboard === 'function') renderDashboard();
 
-    // Sincronizar inmediatamente a la base de datos
+    // Sincronización inmediata obligatoria a la nube de Supabase
     if (typeof syncStateToSupabaseImmediate === 'function') {
-        syncStateToSupabaseImmediate(true);
+        await syncStateToSupabaseImmediate(false);
     }
 
-    showToast(`Usuario "${name}" guardado y sincronizado exitosamente en la base de datos.`, 'success');
+    showToast(`✅ Usuario/Docente "${name}" guardado y respaldado permanentemente en la nube.`, "success");
 }
 
+function deleteUser(userId) {
+    if (!checkEnrolmentPermissions()) return;
+    const user = (STATE.users || []).find(u => u.id === userId);
+    if (!user) return;
 
-
-// ──────────────────────────────────────────────────────────────────────────
-// 🛡️ CONTROLADOR DE ROLES Y MATRIZ DE PERMISOS DINÁMICOS
-// ──────────────────────────────────────────────────────────────────────────
-
-function getAvailablePermissionsList() {
-    return [
-        { key: 'dashboard', name: 'Panel Principal / Dashboard', category: 'General' },
-        { key: 'users_view', name: 'Ver Lista de Usuarios y Maestros', category: 'Administración' },
-        { key: 'users_edit', name: 'Crear y Editar Usuarios', category: 'Administración' },
-        { key: 'roles', name: 'Gestionar Roles y Permisos', category: 'Administración' },
-        { key: 'grades', name: 'Editor de Grados y Secciones', category: 'Académico' },
-        { key: 'pensum', name: 'Editor de Pensum y Asignaturas', category: 'Académico' },
-        { key: 'class-assignments', name: 'Asignación de Clases a Docentes', category: 'Académico' },
-        { key: 'enrollment', name: 'Inscripción de Nuevos Alumnos', category: 'Estudiantes' },
-        { key: 'students_view', name: 'Ver Nómina de Estudiantes', category: 'Estudiantes' },
-        { key: 'students_edit', name: 'Editar Expedientes de Alumnos', category: 'Estudiantes' },
-        { key: 'attendance', name: 'Supervisión y Asistencia Diaria', category: 'Académico' },
-        { key: 'gradebook', name: 'Ingreso de Calificaciones (Zona + Eval)', category: 'Docencia' },
-        { key: 'grade-lock', name: 'Bloqueo y Cierre de Bimestres', category: 'Control' },
-        { key: 'cycles', name: 'Ciclos Escolares y Promoción', category: 'Control' },
-        { key: 'discipline_view', name: 'Ver Llamadas de Atención', category: 'Disciplina' },
-        { key: 'discipline_resolve', name: 'Resolver y Sancionar Faltas', category: 'Disciplina' },
-        { key: 'reports', name: 'Boletín y Certificados de Calificaciones', category: 'Reportes' },
-        { key: 'honor-roll', name: 'Cuadros de Honor Académico', category: 'Reportes' },
-        { key: 'excel-import', name: 'Importar / Exportar Datos Excel', category: 'Herramientas' },
-        { key: 'database', name: 'Gestión y Respaldo de Base de Datos', category: 'Sistema' },
-        { key: 'settings', name: 'Configuración Institucional', category: 'Sistema' }
-    ];
-}
-
-function renderRolesTable() {
-    const tbody = document.getElementById('rolesTableBody');
-    if (!tbody) return;
-
-    if (!Array.isArray(STATE.rolesConfig) || STATE.rolesConfig.length === 0) {
-        STATE.rolesConfig = (typeof getInitialData === 'function' && getInitialData().rolesConfig) || [];
+    if (user.id === 'usr-admin-master' || user.id === 'usr-admin-01' || user.role === 'admin' && STATE.users.filter(u => u.role === 'admin').length <= 1) {
+        showToast("No es posible eliminar la cuenta principal de Administrador.", "danger");
+        return;
     }
 
-    tbody.innerHTML = STATE.rolesConfig.map(r => {
-        const permsCount = Array.isArray(r.permissions) ? r.permissions.length : 0;
-        const isSys = r.isSystem;
-        const badgeColor = r.color || '#0284c7';
+    if (confirm(`¿Está seguro de eliminar al docente o usuario "${user.name}" del sistema? Esta acción desvinculará sus cátedras asignadas.`)) {
+        const oldName = user.name;
+        STATE.deletedUserIds = STATE.deletedUserIds || [];
+        if (!STATE.deletedUserIds.includes(userId)) {
+            STATE.deletedUserIds.push(userId);
+        }
 
-        return `
-        <tr>
-            <td>
-                <span class="badge" style="background:${badgeColor}; color:#fff; font-weight:800; padding:4px 8px; border-radius:4px;">
-                    ${r.name}
-                </span>
-            </td>
-            <td><code style="font-size:0.85rem; font-weight:700; color:var(--text-primary);">${r.key}</code></td>
-            <td style="font-size:0.88rem; color:var(--text-secondary);">${r.description || 'Sin descripción'}</td>
-            <td style="text-align:center;">
-                <span class="badge badge-info" style="font-weight:700;">
-                    ${permsCount} / 21 permisos
-                </span>
-            </td>
-            <td style="text-align:center; font-size:0.85rem;">
-                ${isSys ? '<span style="color:#059669; font-weight:700;"><i class="fa-solid fa-lock"></i> Sistema</span>' : '<span style="color:#0284c7; font-weight:700;"><i class="fa-solid fa-user-pen"></i> Personalizado</span>'}
-            </td>
-            <td style="text-align:center; white-space:nowrap;">
-                <button type="button" class="btn btn-sm btn-outline-primary" onclick="openRoleModal('${r.key}')" title="Editar Permisos" style="padding:3px 8px; margin-right:4px;">
-                    <i class="fa-solid fa-shield-halved"></i> Configurar
-                </button>
-                ${!isSys ? `
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteRole('${r.key}')" title="Eliminar Rol" style="padding:3px 8px;">
-                    <i class="fa-solid fa-trash"></i>
-                </button>
-                ` : ''}
-            </td>
-        </tr>
-        `;
-    }).join('');
+        STATE.users = STATE.users.filter(u => u.id !== userId);
+
+        // Desvincular en cátedras
+        (STATE.pensum || []).forEach(a => {
+            if (a.teacherId === userId || a.teacher === oldName) {
+                a.teacher = 'Sin asignar';
+                a.teacherId = null;
+            }
+        });
+
+        // Desvincular en grados
+        (STATE.gradesList || []).forEach(g => {
+            if (g.guideTeacherId === userId || g.guideTeacher === oldName) {
+                g.guideTeacher = 'Sin asignar';
+                g.guideTeacherId = null;
+            }
+        });
+
+        STATE.lastModified = Date.now();
+        saveStateToLocalStorage();
+        synchronizeGlobalDynamicUI();
+        renderUsersTable();
+        if (typeof renderDashboard === 'function') renderDashboard();
+
+        if (typeof syncStateToSupabaseImmediate === 'function') {
+            syncStateToSupabaseImmediate(false);
+        }
+
+        showToast(`Usuario "${oldName}" eliminado del sistema y de la nube.`, "info");
+    }
 }
+
 
 function openRoleModal(roleKey = null) {
     if (STATE.currentRole !== 'admin' && STATE.currentUser?.role !== 'admin') {
@@ -15172,6 +15082,7 @@ function deleteRole(roleKey) {
         showToast(`Rol "${r.name}" eliminado.`, 'info');
     }
 }
+
 
 function toggleAllRolePermissions(checkAll = true) {
     document.querySelectorAll('input[name="rolePerm"]').forEach(cb => {
