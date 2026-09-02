@@ -1493,14 +1493,17 @@ function performLogout() {
     STATE.currentUser = null;
     STATE.currentRole = 'guest';
     STATE.isLoggedIn = false;
+    STATE.impersonatorAdmin = null;
     try {
         sessionStorage.clear();
         localStorage.removeItem('ENCCO_AUTH_USER');
         localStorage.removeItem('ENCCO_AUTH_ROLE');
+        localStorage.removeItem('ENCCO_AUTH_REMEMBER');
         sessionStorage.removeItem('ENCCO_AUTH_USER');
         sessionStorage.removeItem('ENCCO_AUTH_ROLE');
     } catch(e) {}
-    window.location.replace('index.html');
+    // Redirección obligatoria y definitiva a la página de inicio index.html para todos los roles
+    window.location.href = 'index.html';
 }
 
 function logoutUser() {
