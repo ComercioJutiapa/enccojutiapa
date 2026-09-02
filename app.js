@@ -8840,6 +8840,158 @@ function populateGradebookBimestreSelect() {
     renderTeacherGradeProgressTable();
 }
 
+// ==========================================================================
+// 🛡️ CONTROL DIRECTIVO: SUPERVISIÓN Y AUDITORÍA DE INGRESO DE NOTAS POR DOCENTE (V73)
+// ==========================================================================
+
+function getTeacherAssignedCourses(teacherObj) {
+    if (!teacherObj) return [];
+    return (STATE.pensum || []).filter(p => 
+        p.teacherId === teacherObj.id || 
+        (p.teacher && p.teacher.toLowerCase() === teacherObj.name.toLowerCase()) ||
+        (teacherObj.name && p.teacher && p.teacher.toLowerCase().includes(teacherObj.name.toLowerCase()))
+    );
+}
+
+function calculateClassBimesterMetrics(c, bimester) {
+    const gradeObj = (STATE.gradesList || []).find(g => g.code === c.gradeCode || g.name === c.grade);
+    const studentsInGrade = (STATE.students || []).filter(s => 
+        s.status === 'Activo' && (s.grade === c.gradeCode || s.grade === c.grade || (gradeObj && s.grade === gradeObj.code))
+    );
+    const totalStudents = studentsInGrade.length;
+    if (totalStudents === 0) {
+        return { total: 0, withGrades: 0, pct: 0, label: '<span style="color:var(--text-muted); font-size:0.75rem;">Sin alumnos</span>' };
+    }
+
+    let withGrades = 0;
+    studentsInGrade.forEach(s => {
+        const gVal = (s.grades && s.grades[c.subject]) ? s.grades[c.subject][bimester - 1] : 0;
+        const dVal = (s.gradebookDetails && s.gradebookDetails[c.subject] && s.gradebookDetails[c.subject][bimester]) ? s.gradebookDetails[c.subject][bimester] : null;
+        if (gVal > 0 || (dVal && (dVal.exam > 0 || (dVal.activities && dVal.activities.some(a => (parseInt(a) || 0) > 0))))) {
+            withGrades++;
+        }
+    });
+
+    const pct = Math.round((withGrades / totalStudents) * 100);
+    let badgeHtml = '';
+    if (pct >= 90) {
+        badgeHtml = `<span class="badge" style="background:#dcfce7; color:#15803d; font-weight:800; padding:4px 8px; font-size:0.75rem;" title="${withGrades} de ${totalStudents} alumnos con notas ingresadas"><i class="fa-solid fa-circle-check"></i> ${pct}% (${withGrades}/${totalStudents})</span>`;
+    } else if (pct > 0) {
+        badgeHtml = `<span class="badge" style="background:#fef3c7; color:#b45309; font-weight:800; padding:4px 8px; font-size:0.75rem;" title="${withGrades} de ${totalStudents} alumnos con notas ingresadas"><i class="fa-solid fa-spinner"></i> ${pct}% (${withGrades}/${totalStudents})</span>`;
+    } else {
+        badgeHtml = `<span class="badge" style="background:#fee2e2; color:#dc2626; font-weight:800; padding:4px 8px; font-size:0.75rem;" title="0 de ${totalStudents} alumnos con notas ingresadas"><i class="fa-solid fa-clock"></i> 0% (0/${totalStudents})</span>`;
+    }
+
+    return { total: totalStudents, withGrades, pct, label: badgeHtml };
+}
+
+function calculateTeacherAllClassesBimesterMetrics(coursesList, bimester) {
+    if (!Array.isArray(coursesList) || coursesList.length === 0) {
+        return { total: 0, withGrades: 0, pct: 0, label: '<span style="color:var(--text-muted); font-size:0.75rem;">Sin cátedras</span>' };
+    }
+
+    let grandTotal = 0;
+    let grandWithGrades = 0;
+
+    coursesList.forEach(c => {
+        const m = calculateClassBimesterMetrics(c, bimester);
+        grandTotal += m.total;
+        grandWithGrades += m.withGrades;
+    });
+
+    if (grandTotal === 0) {
+        return { total: 0, withGrades: 0, pct: 0, label: '<span style="color:var(--text-muted); font-size:0.75rem;">Sin alumnos</span>' };
+    }
+
+    const pct = Math.round((grandWithGrades / grandTotal) * 100);
+    let badgeHtml = '';
+    if (pct >= 90) {
+        badgeHtml = `<span class="badge" style="background:#dcfce7; color:#15803d; font-weight:800; padding:4px 8px; font-size:0.75rem;" title="Total: ${grandWithGrades} de ${grandTotal} notas ingresadas en todas las cátedras"><i class="fa-solid fa-circle-check"></i> ${pct}% Ingresado</span>`;
+    } else if (pct > 0) {
+        badgeHtml = `<span class="badge" style="background:#fef3c7; color:#b45309; font-weight:800; padding:4px 8px; font-size:0.75rem;" title="Total: ${grandWithGrades} de ${grandTotal} notas ingresadas en todas las cátedras"><i class="fa-solid fa-spinner"></i> ${pct}% En avance</span>`;
+    } else {
+        badgeHtml = `<span class="badge" style="background:#fee2e2; color:#dc2626; font-weight:800; padding:4px 8px; font-size:0.75rem;" title="Pendiente en todas las cátedras"><i class="fa-solid fa-clock"></i> 0% Pendiente</span>`;
+    }
+
+    return { total: grandTotal, withGrades: grandWithGrades, pct, label: badgeHtml };
+}
+
+// ==========================================================================
+// 🛡️ CONTROL DIRECTIVO: SUPERVISIÓN Y AUDITORÍA DE INGRESO DE NOTAS POR DOCENTE (V73)
+// ==========================================================================
+
+function getTeacherAssignedCourses(teacherObj) {
+    if (!teacherObj) return [];
+    return (STATE.pensum || []).filter(p => 
+        p.teacherId === teacherObj.id || 
+        (p.teacher && p.teacher.toLowerCase() === teacherObj.name.toLowerCase()) ||
+        (teacherObj.name && p.teacher && p.teacher.toLowerCase().includes(teacherObj.name.toLowerCase()))
+    );
+}
+
+function calculateClassBimesterMetrics(c, bimester) {
+    const gradeObj = (STATE.gradesList || []).find(g => g.code === c.gradeCode || g.name === c.grade);
+    const studentsInGrade = (STATE.students || []).filter(s => 
+        s.status === 'Activo' && (s.grade === c.gradeCode || s.grade === c.grade || (gradeObj && s.grade === gradeObj.code))
+    );
+    const totalStudents = studentsInGrade.length;
+    if (totalStudents === 0) {
+        return { total: 0, withGrades: 0, pct: 0, label: '<span style="color:var(--text-muted); font-size:0.75rem;">Sin alumnos</span>' };
+    }
+
+    let withGrades = 0;
+    studentsInGrade.forEach(s => {
+        const gVal = (s.grades && s.grades[c.subject]) ? s.grades[c.subject][bimester - 1] : 0;
+        const dVal = (s.gradebookDetails && s.gradebookDetails[c.subject] && s.gradebookDetails[c.subject][bimester]) ? s.gradebookDetails[c.subject][bimester] : null;
+        if (gVal > 0 || (dVal && (dVal.exam > 0 || (dVal.activities && dVal.activities.some(a => (parseInt(a) || 0) > 0))))) {
+            withGrades++;
+        }
+    });
+
+    const pct = Math.round((withGrades / totalStudents) * 100);
+    let badgeHtml = '';
+    if (pct >= 90) {
+        badgeHtml = `<span class="badge" style="background:#dcfce7; color:#15803d; font-weight:800; padding:4px 8px; font-size:0.75rem;" title="${withGrades} de ${totalStudents} alumnos con notas ingresadas"><i class="fa-solid fa-circle-check"></i> ${pct}% (${withGrades}/${totalStudents})</span>`;
+    } else if (pct > 0) {
+        badgeHtml = `<span class="badge" style="background:#fef3c7; color:#b45309; font-weight:800; padding:4px 8px; font-size:0.75rem;" title="${withGrades} de ${totalStudents} alumnos con notas ingresadas"><i class="fa-solid fa-spinner"></i> ${pct}% (${withGrades}/${totalStudents})</span>`;
+    } else {
+        badgeHtml = `<span class="badge" style="background:#fee2e2; color:#dc2626; font-weight:800; padding:4px 8px; font-size:0.75rem;" title="0 de ${totalStudents} alumnos con notas ingresadas"><i class="fa-solid fa-clock"></i> 0% (0/${totalStudents})</span>`;
+    }
+
+    return { total: totalStudents, withGrades, pct, label: badgeHtml };
+}
+
+function calculateTeacherAllClassesBimesterMetrics(coursesList, bimester) {
+    if (!Array.isArray(coursesList) || coursesList.length === 0) {
+        return { total: 0, withGrades: 0, pct: 0, label: '<span style="color:var(--text-muted); font-size:0.75rem;">Sin cátedras</span>' };
+    }
+
+    let grandTotal = 0;
+    let grandWithGrades = 0;
+
+    coursesList.forEach(c => {
+        const m = calculateClassBimesterMetrics(c, bimester);
+        grandTotal += m.total;
+        grandWithGrades += m.withGrades;
+    });
+
+    if (grandTotal === 0) {
+        return { total: 0, withGrades: 0, pct: 0, label: '<span style="color:var(--text-muted); font-size:0.75rem;">Sin alumnos</span>' };
+    }
+
+    const pct = Math.round((grandWithGrades / grandTotal) * 100);
+    let badgeHtml = '';
+    if (pct >= 90) {
+        badgeHtml = `<span class="badge" style="background:#dcfce7; color:#15803d; font-weight:800; padding:4px 8px; font-size:0.75rem;" title="Total: ${grandWithGrades} de ${grandTotal} notas ingresadas en todas las cátedras"><i class="fa-solid fa-circle-check"></i> ${pct}% Ingresado</span>`;
+    } else if (pct > 0) {
+        badgeHtml = `<span class="badge" style="background:#fef3c7; color:#b45309; font-weight:800; padding:4px 8px; font-size:0.75rem;" title="Total: ${grandWithGrades} de ${grandTotal} notas ingresadas en todas las cátedras"><i class="fa-solid fa-spinner"></i> ${pct}% En avance</span>`;
+    } else {
+        badgeHtml = `<span class="badge" style="background:#fee2e2; color:#dc2626; font-weight:800; padding:4px 8px; font-size:0.75rem;" title="Pendiente en todas las cátedras"><i class="fa-solid fa-clock"></i> 0% Pendiente</span>`;
+    }
+
+    return { total: grandTotal, withGrades: grandWithGrades, pct, label: badgeHtml };
+}
+
 function renderTeacherGradeProgressTable() {
     const panel = document.getElementById('gradebookDirectorSupervisionPanel');
     const tbody = document.getElementById('teacherGradeProgressTableBody');
@@ -8854,88 +9006,132 @@ function renderTeacherGradeProgressTable() {
 
     panel.style.display = 'block';
 
-    const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || u.role === 'director' || u.role === 'secretaria');
+    // 1. Filtrar EXCLUSIVAMENTE docentes y deduplicar por nombre
+    const teacherMap = new Map();
+    (STATE.users || []).forEach(u => {
+        // Excluir cuentas que no son docentes de aula
+        if (u.role === 'estudiante' || u.role === 'secretaria' || u.id === 'usr-admin-mineduc') return;
+        
+        const courses = getTeacherAssignedCourses(u);
+        // Exclusivamente docentes que tengan cátedras o cuyo rol oficial sea docente
+        if (u.role === 'docente' || courses.length > 0) {
+            const key = (u.name || '').trim().toLowerCase();
+            if (!teacherMap.has(key) || u.role === 'docente') {
+                teacherMap.set(key, { user: u, courses: courses });
+            }
+        }
+    });
+
+    // Lista definitiva: SOLO docentes con cátedras asignadas
+    const teachers = Array.from(teacherMap.values()).filter(t => t.courses.length > 0);
 
     if (teachers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:16px; color:var(--text-muted);">No hay docentes registrados en el sistema.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-muted); font-weight:600;"><i class="fa-solid fa-chalkboard-user" style="font-size:1.8rem; display:block; margin-bottom:8px; color:var(--brand-green);"></i>No hay docentes con cátedras asignadas en el sistema actualmente.</td></tr>`;
         return;
     }
 
+    // Ordenar alfabéticamente por nombre del docente
+    teachers.sort((a, b) => a.user.name.localeCompare(b.user.name));
+
     let rowsHtml = '';
 
-    teachers.forEach(teacher => {
-        const teacherCourses = (STATE.pensum || []).filter(p => 
-            p.teacherId === teacher.id || 
-            (p.teacher && p.teacher.toLowerCase() === teacher.name.toLowerCase()) ||
-            (teacher.name && p.teacher && p.teacher.toLowerCase().includes(teacher.name.toLowerCase()))
-        );
-
+    teachers.forEach((item, idx) => {
+        const teacher = item.user;
+        const teacherCourses = item.courses;
         const courseCount = teacherCourses.length;
 
-        const bimesterStatus = [1, 2, 3, 4].map(b => {
-            if (courseCount === 0) return { status: 'none', label: '<span style="color:var(--text-muted); font-size:0.75rem;">Sin cátedras</span>' };
+        // Métricas de resumen general
+        const summaryStatus = [1, 2, 3, 4].map(b => calculateTeacherAllClassesBimesterMetrics(teacherCourses, b));
 
-            let totalAssignedStudents = 0;
-            let totalStudentsWithGrades = 0;
-
-            teacherCourses.forEach(c => {
-                const gradeObj = (STATE.gradesList || []).find(g => g.code === c.gradeCode || g.name === c.grade);
-                const studentsInGrade = (STATE.students || []).filter(s => 
-                    s.status === 'Activo' && (s.grade === c.gradeCode || s.grade === c.grade || (gradeObj && s.grade === gradeObj.code))
-                );
-
-                totalAssignedStudents += studentsInGrade.length;
-
-                studentsInGrade.forEach(s => {
-                    const gVal = (s.grades && s.grades[c.subject]) ? s.grades[c.subject][b - 1] : 0;
-                    const dVal = (s.detailedGrades && s.detailedGrades[c.subject] && s.detailedGrades[c.subject][b]) ? s.detailedGrades[c.subject][b] : null;
-                    if (gVal > 0 || (dVal && (dVal.exam > 0 || (dVal.activities && dVal.activities.some(a => a > 0))))) {
-                        totalStudentsWithGrades++;
-                    }
-                });
-            });
-
-            if (totalAssignedStudents === 0) {
-                return { status: 'empty', label: '<span style="color:var(--text-muted); font-size:0.75rem;">Sin alumnos</span>' };
-            }
-
-            const pct = Math.round((totalStudentsWithGrades / totalAssignedStudents) * 100);
-
-            if (pct >= 90) {
-                return { status: 'complete', label: `<span class="badge" style="background:#dcfce7; color:#15803d; font-weight:800; padding:4px 8px; font-size:0.76rem;"><i class="fa-solid fa-circle-check"></i> ${pct}% Ingresado</span>` };
-            } else if (pct > 0) {
-                return { status: 'progress', label: `<span class="badge" style="background:#fef3c7; color:#b45309; font-weight:800; padding:4px 8px; font-size:0.76rem;"><i class="fa-solid fa-spinner"></i> ${pct}% En avance</span>` };
-            } else {
-                return { status: 'pending', label: `<span class="badge" style="background:#fee2e2; color:#dc2626; font-weight:800; padding:4px 8px; font-size:0.76rem;"><i class="fa-solid fa-clock"></i> 0% Pendiente</span>` };
-            }
-        });
-
-        const courseBadges = teacherCourses.length > 0
-            ? teacherCourses.slice(0, 2).map(c => `<span class="badge" style="background:#f1f5f9; color:#334155; font-size:0.72rem; margin:1px;">${c.subject} (${c.grade})</span>`).join('') + (teacherCourses.length > 2 ? ` <span class="badge" style="background:#e2e8f0; color:#475569; font-size:0.72rem;">+${teacherCourses.length - 2} más</span>` : '')
-            : `<span style="color:var(--text-muted); font-size:0.78rem;">Sin clases asignadas</span>`;
+        // Selector de clases asignadas para auditar cada una
+        const optionsHtml = teacherCourses.map(c => `
+            <option value="${c.id}">📚 ${c.subject} - ${c.grade} (${c.section || 'A'})</option>
+        `).join('');
 
         rowsHtml += `
-            <tr style="vertical-align:middle;">
-                <td style="padding:10px;">
-                    <div style="font-weight:800; color:#0f172a; display:flex; align-items:center; gap:6px;">
-                        <i class="fa-solid fa-user-chalkboard" style="color:var(--brand-blue);"></i> ${teacher.name}
+            <tr id="teacherRow_${teacher.id}" style="vertical-align:middle; border-bottom:1px solid #e2e8f0;">
+                <td style="padding:10px 12px;">
+                    <div style="font-weight:800; color:#0f172a; display:flex; align-items:center; gap:6px; font-size:0.92rem;">
+                        <i class="fa-solid fa-user-chalkboard" style="color:var(--brand-green);"></i> ${teacher.name}
                     </div>
-                    <div style="font-size:0.76rem; color:var(--text-secondary);">${teacher.title || teacher.role}</div>
+                    <div style="font-size:0.76rem; color:var(--text-secondary); margin-top:2px;">
+                        <span class="badge" style="background:#f1f5f9; color:#475569; font-weight:700;">${teacher.renglon || '011'}</span>
+                        ${teacher.title || 'PEM / Catedrático Titular'}
+                    </div>
                 </td>
-                <td style="text-align:center; padding:10px;">
-                    <div style="font-weight:800; color:var(--brand-green); font-size:0.88rem;">${courseCount} cátedra(s)</div>
-                    <div style="margin-top:2px;">${courseBadges}</div>
-                </td>
-                <td style="text-align:center; padding:10px;">${bimesterStatus[0].label}</td>
-                <td style="text-align:center; padding:10px;">${bimesterStatus[1].label}</td>
-                <td style="text-align:center; padding:10px;">${bimesterStatus[2].label}</td>
-                <td style="text-align:center; padding:10px;">${bimesterStatus[3].label}</td>
-                <td style="text-align:center; padding:10px;">
-                    ${courseCount > 0 ? `
-                        <button type="button" class="btn btn-xs btn-primary" onclick="inspectTeacherGradebook('${teacher.id}')" style="font-weight:700; font-size:0.74rem; padding:3px 8px;">
-                            <i class="fa-solid fa-eye"></i> Audit
+                <td style="padding:10px 12px; min-width:240px;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                        <span style="font-weight:800; color:var(--brand-green-dark); font-size:0.84rem;">
+                            <i class="fa-solid fa-book-bookmark"></i> ${courseCount} Cátedra(s)
+                        </span>
+                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="toggleTeacherCoursesBreakdown('${teacher.id}')" title="Ver desglose detallado de todas las cátedras" style="font-size:0.7rem; padding:2px 7px; font-weight:700; border-radius:4px;">
+                            <i class="fa-solid fa-list-ul"></i> Desglosar
                         </button>
-                    ` : '<span style="color:var(--text-muted); font-size:0.75rem;">N/A</span>'}
+                    </div>
+                    <select id="teacherClassSelect_${teacher.id}" class="form-select form-select-sm" onchange="onTeacherClassSelectChange('${teacher.id}', this.value)" style="width:100%; font-size:0.78rem; font-weight:700; border:1.5px solid #0284c7; border-radius:6px; background:#f0f9ff; color:#0369a1; padding:3px 6px;">
+                        <option value="ALL">⭐ Resumen Total (${courseCount} Cátedras)</option>
+                        ${optionsHtml}
+                    </select>
+                </td>
+                <td id="b1_cell_${teacher.id}" style="text-align:center; padding:10px;">${summaryStatus[0].label}</td>
+                <td id="b2_cell_${teacher.id}" style="text-align:center; padding:10px;">${summaryStatus[1].label}</td>
+                <td id="b3_cell_${teacher.id}" style="text-align:center; padding:10px;">${summaryStatus[2].label}</td>
+                <td id="b4_cell_${teacher.id}" style="text-align:center; padding:10px;">${summaryStatus[3].label}</td>
+                <td style="text-align:center; padding:10px; white-space:nowrap;">
+                    <button type="button" class="btn btn-sm btn-primary" id="btnAudit_${teacher.id}" onclick="auditSelectedTeacherClass('${teacher.id}')" title="Auditar ingreso de notas de la clase seleccionada" style="font-weight:700; font-size:0.76rem; padding:5px 11px; border-radius:6px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(0,0,0,0.15); background:#0284c7; border:none;">
+                        <i class="fa-solid fa-magnifying-glass-chart"></i> Auditar Notas
+                    </button>
+                </td>
+            </tr>
+            <!-- Fila desglosada expandible para ver todas las materias una por una -->
+            <tr id="teacherBreakdownRow_${teacher.id}" style="display:none; background:#f8fafc; border-bottom:2px solid #cbd5e1;">
+                <td colspan="7" style="padding:12px 16px;">
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="font-weight:800; font-size:0.84rem; color:#0f172a; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+                            <span><i class="fa-solid fa-chalkboard-user" style="color:var(--brand-green);"></i> Cátedras Asignadas a <strong>${teacher.name}</strong>:</span>
+                            <button type="button" class="btn btn-xs btn-outline-secondary" onclick="toggleTeacherCoursesBreakdown('${teacher.id}')" style="font-size:0.7rem; padding:2px 8px;">Cerrar desglose ✕</button>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table class="table table-sm table-bordered" style="margin:0; font-size:0.78rem;">
+                                <thead>
+                                    <tr style="background:#e2e8f0; color:#1e293b; text-align:center;">
+                                        <th style="text-align:left; padding:6px 8px;">Asignatura / Materia</th>
+                                        <th style="padding:6px 8px;">Grado y Sección</th>
+                                        <th style="padding:6px 8px;">Carrera</th>
+                                        <th style="padding:6px 8px;">1er Bimestre</th>
+                                        <th style="padding:6px 8px;">2do Bimestre</th>
+                                        <th style="padding:6px 8px;">3er Bimestre</th>
+                                        <th style="padding:6px 8px;">4to Bimestre</th>
+                                        <th style="padding:6px 8px;">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${teacherCourses.map(c => {
+                                        const m1 = calculateClassBimesterMetrics(c, 1);
+                                        const m2 = calculateClassBimesterMetrics(c, 2);
+                                        const m3 = calculateClassBimesterMetrics(c, 3);
+                                        const m4 = calculateClassBimesterMetrics(c, 4);
+                                        return `
+                                            <tr style="vertical-align:middle;">
+                                                <td style="padding:6px 8px; font-weight:700; color:#0f172a;">📚 ${c.subject}</td>
+                                                <td style="padding:6px 8px; text-align:center;"><span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700;">${c.grade} (${c.section || 'A'})</span></td>
+                                                <td style="padding:6px 8px; text-align:center; color:#475569;">${c.career || 'Perito Contador'}</td>
+                                                <td style="padding:6px 8px; text-align:center;">${m1.label}</td>
+                                                <td style="padding:6px 8px; text-align:center;">${m2.label}</td>
+                                                <td style="padding:6px 8px; text-align:center;">${m3.label}</td>
+                                                <td style="padding:6px 8px; text-align:center;">${m4.label}</td>
+                                                <td style="padding:6px 8px; text-align:center;">
+                                                    <button type="button" class="btn btn-xs btn-success" onclick="inspectTeacherClassDirectly('${teacher.id}', '${c.id}')" style="font-weight:700; font-size:0.72rem; padding:3px 8px; border-radius:4px; display:inline-flex; align-items:center; gap:3px;">
+                                                        <i class="fa-solid fa-file-pen"></i> Auditar
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </td>
             </tr>
         `;
@@ -8944,31 +9140,121 @@ function renderTeacherGradeProgressTable() {
     tbody.innerHTML = rowsHtml;
 }
 
-function inspectTeacherGradebook(teacherId) {
-    const teacher = (STATE.users || []).find(u => u.id === teacherId);
-    if (!teacher) return;
-
+// Al cambiar la opción en el selector individual de cada docente
+function onTeacherClassSelectChange(teacherId, selectedVal) {
     const teacherCourses = (STATE.pensum || []).filter(p => 
-        p.teacherId === teacher.id || 
-        (p.teacher && p.teacher.toLowerCase() === teacher.name.toLowerCase()) ||
-        (teacher.name && p.teacher && p.teacher.toLowerCase().includes(teacher.name.toLowerCase()))
+        p.teacherId === teacherId || 
+        (p.teacher && p.teacher.toLowerCase() === teacherId.toLowerCase()) ||
+        (STATE.users || []).some(u => u.id === teacherId && p.teacher && p.teacher.toLowerCase() === u.name.toLowerCase())
     );
 
-    if (teacherCourses.length === 0) {
-        showToast(`El docente ${teacher.name} no tiene cátedras asignadas actualmente.`, "warning");
-        return;
-    }
+    const b1El = document.getElementById(`b1_cell_${teacherId}`);
+    const b2El = document.getElementById(`b2_cell_${teacherId}`);
+    const b3El = document.getElementById(`b3_cell_${teacherId}`);
+    const b4El = document.getElementById(`b4_cell_${teacherId}`);
+    const btnAudit = document.getElementById(`btnAudit_${teacherId}`);
 
-    const select = document.getElementById('teacherCourseSelect');
-    if (select) {
-        select.value = teacherCourses[0].id;
-        loadTeacherGradebook();
-        showToast(`Auditando libro de notas de: ${teacher.name} (${teacherCourses[0].subject})`, "info");
+    if (selectedVal === 'ALL') {
+        const s1 = calculateTeacherAllClassesBimesterMetrics(teacherCourses, 1);
+        const s2 = calculateTeacherAllClassesBimesterMetrics(teacherCourses, 2);
+        const s3 = calculateTeacherAllClassesBimesterMetrics(teacherCourses, 3);
+        const s4 = calculateTeacherAllClassesBimesterMetrics(teacherCourses, 4);
 
-        const targetEl = document.querySelector('.gradebook-header-bar');
-        if (targetEl) targetEl.scrollIntoView({ behavior: 'smooth' });
+        if (b1El) b1El.innerHTML = s1.label;
+        if (b2El) b2El.innerHTML = s2.label;
+        if (b3El) b3El.innerHTML = s3.label;
+        if (b4El) b4El.innerHTML = s4.label;
+        if (btnAudit) {
+            btnAudit.innerHTML = '<i class="fa-solid fa-magnifying-glass-chart"></i> Auditar Notas';
+            btnAudit.style.background = '#0284c7';
+        }
+    } else {
+        const c = teacherCourses.find(p => p.id === selectedVal);
+        if (c) {
+            const m1 = calculateClassBimesterMetrics(c, 1);
+            const m2 = calculateClassBimesterMetrics(c, 2);
+            const m3 = calculateClassBimesterMetrics(c, 3);
+            const m4 = calculateClassBimesterMetrics(c, 4);
+
+            if (b1El) b1El.innerHTML = m1.label;
+            if (b2El) b2El.innerHTML = m2.label;
+            if (b3El) b3El.innerHTML = m3.label;
+            if (b4El) b4El.innerHTML = m4.label;
+            if (btnAudit) {
+                btnAudit.innerHTML = `<i class="fa-solid fa-file-pen"></i> Auditar ${c.subject.slice(0, 12)}...`;
+                btnAudit.style.background = '#15803d';
+            }
+        }
     }
 }
+
+// Alternar desglose de cátedras
+function toggleTeacherCoursesBreakdown(teacherId) {
+    const row = document.getElementById(`teacherBreakdownRow_${teacherId}`);
+    if (!row) return;
+    if (row.style.display === 'none' || !row.style.display) {
+        row.style.display = 'table-row';
+    } else {
+        row.style.display = 'none';
+    }
+}
+
+// Auditar la clase actualmente seleccionada en el dropdown del docente
+function auditSelectedTeacherClass(teacherId) {
+    const selectEl = document.getElementById(`teacherClassSelect_${teacherId}`);
+    const selectedVal = selectEl ? selectEl.value : 'ALL';
+
+    if (selectedVal && selectedVal !== 'ALL') {
+        inspectTeacherClassDirectly(teacherId, selectedVal);
+    } else {
+        // Si tiene 'ALL', auditar la primera clase y desglosar las demás
+        const teacherCourses = (STATE.pensum || []).filter(p => 
+            p.teacherId === teacherId || 
+            (STATE.users || []).some(u => u.id === teacherId && p.teacher && p.teacher.toLowerCase() === u.name.toLowerCase())
+        );
+        if (teacherCourses.length > 0) {
+            inspectTeacherClassDirectly(teacherId, teacherCourses[0].id);
+        }
+    }
+}
+
+// Cargar libro de calificaciones directamente para una cátedra específica
+function inspectTeacherClassDirectly(teacherId, courseId) {
+    const teacher = (STATE.users || []).find(u => u.id === teacherId);
+    const course = (STATE.pensum || []).find(p => p.id === courseId);
+    if (!course) return;
+
+    // 1. Asegurar que el selector de cursos del libro de notas tenga la opción seleccionada
+    const select = document.getElementById('teacherCourseSelect');
+    if (select) {
+        let optExists = Array.from(select.options).some(o => o.value === course.id);
+        if (!optExists) {
+            const opt = document.createElement('option');
+            opt.value = course.id;
+            opt.textContent = `${course.subject} - ${course.grade} (${course.section || 'A'})`;
+            select.appendChild(opt);
+        }
+        select.value = course.id;
+        
+        // 2. Cargar el libro de notas
+        loadTeacherGradebook();
+
+        showToast(`🔍 Auditando: ${course.subject} (${course.grade}) - Docente: ${course.teacher}`, "info");
+
+        // 3. Desplazarse suavemente al libro de calificaciones
+        const targetEl = document.querySelector('.gradebook-header-bar') || document.getElementById('gradebookTableContainer');
+        if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+}
+
+// Mantener compatibilidad con llamadas anteriores
+function inspectTeacherGradebook(teacherId) {
+    auditSelectedTeacherClass(teacherId);
+}
+
+
 
 let activeGradebookTab = 'activities'; // 'activities' | 'summary' | 'averages'
 let gradebookSortAsc = true;
