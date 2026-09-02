@@ -1,3 +1,56 @@
+// ==========================================================================
+// 🏛️ CATÁLOGOS MAESTROS OFICIALES ENCCO JUTIAPA (PENSUM 28, 116 CÁTEDRAS, 412 ALUMNOS)
+// ==========================================================================
+
+var OFFICIAL_PENSUM_28_CATALOG = [{"id": "cnb-4to-01", "code": "4PC-01", "area": "CONTABILIDAD", "name": "Contabilidad de Sociedades", "subject": "Contabilidad de Sociedades", "shortName": "Contabilidad de Sociedades", "abbreviation": "4PC-01", "grade": "4to Perito Contador", "gradeCode": "4to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 1, "order": 1, "isGeneralGrade": true}, {"id": "cnb-4to-02", "code": "4PC-02", "area": "MATEMÁTICA", "name": "Matemática Comercial", "subject": "Matemática Comercial", "shortName": "Matemática Comercial", "abbreviation": "4PC-02", "grade": "4to Perito Contador", "gradeCode": "4to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 2, "order": 2, "isGeneralGrade": true}, {"id": "cnb-4to-03", "code": "4PC-03", "area": "FUNDAMENTOS DEL DERECHO", "name": "Fundamentos de Derecho", "subject": "Fundamentos de Derecho", "shortName": "Fundamentos de Derecho", "abbreviation": "4PC-03", "grade": "4to Perito Contador", "gradeCode": "4to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 3, "order": 3, "isGeneralGrade": true}, {"id": "cnb-4to-04", "code": "4PC-04", "area": "INGLÉS", "name": "Inglés Comercial I", "subject": "Inglés Comercial I", "shortName": "Inglés Comercial I", "abbreviation": "4PC-04", "grade": "4to Perito Contador", "gradeCode": "4to Perito", "career": "Perito Contador", "periods": 3, "hours": 3, "sortOrder": 4, "order": 4, "isGeneralGrade": true}, {"id": "cnb-4to-05", "code": "4PC-05", "area": "REDACCIÓN Y CORRESPONDENCIA", "name": "Redacción y Correspondencia Mercantil", "subject": "Redacción y Correspondencia Mercantil", "shortName": "Redacción y Correspondencia Mercantil", "abbreviation": "4PC-05", "grade": "4to Perito Contador", "gradeCode": "4to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 5, "order": 5, "isGeneralGrade": true}, {"id": "cnb-4to-06", "code": "4PC-06", "area": "INTRODUCCIÓN A LA ECONOMÍA", "name": "Introducción a la Economía", "subject": "Introducción a la Economía", "shortName": "Introducción a la Economía", "abbreviation": "4PC-06", "grade": "4to Perito Contador", "gradeCode": "4to Perito", "career": "Perito Contador", "periods": 3, "hours": 3, "sortOrder": 6, "order": 6, "isGeneralGrade": true}, {"id": "cnb-4to-07", "code": "4PC-07", "area": "ORTOGRAFÍA Y CALIGRAFÍA", "name": "Ortografía y Caligrafía", "subject": "Ortografía y Caligrafía", "shortName": "Ortografía y Caligrafía", "abbreviation": "4PC-07", "grade": "4to Perito Contador", "gradeCode": "4to Perito", "career": "Perito Contador", "periods": 3, "hours": 3, "sortOrder": 7, "order": 7, "isGeneralGrade": true}, {"id": "cnb-4to-08", "code": "4PC-08", "area": "ADMINISTRACIÓN Y ORGANIZACIÓN DE OFICINA", "name": "Administración y Organización de Oficina", "subject": "Administración y Organización de Oficina", "shortName": "Administración y Organización de Oficina", "abbreviation": "4PC-08", "grade": "4to Perito Contador", "gradeCode": "4to Perito", "career": "Perito Contador", "periods": 3, "hours": 3, "sortOrder": 8, "order": 8, "isGeneralGrade": true}, {"id": "cnb-4to-09", "code": "4PC-09", "area": "COMPUTACIÓN", "name": "Computación I", "subject": "Computación I", "shortName": "Computación I", "abbreviation": "4PC-09", "grade": "4to Perito Contador", "gradeCode": "4to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 9, "order": 9, "isGeneralGrade": true}, {"id": "cnb-5to-01", "code": "5PC-01", "area": "CONTABILIDAD", "name": "Contabilidad de Costos", "subject": "Contabilidad de Costos", "shortName": "Contabilidad de Costos", "abbreviation": "5PC-01", "grade": "5to Perito Contador", "gradeCode": "5to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 1, "order": 1, "isGeneralGrade": true}, {"id": "cnb-5to-02", "code": "5PC-02", "area": "CONTABILIDAD", "name": "Cálculo Mercantil y Financiero", "subject": "Cálculo Mercantil y Financiero", "shortName": "Cálculo Mercantil y Financiero", "abbreviation": "5PC-02", "grade": "5to Perito Contador", "gradeCode": "5to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 2, "order": 2, "isGeneralGrade": true}, {"id": "cnb-5to-03", "code": "5PC-03", "area": "INGLÉS", "name": "Inglés Comercial II", "subject": "Inglés Comercial II", "shortName": "Inglés Comercial II", "abbreviation": "5PC-03", "grade": "5to Perito Contador", "gradeCode": "5to Perito", "career": "Perito Contador", "periods": 3, "hours": 3, "sortOrder": 3, "order": 3, "isGeneralGrade": true}, {"id": "cnb-5to-04", "code": "5PC-04", "area": "LEGISLACIÓN FISCAL Y ADUANAL", "name": "Legislación Fiscal y Aduanal", "subject": "Legislación Fiscal y Aduanal", "shortName": "Legislación Fiscal y Aduanal", "abbreviation": "5PC-04", "grade": "5to Perito Contador", "gradeCode": "5to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 4, "order": 4, "isGeneralGrade": true}, {"id": "cnb-5to-05", "code": "5PC-05", "area": "FINANZAS PÚBLICAS", "name": "Finanzas Públicas", "subject": "Finanzas Públicas", "shortName": "Finanzas Públicas", "abbreviation": "5PC-05", "grade": "5to Perito Contador", "gradeCode": "5to Perito", "career": "Perito Contador", "periods": 3, "hours": 3, "sortOrder": 5, "order": 5, "isGeneralGrade": true}, {"id": "cnb-5to-06", "code": "5PC-06", "area": "GEOGRAFÍA ECONÓMICA", "name": "Geografía Económica", "subject": "Geografía Económica", "shortName": "Geografía Económica", "abbreviation": "5PC-06", "grade": "5to Perito Contador", "gradeCode": "5to Perito", "career": "Perito Contador", "periods": 2, "hours": 2, "sortOrder": 6, "order": 6, "isGeneralGrade": true}, {"id": "cnb-5to-07", "code": "5PC-07", "area": "CATALOGACIÓN Y ARCHIVO", "name": "Catalogación y Archivo", "subject": "Catalogación y Archivo", "shortName": "Catalogación y Archivo", "abbreviation": "5PC-07", "grade": "5to Perito Contador", "gradeCode": "5to Perito", "career": "Perito Contador", "periods": 2, "hours": 2, "sortOrder": 7, "order": 7, "isGeneralGrade": true}, {"id": "cnb-5to-08", "code": "5PC-08", "area": "MECANOGRAFÍA", "name": "Mecanografía", "subject": "Mecanografía", "shortName": "Mecanografía", "abbreviation": "5PC-08", "grade": "5to Perito Contador", "gradeCode": "5to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 8, "order": 8, "isGeneralGrade": true}, {"id": "cnb-5to-09", "code": "5PC-09", "area": "COMPUTACIÓN", "name": "Computación II", "subject": "Computación II", "shortName": "Computación II", "abbreviation": "5PC-09", "grade": "5to Perito Contador", "gradeCode": "5to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 9, "order": 9, "isGeneralGrade": true}, {"id": "cnb-6to-01", "code": "6PC-01", "area": "CONTABILIDAD", "name": "Contabilidad Bancaria", "subject": "Contabilidad Bancaria", "shortName": "Contabilidad Bancaria", "abbreviation": "6PC-01", "grade": "6to Perito Contador", "gradeCode": "6to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 1, "order": 1, "isGeneralGrade": true}, {"id": "cnb-6to-02", "code": "6PC-02", "area": "CONTABILIDAD", "name": "Contabilidad Gubernamental Integrada", "subject": "Contabilidad Gubernamental Integrada", "shortName": "Contabilidad Gubernamental Integrada", "abbreviation": "6PC-02", "grade": "6to Perito Contador", "gradeCode": "6to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 2, "order": 2, "isGeneralGrade": true}, {"id": "cnb-6to-03", "code": "6PC-03", "area": "MATEMÁTICA", "name": "Estadística Comercial", "subject": "Estadística Comercial", "shortName": "Estadística Comercial", "abbreviation": "6PC-03", "grade": "6to Perito Contador", "gradeCode": "6to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 3, "order": 3, "isGeneralGrade": true}, {"id": "cnb-6to-04", "code": "6PC-04", "area": "ORGANIZACIÓN DE EMPRESAS", "name": "Organización de Empresas", "subject": "Organización de Empresas", "shortName": "Organización de Empresas", "abbreviation": "6PC-04", "grade": "6to Perito Contador", "gradeCode": "6to Perito", "career": "Perito Contador", "periods": 3, "hours": 3, "sortOrder": 4, "order": 4, "isGeneralGrade": true}, {"id": "cnb-6to-05", "code": "6PC-05", "area": "ÉTICA PROFESIONAL Y RELACIONES HUMANAS", "name": "Ética Profesional y Relaciones Humanas", "subject": "Ética Profesional y Relaciones Humanas", "shortName": "Ética Profesional y Relaciones Humanas", "abbreviation": "6PC-05", "grade": "6to Perito Contador", "gradeCode": "6to Perito", "career": "Perito Contador", "periods": 3, "hours": 3, "sortOrder": 5, "order": 5, "isGeneralGrade": true}, {"id": "cnb-6to-06", "code": "6PC-06", "area": "PRÁCTICA SUPERVISADA", "name": "Práctica Supervisada", "subject": "Práctica Supervisada", "shortName": "Práctica Supervisada", "abbreviation": "6PC-06", "grade": "6to Perito Contador", "gradeCode": "6to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 6, "order": 6, "isGeneralGrade": true}, {"id": "cnb-6to-07", "code": "6PC-07", "area": "AUDITORÍA", "name": "Auditoría", "subject": "Auditoría", "shortName": "Auditoría", "abbreviation": "6PC-07", "grade": "6to Perito Contador", "gradeCode": "6to Perito", "career": "Perito Contador", "periods": 5, "hours": 5, "sortOrder": 7, "order": 7, "isGeneralGrade": true}, {"id": "cnb-6to-08", "code": "6PC-08", "area": "DERECHO MERCANTIL Y NOCIONES DEL DERECHO LABORAL", "name": "Derecho Mercantil y Nociones de Derecho Laboral", "subject": "Derecho Mercantil y Nociones de Derecho Laboral", "shortName": "Derecho Mercantil y Nociones de Derecho Laboral", "abbreviation": "6PC-08", "grade": "6to Perito Contador", "gradeCode": "6to Perito", "career": "Perito Contador", "periods": 3, "hours": 3, "sortOrder": 8, "order": 8, "isGeneralGrade": true}, {"id": "cnb-6to-09", "code": "6PC-09", "area": "COMPUTACIÓN", "name": "Computación III", "subject": "Computación III", "shortName": "Computación III", "abbreviation": "6PC-09", "grade": "6to Perito Contador", "gradeCode": "6to Perito", "career": "Perito Contador", "periods": 3, "hours": 3, "sortOrder": 9, "order": 9, "isGeneralGrade": true}, {"id": "cnb-6to-10", "code": "6PC-10", "area": "INVESTIGACIÓN", "name": "Seminario sobre Problemas Socioeconómicos de Guatemala", "subject": "Seminario sobre Problemas Socioeconómicos de Guatemala", "shortName": "Seminario sobre Problemas Socioeconómicos de Guatemala", "abbreviation": "6PC-10", "grade": "6to Perito Contador", "gradeCode": "6to Perito", "career": "Perito Contador", "periods": 3, "hours": 3, "sortOrder": 10, "order": 10, "isGeneralGrade": true}];
+var OFFICIAL_PENSUM_116_ASSIGNMENTS = [{"id": "cls-4a-economa", "code": "4PC-05-A", "subject": "Economía", "subjectAbbreviation": "Economía", "grade": "4to Perito Contador", "section": "Sección A", "gradeCode": "4° PC A", "career": "Perito Contador", "teacher": "Lic. Williams Esmely Gudiel Paredes", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4a-matemtica", "code": "4PC-08-A", "subject": "Matemática", "subjectAbbreviation": "Matemática", "grade": "4to Perito Contador", "section": "Sección A", "gradeCode": "4° PC A", "career": "Perito Contador", "teacher": "Lic. Roberto Alex Tobar Cermeño", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4a-ingles1", "code": "4PC-07-A", "subject": "Ingles 1", "subjectAbbreviation": "Ingles 1", "grade": "4to Perito Contador", "section": "Sección A", "gradeCode": "4° PC A", "career": "Perito Contador", "teacher": "Lic. Gamaliel Uzias Medrano", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4a-fundamentos", "code": "4PC-06-A", "subject": "Fundamentos", "subjectAbbreviation": "Fundamentos", "grade": "4to Perito Contador", "section": "Sección A", "gradeCode": "4° PC A", "career": "Perito Contador", "teacher": "Lic.MA. Wilder Porfirio Pérez López", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4a-compu1", "code": "4PC-03-A", "subject": "Compu 1", "subjectAbbreviation": "Compu 1", "grade": "4to Perito Contador", "section": "Sección A", "gradeCode": "4° PC A", "career": "Perito Contador", "teacher": "Licda. Sandra Julissa Arana Lucero", "periods": 2, "periodsPerWeek": 2, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4a-sociedades", "code": "4PC-09-A", "subject": "Sociedades", "subjectAbbreviation": "Sociedades", "grade": "4to Perito Contador", "section": "Sección A", "gradeCode": "4° PC A", "career": "Perito Contador", "teacher": "Lic.MA. Wilder Porfirio Pérez López", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4a-compu1", "code": "4PC-03-A", "subject": "Compu 1", "subjectAbbreviation": "Compu 1", "grade": "4to Perito Contador", "section": "Sección A", "gradeCode": "4° PC A", "career": "Perito Contador", "teacher": "Licda. Sandra Julissa Arana Lucero", "periods": 3, "periodsPerWeek": 3, "room": "Laboratorio", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4a-caligrafa", "code": "4PC-02-A", "subject": "Caligrafía", "subjectAbbreviation": "Caligrafía", "grade": "4to Perito Contador", "section": "Sección A", "gradeCode": "4° PC A", "career": "Perito Contador", "teacher": "Licda. Maria Jannette Salguero Mellado", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4a-admonorg", "code": "4PC-01-A", "subject": "Admon org.", "subjectAbbreviation": "Admon org.", "grade": "4to Perito Contador", "section": "Sección A", "gradeCode": "4° PC A", "career": "Perito Contador", "teacher": "Lic. Damaris Violeta Escobar de Salguero Damaris", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4a-correspon", "code": "4PC-04-A", "subject": "Correspon.", "subjectAbbreviation": "Correspon.", "grade": "4to Perito Contador", "section": "Sección A", "gradeCode": "4° PC A", "career": "Perito Contador", "teacher": "Lic. Damaris Violeta Escobar de Salguero Damaris", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4b-economa", "code": "4PC-05-B", "subject": "Economía", "subjectAbbreviation": "Economía", "grade": "4to Perito Contador", "section": "Sección B", "gradeCode": "4° PC B", "career": "Perito Contador", "teacher": "Lic. Nery Benjamín Galvez Ramos", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4b-ingles1", "code": "4PC-07-B", "subject": "Ingles 1", "subjectAbbreviation": "Ingles 1", "grade": "4to Perito Contador", "section": "Sección B", "gradeCode": "4° PC B", "career": "Perito Contador", "teacher": "Lic. Gamaliel Uzias Medrano", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4b-matemtica", "code": "4PC-08-B", "subject": "Matemática", "subjectAbbreviation": "Matemática", "grade": "4to Perito Contador", "section": "Sección B", "gradeCode": "4° PC B", "career": "Perito Contador", "teacher": "Lic. Roberto Alex Tobar Cermeño", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4b-fundamentos", "code": "4PC-06-B", "subject": "Fundamentos", "subjectAbbreviation": "Fundamentos", "grade": "4to Perito Contador", "section": "Sección B", "gradeCode": "4° PC B", "career": "Perito Contador", "teacher": "Lic.MA. Wilder Porfirio Pérez López", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4b-compu1", "code": "4PC-03-B", "subject": "Compu 1", "subjectAbbreviation": "Compu 1", "grade": "4to Perito Contador", "section": "Sección B", "gradeCode": "4° PC B", "career": "Perito Contador", "teacher": "Licda. Sandra Julissa Arana Lucero", "periods": 2, "periodsPerWeek": 2, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4b-caligrafa", "code": "4PC-02-B", "subject": "Caligrafía", "subjectAbbreviation": "Caligrafía", "grade": "4to Perito Contador", "section": "Sección B", "gradeCode": "4° PC B", "career": "Perito Contador", "teacher": "Lic. Damaris Violeta Escobar de Salguero Damaris", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4b-admonorg", "code": "4PC-01-B", "subject": "Admon org.", "subjectAbbreviation": "Admon org.", "grade": "4to Perito Contador", "section": "Sección B", "gradeCode": "4° PC B", "career": "Perito Contador", "teacher": "PEM. Lilian Alas Grijalva", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4b-compu1", "code": "4PC-03-B", "subject": "Compu 1", "subjectAbbreviation": "Compu 1", "grade": "4to Perito Contador", "section": "Sección B", "gradeCode": "4° PC B", "career": "Perito Contador", "teacher": "Licda. Sandra Julissa Arana Lucero", "periods": 3, "periodsPerWeek": 3, "room": "Laboratorio", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4b-sociedades", "code": "4PC-09-B", "subject": "Sociedades", "subjectAbbreviation": "Sociedades", "grade": "4to Perito Contador", "section": "Sección B", "gradeCode": "4° PC B", "career": "Perito Contador", "teacher": "Lic.MA. Wilder Porfirio Pérez López", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4b-correspon", "code": "4PC-04-B", "subject": "Correspon.", "subjectAbbreviation": "Correspon.", "grade": "4to Perito Contador", "section": "Sección B", "gradeCode": "4° PC B", "career": "Perito Contador", "teacher": "Lic. Nery Benjamín Galvez Ramos", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4c-admonorg", "code": "4PC-01-C", "subject": "Admon org.", "subjectAbbreviation": "Admon org.", "grade": "4to Perito Contador", "section": "Sección C", "gradeCode": "4° PC C", "career": "Perito Contador", "teacher": "PEM. Lilian Alas Grijalva", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4c-ingles1", "code": "4PC-07-C", "subject": "Ingles 1", "subjectAbbreviation": "Ingles 1", "grade": "4to Perito Contador", "section": "Sección C", "gradeCode": "4° PC C", "career": "Perito Contador", "teacher": "Lic. Gamaliel Uzias Medrano", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4c-matemtica", "code": "4PC-08-C", "subject": "Matemática", "subjectAbbreviation": "Matemática", "grade": "4to Perito Contador", "section": "Sección C", "gradeCode": "4° PC C", "career": "Perito Contador", "teacher": "Lic. Roberto Alex Tobar Cermeño", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4c-fundamentos", "code": "4PC-06-C", "subject": "Fundamentos", "subjectAbbreviation": "Fundamentos", "grade": "4to Perito Contador", "section": "Sección C", "gradeCode": "4° PC C", "career": "Perito Contador", "teacher": "Lic.MA. Wilder Porfirio Pérez López", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4c-compu1", "code": "4PC-03-C", "subject": "Compu 1", "subjectAbbreviation": "Compu 1", "grade": "4to Perito Contador", "section": "Sección C", "gradeCode": "4° PC C", "career": "Perito Contador", "teacher": "Licda. Sandra Julissa Arana Lucero", "periods": 2, "periodsPerWeek": 2, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4c-caligrafa", "code": "4PC-02-C", "subject": "Caligrafía", "subjectAbbreviation": "Caligrafía", "grade": "4to Perito Contador", "section": "Sección C", "gradeCode": "4° PC C", "career": "Perito Contador", "teacher": "Lic. Nery Benjamín Galvez Ramos", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4c-compu1", "code": "4PC-03-C", "subject": "Compu 1", "subjectAbbreviation": "Compu 1", "grade": "4to Perito Contador", "section": "Sección C", "gradeCode": "4° PC C", "career": "Perito Contador", "teacher": "Licda. Sandra Julissa Arana Lucero", "periods": 3, "periodsPerWeek": 3, "room": "Laboratorio", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4c-sociedades", "code": "4PC-09-C", "subject": "Sociedades", "subjectAbbreviation": "Sociedades", "grade": "4to Perito Contador", "section": "Sección C", "gradeCode": "4° PC C", "career": "Perito Contador", "teacher": "Lic.MA. Wilder Porfirio Pérez López", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4c-correspon", "code": "4PC-04-C", "subject": "Correspon.", "subjectAbbreviation": "Correspon.", "grade": "4to Perito Contador", "section": "Sección C", "gradeCode": "4° PC C", "career": "Perito Contador", "teacher": "Lic. Damaris Violeta Escobar de Salguero Damaris", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4c-economa", "code": "4PC-05-C", "subject": "Economía", "subjectAbbreviation": "Economía", "grade": "4to Perito Contador", "section": "Sección C", "gradeCode": "4° PC C", "career": "Perito Contador", "teacher": "PEM. Milvia Aracely Jacobo Escobar", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4d-matemtica", "code": "4PC-08-D", "subject": "Matemática", "subjectAbbreviation": "Matemática", "grade": "4to Perito Contador", "section": "Sección D", "gradeCode": "4° PC D", "career": "Perito Contador", "teacher": "Lic. Roberto Alex Tobar Cermeño", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4d-correspon", "code": "4PC-04-D", "subject": "Correspon.", "subjectAbbreviation": "Correspon.", "grade": "4to Perito Contador", "section": "Sección D", "gradeCode": "4° PC D", "career": "Perito Contador", "teacher": "Lic. Nery Benjamín Galvez Ramos", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4d-sociedades", "code": "4PC-09-D", "subject": "Sociedades", "subjectAbbreviation": "Sociedades", "grade": "4to Perito Contador", "section": "Sección D", "gradeCode": "4° PC D", "career": "Perito Contador", "teacher": "Lic. Edwin Osvaldo López Recinos", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4d-compu1", "code": "4PC-03-D", "subject": "Compu 1", "subjectAbbreviation": "Compu 1", "grade": "4to Perito Contador", "section": "Sección D", "gradeCode": "4° PC D", "career": "Perito Contador", "teacher": "Licda. Sandra Julissa Arana Lucero", "periods": 2, "periodsPerWeek": 2, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4d-ingles1", "code": "4PC-07-D", "subject": "Ingles 1", "subjectAbbreviation": "Ingles 1", "grade": "4to Perito Contador", "section": "Sección D", "gradeCode": "4° PC D", "career": "Perito Contador", "teacher": "PEM. Elda Argentina López de Valdez", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4d-compu1", "code": "4PC-03-D", "subject": "Compu 1", "subjectAbbreviation": "Compu 1", "grade": "4to Perito Contador", "section": "Sección D", "gradeCode": "4° PC D", "career": "Perito Contador", "teacher": "Licda. Sandra Julissa Arana Lucero", "periods": 3, "periodsPerWeek": 3, "room": "Laboratorio", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4d-economa", "code": "4PC-05-D", "subject": "Economía", "subjectAbbreviation": "Economía", "grade": "4to Perito Contador", "section": "Sección D", "gradeCode": "4° PC D", "career": "Perito Contador", "teacher": "Lic. Nery Benjamín Galvez Ramos", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4d-caligrafa", "code": "4PC-02-D", "subject": "Caligrafía", "subjectAbbreviation": "Caligrafía", "grade": "4to Perito Contador", "section": "Sección D", "gradeCode": "4° PC D", "career": "Perito Contador", "teacher": "Licda. Maria Jannette Salguero Mellado", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4d-admonorg", "code": "4PC-01-D", "subject": "Admon org.", "subjectAbbreviation": "Admon org.", "grade": "4to Perito Contador", "section": "Sección D", "gradeCode": "4° PC D", "career": "Perito Contador", "teacher": "PEM. Lilian Alas Grijalva", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-4d-fundamentos", "code": "4PC-06-D", "subject": "Fundamentos", "subjectAbbreviation": "Fundamentos", "grade": "4to Perito Contador", "section": "Sección D", "gradeCode": "4° PC D", "career": "Perito Contador", "teacher": "Licda. Sandra Paola Bernal Yanes de Argueta", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5a-calculo", "code": "5PC-02-A", "subject": "Calculo", "subjectAbbreviation": "Calculo", "grade": "5to Perito Contador", "section": "Sección A", "gradeCode": "5° PC A", "career": "Perito Contador", "teacher": "PEM. Nehemias Yalil Salguero", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5a-costos", "code": "5PC-04-A", "subject": "Costos", "subjectAbbreviation": "Costos", "grade": "5to Perito Contador", "section": "Sección A", "gradeCode": "5° PC A", "career": "Perito Contador", "teacher": "Lic. Héctor Noé Linares", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5a-archivo", "code": "5PC-01-A", "subject": "Archivo", "subjectAbbreviation": "Archivo", "grade": "5to Perito Contador", "section": "Sección A", "gradeCode": "5° PC A", "career": "Perito Contador", "teacher": "Lic. Williams Esmely Gudiel Paredes", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5a-meca", "code": "5PC-09-A", "subject": "Meca", "subjectAbbreviation": "Meca", "grade": "5to Perito Contador", "section": "Sección A", "gradeCode": "5° PC A", "career": "Perito Contador", "teacher": "Lic. Williams Esmely Gudiel Paredes", "periods": 5, "periodsPerWeek": 5, "room": "Mecanografía", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5a-finanzas", "code": "5PC-05-A", "subject": "Finanzas", "subjectAbbreviation": "Finanzas", "grade": "5to Perito Contador", "section": "Sección A", "gradeCode": "5° PC A", "career": "Perito Contador", "teacher": "PEM. Elda Argentina López de Valdez", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5a-geografia", "code": "5PC-06-A", "subject": "Geografia", "subjectAbbreviation": "Geografia", "grade": "5to Perito Contador", "section": "Sección A", "gradeCode": "5° PC A", "career": "Perito Contador", "teacher": "Lic.MA. Carlos Augusto Juarez Alvarez", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5a-compu2", "code": "5PC-03-A", "subject": "Compu 2", "subjectAbbreviation": "Compu 2", "grade": "5to Perito Contador", "section": "Sección A", "gradeCode": "5° PC A", "career": "Perito Contador", "teacher": "PEM. Nehemias Yalil Salguero", "periods": 4, "periodsPerWeek": 4, "room": "Laboratorio", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5a-legislacion", "code": "5PC-08-A", "subject": "Legislacion", "subjectAbbreviation": "Legislacion", "grade": "5to Perito Contador", "section": "Sección A", "gradeCode": "5° PC A", "career": "Perito Contador", "teacher": "Licda. Sandra Paola Bernal Yanes de Argueta", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5a-ingles2", "code": "5PC-07-A", "subject": "Ingles 2", "subjectAbbreviation": "Ingles 2", "grade": "5to Perito Contador", "section": "Sección A", "gradeCode": "5° PC A", "career": "Perito Contador", "teacher": "PEM. Milvia Aracely Jacobo Escobar", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5b-meca", "code": "5PC-09-B", "subject": "Meca", "subjectAbbreviation": "Meca", "grade": "5to Perito Contador", "section": "Sección B", "gradeCode": "5° PC B", "career": "Perito Contador", "teacher": "Lic. Williams Esmely Gudiel Paredes", "periods": 5, "periodsPerWeek": 5, "room": "Mecanografía", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5b-costos", "code": "5PC-04-B", "subject": "Costos", "subjectAbbreviation": "Costos", "grade": "5to Perito Contador", "section": "Sección B", "gradeCode": "5° PC B", "career": "Perito Contador", "teacher": "Lic. Héctor Noé Linares", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5b-archivo", "code": "5PC-01-B", "subject": "Archivo", "subjectAbbreviation": "Archivo", "grade": "5to Perito Contador", "section": "Sección B", "gradeCode": "5° PC B", "career": "Perito Contador", "teacher": "Lic. Williams Esmely Gudiel Paredes", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5b-calculo", "code": "5PC-02-B", "subject": "Calculo", "subjectAbbreviation": "Calculo", "grade": "5to Perito Contador", "section": "Sección B", "gradeCode": "5° PC B", "career": "Perito Contador", "teacher": "PEM. Elda Argentina López de Valdez", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5b-geografia", "code": "5PC-06-B", "subject": "Geografia", "subjectAbbreviation": "Geografia", "grade": "5to Perito Contador", "section": "Sección B", "gradeCode": "5° PC B", "career": "Perito Contador", "teacher": "PEM. Lilian Alas Grijalva", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5b-finanzas", "code": "5PC-05-B", "subject": "Finanzas", "subjectAbbreviation": "Finanzas", "grade": "5to Perito Contador", "section": "Sección B", "gradeCode": "5° PC B", "career": "Perito Contador", "teacher": "Lic. Nery Benjamín Galvez Ramos", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5b-compu2", "code": "5PC-03-B", "subject": "Compu 2", "subjectAbbreviation": "Compu 2", "grade": "5to Perito Contador", "section": "Sección B", "gradeCode": "5° PC B", "career": "Perito Contador", "teacher": "PEM. Nehemias Yalil Salguero", "periods": 4, "periodsPerWeek": 4, "room": "Laboratorio", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5b-ingles2", "code": "5PC-07-B", "subject": "Ingles 2", "subjectAbbreviation": "Ingles 2", "grade": "5to Perito Contador", "section": "Sección B", "gradeCode": "5° PC B", "career": "Perito Contador", "teacher": "PEM. Milvia Aracely Jacobo Escobar", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5b-legislacion", "code": "5PC-08-B", "subject": "Legislacion", "subjectAbbreviation": "Legislacion", "grade": "5to Perito Contador", "section": "Sección B", "gradeCode": "5° PC B", "career": "Perito Contador", "teacher": "PEM. Lilian Alas Grijalva", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5c-costos", "code": "5PC-04-C", "subject": "Costos", "subjectAbbreviation": "Costos", "grade": "5to Perito Contador", "section": "Sección C", "gradeCode": "5° PC C", "career": "Perito Contador", "teacher": "Lic. Héctor Noé Linares", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5c-calculo", "code": "5PC-02-C", "subject": "Calculo", "subjectAbbreviation": "Calculo", "grade": "5to Perito Contador", "section": "Sección C", "gradeCode": "5° PC C", "career": "Perito Contador", "teacher": "Lic. Héctor Noé Linares", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5c-legislacion", "code": "5PC-08-C", "subject": "Legislacion", "subjectAbbreviation": "Legislacion", "grade": "5to Perito Contador", "section": "Sección C", "gradeCode": "5° PC C", "career": "Perito Contador", "teacher": "PEM. Lilian Alas Grijalva", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5c-compu2", "code": "5PC-03-C", "subject": "Compu 2", "subjectAbbreviation": "Compu 2", "grade": "5to Perito Contador", "section": "Sección C", "gradeCode": "5° PC C", "career": "Perito Contador", "teacher": "PEM. Nehemias Yalil Salguero", "periods": 4, "periodsPerWeek": 4, "room": "Laboratorio", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5c-ingles2", "code": "5PC-07-C", "subject": "Ingles 2", "subjectAbbreviation": "Ingles 2", "grade": "5to Perito Contador", "section": "Sección C", "gradeCode": "5° PC C", "career": "Perito Contador", "teacher": "PEM. Elda Argentina López de Valdez", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5c-meca", "code": "5PC-09-C", "subject": "Meca", "subjectAbbreviation": "Meca", "grade": "5to Perito Contador", "section": "Sección C", "gradeCode": "5° PC C", "career": "Perito Contador", "teacher": "PEM. Aleida Maribel Escobar de Palma", "periods": 5, "periodsPerWeek": 5, "room": "Mecanografía", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5c-finanzas", "code": "5PC-05-C", "subject": "Finanzas", "subjectAbbreviation": "Finanzas", "grade": "5to Perito Contador", "section": "Sección C", "gradeCode": "5° PC C", "career": "Perito Contador", "teacher": "Licda. Enma Leticia Macario Xum de Ruano", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5c-geografia", "code": "5PC-06-C", "subject": "Geografia", "subjectAbbreviation": "Geografia", "grade": "5to Perito Contador", "section": "Sección C", "gradeCode": "5° PC C", "career": "Perito Contador", "teacher": "Lic. Juan Carlos Pereira", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5c-archivo", "code": "5PC-01-C", "subject": "Archivo", "subjectAbbreviation": "Archivo", "grade": "5to Perito Contador", "section": "Sección C", "gradeCode": "5° PC C", "career": "Perito Contador", "teacher": "Licda. Sandra Paola Bernal Yanes de Argueta", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5d-costos", "code": "5PC-04-D", "subject": "Costos", "subjectAbbreviation": "Costos", "grade": "5to Perito Contador", "section": "Sección D", "gradeCode": "5° PC D", "career": "Perito Contador", "teacher": "Lic. Héctor Noé Linares", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5d-geografia", "code": "5PC-06-D", "subject": "Geografia", "subjectAbbreviation": "Geografia", "grade": "5to Perito Contador", "section": "Sección D", "gradeCode": "5° PC D", "career": "Perito Contador", "teacher": "Lic. Williams Esmely Gudiel Paredes", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5d-finanzas", "code": "5PC-05-D", "subject": "Finanzas", "subjectAbbreviation": "Finanzas", "grade": "5to Perito Contador", "section": "Sección D", "gradeCode": "5° PC D", "career": "Perito Contador", "teacher": "PEM. Lilian Alas Grijalva", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5d-calculo", "code": "5PC-02-D", "subject": "Calculo", "subjectAbbreviation": "Calculo", "grade": "5to Perito Contador", "section": "Sección D", "gradeCode": "5° PC D", "career": "Perito Contador", "teacher": "Lic. Héctor Noé Linares", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5d-compu2", "code": "5PC-03-D", "subject": "Compu 2", "subjectAbbreviation": "Compu 2", "grade": "5to Perito Contador", "section": "Sección D", "gradeCode": "5° PC D", "career": "Perito Contador", "teacher": "PEM. Nehemias Yalil Salguero", "periods": 4, "periodsPerWeek": 4, "room": "Laboratorio", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5d-ingles2", "code": "5PC-07-D", "subject": "Ingles 2", "subjectAbbreviation": "Ingles 2", "grade": "5to Perito Contador", "section": "Sección D", "gradeCode": "5° PC D", "career": "Perito Contador", "teacher": "PEM. Milvia Aracely Jacobo Escobar", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5d-legislacion", "code": "5PC-08-D", "subject": "Legislacion", "subjectAbbreviation": "Legislacion", "grade": "5to Perito Contador", "section": "Sección D", "gradeCode": "5° PC D", "career": "Perito Contador", "teacher": "PEM. Elda Argentina López de Valdez", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5d-meca", "code": "5PC-09-D", "subject": "Meca", "subjectAbbreviation": "Meca", "grade": "5to Perito Contador", "section": "Sección D", "gradeCode": "5° PC D", "career": "Perito Contador", "teacher": "PEM. Aleida Maribel Escobar de Palma", "periods": 5, "periodsPerWeek": 5, "room": "Mecanografía", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-5d-archivo", "code": "5PC-01-D", "subject": "Archivo", "subjectAbbreviation": "Archivo", "grade": "5to Perito Contador", "section": "Sección D", "gradeCode": "5° PC D", "career": "Perito Contador", "teacher": "Licda. Sandra Paola Bernal Yanes de Argueta", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6a-estadistica", "code": "6PC-05-A", "subject": "Estadistica", "subjectAbbreviation": "Estadistica", "grade": "6to Perito Contador", "section": "Sección A", "gradeCode": "6° PC A", "career": "Perito Contador", "teacher": "Lic.MA. Carlos Augusto Juarez Alvarez", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6a-seminario", "code": "6PC-10-A", "subject": "Seminario", "subjectAbbreviation": "Seminario", "grade": "6to Perito Contador", "section": "Sección A", "gradeCode": "6° PC A", "career": "Perito Contador", "teacher": "PEM. Aleida Maribel Escobar de Palma", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6a-compu3", "code": "6PC-03-A", "subject": "Compu 3", "subjectAbbreviation": "Compu 3", "grade": "6to Perito Contador", "section": "Sección A", "gradeCode": "6° PC A", "career": "Perito Contador", "teacher": "PEM. Nehemias Yalil Salguero", "periods": 3, "periodsPerWeek": 3, "room": "Laboratorio", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6a-etica", "code": "6PC-06-A", "subject": "Etica", "subjectAbbreviation": "Etica", "grade": "6to Perito Contador", "section": "Sección A", "gradeCode": "6° PC A", "career": "Perito Contador", "teacher": "Lic. Williams Esmely Gudiel Paredes", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6a-bancaria", "code": "6PC-02-A", "subject": "Bancaria", "subjectAbbreviation": "Bancaria", "grade": "6to Perito Contador", "section": "Sección A", "gradeCode": "6° PC A", "career": "Perito Contador", "teacher": "Lic. Edwin Osvaldo López Recinos", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6a-organizacin", "code": "6PC-08-A", "subject": "Organización", "subjectAbbreviation": "Organización", "grade": "6to Perito Contador", "section": "Sección A", "gradeCode": "6° PC A", "career": "Perito Contador", "teacher": "Lic. Williams Esmely Gudiel Paredes", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6a-practica", "code": "6PC-09-A", "subject": "Practica", "subjectAbbreviation": "Practica", "grade": "6to Perito Contador", "section": "Sección A", "gradeCode": "6° PC A", "career": "Perito Contador", "teacher": "Lic. Edwin Osvaldo López Recinos", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6a-derecho", "code": "6PC-04-A", "subject": "Derecho", "subjectAbbreviation": "Derecho", "grade": "6to Perito Contador", "section": "Sección A", "gradeCode": "6° PC A", "career": "Perito Contador", "teacher": "Lic. Nery Benjamín Galvez Ramos", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6a-guber", "code": "6PC-07-A", "subject": "Guber.", "subjectAbbreviation": "Guber.", "grade": "6to Perito Contador", "section": "Sección A", "gradeCode": "6° PC A", "career": "Perito Contador", "teacher": "Licda. Maria Jannette Salguero Mellado", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6a-auditoria", "code": "6PC-01-A", "subject": "Auditoria", "subjectAbbreviation": "Auditoria", "grade": "6to Perito Contador", "section": "Sección A", "gradeCode": "6° PC A", "career": "Perito Contador", "teacher": "PEM. Elda Argentina López de Valdez", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6b-seminario", "code": "6PC-10-B", "subject": "Seminario", "subjectAbbreviation": "Seminario", "grade": "6to Perito Contador", "section": "Sección B", "gradeCode": "6° PC B", "career": "Perito Contador", "teacher": "PEM. Aleida Maribel Escobar de Palma", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6b-bancaria", "code": "6PC-02-B", "subject": "Bancaria", "subjectAbbreviation": "Bancaria", "grade": "6to Perito Contador", "section": "Sección B", "gradeCode": "6° PC B", "career": "Perito Contador", "teacher": "Lic.MA. Carlos Augusto Juarez Alvarez", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6b-compu3", "code": "6PC-03-B", "subject": "Compu 3", "subjectAbbreviation": "Compu 3", "grade": "6to Perito Contador", "section": "Sección B", "gradeCode": "6° PC B", "career": "Perito Contador", "teacher": "PEM. Nehemias Yalil Salguero", "periods": 3, "periodsPerWeek": 3, "room": "Laboratorio", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6b-etica", "code": "6PC-06-B", "subject": "Etica", "subjectAbbreviation": "Etica", "grade": "6to Perito Contador", "section": "Sección B", "gradeCode": "6° PC B", "career": "Perito Contador", "teacher": "PEM. Elda Argentina López de Valdez", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6b-guber", "code": "6PC-07-B", "subject": "Guber.", "subjectAbbreviation": "Guber.", "grade": "6to Perito Contador", "section": "Sección B", "gradeCode": "6° PC B", "career": "Perito Contador", "teacher": "Lic. Edwin Osvaldo López Recinos", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6b-derecho", "code": "6PC-04-B", "subject": "Derecho", "subjectAbbreviation": "Derecho", "grade": "6to Perito Contador", "section": "Sección B", "gradeCode": "6° PC B", "career": "Perito Contador", "teacher": "Licda. Maria Jannette Salguero Mellado", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6b-estadistica", "code": "6PC-05-B", "subject": "Estadistica", "subjectAbbreviation": "Estadistica", "grade": "6to Perito Contador", "section": "Sección B", "gradeCode": "6° PC B", "career": "Perito Contador", "teacher": "Licda. Enma Leticia Macario Xum de Ruano", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6b-practica", "code": "6PC-09-B", "subject": "Practica", "subjectAbbreviation": "Practica", "grade": "6to Perito Contador", "section": "Sección B", "gradeCode": "6° PC B", "career": "Perito Contador", "teacher": "Prof. Carlos Vinicio Grijalva Cardona", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6b-organizacin", "code": "6PC-08-B", "subject": "Organización", "subjectAbbreviation": "Organización", "grade": "6to Perito Contador", "section": "Sección B", "gradeCode": "6° PC B", "career": "Perito Contador", "teacher": "Lic. Nery Benjamín Galvez Ramos", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6b-auditoria", "code": "6PC-01-B", "subject": "Auditoria", "subjectAbbreviation": "Auditoria", "grade": "6to Perito Contador", "section": "Sección B", "gradeCode": "6° PC B", "career": "Perito Contador", "teacher": "Prof. Carlos Vinicio Grijalva Cardona", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6c-seminario", "code": "6PC-10-C", "subject": "Seminario", "subjectAbbreviation": "Seminario", "grade": "6to Perito Contador", "section": "Sección C", "gradeCode": "6° PC C", "career": "Perito Contador", "teacher": "PEM. Aleida Maribel Escobar de Palma", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6c-guber", "code": "6PC-07-C", "subject": "Guber.", "subjectAbbreviation": "Guber.", "grade": "6to Perito Contador", "section": "Sección C", "gradeCode": "6° PC C", "career": "Perito Contador", "teacher": "Lic. Edwin Osvaldo López Recinos", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6c-compu3", "code": "6PC-03-C", "subject": "Compu 3", "subjectAbbreviation": "Compu 3", "grade": "6to Perito Contador", "section": "Sección C", "gradeCode": "6° PC C", "career": "Perito Contador", "teacher": "PEM. Nehemias Yalil Salguero", "periods": 3, "periodsPerWeek": 3, "room": "Laboratorio", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6c-derecho", "code": "6PC-04-C", "subject": "Derecho", "subjectAbbreviation": "Derecho", "grade": "6to Perito Contador", "section": "Sección C", "gradeCode": "6° PC C", "career": "Perito Contador", "teacher": "PEM. Elda Argentina López de Valdez", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6c-practica", "code": "6PC-09-C", "subject": "Practica", "subjectAbbreviation": "Practica", "grade": "6to Perito Contador", "section": "Sección C", "gradeCode": "6° PC C", "career": "Perito Contador", "teacher": "Lic.MA. Carlos Augusto Juarez Alvarez", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6c-estadistica", "code": "6PC-05-C", "subject": "Estadistica", "subjectAbbreviation": "Estadistica", "grade": "6to Perito Contador", "section": "Sección C", "gradeCode": "6° PC C", "career": "Perito Contador", "teacher": "Licda. Enma Leticia Macario Xum de Ruano", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6c-organizacin", "code": "6PC-08-C", "subject": "Organización", "subjectAbbreviation": "Organización", "grade": "6to Perito Contador", "section": "Sección C", "gradeCode": "6° PC C", "career": "Perito Contador", "teacher": "Licda. Enma Leticia Macario Xum de Ruano", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6c-bancaria", "code": "6PC-02-C", "subject": "Bancaria", "subjectAbbreviation": "Bancaria", "grade": "6to Perito Contador", "section": "Sección C", "gradeCode": "6° PC C", "career": "Perito Contador", "teacher": "Prof. Carlos Vinicio Grijalva Cardona", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6c-auditoria", "code": "6PC-01-C", "subject": "Auditoria", "subjectAbbreviation": "Auditoria", "grade": "6to Perito Contador", "section": "Sección C", "gradeCode": "6° PC C", "career": "Perito Contador", "teacher": "Licda. Maria Jannette Salguero Mellado", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6c-etica", "code": "6PC-06-C", "subject": "Etica", "subjectAbbreviation": "Etica", "grade": "6to Perito Contador", "section": "Sección C", "gradeCode": "6° PC C", "career": "Perito Contador", "teacher": "PEM. Milvia Aracely Jacobo Escobar", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6d-seminario", "code": "6PC-10-D", "subject": "Seminario", "subjectAbbreviation": "Seminario", "grade": "6to Perito Contador", "section": "Sección D", "gradeCode": "6° PC D", "career": "Perito Contador", "teacher": "PEM. Aleida Maribel Escobar de Palma", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6d-etica", "code": "6PC-06-D", "subject": "Etica", "subjectAbbreviation": "Etica", "grade": "6to Perito Contador", "section": "Sección D", "gradeCode": "6° PC D", "career": "Perito Contador", "teacher": "PEM. Lilian Alas Grijalva", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6d-guber", "code": "6PC-07-D", "subject": "Guber.", "subjectAbbreviation": "Guber.", "grade": "6to Perito Contador", "section": "Sección D", "gradeCode": "6° PC D", "career": "Perito Contador", "teacher": "Lic. Edwin Osvaldo López Recinos", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6d-compu3", "code": "6PC-03-D", "subject": "Compu 3", "subjectAbbreviation": "Compu 3", "grade": "6to Perito Contador", "section": "Sección D", "gradeCode": "6° PC D", "career": "Perito Contador", "teacher": "PEM. Nehemias Yalil Salguero", "periods": 3, "periodsPerWeek": 3, "room": "Laboratorio", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6d-derecho", "code": "6PC-04-D", "subject": "Derecho", "subjectAbbreviation": "Derecho", "grade": "6to Perito Contador", "section": "Sección D", "gradeCode": "6° PC D", "career": "Perito Contador", "teacher": "Lic.MA. Wilder Porfirio Pérez López", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6d-practica", "code": "6PC-09-D", "subject": "Practica", "subjectAbbreviation": "Practica", "grade": "6to Perito Contador", "section": "Sección D", "gradeCode": "6° PC D", "career": "Perito Contador", "teacher": "Lic.MA. Carlos Augusto Juarez Alvarez", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6d-bancaria", "code": "6PC-02-D", "subject": "Bancaria", "subjectAbbreviation": "Bancaria", "grade": "6to Perito Contador", "section": "Sección D", "gradeCode": "6° PC D", "career": "Perito Contador", "teacher": "Lic.MA. Carlos Augusto Juarez Alvarez", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6d-estadistica", "code": "6PC-05-D", "subject": "Estadistica", "subjectAbbreviation": "Estadistica", "grade": "6to Perito Contador", "section": "Sección D", "gradeCode": "6° PC D", "career": "Perito Contador", "teacher": "Licda. Enma Leticia Macario Xum de Ruano", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6d-auditoria", "code": "6PC-01-D", "subject": "Auditoria", "subjectAbbreviation": "Auditoria", "grade": "6to Perito Contador", "section": "Sección D", "gradeCode": "6° PC D", "career": "Perito Contador", "teacher": "Prof. Carlos Vinicio Grijalva Cardona", "periods": 5, "periodsPerWeek": 5, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}, {"id": "cls-6d-organizacin", "code": "6PC-08-D", "subject": "Organización", "subjectAbbreviation": "Organización", "grade": "6to Perito Contador", "section": "Sección D", "gradeCode": "6° PC D", "career": "Perito Contador", "teacher": "Lic. Damaris Violeta Escobar de Salguero Damaris", "periods": 3, "periodsPerWeek": 3, "room": "Aula fija", "status": "Activo", "cycle": "2026", "academicCycle": "2026"}];
+var OFFICIAL_INSTITUTIONAL_USERS = [];
+var OFFICIAL_SIRE_412_STUDENTS = [{"id": "stu-sire-I441ZFG", "no": 1, "personalCode": "I441ZFG", "cui": "", "docNumber": "1307269263", "docType": "Pasaporte", "fullName": "AGUILAR TOBAR CARLOS DAVID", "firstName": "CARLOS DAVID", "lastName": "AGUILAR TOBAR", "birthDate": "08/02/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Extranjero", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I441ZFG", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G830LUF", "no": 2, "personalCode": "G830LUF", "cui": "2110244062201", "docNumber": "2110244062201", "docType": "CUI", "fullName": "ALEJANDRO OSORIO MARÍA JOSÉ", "firstName": "MARÍA JOSÉ", "lastName": "ALEJANDRO OSORIO", "birthDate": "25/03/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G830LUF", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-J442CKE", "no": 3, "personalCode": "J442CKE", "cui": "2115418182201", "docNumber": "2115418182201", "docType": "CUI", "fullName": "BARRERA CORADO ANGEL LEONEL", "firstName": "ANGEL LEONEL", "lastName": "BARRERA CORADO", "birthDate": "07/04/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "J442CKE", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G398FUH", "no": 4, "personalCode": "G398FUH", "cui": "2037069432202", "docNumber": "2037069432202", "docType": "CUI", "fullName": "CARÍAS LEMUS LUIS ERNESTO", "firstName": "LUIS ERNESTO", "lastName": "CARÍAS LEMUS", "birthDate": "07/09/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G398FUH", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-I840WWE", "no": 5, "personalCode": "I840WWE", "cui": "2094939250602", "docNumber": "2094939250602", "docType": "CUI", "fullName": "CARÍAS RIVERA ESDRAS ESAÚ", "firstName": "ESDRAS ESAÚ", "lastName": "CARÍAS RIVERA", "birthDate": "02/02/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I840WWE", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G541AAR", "no": 6, "personalCode": "G541AAR", "cui": "2084796192201", "docNumber": "2084796192201", "docType": "CUI", "fullName": "CORADO CRÚZ HÉCTOR JOSUÉ", "firstName": "HÉCTOR JOSUÉ", "lastName": "CORADO CRÚZ", "birthDate": "09/01/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G541AAR", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F962RMP", "no": 7, "personalCode": "F962RMP", "cui": "2155851192201", "docNumber": "2155851192201", "docType": "CUI", "fullName": "CORADO GRAJEDA DANIEL WALDEMAR", "firstName": "DANIEL WALDEMAR", "lastName": "CORADO GRAJEDA", "birthDate": "10/03/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F962RMP", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G983YRD", "no": 8, "personalCode": "G983YRD", "cui": "2041519882201", "docNumber": "2041519882201", "docType": "CUI", "fullName": "CORDERO VALDEZ KRISTELL MAGDALENA", "firstName": "KRISTELL MAGDALENA", "lastName": "CORDERO VALDEZ", "birthDate": "12/05/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G983YRD", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G493HWD", "no": 9, "personalCode": "G493HWD", "cui": "2068730852201", "docNumber": "2068730852201", "docType": "CUI", "fullName": "CRUZ LÓPEZ NILDER ALEXANDER", "firstName": "NILDER ALEXANDER", "lastName": "CRUZ LÓPEZ", "birthDate": "28/09/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G493HWD", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F752KDJ", "no": 10, "personalCode": "F752KDJ", "cui": "2050489432201", "docNumber": "2050489432201", "docType": "CUI", "fullName": "CRÚZ RAMÍREZ DULCE ELENA", "firstName": "DULCE ELENA", "lastName": "CRÚZ RAMÍREZ", "birthDate": "15/07/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F752KDJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-I349UMF", "no": 11, "personalCode": "I349UMF", "cui": "2115417022201", "docNumber": "2115417022201", "docType": "CUI", "fullName": "FALLA GUERRERO WINDER ALEXANDER", "firstName": "WINDER ALEXANDER", "lastName": "FALLA GUERRERO", "birthDate": "20/04/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I349UMF", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F164VQV", "no": 12, "personalCode": "F164VQV", "cui": "2018201102201", "docNumber": "2018201102201", "docType": "CUI", "fullName": "GONZÁLEZ ARIAS MARCO ANTONIO", "firstName": "MARCO ANTONIO", "lastName": "GONZÁLEZ ARIAS", "birthDate": "05/10/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F164VQV", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F887CEJ", "no": 13, "personalCode": "F887CEJ", "cui": "3425312552201", "docNumber": "3425312552201", "docType": "CUI", "fullName": "GONZÁLEZ ARIAS MARÍA FERNANDA", "firstName": "MARÍA FERNANDA", "lastName": "GONZÁLEZ ARIAS", "birthDate": "12/10/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F887CEJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G741ZVW", "no": 14, "personalCode": "G741ZVW", "cui": "2113124282201", "docNumber": "2113124282201", "docType": "CUI", "fullName": "HERNÁNDEZ CARÍAS EVELYN GUADALUPE", "firstName": "EVELYN GUADALUPE", "lastName": "HERNÁNDEZ CARÍAS", "birthDate": "09/05/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G741ZVW", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-I947EFB", "no": 15, "personalCode": "I947EFB", "cui": "2089906232201", "docNumber": "2089906232201", "docType": "CUI", "fullName": "HERNÁNDEZ ORDOÑEZ SILMA ALEJANDRA", "firstName": "SILMA ALEJANDRA", "lastName": "HERNÁNDEZ ORDOÑEZ", "birthDate": "14/01/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I947EFB", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G471TLA", "no": 16, "personalCode": "G471TLA", "cui": "2037069942202", "docNumber": "2037069942202", "docType": "CUI", "fullName": "LÉMUS OLIVARES JOSUÉ", "firstName": "JOSUÉ", "lastName": "LÉMUS OLIVARES", "birthDate": "26/09/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G471TLA", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G159EZB", "no": 17, "personalCode": "G159EZB", "cui": "2136593440101", "docNumber": "2136593440101", "docType": "CUI", "fullName": "LÓPEZ  ESTRADA OBED ALEXANDER", "firstName": "OBED ALEXANDER", "lastName": "LÓPEZ ESTRADA", "birthDate": "22/02/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G159EZB", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G244KVQ", "no": 18, "personalCode": "G244KVQ", "cui": "2110239732201", "docNumber": "2110239732201", "docType": "CUI", "fullName": "LÓPEZ CRÚZ EDISON ANDRES", "firstName": "EDISON ANDRES", "lastName": "LÓPEZ CRÚZ", "birthDate": "17/03/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G244KVQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H549XVB", "no": 19, "personalCode": "H549XVB", "cui": "2120339052201", "docNumber": "2120339052201", "docType": "CUI", "fullName": "LÓPEZ MORALES ASHLI MYCHELI", "firstName": "ASHLI MYCHELI", "lastName": "LÓPEZ MORALES", "birthDate": "31/05/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H549XVB", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G836AWH", "no": 20, "personalCode": "G836AWH", "cui": "2122973172214", "docNumber": "2122973172214", "docType": "CUI", "fullName": "MALDONADO AJTUN CARLOS FERNANDO", "firstName": "CARLOS FERNANDO", "lastName": "MALDONADO AJTUN", "birthDate": "11/05/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G836AWH", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H635ECI", "no": 21, "personalCode": "H635ECI", "cui": "2050478742201", "docNumber": "2050478742201", "docType": "CUI", "fullName": "MARTÍNEZ RONQUILLO JOSÉ PABLO DE DIOS", "firstName": "JOSÉ PABLO DE DIOS", "lastName": "MARTÍNEZ RONQUILLO", "birthDate": "21/07/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H635ECI", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H674QPT", "no": 22, "personalCode": "H674QPT", "cui": "2120345882201", "docNumber": "2120345882201", "docType": "CUI", "fullName": "MATEO JUAN CARLOS", "firstName": "CARLOS", "lastName": "MATEO JUAN", "birthDate": "03/06/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H674QPT", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G136MKK", "no": 23, "personalCode": "G136MKK", "cui": "2078400672201", "docNumber": "2078400672201", "docType": "CUI", "fullName": "MATEO CASTILLO JIMMY LORENZO", "firstName": "JIMMY LORENZO", "lastName": "MATEO CASTILLO", "birthDate": "27/11/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G136MKK", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F859WGF", "no": 24, "personalCode": "F859WGF", "cui": "2029168472201", "docNumber": "2029168472201", "docType": "CUI", "fullName": "MONZÓN MORALES MARIAN SARAÍ", "firstName": "MARIAN SARAÍ", "lastName": "MONZÓN MORALES", "birthDate": "21/12/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F859WGF", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H964SIF", "no": 25, "personalCode": "H964SIF", "cui": "2110262202201", "docNumber": "2110262202201", "docType": "CUI", "fullName": "MUÑOZ GODOY KAREN FABIOLA", "firstName": "KAREN FABIOLA", "lastName": "MUÑOZ GODOY", "birthDate": "21/04/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H964SIF", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-I231DGD", "no": 26, "personalCode": "I231DGD", "cui": "2092629232201", "docNumber": "2092629232201", "docType": "CUI", "fullName": "MÉNDEZ MONZÓN DANIELA BEATRÍZ", "firstName": "DANIELA BEATRÍZ", "lastName": "MÉNDEZ MONZÓN", "birthDate": "16/02/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I231DGD", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H286PET", "no": 27, "personalCode": "H286PET", "cui": "4046399252201", "docNumber": "4046399252201", "docType": "CUI", "fullName": "MÉNDEZ PEÑA HUGO ESTUARDO", "firstName": "HUGO ESTUARDO", "lastName": "MÉNDEZ PEÑA", "birthDate": "06/12/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H286PET", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G671NJL", "no": 28, "personalCode": "G671NJL", "cui": "2064577742201", "docNumber": "2064577742201", "docType": "CUI", "fullName": "OLIVARES  BARRERA HELEN ADRIANA", "firstName": "HELEN ADRIANA", "lastName": "OLIVARES BARRERA", "birthDate": "30/08/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G671NJL", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G392BPT", "no": 29, "personalCode": "G392BPT", "cui": "2055192292201", "docNumber": "2055192292201", "docType": "CUI", "fullName": "PÉREZ ZEPEDA MADELYN RASHEL", "firstName": "MADELYN RASHEL", "lastName": "PÉREZ ZEPEDA", "birthDate": "08/08/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G392BPT", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G093EPK", "no": 30, "personalCode": "G093EPK", "cui": "2059581682201", "docNumber": "2059581682201", "docType": "CUI", "fullName": "RAMÍREZ ORDOÑEZ JEFRI ANDRÉS", "firstName": "JEFRI ANDRÉS", "lastName": "RAMÍREZ ORDOÑEZ", "birthDate": "06/08/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G093EPK", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H162BNF", "no": 31, "personalCode": "H162BNF", "cui": "2075009752201", "docNumber": "2075009752201", "docType": "CUI", "fullName": "RIVERA SALAZAR JOSÉ DAVID", "firstName": "JOSÉ DAVID", "lastName": "RIVERA SALAZAR", "birthDate": "21/08/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H162BNF", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-I330ZME", "no": 32, "personalCode": "I330ZME", "cui": "2120344212201", "docNumber": "2120344212201", "docType": "CUI", "fullName": "RUIZ LOPEZ CRISTIAN FERNANDO", "firstName": "CRISTIAN FERNANDO", "lastName": "RUIZ LOPEZ", "birthDate": "14/06/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I330ZME", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G155YNT", "no": 33, "personalCode": "G155YNT", "cui": "2105614752201", "docNumber": "2105614752201", "docType": "CUI", "fullName": "RUSTRIÁN LÓPEZ ALEX ANTONIO", "firstName": "ALEX ANTONIO", "lastName": "RUSTRIÁN LÓPEZ", "birthDate": "08/03/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G155YNT", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H839VRZ", "no": 34, "personalCode": "H839VRZ", "cui": "2059603752201", "docNumber": "2059603752201", "docType": "CUI", "fullName": "SICÁ MATEO JAILENE LORENA", "firstName": "JAILENE LORENA", "lastName": "SICÁ MATEO", "birthDate": "01/09/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to A", "gradeLabel": "4to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H839VRZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G790ASN", "no": 1, "personalCode": "G790ASN", "cui": "2034199522201", "docNumber": "2034199522201", "docType": "CUI", "fullName": "ALVAREZ CÁMBARA JENIFER ESTEFANIA", "firstName": "JENIFER ESTEFANIA", "lastName": "ALVAREZ CÁMBARA", "birthDate": "02/03/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G790ASN", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G180WLI", "no": 2, "personalCode": "G180WLI", "cui": "2012402542201", "docNumber": "2012402542201", "docType": "CUI", "fullName": "BARAHONA CONTRERAS MADISSON ALEJANDRA", "firstName": "MADISSON ALEJANDRA", "lastName": "BARAHONA CONTRERAS", "birthDate": "04/09/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G180WLI", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-E363FWP", "no": 3, "personalCode": "E363FWP", "cui": "2008731562201", "docNumber": "2008731562201", "docType": "CUI", "fullName": "CABRERA SARCEÑO MARÍA DE LOS ANGELES", "firstName": "MARÍA DE LOS ANGELES", "lastName": "CABRERA SARCEÑO", "birthDate": "09/08/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E363FWP", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F896QTF", "no": 4, "personalCode": "F896QTF", "cui": "2022720442201", "docNumber": "2022720442201", "docType": "CUI", "fullName": "CARDONA MATEO JORGE ALBERTO", "firstName": "JORGE ALBERTO", "lastName": "CARDONA MATEO", "birthDate": "20/12/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F896QTF", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F448PYJ", "no": 5, "personalCode": "F448PYJ", "cui": "2044084312201", "docNumber": "2044084312201", "docType": "CUI", "fullName": "CARRILLO LÓPEZ TYRA NAYERLI", "firstName": "TYRA NAYERLI", "lastName": "CARRILLO LÓPEZ", "birthDate": "13/05/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F448PYJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G945BUT", "no": 6, "personalCode": "G945BUT", "cui": "3429161142207", "docNumber": "3429161142207", "docType": "CUI", "fullName": "CASTAÑEDA VALENZUELA ALONDRA JAHAYRA", "firstName": "ALONDRA JAHAYRA", "lastName": "CASTAÑEDA VALENZUELA", "birthDate": "18/07/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G945BUT", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G484CHE", "no": 7, "personalCode": "G484CHE", "cui": "2020722662201", "docNumber": "2020722662201", "docType": "CUI", "fullName": "CASTILLO CAAL HÉCTOR ALBERTO", "firstName": "HÉCTOR ALBERTO", "lastName": "CASTILLO CAAL", "birthDate": "07/11/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G484CHE", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F373XHG", "no": 8, "personalCode": "F373XHG", "cui": "3422712102201", "docNumber": "3422712102201", "docType": "CUI", "fullName": "CHACAJ LÓPEZ EMERSON ADOLFO", "firstName": "EMERSON ADOLFO", "lastName": "CHACAJ LÓPEZ", "birthDate": "11/08/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F373XHG", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-G770NKB", "no": 9, "personalCode": "G770NKB", "cui": "2036740812201", "docNumber": "2036740812201", "docType": "CUI", "fullName": "CRÚZ ALAY DULCE MARÍA JOSÉ", "firstName": "DULCE MARÍA JOSÉ", "lastName": "CRÚZ ALAY", "birthDate": "23/03/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G770NKB", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F194UTJ", "no": 10, "personalCode": "F194UTJ", "cui": "2005405482201", "docNumber": "2005405482201", "docType": "CUI", "fullName": "CRÚZ GONZÁLEZ YOSELIN DEL CARMEN", "firstName": "YOSELIN DEL CARMEN", "lastName": "CRÚZ GONZÁLEZ", "birthDate": "12/05/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F194UTJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F354ZFQ", "no": 11, "personalCode": "F354ZFQ", "cui": "2018211332201", "docNumber": "2018211332201", "docType": "CUI", "fullName": "CRÚZ RAMÍREZ GLEIDY CELESTE", "firstName": "GLEIDY CELESTE", "lastName": "CRÚZ RAMÍREZ", "birthDate": "21/09/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F354ZFQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-D494YEU", "no": 12, "personalCode": "D494YEU", "cui": "2012424002201", "docNumber": "2012424002201", "docType": "CUI", "fullName": "ESTRADA VÁSQUEZ DAYANNA MARYSABEL", "firstName": "DAYANNA MARYSABEL", "lastName": "ESTRADA VÁSQUEZ", "birthDate": "08/09/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D494YEU", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H952ALQ", "no": 13, "personalCode": "H952ALQ", "cui": "2026443402201", "docNumber": "2026443402201", "docType": "CUI", "fullName": "FLORES CRÚZ MELODY DAYANA", "firstName": "MELODY DAYANA", "lastName": "FLORES CRÚZ", "birthDate": "26/11/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H952ALQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H070SHJ", "no": 14, "personalCode": "H070SHJ", "cui": "2041530422201", "docNumber": "2041530422201", "docType": "CUI", "fullName": "FLORES HERNÁNDEZ OSWIN DANILO", "firstName": "OSWIN DANILO", "lastName": "FLORES HERNÁNDEZ", "birthDate": "13/05/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H070SHJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G935XNA", "no": 15, "personalCode": "G935XNA", "cui": "2022709042201", "docNumber": "2022709042201", "docType": "CUI", "fullName": "GIRÓN ARTEAGA DONOVAN JOSÉ", "firstName": "DONOVAN JOSÉ", "lastName": "GIRÓN ARTEAGA", "birthDate": "01/12/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G935XNA", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F582DAT", "no": 16, "personalCode": "F582DAT", "cui": "2026683122206", "docNumber": "2026683122206", "docType": "CUI", "fullName": "GONZÁLEZ SAMAYOA MELVIN OSWALDO", "firstName": "MELVIN OSWALDO", "lastName": "GONZÁLEZ SAMAYOA", "birthDate": "13/12/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F582DAT", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-C824YUK", "no": 17, "personalCode": "C824YUK", "cui": "2010461640101", "docNumber": "2010461640101", "docType": "CUI", "fullName": "GRIJALVA CARÍAS LUISA FERNANDA", "firstName": "LUISA FERNANDA", "lastName": "GRIJALVA CARÍAS", "birthDate": "18/08/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C824YUK", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F885JYW", "no": 18, "personalCode": "F885JYW", "cui": "2036510222101", "docNumber": "2036510222101", "docType": "CUI", "fullName": "GÓMEZ GARCÍA NATALY TATIANA", "firstName": "NATALY TATIANA", "lastName": "GÓMEZ GARCÍA", "birthDate": "27/03/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F885JYW", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F230UBI", "no": 19, "personalCode": "F230UBI", "cui": "2001186412201", "docNumber": "2001186412201", "docType": "CUI", "fullName": "HERNÁNDEZ GUDIEL SUCEL MARIELA", "firstName": "SUCEL MARIELA", "lastName": "HERNÁNDEZ GUDIEL", "birthDate": "30/01/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F230UBI", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F785CZI", "no": 20, "personalCode": "F785CZI", "cui": "2012412422201", "docNumber": "2012412422201", "docType": "CUI", "fullName": "JÍMENEZ LÓPEZ SOFIA ALEJANDRA", "firstName": "SOFIA ALEJANDRA", "lastName": "JÍMENEZ LÓPEZ", "birthDate": "01/09/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F785CZI", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G541YRS", "no": 21, "personalCode": "G541YRS", "cui": "2036740732201", "docNumber": "2036740732201", "docType": "CUI", "fullName": "LIMA PRIVADO BORIS EMANUEL", "firstName": "BORIS EMANUEL", "lastName": "LIMA PRIVADO", "birthDate": "20/04/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G541YRS", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F534RXN", "no": 22, "personalCode": "F534RXN", "cui": "2020729832201", "docNumber": "2020729832201", "docType": "CUI", "fullName": "LÓPEZ CRÚZ JENIFER BEATRIZ", "firstName": "JENIFER BEATRIZ", "lastName": "LÓPEZ CRÚZ", "birthDate": "06/11/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F534RXN", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F773QEY", "no": 23, "personalCode": "F773QEY", "cui": "2029149762201", "docNumber": "2029149762201", "docType": "CUI", "fullName": "LÓPEZ GARCÍA MAYLEEN DAYANA", "firstName": "MAYLEEN DAYANA", "lastName": "LÓPEZ GARCÍA", "birthDate": "08/12/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F773QEY", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G487FPH", "no": 24, "personalCode": "G487FPH", "cui": "2006353872202", "docNumber": "2006353872202", "docType": "CUI", "fullName": "LÓPEZ GRIJALVA FÁTIMA LOURDES", "firstName": "FÁTIMA LOURDES", "lastName": "LÓPEZ GRIJALVA", "birthDate": "28/07/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G487FPH", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F188KVN", "no": 25, "personalCode": "F188KVN", "cui": "2001214802201", "docNumber": "2001214802201", "docType": "CUI", "fullName": "MARROQUÍN OLIVARES MYNOR ANTONIO", "firstName": "MYNOR ANTONIO", "lastName": "MARROQUÍN OLIVARES", "birthDate": "22/02/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F188KVN", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E599UIC", "no": 26, "personalCode": "E599UIC", "cui": "2034190302201", "docNumber": "2034190302201", "docType": "CUI", "fullName": "MORÁN RODRIGUEZ ANA LUCIA", "firstName": "ANA LUCIA", "lastName": "MORÁN RODRIGUEZ", "birthDate": "11/03/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E599UIC", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F338GKI", "no": 27, "personalCode": "F338GKI", "cui": "2028920342217", "docNumber": "2028920342217", "docType": "CUI", "fullName": "MUNGUIA MEDA LINDZI YESSENIA", "firstName": "LINDZI YESSENIA", "lastName": "MUNGUIA MEDA", "birthDate": "04/02/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F338GKI", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-I633LMY", "no": 28, "personalCode": "I633LMY", "cui": "2020726142201", "docNumber": "2020726142201", "docType": "CUI", "fullName": "MUÑOZ FLORIÁN KAREN HERLINDA", "firstName": "KAREN HERLINDA", "lastName": "MUÑOZ FLORIÁN", "birthDate": "27/10/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I633LMY", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G794NBD", "no": 29, "personalCode": "G794NBD", "cui": "2004201352201", "docNumber": "2004201352201", "docType": "CUI", "fullName": "MUÑOZ IXTÓS JENNIFER MICHELLE", "firstName": "JENNIFER MICHELLE", "lastName": "MUÑOZ IXTÓS", "birthDate": "10/05/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G794NBD", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G044NIX", "no": 30, "personalCode": "G044NIX", "cui": "2046571132201", "docNumber": "2046571132201", "docType": "CUI", "fullName": "MUÑOZ ORDOÑEZ YOEL AARÓN", "firstName": "YOEL AARÓN", "lastName": "MUÑOZ ORDOÑEZ", "birthDate": "03/06/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G044NIX", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H652EZI", "no": 31, "personalCode": "H652EZI", "cui": "2026441032201", "docNumber": "2026441032201", "docType": "CUI", "fullName": "MÉNDEZ MÉNDEZ JOSTIN ENILSON", "firstName": "JOSTIN ENILSON", "lastName": "MÉNDEZ MÉNDEZ", "birthDate": "10/01/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H652EZI", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G648XFV", "no": 32, "personalCode": "G648XFV", "cui": "2022702032201", "docNumber": "2022702032201", "docType": "CUI", "fullName": "PALMA PRIVADO ASHLEY PATRICIA", "firstName": "ASHLEY PATRICIA", "lastName": "PALMA PRIVADO", "birthDate": "15/12/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G648XFV", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G247TVW", "no": 33, "personalCode": "G247TVW", "cui": "2029167152201", "docNumber": "2029167152201", "docType": "CUI", "fullName": "PIRIR RAMÍREZ MARÍA ALEJANDRA", "firstName": "MARÍA ALEJANDRA", "lastName": "PIRIR RAMÍREZ", "birthDate": "09/12/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G247TVW", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G593PDM", "no": 34, "personalCode": "G593PDM", "cui": "2036727122201", "docNumber": "2036727122201", "docType": "CUI", "fullName": "PÉREZ SARCEÑO YARETZY GALILEA", "firstName": "YARETZY GALILEA", "lastName": "PÉREZ SARCEÑO", "birthDate": "09/02/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G593PDM", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G482XGW", "no": 35, "personalCode": "G482XGW", "cui": "2038166332201", "docNumber": "2038166332201", "docType": "CUI", "fullName": "RAMOS FLORIÁN ALICIA CAROLINA", "firstName": "ALICIA CAROLINA", "lastName": "RAMOS FLORIÁN", "birthDate": "30/03/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G482XGW", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G142LYW", "no": 36, "personalCode": "G142LYW", "cui": "2046580632201", "docNumber": "2046580632201", "docType": "CUI", "fullName": "TENAS CORADO OSCAR ANDRÉ", "firstName": "OSCAR ANDRÉ", "lastName": "TENAS CORADO", "birthDate": "29/06/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G142LYW", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F365JYC", "no": 37, "personalCode": "F365JYC", "cui": "2031378412201", "docNumber": "2031378412201", "docType": "CUI", "fullName": "VILLANUEVA RUANO CRISTA FABIOLA", "firstName": "CRISTA FABIOLA", "lastName": "VILLANUEVA RUANO", "birthDate": "04/02/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to A", "gradeLabel": "5to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F365JYC", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F130CUN", "no": 1, "personalCode": "F130CUN", "cui": "3420912632201", "docNumber": "3420912632201", "docType": "CUI", "fullName": "ALAY MARÍN CELESTE CRISTINA DE LOS ANGELES", "firstName": "CELESTE CRISTINA DE LOS ANGELES", "lastName": "ALAY MARÍN", "birthDate": "15/12/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F130CUN", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F365BLD", "no": 2, "personalCode": "F365BLD", "cui": "3425092172201", "docNumber": "3425092172201", "docType": "CUI", "fullName": "ARDÓN GONZÁLEZ DIEGO ALEJANDRO", "firstName": "DIEGO ALEJANDRO", "lastName": "ARDÓN GONZÁLEZ", "birthDate": "02/09/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F365BLD", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F155XLV", "no": 3, "personalCode": "F155XLV", "cui": "3107723890805", "docNumber": "3107723890805", "docType": "CUI", "fullName": "ARGUETA BATEN HEIDY ELIZABETH", "firstName": "HEIDY ELIZABETH", "lastName": "ARGUETA BATEN", "birthDate": "11/05/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F155XLV", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E353RUC", "no": 4, "personalCode": "E353RUC", "cui": "2000499922217", "docNumber": "2000499922217", "docType": "CUI", "fullName": "AYALA ARÉVALO JEFERSÓN JAVIER", "firstName": "JEFERSÓN JAVIER", "lastName": "AYALA ARÉVALO", "birthDate": "29/12/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E353RUC", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E359JKX", "no": 5, "personalCode": "E359JKX", "cui": "2001957512201", "docNumber": "2001957512201", "docType": "CUI", "fullName": "CENTENO LÓPEZ GABRIELA ROCIO", "firstName": "GABRIELA ROCIO", "lastName": "CENTENO LÓPEZ", "birthDate": "21/03/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E359JKX", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F198ZHK", "no": 6, "personalCode": "F198ZHK", "cui": "2005402542201", "docNumber": "2005402542201", "docType": "CUI", "fullName": "CRUZ PÉREZ YAZMIN MARISELA", "firstName": "YAZMIN MARISELA", "lastName": "CRUZ PÉREZ", "birthDate": "30/04/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F198ZHK", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-C917ZVB", "no": 7, "personalCode": "C917ZVB", "cui": "2003450012201", "docNumber": "2003450012201", "docType": "CUI", "fullName": "CRÚZ RAMÍREZ ALLAN FABRICIO", "firstName": "ALLAN FABRICIO", "lastName": "CRÚZ RAMÍREZ", "birthDate": "07/04/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C917ZVB", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E955SSQ", "no": 8, "personalCode": "E955SSQ", "cui": "2818800852201", "docNumber": "2818800852201", "docType": "CUI", "fullName": "CÁMBARA SURIANO KARLA LUCÍA", "firstName": "KARLA LUCÍA", "lastName": "CÁMBARA SURIANO", "birthDate": "25/09/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E955SSQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F893MNS", "no": 9, "personalCode": "F893MNS", "cui": "3425312472201", "docNumber": "3425312472201", "docType": "CUI", "fullName": "ESPINA VANEGAS MADELIN YISEL", "firstName": "MADELIN YISEL", "lastName": "ESPINA VANEGAS", "birthDate": "25/11/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F893MNS", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F933EJX", "no": 10, "personalCode": "F933EJX", "cui": "2000974072201", "docNumber": "2000974072201", "docType": "CUI", "fullName": "ESQUIVEL GUERRERO NATALY MELISSA", "firstName": "NATALY MELISSA", "lastName": "ESQUIVEL GUERRERO", "birthDate": "02/01/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F933EJX", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F082WQF", "no": 11, "personalCode": "F082WQF", "cui": "2174430952201", "docNumber": "2174430952201", "docType": "CUI", "fullName": "FERNÁNDEZ GARCÍA BRAYLIN ERALI", "firstName": "BRAYLIN ERALI", "lastName": "FERNÁNDEZ GARCÍA", "birthDate": "31/05/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F082WQF", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-E445KKR", "no": 12, "personalCode": "E445KKR", "cui": "2000414012201", "docNumber": "2000414012201", "docType": "CUI", "fullName": "FLORIÁN SALGUERO RUDY MARIO FERNANDO", "firstName": "RUDY MARIO FERNANDO", "lastName": "FLORIÁN SALGUERO", "birthDate": "15/01/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E445KKR", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E265CMG", "no": 13, "personalCode": "E265CMG", "cui": "2739788372203", "docNumber": "2739788372203", "docType": "CUI", "fullName": "GONZÁLEZ GARCÍA YULISSA NOHEMY", "firstName": "YULISSA NOHEMY", "lastName": "GONZÁLEZ GARCÍA", "birthDate": "20/09/2006", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E265CMG", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-D936IUV", "no": 14, "personalCode": "D936IUV", "cui": "2884170030608", "docNumber": "2884170030608", "docType": "CUI", "fullName": "GUZMÁN MONZÓN DIANA ELÍZABETH", "firstName": "DIANA ELÍZABETH", "lastName": "GUZMÁN MONZÓN", "birthDate": "13/06/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D936IUV", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-F737WSW", "no": 15, "personalCode": "F737WSW", "cui": "3024386450102", "docNumber": "3024386450102", "docType": "CUI", "fullName": "GÓMEZ ALEJANDRO JULISA JAMILET", "firstName": "JULISA JAMILET", "lastName": "GÓMEZ ALEJANDRO", "birthDate": "18/11/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F737WSW", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E965PPF", "no": 16, "personalCode": "E965PPF", "cui": "3021111230101", "docNumber": "3021111230101", "docType": "CUI", "fullName": "JIMÉNEZ CAAL DULCE MARÍA", "firstName": "DULCE MARÍA", "lastName": "JIMÉNEZ CAAL", "birthDate": "07/12/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E965PPF", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-D477YYD", "no": 17, "personalCode": "D477YYD", "cui": "2009127550101", "docNumber": "2009127550101", "docType": "CUI", "fullName": "JUMIQUE CATALÁN JUSTIN PAÚL", "firstName": "JUSTIN PAÚL", "lastName": "JUMIQUE CATALÁN", "birthDate": "20/02/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D477YYD", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E096ZKW", "no": 18, "personalCode": "E096ZKW", "cui": "2010308532201", "docNumber": "2010308532201", "docType": "CUI", "fullName": "LORENZANA LÉMUS ASHLEY DAYANNA", "firstName": "ASHLEY DAYANNA", "lastName": "LORENZANA LÉMUS", "birthDate": "31/07/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E096ZKW", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E749SHG", "no": 19, "personalCode": "E749SHG", "cui": "3424234952201", "docNumber": "3424234952201", "docType": "CUI", "fullName": "LÓPEZ CAMPO HAZLY ALEJANDRA", "firstName": "HAZLY ALEJANDRA", "lastName": "LÓPEZ CAMPO", "birthDate": "27/12/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E749SHG", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F070NJZ", "no": 20, "personalCode": "F070NJZ", "cui": "2004204882201", "docNumber": "2004204882201", "docType": "CUI", "fullName": "LÓPEZ ESCARATE ANDERSON EMANUEL", "firstName": "ANDERSON EMANUEL", "lastName": "LÓPEZ ESCARATE", "birthDate": "25/03/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F070NJZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F274SMG", "no": 21, "personalCode": "F274SMG", "cui": "2001193622201", "docNumber": "2001193622201", "docType": "CUI", "fullName": "LÓPEZ SALGUERO DYNA MARICELA", "firstName": "DYNA MARICELA", "lastName": "LÓPEZ SALGUERO", "birthDate": "27/01/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F274SMG", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F839DEN", "no": 22, "personalCode": "F839DEN", "cui": "2000422032201", "docNumber": "2000422032201", "docType": "CUI", "fullName": "LÓPEZ VALDEZ NATALY VANESA", "firstName": "NATALY VANESA", "lastName": "LÓPEZ VALDEZ", "birthDate": "15/11/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F839DEN", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F887CBI", "no": 23, "personalCode": "F887CBI", "cui": "3421439562201", "docNumber": "3421439562201", "docType": "CUI", "fullName": "MADRID GARCÍA LUIS FERNANDO", "firstName": "LUIS FERNANDO", "lastName": "MADRID GARCÍA", "birthDate": "08/11/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F887CBI", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E447EGP", "no": 24, "personalCode": "E447EGP", "cui": "2007027772201", "docNumber": "2007027772201", "docType": "CUI", "fullName": "MATEO VALENZUELA KATERIN VANESSA", "firstName": "KATERIN VANESSA", "lastName": "MATEO VALENZUELA", "birthDate": "16/06/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E447EGP", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F232BMX", "no": 25, "personalCode": "F232BMX", "cui": "3424741462201", "docNumber": "3424741462201", "docType": "CUI", "fullName": "ORDOÑEZ LÓPEZ MADELINE GISELA", "firstName": "MADELINE GISELA", "lastName": "ORDOÑEZ LÓPEZ", "birthDate": "22/11/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F232BMX", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G991BSP", "no": 26, "personalCode": "G991BSP", "cui": "2007010452201", "docNumber": "2007010452201", "docType": "CUI", "fullName": "PUAC JUMIQUE GUSTAVO ADOLFO", "firstName": "GUSTAVO ADOLFO", "lastName": "PUAC JUMIQUE", "birthDate": "22/05/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G991BSP", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G442PDA", "no": 27, "personalCode": "G442PDA", "cui": "2010312562201", "docNumber": "2010312562201", "docType": "CUI", "fullName": "PÉREZ  TIMAL KEVIN ARMANDO", "firstName": "KEVIN ARMANDO", "lastName": "PÉREZ TIMAL", "birthDate": "05/07/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G442PDA", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-D926TLR", "no": 28, "personalCode": "D926TLR", "cui": "3425445432201", "docNumber": "3425445432201", "docType": "CUI", "fullName": "PÉREZ HERNÁNDEZ ALBA GRISLENY", "firstName": "ALBA GRISLENY", "lastName": "PÉREZ HERNÁNDEZ", "birthDate": "26/08/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D926TLR", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-E133CAB", "no": 29, "personalCode": "E133CAB", "cui": "3424874852201", "docNumber": "3424874852201", "docType": "CUI", "fullName": "RETANA ORTEGA ELIZAMA ELIZABETH", "firstName": "ELIZAMA ELIZABETH", "lastName": "RETANA ORTEGA", "birthDate": "13/07/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E133CAB", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-F466EBN", "no": 30, "personalCode": "F466EBN", "cui": "2742665552201", "docNumber": "2742665552201", "docType": "CUI", "fullName": "SICÁ SALAZAR CRISTEL MISHEL", "firstName": "CRISTEL MISHEL", "lastName": "SICÁ SALAZAR", "birthDate": "12/11/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F466EBN", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E370EIA", "no": 31, "personalCode": "E370EIA", "cui": "2004188312201", "docNumber": "2004188312201", "docType": "CUI", "fullName": "SOTO DUBON KEYLA ELENA", "firstName": "KEYLA ELENA", "lastName": "SOTO DUBON", "birthDate": "15/01/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E370EIA", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G135ZFR", "no": 32, "personalCode": "G135ZFR", "cui": "2007010962201", "docNumber": "2007010962201", "docType": "CUI", "fullName": "SÁNCHEZ GARCÍA DENIS JOSÉ GABRIEL", "firstName": "DENIS JOSÉ GABRIEL", "lastName": "SÁNCHEZ GARCÍA", "birthDate": "07/06/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to A", "gradeLabel": "6to Perito Contador Sección A", "section": "Sección A", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G135ZFR", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-J844LBE", "no": 1, "personalCode": "J844LBE", "cui": "3817816822201", "docNumber": "3817816822201", "docType": "CUI", "fullName": "AGUILAR BLANCO BLANCA CAROLINA", "firstName": "BLANCA CAROLINA", "lastName": "AGUILAR BLANCO", "birthDate": "08/06/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Extranjero", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "J844LBE", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H272KUU", "no": 2, "personalCode": "H272KUU", "cui": "4047765740601", "docNumber": "4047765740601", "docType": "CUI", "fullName": "ALVARADO CARDONA KEVIN NORBERTO", "firstName": "KEVIN NORBERTO", "lastName": "ALVARADO CARDONA", "birthDate": "08/03/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H272KUU", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-I228WGR", "no": 3, "personalCode": "I228WGR", "cui": "2091946262201", "docNumber": "2091946262201", "docType": "CUI", "fullName": "ARÉVALO MORÁN KATERIN MISHEL", "firstName": "KATERIN MISHEL", "lastName": "ARÉVALO MORÁN", "birthDate": "02/06/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I228WGR", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G750RVZ", "no": 4, "personalCode": "G750RVZ", "cui": "2055926000101", "docNumber": "2055926000101", "docType": "CUI", "fullName": "CÁMBARA HERNÁNDEZ ROCÍO ASUCENA", "firstName": "ROCÍO ASUCENA", "lastName": "CÁMBARA HERNÁNDEZ", "birthDate": "09/08/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G750RVZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H062KEE", "no": 5, "personalCode": "H062KEE", "cui": "2126365962201", "docNumber": "2126365962201", "docType": "CUI", "fullName": "ESCOBAR VEGA KENIA MARCELA", "firstName": "KENIA MARCELA", "lastName": "ESCOBAR VEGA", "birthDate": "27/05/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H062KEE", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F378TFS", "no": 6, "personalCode": "F378TFS", "cui": "2028622751803", "docNumber": "2028622751803", "docType": "CUI", "fullName": "FERNANDEZ CUC KEVIN GUSTAVO", "firstName": "KEVIN GUSTAVO", "lastName": "FERNANDEZ CUC", "birthDate": "05/10/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F378TFS", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F997SCQ", "no": 7, "personalCode": "F997SCQ", "cui": "2115426362201", "docNumber": "2115426362201", "docType": "CUI", "fullName": "GONZÁLEZ VIRÚLA ANGEL ESTUARDO", "firstName": "ANGEL ESTUARDO", "lastName": "GONZÁLEZ VIRÚLA", "birthDate": "14/04/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F997SCQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G948BVK", "no": 8, "personalCode": "G948BVK", "cui": "2055169712201", "docNumber": "2055169712201", "docType": "CUI", "fullName": "HERNÁNDEZ GARCÍA MYNOR AROLDO", "firstName": "MYNOR AROLDO", "lastName": "HERNÁNDEZ GARCÍA", "birthDate": "22/07/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G948BVK", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-I840RWQ", "no": 9, "personalCode": "I840RWQ", "cui": "3650976832201", "docNumber": "3650976832201", "docType": "CUI", "fullName": "HERNÁNDEZ MARÍN PAULA CAMILA", "firstName": "PAULA CAMILA", "lastName": "HERNÁNDEZ MARÍN", "birthDate": "23/04/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I840RWQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-E546LHX", "no": 10, "personalCode": "E546LHX", "cui": "2089903722201", "docNumber": "2089903722201", "docType": "CUI", "fullName": "JIMÉNEZ ALEJANDRO DORLIN ARELY", "firstName": "DORLIN ARELY", "lastName": "JIMÉNEZ ALEJANDRO", "birthDate": "08/01/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E546LHX", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G085ZDR", "no": 11, "personalCode": "G085ZDR", "cui": "2075022772201", "docNumber": "2075022772201", "docType": "CUI", "fullName": "LÉMUS MARROQUÍN JEYSON OMAR", "firstName": "JEYSON OMAR", "lastName": "LÉMUS MARROQUÍN", "birthDate": "25/09/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G085ZDR", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-I947PSI", "no": 12, "personalCode": "I947PSI", "cui": "2105610762201", "docNumber": "2105610762201", "docType": "CUI", "fullName": "LÓPEZ CORDERO BERTA ISABEL", "firstName": "BERTA ISABEL", "lastName": "LÓPEZ CORDERO", "birthDate": "05/03/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I947PSI", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H888JWA", "no": 13, "personalCode": "H888JWA", "cui": "2049492892214", "docNumber": "2049492892214", "docType": "CUI", "fullName": "MARTINEZ VILLACORTA DARISSA ABIGAIL", "firstName": "DARISSA ABIGAIL", "lastName": "MARTINEZ VILLACORTA", "birthDate": "14/07/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H888JWA", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H057FVM", "no": 14, "personalCode": "H057FVM", "cui": "4047541042201", "docNumber": "4047541042201", "docType": "CUI", "fullName": "MARTÍNEZ RAMÍREZ JOSUÉ DANIEL", "firstName": "JOSUÉ DANIEL", "lastName": "MARTÍNEZ RAMÍREZ", "birthDate": "16/12/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H057FVM", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H971WEK", "no": 15, "personalCode": "H971WEK", "cui": "2750634882201", "docNumber": "2750634882201", "docType": "CUI", "fullName": "MATEO RAMÍREZ DARLY DAYANA", "firstName": "DARLY DAYANA", "lastName": "MATEO RAMÍREZ", "birthDate": "12/06/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H971WEK", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G055RUU", "no": 16, "personalCode": "G055RUU", "cui": "4184788992217", "docNumber": "4184788992217", "docType": "CUI", "fullName": "MATOZO ESQUIVEL KIMBERLY MARILIS", "firstName": "KIMBERLY MARILIS", "lastName": "MATOZO ESQUIVEL", "birthDate": "30/04/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Extranjero", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G055RUU", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H562GLS", "no": 17, "personalCode": "H562GLS", "cui": "2115427762201", "docNumber": "2115427762201", "docType": "CUI", "fullName": "MONZÓN ALDANA KEYLIN VANESSA", "firstName": "KEYLIN VANESSA", "lastName": "MONZÓN ALDANA", "birthDate": "27/04/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H562GLS", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H844TAN", "no": 18, "personalCode": "H844TAN", "cui": "2086644162201", "docNumber": "2086644162201", "docType": "CUI", "fullName": "MONZÓN LÓPEZ MARVIN ELIAS", "firstName": "MARVIN ELIAS", "lastName": "MONZÓN LÓPEZ", "birthDate": "18/11/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H844TAN", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H734NGH", "no": 19, "personalCode": "H734NGH", "cui": "2078386232201", "docNumber": "2078386232201", "docType": "CUI", "fullName": "MONZÓN PÉREZ NORMA AMARILIS", "firstName": "NORMA AMARILIS", "lastName": "MONZÓN PÉREZ", "birthDate": "14/09/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H734NGH", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G246JWX", "no": 20, "personalCode": "G246JWX", "cui": "2092623382201", "docNumber": "2092623382201", "docType": "CUI", "fullName": "MORALES ALVEÑO ANGEL EMANUEL", "firstName": "ANGEL EMANUEL", "lastName": "MORALES ALVEÑO", "birthDate": "01/03/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G246JWX", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G832LLT", "no": 21, "personalCode": "G832LLT", "cui": "2089898462201", "docNumber": "2089898462201", "docType": "CUI", "fullName": "MÉNDEZ ESCOBAR DIANA NICOLLE", "firstName": "DIANA NICOLLE", "lastName": "MÉNDEZ ESCOBAR", "birthDate": "26/01/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G832LLT", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H380PHM", "no": 22, "personalCode": "H380PHM", "cui": "2125842002201", "docNumber": "2125842002201", "docType": "CUI", "fullName": "MÉNDEZ LÓPEZ JULIO LUIS ELIAS", "firstName": "JULIO LUIS ELIAS", "lastName": "MÉNDEZ LÓPEZ", "birthDate": "07/06/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H380PHM", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-I730FII", "no": 23, "personalCode": "I730FII", "cui": "2055181842201", "docNumber": "2055181842201", "docType": "CUI", "fullName": "ORDOÑEZ PINEDA OSCAR DANIEL", "firstName": "OSCAR DANIEL", "lastName": "ORDOÑEZ PINEDA", "birthDate": "25/08/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I730FII", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H738PWN", "no": 24, "personalCode": "H738PWN", "cui": "2130781472201", "docNumber": "2130781472201", "docType": "CUI", "fullName": "PORTILLO PÉREZ ABNER VLADIMIR", "firstName": "ABNER VLADIMIR", "lastName": "PORTILLO PÉREZ", "birthDate": "08/07/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H738PWN", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G248HNN", "no": 25, "personalCode": "G248HNN", "cui": "2092614392201", "docNumber": "2092614392201", "docType": "CUI", "fullName": "PÉREZ ELÍAS WILLIAM ALEXANDER", "firstName": "WILLIAM ALEXANDER", "lastName": "PÉREZ ELÍAS", "birthDate": "09/02/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G248HNN", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H042FAB", "no": 26, "personalCode": "H042FAB", "cui": "2068726902201", "docNumber": "2068726902201", "docType": "CUI", "fullName": "PÉREZ LÓPEZ KATHERIN MARIANGÉL", "firstName": "KATHERIN MARIANGÉL", "lastName": "PÉREZ LÓPEZ", "birthDate": "19/10/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H042FAB", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H893YBD", "no": 27, "personalCode": "H893YBD", "cui": "2089906072201", "docNumber": "2089906072201", "docType": "CUI", "fullName": "RAMIREZ CRÚZ KATERIN PAOLA", "firstName": "KATERIN PAOLA", "lastName": "RAMIREZ CRÚZ", "birthDate": "25/01/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H893YBD", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-I150CTW", "no": 28, "personalCode": "I150CTW", "cui": "2086645212201", "docNumber": "2086645212201", "docType": "CUI", "fullName": "RAMOS OLIVARES JOSÉ ENRIQUE", "firstName": "JOSÉ ENRIQUE", "lastName": "RAMOS OLIVARES", "birthDate": "06/11/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I150CTW", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-D798MXD", "no": 29, "personalCode": "D798MXD", "cui": "2064575532201", "docNumber": "2064575532201", "docType": "CUI", "fullName": "RAMÍREZ HERNÁNDEZ ARLIN LISETH", "firstName": "ARLIN LISETH", "lastName": "RAMÍREZ HERNÁNDEZ", "birthDate": "27/09/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D798MXD", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H960GAY", "no": 30, "personalCode": "H960GAY", "cui": "2075010762201", "docNumber": "2075010762201", "docType": "CUI", "fullName": "RAMÍREZ OGALDES CRISTEL JIMENA", "firstName": "CRISTEL JIMENA", "lastName": "RAMÍREZ OGALDES", "birthDate": "30/09/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H960GAY", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H474EKY", "no": 31, "personalCode": "H474EKY", "cui": "2078389682201", "docNumber": "2078389682201", "docType": "CUI", "fullName": "RAMÍREZ RETANA LEYDI MIREYA", "firstName": "LEYDI MIREYA", "lastName": "RAMÍREZ RETANA", "birthDate": "10/11/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H474EKY", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-D087XTE", "no": 32, "personalCode": "D087XTE", "cui": "2068724022201", "docNumber": "2068724022201", "docType": "CUI", "fullName": "REVOLORIO LÓPEZ YOSTIN ISAAC", "firstName": "YOSTIN ISAAC", "lastName": "REVOLORIO LÓPEZ", "birthDate": "11/09/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D087XTE", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-J642QJN", "no": 33, "personalCode": "J642QJN", "cui": "2018220402201", "docNumber": "2018220402201", "docType": "CUI", "fullName": "ROMERO MONZÓN WILBER EDUARDO", "firstName": "WILBER EDUARDO", "lastName": "ROMERO MONZÓN", "birthDate": "08/10/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "J642QJN", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-J640SCK", "no": 34, "personalCode": "J640SCK", "cui": "2068731582201", "docNumber": "2068731582201", "docType": "CUI", "fullName": "RUANO CONTRERAS ROGER OBED", "firstName": "ROGER OBED", "lastName": "RUANO CONTRERAS", "birthDate": "11/10/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "J640SCK", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H126USI", "no": 35, "personalCode": "H126USI", "cui": "2124038772201", "docNumber": "2124038772201", "docType": "CUI", "fullName": "VÁSQUEZ GONZÁLEZ MELANI YOASLI", "firstName": "MELANI YOASLI", "lastName": "VÁSQUEZ GONZÁLEZ", "birthDate": "13/06/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H126USI", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G434LPN", "no": 36, "personalCode": "G434LPN", "cui": "2078405552201", "docNumber": "2078405552201", "docType": "CUI", "fullName": "ZUÑIGA REVOLORIO CESIA MAOLY", "firstName": "CESIA MAOLY", "lastName": "ZUÑIGA REVOLORIO", "birthDate": "22/11/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to B", "gradeLabel": "4to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G434LPN", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F268JVN", "no": 1, "personalCode": "F268JVN", "cui": "2743492720115", "docNumber": "2743492720115", "docType": "CUI", "fullName": "ANTONIO FLORES ANGEL GABRIEL", "firstName": "ANGEL GABRIEL", "lastName": "ANTONIO FLORES", "birthDate": "27/12/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F268JVN", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-H186AIS", "no": 2, "personalCode": "H186AIS", "cui": "2012409712201", "docNumber": "2012409712201", "docType": "CUI", "fullName": "CAMPOS RAMÍREZ YULISSA ALEJANDRA", "firstName": "YULISSA ALEJANDRA", "lastName": "CAMPOS RAMÍREZ", "birthDate": "24/08/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H186AIS", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F952RKZ", "no": 3, "personalCode": "F952RKZ", "cui": "2022714472201", "docNumber": "2022714472201", "docType": "CUI", "fullName": "CARDONA PÉREZ MAYLIN JASMIN", "firstName": "MAYLIN JASMIN", "lastName": "CARDONA PÉREZ", "birthDate": "06/12/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F952RKZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G076DRS", "no": 4, "personalCode": "G076DRS", "cui": "2029674090101", "docNumber": "2029674090101", "docType": "CUI", "fullName": "CASTILLO ROMERO JAKELYN ANDREA", "firstName": "JAKELYN ANDREA", "lastName": "CASTILLO ROMERO", "birthDate": "01/02/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G076DRS", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F733HXY", "no": 5, "personalCode": "F733HXY", "cui": "2006347042202", "docNumber": "2006347042202", "docType": "CUI", "fullName": "CHIQUIN FLORES LONDRI DIANA MARELI", "firstName": "LONDRI DIANA MARELI", "lastName": "CHIQUIN FLORES", "birthDate": "20/06/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F733HXY", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F346JCQ", "no": 6, "personalCode": "F346JCQ", "cui": "2059591212201", "docNumber": "2059591212201", "docType": "CUI", "fullName": "CRUZ HERNÁNDEZ SHERLIN MAYTE", "firstName": "SHERLIN MAYTE", "lastName": "CRUZ HERNÁNDEZ", "birthDate": "31/12/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F346JCQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G358DQU", "no": 7, "personalCode": "G358DQU", "cui": "2007009952201", "docNumber": "2007009952201", "docType": "CUI", "fullName": "CRÚZ RIVERA JAQUELINE JAZMÍN", "firstName": "JAQUELINE JAZMÍN", "lastName": "CRÚZ RIVERA", "birthDate": "18/06/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G358DQU", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F592MZZ", "no": 8, "personalCode": "F592MZZ", "cui": "2038186602201", "docNumber": "2038186602201", "docType": "CUI", "fullName": "CUYUCH GUEVARA CELESTE ESPERANZA", "firstName": "CELESTE ESPERANZA", "lastName": "CUYUCH GUEVARA", "birthDate": "08/05/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F592MZZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F679DJD", "no": 9, "personalCode": "F679DJD", "cui": "2038181482201", "docNumber": "2038181482201", "docType": "CUI", "fullName": "GASPARICO SARCEÑO ANGEL ANDRE", "firstName": "ANGEL ANDRE", "lastName": "GASPARICO SARCEÑO", "birthDate": "08/04/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F679DJD", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G736GCK", "no": 10, "personalCode": "G736GCK", "cui": "2037337380101", "docNumber": "2037337380101", "docType": "CUI", "fullName": "GODOY MORALES EMILY JAHARA", "firstName": "EMILY JAHARA", "lastName": "GODOY MORALES", "birthDate": "05/03/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G736GCK", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-E245YFJ", "no": 11, "personalCode": "E245YFJ", "cui": "2001206112201", "docNumber": "2001206112201", "docType": "CUI", "fullName": "GONZÁLEZ VIRÚLA MANUEL DE JESÚS", "firstName": "MANUEL DE JESÚS", "lastName": "GONZÁLEZ VIRÚLA", "birthDate": "12/02/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E245YFJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G827YJS", "no": 12, "personalCode": "G827YJS", "cui": "2029160572201", "docNumber": "2029160572201", "docType": "CUI", "fullName": "GREGORIO PALMA KEVIN GEOVANY", "firstName": "KEVIN GEOVANY", "lastName": "GREGORIO PALMA", "birthDate": "16/01/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G827YJS", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H056EQJ", "no": 13, "personalCode": "H056EQJ", "cui": "2012413822201", "docNumber": "2012413822201", "docType": "CUI", "fullName": "GRIJALVA CARRILLO JUAN JOSÉ", "firstName": "JUAN JOSÉ", "lastName": "GRIJALVA CARRILLO", "birthDate": "03/09/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H056EQJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F582KSR", "no": 14, "personalCode": "F582KSR", "cui": "2012412772201", "docNumber": "2012412772201", "docType": "CUI", "fullName": "GUDIEL GARCÍA JULIO JOSÉ", "firstName": "JULIO JOSÉ", "lastName": "GUDIEL GARCÍA", "birthDate": "09/09/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F582KSR", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-D593DUK", "no": 15, "personalCode": "D593DUK", "cui": "2010317012201", "docNumber": "2010317012201", "docType": "CUI", "fullName": "HERNÁNDEZ CRUZ VALERIN DAYANA", "firstName": "VALERIN DAYANA", "lastName": "HERNÁNDEZ CRUZ", "birthDate": "08/08/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D593DUK", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E428ZTW", "no": 16, "personalCode": "E428ZTW", "cui": "3730184522201", "docNumber": "3730184522201", "docType": "CUI", "fullName": "HERNÁNDEZ HERNÁNDEZ JEYSON ALEXIS", "firstName": "JEYSON ALEXIS", "lastName": "HERNÁNDEZ HERNÁNDEZ", "birthDate": "06/10/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E428ZTW", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E266JLH", "no": 17, "personalCode": "E266JLH", "cui": "3425083262201", "docNumber": "3425083262201", "docType": "CUI", "fullName": "HERNÁNDEZ MEDRANO AXEL ANIBAL", "firstName": "AXEL ANIBAL", "lastName": "HERNÁNDEZ MEDRANO", "birthDate": "12/04/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E266JLH", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-D829ULW", "no": 18, "personalCode": "D829ULW", "cui": "2010329612201", "docNumber": "2010329612201", "docType": "CUI", "fullName": "LÓPEZ PÉREZ CRISTIAN EDUARDO", "firstName": "CRISTIAN EDUARDO", "lastName": "LÓPEZ PÉREZ", "birthDate": "05/08/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D829ULW", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E796MCQ", "no": 19, "personalCode": "E796MCQ", "cui": "3011936300101", "docNumber": "3011936300101", "docType": "CUI", "fullName": "LÓPEZ VASQUEZ JOSE DANIEL", "firstName": "JOSE DANIEL", "lastName": "LÓPEZ VASQUEZ", "birthDate": "13/03/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E796MCQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-H544FWA", "no": 20, "personalCode": "H544FWA", "cui": "2015410170606", "docNumber": "2015410170606", "docType": "CUI", "fullName": "MANSILLA HERNÁNDEZ JUNIOR ALEXANDER", "firstName": "JUNIOR ALEXANDER", "lastName": "MANSILLA HERNÁNDEZ", "birthDate": "28/10/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H544FWA", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G247LXP", "no": 21, "personalCode": "G247LXP", "cui": "2041815342203", "docNumber": "2041815342203", "docType": "CUI", "fullName": "MARROQUIN RAMÍREZ SEBASTIAN EDUARDO", "firstName": "SEBASTIAN EDUARDO", "lastName": "MARROQUIN RAMÍREZ", "birthDate": "19/05/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G247LXP", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G579PFD", "no": 22, "personalCode": "G579PFD", "cui": "2015643942201", "docNumber": "2015643942201", "docType": "CUI", "fullName": "MARTÍNEZ MÉNDEZ RONAL MANUEL", "firstName": "RONAL MANUEL", "lastName": "MARTÍNEZ MÉNDEZ", "birthDate": "17/09/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G579PFD", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F935ABD", "no": 23, "personalCode": "F935ABD", "cui": "2026439722201", "docNumber": "2026439722201", "docType": "CUI", "fullName": "MONZÓN MATEO FATIMA FERNANDA", "firstName": "FATIMA FERNANDA", "lastName": "MONZÓN MATEO", "birthDate": "19/01/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F935ABD", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-C321EUI", "no": 24, "personalCode": "C321EUI", "cui": "2791156602201", "docNumber": "2791156602201", "docType": "CUI", "fullName": "MONZÓN RAMOS DARLYN MELINA", "firstName": "DARLYN MELINA", "lastName": "MONZÓN RAMOS", "birthDate": "10/07/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C321EUI", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-D167RWG", "no": 25, "personalCode": "D167RWG", "cui": "2034210862201", "docNumber": "2034210862201", "docType": "CUI", "fullName": "MÉNDEZ RAMIREZ NEIBY CLARITA", "firstName": "NEIBY CLARITA", "lastName": "MÉNDEZ RAMIREZ", "birthDate": "09/03/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D167RWG", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G890VCN", "no": 26, "personalCode": "G890VCN", "cui": "2106831392001", "docNumber": "2106831392001", "docType": "CUI", "fullName": "ORELLANA LÓPEZ LESLIN YORLIN GABRIELA", "firstName": "LESLIN YORLIN GABRIELA", "lastName": "ORELLANA LÓPEZ", "birthDate": "02/06/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G890VCN", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G134LLH", "no": 27, "personalCode": "G134LLH", "cui": "2015971952203", "docNumber": "2015971952203", "docType": "CUI", "fullName": "PALMA VANEGAS PEDRO PABLO", "firstName": "PEDRO PABLO", "lastName": "PALMA VANEGAS", "birthDate": "20/10/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G134LLH", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-I249MDL", "no": 28, "personalCode": "I249MDL", "cui": "2041535732201", "docNumber": "2041535732201", "docType": "CUI", "fullName": "POLANCO RAMÍREZ KRISTOPER ERICK", "firstName": "KRISTOPER ERICK", "lastName": "POLANCO RAMÍREZ", "birthDate": "12/05/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I249MDL", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-C320NKM", "no": 29, "personalCode": "C320NKM", "cui": "2034189992201", "docNumber": "2034189992201", "docType": "CUI", "fullName": "RAMOS GARCÍA MARÍA FERNANDA", "firstName": "MARÍA FERNANDA", "lastName": "RAMOS GARCÍA", "birthDate": "24/02/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C320NKM", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F392SNV", "no": 30, "personalCode": "F392SNV", "cui": "2020723392201", "docNumber": "2020723392201", "docType": "CUI", "fullName": "RAMÍREZ RAMÍREZ GERSON ALEXANDER", "firstName": "GERSON ALEXANDER", "lastName": "RAMÍREZ RAMÍREZ", "birthDate": "26/10/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F392SNV", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G354LJB", "no": 31, "personalCode": "G354LJB", "cui": "2884735902201", "docNumber": "2884735902201", "docType": "CUI", "fullName": "RAYMUNDO HERNÁNDEZ YOSTÍN YARELL", "firstName": "YOSTÍN YARELL", "lastName": "RAYMUNDO HERNÁNDEZ", "birthDate": "03/08/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G354LJB", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-G236SYC", "no": 32, "personalCode": "G236SYC", "cui": "2020734912201", "docNumber": "2020734912201", "docType": "CUI", "fullName": "SALAZAR LIMA ANGEL OTTONIEL", "firstName": "ANGEL OTTONIEL", "lastName": "SALAZAR LIMA", "birthDate": "10/11/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G236SYC", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-E063QVT", "no": 33, "personalCode": "E063QVT", "cui": "3425565252201", "docNumber": "3425565252201", "docType": "CUI", "fullName": "SALAZAR POOU GENESIS GALILEA", "firstName": "GENESIS GALILEA", "lastName": "SALAZAR POOU", "birthDate": "17/08/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E063QVT", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-I626FVY", "no": 34, "personalCode": "I626FVY", "cui": "2027013952202", "docNumber": "2027013952202", "docType": "CUI", "fullName": "SARCEÑO VIRULA EDWIN GEOVANNY", "firstName": "EDWIN GEOVANNY", "lastName": "SARCEÑO VIRULA", "birthDate": "29/06/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I626FVY", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H670PSE", "no": 35, "personalCode": "H670PSE", "cui": "2031386782201", "docNumber": "2031386782201", "docType": "CUI", "fullName": "SICÁ MARTÍNEZ CARLOS DANIEL", "firstName": "CARLOS DANIEL", "lastName": "SICÁ MARTÍNEZ", "birthDate": "13/02/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H670PSE", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-I226MJS", "no": 36, "personalCode": "I226MJS", "cui": "2046589692201", "docNumber": "2046589692201", "docType": "CUI", "fullName": "ZÚÑIGA GARCÍA EDVIN AGUSTIN", "firstName": "EDVIN AGUSTIN", "lastName": "ZÚÑIGA GARCÍA", "birthDate": "19/07/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to B", "gradeLabel": "5to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I226MJS", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F496EYN", "no": 1, "personalCode": "F496EYN", "cui": "3433551912217", "docNumber": "3433551912217", "docType": "CUI", "fullName": "ALBEÑO GARCÍA FERNANDO ESTEBAN", "firstName": "FERNANDO ESTEBAN", "lastName": "ALBEÑO GARCÍA", "birthDate": "01/10/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F496EYN", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E874BYP", "no": 2, "personalCode": "E874BYP", "cui": "3425760702201", "docNumber": "3425760702201", "docType": "CUI", "fullName": "BARRERA CRÚZ NURIAN BANESA", "firstName": "NURIAN BANESA", "lastName": "BARRERA CRÚZ", "birthDate": "11/03/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E874BYP", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-G034KGI", "no": 3, "personalCode": "G034KGI", "cui": "3000038380101", "docNumber": "3000038380101", "docType": "CUI", "fullName": "BARRERA VELÁSQUEZ ERICK MARCO MIGUEL", "firstName": "ERICK MARCO MIGUEL", "lastName": "BARRERA VELÁSQUEZ", "birthDate": "04/06/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G034KGI", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E292HWM", "no": 4, "personalCode": "E292HWM", "cui": "2001197452201", "docNumber": "2001197452201", "docType": "CUI", "fullName": "CASTILLO ALAY EMILY MARÍA REGINA", "firstName": "EMILY MARÍA REGINA", "lastName": "CASTILLO ALAY", "birthDate": "07/02/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E292HWM", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G466CUR", "no": 5, "personalCode": "G466CUR", "cui": "2878405732201", "docNumber": "2878405732201", "docType": "CUI", "fullName": "CRÚZ MATEO EVELYN JOHANA", "firstName": "EVELYN JOHANA", "lastName": "CRÚZ MATEO", "birthDate": "27/02/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G466CUR", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-H378EHY", "no": 6, "personalCode": "H378EHY", "cui": "2007024752201", "docNumber": "2007024752201", "docType": "CUI", "fullName": "FALLA GUERRERO JUAN FRANCISCO", "firstName": "JUAN FRANCISCO", "lastName": "FALLA GUERRERO", "birthDate": "18/06/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H378EHY", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F832WQH", "no": 7, "personalCode": "F832WQH", "cui": "2001204842201", "docNumber": "2001204842201", "docType": "CUI", "fullName": "FLORES MÉNDEZ AARÓN OSWALDO", "firstName": "AARÓN OSWALDO", "lastName": "FLORES MÉNDEZ", "birthDate": "20/02/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F832WQH", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E361SPE", "no": 8, "personalCode": "E361SPE", "cui": "3422163842201", "docNumber": "3422163842201", "docType": "CUI", "fullName": "FLORIÁN VALENZUELA ESTEFANY NOHEMÍ", "firstName": "ESTEFANY NOHEMÍ", "lastName": "FLORIÁN VALENZUELA", "birthDate": "07/03/2006", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E361SPE", "grades": {}, "evaluations": {}, "activities": {}, "age": "20 años"}, {"id": "stu-sire-C871TIJ", "no": 9, "personalCode": "C871TIJ", "cui": "3424983712201", "docNumber": "3424983712201", "docType": "CUI", "fullName": "GARRIDO CRÚZ ANA LUCIA", "firstName": "ANA LUCIA", "lastName": "GARRIDO CRÚZ", "birthDate": "11/07/2004", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C871TIJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "22 años"}, {"id": "stu-sire-F772UWE", "no": 10, "personalCode": "F772UWE", "cui": "2005399812201", "docNumber": "2005399812201", "docType": "CUI", "fullName": "GIRÓN PÉREZ EDWIN FERNANDO", "firstName": "EDWIN FERNANDO", "lastName": "GIRÓN PÉREZ", "birthDate": "12/06/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F772UWE", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F245GKZ", "no": 11, "personalCode": "F245GKZ", "cui": "2012408152201", "docNumber": "2012408152201", "docType": "CUI", "fullName": "GODOY MORALES EMELY YAMILETH", "firstName": "EMELY YAMILETH", "lastName": "GODOY MORALES", "birthDate": "20/08/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F245GKZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E192HTH", "no": 12, "personalCode": "E192HTH", "cui": "2008892220101", "docNumber": "2008892220101", "docType": "CUI", "fullName": "GONZÁLEZ LAZARO ROCIO NOEMY", "firstName": "ROCIO NOEMY", "lastName": "GONZÁLEZ LAZARO", "birthDate": "18/06/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E192HTH", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E839SKG", "no": 13, "personalCode": "E839SKG", "cui": "2833625882201", "docNumber": "2833625882201", "docType": "CUI", "fullName": "GRIJALVA GARCÍA KAREN DAYANA", "firstName": "KAREN DAYANA", "lastName": "GRIJALVA GARCÍA", "birthDate": "02/10/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E839SKG", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-D373PGJ", "no": 14, "personalCode": "D373PGJ", "cui": "2845634472201", "docNumber": "2845634472201", "docType": "CUI", "fullName": "HERNÁNDEZ CRUZ ANDERSON FERNANDO", "firstName": "ANDERSON FERNANDO", "lastName": "HERNÁNDEZ CRUZ", "birthDate": "15/08/2006", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D373PGJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "20 años"}, {"id": "stu-sire-D983ZSD", "no": 15, "personalCode": "D983ZSD", "cui": "2000410612201", "docNumber": "2000410612201", "docType": "CUI", "fullName": "HERNÁNDEZ Y HERNÁNDEZ LIGIA ESMERALDA", "firstName": "HERNÁNDEZ LIGIA ESMERALDA", "lastName": "HERNÁNDEZ Y", "birthDate": "04/12/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D983ZSD", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E856FHT", "no": 16, "personalCode": "E856FHT", "cui": "3429540752210", "docNumber": "3429540752210", "docType": "CUI", "fullName": "LIMA GODOY LESLY LUCÍA", "firstName": "LESLY LUCÍA", "lastName": "LIMA GODOY", "birthDate": "27/10/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E856FHT", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E867TQA", "no": 17, "personalCode": "E867TQA", "cui": "3425760382201", "docNumber": "3425760382201", "docType": "CUI", "fullName": "LÓPEZ CRUZ EVELYN IDANIA", "firstName": "EVELYN IDANIA", "lastName": "LÓPEZ CRUZ", "birthDate": "27/08/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E867TQA", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-C221IRP", "no": 18, "personalCode": "C221IRP", "cui": "3422779012201", "docNumber": "3422779012201", "docType": "CUI", "fullName": "LÓPEZ GARCÍA KAREN NAYELI", "firstName": "KAREN NAYELI", "lastName": "LÓPEZ GARCÍA", "birthDate": "26/01/2001", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C221IRP", "grades": {}, "evaluations": {}, "activities": {}, "age": "25 años"}, {"id": "stu-sire-E276CAL", "no": 19, "personalCode": "E276CAL", "cui": "2886875662201", "docNumber": "2886875662201", "docType": "CUI", "fullName": "LÓPEZ OLIVARES TANIA ELIZABETH", "firstName": "TANIA ELIZABETH", "lastName": "LÓPEZ OLIVARES", "birthDate": "26/05/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E276CAL", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-G755XHZ", "no": 20, "personalCode": "G755XHZ", "cui": "3425793472201", "docNumber": "3425793472201", "docType": "CUI", "fullName": "LÓPEZ ORTÍZ NATALI GABRIELA", "firstName": "NATALI GABRIELA", "lastName": "LÓPEZ ORTÍZ", "birthDate": "07/07/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G755XHZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-E673DZJ", "no": 21, "personalCode": "E673DZJ", "cui": "2012409632201", "docNumber": "2012409632201", "docType": "CUI", "fullName": "MONZÓN ORDOÑEZ ASHLY GABRIELA", "firstName": "ASHLY GABRIELA", "lastName": "MONZÓN ORDOÑEZ", "birthDate": "04/07/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E673DZJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-H273SQI", "no": 22, "personalCode": "H273SQI", "cui": "2008434942101", "docNumber": "2008434942101", "docType": "CUI", "fullName": "MORÁN CARDONA LUIS ANGEL", "firstName": "LUIS ANGEL", "lastName": "MORÁN CARDONA", "birthDate": "01/07/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H273SQI", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E840MSM", "no": 23, "personalCode": "E840MSM", "cui": "3425353902201", "docNumber": "3425353902201", "docType": "CUI", "fullName": "MORÁN CARDONA ROCÍO DE LOS ANGELES", "firstName": "ROCÍO DE LOS ANGELES", "lastName": "MORÁN CARDONA", "birthDate": "04/06/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E840MSM", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-F852CJK", "no": 24, "personalCode": "F852CJK", "cui": "3425358112201", "docNumber": "3425358112201", "docType": "CUI", "fullName": "MÉNDEZ ALEJANDRO JOSÉ PABLO", "firstName": "JOSÉ PABLO", "lastName": "MÉNDEZ ALEJANDRO", "birthDate": "19/06/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F852CJK", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-F168MHN", "no": 25, "personalCode": "F168MHN", "cui": "2004208952201", "docNumber": "2004208952201", "docType": "CUI", "fullName": "OLIVARES LÓPEZ SILVIA", "firstName": "SILVIA", "lastName": "OLIVARES LÓPEZ", "birthDate": "31/05/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F168MHN", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E869FLF", "no": 26, "personalCode": "E869FLF", "cui": "2866642402201", "docNumber": "2866642402201", "docType": "CUI", "fullName": "PÉREZ ORDOÑEZ CRISTOBAL FERNANDO", "firstName": "CRISTOBAL FERNANDO", "lastName": "PÉREZ ORDOÑEZ", "birthDate": "25/07/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E869FLF", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-D337SXS", "no": 27, "personalCode": "D337SXS", "cui": "2003443582201", "docNumber": "2003443582201", "docType": "CUI", "fullName": "PÉREZ RAMÍREZ EDGAR IVAN", "firstName": "EDGAR IVAN", "lastName": "PÉREZ RAMÍREZ", "birthDate": "16/04/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D337SXS", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E958FLB", "no": 28, "personalCode": "E958FLB", "cui": "2773409262201", "docNumber": "2773409262201", "docType": "CUI", "fullName": "QUIEJ PÉREZ CHELSEA ADANELLY", "firstName": "CHELSEA ADANELLY", "lastName": "QUIEJ PÉREZ", "birthDate": "12/12/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E958FLB", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E370JQN", "no": 29, "personalCode": "E370JQN", "cui": "2007016142201", "docNumber": "2007016142201", "docType": "CUI", "fullName": "RAMOS PÉREZ LIBNY IVETH", "firstName": "LIBNY IVETH", "lastName": "RAMOS PÉREZ", "birthDate": "07/06/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E370JQN", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E842TST", "no": 30, "personalCode": "E842TST", "cui": "2005408072201", "docNumber": "2005408072201", "docType": "CUI", "fullName": "ROJAS GAMBOA CARLOS EMMANUEL", "firstName": "CARLOS EMMANUEL", "lastName": "ROJAS GAMBOA", "birthDate": "05/06/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E842TST", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F838LPP", "no": 31, "personalCode": "F838LPP", "cui": "2749966932207", "docNumber": "2749966932207", "docType": "CUI", "fullName": "SANTOS CORTÉZ CÉSAR ALEXANDER", "firstName": "CÉSAR ALEXANDER", "lastName": "SANTOS CORTÉZ", "birthDate": "30/06/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F838LPP", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E128BYU", "no": 32, "personalCode": "E128BYU", "cui": "", "docNumber": "", "docType": "CUI", "fullName": "SÁNCHEZ MENJÍVAR ELIAS ABRAHAM", "firstName": "ELIAS ABRAHAM", "lastName": "SÁNCHEZ MENJÍVAR", "birthDate": "31/05/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Extranjero", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E128BYU", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-F993BRU", "no": 33, "personalCode": "F993BRU", "cui": "2007012822201", "docNumber": "2007012822201", "docType": "CUI", "fullName": "TEPEQUE LÓPEZ ALISSON SCARLETH", "firstName": "ALISSON SCARLETH", "lastName": "TEPEQUE LÓPEZ", "birthDate": "02/06/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F993BRU", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F189YIJ", "no": 34, "personalCode": "F189YIJ", "cui": "2001937912201", "docNumber": "2001937912201", "docType": "CUI", "fullName": "TOBAR PÉREZ ADONIS ESAÚ", "firstName": "ADONIS ESAÚ", "lastName": "TOBAR PÉREZ", "birthDate": "27/02/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F189YIJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-D658CKG", "no": 35, "personalCode": "D658CKG", "cui": "2743822452206", "docNumber": "2743822452206", "docType": "CUI", "fullName": "VENTURA CORTÉZ FERNANDO AMADEO", "firstName": "FERNANDO AMADEO", "lastName": "VENTURA CORTÉZ", "birthDate": "07/10/2006", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to B", "gradeLabel": "6to Perito Contador Sección B", "section": "Sección B", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D658CKG", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-F526YJG", "no": 1, "personalCode": "F526YJG", "cui": "2038178852201", "docNumber": "2038178852201", "docType": "CUI", "fullName": "ALEJANDRO GODOY JUAN JOSÉ HERNÁN", "firstName": "JUAN JOSÉ HERNÁN", "lastName": "ALEJANDRO GODOY", "birthDate": "07/04/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F526YJG", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H998XKG", "no": 2, "personalCode": "H998XKG", "cui": "2207967932201", "docNumber": "2207967932201", "docType": "CUI", "fullName": "ANAVIZA RAMÍREZ BRUS RONALDO", "firstName": "BRUS RONALDO", "lastName": "ANAVIZA RAMÍREZ", "birthDate": "18/10/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H998XKG", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H536IPM", "no": 3, "personalCode": "H536IPM", "cui": "2044079312201", "docNumber": "2044079312201", "docType": "CUI", "fullName": "ARÉVALO RAMÍREZ DYLAN ALEXIS", "firstName": "DYLAN ALEXIS", "lastName": "ARÉVALO RAMÍREZ", "birthDate": "14/05/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H536IPM", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H255RQA", "no": 4, "personalCode": "H255RQA", "cui": "2068733442201", "docNumber": "2068733442201", "docType": "CUI", "fullName": "BATEN FLORES BERTA ROSSANA", "firstName": "BERTA ROSSANA", "lastName": "BATEN FLORES", "birthDate": "22/09/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H255RQA", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F736XQC", "no": 5, "personalCode": "F736XQC", "cui": "3423201812201", "docNumber": "3423201812201", "docType": "CUI", "fullName": "CARDONA GODOY AMALIA REBECA", "firstName": "AMALIA REBECA", "lastName": "CARDONA GODOY", "birthDate": "26/05/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F736XQC", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-G972LBX", "no": 6, "personalCode": "G972LBX", "cui": "2001942672201", "docNumber": "2001942672201", "docType": "CUI", "fullName": "CONTRERAS GODOY ALEJANDRO JOSÉ", "firstName": "ALEJANDRO JOSÉ", "lastName": "CONTRERAS GODOY", "birthDate": "11/02/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G972LBX", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G445EMD", "no": 7, "personalCode": "G445EMD", "cui": "2115423932201", "docNumber": "2115423932201", "docType": "CUI", "fullName": "CORTEZ MONZÓN CARLOS FERNANDO", "firstName": "CARLOS FERNANDO", "lastName": "CORTEZ MONZÓN", "birthDate": "20/04/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G445EMD", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F094MFJ", "no": 8, "personalCode": "F094MFJ", "cui": "2010321982201", "docNumber": "2010321982201", "docType": "CUI", "fullName": "CRUZ LÓPEZ MÓNICA DAYANA", "firstName": "MÓNICA DAYANA", "lastName": "CRUZ LÓPEZ", "birthDate": "20/07/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F094MFJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-H392LPZ", "no": 9, "personalCode": "H392LPZ", "cui": "2092628342201", "docNumber": "2092628342201", "docType": "CUI", "fullName": "CRÚZ CRUZ BERLIN SUCELY", "firstName": "BERLIN SUCELY", "lastName": "CRÚZ CRUZ", "birthDate": "19/02/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H392LPZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H248NLT", "no": 10, "personalCode": "H248NLT", "cui": "2064585172201", "docNumber": "2064585172201", "docType": "CUI", "fullName": "CRÚZ LÓPEZ YANCARLOS JOSUÉ", "firstName": "YANCARLOS JOSUÉ", "lastName": "CRÚZ LÓPEZ", "birthDate": "10/09/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H248NLT", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H751INM", "no": 11, "personalCode": "H751INM", "cui": "2089895362201", "docNumber": "2089895362201", "docType": "CUI", "fullName": "GARCÍA ALEJANDRO ANYI GUADALUPE", "firstName": "ANYI GUADALUPE", "lastName": "GARCÍA ALEJANDRO", "birthDate": "11/12/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H751INM", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-J844CWF", "no": 12, "personalCode": "J844CWF", "cui": "4047759772201", "docNumber": "4047759772201", "docType": "CUI", "fullName": "GARCÍA SOTO OSCAR IVÁN", "firstName": "OSCAR IVÁN", "lastName": "GARCÍA SOTO", "birthDate": "04/02/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "J844CWF", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-I029BCK", "no": 13, "personalCode": "I029BCK", "cui": "2105616102201", "docNumber": "2105616102201", "docType": "CUI", "fullName": "GODOY LUNA ALMA VIRGINIA", "firstName": "ALMA VIRGINIA", "lastName": "GODOY LUNA", "birthDate": "14/03/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I029BCK", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H266WPW", "no": 14, "personalCode": "H266WPW", "cui": "2105607892201", "docNumber": "2105607892201", "docType": "CUI", "fullName": "LÓPEZ ALEJANDRO GESLER DANILO", "firstName": "GESLER DANILO", "lastName": "LÓPEZ ALEJANDRO", "birthDate": "02/03/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H266WPW", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G292TJS", "no": 15, "personalCode": "G292TJS", "cui": "2110245112201", "docNumber": "2110245112201", "docType": "CUI", "fullName": "LÓPEZ CORTEZ JELIN YANIRA", "firstName": "JELIN YANIRA", "lastName": "LÓPEZ CORTEZ", "birthDate": "27/03/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G292TJS", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G632RUW", "no": 16, "personalCode": "G632RUW", "cui": "2075023152201", "docNumber": "2075023152201", "docType": "CUI", "fullName": "LÓPEZ DE LA CRUZ LEVY NAHÚM", "firstName": "LA CRUZ LEVY NAHÚM", "lastName": "LÓPEZ DE", "birthDate": "27/10/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G632RUW", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G981QUX", "no": 17, "personalCode": "G981QUX", "cui": "2031372802201", "docNumber": "2031372802201", "docType": "CUI", "fullName": "LÓPEZ HERNÁNDEZ OSEAS JOSUÉ", "firstName": "OSEAS JOSUÉ", "lastName": "LÓPEZ HERNÁNDEZ", "birthDate": "02/02/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G981QUX", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F138MCZ", "no": 18, "personalCode": "F138MCZ", "cui": "2022713312201", "docNumber": "2022713312201", "docType": "CUI", "fullName": "MARROQUÍN MÉNDEZ ANTONY JAVIER", "firstName": "ANTONY JAVIER", "lastName": "MARROQUÍN MÉNDEZ", "birthDate": "08/12/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F138MCZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-I128FKG", "no": 19, "personalCode": "I128FKG", "cui": "2082230290909", "docNumber": "2082230290909", "docType": "CUI", "fullName": "MOLINA CALDERON GONZALO ALEJANDRO", "firstName": "GONZALO ALEJANDRO", "lastName": "MOLINA CALDERON", "birthDate": "12/12/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I128FKG", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G379WGQ", "no": 20, "personalCode": "G379WGQ", "cui": "2118883701413", "docNumber": "2118883701413", "docType": "CUI", "fullName": "MORALES CETO CHRISTOPHER YARIN", "firstName": "CHRISTOPHER YARIN", "lastName": "MORALES CETO", "birthDate": "29/04/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G379WGQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F892QPB", "no": 21, "personalCode": "F892QPB", "cui": "2018213892201", "docNumber": "2018213892201", "docType": "CUI", "fullName": "MÉNDEZ OSCAR DAVID", "firstName": "DAVID", "lastName": "MÉNDEZ OSCAR", "birthDate": "23/09/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F892QPB", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G747MJQ", "no": 22, "personalCode": "G747MJQ", "cui": "2078388362201", "docNumber": "2078388362201", "docType": "CUI", "fullName": "ORDOÑEZ VELASQUEZ NORVYN JANCARLO", "firstName": "NORVYN JANCARLO", "lastName": "ORDOÑEZ VELASQUEZ", "birthDate": "16/11/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G747MJQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G991ABC", "no": 23, "personalCode": "G991ABC", "cui": "2068719962201", "docNumber": "2068719962201", "docType": "CUI", "fullName": "ORDOÑEZ VELÁSQUEZ BEYKER ELY", "firstName": "BEYKER ELY", "lastName": "ORDOÑEZ VELÁSQUEZ", "birthDate": "30/09/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G991ABC", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G830FWP", "no": 24, "personalCode": "G830FWP", "cui": "2068730772201", "docNumber": "2068730772201", "docType": "CUI", "fullName": "PÉREZ LÓPEZ YEFERSON TOMAS", "firstName": "YEFERSON TOMAS", "lastName": "PÉREZ LÓPEZ", "birthDate": "22/09/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G830FWP", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F573DBF", "no": 25, "personalCode": "F573DBF", "cui": "3425692952201", "docNumber": "3425692952201", "docType": "CUI", "fullName": "RAMÍREZ HERNÁNDEZ ARIANA RUBÍ", "firstName": "ARIANA RUBÍ", "lastName": "RAMÍREZ HERNÁNDEZ", "birthDate": "04/11/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F573DBF", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-H784EIL", "no": 26, "personalCode": "H784EIL", "cui": "2078402452201", "docNumber": "2078402452201", "docType": "CUI", "fullName": "RAMÍREZ LÓPEZ ELIAS ABIMAÉL", "firstName": "ELIAS ABIMAÉL", "lastName": "RAMÍREZ LÓPEZ", "birthDate": "04/12/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H784EIL", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-E942ZSL", "no": 27, "personalCode": "E942ZSL", "cui": "2126365882201", "docNumber": "2126365882201", "docType": "CUI", "fullName": "SANTOS ZEPEDA PAULA SYLVANA", "firstName": "PAULA SYLVANA", "lastName": "SANTOS ZEPEDA", "birthDate": "14/06/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E942ZSL", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-E089LKU", "no": 28, "personalCode": "E089LKU", "cui": "2106804311402", "docNumber": "2106804311402", "docType": "CUI", "fullName": "SAQUIC TOL MARITZA PAMELA SARAÍ", "firstName": "MARITZA PAMELA SARAÍ", "lastName": "SAQUIC TOL", "birthDate": "17/04/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E089LKU", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-I648BXA", "no": 29, "personalCode": "I648BXA", "cui": "2097764631406", "docNumber": "2097764631406", "docType": "CUI", "fullName": "SUCUQUÍ PALACIOS KIMBERLYN NOEMÍ", "firstName": "KIMBERLYN NOEMÍ", "lastName": "SUCUQUÍ PALACIOS", "birthDate": "11/02/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I648BXA", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G459MWK", "no": 30, "personalCode": "G459MWK", "cui": "2010315072201", "docNumber": "2010315072201", "docType": "CUI", "fullName": "TAVICO AJCABUL JEFFERSON DAVID", "firstName": "JEFFERSON DAVID", "lastName": "TAVICO AJCABUL", "birthDate": "07/08/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G459MWK", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-H776MCT", "no": 31, "personalCode": "H776MCT", "cui": "2126371502201", "docNumber": "2126371502201", "docType": "CUI", "fullName": "TRIGUEROS PÉREZ DAYLIN FLORELÍ", "firstName": "DAYLIN FLORELÍ", "lastName": "TRIGUEROS PÉREZ", "birthDate": "13/07/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H776MCT", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-I030ZWN", "no": 32, "personalCode": "I030ZWN", "cui": "2088670742217", "docNumber": "2088670742217", "docType": "CUI", "fullName": "VILLEDA CHACÓN MARGARET DANIELA", "firstName": "MARGARET DANIELA", "lastName": "VILLEDA CHACÓN", "birthDate": "28/02/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I030ZWN", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F167IVG", "no": 33, "personalCode": "F167IVG", "cui": "4043210112201", "docNumber": "4043210112201", "docType": "CUI", "fullName": "ZEPEDA CRÚZ JAIRON ISAÍAS", "firstName": "JAIRON ISAÍAS", "lastName": "ZEPEDA CRÚZ", "birthDate": "07/02/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to C", "gradeLabel": "4to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F167IVG", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-E467UBL", "no": 1, "personalCode": "E467UBL", "cui": "3425536662201", "docNumber": "3425536662201", "docType": "CUI", "fullName": "ARTERO DIAZ RUBY GABRIELA", "firstName": "RUBY GABRIELA", "lastName": "ARTERO DIAZ", "birthDate": "06/08/2006", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E467UBL", "grades": {}, "evaluations": {}, "activities": {}, "age": "20 años"}, {"id": "stu-sire-F195SJU", "no": 2, "personalCode": "F195SJU", "cui": "2037563982206", "docNumber": "2037563982206", "docType": "CUI", "fullName": "CORTÉZ CORTÉZ MARIANO ENRIQUE", "firstName": "MARIANO ENRIQUE", "lastName": "CORTÉZ CORTÉZ", "birthDate": "25/03/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F195SJU", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-E548PQD", "no": 3, "personalCode": "E548PQD", "cui": "3425595082201", "docNumber": "3425595082201", "docType": "CUI", "fullName": "CRUZ LÓPEZ BELEN TRINIDAD", "firstName": "BELEN TRINIDAD", "lastName": "CRUZ LÓPEZ", "birthDate": "08/10/2006", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E548PQD", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-C020RAP", "no": 4, "personalCode": "C020RAP", "cui": "3425270102201", "docNumber": "3425270102201", "docType": "CUI", "fullName": "CRÚZ LÓPEZ KEVIN EDUARDO", "firstName": "KEVIN EDUARDO", "lastName": "CRÚZ LÓPEZ", "birthDate": "02/06/2006", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C020RAP", "grades": {}, "evaluations": {}, "activities": {}, "age": "20 años"}, {"id": "stu-sire-G898KJA", "no": 5, "personalCode": "G898KJA", "cui": "2012412182201", "docNumber": "2012412182201", "docType": "CUI", "fullName": "ESTRADA ARANA ALYSON EMILY SOFIA", "firstName": "ALYSON EMILY SOFIA", "lastName": "ESTRADA ARANA", "birthDate": "31/08/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G898KJA", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-H528EGU", "no": 6, "personalCode": "H528EGU", "cui": "2065809910101", "docNumber": "2065809910101", "docType": "CUI", "fullName": "FLORIAN CHAVEZ CINTÍA FABIOLA", "firstName": "CINTÍA FABIOLA", "lastName": "FLORIAN CHAVEZ", "birthDate": "02/03/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H528EGU", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F349DQP", "no": 7, "personalCode": "F349DQP", "cui": "2022700332201", "docNumber": "2022700332201", "docType": "CUI", "fullName": "GARCIA CONTRERAS YENIFER DALILA", "firstName": "YENIFER DALILA", "lastName": "GARCIA CONTRERAS", "birthDate": "16/10/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F349DQP", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G594IND", "no": 8, "personalCode": "G594IND", "cui": "2018224582201", "docNumber": "2018224582201", "docType": "CUI", "fullName": "GIRÓN GARCÍA KERVIN ALEXANDER", "firstName": "KERVIN ALEXANDER", "lastName": "GIRÓN GARCÍA", "birthDate": "22/10/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G594IND", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H463BFT", "no": 9, "personalCode": "H463BFT", "cui": "2044086362201", "docNumber": "2044086362201", "docType": "CUI", "fullName": "GODOY MÉNDEZ LESLY RÓTSELY", "firstName": "LESLY RÓTSELY", "lastName": "GODOY MÉNDEZ", "birthDate": "02/06/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H463BFT", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-D891SGJ", "no": 10, "personalCode": "D891SGJ", "cui": "2007366632217", "docNumber": "2007366632217", "docType": "CUI", "fullName": "HERNÁNDEZ YUMÁN JUAN MANUEL", "firstName": "JUAN MANUEL", "lastName": "HERNÁNDEZ YUMÁN", "birthDate": "12/08/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D891SGJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F745RVH", "no": 11, "personalCode": "F745RVH", "cui": "2010326352201", "docNumber": "2010326352201", "docType": "CUI", "fullName": "LIMA FLORES LUIS ALONZO", "firstName": "LUIS ALONZO", "lastName": "LIMA FLORES", "birthDate": "14/07/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F745RVH", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F266JWF", "no": 12, "personalCode": "F266JWF", "cui": "2010311752201", "docNumber": "2010311752201", "docType": "CUI", "fullName": "LÉMUS GODOY YONATHAN JEREMÍAS", "firstName": "YONATHAN JEREMÍAS", "lastName": "LÉMUS GODOY", "birthDate": "09/08/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F266JWF", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-H244GJM", "no": 13, "personalCode": "H244GJM", "cui": "2034196502201", "docNumber": "2034196502201", "docType": "CUI", "fullName": "LÓPEZ LEMUS MATILDE SARAÍ", "firstName": "MATILDE SARAÍ", "lastName": "LÓPEZ LEMUS", "birthDate": "26/02/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H244GJM", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H326HWU", "no": 14, "personalCode": "H326HWU", "cui": "2012401652201", "docNumber": "2012401652201", "docType": "CUI", "fullName": "LÓPEZ SILVA YUVISA MARISOL", "firstName": "YUVISA MARISOL", "lastName": "LÓPEZ SILVA", "birthDate": "30/08/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H326HWU", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F691UZJ", "no": 15, "personalCode": "F691UZJ", "cui": "2003445012201", "docNumber": "2003445012201", "docType": "CUI", "fullName": "MATEO RAMIREZ DARWIN ENRIQUE", "firstName": "DARWIN ENRIQUE", "lastName": "MATEO RAMIREZ", "birthDate": "08/04/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F691UZJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G553IYL", "no": 16, "personalCode": "G553IYL", "cui": "2012420282201", "docNumber": "2012420282201", "docType": "CUI", "fullName": "MONTEROS LIMA MOISÉS ESTUARDO JOSUÉ", "firstName": "MOISÉS ESTUARDO JOSUÉ", "lastName": "MONTEROS LIMA", "birthDate": "23/09/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G553IYL", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G988YIU", "no": 17, "personalCode": "G988YIU", "cui": "2739046042201", "docNumber": "2739046042201", "docType": "CUI", "fullName": "MONTOYA GONZÁLEZ ANYELI YASMIN", "firstName": "ANYELI YASMIN", "lastName": "MONTOYA GONZÁLEZ", "birthDate": "08/05/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G988YIU", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G096DJQ", "no": 18, "personalCode": "G096DJQ", "cui": "2022718702201", "docNumber": "2022718702201", "docType": "CUI", "fullName": "MUÑOZ LIMA ZAILYN YULIANA", "firstName": "ZAILYN YULIANA", "lastName": "MUÑOZ LIMA", "birthDate": "17/12/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G096DJQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-E367CXJ", "no": 19, "personalCode": "E367CXJ", "cui": "2041518562201", "docNumber": "2041518562201", "docType": "CUI", "fullName": "MÉNDEZ ARANA DERWIN DARIO", "firstName": "DERWIN DARIO", "lastName": "MÉNDEZ ARANA", "birthDate": "20/05/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E367CXJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G926WXQ", "no": 20, "personalCode": "G926WXQ", "cui": "2010323412201", "docNumber": "2010323412201", "docType": "CUI", "fullName": "MÉNDEZ NORIEGA DULCE IDIANA", "firstName": "DULCE IDIANA", "lastName": "MÉNDEZ NORIEGA", "birthDate": "02/08/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G926WXQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F066VTP", "no": 21, "personalCode": "F066VTP", "cui": "2012961950101", "docNumber": "2012961950101", "docType": "CUI", "fullName": "MÉNDEZ SIQUÍN ASHLEY YADIRA", "firstName": "ASHLEY YADIRA", "lastName": "MÉNDEZ SIQUÍN", "birthDate": "22/07/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F066VTP", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G138ANX", "no": 22, "personalCode": "G138ANX", "cui": "2002601972201", "docNumber": "2002601972201", "docType": "CUI", "fullName": "ORDOÑEZ MONZÓN JOSTIN JOSÉ", "firstName": "JOSTIN JOSÉ", "lastName": "ORDOÑEZ MONZÓN", "birthDate": "19/03/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G138ANX", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E427AQC", "no": 23, "personalCode": "E427AQC", "cui": "2001188702201", "docNumber": "2001188702201", "docType": "CUI", "fullName": "ORDOÑEZ VELÁSQUEZ ANYILON JOCET", "firstName": "ANYILON JOCET", "lastName": "ORDOÑEZ VELÁSQUEZ", "birthDate": "09/01/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E427AQC", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-H858PEN", "no": 24, "personalCode": "H858PEN", "cui": "2007366122217", "docNumber": "2007366122217", "docType": "CUI", "fullName": "OSORIO RETANA MARÍA ESTELITA", "firstName": "MARÍA ESTELITA", "lastName": "OSORIO RETANA", "birthDate": "11/08/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H858PEN", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-C022QPR", "no": 25, "personalCode": "C022QPR", "cui": "3425698562201", "docNumber": "3425698562201", "docType": "CUI", "fullName": "RAMOS QUEVEDO ROSMERY YULEYDI", "firstName": "ROSMERY YULEYDI", "lastName": "RAMOS QUEVEDO", "birthDate": "29/01/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C022QPR", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-F777LAJ", "no": 26, "personalCode": "F777LAJ", "cui": "2001941432201", "docNumber": "2001941432201", "docType": "CUI", "fullName": "RAMÍREZ ALEJANDRO NATALY RUBÍ", "firstName": "NATALY RUBÍ", "lastName": "RAMÍREZ ALEJANDRO", "birthDate": "05/02/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F777LAJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E177LUU", "no": 27, "personalCode": "E177LUU", "cui": "2026431312201", "docNumber": "2026431312201", "docType": "CUI", "fullName": "RAMÍREZ CRÚZ YONI OVANDO", "firstName": "YONI OVANDO", "lastName": "RAMÍREZ CRÚZ", "birthDate": "17/12/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E177LUU", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G695KMF", "no": 28, "personalCode": "G695KMF", "cui": "2046577332201", "docNumber": "2046577332201", "docType": "CUI", "fullName": "RAMÍREZ HERNÁNDEZ LEYDER ARIEL", "firstName": "LEYDER ARIEL", "lastName": "RAMÍREZ HERNÁNDEZ", "birthDate": "17/06/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G695KMF", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-E962HFP", "no": 29, "personalCode": "E962HFP", "cui": "2018202772201", "docNumber": "2018202772201", "docType": "CUI", "fullName": "RAMÍREZ MÉNDEZ BRISEYDA MISHEL", "firstName": "BRISEYDA MISHEL", "lastName": "RAMÍREZ MÉNDEZ", "birthDate": "26/08/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E962HFP", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E078YXI", "no": 30, "personalCode": "E078YXI", "cui": "2022708742201", "docNumber": "2022708742201", "docType": "CUI", "fullName": "RAMÍREZ RAMIREZ YEYSON BLADIMIR", "firstName": "YEYSON BLADIMIR", "lastName": "RAMÍREZ RAMIREZ", "birthDate": "06/12/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E078YXI", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F037KZE", "no": 31, "personalCode": "F037KZE", "cui": "2872707182201", "docNumber": "2872707182201", "docType": "CUI", "fullName": "REYNOSO LÓPEZ ASHLYN BERENICE", "firstName": "ASHLYN BERENICE", "lastName": "REYNOSO LÓPEZ", "birthDate": "02/08/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F037KZE", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-G640JEN", "no": 32, "personalCode": "G640JEN", "cui": "2037566572206", "docNumber": "2037566572206", "docType": "CUI", "fullName": "SAMAYOA LÓPEZ KATIA FABIOLA", "firstName": "KATIA FABIOLA", "lastName": "SAMAYOA LÓPEZ", "birthDate": "11/04/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G640JEN", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-I237SAK", "no": 33, "personalCode": "I237SAK", "cui": "2008353192212", "docNumber": "2008353192212", "docType": "CUI", "fullName": "SARCEÑO ALAS SCARLETH SUGHEI", "firstName": "SCARLETH SUGHEI", "lastName": "SARCEÑO ALAS", "birthDate": "07/08/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I237SAK", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-C321HYT", "no": 34, "personalCode": "C321HYT", "cui": "2020722902201", "docNumber": "2020722902201", "docType": "CUI", "fullName": "SARCEÑO MUÑOZ ANDERSÓN EDUARDO", "firstName": "ANDERSÓN EDUARDO", "lastName": "SARCEÑO MUÑOZ", "birthDate": "02/11/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C321HYT", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-E189PNB", "no": 35, "personalCode": "E189PNB", "cui": "2782277161401", "docNumber": "2782277161401", "docType": "CUI", "fullName": "TZUNUX REYES JANSELL ADONAIN", "firstName": "JANSELL ADONAIN", "lastName": "TZUNUX REYES", "birthDate": "25/08/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E189PNB", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-E358UMP", "no": 36, "personalCode": "E358UMP", "cui": "2022719002201", "docNumber": "2022719002201", "docType": "CUI", "fullName": "YANES CÓRDOVA KIMBERLY MICHEL", "firstName": "KIMBERLY MICHEL", "lastName": "YANES CÓRDOVA", "birthDate": "08/12/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E358UMP", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F430CRN", "no": 37, "personalCode": "F430CRN", "cui": "2931373582201", "docNumber": "2931373582201", "docType": "CUI", "fullName": "ZUÑIGA GALICIA JOSÉ FERNANDO", "firstName": "JOSÉ FERNANDO", "lastName": "ZUÑIGA GALICIA", "birthDate": "20/02/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to C", "gradeLabel": "5to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F430CRN", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F863UHG", "no": 1, "personalCode": "F863UHG", "cui": "2010327672201", "docNumber": "2010327672201", "docType": "CUI", "fullName": "ALAY RODAS DARLYN ANABEL", "firstName": "DARLYN ANABEL", "lastName": "ALAY RODAS", "birthDate": "14/07/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F863UHG", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-D266ZPV", "no": 2, "personalCode": "D266ZPV", "cui": "3424917092201", "docNumber": "3424917092201", "docType": "CUI", "fullName": "BATEN FLORES SUEYSI LORENA", "firstName": "SUEYSI LORENA", "lastName": "BATEN FLORES", "birthDate": "27/11/2006", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D266ZPV", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-C118HCH", "no": 3, "personalCode": "C118HCH", "cui": "2000329410206", "docNumber": "2000329410206", "docType": "CUI", "fullName": "CASTAÑEDA DOUGLAS LIZANDRO", "firstName": "LIZANDRO", "lastName": "CASTAÑEDA DOUGLAS", "birthDate": "04/02/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C118HCH", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E490GDZ", "no": 4, "personalCode": "E490GDZ", "cui": "3205830900501", "docNumber": "3205830900501", "docType": "CUI", "fullName": "CASTAÑON SANCHEZ CARLOS AMILCAR", "firstName": "CARLOS AMILCAR", "lastName": "CASTAÑON SANCHEZ", "birthDate": "25/06/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E490GDZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-G165QRN", "no": 5, "personalCode": "G165QRN", "cui": "3421197022201", "docNumber": "3421197022201", "docType": "CUI", "fullName": "CRUZ  ARAGÓN EMILY ESTEFANIA", "firstName": "EMILY ESTEFANIA", "lastName": "CRUZ ARAGÓN", "birthDate": "26/12/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G165QRN", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-D229AYP", "no": 6, "personalCode": "D229AYP", "cui": "2005404912201", "docNumber": "2005404912201", "docType": "CUI", "fullName": "ELÍAS OLIVARES JOHANA LISETH", "firstName": "JOHANA LISETH", "lastName": "ELÍAS OLIVARES", "birthDate": "28/04/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D229AYP", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F429ZQL", "no": 7, "personalCode": "F429ZQL", "cui": "2005407692201", "docNumber": "2005407692201", "docType": "CUI", "fullName": "FLORES CHINCHILLA JUNIOR JOSÉ DANIEL", "firstName": "JUNIOR JOSÉ DANIEL", "lastName": "FLORES CHINCHILLA", "birthDate": "21/05/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F429ZQL", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E063MMA", "no": 8, "personalCode": "E063MMA", "cui": "3597305230115", "docNumber": "3597305230115", "docType": "CUI", "fullName": "FUETTERER ARRECIS BRENDA JAZMIN", "firstName": "BRENDA JAZMIN", "lastName": "FUETTERER ARRECIS", "birthDate": "24/09/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E063MMA", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F282BVK", "no": 9, "personalCode": "F282BVK", "cui": "3863540810101", "docNumber": "3863540810101", "docType": "CUI", "fullName": "GÓMEZ ARANA KATERINE ABIGAIL", "firstName": "KATERINE ABIGAIL", "lastName": "GÓMEZ ARANA", "birthDate": "22/06/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F282BVK", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-G341CEU", "no": 10, "personalCode": "G341CEU", "cui": "2007015412201", "docNumber": "2007015412201", "docType": "CUI", "fullName": "HERNÁNDEZ GRIJALVA JUANA DE LOS ANGELES", "firstName": "JUANA DE LOS ANGELES", "lastName": "HERNÁNDEZ GRIJALVA", "birthDate": "24/06/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G341CEU", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-C318SQK", "no": 11, "personalCode": "C318SQK", "cui": "3424341522201", "docNumber": "3424341522201", "docType": "CUI", "fullName": "LÓPEZ GRIJALVA FIORELLA CAROLANGS", "firstName": "FIORELLA CAROLANGS", "lastName": "LÓPEZ GRIJALVA", "birthDate": "16/09/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C318SQK", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F990ZJF", "no": 12, "personalCode": "F990ZJF", "cui": "2007015092201", "docNumber": "2007015092201", "docType": "CUI", "fullName": "LÓPEZ HERNÁNDEZ YENSI MADAÍ", "firstName": "YENSI MADAÍ", "lastName": "LÓPEZ HERNÁNDEZ", "birthDate": "10/06/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F990ZJF", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G942GWU", "no": 13, "personalCode": "G942GWU", "cui": "2007026532201", "docNumber": "2007026532201", "docType": "CUI", "fullName": "MARTÍNEZ CORTEZ ALBER ARNOLDO", "firstName": "ALBER ARNOLDO", "lastName": "MARTÍNEZ CORTEZ", "birthDate": "25/06/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G942GWU", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E339GBF", "no": 14, "personalCode": "E339GBF", "cui": "2001947472201", "docNumber": "2001947472201", "docType": "CUI", "fullName": "MAZARIEGOS MORALES MARGARETH ARACELY", "firstName": "MARGARETH ARACELY", "lastName": "MAZARIEGOS MORALES", "birthDate": "22/02/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E339GBF", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-C120GRZ", "no": 15, "personalCode": "C120GRZ", "cui": "3422716282201", "docNumber": "3422716282201", "docType": "CUI", "fullName": "MEJÍA GODOY FÁTIMA CLARIBEL", "firstName": "FÁTIMA CLARIBEL", "lastName": "MEJÍA GODOY", "birthDate": "21/09/2005", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C120GRZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "20 años"}, {"id": "stu-sire-E672PGQ", "no": 16, "personalCode": "E672PGQ", "cui": "3424335392201", "docNumber": "3424335392201", "docType": "CUI", "fullName": "MONZÓN OLIVARES FRANZ IRVIN", "firstName": "FRANZ IRVIN", "lastName": "MONZÓN OLIVARES", "birthDate": "24/09/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E672PGQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F561VTN", "no": 17, "personalCode": "F561VTN", "cui": "2003442932201", "docNumber": "2003442932201", "docType": "CUI", "fullName": "MÉNDEZ CRÚZ ADRIANA CAROLINA", "firstName": "ADRIANA CAROLINA", "lastName": "MÉNDEZ CRÚZ", "birthDate": "15/04/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F561VTN", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E945DZQ", "no": 18, "personalCode": "E945DZQ", "cui": "3422436162201", "docNumber": "3422436162201", "docType": "CUI", "fullName": "NAJARRO CONTRERAS JOSÉ ARMANDO", "firstName": "JOSÉ ARMANDO", "lastName": "NAJARRO CONTRERAS", "birthDate": "27/07/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E945DZQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-E586PRK", "no": 19, "personalCode": "E586PRK", "cui": "2001953952201", "docNumber": "2001953952201", "docType": "CUI", "fullName": "NAVAS SOSA JIMMY ISAAC", "firstName": "JIMMY ISAAC", "lastName": "NAVAS SOSA", "birthDate": "25/02/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E586PRK", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F487JBR", "no": 20, "personalCode": "F487JBR", "cui": "2169706952201", "docNumber": "2169706952201", "docType": "CUI", "fullName": "ORDOÑEZ CORADO MARLEN FABIOLA", "firstName": "MARLEN FABIOLA", "lastName": "ORDOÑEZ CORADO", "birthDate": "24/06/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F487JBR", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-E685KLX", "no": 21, "personalCode": "E685KLX", "cui": "2835092792201", "docNumber": "2835092792201", "docType": "CUI", "fullName": "PÉREZ GIRÓN JAN CARLOS", "firstName": "JAN CARLOS", "lastName": "PÉREZ GIRÓN", "birthDate": "30/08/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E685KLX", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-D884WXT", "no": 22, "personalCode": "D884WXT", "cui": "3422033042201", "docNumber": "3422033042201", "docType": "CUI", "fullName": "PÉREZ ZEPEDA ADRIANA MELISSA", "firstName": "ADRIANA MELISSA", "lastName": "PÉREZ ZEPEDA", "birthDate": "18/04/2006", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D884WXT", "grades": {}, "evaluations": {}, "activities": {}, "age": "20 años"}, {"id": "stu-sire-F661RYI", "no": 23, "personalCode": "F661RYI", "cui": "2008733692201", "docNumber": "2008733692201", "docType": "CUI", "fullName": "QUIÑÓNEZ RUANO FATIMA ROSMERY", "firstName": "FATIMA ROSMERY", "lastName": "QUIÑÓNEZ RUANO", "birthDate": "19/06/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F661RYI", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F269NUN", "no": 24, "personalCode": "F269NUN", "cui": "2002237042202", "docNumber": "2002237042202", "docType": "CUI", "fullName": "RAMOS GREGORIO KEILY GISLENA", "firstName": "KEILY GISLENA", "lastName": "RAMOS GREGORIO", "birthDate": "10/01/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F269NUN", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-C021SLF", "no": 25, "personalCode": "C021SLF", "cui": "2000414602201", "docNumber": "2000414602201", "docType": "CUI", "fullName": "RODRÍGUEZ ARAUZ GABI ESTEFANI", "firstName": "GABI ESTEFANI", "lastName": "RODRÍGUEZ ARAUZ", "birthDate": "17/12/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C021SLF", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G856EMM", "no": 26, "personalCode": "G856EMM", "cui": "2003433002201", "docNumber": "2003433002201", "docType": "CUI", "fullName": "TRINIDAD ORDOÑEZ ANÍBAL ANDRES", "firstName": "ANÍBAL ANDRES", "lastName": "TRINIDAD ORDOÑEZ", "birthDate": "04/04/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G856EMM", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G355HJQ", "no": 27, "personalCode": "G355HJQ", "cui": "2001213672201", "docNumber": "2001213672201", "docType": "CUI", "fullName": "US CONCUÁ YURIDIA JIMENA", "firstName": "YURIDIA JIMENA", "lastName": "US CONCUÁ", "birthDate": "04/02/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G355HJQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F168INP", "no": 28, "personalCode": "F168INP", "cui": "2010308292201", "docNumber": "2010308292201", "docType": "CUI", "fullName": "VEGA ZEPEDA JOSELINE KARINA", "firstName": "JOSELINE KARINA", "lastName": "VEGA ZEPEDA", "birthDate": "21/07/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F168INP", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-C822DFD", "no": 29, "personalCode": "C822DFD", "cui": "3422378532201", "docNumber": "3422378532201", "docType": "CUI", "fullName": "VIVAS DÍAZ HEIFI LIZALDI", "firstName": "HEIFI LIZALDI", "lastName": "VIVAS DÍAZ", "birthDate": "03/03/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C822DFD", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-D028KQS", "no": 30, "personalCode": "D028KQS", "cui": "3045919390115", "docNumber": "3045919390115", "docType": "CUI", "fullName": "VÁSQUEZ BARRERA JUDITH ALEXANDRA", "firstName": "JUDITH ALEXANDRA", "lastName": "VÁSQUEZ BARRERA", "birthDate": "06/07/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D028KQS", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F249QGP", "no": 31, "personalCode": "F249QGP", "cui": "2008586960203", "docNumber": "2008586960203", "docType": "CUI", "fullName": "VÁSQUEZ VÁSQUEZ ALLISON TATIANA", "firstName": "ALLISON TATIANA", "lastName": "VÁSQUEZ VÁSQUEZ", "birthDate": "16/07/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F249QGP", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G742KAQ", "no": 32, "personalCode": "G742KAQ", "cui": "2760260202201", "docNumber": "2760260202201", "docType": "CUI", "fullName": "ZAPETA ROSALES MELANIE ALYSSA", "firstName": "MELANIE ALYSSA", "lastName": "ZAPETA ROSALES", "birthDate": "04/11/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G742KAQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F551WFK", "no": 33, "personalCode": "F551WFK", "cui": "2005407342201", "docNumber": "2005407342201", "docType": "CUI", "fullName": "ZEPEDA RAMÍREZ STEFANY JULISSA", "firstName": "STEFANY JULISSA", "lastName": "ZEPEDA RAMÍREZ", "birthDate": "25/05/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to C", "gradeLabel": "6to Perito Contador Sección C", "section": "Sección C", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F551WFK", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-I948MHR", "no": 1, "personalCode": "I948MHR", "cui": "3512497612201", "docNumber": "3512497612201", "docType": "CUI", "fullName": "ALEJANDRO ALEJANDRO ALLAN JOSUE", "firstName": "ALLAN JOSUE", "lastName": "ALEJANDRO ALEJANDRO", "birthDate": "16/09/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I948MHR", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-D362PFY", "no": 2, "personalCode": "D362PFY", "cui": "2078394842201", "docNumber": "2078394842201", "docType": "CUI", "fullName": "ARDÓN CANO JOSÉ EDUARDO", "firstName": "JOSÉ EDUARDO", "lastName": "ARDÓN CANO", "birthDate": "07/12/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D362PFY", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-I530CVI", "no": 3, "personalCode": "I530CVI", "cui": "3635732082201", "docNumber": "3635732082201", "docType": "CUI", "fullName": "CARDENAS CONTRERAS THARE ZAHIR", "firstName": "THARE ZAHIR", "lastName": "CARDENAS CONTRERAS", "birthDate": "27/08/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I530CVI", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F190YCF", "no": 4, "personalCode": "F190YCF", "cui": "2005400762201", "docNumber": "2005400762201", "docType": "CUI", "fullName": "CARDONA HERNÁNDEZ ISAIAS ADONAÍ", "firstName": "ISAIAS ADONAÍ", "lastName": "CARDONA HERNÁNDEZ", "birthDate": "19/05/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F190YCF", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G992VXS", "no": 5, "personalCode": "G992VXS", "cui": "2115423692201", "docNumber": "2115423692201", "docType": "CUI", "fullName": "CARDONA MEDRANO ANGELO ALBERTO", "firstName": "ANGELO ALBERTO", "lastName": "CARDONA MEDRANO", "birthDate": "16/03/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G992VXS", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-I629PAT", "no": 6, "personalCode": "I629PAT", "cui": "2251655700601", "docNumber": "2251655700601", "docType": "CUI", "fullName": "CARRILLO CAC WILLIAN ALEXANDRO", "firstName": "WILLIAN ALEXANDRO", "lastName": "CARRILLO CAC", "birthDate": "02/12/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I629PAT", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H831JJU", "no": 7, "personalCode": "H831JJU", "cui": "2078399802201", "docNumber": "2078399802201", "docType": "CUI", "fullName": "CORADO RECINOS ANGEL MANUEL", "firstName": "ANGEL MANUEL", "lastName": "CORADO RECINOS", "birthDate": "16/11/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H831JJU", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F827MFN", "no": 8, "personalCode": "F827MFN", "cui": "2290874502201", "docNumber": "2290874502201", "docType": "CUI", "fullName": "CRUZ CARRILLO KELIN ANAHÍ", "firstName": "KELIN ANAHÍ", "lastName": "CRUZ CARRILLO", "birthDate": "29/12/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F827MFN", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G835NDP", "no": 9, "personalCode": "G835NDP", "cui": "2075027062201", "docNumber": "2075027062201", "docType": "CUI", "fullName": "CRUZ MÉNDEZ AXEL LEONEL", "firstName": "AXEL LEONEL", "lastName": "CRUZ MÉNDEZ", "birthDate": "28/10/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G835NDP", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H061QCW", "no": 10, "personalCode": "H061QCW", "cui": "2282756362201", "docNumber": "2282756362201", "docType": "CUI", "fullName": "CRÚZ KARLA FERNANDA", "firstName": "FERNANDA", "lastName": "CRÚZ KARLA", "birthDate": "31/01/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H061QCW", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-E055DNG", "no": 11, "personalCode": "E055DNG", "cui": "2828355122201", "docNumber": "2828355122201", "docType": "CUI", "fullName": "CRÚZ RAYMUNDO KENNETH RODRIGO", "firstName": "KENNETH RODRIGO", "lastName": "CRÚZ RAYMUNDO", "birthDate": "12/08/2006", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E055DNG", "grades": {}, "evaluations": {}, "activities": {}, "age": "20 años"}, {"id": "stu-sire-I227RCH", "no": 12, "personalCode": "I227RCH", "cui": "2107717390101", "docNumber": "2107717390101", "docType": "CUI", "fullName": "ESCORCIA MÉNDEZ SEYDI ELIZABETH", "firstName": "SEYDI ELIZABETH", "lastName": "ESCORCIA MÉNDEZ", "birthDate": "14/02/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I227RCH", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G637WAX", "no": 13, "personalCode": "G637WAX", "cui": "2147607580101", "docNumber": "2147607580101", "docType": "CUI", "fullName": "FUENTES RAMÍREZ FÁTIMA PAOLA", "firstName": "FÁTIMA PAOLA", "lastName": "FUENTES RAMÍREZ", "birthDate": "30/09/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G637WAX", "grades": {}, "evaluations": {}, "activities": {}, "age": "15 años"}, {"id": "stu-sire-F756PUE", "no": 14, "personalCode": "F756PUE", "cui": "2084777132201", "docNumber": "2084777132201", "docType": "CUI", "fullName": "GARZONA BARRERA JOSÉ RAÚL", "firstName": "JOSÉ RAÚL", "lastName": "GARZONA BARRERA", "birthDate": "01/12/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F756PUE", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F198TZU", "no": 15, "personalCode": "F198TZU", "cui": "2041517082201", "docNumber": "2041517082201", "docType": "CUI", "fullName": "GODOY CAMEROS LINDA MARJORIE GUISSELLE", "firstName": "LINDA MARJORIE GUISSELLE", "lastName": "GODOY CAMEROS", "birthDate": "27/02/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F198TZU", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G798LBV", "no": 16, "personalCode": "G798LBV", "cui": "2026441892201", "docNumber": "2026441892201", "docType": "CUI", "fullName": "GRIJALVA ESQUIVEL KEVIN DAVID", "firstName": "KEVIN DAVID", "lastName": "GRIJALVA ESQUIVEL", "birthDate": "31/12/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G798LBV", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-I331YSW", "no": 17, "personalCode": "I331YSW", "cui": "2111613730101", "docNumber": "2111613730101", "docType": "CUI", "fullName": "HERNÁNDEZ CHOC CESAR HUMBERTO", "firstName": "CESAR HUMBERTO", "lastName": "HERNÁNDEZ CHOC", "birthDate": "26/03/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I331YSW", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-G860ETA", "no": 18, "personalCode": "G860ETA", "cui": "4208167552201", "docNumber": "4208167552201", "docType": "CUI", "fullName": "JIMÉNEZ MAYÉN ANTONY ALEXANDER", "firstName": "ANTONY ALEXANDER", "lastName": "JIMÉNEZ MAYÉN", "birthDate": "27/06/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G860ETA", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H236KSD", "no": 19, "personalCode": "H236KSD", "cui": "2133614770805", "docNumber": "2133614770805", "docType": "CUI", "fullName": "LÓPEZ CUYUCH MILVIA SISARA BRISEIDA", "firstName": "MILVIA SISARA BRISEIDA", "lastName": "LÓPEZ CUYUCH", "birthDate": "15/06/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H236KSD", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-E270KVB", "no": 20, "personalCode": "E270KVB", "cui": "2046572292201", "docNumber": "2046572292201", "docType": "CUI", "fullName": "LÓPEZ MORALES AYVI ALEJANDRA", "firstName": "AYVI ALEJANDRA", "lastName": "LÓPEZ MORALES", "birthDate": "12/06/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E270KVB", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G868AIY", "no": 21, "personalCode": "G868AIY", "cui": "2050475562201", "docNumber": "2050475562201", "docType": "CUI", "fullName": "LÓPEZ PÉREZ MARIO ADOLFO", "firstName": "MARIO ADOLFO", "lastName": "LÓPEZ PÉREZ", "birthDate": "29/06/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G868AIY", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G869JKL", "no": 22, "personalCode": "G869JKL", "cui": "2088516740101", "docNumber": "2088516740101", "docType": "CUI", "fullName": "LÓPEZ VASQUEZ ANA GUADALUPE", "firstName": "ANA GUADALUPE", "lastName": "LÓPEZ VASQUEZ", "birthDate": "22/12/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G869JKL", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H976IWF", "no": 23, "personalCode": "H976IWF", "cui": "2055171612201", "docNumber": "2055171612201", "docType": "CUI", "fullName": "MARTINEZ HERNÁNDEZ ANDERSON GABRIEL", "firstName": "ANDERSON GABRIEL", "lastName": "MARTINEZ HERNÁNDEZ", "birthDate": "25/06/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H976IWF", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H854NWZ", "no": 24, "personalCode": "H854NWZ", "cui": "2018225392201", "docNumber": "2018225392201", "docType": "CUI", "fullName": "MELENDEZ MARTÍNEZ ALISON MARIANA", "firstName": "ALISON MARIANA", "lastName": "MELENDEZ MARTÍNEZ", "birthDate": "22/10/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H854NWZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H683RBD", "no": 25, "personalCode": "H683RBD", "cui": "2130792242201", "docNumber": "2130792242201", "docType": "CUI", "fullName": "MONZÓN GREGORIO BEILY JAMILETH", "firstName": "BEILY JAMILETH", "lastName": "MONZÓN GREGORIO", "birthDate": "15/06/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H683RBD", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-H055MSU", "no": 26, "personalCode": "H055MSU", "cui": "2060295780101", "docNumber": "2060295780101", "docType": "CUI", "fullName": "MOTA MIRANDA ALESSANDRA FABIOLA", "firstName": "ALESSANDRA FABIOLA", "lastName": "MOTA MIRANDA", "birthDate": "24/08/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H055MSU", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G988ZPS", "no": 27, "personalCode": "G988ZPS", "cui": "2005392642201", "docNumber": "2005392642201", "docType": "CUI", "fullName": "MÉNDEZ VIVAS BRANDON EMANUEL", "firstName": "BRANDON EMANUEL", "lastName": "MÉNDEZ VIVAS", "birthDate": "18/10/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G988ZPS", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G383EXF", "no": 28, "personalCode": "G383EXF", "cui": "2041525772201", "docNumber": "2041525772201", "docType": "CUI", "fullName": "ORDOÑEZ LÓPEZ KEYLI OLINDA", "firstName": "KEYLI OLINDA", "lastName": "ORDOÑEZ LÓPEZ", "birthDate": "04/05/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G383EXF", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F465LTG", "no": 29, "personalCode": "F465LTG", "cui": "2385663072201", "docNumber": "2385663072201", "docType": "CUI", "fullName": "RODRÍGUEZ LÓPEZ JEFERSON AUGUSTO", "firstName": "JEFERSON AUGUSTO", "lastName": "RODRÍGUEZ LÓPEZ", "birthDate": "11/07/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F465LTG", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G340DXW", "no": 30, "personalCode": "G340DXW", "cui": "2074320312206", "docNumber": "2074320312206", "docType": "CUI", "fullName": "SALAZAR CHINCHILLA JORGE ANYELO", "firstName": "JORGE ANYELO", "lastName": "SALAZAR CHINCHILLA", "birthDate": "04/11/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G340DXW", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-D875HHN", "no": 31, "personalCode": "D875HHN", "cui": "2053518592206", "docNumber": "2053518592206", "docType": "CUI", "fullName": "SALAZAR GALICIA SIXTO ANTONIO", "firstName": "SIXTO ANTONIO", "lastName": "SALAZAR GALICIA", "birthDate": "20/09/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D875HHN", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F343GDN", "no": 32, "personalCode": "F343GDN", "cui": "2092622492201", "docNumber": "2092622492201", "docType": "CUI", "fullName": "SALVADOR RAMÍREZ DAYSI LUCERO", "firstName": "DAYSI LUCERO", "lastName": "SALVADOR RAMÍREZ", "birthDate": "15/02/2010", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F343GDN", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-D071VJF", "no": 33, "personalCode": "D071VJF", "cui": "2103282742201", "docNumber": "2103282742201", "docType": "CUI", "fullName": "VIRULA ALVAREZ ANGEL DANIEL", "firstName": "ANGEL DANIEL", "lastName": "VIRULA ALVAREZ", "birthDate": "25/03/2010", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D071VJF", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F652CML", "no": 34, "personalCode": "F652CML", "cui": "2044076212201", "docNumber": "2044076212201", "docType": "CUI", "fullName": "ZEPEDA RAMÍREZ LUIS DANIEL", "firstName": "LUIS DANIEL", "lastName": "ZEPEDA RAMÍREZ", "birthDate": "08/06/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F652CML", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H880RLD", "no": 35, "personalCode": "H880RLD", "cui": "2078409702201", "docNumber": "2078409702201", "docType": "CUI", "fullName": "ZUÑIGA DÍAZ ASHLI ALEJANDRA", "firstName": "ASHLI ALEJANDRA", "lastName": "ZUÑIGA DÍAZ", "birthDate": "28/11/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "4to Perito Contador", "gradeCode": "4to D", "gradeLabel": "4to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H880RLD", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F492BCR", "no": 1, "personalCode": "F492BCR", "cui": "2012421922201", "docNumber": "2012421922201", "docType": "CUI", "fullName": "ARGUETA PÉREZ SILMA ALEJANDRA", "firstName": "SILMA ALEJANDRA", "lastName": "ARGUETA PÉREZ", "birthDate": "11/09/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F492BCR", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G536TUF", "no": 2, "personalCode": "G536TUF", "cui": "2018220672201", "docNumber": "2018220672201", "docType": "CUI", "fullName": "ARTEAGA SARCEÑO AUGUSTÍN ANDRÉ", "firstName": "AUGUSTÍN ANDRÉ", "lastName": "ARTEAGA SARCEÑO", "birthDate": "13/11/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G536TUF", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G842GKI", "no": 3, "personalCode": "G842GKI", "cui": "2089095830101", "docNumber": "2089095830101", "docType": "CUI", "fullName": "BATRES RECINOS LUISA ALEXANDRA", "firstName": "LUISA ALEXANDRA", "lastName": "BATRES RECINOS", "birthDate": "01/12/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G842GKI", "grades": {}, "evaluations": {}, "activities": {}, "age": "16 años"}, {"id": "stu-sire-F749CDX", "no": 4, "personalCode": "F749CDX", "cui": "2014878100401", "docNumber": "2014878100401", "docType": "CUI", "fullName": "CHACÓN CARDONA YOSELYN PAOLA", "firstName": "YOSELYN PAOLA", "lastName": "CHACÓN CARDONA", "birthDate": "16/08/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F749CDX", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-H958BIJ", "no": 5, "personalCode": "H958BIJ", "cui": "2018212732201", "docNumber": "2018212732201", "docType": "CUI", "fullName": "CORADO LEIVA MARVIN DANIEL", "firstName": "MARVIN DANIEL", "lastName": "CORADO LEIVA", "birthDate": "07/09/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H958BIJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-C522QSR", "no": 6, "personalCode": "C522QSR", "cui": "2022704592201", "docNumber": "2022704592201", "docType": "CUI", "fullName": "CÓ FLORIÁN CARLOS ENRIQUE", "firstName": "CARLOS ENRIQUE", "lastName": "CÓ FLORIÁN", "birthDate": "02/12/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C522QSR", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G977LLK", "no": 7, "personalCode": "G977LLK", "cui": "2174431842201", "docNumber": "2174431842201", "docType": "CUI", "fullName": "DIMAS RAMOS MEREDITH ANGELI", "firstName": "MEREDITH ANGELI", "lastName": "DIMAS RAMOS", "birthDate": "15/06/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G977LLK", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F385YWK", "no": 8, "personalCode": "F385YWK", "cui": "2008730592201", "docNumber": "2008730592201", "docType": "CUI", "fullName": "FLORES CÁMBARA BRENDA JANNET", "firstName": "BRENDA JANNET", "lastName": "FLORES CÁMBARA", "birthDate": "02/08/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F385YWK", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F699YPQ", "no": 9, "personalCode": "F699YPQ", "cui": "2015647182201", "docNumber": "2015647182201", "docType": "CUI", "fullName": "GONZÁLEZ MORALES ANDREA TRINIDAD", "firstName": "ANDREA TRINIDAD", "lastName": "GONZÁLEZ MORALES", "birthDate": "05/09/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F699YPQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-I627TXS", "no": 10, "personalCode": "I627TXS", "cui": "2022707422201", "docNumber": "2022707422201", "docType": "CUI", "fullName": "GREGORIO PÉREZ YASMÍN YULISA", "firstName": "YASMÍN YULISA", "lastName": "GREGORIO PÉREZ", "birthDate": "28/11/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "I627TXS", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G537CPX", "no": 11, "personalCode": "G537CPX", "cui": "2041529252201", "docNumber": "2041529252201", "docType": "CUI", "fullName": "GÓMEZ GARCÍA BEBERLY SOFIA", "firstName": "BEBERLY SOFIA", "lastName": "GÓMEZ GARCÍA", "birthDate": "22/11/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G537CPX", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F057WQZ", "no": 12, "personalCode": "F057WQZ", "cui": "2018221482201", "docNumber": "2018221482201", "docType": "CUI", "fullName": "HERNÁNDEZ BARRERA ILIANA VANESA", "firstName": "ILIANA VANESA", "lastName": "HERNÁNDEZ BARRERA", "birthDate": "19/10/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F057WQZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G770AAL", "no": 13, "personalCode": "G770AAL", "cui": "2036400122216", "docNumber": "2036400122216", "docType": "CUI", "fullName": "JIMÉNEZ PÉREZ BEBERLIN SULEIMA", "firstName": "BEBERLIN SULEIMA", "lastName": "JIMÉNEZ PÉREZ", "birthDate": "06/07/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G770AAL", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-H677YDD", "no": 14, "personalCode": "H677YDD", "cui": "2786097162207", "docNumber": "2786097162207", "docType": "CUI", "fullName": "LIMA GUTIERREZ STEVEN FLORENCIO", "firstName": "STEVEN FLORENCIO", "lastName": "LIMA GUTIERREZ", "birthDate": "08/03/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H677YDD", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F066UUR", "no": 15, "personalCode": "F066UUR", "cui": "2041536892201", "docNumber": "2041536892201", "docType": "CUI", "fullName": "LUCHA MEDRANO KATERIN GUADALUPE", "firstName": "KATERIN GUADALUPE", "lastName": "LUCHA MEDRANO", "birthDate": "12/05/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F066UUR", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F872NRP", "no": 16, "personalCode": "F872NRP", "cui": "2000407072201", "docNumber": "2000407072201", "docType": "CUI", "fullName": "LÓPEZ ALAY SAYDA LISSETTE", "firstName": "SAYDA LISSETTE", "lastName": "LÓPEZ ALAY", "birthDate": "24/12/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F872NRP", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-H469SDF", "no": 17, "personalCode": "H469SDF", "cui": "2044081482201", "docNumber": "2044081482201", "docType": "CUI", "fullName": "LÓPEZ ARCHILA RUTH EMILIANI", "firstName": "RUTH EMILIANI", "lastName": "LÓPEZ ARCHILA", "birthDate": "21/05/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H469SDF", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-D557INV", "no": 18, "personalCode": "D557INV", "cui": "2029161972201", "docNumber": "2029161972201", "docType": "CUI", "fullName": "LÓPEZ LÓPEZ KATERINNE LUCERO", "firstName": "KATERINNE LUCERO", "lastName": "LÓPEZ LÓPEZ", "birthDate": "02/02/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D557INV", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F796SYL", "no": 19, "personalCode": "F796SYL", "cui": "3424756142201", "docNumber": "3424756142201", "docType": "CUI", "fullName": "LÓPEZ SALGUERO JEYSON ERNESTO", "firstName": "JEYSON ERNESTO", "lastName": "LÓPEZ SALGUERO", "birthDate": "18/09/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F796SYL", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F272YPR", "no": 20, "personalCode": "F272YPR", "cui": "2031381712201", "docNumber": "2031381712201", "docType": "CUI", "fullName": "MEDRANO VÁSQUEZ JANNER EDÍCSON", "firstName": "JANNER EDÍCSON", "lastName": "MEDRANO VÁSQUEZ", "birthDate": "17/02/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F272YPR", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-C821CKU", "no": 21, "personalCode": "C821CKU", "cui": "2000984702201", "docNumber": "2000984702201", "docType": "CUI", "fullName": "MUÑOZ GRIJALVA CARLOS DUVAN", "firstName": "CARLOS DUVAN", "lastName": "MUÑOZ GRIJALVA", "birthDate": "11/01/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C821CKU", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F083CUU", "no": 22, "personalCode": "F083CUU", "cui": "3425753252201", "docNumber": "3425753252201", "docType": "CUI", "fullName": "MÉNDEZ CARÍAS ELIZABETH", "firstName": "ELIZABETH", "lastName": "MÉNDEZ CARÍAS", "birthDate": "08/08/2006", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F083CUU", "grades": {}, "evaluations": {}, "activities": {}, "age": "20 años"}, {"id": "stu-sire-F350ISD", "no": 23, "personalCode": "F350ISD", "cui": "2015656252201", "docNumber": "2015656252201", "docType": "CUI", "fullName": "MÉNDEZ ESCOBAR MADELIN DANIELA", "firstName": "MADELIN DANIELA", "lastName": "MÉNDEZ ESCOBAR", "birthDate": "24/09/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F350ISD", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F697KNL", "no": 24, "personalCode": "F697KNL", "cui": "4046598292201", "docNumber": "4046598292201", "docType": "CUI", "fullName": "PÉREZ ALVEÑO JULIÁN ALEXANDER", "firstName": "JULIÁN ALEXANDER", "lastName": "PÉREZ ALVEÑO", "birthDate": "20/04/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F697KNL", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-E195FVT", "no": 25, "personalCode": "E195FVT", "cui": "2020735132201", "docNumber": "2020735132201", "docType": "CUI", "fullName": "RAMOS FLORIÁN DULCE MARÍA", "firstName": "DULCE MARÍA", "lastName": "RAMOS FLORIÁN", "birthDate": "05/11/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E195FVT", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F161UDZ", "no": 26, "personalCode": "F161UDZ", "cui": "2036725422201", "docNumber": "2036725422201", "docType": "CUI", "fullName": "RAMOS LÉMUS NANCY MADAI", "firstName": "NANCY MADAI", "lastName": "RAMOS LÉMUS", "birthDate": "26/02/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F161UDZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F360RTB", "no": 27, "personalCode": "F360RTB", "cui": "2010312802201", "docNumber": "2010312802201", "docType": "CUI", "fullName": "RAMOS RAMOS DANNYA VERALÍ", "firstName": "DANNYA VERALÍ", "lastName": "RAMOS RAMOS", "birthDate": "24/07/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F360RTB", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-H637JVJ", "no": 28, "personalCode": "H637JVJ", "cui": "2018218342201", "docNumber": "2018218342201", "docType": "CUI", "fullName": "RAMÍREZ HERNÁNDEZ YAQUELIN FERNANDA", "firstName": "YAQUELIN FERNANDA", "lastName": "RAMÍREZ HERNÁNDEZ", "birthDate": "14/11/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H637JVJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-F986VPZ", "no": 29, "personalCode": "F986VPZ", "cui": "2038168462201", "docNumber": "2038168462201", "docType": "CUI", "fullName": "RUANO RAMÍREZ KATTERIN JULISA", "firstName": "KATTERIN JULISA", "lastName": "RUANO RAMÍREZ", "birthDate": "12/04/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F986VPZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G162AXB", "no": 30, "personalCode": "G162AXB", "cui": "2005388452201", "docNumber": "2005388452201", "docType": "CUI", "fullName": "SALGUERO ALAY ERICK OTTONIEL", "firstName": "ERICK OTTONIEL", "lastName": "SALGUERO ALAY", "birthDate": "15/05/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G162AXB", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E047HLX", "no": 31, "personalCode": "E047HLX", "cui": "3425088572201", "docNumber": "3425088572201", "docType": "CUI", "fullName": "SANTIAGO GONZÁLEZ DULCE MARÍA DE LOS ANGELES", "firstName": "DULCE MARÍA DE LOS ANGELES", "lastName": "SANTIAGO GONZÁLEZ", "birthDate": "01/08/2006", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E047HLX", "grades": {}, "evaluations": {}, "activities": {}, "age": "20 años"}, {"id": "stu-sire-F732FBI", "no": 32, "personalCode": "F732FBI", "cui": "2031372052201", "docNumber": "2031372052201", "docType": "CUI", "fullName": "SICÁ CORADO ANYELO DAVID FERNANDO", "firstName": "ANYELO DAVID FERNANDO", "lastName": "SICÁ CORADO", "birthDate": "24/02/2009", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F732FBI", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-D155FPJ", "no": 33, "personalCode": "D155FPJ", "cui": "3425006432201", "docNumber": "3425006432201", "docType": "CUI", "fullName": "VEGA RAMÍREZ ROSA ELENA", "firstName": "ROSA ELENA", "lastName": "VEGA RAMÍREZ", "birthDate": "25/10/2006", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D155FPJ", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-H433XER", "no": 34, "personalCode": "H433XER", "cui": "2104308690106", "docNumber": "2104308690106", "docType": "CUI", "fullName": "VIVAS MARTÍNEZ ROSA MARIA DE JESÚS", "firstName": "ROSA MARIA DE JESÚS", "lastName": "VIVAS MARTÍNEZ", "birthDate": "10/06/2009", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "H433XER", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-G983HCS", "no": 35, "personalCode": "G983HCS", "cui": "2005394852201", "docNumber": "2005394852201", "docType": "CUI", "fullName": "VÁSQUEZ VÀSQUEZ YEFERSON DANIEL", "firstName": "YEFERSON DANIEL", "lastName": "VÁSQUEZ VÀSQUEZ", "birthDate": "13/05/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G983HCS", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F459CYC", "no": 36, "personalCode": "F459CYC", "cui": "2018207492201", "docNumber": "2018207492201", "docType": "CUI", "fullName": "ZEPEDA GUDIEL ASLY GABRIELA", "firstName": "ASLY GABRIELA", "lastName": "ZEPEDA GUDIEL", "birthDate": "30/09/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "5to Perito Contador", "gradeCode": "5to D", "gradeLabel": "5to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F459CYC", "grades": {}, "evaluations": {}, "activities": {}, "age": "17 años"}, {"id": "stu-sire-E461GND", "no": 1, "personalCode": "E461GND", "cui": "2813754882201", "docNumber": "2813754882201", "docType": "CUI", "fullName": "CHACON LÉMUS ASTRID YAMILETH", "firstName": "ASTRID YAMILETH", "lastName": "CHACON LÉMUS", "birthDate": "29/07/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E461GND", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-E559BKU", "no": 2, "personalCode": "E559BKU", "cui": "2813755342201", "docNumber": "2813755342201", "docType": "CUI", "fullName": "CHACON LÉMUS JACKELINE YAMILETH", "firstName": "JACKELINE YAMILETH", "lastName": "CHACON LÉMUS", "birthDate": "29/07/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E559BKU", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-E079JCB", "no": 3, "personalCode": "E079JCB", "cui": "2010307642201", "docNumber": "2010307642201", "docType": "CUI", "fullName": "CINTO MONZÓN ROSELIN DANIELA", "firstName": "ROSELIN DANIELA", "lastName": "CINTO MONZÓN", "birthDate": "26/06/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E079JCB", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G561UGV", "no": 4, "personalCode": "G561UGV", "cui": "3425800512201", "docNumber": "3425800512201", "docType": "CUI", "fullName": "CRÚZ MARTINEZ ILEANA JIREH", "firstName": "ILEANA JIREH", "lastName": "CRÚZ MARTINEZ", "birthDate": "12/07/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G561UGV", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-D326DMZ", "no": 5, "personalCode": "D326DMZ", "cui": "2853311752201", "docNumber": "2853311752201", "docType": "CUI", "fullName": "CUYUCH BARRERA LUIS FERNANDO", "firstName": "LUIS FERNANDO", "lastName": "CUYUCH BARRERA", "birthDate": "06/07/2005", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D326DMZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "21 años"}, {"id": "stu-sire-E860THN", "no": 6, "personalCode": "E860THN", "cui": "2842579662201", "docNumber": "2842579662201", "docType": "CUI", "fullName": "FLORES ORDOÑEZ WILDER SAMUEL", "firstName": "WILDER SAMUEL", "lastName": "FLORES ORDOÑEZ", "birthDate": "08/09/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E860THN", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-G163ALZ", "no": 7, "personalCode": "G163ALZ", "cui": "2010312052201", "docNumber": "2010312052201", "docType": "CUI", "fullName": "GARCÍA GREGORIO KIMBERLY YESENIA", "firstName": "KIMBERLY YESENIA", "lastName": "GARCÍA GREGORIO", "birthDate": "25/07/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G163ALZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-D351TRM", "no": 8, "personalCode": "D351TRM", "cui": "3423942662201", "docNumber": "3423942662201", "docType": "CUI", "fullName": "GARCÍA MENDEZ VIVIAN ADRIANA", "firstName": "VIVIAN ADRIANA", "lastName": "GARCÍA MENDEZ", "birthDate": "10/10/2006", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D351TRM", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-F085GHR", "no": 9, "personalCode": "F085GHR", "cui": "2000978222201", "docNumber": "2000978222201", "docType": "CUI", "fullName": "GARCÍA MURGA ANGEL ARMANDO", "firstName": "ANGEL ARMANDO", "lastName": "GARCÍA MURGA", "birthDate": "30/12/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F085GHR", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F242ULH", "no": 10, "personalCode": "F242ULH", "cui": "3425826312201", "docNumber": "3425826312201", "docType": "CUI", "fullName": "GARRIDO CRÚZ JULIO CESAR", "firstName": "JULIO CESAR", "lastName": "GARRIDO CRÚZ", "birthDate": "06/06/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F242ULH", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-F682YFQ", "no": 11, "personalCode": "F682YFQ", "cui": "3425679182201", "docNumber": "3425679182201", "docType": "CUI", "fullName": "GARRIDO GIRÓN FRANCIS ALEXANDER", "firstName": "FRANCIS ALEXANDER", "lastName": "GARRIDO GIRÓN", "birthDate": "28/07/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F682YFQ", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-G553EVA", "no": 12, "personalCode": "G553EVA", "cui": "3425861142201", "docNumber": "3425861142201", "docType": "CUI", "fullName": "GIRÓN ARTEAGA ASTRID JEMIMA", "firstName": "ASTRID JEMIMA", "lastName": "GIRÓN ARTEAGA", "birthDate": "29/10/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G553EVA", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F348TUD", "no": 13, "personalCode": "F348TUD", "cui": "2000926262206", "docNumber": "2000926262206", "docType": "CUI", "fullName": "GONZÁLEZ MÉNDEZ YEIMI GUADALUPE", "firstName": "YEIMI GUADALUPE", "lastName": "GONZÁLEZ MÉNDEZ", "birthDate": "19/01/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F348TUD", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E032YEF", "no": 14, "personalCode": "E032YEF", "cui": "2007015252201", "docNumber": "2007015252201", "docType": "CUI", "fullName": "GÓMEZ RAMÍREZ EIVI JESHUA ITHURIEL", "firstName": "EIVI JESHUA ITHURIEL", "lastName": "GÓMEZ RAMÍREZ", "birthDate": "24/06/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E032YEF", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-D538BIA", "no": 15, "personalCode": "D538BIA", "cui": "3424708092201", "docNumber": "3424708092201", "docType": "CUI", "fullName": "JIMÉNEZ LÓPEZ ALLAN EDUARDO", "firstName": "ALLAN EDUARDO", "lastName": "JIMÉNEZ LÓPEZ", "birthDate": "04/10/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "D538BIA", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E385PSG", "no": 16, "personalCode": "E385PSG", "cui": "2001188892201", "docNumber": "2001188892201", "docType": "CUI", "fullName": "LÓPEZ RAMOS LESLI LORENA", "firstName": "LESLI LORENA", "lastName": "LÓPEZ RAMOS", "birthDate": "22/01/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E385PSG", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F755PSN", "no": 17, "personalCode": "F755PSN", "cui": "3424961902201", "docNumber": "3424961902201", "docType": "CUI", "fullName": "MARTÍNEZ CORDERO WILMAN", "firstName": "WILMAN", "lastName": "MARTÍNEZ CORDERO", "birthDate": "19/02/2006", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F755PSN", "grades": {}, "evaluations": {}, "activities": {}, "age": "20 años"}, {"id": "stu-sire-F361JGB", "no": 18, "personalCode": "F361JGB", "cui": "2005388882201", "docNumber": "2005388882201", "docType": "CUI", "fullName": "MONZÓN GREGORIO RÓBINSON OSVALDO", "firstName": "RÓBINSON OSVALDO", "lastName": "MONZÓN GREGORIO", "birthDate": "06/05/2008", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F361JGB", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F693HKS", "no": 19, "personalCode": "F693HKS", "cui": "3425543602201", "docNumber": "3425543602201", "docType": "CUI", "fullName": "MÉNDEZ ALEJANDRO DAYANA MISHEL", "firstName": "DAYANA MISHEL", "lastName": "MÉNDEZ ALEJANDRO", "birthDate": "10/02/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F693HKS", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-F496KGK", "no": 20, "personalCode": "F496KGK", "cui": "3425168172201", "docNumber": "3425168172201", "docType": "CUI", "fullName": "MÉNDEZ RECINOS GRASIELA JEANETH", "firstName": "GRASIELA JEANETH", "lastName": "MÉNDEZ RECINOS", "birthDate": "27/04/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F496KGK", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-G527TFX", "no": 21, "personalCode": "G527TFX", "cui": "2791247400919", "docNumber": "2791247400919", "docType": "CUI", "fullName": "PÉREZ LÓPEZ ALISON DAYANA", "firstName": "ALISON DAYANA", "lastName": "PÉREZ LÓPEZ", "birthDate": "04/06/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "G527TFX", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-C421JEX", "no": 22, "personalCode": "C421JEX", "cui": "3424131122201", "docNumber": "3424131122201", "docType": "CUI", "fullName": "PÉREZ MARTÍNEZ SAOLY JIREL", "firstName": "SAOLY JIREL", "lastName": "PÉREZ MARTÍNEZ", "birthDate": "10/08/2007", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C421JEX", "grades": {}, "evaluations": {}, "activities": {}, "age": "19 años"}, {"id": "stu-sire-C517ZHX", "no": 23, "personalCode": "C517ZHX", "cui": "2001954762201", "docNumber": "2001954762201", "docType": "CUI", "fullName": "RAMÍREZ RAMÍREZ ANGELA REBECA", "firstName": "ANGELA REBECA", "lastName": "RAMÍREZ RAMÍREZ", "birthDate": "17/01/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C517ZHX", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-E397QUC", "no": 24, "personalCode": "E397QUC", "cui": "3049656930116", "docNumber": "3049656930116", "docType": "CUI", "fullName": "REYES RAMÍREZ ELMER ENRIQUE", "firstName": "ELMER ENRIQUE", "lastName": "REYES RAMÍREZ", "birthDate": "17/09/2007", "gender": "Masculino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E397QUC", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-C822YJN", "no": 25, "personalCode": "C822YJN", "cui": "3422314802201", "docNumber": "3422314802201", "docType": "CUI", "fullName": "SALVATIERRA CALDERAS NATALY GABRIELA", "firstName": "NATALY GABRIELA", "lastName": "SALVATIERRA CALDERAS", "birthDate": "05/01/2004", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "C822YJN", "grades": {}, "evaluations": {}, "activities": {}, "age": "22 años"}, {"id": "stu-sire-E175FTL", "no": 26, "personalCode": "E175FTL", "cui": "3426919532203", "docNumber": "3426919532203", "docType": "CUI", "fullName": "URBINA NÁJERA LUZ ANGELA", "firstName": "LUZ ANGELA", "lastName": "URBINA NÁJERA", "birthDate": "23/04/2006", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "E175FTL", "grades": {}, "evaluations": {}, "activities": {}, "age": "20 años"}, {"id": "stu-sire-F693KBT", "no": 27, "personalCode": "F693KBT", "cui": "2001205142201", "docNumber": "2001205142201", "docType": "CUI", "fullName": "VIRULA YANES BEVERLYN YANET", "firstName": "BEVERLYN YANET", "lastName": "VIRULA YANES", "birthDate": "26/01/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F693KBT", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}, {"id": "stu-sire-F231NDZ", "no": 28, "personalCode": "F231NDZ", "cui": "3341646561804", "docNumber": "3341646561804", "docType": "CUI", "fullName": "ZUÑIGA GARCÍA STEFANY JIMENA", "firstName": "STEFANY JIMENA", "lastName": "ZUÑIGA GARCÍA", "birthDate": "12/02/2008", "gender": "Femenino", "ethnicity": "Ladino", "nationality": "Guatemalteca", "nativeLanguage": "Español", "status": "Activo", "grade": "6to Perito Contador", "gradeCode": "6to D", "gradeLabel": "6to Perito Contador Sección D", "section": "Sección D", "career": "010 - PERITO CONTADOR", "academicCycle": "2026", "carne": "F231NDZ", "grades": {}, "evaluations": {}, "activities": {}, "age": "18 años"}];
+
+function getCleanSectionLetter(secStr) {
+    if (!secStr) return '';
+    const m = secStr.toString().match(/\b([A-D])\b/i);
+    if (m) return m[1].toUpperCase();
+    const clean = secStr.toString().replace(/SECCI[OÓ]N/ig, '').trim().toUpperCase();
+    const lastChar = clean.slice(-1);
+    if (['A', 'B', 'C', 'D'].includes(lastChar)) return lastChar;
+    return '';
+}
+
+function formatDateForInput(dateStr) {
+    if (!dateStr) return '';
+    if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+            const day = parts[0].padStart(2, '0');
+            const month = parts[1].padStart(2, '0');
+            const year = parts[2];
+            return `${year}-${month}-${day}`;
+        }
+    }
+    return dateStr;
+}
+
+function formatDateForDisplay(dateStr) {
+    if (!dateStr) return '';
+    if (dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            const year = parts[0];
+            const month = parts[1].padStart(2, '0');
+            const day = parts[2].padStart(2, '0');
+            return `${day}/${month}/${year}`;
+        }
+    }
+    return dateStr;
+}
+
+function ensureSireOfficialStudents() {
+    if (!Array.isArray(STATE.students) || STATE.students.length < 400) {
+        STATE.students = JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS));
+    }
+}
+
 function normalizeCareers() {
     if (!Array.isArray(STATE.careers) || STATE.careers.length === 0) {
         STATE.careers = (typeof getInitialData === 'function' && getInitialData().careers) || [
@@ -582,8 +635,9 @@ function getInitialData() {
                         "shift": "Matutina"
             }
 ],
-        pensumCatalog: [],
-        pensum: [],
+        pensumCatalog: (typeof OFFICIAL_PENSUM_28_CATALOG !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_PENSUM_28_CATALOG)) : [],
+        students: (typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : [],
+        pensum: (typeof OFFICIAL_PENSUM_116_ASSIGNMENTS !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_PENSUM_116_ASSIGNMENTS)) : [],
         announcements: [],
         disciplineReports: [],
         attendanceRecords: {},
@@ -725,7 +779,7 @@ var STATE = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {
     activeCycle: '2026',
     gradesList: getInitialData().gradesList,
     pensumCatalog: [],
-    students: (typeof getInitialData === 'function' && getInitialData().students) || [],
+    students: (typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : [],
         pensum: [],
         announcements: [],
     disciplineReports: [],
@@ -825,6 +879,7 @@ function initApp() {
     } catch(e) {}
 
     if (window.SecurityEngine) window.SecurityEngine.initInactivityGuard();
+    ensureSireOfficialStudents();
 
     // Guardias de guardado automático al recargar la página (F5), navegar o cerrar ventana
     window.addEventListener('beforeunload', () => {
@@ -934,7 +989,7 @@ function initApp() {
         const authRoleStr = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
         
         if (!authUserStr) {
-            window.location.replace('login.html');
+            window.location.replace('index.html');
             return;
         }
         try {
@@ -1354,6 +1409,20 @@ function completeLoginWithRole(selectedRole, userObj = null) {
 }
 
 
+function synchronizeGlobalDynamicUI() {
+    saveStateToLocalStorage();
+    if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
+    if (typeof updateCareerSelects === 'function') updateCareerSelects();
+    if (typeof updateGradeSelects === 'function') updateGradeSelects();
+    if (typeof updatePensumCatalogSelects === 'function') updatePensumCatalogSelects();
+    if (typeof updateAssignmentSelects === 'function') updateAssignmentSelects();
+    if (typeof updatePrintModelSelects === 'function') updatePrintModelSelects();
+    if (typeof populateAttendanceSelects === 'function') populateAttendanceSelects();
+    if (typeof populatePensumTeacherSelect === 'function') populatePensumTeacherSelect();
+    if (typeof updateLoginAccountSelect === 'function') updateLoginAccountSelect();
+    if (typeof renderDashboard === 'function') renderDashboard();
+}
+
 function updateTopRoleBar() {
     const group = document.getElementById('topRoleSwitcherGroup');
     if (!group || !STATE.currentUser) return;
@@ -1428,9 +1497,16 @@ function performLogout() {
         sessionStorage.clear();
         localStorage.removeItem('ENCCO_AUTH_USER');
         localStorage.removeItem('ENCCO_AUTH_ROLE');
+        sessionStorage.removeItem('ENCCO_AUTH_USER');
+        sessionStorage.removeItem('ENCCO_AUTH_ROLE');
     } catch(e) {}
     window.location.replace('index.html');
 }
+
+function logoutUser() {
+    performLogout();
+}
+
 
 function resetDemoData() {
     if (confirm("¿Está seguro de limpiar toda la base de datos a su estado en blanco (conservando únicamente su Super Usuario Nehemias Salguero)?")) {
@@ -1633,19 +1709,18 @@ function switchRole(role) {
 // AUDITORÍA Y SIMULACIÓN DE CUALQUIER USUARIO PARA EL SUPER ADMINISTRADOR
 // ==========================================================================
 function impersonateUser(userId) {
-    const isOriginalAdmin = (STATE.currentRole === 'admin' || STATE.impersonatorAdmin || STATE.currentUser?.role === 'admin');
+    const isOriginalAdmin = (STATE.currentRole === 'admin' || STATE.impersonatorAdmin || (STATE.currentUser && STATE.currentUser.role === 'admin'));
     if (!isOriginalAdmin) {
         showToast("Acceso Restringido: La simulación y prueba de cuentas es exclusiva del Super Administrador.", "danger");
         return;
     }
 
-    const targetUser = STATE.users.find(u => u.id === userId);
+    const targetUser = (STATE.users || []).find(u => u.id === userId);
     if (!targetUser) {
         showToast("Usuario no encontrado en la base de datos.", "danger");
         return;
     }
 
-    // Si aún no se ha guardado el administrador original, guardarlo
     if (!STATE.impersonatorAdmin) {
         STATE.impersonatorAdmin = STATE.currentUser || STATE.users[0];
     }
@@ -1653,7 +1728,6 @@ function impersonateUser(userId) {
     STATE.currentUser = targetUser;
     STATE.currentRole = targetUser.role;
 
-    // Actualizar banner superior de simulación
     const banner = document.getElementById('impersonationBanner');
     const bName = document.getElementById('impersonatedUserName');
     const bRole = document.getElementById('impersonatedUserRole');
@@ -1663,19 +1737,16 @@ function impersonateUser(userId) {
         if (bRole) bRole.textContent = targetUser.title || targetUser.role.toUpperCase();
     }
 
-    // Actualizar sidebar, barra superior y vistas
     switchRole(targetUser.role);
+    synchronizeGlobalDynamicUI();
 
-    // Navegar a la vista correspondiente
     if (targetUser.role === 'docente') {
-        navigateTo('dashboard');
-    } else if (targetUser.role === 'secretaria') {
-        navigateTo('students');
+        navigateTo('excel-import');
     } else {
         navigateTo('dashboard');
     }
 
-    showToast(`🎭 Modo Prueba Activo: Ahora estás navegando como "${targetUser.name}" (${targetUser.role.toUpperCase()}).`, "warning");
+    showToast(`Modo Simulación Activo: Ahora estás navegando como ${targetUser.name} (${targetUser.role.toUpperCase()}).`, "warning");
 }
 
 function exitImpersonation() {
@@ -1689,15 +1760,14 @@ function exitImpersonation() {
     STATE.currentRole = 'admin';
     STATE.impersonatorAdmin = null;
 
-    // Ocultar banner de simulación
     const banner = document.getElementById('impersonationBanner');
     if (banner) banner.style.display = 'none';
 
-    // Restaurar permisos y vistas completas
     switchRole('admin');
+    synchronizeGlobalDynamicUI();
     navigateTo('users');
 
-    showToast("✨ Has salido del modo de simulación. Acceso total de Super Administrador restaurado.", "success");
+    showToast("Has salido del modo de simulación. Acceso total de Super Administrador restaurado.", "success");
 }
 
 function navigateTo(viewName, event = null) {
@@ -2056,31 +2126,31 @@ function openPrintForCourse(grade, section, subject) {
 // ==========================================================================
 function getStudentCountByGradeAndSection(gradeCode, gradeName = null, sectionName = null) {
     if (!gradeCode && !gradeName) return 0;
-    const activeCycle = STATE.activeCycle;
+    const students = Array.isArray(STATE.students) ? STATE.students : [];
     
-    return (STATE.students || []).filter(s => {
-        if (s.status !== 'Activo') return false;
-        if (activeCycle && s.cycle && s.cycle !== activeCycle) return false;
+    const rawQ = `${gradeCode || ''} ${gradeName || ''} ${sectionName || ''}`.toUpperCase();
+    let qGradeNum = 0;
+    if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
+    else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
+    else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
 
-        // 1. Coincidencia estricta por código único de grado y sección (ej: 4TO_PERITO_A)
-        if (gradeCode && s.grade === gradeCode) return true;
+    const qSec = getCleanSectionLetter(sectionName || gradeCode || rawQ);
 
-        // 2. Coincidencia estricta por etiqueta completa de grado Y sección (ej: "4to. Perito Contador (Sección A)")
-        if (gradeName && sectionName && s.gradeLabel) {
-            const expected = `${gradeName} (${sectionName})`.trim().toLowerCase();
-            if (s.gradeLabel.trim().toLowerCase() === expected) return true;
-        }
+    return students.filter(s => {
+        if (s.status && s.status !== 'Activo') return false;
 
-        // 3. Coincidencia con objeto de grado correspondiente en catálogo
-        if (gradeCode && s.gradeLabel) {
-            const gObj = (STATE.gradesList || []).find(x => x.code === gradeCode);
-            if (gObj) {
-                const expected = `${gObj.name} (${gObj.section})`.trim().toLowerCase();
-                if (s.gradeLabel.trim().toLowerCase() === expected) return true;
-            }
-        }
+        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+        let sGradeNum = 0;
+        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
 
-        return false;
+        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
+
+        if (qGradeNum > 0 && sGradeNum > 0 && qGradeNum !== sGradeNum) return false;
+        if (qSec && sSec && qSec !== sSec) return false;
+
+        return (qGradeNum === sGradeNum) && (qSec === sSec);
     }).length;
 }
 
@@ -2185,21 +2255,35 @@ function renderStudentsTable() {
 
     let list = STATE.students || [];
 
-    // Si hay Grado y Sección seleccionado, filtrar por grado
-    if (gradeVal) {
+    // Filtrado robusto por Grado y Sección
+    if (gradeVal && gradeVal !== 'ALL') {
+        const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal || g.name === gradeVal);
+        const rawQ = `${gradeVal || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
+        let qGradeNum = 0;
+        if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
+        else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
+        else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
+
+        const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeVal);
+
         list = list.filter(s => {
-            if (!s.grade && !s.gradeLabel) return false;
-            if (s.grade === gradeVal) return true;
-            if (targetGradeObj && s.gradeLabel) {
-                const expectedLabel = `${targetGradeObj.name} (${targetGradeObj.section})`.trim().toLowerCase();
-                if (s.gradeLabel.trim().toLowerCase() === expectedLabel) return true;
-            }
-            return false;
+            const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+            let sGradeNum = 0;
+            if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+            else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+            else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+
+            const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
+
+            if (qGradeNum > 0 && sGradeNum > 0 && qGradeNum !== sGradeNum) return false;
+            if (qSec && sSec && qSec !== sSec) return false;
+
+            return (qGradeNum === sGradeNum) && (qSec === sSec);
         });
-    } else if (careerVal) {
+    } else if (careerVal && careerVal !== 'ALL') {
         list = list.filter(s => {
-            const gObj = (STATE.gradesList || []).find(g => g.code === s.grade);
-            return (s.career && s.career.toLowerCase() === careerVal.toLowerCase()) || (gObj && gObj.career && gObj.career.toLowerCase() === careerVal.toLowerCase());
+            const cLower = careerVal.toLowerCase();
+            return (s.career && s.career.toLowerCase().includes(cLower)) || cLower.includes((s.career || '').toLowerCase());
         });
     }
 
@@ -2517,8 +2601,18 @@ function openEditStudentModal(studentId) {
     document.getElementById('studentFormCui').value = student.cui || '';
     document.getElementById('studentFormFirstName').value = student.firstName || '';
     document.getElementById('studentFormLastName').value = student.lastName || '';
-    document.getElementById('studentFormBirthDate').value = student.birthDate || '';
-    calculateStudentAge(student.birthDate);
+    const formattedBirthDate = formatDateForInput(student.birthDate);
+    const birthInput = document.getElementById('studentFormBirthDate');
+    if (birthInput) birthInput.value = formattedBirthDate || '';
+    calculateStudentAge(formattedBirthDate || student.birthDate);
+
+    const genderSelect = document.getElementById('studentFormGender');
+    if (genderSelect) {
+        const g = (student.gender || '').trim().toLowerCase();
+        if (g.startsWith('m') || g === 'masculino') genderSelect.value = 'Masculino';
+        else if (g.startsWith('f') || g === 'femenino') genderSelect.value = 'Femenino';
+        else genderSelect.value = student.gender || 'Masculino';
+    }
     document.getElementById('studentFormPhone').value = student.phone || '';
     document.getElementById('studentFormEmail').value = student.email || '';
     document.getElementById('studentFormAddress').value = student.address || '';
@@ -2856,7 +2950,8 @@ function getStudentAcademicInfo(student) {
             officialClassLoad: 9,
             classLoadLabel: '9 Clases (4to/5to)',
             hasFailedGrade: false,
-            eligibleForHonorRoll: true,
+            isExonerated: false,
+            eligibleForHonorRoll: false,
             failedSubjectsList: [],
             exoneratedCount: 0
         };
@@ -2870,18 +2965,26 @@ function getStudentAcademicInfo(student) {
     // Carga académica oficial: 4to y 5to tienen 9 clases oficiales; 6to tiene 10 clases oficiales
     const officialClassLoad = is6to ? 10 : 9;
     const classLoadLabel = is6to ? '10 Clases (6to)' : '9 Clases (4to/5to)';
-    const activeBimestre = parseInt(STATE.config?.activeBimestre) || 2;
+    const activeBimestre = parseInt(STATE.config?.activeBimestre) || 1;
 
     let sumCourseAverages = 0;
+    let totalAccumulatedPoints = 0;
     let gradedCount = 0;
     let hasFailedGrade = false;
     const failedSubjectsList = [];
     let exoneratedCount = 0;
 
+    // Verificar si el estudiante está exonerado
+    if (student.isExonerated === true || student.exonerated === true) {
+        exoneratedCount++;
+    }
     if (student.academicExceptions && Array.isArray(student.academicExceptions)) {
-        exoneratedCount = student.academicExceptions.length;
+        exoneratedCount += student.academicExceptions.length;
     }
 
+    const isStudentExonerated = (exoneratedCount > 0);
+
+    // Revisar calificaciones ingresadas por los docentes
     if (student.grades && typeof student.grades === 'object') {
         const courseNames = Object.keys(student.grades);
         courseNames.forEach(cName => {
@@ -2890,13 +2993,10 @@ function getStudentAcademicInfo(student) {
                 let validCourseScores = [];
                 for (let b = 1; b <= activeBimestre; b++) {
                     const score = parseInt(bGrades[b - 1]) || 0;
-                    const isExonerated = isSubjectBimestreExonerated(student, cName, b);
-                    if (isExonerated) {
-                        // Exonerado individualmente por problema justificado: no penaliza ni descalifica
-                    } else if (score > 0) {
+                    if (score > 0) {
                         if (score < 60) {
                             hasFailedGrade = true;
-                            failedSubjectsList.push(`${cName} (B${b}: ${score} pts)`);
+                            failedSubjectsList.push(`${cName} (${score} pts)`);
                         }
                         validCourseScores.push(score);
                     }
@@ -2905,21 +3005,48 @@ function getStudentAcademicInfo(student) {
                 if (validCourseScores.length > 0) {
                     const courseAvg = validCourseScores.reduce((a, b) => a + b, 0) / validCourseScores.length;
                     sumCourseAverages += courseAvg;
+                    totalAccumulatedPoints += courseAvg;
                     gradedCount++;
                 }
             }
         });
     }
 
-    // Si tiene calificaciones registradas, calcular el promedio ponderado equilibrado sobre Base 100
+    // Revisar estructura moderna de gradebookDetails si existe
+    if (student.gradebookDetails && typeof student.gradebookDetails === 'object') {
+        const courses = Object.keys(student.gradebookDetails);
+        courses.forEach(cName => {
+            for (let b = 1; b <= activeBimestre; b++) {
+                const bDetail = student.gradebookDetails[cName] && student.gradebookDetails[cName][b];
+                if (bDetail) {
+                    const totalScore = (parseInt(bDetail.zona) || 0) + (parseInt(bDetail.exam) || 0);
+                    if (totalScore > 0) {
+                        if (totalScore < 60) {
+                            hasFailedGrade = true;
+                            if (!failedSubjectsList.some(f => f.startsWith(cName))) {
+                                failedSubjectsList.push(`${cName} (${totalScore} pts)`);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // REGLAS ESTRICTAS DE CUADRO DE HONOR:
+    // 1. Debe tener al menos una clase calificada (gradedCount > 0)
+    // 2. NO debe tener ninguna clase perdida (hasFailedGrade === false)
+    // 3. NO debe ser un alumno exonerado (isStudentExonerated === false)
+    const isEligible = (gradedCount > 0) && (!hasFailedGrade) && (!isStudentExonerated);
+
     if (gradedCount > 0) {
-        const balancedAvg = sumCourseAverages / gradedCount;
-        const finalAvg = parseFloat(balancedAvg.toFixed(2));
-        const totalPointsEstimated = Math.round(finalAvg * officialClassLoad);
+        // Nivelación matemática exacta Base 100
+        const balancedAvg = parseFloat((sumCourseAverages / gradedCount).toFixed(2));
+        const totalPointsCalc = Math.round(sumCourseAverages);
 
         return {
-            average: finalAvg,
-            totalPoints: totalPointsEstimated,
+            average: balancedAvg,
+            totalPoints: totalPointsCalc,
             classCount: officialClassLoad,
             gradedClasses: gradedCount,
             gradeGroup: is6to ? '6to' : (is5to ? '5to' : '4to'),
@@ -2929,25 +3056,19 @@ function getStudentAcademicInfo(student) {
             officialClassLoad: officialClassLoad,
             classLoadLabel: classLoadLabel,
             hasFailedGrade: hasFailedGrade,
-            eligibleForHonorRoll: !hasFailedGrade,
+            isExonerated: isStudentExonerated,
+            eligibleForHonorRoll: isEligible,
             failedSubjectsList: failedSubjectsList,
             exoneratedCount: exoneratedCount
         };
     }
 
-    // Para estudiantes demostrativos o sin notas ingresadas aún, generar un promedio realista determinista (85 - 98.5)
-    let hash = 0;
-    const seedStr = (student.id || '') + (student.carne || '') + (student.lastName || '') + (student.firstName || '');
-    for (let i = 0; i < seedStr.length; i++) hash = ((hash << 5) - hash) + seedStr.charCodeAt(i);
-    const randBase = Math.abs(hash) % 135;
-    const initialAvg = 85.0 + (randBase / 10.0);
-    const roundedAvg = parseFloat(Math.min(99.0, initialAvg).toFixed(2));
-
+    // Si AÚN NO hay calificaciones ingresadas, todo permanece en 0 real (limpio)
     return {
-        average: roundedAvg,
-        totalPoints: Math.round(roundedAvg * officialClassLoad),
+        average: 0,
+        totalPoints: 0,
         classCount: officialClassLoad,
-        gradedClasses: officialClassLoad,
+        gradedClasses: 0,
         gradeGroup: is6to ? '6to' : (is5to ? '5to' : '4to'),
         is6to: is6to,
         is5to: is5to,
@@ -2955,11 +3076,13 @@ function getStudentAcademicInfo(student) {
         officialClassLoad: officialClassLoad,
         classLoadLabel: classLoadLabel,
         hasFailedGrade: false,
-        eligibleForHonorRoll: true,
+        isExonerated: isStudentExonerated,
+        eligibleForHonorRoll: false,
         failedSubjectsList: [],
         exoneratedCount: exoneratedCount
     };
 }
+
 
 function openAcademicExonerationModal(studentId) {
     const student = STATE.students.find(s => s.id === studentId);
@@ -3010,8 +3133,7 @@ function openAcademicExonerationModal(studentId) {
 
     renderAcademicExonerationsList(student);
 
-    const modal = document.getElementById('academicExonerationModal');
-    if (modal) modal.classList.add('active');
+    showModalById('academicExonerationModal');
 }
 
 function closeAcademicExonerationModal() {
@@ -3281,8 +3403,7 @@ function openStudentProfileModal(id) {
     // Activar por defecto la Pestaña 1
     switchStudentProfileTab('data');
 
-    const modal = document.getElementById('studentProfileModal');
-    if (modal) modal.classList.add('active');
+    showModalById('studentProfileModal');
 }
 
 function renderStudentProfileGrades(student) {
@@ -3535,14 +3656,98 @@ function saveSchoolHeaderConfig() {
     showToast("¡Encabezado y membrete institucional guardado correctamente!", "success");
 }
 
+const CANONICAL_CNB_28_DICTIONARY = [
+    // 4to Perito Contador
+    { grade: 4, full: "Contabilidad de Sociedades", aliases: ["sociedades", "conta sociedades", "contabilidad de sociedades", "contabilidad sociedades", "conta 1", "conta i"] },
+    { grade: 4, full: "Matemática Comercial", aliases: ["matematica comercial", "mate comercial", "matematica", "mate 1", "mate i"] },
+    { grade: 4, full: "Fundamentos de Derecho", aliases: ["fundamentos de derecho", "fundamentos derecho", "derecho 1", "derecho i"] },
+    { grade: 4, full: "Administración y Organización de Oficina", aliases: ["administracion y organizacion de oficina", "administracion", "organizacion de oficina", "admon", "admon de oficina"] },
+    { grade: 4, full: "Inglés Comercial I", aliases: ["ingles comercial i", "ingles comercial 1", "ingles 1", "ingles i"] },
+    { grade: 4, full: "Redacción y Correspondencia Mercantil", aliases: ["redaccion y correspondencia mercantil", "redaccion y correspondencia", "redaccion", "correspondencia", "correspondencia mercantil"] },
+    { grade: 4, full: "Introducción a la Economía", aliases: ["introduccion a la economia", "introduccion economia", "economia", "intro economia"] },
+    { grade: 4, full: "Ortografía y Caligrafía", aliases: ["ortografia y caligrafia", "ortografia", "caligrafia", "orto y cali"] },
+    { grade: 4, full: "Computación I", aliases: ["computacion i", "computacion 1", "compu 1", "compu i", "computacion"] },
+
+    // 5to Perito Contador
+    { grade: 5, full: "Contabilidad de Costos", aliases: ["contabilidad de costos", "contabilidad costos", "costos", "conta costos", "conta 2", "conta ii"] },
+    { grade: 5, full: "Cálculo Mercantil", aliases: ["calculo mercantil", "calculo", "cálculo", "calculo merc", "calc"] },
+    { grade: 5, full: "Estadística Descriptiva", aliases: ["estadistica descriptiva", "estadistica", "estadística"] },
+    { grade: 5, full: "Inglés Comercial II", aliases: ["ingles comercial ii", "ingles comercial 2", "ingles 2", "ingles ii"] },
+    { grade: 5, full: "Legislación Fiscal y Aduanera", aliases: ["legislacion fiscal y aduanera", "legislacion fiscal", "legislacion", "fiscal y aduanera", "fiscal", "aduanera"] },
+    { grade: 5, full: "Finanzas Públicas", aliases: ["finanzas publicas", "finanzas públicas", "finanzas"] },
+    { grade: 5, full: "Geografía Económica", aliases: ["geografia economica", "geografía económica", "geografia", "geografía"] },
+    { grade: 5, full: "Mecanografía", aliases: ["mecanografia", "mecanografía", "meca"] },
+    { grade: 5, full: "Computación II", aliases: ["computacion ii", "computacion 2", "compu 2", "compu ii"] },
+
+    // 6to Perito Contador
+    { grade: 6, full: "Contabilidad Bancaria", aliases: ["contabilidad bancaria", "conta bancaria", "bancaria", "conta 3", "conta iii"] },
+    { grade: 6, full: "Contabilidad Gubernamental Integrada", aliases: ["contabilidad gubernamental integrada", "contabilidad gubernamental", "conta gubernamental", "gubernamental", "guber", "conta guber"] },
+    { grade: 6, full: "Auditoría", aliases: ["auditoria", "auditoría"] },
+    { grade: 6, full: "Ética Profesional y Relaciones Humanas", aliases: ["etica profesional y relaciones humanas", "etica profesional", "relaciones humanas", "etica", "ética"] },
+    { grade: 6, full: "Práctica Supervisada", aliases: ["practica supervisada", "práctica supervisada", "practica", "práctica"] },
+    { grade: 6, full: "Derecho Mercantil y Nociones de Derecho Laboral", aliases: ["derecho mercantil y nociones de derecho laboral", "derecho mercantil", "derecho laboral", "nociones de derecho laboral", "laboral y mercantil"] },
+    { grade: 6, full: "Organización y Métodos", aliases: ["organizacion y metodos", "organización y métodos", "oym", "o y m"] },
+    { grade: 6, full: "Seminario sobre Problemas de la Educación Socioeconómica de Guatemala", aliases: ["seminario sobre problemas de la educacion socioeconomica de guatemala", "seminario de graduacion", "seminario", "socioeconomica"] },
+    { grade: 6, full: "Inglés Comercial III", aliases: ["ingles comercial iii", "ingles comercial 3", "ingles 3", "ingles iii"] },
+    { grade: 6, full: "Computación III", aliases: ["computacion iii", "computacion 3", "compu 3", "compu iii"] }
+];
+
+function getFullOfficialSubjectName(rawSubjectName, gradeNum = 0) {
+    if (!rawSubjectName) return '';
+    const cleanRaw = rawSubjectName.trim();
+    const lowerRaw = cleanRaw.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    // 1. Buscar coincidencia en el catálogo oficial de 28 materias
+    let candidates = CANONICAL_CNB_28_DICTIONARY;
+    if (gradeNum === 4 || gradeNum === 5 || gradeNum === 6) {
+        const gradeFiltered = candidates.filter(c => c.grade === gradeNum);
+        if (gradeFiltered.length > 0) {
+            const matchInGrade = gradeFiltered.find(c => {
+                const lowerFull = c.full.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                if (lowerFull === lowerRaw) return true;
+                return c.aliases.some(alias => {
+                    const cleanAlias = alias.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    return cleanAlias === lowerRaw || lowerRaw.includes(cleanAlias) || cleanAlias.includes(lowerRaw);
+                });
+            });
+            if (matchInGrade) return matchInGrade.full;
+        }
+    }
+
+    // 2. Búsqueda global en el diccionario canónico
+    const globalMatch = candidates.find(c => {
+        const lowerFull = c.full.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        if (lowerFull === lowerRaw) return true;
+        return c.aliases.some(alias => {
+            const cleanAlias = alias.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return cleanAlias === lowerRaw || lowerRaw.includes(cleanAlias);
+        });
+    });
+    if (globalMatch) return globalMatch.full;
+
+    // 3. Buscar en STATE.pensumCatalog
+    if (Array.isArray(STATE.pensumCatalog) && STATE.pensumCatalog.length > 0) {
+        const catalogMatch = STATE.pensumCatalog.find(p => {
+            const pName = (p.name || p.subject || '').trim();
+            const lowerP = pName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return lowerP === lowerRaw || lowerP.includes(lowerRaw) || lowerRaw.includes(lowerP);
+        });
+        if (catalogMatch) return catalogMatch.name || catalogMatch.subject;
+    }
+
+    return cleanRaw;
+}
+
 function updatePrintModelSelects() {
     const careerSelect = document.getElementById('printModelCareerSelect');
     const teacherNameInput = document.getElementById('printModelTeacherName');
     const notice = document.getElementById('printModelTeacherNotice');
+    const subjectSelect = document.getElementById('printModelSubjectSelect');
     if (!careerSelect) return;
 
     const isDocente = (STATE.currentRole === 'docente');
-    const currentDocenteUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente') || STATE.users[0];
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
 
     if (notice) {
         notice.style.display = isDocente ? 'block' : 'none';
@@ -3550,32 +3755,37 @@ function updatePrintModelSelects() {
 
     let careers = STATE.careers || [];
 
-    if (isDocente) {
-        // Cargar únicamente las carreras donde el docente tiene clases asignadas
-        const myAssignments = (STATE.pensum || []).filter(a => 
-            (currentDocenteUser && a.teacherId === currentDocenteUser.id) || 
-            (currentDocenteUser && a.teacher === currentDocenteUser.name)
-        );
+    if (isDocente && currentDocenteUser) {
+        const uName = (currentDocenteUser.name || '').trim().toLowerCase();
+        const uId = currentDocenteUser.id || '';
+
+        const myAssignments = (STATE.pensum || []).filter(a => {
+            const tName = (a.teacher || '').trim().toLowerCase();
+            return (uId && a.teacherId === uId) || (tName && (tName === uName || uName.includes(tName) || tName.includes(uName)));
+        });
 
         const assignedCareerNames = [...new Set(myAssignments.map(a => a.career).filter(Boolean))];
-        careers = careers.filter(c => assignedCareerNames.includes(c.name));
+        careers = careers.filter(c => assignedCareerNames.some(ac => ac.toLowerCase() === c.name.toLowerCase()));
 
         if (teacherNameInput) {
-            teacherNameInput.value = currentDocenteUser ? currentDocenteUser.name : 'Docente Titular';
+            teacherNameInput.value = currentDocenteUser.name;
             teacherNameInput.readOnly = true;
             teacherNameInput.style.backgroundColor = '#f1f5f9';
+            teacherNameInput.style.cursor = 'not-allowed';
         }
 
         if (careers.length === 0) {
             careerSelect.innerHTML = '<option value="">-- Sin carreras asignadas a su cuenta --</option>';
             const gradeSelect = document.getElementById('printModelGradeSelect');
             if (gradeSelect) gradeSelect.innerHTML = '<option value="">-- Sin grados asignados --</option>';
+            if (subjectSelect) subjectSelect.innerHTML = '<option value="">-- Sin materias asignadas --</option>';
             return;
         }
     } else {
         if (teacherNameInput) {
             teacherNameInput.readOnly = false;
             teacherNameInput.style.backgroundColor = '#ffffff';
+            teacherNameInput.style.cursor = 'text';
         }
     }
 
@@ -3590,42 +3800,67 @@ function updatePrintModelSelects() {
     } else {
         const gradeSelect = document.getElementById('printModelGradeSelect');
         if (gradeSelect) gradeSelect.innerHTML = '<option value="">-- Primero elija carrera --</option>';
+        if (subjectSelect) subjectSelect.innerHTML = '<option value="">-- Primero elija grado --</option>';
     }
 }
 
 function onPrintModelCareerChange(careerName) {
     const gradeSelect = document.getElementById('printModelGradeSelect');
+    const subjectSelect = document.getElementById('printModelSubjectSelect');
     if (!gradeSelect) return;
 
     if (!careerName) {
         gradeSelect.innerHTML = '<option value="">-- Primero elija carrera --</option>';
+        if (subjectSelect) subjectSelect.innerHTML = '<option value="">-- Primero elija grado --</option>';
         return;
     }
 
     const isDocente = (STATE.currentRole === 'docente');
-    const currentDocenteUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente') || STATE.users[0];
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
 
     let grades = sortGrades((STATE.gradesList || []).filter(g => g.career === careerName));
 
-    if (isDocente) {
-        // Filtrar estrictamente los grados y secciones asignados a este docente
-        const myAssignments = (STATE.pensum || []).filter(a => 
-            (currentDocenteUser && a.teacherId === currentDocenteUser.id) || 
-            (currentDocenteUser && a.teacher === currentDocenteUser.name)
-        );
+    if (isDocente && currentDocenteUser) {
+        const uName = (currentDocenteUser.name || '').trim().toLowerCase();
+        const uId = currentDocenteUser.id || '';
 
-        grades = grades.filter(g => 
-            myAssignments.some(a => a.gradeCode === g.code || (a.grade === g.name && a.section === g.section))
-        );
+        const myAssignments = (STATE.pensum || []).filter(a => {
+            const tName = (a.teacher || '').trim().toLowerCase();
+            return (uId && a.teacherId === uId) || (tName && (tName === uName || uName.includes(tName) || tName.includes(uName)));
+        });
+
+        grades = grades.filter(g => {
+            const rawG = `${g.code || ''} ${g.name || ''} ${g.section || ''}`.toUpperCase();
+            let gGradeNum = 0;
+            if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+            else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+            else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
+
+            const gSec = getCleanSectionLetter(g.section || g.code || rawG);
+
+            return myAssignments.some(a => {
+                const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+                let aGradeNum = 0;
+                if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+                else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+                else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+
+                const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
+
+                return (gGradeNum === aGradeNum) && (gSec === aSec);
+            });
+        });
 
         if (grades.length === 0) {
             gradeSelect.innerHTML = '<option value="">-- Sin grados asignados para esta carrera --</option>';
+            if (subjectSelect) subjectSelect.innerHTML = '<option value="">-- Sin materias asignadas --</option>';
             return;
         }
     }
 
     if (grades.length === 0) {
         gradeSelect.innerHTML = '<option value="">-- Sin grados registrados para esta carrera --</option>';
+        if (subjectSelect) subjectSelect.innerHTML = '<option value="">-- Sin materias --</option>';
     } else {
         gradeSelect.innerHTML = '<option value="">-- Seleccione Grado y Sección --</option>' + grades.map(g => {
             const count = getStudentCountByGradeAndSection(g.code, g.name, g.section);
@@ -3635,35 +3870,98 @@ function onPrintModelCareerChange(careerName) {
         if (grades.length === 1) {
             gradeSelect.value = grades[0].code;
             onPrintModelGradeChange(grades[0].code);
+        } else {
+            if (subjectSelect) subjectSelect.innerHTML = '<option value="">-- Seleccione Grado y Sección primero --</option>';
         }
     }
-
 }
 
 function onPrintModelGradeChange(gradeCode) {
-    if (!gradeCode) return;
+    const subjectSelect = document.getElementById('printModelSubjectSelect');
+    const hiddenSubjectInput = document.getElementById('printModelSubjectName');
+    const teacherNameInput = document.getElementById('printModelTeacherName');
+    if (!subjectSelect || !gradeCode) return;
 
     const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode);
     const isDocente = (STATE.currentRole === 'docente');
-    const currentDocenteUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente') || STATE.users[0];
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
 
-    // Buscar materia asignada al docente para este grado y sección
-    const subjectInput = document.getElementById('printModelSubjectName');
-    if (subjectInput) {
-        let matchingAsg = null;
-        if (isDocente && currentDocenteUser) {
-            matchingAsg = (STATE.pensum || []).find(a => 
-                (a.teacherId === currentDocenteUser.id || a.teacher === currentDocenteUser.name) &&
-                (a.gradeCode === gradeCode || (gradeObj && a.grade === gradeObj.name && a.section === gradeObj.section))
-            );
-        } else {
-            matchingAsg = (STATE.pensum || []).find(a => 
-                a.gradeCode === gradeCode || (gradeObj && a.grade === gradeObj.name && a.section === gradeObj.section)
-            );
-        }
+    const rawG = `${gradeCode || ''} ${gradeObj ? (gradeObj.name + ' ' + gradeObj.section) : ''}`.toUpperCase();
+    let gGradeNum = 0;
+    if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+    else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+    else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
 
-        if (matchingAsg && matchingAsg.subject) {
-            subjectInput.value = matchingAsg.subject;
+    const gSec = getCleanSectionLetter(gradeObj ? gradeObj.section : gradeCode);
+
+    let availableAssignments = [];
+
+    if (isDocente && currentDocenteUser) {
+        const uName = (currentDocenteUser.name || '').trim().toLowerCase();
+        const uId = currentDocenteUser.id || '';
+
+        availableAssignments = (STATE.pensum || []).filter(a => {
+            const tName = (a.teacher || '').trim().toLowerCase();
+            const isMyTeacher = (uId && a.teacherId === uId) || (tName && (tName === uName || uName.includes(tName) || tName.includes(uName)));
+            if (!isMyTeacher) return false;
+
+            const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+            let aGradeNum = 0;
+            if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+            else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+            else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+
+            const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
+
+            return (gGradeNum === aGradeNum) && (gSec === aSec);
+        });
+    } else {
+        availableAssignments = (STATE.pensum || []).filter(a => {
+            const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+            let aGradeNum = 0;
+            if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+            else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+            else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+
+            const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
+
+            return (gGradeNum === aGradeNum) && (gSec === aSec);
+        });
+    }
+
+    if (availableAssignments.length === 0) {
+        subjectSelect.innerHTML = '<option value="">-- Sin materias asignadas en esta sección --</option>';
+        if (hiddenSubjectInput) hiddenSubjectInput.value = '';
+        return;
+    }
+
+    subjectSelect.innerHTML = '<option value="">-- Seleccione Asignatura a Imprimir --</option>' + availableAssignments.map(a => {
+        const rawName = a.subject || a.name || '';
+        const fullOfficialName = getFullOfficialSubjectName(rawName, gGradeNum);
+        const tInfo = (!isDocente && a.teacher) ? ` (${a.teacher})` : '';
+        return `<option value="${fullOfficialName}" data-teacher="${a.teacher || ''}" data-raw="${rawName}">${fullOfficialName}${tInfo}</option>`;
+    }).join('');
+
+    if (availableAssignments.length === 1) {
+        subjectSelect.selectedIndex = 1;
+        onPrintModelSubjectChange(subjectSelect.value);
+    } else {
+        if (hiddenSubjectInput) hiddenSubjectInput.value = '';
+    }
+}
+
+function onPrintModelSubjectChange(subjectName) {
+    const hiddenSubjectInput = document.getElementById('printModelSubjectName');
+    const teacherNameInput = document.getElementById('printModelTeacherName');
+    const subjectSelect = document.getElementById('printModelSubjectSelect');
+    if (hiddenSubjectInput) hiddenSubjectInput.value = subjectName;
+
+    const isDocente = (STATE.currentRole === 'docente');
+    if (!isDocente && subjectSelect && teacherNameInput) {
+        const selectedOpt = subjectSelect.options[subjectSelect.selectedIndex];
+        const assignedTeacher = selectedOpt ? selectedOpt.dataset.teacher : '';
+        if (assignedTeacher) {
+            teacherNameInput.value = assignedTeacher;
         }
     }
 }
@@ -3672,9 +3970,10 @@ function generateOfficialPrintList() {
     const career = document.getElementById('printModelCareerSelect')?.value;
     const gradeCode = document.getElementById('printModelGradeSelect')?.value;
     const modelType = document.getElementById('printModelTypeSelect')?.value || 'CUADRO_CALIFICACIONES_EXCEL';
-    const subjectName = (document.getElementById('printModelSubjectName')?.value || 'Computacion III').trim();
-    const teacherName = (document.getElementById('printModelTeacherName')?.value || 'PEM. Nehemias Yalil Salguero').trim();
-    const bimestreNum = document.getElementById('printModelBimestreSelect')?.value || '2';
+    const subjectSelect = document.getElementById('printModelSubjectSelect');
+    const rawSubVal = (subjectSelect ? subjectSelect.value : (document.getElementById('printModelSubjectName')?.value || '')).trim();
+    const teacherName = (document.getElementById('printModelTeacherName')?.value || '').trim();
+    const bimestreNum = document.getElementById('printModelBimestreSelect')?.value || '1';
 
     if (!career || !gradeCode) {
         showToast("Por favor seleccione la Carrera y el Grado/Sección para generar el documento.", "warning");
@@ -3683,52 +3982,149 @@ function generateOfficialPrintList() {
 
     const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode);
     const gradeTitle = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : gradeCode;
-    const rawGradeName = gradeObj ? gradeObj.name : '6to Perito';
-    const rawSection = gradeObj ? gradeObj.section : 'D';
+    const rawGradeName = gradeObj ? gradeObj.name : '4to Perito';
+    const rawSection = gradeObj ? gradeObj.section : 'A';
 
-    // Validación estricta para Docentes: solo pueden imprimir sus grados asignados
+    const rawG = `${gradeCode || ''} ${gradeObj ? (gradeObj.name + ' ' + gradeObj.section) : ''}`.toUpperCase();
+    let gGradeNum = 0;
+    if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+    else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+    else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
+
+    const gSec = getCleanSectionLetter(gradeObj ? gradeObj.section : gradeCode);
+
+    const subjectName = getFullOfficialSubjectName(rawSubVal, gGradeNum || 0);
+
+    if (!subjectName) {
+        showToast("Por favor seleccione la Asignatura correspondiente a su cátedra.", "warning");
+        return;
+    }
+
+    // 🔒 SEGURIDAD Y VALIDACIÓN ESTRICTA PARA DOCENTES:
     const isDocente = (STATE.currentRole === 'docente');
-    const currentDocenteUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente') || STATE.users[0];
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+
+    let targetPensum = null;
 
     if (isDocente && currentDocenteUser) {
-        const myAssignments = (STATE.pensum || []).filter(a => 
-            a.teacherId === currentDocenteUser.id || a.teacher === currentDocenteUser.name
-        );
-        const hasPermission = myAssignments.some(a => 
-            a.gradeCode === gradeCode || (gradeObj && a.grade === gradeObj.name && a.section === gradeObj.section)
-        );
+        const uName = (currentDocenteUser.name || '').trim().toLowerCase();
+        const uId = currentDocenteUser.id || '';
 
-        if (!hasPermission && myAssignments.length > 0) {
-            showToast("Acceso Denegado: Como docente, únicamente tiene autorización para generar listas de los grados y secciones asignados a su cátedra.", "danger");
+        targetPensum = (STATE.pensum || []).find(a => {
+            const tName = (a.teacher || '').trim().toLowerCase();
+            const isMyTeacher = (uId && a.teacherId === uId) || (tName && (tName === uName || uName.includes(tName) || tName.includes(uName)));
+            if (!isMyTeacher) return false;
+
+            const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+            let aGradeNum = 0;
+            if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+            else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+            else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+
+            const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
+            
+            // Comparar ambos nombres normalizados por getFullOfficialSubjectName
+            const aOfficial = getFullOfficialSubjectName(a.subject || a.name || '', aGradeNum).toLowerCase();
+            const sOfficial = subjectName.toLowerCase();
+            const aRaw = (a.subject || a.name || '').trim().toLowerCase();
+            const sRaw = rawSubVal.toLowerCase();
+
+            const isMatchGrade = (gGradeNum === 0 || aGradeNum === 0 || gGradeNum === aGradeNum);
+            const isMatchSec = (!gSec || !aSec || gSec === aSec);
+            const isMatchSub = (aOfficial === sOfficial || aOfficial.includes(sOfficial) || sOfficial.includes(aOfficial) || aRaw === sRaw || aRaw.includes(sRaw) || sRaw.includes(aRaw));
+
+            return isMatchGrade && isMatchSec && isMatchSub;
+        });
+
+        if (!targetPensum) {
+            showToast("Acceso Denegado: Como docente, únicamente tiene autorización para generar e imprimir listas de sus propias clases asignadas.", "danger");
             return;
+        }
+    } else {
+        targetPensum = (STATE.pensum || []).find(a => {
+            const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+            let aGradeNum = 0;
+            if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+            else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+            else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+
+            const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
+            const aOfficial = getFullOfficialSubjectName(a.subject || a.name || '', aGradeNum).toLowerCase();
+            const sOfficial = subjectName.toLowerCase();
+            const aRaw = (a.subject || a.name || '').trim().toLowerCase();
+            const sRaw = rawSubVal.toLowerCase();
+
+            const isMatchGrade = (gGradeNum === 0 || aGradeNum === 0 || gGradeNum === aGradeNum);
+            const isMatchSec = (!gSec || !aSec || gSec === aSec);
+            const isMatchSub = (aOfficial === sOfficial || aOfficial.includes(sOfficial) || sOfficial.includes(aOfficial) || aRaw === sRaw || aRaw.includes(sRaw) || sRaw.includes(aRaw));
+
+            return isMatchGrade && isMatchSec && isMatchSub;
+        });
+    }
+
+    // 🎯 DETERMINACIÓN DINÁMICA DE ACTIVIDADES:
+    let activitiesList = [];
+    if (targetPensum && STATE.gradingConfigs) {
+        const key = getGradingConfigKey(targetPensum, bimestreNum);
+        const savedCfg = STATE.gradingConfigs[key];
+        if (savedCfg && Array.isArray(savedCfg.activities)) {
+            const assignedActs = savedCfg.activities.filter(act => {
+                const maxPts = parseFloat(act.max) || 0;
+                const customName = (act.name || '').trim();
+                return maxPts > 0 || (customName && !customName.startsWith('Act. ') && !customName.startsWith('Actividad '));
+            });
+
+            if (assignedActs.length > 0) {
+                activitiesList = assignedActs.map((act, idx) => ({
+                    num: idx + 1,
+                    label: act.name || `Act ${idx + 1}`,
+                    shortLabel: `Act ${idx + 1}`,
+                    pts: parseFloat(act.max) || 0
+                }));
+            }
         }
     }
 
-    // Extraer número de grado para el recuadro (ej: "6to Perito Contador" -> "6º", "4to" -> "4º")
-    let gradeDisplayNum = '6º';
+    if (activitiesList.length === 0) {
+        activitiesList = Array.from({ length: 8 }, (_, idx) => ({
+            num: idx + 1,
+            label: `Actividad ${idx + 1}`,
+            shortLabel: `Act ${idx + 1}`,
+            pts: 0
+        }));
+    }
+
+    const numActivities = activitiesList.length;
+
+    let gradeDisplayNum = '4°';
     const gradeMatch = rawGradeName.match(/\d+/);
     if (gradeMatch) {
-        gradeDisplayNum = gradeMatch[0] + 'º';
+        gradeDisplayNum = gradeMatch[0] + '°';
     } else {
         gradeDisplayNum = rawGradeName.substring(0, 3);
     }
 
-    const sectionDisplay = rawSection ? rawSection.toUpperCase() : 'A';
-    const bimestreDisplay = bimestreNum + 'º';
+    const sectionDisplay = getCleanSectionLetter(rawSection) || 'A';
+    const bimestreDisplay = bimestreNum + '°';
 
-    // Obtener estudiantes estrictamente de este grado y sección, ordenados alfabéticamente por apellido
+    // Obtener estudiantes estrictamente de este grado y sección
     let students = (STATE.students || []).filter(s => {
-        if (s.status !== 'Activo') return false;
-        if (STATE.activeCycle && s.cycle && s.cycle !== STATE.activeCycle) return false;
-        if (s.grade === gradeCode) return true;
-        if (gradeObj && s.gradeLabel) {
-            const expectedLabel = `${gradeObj.name} (${gradeObj.section})`.trim().toLowerCase();
-            if (s.gradeLabel.trim().toLowerCase() === expectedLabel) return true;
-        }
-        return false;
+        if (s.status && s.status !== 'Activo') return false;
+
+        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+        let sGradeNum = 0;
+        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+
+        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
+
+        if (gGradeNum > 0 && sGradeNum > 0 && gGradeNum !== sGradeNum) return false;
+        if (gSec && sSec && gSec !== sSec) return false;
+
+        return (gGradeNum === sGradeNum) && (gSec === sSec);
     });
 
-    // Ordenamiento alfabético estricto por Apellidos, Nombres
     students.sort((a, b) => {
         const lastA = (a.lastName || '').trim().toLowerCase();
         const lastB = (b.lastName || '').trim().toLowerCase();
@@ -3736,561 +4132,240 @@ function generateOfficialPrintList() {
         return (a.firstName || '').trim().toLowerCase().localeCompare((b.firstName || '').trim().toLowerCase());
     });
 
-    const h = STATE.schoolHeader || getInitialData().schoolHeader;
-    const dateStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-    const capDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+    const totalStudents = students.length;
+
+    // 📏 CALIBRACIÓN DINÁMICA: Ajuste perfecto para que hasta 45 alumnos ocupen exactamente 1 sola hoja de oficio (8.5x13 in)
+    const cellPadding = totalStudents <= 30 ? '2px 1.5px' : (totalStudents <= 40 ? '1.5px 1.2px' : '1px 1px');
+    const rowFontSize = totalStudents <= 30 ? '8.5px' : (totalStudents <= 40 ? '8px' : '7.5px');
+    const rowLineHeight = '1.05';
+    const rowHeight = totalStudents <= 30 ? '16px' : (totalStudents <= 40 ? '14.5px' : '13.5px');
+
+    const h = STATE.schoolHeader || (typeof getInitialSchoolHeader === 'function' ? getInitialSchoolHeader() : {});
+    const effectiveTeacher = isDocente ? (currentDocenteUser ? currentDocenteUser.name : teacherName) : (targetPensum?.teacher || teacherName);
 
     const printWin = window.open('', '_blank');
     if (!printWin) {
-        showToast("Permita las ventanas emergentes para visualizar e imprimir el documento oficial.", "warning");
+        showToast("Por favor permita las ventanas emergentes (popups) para imprimir.", "warning");
         return;
     }
 
-    let tableHeadHtml = '';
-    let tableRowsHtml = '';
-    let tableFootHtml = '';
-    let signaturesHtml = '';
-    let metaLeftHtml = '';
-    let box1Num = '', box1Label = '';
-    let box2Num = '', box2Label = '';
-    let box3Num = '', box3Label = '';
+    const colWidth = Math.max(20, Math.min(32, Math.floor(230 / numActivities)));
 
-    if (modelType === 'CUADRO_CALIFICACIONES_EXCEL') {
-        const currentPensum = (STATE.pensum || []).find(p => (p.gradeCode === gradeCode || p.grade === gradeCode) && p.subject === subjectName) || (STATE.pensum || [])[0];
-        const customGradingCfg = getGradingConfig(currentPensum, bimestreNum);
-
-        metaLeftHtml = `
-            <strong>Catedra:</strong>
-            <span>${subjectName}</span>
-            <strong>Catedrático:</strong>
-            <span>${teacherName}</span>
-            <strong>Ciclo Escolar:</strong>
-            <span>${STATE.activeCycle || '2026'} - Sede Central Jutiapa</span>
-        `;
-        box1Num = gradeDisplayNum; box1Label = 'Grado';
-        box2Num = sectionDisplay; box2Label = 'Sección';
-        box3Num = bimestreDisplay; box3Label = 'Bimestre';
-
-        tableHeadHtml = `
-            <tr>
-                <th style="width:34px; background-color:#d9e9f9; color:#0f172a; text-align:center; vertical-align:middle;" rowspan="2">Clave</th>
-                <th style="min-width:170px; background-color:#d9e9f9; color:#0f172a; text-align:center; vertical-align:middle;" rowspan="2">Alumno (Apellidos y Nombres)</th>
-                <th colspan="10" style="background-color:#d9e9f9; color:#0f172a; text-align:center; font-weight:bold; padding:4px 0; font-size:10px;">10 Actividades de Zona (Ponderación ${customGradingCfg.zonaMax} pts)</th>
-                <th style="width:38px; background-color:#dbe7f5; color:#0f172a; text-align:center; vertical-align:middle; font-size:10px;" rowspan="2">Zona<br>(${customGradingCfg.zonaMax})</th>
-                <th style="width:38px; background-color:#fde4d0; color:#9a3412; text-align:center; vertical-align:middle; font-size:10px;" rowspan="2">Prueba<br>(${customGradingCfg.examMax})</th>
-                <th style="width:42px; background-color:#335e8a; color:#ffffff; text-align:center; vertical-align:middle; font-size:10.5px;" rowspan="2">Total</th>
-            </tr>
-            <tr>
-                ${customGradingCfg.activities.map((act, i) => `
-                    <th style="width:20px; background-color:#ffffff; font-size:7.5px; writing-mode: vertical-rl; transform: rotate(180deg); padding:3px 1px; text-align:left; height:45px;">${escapeHtml(act.name || `Act. ${i+1}`)} ${act.max > 0 ? `(${act.max})` : ''}</th>
-                `).join('')}
-            </tr>
-        `;
-
-        let sumTotals = 0;
-        let sumZona = 0;
-        let sumExam = 0;
-        let actSums = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        let passedCount = 0;
-        let failedCount = 0;
-
-        tableRowsHtml = (students.length > 0) ? students.map((s, idx) => {
-            ensureStudentGradebookStructure(s, subjectName);
-            const bData = (s.gradebookDetails && s.gradebookDetails[subjectName] && s.gradebookDetails[subjectName][bimestreNum]) ? s.gradebookDetails[subjectName][bimestreNum] : null;
-            const acts = bData ? (bData.activities || [0,0,0,0,0,0,0,0,0,0]) : [0,0,0,0,0,0,0,0,0,0];
-            acts.forEach((v, i) => { if (i < 10) actSums[i] += (parseInt(v) || 0); });
-
-            const actCells = acts.slice(0, 10).map(v => `<td style="text-align:center; font-size:9.5px; padding:2px 1px;">${v > 0 ? v : ''}</td>`).join('');
-            const zonaVal = bData ? bData.zona : (s.grades && s.grades[subjectName] ? Math.round((s.grades[subjectName][bimestreNum-1]||0)*0.6) : 0);
-            const examVal = bData ? bData.exam : (s.grades && s.grades[subjectName] ? ((s.grades[subjectName][bimestreNum-1]||0) - zonaVal) : 0);
-            const totalVal = (bData && (bData.total !== undefined)) ? bData.total : (s.grades && s.grades[subjectName] ? (s.grades[subjectName][bimestreNum-1]||0) : (zonaVal + examVal));
-            
-            sumZona += (parseInt(zonaVal) || 0);
-            sumExam += (parseInt(examVal) || 0);
-            sumTotals += (parseInt(totalVal) || 0);
-
-            if (totalVal > 0) {
-                if (totalVal >= 60) passedCount++;
-                else failedCount++;
-            }
-
-            const isFail = (totalVal > 0 && totalVal < 60);
-            const totalCell = (totalVal > 0) 
-                ? `<td style="background-color:${isFail ? '#fee2e2' : '#f0f9ff'}; color:${isFail ? '#b91c1c' : '#0369a1'}; text-align:center; font-weight:800; font-size:11px; ${isFail ? 'border:1.5px solid #ef4444 !important;' : ''}">${totalVal}</td>`
-                : `<td style="background-color:#f0f9ff; text-align:center; font-weight:bold;"></td>`;
-
-            return `
-            <tr>
-                <td style="text-align:center; font-weight:bold; background-color:#f8fafc; font-size:10.5px;">${idx + 1}</td>
-                <td style="font-weight:600; padding:3px 6px; text-transform:uppercase; font-size:10px;">${s.lastName}, ${s.firstName}</td>
-                ${actCells}
-                <td style="background-color:#f8fafc; text-align:center; font-weight:bold; font-size:10.5px;">${zonaVal > 0 ? zonaVal : ''}</td>
-                <td style="background-color:#fff7ed; text-align:center; font-weight:bold; color:#c2410c; font-size:10.5px;">${examVal > 0 ? examVal : ''}</td>
-                ${totalCell}
-            </tr>
-            `;
-        }).join('') : `
-            <tr><td colspan="15" style="text-align:center; padding:30px; color:#64748b; font-size:12px;">No hay alumnos registrados en este grado y sección.</td></tr>
-        `;
-
-        const count = students.length || 1;
-        const avgTotal = Math.round(sumTotals / count);
-        const avgZona = Math.round(sumZona / count);
-        const avgExam = Math.round(sumExam / count);
-        const actAvgCells = actSums.map(v => `<td style="text-align:center; font-size:9px; font-weight:bold;">${Math.round(v/count) || ''}</td>`).join('');
-
-        tableFootHtml = `
-            <tfoot>
-                <tr style="background:#d9e9f9; font-weight:bold; border-top:1.5px solid #000;">
-                    <td colspan="2" style="text-align:right; padding:3px 6px; font-size:10px;">PROMEDIO GENERAL:</td>
-                    ${actAvgCells}
-                    <td style="text-align:center; font-size:10.5px; background:#dbe7f5;">${avgZona}</td>
-                    <td style="text-align:center; font-size:10.5px; background:#fde4d0; color:#9a3412;">${avgExam}</td>
-                    <td style="text-align:center; font-size:11px; background:#335e8a; color:#ffffff; font-weight:900;">${avgTotal}</td>
-                </tr>
-                <tr style="background:#f8fafc; font-size:9px; color:#334155;">
-                    <td colspan="15" style="padding:4px 8px; text-align:left;">
-                        <strong>Estadísticas de Rendimiento:</strong> Alumnos Evaluados: <strong>${passedCount + failedCount}</strong> &nbsp;|&nbsp; Aprobados: <strong style="color:#15803d;">${passedCount}</strong> &nbsp;|&nbsp; Reprobados: <strong style="color:#b91c1c;">${failedCount}</strong> &nbsp;|&nbsp; % Aprobación: <strong>${Math.round((passedCount / (passedCount + failedCount || 1)) * 100)}%</strong>
-                    </td>
-                </tr>
-            </tfoot>
-        `;
-
-        signaturesHtml = '';
-
-    } else if (modelType === 'NOMINA_OFICIAL') {
-        metaLeftHtml = `
-            <strong>Documento:</strong>
-            <span>Nómina Oficial de Estudiantes</span>
-            <strong>Grado y Sección:</strong>
-            <span>${gradeTitle}</span>
-            <strong>Ciclo Escolar:</strong>
-            <span>${STATE.activeCycle || '2026'} - Sede Central Jutiapa</span>
-        `;
-        box1Num = students.length.toString(); box1Label = 'Alumnos';
-        box2Num = gradeDisplayNum; box2Label = 'Grado';
-        box3Num = sectionDisplay; box3Label = 'Sección';
-
-        tableHeadHtml = `
-            <tr>
-                <th style="width:34px; background-color:#d9e9f9; color:#0f172a; text-align:center;">Clave</th>
-                <th style="width:80px; background-color:#d9e9f9; color:#0f172a; text-align:center;">Carné</th>
-                <th style="width:85px; background-color:#d9e9f9; color:#0f172a; text-align:center;">Cód. Personal</th>
-                <th style="background-color:#d9e9f9; color:#0f172a; text-align:left; padding-left:8px;">Alumno (Apellidos y Nombres)</th>
-                <th style="width:40px; background-color:#d9e9f9; color:#0f172a; text-align:center;">Edad</th>
-                <th style="background-color:#d9e9f9; color:#0f172a; text-align:left; padding-left:8px;">Encargado Legal</th>
-                <th style="width:80px; background-color:#d9e9f9; color:#0f172a; text-align:center;">Teléfono</th>
-                <th style="width:55px; background-color:#d9e9f9; color:#0f172a; text-align:center;">Estado</th>
-            </tr>
-        `;
-        tableRowsHtml = (students.length > 0) ? students.map((s, idx) => `
-            <tr>
-                <td style="text-align:center; font-weight:bold; background-color:#f8fafc;">${idx + 1}</td>
-                <td style="text-align:center; font-size:9.5px;"><code>${s.carne || 'ENCCO-2026'}</code></td>
-                <td style="text-align:center; font-weight:bold; font-size:9.5px;">${s.personalCode || '—'}</td>
-                <td style="font-weight:bold; text-transform:uppercase; font-size:10px;">${s.lastName}, ${s.firstName}</td>
-                <td style="text-align:center;">${s.age || calculateStudentAge(s.birthDate) || '—'}</td>
-                <td style="font-size:10px;">${s.tutor || s.motherName || s.fatherName || 'No registrado'}</td>
-                <td style="text-align:center; font-size:9.5px;">${s.tutorPhone || s.phone || 'Sin tel.'}</td>
-                <td style="text-align:center; font-weight:bold; color:#15803d; font-size:10px;">${s.status}</td>
-            </tr>
-        `).join('') : `
-            <tr><td colspan="8" style="text-align:center; padding:30px; color:#64748b;">No hay alumnos registrados en este grado y sección.</td></tr>
-        `;
-
-        tableFootHtml = `
-            <tfoot>
-                <tr style="background:#d9e9f9; font-weight:bold;">
-                    <td colspan="8" style="padding:4px 8px; text-align:left; font-size:10px;">
-                        <strong>Total Alumnos Inscritos:</strong> ${students.length} &nbsp;|&nbsp; <strong>Activos:</strong> ${students.filter(s=>s.status==='Activo').length} &nbsp;|&nbsp; Grado Oficial: ${gradeTitle}
-                    </td>
-                </tr>
-            </tfoot>
-        `;
-
-        signaturesHtml = '';
-
-    } else if (modelType === 'ASISTENCIA_MENSUAL') {
-        metaLeftHtml = `
-            <strong>Documento:</strong>
-            <span>Control Mensual de Asistencia y Asiduidad</span>
-            <strong>Cátedra / Docente:</strong>
-            <span>${subjectName} - ${teacherName}</span>
-            <strong>Ciclo Escolar:</strong>
-            <span>${STATE.activeCycle || '2026'} - Sede Central Jutiapa</span>
-        `;
-        box1Num = students.length.toString(); box1Label = 'Alumnos';
-        box2Num = gradeDisplayNum; box2Label = 'Grado';
-        box3Num = sectionDisplay; box3Label = 'Sección';
-
-        let dayHeaders = '';
-        for (let d = 1; d <= 31; d++) {
-            dayHeaders += `<th style="width:12px; font-size:7.5px; padding:1px; background-color:#ffffff; text-align:center;">${d}</th>`;
-        }
-        tableHeadHtml = `
-            <tr>
-                <th style="width:28px; background-color:#d9e9f9; color:#0f172a; text-align:center;" rowspan="2">No.</th>
-                <th style="width:65px; background-color:#d9e9f9; color:#0f172a; text-align:center;" rowspan="2">Carné</th>
-                <th style="min-width:140px; background-color:#d9e9f9; color:#0f172a; text-align:center;" rowspan="2">Alumno (Apellidos y Nombres)</th>
-                <th colspan="31" style="font-size:9.5px; background-color:#d9e9f9; color:#0f172a; text-align:center; font-weight:bold; padding:2px 0;">Días del Mes</th>
-                <th style="width:22px; background-color:#dbe7f5; color:#0f172a; text-align:center;" rowspan="2">P</th>
-                <th style="width:22px; background-color:#fee2e2; color:#b91c1c; text-align:center;" rowspan="2">A</th>
-                <th style="width:32px; background-color:#335e8a; color:#ffffff; text-align:center;" rowspan="2">%</th>
-            </tr>
-            <tr>
-                ${dayHeaders}
-            </tr>
-        `;
-        tableRowsHtml = (students.length > 0) ? students.map((s, idx) => {
-            let dayCells = '';
-            for (let d = 1; d <= 31; d++) {
-                dayCells += `<td style="height:18px; padding:0;"></td>`;
-            }
-            return `
-                <tr>
-                    <td style="text-align:center; font-weight:bold; background-color:#f8fafc; font-size:9.5px;">${idx + 1}</td>
-                    <td style="text-align:center; font-size:8.5px;"><code>${s.carne || s.personalCode}</code></td>
-                    <td style="font-weight:bold; white-space:nowrap; text-transform:uppercase; padding:2px 4px; font-size:9.5px;">${s.lastName}, ${s.firstName}</td>
-                    ${dayCells}
-                    <td></td>
-                    <td></td>
-                    <td></td>
-                </tr>
-            `;
-        }).join('') : `
-            <tr><td colspan="36" style="text-align:center; padding:30px; color:#64748b;">No hay alumnos registrados.</td></tr>
-        `;
-
-        signaturesHtml = '';
-
-    } else if (modelType === 'LISTA_COTEJO') {
-        const currentPensum = (STATE.pensum || []).find(p => (p.gradeCode === gradeCode || p.grade === gradeCode) && p.subject === subjectName) || (STATE.pensum || [])[0];
-        const customGradingCfg = getGradingConfig(currentPensum, bimestreNum);
-
-        metaLeftHtml = `
-            <strong>Cátedra:</strong>
-            <span>${subjectName}</span>
-            <strong>Catedrático:</strong>
-            <span>${teacherName}</span>
-            <strong>Ciclo Escolar:</strong>
-            <span>${STATE.activeCycle || '2026'} - Sede Central Jutiapa</span>
-        `;
-        box1Num = gradeDisplayNum; box1Label = 'Grado';
-        box2Num = sectionDisplay; box2Label = 'Sección';
-        box3Num = bimestreDisplay; box3Label = 'Bimestre';
-
-        tableHeadHtml = `
-            <tr>
-                <th style="width:30px; background-color:#d9e9f9; color:#0f172a; text-align:center; vertical-align:middle;" rowspan="2">Clave</th>
-                <th style="width:75px; background-color:#d9e9f9; color:#0f172a; text-align:center; vertical-align:middle;" rowspan="2">Carné</th>
-                <th style="min-width:170px; background-color:#d9e9f9; color:#0f172a; text-align:center; vertical-align:middle;" rowspan="2">Alumno (Apellidos y Nombres)</th>
-                <th colspan="10" style="text-align:center; background-color:#d9e9f9; color:#0f172a; font-weight:bold; padding:4px 0; font-size:10px;">10 Actividades Oficiales de Zona (${customGradingCfg.zonaMax} pts)</th>
-                <th style="width:50px; background-color:#dbe7f5; color:#0f172a; text-align:center; vertical-align:middle; font-size:10px;" rowspan="2">Total Zona<br>(${customGradingCfg.zonaMax} pts)</th>
-                <th style="width:75px; background-color:#d9e9f9; color:#0f172a; text-align:center; vertical-align:middle; font-size:9.5px;" rowspan="2">Criterio / Obs.</th>
-            </tr>
-            <tr>
-                ${customGradingCfg.activities.map((act, i) => `
-                    <th style="width:22px; background-color:#ffffff; font-size:7.5px; writing-mode: vertical-rl; transform: rotate(180deg); padding:3px 1px; text-align:left; height:50px;">${escapeHtml(act.name || `Act. ${i+1}`)} ${act.max > 0 ? `(${act.max})` : ''}</th>
-                `).join('')}
-            </tr>
-        `;
-
-        let sumZona = 0;
-        let actSums = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        let completeCount = 0;
-
-        tableRowsHtml = (students.length > 0) ? students.map((s, idx) => {
-            ensureStudentGradebookStructure(s, subjectName);
-            const bData = (s.gradebookDetails && s.gradebookDetails[subjectName] && s.gradebookDetails[subjectName][bimestreNum]) ? s.gradebookDetails[subjectName][bimestreNum] : null;
-            const acts = bData ? (bData.activities || [0,0,0,0,0,0,0,0,0,0]) : [0,0,0,0,0,0,0,0,0,0];
-            acts.forEach((v, i) => { if (i < 10) actSums[i] += (parseInt(v) || 0); });
-
-            const actCells = acts.slice(0, 10).map(v => {
-                const score = parseInt(v) || 0;
-                return `<td style="text-align:center; font-size:10px; padding:2px 1px; font-weight:600;">${score > 0 ? score : '<span style="color:#94a3b8; font-size:8px;">[ &nbsp; ]</span>'}</td>`;
-            }).join('');
-
-            const computedZona = acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
-            const zonaVal = bData ? (bData.zona !== undefined ? bData.zona : computedZona) : (s.grades && s.grades[subjectName] ? Math.round((s.grades[subjectName][bimestreNum-1]||0)*0.6) : 0);
-            sumZona += (parseInt(zonaVal) || 0);
-
-            if (zonaVal >= 36) completeCount++;
-
-            let obsHtml = '';
-            if (zonaVal >= 36) {
-                obsHtml = `<span style="color:#15803d; font-weight:bold; font-size:8.5px;">✓ Aprobada</span>`;
-            } else if (zonaVal > 0) {
-                obsHtml = `<span style="color:#c2410c; font-weight:bold; font-size:8.5px;">⚠ Zona Baja</span>`;
-            } else {
-                obsHtml = `<span style="color:#64748b; font-size:8.5px;">Pendiente</span>`;
-            }
-
-            return `
-            <tr>
-                <td style="text-align:center; font-weight:bold; background-color:#f8fafc; font-size:10.5px;">${idx + 1}</td>
-                <td style="text-align:center; font-size:9px;"><code>${s.carne || s.personalCode || '—'}</code></td>
-                <td style="font-weight:600; padding:3px 6px; text-transform:uppercase; font-size:10px;">${s.lastName}, ${s.firstName}</td>
-                ${actCells}
-                <td style="background-color:#dbe7f5; text-align:center; font-weight:800; font-size:10.5px; color:#0f172a;">${zonaVal > 0 ? zonaVal : '—'}</td>
-                <td style="text-align:center; padding:2px 4px;">${obsHtml}</td>
-            </tr>
-            `;
-        }).join('') : `
-            <tr><td colspan="12" style="text-align:center; padding:30px; color:#64748b;">No hay alumnos registrados en este grado y sección.</td></tr>
-        `;
-
-        const count = students.length || 1;
-        const avgZona = Math.round(sumZona / count);
-        const actAvgCells = actSums.map(v => `<td style="text-align:center; font-size:9px; font-weight:bold;">${Math.round(v/count) || ''}</td>`).join('');
-
-        tableFootHtml = `
-            <tfoot>
-                <tr style="background:#d9e9f9; font-weight:bold; border-top:1.5px solid #000;">
-                    <td colspan="3" style="text-align:right; padding:3px 6px; font-size:9.5px;">PROMEDIO DE ACTIVIDADES DE ZONA:</td>
-                    ${actAvgCells}
-                    <td style="text-align:center; font-size:10.5px; background:#dbe7f5; font-weight:900;">${avgZona}</td>
-                    <td style="text-align:center; font-size:9px; color:#1e293b;">${completeCount}/${students.length} Aprobadas</td>
-                </tr>
-            </tfoot>
-        `;
-
-        signaturesHtml = '';
+    const STUDENTS_PER_PAGE = 45;
+    const pages = [];
+    for (let i = 0; i < totalStudents; i += STUDENTS_PER_PAGE) {
+        pages.push(students.slice(i, i + STUDENTS_PER_PAGE));
     }
+    if (pages.length === 0) pages.push([]);
 
-    printWin.document.write(`
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <title>Lista Oficial - ${gradeTitle} - ${subjectName}</title>
-            <style>
-                @page {
-                    size: ${modelType === 'ASISTENCIA_MENSUAL' ? 'letter landscape' : 'letter portrait'};
-                    margin: ${modelType === 'ASISTENCIA_MENSUAL' ? '6mm 8mm' : '8mm 10mm'};
-                }
-                body {
-                    font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
-                    color: #000;
-                    margin: 0;
-                    padding: 0;
-                    background: #fff;
-                    font-size: 10.5px;
-                    width: 100%;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                }
-                
-                /* ── ENCABEZADO AZUL INSTITUCIONAL OFICIAL CON LOGO ── */
-                .encc-official-header {
-                    border: 2px solid #0369a1;
-                    margin-bottom: 8px;
-                    background: #ffffff;
-                    border-radius: 6px;
-                    overflow: hidden;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-                }
-                .encc-top-banner {
-                    background: linear-gradient(135deg, #0f172a 0%, #0369a1 60%, #0284c7 100%) !important;
-                    border-bottom: 2px solid #0284c7;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 6px 14px;
-                    color: #ffffff;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                }
-                .encc-top-banner .logo-box {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                }
-                .encc-top-banner img {
-                    height: 48px;
-                    width: auto;
-                    object-fit: contain;
-                    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
-                }
-                .encc-top-banner h1 {
-                    margin: 0;
-                    font-size: 17px;
-                    font-weight: 900;
-                    color: #ffffff;
-                    font-family: 'Segoe UI', Arial, sans-serif;
-                    letter-spacing: 0.4px;
-                    text-transform: uppercase;
-                }
-                .encc-top-banner .bimestre-badge {
-                    font-size: 11px;
-                    font-weight: 900;
-                    color: #ffffff;
-                    background: #0284c7;
-                    padding: 4px 12px;
-                    border-radius: 12px;
-                    border: 1px solid #7dd3fc;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                }
+    const renderPageTable = (pageStudents, pageIdx, totalPages) => {
+        const startNo = pageIdx * STUDENTS_PER_PAGE;
+        const rowsHtml = pageStudents.map((s, idx) => `
+            <tr style="height:${rowHeight};">
+                <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
+                <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
+                <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${s.fullName || (s.lastName + ' ' + s.firstName)}</td>
+                ${activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding};"></td>`).join('')}
+                <td style="width:30px; background:#f8fafc; padding:${cellPadding};"></td>
+                <td style="width:30px; background:#f8fafc; padding:${cellPadding};"></td>
+                <td style="width:40px; background:#f1f5f9; font-weight:bold; padding:${cellPadding};"></td>
+            </tr>
+        `).join('');
 
-                .encc-meta-row {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: stretch;
-                    background: #f0f9ff !important;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                }
-                .encc-meta-left {
-                    padding: 6px 14px;
-                    flex: 1;
-                    font-size: 11px;
-                    line-height: 1.5;
-                    display: grid;
-                    grid-template-columns: 110px 1fr;
-                    row-gap: 3px;
-                }
-                .encc-meta-left strong {
-                    color: #0369a1;
-                    font-weight: 800;
-                }
+        const pageIndicator = totalPages > 1 ? `<div style="text-align:right; font-size:7px; color:#64748b; margin:1px 0 0 0; line-height:1;">Página ${pageIdx + 1} de ${totalPages}</div>` : '';
 
-                .encc-boxes-right {
-                    display: flex;
-                    border-left: 2px solid #0284c7;
-                    text-align: center;
-                    background: #ffffff;
-                }
-                .encc-box {
-                    width: 80px;
-                    border-right: 1px solid #cbd5e1;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-between;
-                }
-                .encc-box:last-child {
-                    border-right: none;
-                }
-                .encc-box-num {
-                    font-size: 19px;
-                    font-weight: 900;
-                    color: #0f172a;
-                    padding: 4px 0 0 0;
-                    line-height: 1.1;
-                }
-                .encc-box-label {
-                    font-size: 9.5px;
-                    font-weight: 800;
-                    color: #0369a1;
-                    background: #e0f2fe !important;
-                    border-top: 1px solid #0284c7;
-                    padding: 3px 0;
-                    text-transform: uppercase;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                }
-
-                /* ── TABLA DE DATOS IDÉNTICA A LA IMAGEN ── */
-                table.encc-data-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    font-size: 10px;
-                    border: 1.5px solid #0f172a;
-                }
-                table.encc-data-table th, table.encc-data-table td {
-                    border: 1px solid #64748b;
-                    padding: 4px 5px;
-                }
-                table.encc-data-table th {
-                    font-weight: 800;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                }
-
-                .footer-stamp {
-                    margin-top: 12px;
-                    display: flex;
-                    justify-content: space-between;
-                    font-size: 8.5px;
-                    color: #475569;
-                }
-
-                @media print {
-                    .no-print { display: none; }
-                    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                }
-            </style>
-        </head>
-        <body>
-            <!-- ENCABEZADO OFICIAL AZUL ENCCO CON LOGOTIPO -->
-            <div class="encc-official-header">
-                <!-- BANNER AZUL CON LOGOTIPO Y BADGE DE BIMESTRE ACTIVO -->
-                <div class="encc-top-banner">
-                    <div class="logo-box">
-                        <img src="logo.png" alt="Escudo Oficial ENCCO" onerror="this.src='portada-comercio-principal.webp'">
-                        <div>
-                            <h1>${h.schoolName || 'Escuela Nacional de Ciencias Comerciales'}</h1>
-                            <div style="font-size:10px; font-weight:700; color:#bae6fd; letter-spacing:0.5px;">JUTIAPA — FUNDADA EN 1970 | CICLO LECTIVO ${STATE.activeCycle || '2026'}</div>
+        return `
+        <div class="print-page-wrapper"${totalPages > 1 && pageIdx > 0 ? ' style="page-break-before:always;"' : ''}>
+            <table class="header-table">
+                <tr>
+                    <td style="width:50px; text-align:center;">
+                        <img src="${h.schoolLogoUrl || 'logo.png'}" style="height:38px; max-width:50px;" onerror="this.style.display='none'">
+                    </td>
+                    <td>
+                        <div class="school-title">${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</div>
+                        <div class="school-sub">Jornada Matutina • Jutiapa • Ciclo Escolar 2026</div>
+                        <div class="eval-title">
+                            CUADRO DE CONTROL DE ZONA Y EVALUACIONES (${bimestreDisplay} BIMESTRE)
                         </div>
-                    </div>
-                    <div class="bimestre-badge">
-                        ${bimestreNum || STATE.config?.activeBimestre || 1}º BIMESTRE ACTIVO
-                    </div>
-                </div>
-
-                <!-- METADATOS Y RECUADROS DE GRADO / SECCIÓN / BIMESTRE -->
-                <div class="encc-meta-row">
-                    <div class="encc-meta-left">
-                        ${metaLeftHtml}
-                    </div>
-
-                    <div class="encc-boxes-right">
-                        <div class="encc-box">
-                            <div class="encc-box-num">${box1Num}</div>
-                            <div class="encc-box-label">${box1Label}</div>
-                        </div>
-                        <div class="encc-box">
-                            <div class="encc-box-num">${box2Num}</div>
-                            <div class="encc-box-label">${box2Label}</div>
-                        </div>
-                        <div class="encc-box">
-                            <div class="encc-box-num">${box3Num}</div>
-                            <div class="encc-box-label">${box3Label}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- TABLA DE ALUMNOS CON NÚMERO DE CLAVE Y ORDEN ALFABÉTICO -->
-            <table class="encc-data-table">
-                <thead>
-                    ${tableHeadHtml}
-                </thead>
-                <tbody>
-                    ${tableRowsHtml}
-                </tbody>
-                ${tableFootHtml}
+                    </td>
+                    <td style="width:50px; text-align:center;">
+                        <img src="${h.mineducLogoUrl || 'logo.png'}" style="height:38px; max-width:50px;" onerror="this.style.display='none'">
+                    </td>
+                </tr>
             </table>
 
-            <div class="footer-stamp">
-                <span>Carrera: ${career} &nbsp;|&nbsp; Grado Oficial: ${gradeTitle} &nbsp;|&nbsp; Total Estudiantes: ${students.length}</span>
-                <span>Impreso el: ${capDate} - Sistema de Gestión Académica ENCCO Jutiapa</span>
-            </div>
-        </body>
-        </html>
-    `);
+            <table class="meta-grid">
+                <tr>
+                    <td class="meta-label">CARRERA:</td>
+                    <td class="meta-val">${career}</td>
+                    <td class="meta-label">GRADO Y SECCIÓN:</td>
+                    <td class="meta-val"><strong>${gradeTitle}</strong></td>
+                </tr>
+                <tr>
+                    <td class="meta-label">CÁTEDRA / MATERIA:</td>
+                    <td class="meta-val"><strong style="color:#047857;">${subjectName}</strong></td>
+                    <td class="meta-label">CATEDRÁTICO(A):</td>
+                    <td class="meta-val"><strong>${effectiveTeacher}</strong></td>
+                </tr>
+            </table>
 
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="width:24px;">No.</th>
+                        <th rowspan="2" style="width:75px;">CÓDIGO PERSONAL</th>
+                        <th rowspan="2" style="width:210px;">APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
+                        <th colspan="${numActivities}">ACTIVIDADES / TAREAS</th>
+                        <th colspan="2">EVALUACIONES</th>
+                        <th rowspan="2" style="width:40px;">TOTAL<br>100 pts</th>
+                    </tr>
+                    <tr>
+                        ${activitiesList.map(a => `<th style="width:${colWidth}px;" title="${a.label}${a.pts > 0 ? ` (${a.pts} pts)` : ''}">${a.shortLabel}${a.pts > 0 ? `<br><span style="font-size:6.5px; font-weight:normal;">${a.pts}pts</span>` : ''}</th>`).join('')}
+                        <th style="width:30px;">Zona</th>
+                        <th style="width:30px;">Examen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+            ${pageIndicator}
+        </div>`;
+    };
+
+    const allPagesHtml = pages.map((pageStudents, idx) => renderPageTable(pageStudents, idx, pages.length)).join('');
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Listado Oficial - ${gradeTitle} - ${subjectName}</title>
+<style>
+@page {
+    size: 8.5in 13in portrait;
+    margin: 5mm 5mm 5mm 5mm;
+}
+* {
+    box-sizing: border-box;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+}
+html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+    color: #000;
+}
+.print-page-wrapper {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+.header-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0 0 2px 0;
+}
+.header-table td { vertical-align: middle; padding: 0; }
+.school-title {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #1e3a8a;
+    text-align: center;
+    line-height: 1.1;
+}
+.school-sub {
+    font-size: 8px;
+    font-weight: 600;
+    text-align: center;
+    color: #334155;
+    line-height: 1.1;
+}
+.eval-title {
+    text-align: center;
+    font-weight: 800;
+    font-size: 9px;
+    margin-top: 1px;
+    color: #047857;
+    text-transform: uppercase;
+    line-height: 1.1;
+}
+.meta-grid {
+    width: 100%;
+    border: 1.2px solid #1e3a8a;
+    border-collapse: collapse;
+    margin: 0 0 3px 0;
+}
+.meta-grid td {
+    padding: 1.5px 4px;
+    border: 1px solid #94a3b8;
+    font-size: 8px;
+    line-height: 1.1;
+}
+.meta-label {
+    font-weight: 700;
+    color: #1e3a8a;
+    background: #f0fdf4;
+    width: 15%;
+}
+.meta-val {
+    font-weight: 600;
+    color: #0f172a;
+    width: 35%;
+}
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1.2px solid #000;
+    margin: 0;
+}
+.data-table th {
+    background: #e2e8f0;
+    border: 1px solid #000;
+    padding: 2px 1px;
+    font-size: 7.5px;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.05;
+}
+.data-table td {
+    border: 1px solid #64748b;
+    line-height: ${rowLineHeight};
+}
+@media print {
+    html, body {
+        width: 8.5in;
+        height: auto;
+    }
+    .print-page-wrapper {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+}
+</style>
+<script>
+window.onload = function() {
+    setTimeout(function() { window.print(); }, 250);
+};
+</script>
+</head>
+<body>${allPagesHtml}</body>
+</html>`;
+
+    printWin.document.open();
+    printWin.document.write(htmlContent);
     printWin.document.close();
-    setTimeout(() => {
-        printWin.focus();
-        printWin.print();
-    }, 300);
+    showToast(`Formato Oficial de '${subjectName}' (${gradeTitle}) generado dinámicamente.`, "success");
 }
 
-// ──────────────────────────────────────────────────────────────────────────
-// 📥 IMPORTADOR INTELIGENTE DE ESTUDIANTES CON RECONOCIMIENTO DE FORMATO OFICIAL
-// ──────────────────────────────────────────────────────────────────────────
 
 function downloadStudentTemplate() {
     const activeBim = STATE.config?.activeBimestre || '1';
@@ -5532,7 +5607,7 @@ function printStudentsOfficialList() {
             <meta charset="UTF-8">
             <title>Nómina Oficial de Estudiantes - ENCCO Jutiapa</title>
             <style>
-                @page { size: letter portrait; margin: 8mm 10mm; }
+                @page { size: 8.5in 13in portrait; margin: 6mm 8mm; }
                 body { font-family: 'Segoe UI', Arial, sans-serif; padding: 0; color: #000; background: #fff; line-height: 1.3; font-size: 9.5pt; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 
                 .encc-official-header { border: 2px solid #0369a1; border-radius: 6px; overflow: hidden; margin-bottom: 10px; background: #fff; }
@@ -6010,7 +6085,7 @@ function printUserCredentialsList() {
             <meta charset="UTF-8">
             <title>Nómina de Credenciales - ENCCO 1970</title>
             <style>
-                @page { size: legal portrait; margin: 8mm 8mm; }
+                @page { size: 8.5in 13in portrait; margin: 6mm 6mm; }
                 body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; margin: 0; padding: 0; background: #fff; font-size: 10.5px; width: 100%; }
                 .encc-official-header { border: 1.5px solid #000; margin-bottom: 0px; background: #ffffff; }
                 .encc-top-banner { background-color: #99b958 !important; border-bottom: 1.5px solid #000; display: flex; justify-content: space-between; align-items: center; padding: 4px 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -6154,7 +6229,7 @@ function closeUserModal() {
 }
 
 function saveUserForm(e) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!checkEnrolmentPermissions()) return;
     const userId = document.getElementById('userFormId').value;
     const name = document.getElementById('userFormName').value.trim();
@@ -6165,9 +6240,15 @@ function saveUserForm(e) {
     const role = document.getElementById('userFormRole')?.value || 'docente';
     const title = document.getElementById('userFormTitle')?.value.trim() || 'PEM / Catedrático Titular';
 
+    if (!name) {
+        showToast("Por favor ingrese el nombre del usuario o docente.", "warning");
+        return;
+    }
+
     if (userId) {
         const user = STATE.users.find(u => u.id === userId);
         if (user) {
+            const oldName = user.name;
             user.name = name;
             user.renglon = renglon;
             user.gender = gender;
@@ -6175,11 +6256,29 @@ function saveUserForm(e) {
             user.password = password;
             user.role = role;
             user.title = title;
-            showToast(`Datos del docente/usuario ${name} actualizados correctamente.`, "success");
+
+            // Actualización en cascada para cátedras asignadas
+            (STATE.pensum || []).forEach(a => {
+                if (a.teacherId === userId || a.teacher === oldName) {
+                    a.teacher = name;
+                    a.teacherId = userId;
+                }
+            });
+
+            // Actualización en cascada para docentes guías de grado
+            (STATE.gradesList || []).forEach(g => {
+                if (g.guideTeacherId === userId || g.guideTeacher === oldName) {
+                    g.guideTeacher = name;
+                    g.guideTeacherId = userId;
+                }
+            });
+
+            showToast(`Datos del docente/usuario ${name} actualizados correctamente en toda la plataforma.`, "success");
         }
     } else {
+        const newId = 'usr-' + Date.now();
         STATE.users.push({
-            id: 'usr-' + Date.now(),
+            id: newId,
             name,
             renglon,
             gender,
@@ -6192,11 +6291,9 @@ function saveUserForm(e) {
         showToast(`Nuevo docente/usuario ${name} creado con éxito.`, "success");
     }
 
-    saveStateToLocalStorage();
     closeUserModal();
     renderUsersTable();
-    populatePensumTeacherSelect();
-    updateLoginAccountSelect();
+    synchronizeGlobalDynamicUI();
 }
 
 function deleteUser(userId) {
@@ -6204,18 +6301,34 @@ function deleteUser(userId) {
     const user = STATE.users.find(u => u.id === userId);
     if (!user) return;
 
-    if (user.id === 'usr-admin-master') {
+    if (user.id === 'usr-admin-master' || user.id === 'usr-admin-01') {
         showToast("No es posible eliminar la cuenta principal de Super Administrador.", "danger");
         return;
     }
 
-    if (confirm(`¿Está seguro de eliminar al docente o usuario "${user.name}" del sistema? Esta acción no se puede deshacer.`)) {
+    if (confirm(`¿Está seguro de eliminar al docente o usuario "${user.name}" del sistema? Esta acción actualizará todas las asignaciones vinculadas.`)) {
+        const oldName = user.name;
         STATE.users = STATE.users.filter(u => u.id !== userId);
-        saveStateToLocalStorage();
+
+        // Desvincular en cátedras
+        (STATE.pensum || []).forEach(a => {
+            if (a.teacherId === userId || a.teacher === oldName) {
+                a.teacher = 'Sin asignar';
+                a.teacherId = null;
+            }
+        });
+
+        // Desvincular en grados
+        (STATE.gradesList || []).forEach(g => {
+            if (g.guideTeacherId === userId || g.guideTeacher === oldName) {
+                g.guideTeacher = 'Sin asignar';
+                g.guideTeacherId = null;
+            }
+        });
+
         renderUsersTable();
-        populatePensumTeacherSelect();
-        updateLoginAccountSelect();
-        showToast(`El maestro/usuario "${user.name}" ha sido eliminado.`, "info");
+        synchronizeGlobalDynamicUI();
+        showToast(`El maestro/usuario "${user.name}" ha sido eliminado y desvinculado de sus cátedras.`, "info");
     }
 }
 
@@ -6784,11 +6897,36 @@ function toggleTheme() {
 }
 
 function toggleSidebar() {
+    const isMobile = window.innerWidth <= 992;
     const sidebar = document.getElementById('sidebar');
     const backdrop = document.getElementById('sidebarBackdrop');
-    if (sidebar) sidebar.classList.toggle('active');
-    if (backdrop) backdrop.classList.toggle('active');
+
+    if (isMobile) {
+        if (sidebar) {
+            sidebar.classList.remove('collapsed'); // Nunca permitir colapso negativo en móvil
+            sidebar.classList.toggle('active');
+        }
+        if (backdrop) backdrop.classList.toggle('active');
+    } else {
+        // En Modo Escritorio: Colapsar o expandir la barra lateral sin velo
+        if (backdrop) backdrop.classList.remove('active');
+        if (sidebar) sidebar.classList.toggle('collapsed');
+    }
 }
+
+// Asegurar limpieza de backdrop y estados al redimensionar
+window.addEventListener('resize', () => {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (window.innerWidth > 992) {
+        if (backdrop) backdrop.classList.remove('active');
+        if (sidebar) sidebar.classList.remove('active');
+    } else {
+        if (sidebar) sidebar.classList.remove('collapsed');
+    }
+});
+
+
 function handleGlobalSearch(val) {
     if (val.length > 2) {
         if (STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') {
@@ -7420,7 +7558,7 @@ function printStudentReportCardOfficial() {
             <meta charset="UTF-8">
             <title>Boletín de Calificaciones - ${s.lastName}, ${s.firstName}</title>
             <style>
-                @page { size: letter portrait; margin: 8mm 10mm; }
+                @page { size: 8.5in 13in portrait; margin: 6mm 8mm; }
                 body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; margin: 0; padding: 0; background: #fff; font-size: 10px; width: 100%; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 
                 .encc-official-header { border: 2px solid #0369a1; margin-bottom: 8px; background: #ffffff; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
@@ -7699,7 +7837,7 @@ function executeNativeDocumentPrint() {
             <title>Impresión Oficial - ENCCO</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { size: legal portrait; margin: 8mm; }
+                @page { size: 8.5in 13in portrait; margin: 6mm; }
                 body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; color: #000; margin: 0; padding: 0; background: #fff; font-size: 10px; }
                 table { width: 100%; border-collapse: collapse; margin-top: 6px; }
                 th, td { border: 1px solid #334155; padding: 4px 6px; }
@@ -8736,23 +8874,44 @@ function toggleSelectAllGradebook(master, tabKey) {
     tbody.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = isChecked);
 }
 
-function getSortedGradebookStudents(gradeCode) {
+function getSortedGradebookStudents(gradeCode, targetPensum = null) {
     const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode);
+
+    const rawG = `${gradeCode || ''} ${targetGradeObj ? (targetGradeObj.name + ' ' + targetGradeObj.section) : ''} ${targetPensum ? (targetPensum.grade + ' ' + targetPensum.section + ' ' + (targetPensum.gradeCode || '')) : ''}`.toUpperCase();
+    let gGradeNum = 0;
+    if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+    else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+    else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
+
+    const gSec = getCleanSectionLetter(targetGradeObj ? targetGradeObj.section : (targetPensum ? (targetPensum.section || targetPensum.gradeCode) : gradeCode));
+
     const students = (STATE.students || []).filter(s => {
-        if (!s.grade && !s.gradeLabel) return false;
-        if (s.grade === gradeCode) return true;
-        if (targetGradeObj && s.gradeLabel) {
-            const expectedLabel = `${targetGradeObj.name} (${targetGradeObj.section})`.trim().toLowerCase();
-            if (s.gradeLabel.trim().toLowerCase() === expectedLabel) return true;
-        }
-        return false;
+        if (s.status && s.status !== 'Activo') return false;
+
+        // Coincidencia directa por código exacto
+        if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
+
+        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+        let sGradeNum = 0;
+        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+
+        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
+
+        if (gGradeNum > 0 && sGradeNum > 0 && gGradeNum !== sGradeNum) return false;
+        if (gSec && sSec && gSec !== sSec) return false;
+
+        return (gGradeNum === sGradeNum) && (!gSec || !sSec || gSec === sSec);
     });
+
     return students.sort((a, b) => {
         const nameA = `${a.lastName || ''} ${a.firstName || ''}`.toUpperCase().trim();
         const nameB = `${b.lastName || ''} ${b.firstName || ''}`.toUpperCase().trim();
         return gradebookSortAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
     });
 }
+
 
 function ensureStudentGradebookStructure(student, subjectName) {
     if (!student.grades) student.grades = {};
@@ -9104,7 +9263,7 @@ function loadTeacherGradebook() {
     if (hn) hn.textContent = `Nota ${currentUnit}`;
     if (ha) ha.textContent = `Acumulado ${currentUnit}`;
 
-    const students = getSortedGradebookStudents(gradeCode);
+    const students = getSortedGradebookStudents(gradeCode, targetPensum);
 
     if (students.length === 0) {
         ['gradebookActivitiesTableBody', 'gradebookSummaryTableBody', 'gradebookAveragesTableBody'].forEach(id => {
@@ -9201,26 +9360,36 @@ function loadTeacherGradebook() {
             const sumGrades = activeGrades.reduce((a, b) => a + (parseInt(b) || 0), 0);
             const acumulado = isInactive ? '—' : (sumGrades / currentUnit).toFixed(2);
 
+            // Zona bloqueada con suma automática de actividades e icono de bloqueo
+            const lockedZonaInput = isInactive ? 
+                `<input type="text" class="grade-box-input-exam" value="—" disabled readonly style="background:#f1f5f9; color:#94a3b8; border:1px dashed #cbd5e1; cursor:not-allowed; text-align:center;">` :
+                `<div style="display:inline-flex; align-items:center; justify-content:center; gap:4px; width:100%;">
+                    <input type="text" class="grade-box-input-exam" value="${zonaSum}" readonly disabled 
+                        style="background:#f8fafc; font-weight:800; color:#047857; border:1.5px solid #cbd5e1; cursor:not-allowed; text-align:center; width:65px;" 
+                        title="Zona calculada automáticamente de las 10 actividades (Bloqueada para no modificar)">
+                    <i class="fa-solid fa-lock" style="font-size:0.75rem; color:#64748b;" title="Zona bloqueada para edición directa"></i>
+                </div>`;
+
             return `
                 <tr data-student-id="${s.id}" style="${isInactive ? 'background:rgba(241,245,249,0.6); opacity:0.85;' : ''}">
                     <td style="text-align:center;"><input type="checkbox" ${isInactive ? 'disabled' : ''}></td>
                     <td><strong>${idx + 1}. ${studentFullName}</strong>${statusTag}</td>
                     <td style="text-align:center; font-weight:700;">
-                        ${isInactive ? 
-                            `<input type="text" class="grade-box-input-exam" value="—" disabled readonly style="background:#f1f5f9; color:#94a3b8; border:1px dashed #cbd5e1; cursor:not-allowed;">` :
-                            `<input type="number" min="0" max="${cfg.zonaMax}" class="grade-box-input-exam" value="${zonaSum}" onchange="handleDirectZonaChange('${s.id}', this.value, '${subjectName}', ${currentUnit})">`
-                        }
+                        ${lockedZonaInput}
                     </td>
                     <td style="text-align:center;">
                         ${isInactive ? 
-                            `<input type="text" class="grade-box-input-exam" value="—" disabled readonly style="background:#f1f5f9; color:#94a3b8; border:1px dashed #cbd5e1; cursor:not-allowed;">` :
-                            `<input type="number" min="0" max="${cfg.examMax}" class="grade-box-input-exam" value="${exam}" onchange="handleExamScoreChange('${s.id}', this.value, '${subjectName}', ${currentUnit})">`
+                            `<input type="text" class="grade-box-input-exam" value="—" disabled readonly style="background:#f1f5f9; color:#94a3b8; border:1px dashed #cbd5e1; cursor:not-allowed; text-align:center;">` :
+                            `<input type="number" min="0" max="${cfg.examMax}" class="grade-box-input-exam" value="${exam}" 
+                                onchange="handleExamScoreChange('${s.id}', this.value, '${subjectName}', ${currentUnit})"
+                                onkeyup="if(event.key==='Enter') this.blur();"
+                                style="text-align:center; font-weight:700; width:65px;">`
                         }
                     </td>
-                    <td style="text-align:center; font-weight:800; font-size:1rem;" class="${isInactive ? '' : (total < 60 ? 'grade-score-fail' : 'grade-score-pass')}">
+                    <td style="text-align:center; font-weight:800; font-size:1.05rem;" class="${isInactive ? '' : (total < 60 ? 'grade-score-fail' : 'grade-score-pass')}">
                         ${isInactive ? `<span class="badge ${s.status === 'Retirado' ? 'badge-danger' : 'badge-warning'}" style="font-size:0.75rem;">${s.status}</span>` : total}
                     </td>
-                    <td style="text-align:center; font-weight:600; color:var(--text-secondary);">
+                    <td style="text-align:center; font-weight:800; color:var(--text-primary); font-size:0.95rem;">
                         ${acumulado}
                     </td>
                 </tr>
@@ -9340,17 +9509,26 @@ function handleExamScoreChange(studentId, value, subjectName, unit) {
     if (!student) return;
     ensureStudentGradebookStructure(student, subjectName);
 
-    const examVal = Math.max(0, parseInt(value) || 0);
+    const selectedId = document.getElementById('teacherCourseSelect')?.value;
+    const targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
+    const cfg = getGradingConfig(targetPensum, unit);
+
+    const examVal = Math.max(0, Math.min(cfg.examMax || 40, parseInt(value) || 0));
     student.gradebookDetails[subjectName][unit].exam = examVal;
 
-    const zona = parseInt(student.gradebookDetails[subjectName][unit].zona) || 0;
-    const total = zona + examVal;
+    // Obtener la zona sumada exactamente de las actividades
+    const acts = student.gradebookDetails[subjectName][unit].activities || [0,0,0,0,0,0,0,0,0,0];
+    const zonaSum = acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
+    student.gradebookDetails[subjectName][unit].zona = zonaSum;
+
+    const total = zonaSum + examVal;
     student.gradebookDetails[subjectName][unit].total = total;
     student.grades[subjectName][unit - 1] = total;
 
     saveStateToLocalStorage();
     loadTeacherGradebook();
 }
+
 
 function saveGradebookChanges() {
     const isDocente = (STATE.currentRole === 'docente');
@@ -9376,23 +9554,31 @@ function saveGradebookChanges() {
 // 8. CONTROL Y SUPERVISIÓN DE ASISTENCIA (TODAS LAS CLASES PARA DIRECCIÓN)
 // ==========================================================================
 
+// ==========================================================================
+// 📅 MÓDULO DE ASISTENCIA PLANILLA OFICIAL (ESTILO EXCEL CON PORCENTAJES Y PREDETERMINADO PRESENTE)
+// ==========================================================================
+
 function populateAttendanceTeacherFilter() {
     const teacherSelect = document.getElementById('attendanceTeacherSelect');
     const filterGroup = document.getElementById('attendanceTeacherFilterGroup');
+    const directorBanner = document.getElementById('attendanceDirectorBanner');
     if (!teacherSelect || !filterGroup) return;
 
     const isDirectorOrAdmin = (STATE.currentRole === 'director' || STATE.currentRole === 'admin' || STATE.currentRole === 'secretaria');
 
     if (!isDirectorOrAdmin) {
         filterGroup.style.display = 'none';
+        if (directorBanner) directorBanner.style.display = 'none';
         return;
     }
 
     filterGroup.style.display = 'block';
+    if (directorBanner) directorBanner.style.display = 'flex';
 
+    const currentVal = teacherSelect.value;
     const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || u.role === 'director' || u.role === 'secretaria');
 
-    let html = `<option value="">📋 General por Grado (Todos los Maestros)</option>`;
+    let html = `<option value="">⭐ General por Grado (Todos los Maestros)</option>`;
     if (teachers.length > 0) {
         html += `<optgroup label="👨‍🏫 Catedráticos del Plantel">`;
         teachers.forEach(t => {
@@ -9402,6 +9588,9 @@ function populateAttendanceTeacherFilter() {
     }
 
     teacherSelect.innerHTML = html;
+    if (currentVal && Array.from(teacherSelect.options).some(o => o.value === currentVal)) {
+        teacherSelect.value = currentVal;
+    }
 }
 
 function onAttendanceTeacherFilterChange() {
@@ -9417,7 +9606,6 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
     populateAttendanceTeacherFilter();
 
     const gradeSelect = document.getElementById('attendanceGradeSelect');
-    const courseSelect = document.getElementById('attendanceCourseSelect');
     const teacherSelect = document.getElementById('attendanceTeacherSelect');
     if (!gradeSelect) return;
 
@@ -9431,7 +9619,7 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
 
     let gradeOptionsHtml = '';
 
-    if (isDocente && currentUser) {
+    if (isDocente && currentUser && !isDirectorOrAdmin) {
         const myClasses = (STATE.pensum || []).filter(p => 
             p.teacherId === currentUser.id || 
             (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase()) ||
@@ -9446,19 +9634,22 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
                     code: key,
                     name: c.grade,
                     section: c.section || 'A',
-                    career: c.career || ''
+                    career: c.career || 'Perito Contador'
                 });
             }
         });
 
         if (uniqueGrades.size > 0) {
-            gradeOptionsHtml += `<optgroup label="⭐ Mis Grados Asignados (${currentUser.name})">`;
+            gradeOptionsHtml += `<optgroup label="📋 Mis Grados Asignados (${currentUser.name})">`;
             uniqueGrades.forEach(g => {
                 gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
             });
             gradeOptionsHtml += `</optgroup>`;
         } else {
-            gradeOptionsHtml = `<option value="">-- Sin grados asignados a su cuenta --</option>`;
+            // Si el docente aún no tiene cátedras directas, mostrar todos los grados para facilitar registro
+            (STATE.gradesList || []).forEach(g => {
+                gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
+            });
         }
     } else if (isDirectorOrAdmin && activeTeacherObj) {
         // SUPERVISIÓN POR MAESTRO ESPECÍFICO
@@ -9476,13 +9667,13 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
                     code: key,
                     name: c.grade,
                     section: c.section || 'A',
-                    career: c.career || ''
+                    career: c.career || 'Perito Contador'
                 });
             }
         });
 
         if (uniqueGrades.size > 0) {
-            gradeOptionsHtml += `<optgroup label="👨‍🏫 Grados A Cargo del Catedrático: ${activeTeacherObj.name}">`;
+            gradeOptionsHtml += `<optgroup label="👨‍🏫 Grados A Cargo de: ${activeTeacherObj.name}">`;
             uniqueGrades.forEach(g => {
                 gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
             });
@@ -9491,8 +9682,8 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
             gradeOptionsHtml = `<option value="">-- El catedrático ${activeTeacherObj.name} no posee clases asignadas --</option>`;
         }
     } else {
-        // MODO GENERAL POR GRADO: DIRECCIÓN TIENE ACCESO A TODOS LOS GRADOS Y SECCIONES
-        gradeOptionsHtml += `<optgroup label="👑 General por Grado y Sección (Todos los Maestros)">`;
+        // MODO GENERAL POR GRADO: DIRECCIÓN TIENE ACCESO A TODOS LOS 12 GRADOS Y SECCIONES
+        gradeOptionsHtml += `<optgroup label="⭐ General por Grado y Sección (Todos los Maestros)">`;
         (STATE.gradesList || []).forEach(g => {
             gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
         });
@@ -9503,6 +9694,8 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
 
     if (!resetSelection && currentSelectedGrade && Array.from(gradeSelect.options).some(o => o.value === currentSelectedGrade)) {
         gradeSelect.value = currentSelectedGrade;
+    } else if (gradeSelect.options.length > 0) {
+        gradeSelect.selectedIndex = 0;
     }
 
     updateAttendanceCoursesList();
@@ -9526,37 +9719,52 @@ function updateAttendanceCoursesList() {
     const activeTeacherId = teacherSelect ? teacherSelect.value : '';
     const activeTeacherObj = (STATE.users || []).find(u => u.id === activeTeacherId);
 
-    const gradeObj = (STATE.gradesList || []).find(g => g.code === selGrade);
+    const qGradeObj = (STATE.gradesList || []).find(g => g.code === selGrade || g.id === selGrade || g.name === selGrade);
+    const rawQ = `${selGrade || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
+    let qGradeNum = 0;
+    if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
+    else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
+    else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
+    const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : selGrade);
 
-    let coursesHtml = `<option value="GENERAL">📋 Control General de Asistencia (Jornada Diaria)</option>`;
+    let coursesHtml = `<option value="GENERAL">📑 Control General de Asistencia (Jornada Diaria)</option>`;
     
-    let matchingPensum = (STATE.pensum || []).filter(p => 
-        p.gradeCode === selGrade || 
-        p.grade === selGrade ||
-        (gradeObj && p.grade === gradeObj.name && p.section === gradeObj.section)
-    );
+    let matchingPensum = (STATE.pensum || []).filter(p => {
+        const rawP = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
+        let pGradeNum = 0;
+        if (rawP.includes('6') || rawP.includes('SEXTO') || rawP.includes('6TO')) pGradeNum = 6;
+        else if (rawP.includes('5') || rawP.includes('QUINTO') || rawP.includes('5TO')) pGradeNum = 5;
+        else if (rawP.includes('4') || rawP.includes('CUARTO') || rawP.includes('4TO')) pGradeNum = 4;
+        const pSec = getCleanSectionLetter(p.section || p.gradeCode || rawP);
 
-    if (isDocente && currentUser) {
+        if (qGradeNum > 0 && pGradeNum > 0 && qGradeNum !== pGradeNum) return false;
+        if (qSec && pSec && qSec !== pSec) return false;
+        return true;
+    });
+
+    if (isDocente && currentUser && !isDirectorOrAdmin) {
         matchingPensum = matchingPensum.filter(p => 
             p.teacherId === currentUser.id || 
-            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())
+            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase()) ||
+            (currentUser.name && p.teacher && p.teacher.toLowerCase().includes(currentUser.name.toLowerCase()))
         );
     } else if (isDirectorOrAdmin && activeTeacherObj) {
         matchingPensum = matchingPensum.filter(p => 
             p.teacherId === activeTeacherObj.id || 
-            (p.teacher && p.teacher.toLowerCase() === activeTeacherObj.name.toLowerCase())
+            (p.teacher && p.teacher.toLowerCase() === activeTeacherObj.name.toLowerCase()) ||
+            (activeTeacherObj.name && p.teacher && p.teacher.toLowerCase().includes(activeTeacherObj.name.toLowerCase()))
         );
     }
 
     if (matchingPensum.length > 0) {
         const groupTitle = (isDirectorOrAdmin && activeTeacherObj) 
             ? `📚 Cátedras de ${activeTeacherObj.name}`
-            : (isDirectorOrAdmin ? '📚 Cátedras y Asignaturas de este Grado' : '📚 Mis Cátedras Asignadas');
+            : (isDirectorOrAdmin ? '📚 Todas las Clases Asignadas a este Grado' : '📚 Mis Clases Asignadas');
 
         coursesHtml += `<optgroup label="${groupTitle}">`;
         matchingPensum.forEach(p => {
-            const teacherLabel = p.teacher ? ` — Catedrático: ${p.teacher}` : ' (Sin docente asignado)';
-            coursesHtml += `<option value="${p.id}">📚 ${p.subject}${isDirectorOrAdmin ? teacherLabel : ''}</option>`;
+            const teacherLabel = p.teacher ? ` — Catedrático: ${p.teacher}` : ' (Sin docente)';
+            coursesHtml += `<option value="${p.id}">📘 ${p.subject}${isDirectorOrAdmin ? teacherLabel : ''}</option>`;
         });
         coursesHtml += `</optgroup>`;
     }
@@ -9598,149 +9806,144 @@ function loadAttendanceList() {
 
     const isDirectorOrAdmin = (STATE.currentRole === 'director' || STATE.currentRole === 'admin' || STATE.currentRole === 'secretaria');
 
-    // 1. Configurar Banner de Supervisión Directiva
-    if (directorBanner) {
-        if (isDirectorOrAdmin) {
-            directorBanner.style.display = 'flex';
-            if (currentTeacherBadge) {
-                if (courseId && courseId !== 'GENERAL') {
-                    const targetPensum = (STATE.pensum || []).find(p => p.id === courseId);
-                    if (targetPensum) {
-                        currentTeacherBadge.innerHTML = `<i class="fa-solid fa-chalkboard-user"></i> Cátedra: <strong>${targetPensum.subject}</strong> | Catedrático: <strong>${targetPensum.teacher || 'Docente Titular'}</strong>`;
-                    } else {
-                        currentTeacherBadge.textContent = 'Cátedra Oficial';
-                    }
-                } else {
-                    currentTeacherBadge.innerHTML = `<i class="fa-solid fa-building-columns"></i> Asistencia General de Jornada`;
-                }
-            }
+    // Identificar asignación de curso
+    let currentCourseObj = null;
+    if (courseId && courseId !== 'GENERAL') {
+        currentCourseObj = (STATE.pensum || []).find(p => p.id === courseId);
+    }
+
+    if (currentTeacherBadge) {
+        if (currentCourseObj && currentCourseObj.teacher) {
+            currentTeacherBadge.innerHTML = `<i class="fa-solid fa-chalkboard-user"></i> Catedrático: <strong>${currentCourseObj.teacher}</strong>`;
+            currentTeacherBadge.style.display = 'inline-block';
+        } else if (isDirectorOrAdmin) {
+            currentTeacherBadge.innerHTML = `<i class="fa-solid fa-school"></i> Monitoreo Institucional Completo`;
+            currentTeacherBadge.style.display = 'inline-block';
         } else {
-            directorBanner.style.display = 'none';
+            currentTeacherBadge.style.display = 'none';
         }
     }
 
-    const monthNames = {
-        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio',
-        7: 'Julio', 8: 'Agosto', 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
-    };
-
-    if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
-    const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
-    if (!STATE.attendanceRecords[recordKey]) {
-        STATE.attendanceRecords[recordKey] = {};
+    // 1. GENERAR ENCABEZADO DE DÍAS (1 AL FIN DE MES)
+    let thDaysHtml = '';
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dObj = new Date(year, month - 1, day);
+        const dayOfWeek = dayNames[dObj.getDay()];
+        const isWeekend = (dObj.getDay() === 0 || dObj.getDay() === 6);
+        const weekendClass = isWeekend ? 'col-day-weekend' : '';
+        thDaysHtml += `
+            <th class="col-day ${weekendClass}" title="${dObj.toLocaleDateString('es-GT', { weekday: 'long', day: 'numeric', month: 'long' })}">
+                <div class="day-letter">${dayOfWeek}</div>
+                <div class="day-number">${day}</div>
+            </th>
+        `;
     }
-    const monthData = STATE.attendanceRecords[recordKey];
 
-    const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode);
-
-    // Filtrar estudiantes activos del grado seleccionado
-    const students = (STATE.students || []).filter(s => {
-        if (s.status === 'Retirado') return false; // Los retirados formales no aparecen en la lista activa de asistencia
-        if (STATE.activeCycle && s.cycle && s.cycle !== STATE.activeCycle) return false;
-        if (s.grade === gradeCode) return true;
-        if (targetGradeObj && s.gradeLabel) {
-            const expectedLabel = `${targetGradeObj.name} (${targetGradeObj.section})`.trim().toLowerCase();
-            if (s.gradeLabel.trim().toLowerCase() === expectedLabel) return true;
-        }
-        return false;
-    }).sort((a, b) => {
-        const nameA = `${a.lastName || ''} ${a.firstName || ''}`.toUpperCase().trim();
-        const nameB = `${b.lastName || ''} ${b.firstName || ''}`.toUpperCase().trim();
-        return nameA.localeCompare(nameB);
-    });
-
-    // 2. GENERAR ENCABEZADOS ESTILO EXCEL (THEAD)
-    let theadHtml = `
-        <tr class="main-header-row">
+    head.innerHTML = `
+        <tr>
             <th class="col-num" rowspan="2">No.</th>
             <th class="col-carne" rowspan="2">Carné</th>
             <th class="col-name" rowspan="2">Apellidos y Nombres</th>
-            <th colspan="${daysInMonth}" style="background:#15803d; color:white; font-size:0.85rem; padding:6px; letter-spacing:0.5px;">
-                <i class="fa-solid fa-calendar-days"></i> DÍAS DEL MES DE ${monthNames[month].toUpperCase()} (CICLO ${year})
+            <th colspan="${daysInMonth}" class="col-month-header" style="background:#15803d; color:#fff; text-align:center; font-weight:800; font-size:0.85rem; padding:4px;">
+                <i class="fa-regular fa-calendar-days"></i> DÍAS DEL MES DE ${((document.getElementById('attendanceMonthSelect')?.options[document.getElementById('attendanceMonthSelect')?.selectedIndex]?.text) || 'Agosto').toUpperCase()} (CICLO ${year})
             </th>
-            <th class="col-stat col-stat-p" rowspan="2" title="Total Asistencias (Presente)">P</th>
-            <th class="col-stat col-stat-a" rowspan="2" title="Total Inasistencias (Ausente)">A</th>
-            <th class="col-stat col-stat-j" rowspan="2" title="Total Justificaciones">J</th>
-            <th class="col-stat col-stat-t" rowspan="2" title="Total Tardanzas">T</th>
-            <th class="col-stat" rowspan="2" style="background:#f1f5f9; color:#0f172a;" title="Total Días Computados">Días</th>
-            <th class="col-pct" rowspan="2" style="background:#0f172a; color:#38bdf8; font-size:0.82rem; white-space:nowrap; min-width:135px;" title="Porcentaje Horizontal de Asistencia por Estudiante">
-                <i class="fa-solid fa-percent"></i> % Asistencia
-            </th>
+            <th colspan="4" style="background:#0f172a; color:#fff; text-align:center; font-size:0.8rem; padding:4px;">RESUMEN</th>
+            <th class="col-stat" rowspan="2" style="background:#0f172a; color:#fff;">Total</th>
+            <th class="col-pct" rowspan="2" style="background:#0284c7; color:#fff;">% Asistencia</th>
         </tr>
-        <tr class="day-header-row">
+        <tr>
+            ${thDaysHtml}
+            <th class="col-stat col-stat-p" title="Total Asistencias (Presente)">P</th>
+            <th class="col-stat col-stat-a" title="Total Faltas (Ausente)">A</th>
+            <th class="col-stat col-stat-j" title="Total Justificaciones">J</th>
+            <th class="col-stat col-stat-t" title="Total Tardanzas">T</th>
+        </tr>
     `;
 
-    for (let day = 1; day <= daysInMonth; day++) {
-        const dObj = new Date(year, month - 1, day);
-        const dow = dObj.getDay();
-        const isWeekend = (dow === 0 || dow === 6);
-        const dowLetter = dayNames[dow];
+    // 2. OBTENER ESTUDIANTES DEL GRADO Y SECCIÓN CON FILTRO ROBUSTO
+    const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
+    const rawQ = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
+    let qGradeNum = 0;
+    if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
+    else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
+    else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
+    const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
 
-        theadHtml += `
-            <th class="${isWeekend ? 'weekend-header' : ''}" style="${isWeekend ? 'background:#e2e8f0; color:#64748b;' : ''}">
-                <div style="font-size:0.65rem; line-height:1;">${dowLetter}</div>
-                <div style="font-size:0.8rem; font-weight:800;">${day}</div>
-            </th>
-        `;
-    }
-    theadHtml += `</tr>`;
-    head.innerHTML = theadHtml;
+    const students = (STATE.students || []).filter(s => {
+        if (s.status && s.status !== 'Activo') return false;
+        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+        let sGradeNum = 0;
+        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
+
+        return (qGradeNum === sGradeNum) && (qSec === sSec);
+    }).sort((a, b) => (a.fullName || (a.lastName + ' ' + a.firstName)).localeCompare(b.fullName || (b.lastName + ' ' + b.firstName)));
 
     if (students.length === 0) {
-        body.innerHTML = `
-            <tr>
-                <td colspan="${daysInMonth + 9}" style="text-align:center; padding:35px 20px; color:var(--text-muted);">
-                    <i class="fa-solid fa-users-slash" style="font-size:2rem; margin-bottom:8px; display:block; color:var(--brand-green);"></i>
-                    <strong>No hay estudiantes activos registrados en este grado y sección para el ciclo activo.</strong>
-                </td>
-            </tr>
-        `;
+        body.innerHTML = `<tr><td colspan="${daysInMonth + 8}" style="text-align:center; padding:35px; color:#64748b; font-size:0.95rem;">
+            <i class="fa-solid fa-users-slash" style="font-size:2rem; color:#cbd5e1; display:block; margin-bottom:8px;"></i>
+            No hay estudiantes activos registrados en este grado y sección para el ciclo activo.
+        </td></tr>`;
         if (foot) foot.innerHTML = '';
-        if (statsSummary) statsSummary.innerHTML = `0 Estudiantes`;
+        if (statsSummary) statsSummary.innerHTML = '';
         return;
     }
 
-    // 3. GENERAR FILAS DE ESTUDIANTES (TBODY)
-    const dayPresentTotals = new Array(daysInMonth + 1).fill(0);
-    const dayAbsentTotals = new Array(daysInMonth + 1).fill(0);
-    let totalClassPresent = 0;
-    let totalClassLogs = 0;
+    // 3. RECUPERAR REGISTROS DE ASISTENCIA
+    if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+    const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
+    const monthData = STATE.attendanceRecords[recordKey] || {};
 
     let tbodyHtml = '';
+    let dayPresentTotals = new Array(daysInMonth + 1).fill(0);
+    let dayAbsentTotals = new Array(daysInMonth + 1).fill(0);
+    let totalClassLogs = 0;
+    let totalClassPresent = 0;
 
     students.forEach((s, idx) => {
-        const studentFullName = `${s.lastName || ''}, ${s.firstName || ''}`.toUpperCase().trim();
         const sRecords = monthData[s.id] || {};
-        const isAbsentStatus = (s.status === 'Ausente');
-
-        let pCount = 0;
-        let aCount = 0;
-        let jCount = 0;
-        let tCount = 0;
-
+        let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
         let cellsHtml = '';
+        const studentFullName = s.fullName || `${s.lastName || ''}, ${s.firstName || s.name || ''}`.trim();
+        const isAbsentStatus = (s.status === 'Ausente');
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dObj = new Date(year, month - 1, day);
-            const dow = dObj.getDay();
-            const isWeekend = (dow === 0 || dow === 6);
-            const val = sRecords[day] || (isAbsentStatus ? 'A' : '');
-
-            if (val === 'P') { pCount++; dayPresentTotals[day]++; }
-            else if (val === 'A') { aCount++; dayAbsentTotals[day]++; }
-            else if (val === 'J') { jCount++; }
-            else if (val === 'T') { tCount++; }
-
-            const valClass = val ? `att-val-${val}` : '';
+            const isWeekend = (dObj.getDay() === 0 || dObj.getDay() === 6);
+            const weekendClass = isWeekend ? 'col-day-weekend' : '';
 
             if (isWeekend) {
-                cellsHtml += `<td class="att-weekend-cell" title="Fin de semana (${dayNames[dow]} ${day})">-</td>`;
+                cellsHtml += `<td class="att-cell ${weekendClass}" data-weekend="true">-</td>`;
             } else {
+                let rawVal = sRecords[day];
+                // REGLA: Si el maestro no toma asistencia, el espacio en blanco se toma como PRESENTE (P)
+                let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : 'P';
+
+                let cellClass = 'att-val-empty';
+                if (val === 'P') {
+                    cellClass = 'att-val-p';
+                    pCount++;
+                    dayPresentTotals[day]++;
+                } else if (val === 'A') {
+                    cellClass = 'att-val-a';
+                    aCount++;
+                    dayAbsentTotals[day]++;
+                } else if (val === 'J') {
+                    cellClass = 'att-val-j';
+                    jCount++;
+                } else if (val === 'T') {
+                    cellClass = 'att-val-t';
+                    tCount++;
+                }
+
                 cellsHtml += `
-                    <td class="att-day-cell ${valClass}" 
-                        id="attCell_${s.id}_${day}"
-                        onclick="toggleAttendanceCell('${s.id}', ${day}, ${month})" 
-                        title="${studentFullName} — Día ${day}: ${val || 'Sin marcar'} (Haga clic para alternar P/A/J/T)">
+                    <td class="att-cell ${cellClass}" 
+                        data-student-id="${s.id}" 
+                        data-day="${day}" 
+                        onclick="toggleAttendanceCell('${s.id}', ${day})"
+                        title="${studentFullName} — Día ${day}: ${val === 'P' ? 'PRESENTE' : (val === 'A' ? 'AUSENTE / FALTA' : (val === 'J' ? 'JUSTIFICADO' : 'TARDANZA'))} (Haga clic para alternar P/A/J/T)">
                         ${val}
                     </td>
                 `;
@@ -9775,7 +9978,7 @@ function loadAttendanceList() {
         tbodyHtml += `
             <tr data-student-id="${s.id}">
                 <td class="col-num">${idx + 1}</td>
-                <td class="col-carne"><code>${s.carne || s.cui || 'S/C'}</code></td>
+                <td class="col-carne"><code>${s.carne || s.personalCode || 'S/C'}</code></td>
                 <td class="col-name" title="${studentFullName}">
                     <strong>${studentFullName}</strong>${statusTag}
                 </td>
@@ -9786,12 +9989,12 @@ function loadAttendanceList() {
                 <td class="col-stat col-stat-t" id="statT_${s.id}">${tCount}</td>
                 <td class="col-stat" id="statTot_${s.id}" style="font-weight:700;">${totalLogged}</td>
                 <td class="col-pct" id="pctCol_${s.id}">
-                    <div class="att-pct-container" title="Asistencia Horizontal: ${totalLogged > 0 ? pct : 100}% (${pCount} Presentes / ${totalLogged} Días)">
+                    <div class="att-pct-container" title="Asistencia Horizontal: ${pct}% (${pCount} Presentes / ${totalLogged} Días)">
                         <div class="att-pct-bar-bg">
-                            <div class="att-pct-bar-fill" style="width:${totalLogged > 0 ? pct : 100}%; background:${barColor};"></div>
+                            <div class="att-pct-bar-fill" style="width:${pct}%; background:${barColor};"></div>
                         </div>
                         <span class="att-pct-badge" style="${badgeStyle}">
-                            ${totalLogged > 0 ? pct + '%' : '100%'}
+                            ${pct}%
                         </span>
                     </div>
                 </td>
@@ -9892,71 +10095,97 @@ function loadAttendanceList() {
     }
 }
 
-function toggleAttendanceCell(studentId, day, month) {
-    const gradeCode = document.getElementById('attendanceGradeSelect')?.value;
-    const courseId = document.getElementById('attendanceCourseSelect')?.value || 'GENERAL';
-    const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
+function toggleAttendanceCell(studentId, day) {
+    const gradeSelect = document.getElementById('attendanceGradeSelect');
+    const monthSelect = document.getElementById('attendanceMonthSelect');
+    const courseSelect = document.getElementById('attendanceCourseSelect');
+    if (!gradeSelect || !monthSelect) return;
+
+    const gradeCode = gradeSelect.value;
+    const month = parseInt(monthSelect.value) || 8;
+    const courseId = courseSelect ? courseSelect.value : 'GENERAL';
 
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+    const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
     if (!STATE.attendanceRecords[recordKey]) STATE.attendanceRecords[recordKey] = {};
     if (!STATE.attendanceRecords[recordKey][studentId]) STATE.attendanceRecords[recordKey][studentId] = {};
 
-    const currentVal = STATE.attendanceRecords[recordKey][studentId][day] || '';
-    const cycleOrder = ['', 'P', 'A', 'J', 'T'];
-    const nextIndex = (cycleOrder.indexOf(currentVal) + 1) % cycleOrder.length;
-    const nextVal = cycleOrder[nextIndex];
+    const cur = STATE.attendanceRecords[recordKey][studentId][day] || 'P';
+    let next = 'A';
+    if (cur === 'P') next = 'A';
+    else if (cur === 'A') next = 'J';
+    else if (cur === 'J') next = 'T';
+    else if (cur === 'T') next = 'P';
 
-    STATE.attendanceRecords[recordKey][studentId][day] = nextVal;
-    saveStateToLocalStorage();
+    STATE.attendanceRecords[recordKey][studentId][day] = next;
 
-    // Actualizar vista completa para sincronizar porcentajes y totales automáticamente
-    loadAttendanceList();
+    // Actualizar visualmente la celda de inmediato
+    const td = document.querySelector(`td[data-student-id="${studentId}"][data-day="${day}"]`);
+    if (td) {
+        td.className = `att-cell att-val-${next.toLowerCase()}`;
+        td.textContent = next;
+        td.title = `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? 'JUSTIFICADO' : 'TARDANZA'))}`;
+    }
+
+    saveAttendanceRecords(false);
 }
 
 function markAllPresentToday() {
-    const gradeCode = document.getElementById('attendanceGradeSelect')?.value;
-    const courseId = document.getElementById('attendanceCourseSelect')?.value || 'GENERAL';
-    const month = parseInt(document.getElementById('attendanceMonthSelect')?.value) || (new Date().getMonth() + 1);
-    const today = new Date().getDate();
-    const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
+    const gradeSelect = document.getElementById('attendanceGradeSelect');
+    const monthSelect = document.getElementById('attendanceMonthSelect');
+    const courseSelect = document.getElementById('attendanceCourseSelect');
+    if (!gradeSelect || !monthSelect) return;
 
-    if (!gradeCode) {
-        showToast("Seleccione un grado y sección para marcar asistencia.", "warning");
-        return;
-    }
+    const gradeCode = gradeSelect.value;
+    const month = parseInt(monthSelect.value) || 8;
+    const courseId = courseSelect ? courseSelect.value : 'GENERAL';
 
-    const students = (STATE.students || []).filter(s => s.status === 'Activo' && (s.grade === gradeCode || s.gradeLabel === gradeCode));
-    if (students.length === 0) {
-        showToast("No hay estudiantes en el grado seleccionado.", "warning");
-        return;
-    }
+    const today = new Date();
+    const todayDay = today.getDate();
+    const todayMonth = today.getMonth() + 1;
+
+    const targetDay = (month === todayMonth) ? todayDay : 1;
 
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+    const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
     if (!STATE.attendanceRecords[recordKey]) STATE.attendanceRecords[recordKey] = {};
+
+    // Obtener estudiantes del grado
+    const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
+    const rawQ = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
+    let qGradeNum = 0;
+    if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
+    else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
+    else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
+    const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
+
+    const students = (STATE.students || []).filter(s => {
+        if (s.status && s.status !== 'Activo') return false;
+        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+        let sGradeNum = 0;
+        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
+
+        return (qGradeNum === sGradeNum) && (qSec === sSec);
+    });
 
     students.forEach(s => {
         if (!STATE.attendanceRecords[recordKey][s.id]) STATE.attendanceRecords[recordKey][s.id] = {};
-        STATE.attendanceRecords[recordKey][s.id][today] = 'P';
+        STATE.attendanceRecords[recordKey][s.id][targetDay] = 'P';
     });
 
-    saveStateToLocalStorage();
+    saveAttendanceRecords(false);
     loadAttendanceList();
-    showToast(`Se marcó asistencia PRESENTE (P) a todos los ${students.length} estudiantes para hoy día ${today}.`, "success");
+    showToast(`Se registraron ${students.length} asistencias en 'Presente' para el día ${targetDay}.`, 'success');
 }
 
-function saveAttendanceRecords() {
+function saveAttendanceRecords(showToastMsg = true) {
     saveStateToLocalStorage();
-    const courseSelect = document.getElementById('attendanceCourseSelect');
-    const courseText = courseSelect ? courseSelect.options[courseSelect.selectedIndex]?.text : '';
-    showToast(`¡Registro de asistencia mensual y porcentajes guardados exitosamente ${courseText ? '(' + courseText + ')' : ''}!`, "success");
-}
-
-function exportAttendanceToCSV() {
-    exportAttendanceOfficialExcel();
-}
-
-function printAttendanceExcelSheet() {
-    printAttendanceOfficialSheet();
+    if (showToastMsg) {
+        showToast('Planilla de asistencia guardada exitosamente en la base de datos.', 'success');
+    }
 }
 
 function printAttendanceOfficialSheet(forcedIsBlank = null) {
@@ -9971,6 +10200,7 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
     const courseId = courseSelect ? courseSelect.value : 'GENERAL';
     const year = 2026;
     const daysInMonth = new Date(year, month, 0).getDate();
+    const dayNames = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
     const monthNames = {
         1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio',
@@ -9994,221 +10224,206 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
         teacherName = STATE.currentUser.name;
     }
 
-    const students = (STATE.students || []).filter(s => s.status === 'Activo' && (s.grade === gradeCode || s.gradeLabel === gradeCode))
-        .sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`));
+    // Filtrar estudiantes con coincidencia perfecta de grado y sección
+    const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
+    const rawQ = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
+    let qGradeNum = 0;
+    if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
+    else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
+    else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
+    const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
+
+    const students = (STATE.students || []).filter(s => {
+        if (s.status && s.status !== 'Activo') return false;
+        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+        let sGradeNum = 0;
+        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
+
+        return (qGradeNum === sGradeNum) && (qSec === sSec);
+    }).sort((a, b) => (a.fullName || (a.lastName + ' ' + a.firstName)).localeCompare(b.fullName || (b.lastName + ' ' + b.firstName)));
 
     if (students.length === 0) {
         showToast("No hay estudiantes registrados en este grado para generar la planilla de asistencia.", "warning");
         return;
     }
 
-    const cycleKey = STATE.activeCycle || '2026';
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
-    const monthData = (STATE.attendanceRecords && STATE.attendanceRecords[recordKey]) ? STATE.attendanceRecords[recordKey] : {};
-    
-    // Si no se fuerza explicitamente, verificar si hay registros ingresados
-    const hasLoggedData = Object.keys(monthData).some(sId => {
-        return Object.values(monthData[sId] || {}).some(v => v === 'P' || v === 'A' || v === 'J' || v === 'T');
-    });
-    const isBlank = (forcedIsBlank !== null) ? forcedIsBlank : !hasLoggedData;
+    const monthData = (STATE.attendanceRecords && STATE.attendanceRecords[recordKey]) || {};
 
-    const h = STATE.schoolHeader || getInitialData().schoolHeader;
-
-    const printWin = window.open('', '_blank');
+    let printWin = window.open('', '_blank');
     if (!printWin) {
-        showToast("Permita las ventanas emergentes en su navegador para imprimir la planilla de asistencia.", "warning");
+        showToast("Habilite las ventanas emergentes en su navegador para imprimir.", "danger");
         return;
     }
 
-    let tableRowsHtml = '';
-    const dayPresentTotals = new Array(daysInMonth + 1).fill(0);
-    const dayAbsentTotals = new Array(daysInMonth + 1).fill(0);
-    let totalP = 0, totalA = 0, totalJ = 0, totalT = 0;
+    const h = STATE.schoolHeader || { schoolName: 'Escuela Nacional de Ciencias Comerciales', code: 'ENCCO Jutiapa', location: 'Jutiapa' };
+    const capDate = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    // Encabezado de días
+    let thDaysHtml = '';
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dObj = new Date(year, month - 1, day);
+        const dayOfWeek = dayNames[dObj.getDay()];
+        const isWeekend = (dObj.getDay() === 0 || dObj.getDay() === 6);
+        const weekendClass = isWeekend ? 'background:#e2e8f0; color:#64748b;' : '';
+        thDaysHtml += `
+            <th style="width:20px; text-align:center; font-size:7.5pt; border:1px solid #0f172a; padding:3px 1px; ${weekendClass}">
+                <div>${dayOfWeek}</div>
+                <div>${day}</div>
+            </th>
+        `;
+    }
+
+    let tbodyRows = '';
+    let dayPresentTotals = new Array(daysInMonth + 1).fill(0);
+    let dayAbsentTotals = new Array(daysInMonth + 1).fill(0);
 
     students.forEach((s, idx) => {
-        const studentFullName = `${s.lastName || ''}, ${s.firstName || ''}`.toUpperCase().trim();
         const sRecords = monthData[s.id] || {};
         let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
+        let dayCells = '';
+        const studentFullName = s.fullName || `${s.lastName || ''}, ${s.firstName || s.name || ''}`.trim();
 
-        let daysCells = '';
-        for (let d = 1; d <= daysInMonth; d++) {
-            const dObj = new Date(year, month - 1, d);
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dObj = new Date(year, month - 1, day);
             const isWeekend = (dObj.getDay() === 0 || dObj.getDay() === 6);
-            const val = isBlank ? '' : (sRecords[d] || '');
 
-            if (!isBlank) {
-                if (val === 'P') { pCount++; dayPresentTotals[d]++; }
-                else if (val === 'A') { aCount++; dayAbsentTotals[d]++; }
-                else if (val === 'J') jCount++;
-                else if (val === 'T') tCount++;
+            if (isWeekend) {
+                dayCells += `<td style="background:#e2e8f0; text-align:center; color:#94a3b8; font-size:8pt; border:1px solid #64748b;">-</td>`;
+            } else {
+                let rawVal = sRecords[day];
+                // Regla: si el maestro no tomó asistencia, el espacio en blanco se toma como PRESENTE (P)
+                let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : 'P';
+
+                let bg = '#ffffff';
+                let fg = '#000000';
+                if (val === 'P') { bg = '#dcfce7'; fg = '#15803d'; pCount++; dayPresentTotals[day]++; }
+                else if (val === 'A') { bg = '#fee2e2'; fg = '#b91c1c'; aCount++; dayAbsentTotals[day]++; }
+                else if (val === 'J') { bg = '#ffedd5'; fg = '#c2410c'; jCount++; }
+                else if (val === 'T') { bg = '#e0f2fe'; fg = '#0369a1'; tCount++; }
+
+                dayCells += `<td style="background:${bg}; color:${fg}; text-align:center; font-weight:bold; font-size:8pt; border:1px solid #64748b;">${val}</td>`;
             }
-
-            const cellContent = isWeekend ? '-' : (isBlank ? '' : val);
-            const cellStyle = isWeekend ? 'background:#e2e8f0; color:#94a3b8; font-weight:bold;' : '';
-
-            daysCells += `<td style="border:1px solid #000; padding:1px 0; text-align:center; font-size:7.5px; ${cellStyle}">${cellContent}</td>`;
         }
 
-        if (!isBlank) {
-            totalP += pCount; totalA += aCount; totalJ += jCount; totalT += tCount;
-            const totalLogged = pCount + aCount + jCount + tCount;
-            const pct = totalLogged > 0 ? Math.round(((pCount + jCount + (tCount * 0.5)) / totalLogged) * 100) : 100;
+        const totalLogged = pCount + aCount + jCount + tCount;
+        const pct = totalLogged > 0 ? Math.round(((pCount + jCount + (tCount * 0.5)) / totalLogged) * 100) : 100;
 
-            tableRowsHtml += `
-                <tr>
-                    <td style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold; font-size:9px; background:#f8fafc;">${idx + 1}</td>
-                    <td style="border:1px solid #000; padding:2px 4px; text-align:left; font-weight:bold; font-size:9px; white-space:nowrap; text-transform:uppercase;">${studentFullName}</td>
-                    ${daysCells}
-                    <td style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold; background:#f0fdf4; font-size:9px; color:#15803d;">${pCount}</td>
-                    <td style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold; background:#fef2f2; font-size:9px; color:#b91c1c;">${aCount}</td>
-                    <td style="border:1px solid #000; padding:2px; text-align:center; font-size:9px;">${jCount}</td>
-                    <td style="border:1px solid #000; padding:2px; text-align:center; font-size:9px;">${tCount}</td>
-                    <td style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold; font-size:9px;">${totalLogged}</td>
-                    <td style="border:1px solid #000; padding:2px; text-align:center; font-weight:900; background:#e0f2fe; color:#0369a1; font-size:9.5px; white-space:nowrap;">${pct}%</td>
-                </tr>
-            `;
-        } else {
-            // CUADRO VACÍO PARA TOMA FÍSICA DE ASISTENCIA
-            tableRowsHtml += `
-                <tr style="height:20px;">
-                    <td style="border:1px solid #000; padding:2px; text-align:center; font-weight:bold; font-size:9px; background:#f8fafc;">${idx + 1}</td>
-                    <td style="border:1px solid #000; padding:2px 4px; text-align:left; font-weight:bold; font-size:9px; white-space:nowrap; text-transform:uppercase;">${studentFullName}</td>
-                    ${daysCells}
-                    <td style="border:1px solid #000; padding:2px; text-align:center;"></td>
-                    <td style="border:1px solid #000; padding:2px; text-align:center;"></td>
-                    <td style="border:1px solid #000; padding:2px; text-align:center;"></td>
-                    <td style="border:1px solid #000; padding:2px; text-align:center;"></td>
-                    <td style="border:1px solid #000; padding:2px; text-align:center;"></td>
-                    <td style="border:1px solid #000; padding:2px; text-align:center;"></td>
-                </tr>
-            `;
-        }
+        tbodyRows += `
+            <tr style="${idx % 2 === 1 ? 'background-color:#f8fafc;' : ''}">
+                <td style="text-align:center; font-weight:bold; border:1px solid #64748b; padding:4px 2px;">${idx + 1}</td>
+                <td style="font-family:monospace; font-weight:bold; border:1px solid #64748b; padding:4px 4px; font-size:7.8pt;">${s.personalCode || s.carne || 'S/C'}</td>
+                <td style="font-weight:bold; border:1px solid #64748b; padding:4px 6px; white-space:nowrap; font-size:8.2pt;">${studentFullName}</td>
+                ${dayCells}
+                <td style="text-align:center; font-weight:bold; color:#15803d; border:1px solid #64748b; font-size:8pt;">${pCount}</td>
+                <td style="text-align:center; font-weight:bold; color:#b91c1c; border:1px solid #64748b; font-size:8pt;">${aCount}</td>
+                <td style="text-align:center; font-weight:bold; color:#c2410c; border:1px solid #64748b; font-size:8pt;">${jCount}</td>
+                <td style="text-align:center; font-weight:bold; color:#0369a1; border:1px solid #64748b; font-size:8pt;">${tCount}</td>
+                <td style="text-align:center; font-weight:bold; background:#f1f5f9; border:1px solid #64748b; font-size:8.5pt;">${pct}%</td>
+            </tr>
+        `;
     });
 
-    const overallPct = (totalP + totalA + totalJ + totalT) > 0 ? Math.round(((totalP + totalJ + (totalT * 0.5)) / (totalP + totalA + totalJ + totalT)) * 100) : 100;
-    const documentTypeTitle = isBlank 
-        ? 'PLANILLA DE ASISTENCIA EN BLANCO (TOMA FÍSICA EN AULA)' 
-        : 'CONTROL Y PLANILLA OFICIAL DE ASISTENCIA MENSUAL';
+    const grandSumP = dayPresentTotals.reduce((a, b) => a + b, 0);
+    const grandSumA = dayAbsentTotals.reduce((a, b) => a + b, 0);
 
     printWin.document.write(`
         <!DOCTYPE html>
         <html lang="es">
         <head>
             <meta charset="UTF-8">
-            <title>${documentTypeTitle} - ${gradeText} - ${monthNames[month]} ${year}</title>
+            <title>Planilla Oficial de Asistencia - ${gradeText}</title>
             <style>
-                @page { size: letter landscape; margin: 6mm 8mm; }
-                body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; margin: 0; padding: 0; background: #fff; font-size: 9px; width: 100%; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                @page { size: 13in 8.5in landscape; margin: 6mm 8mm; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; line-height: 1.2; font-size: 8pt; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 
-                .encc-official-header { border: 2px solid #0369a1; margin-bottom: 6px; background: #ffffff; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
-                .encc-top-banner { background: linear-gradient(135deg, #0f172a 0%, #0369a1 60%, #0284c7 100%) !important; border-bottom: 2px solid #0284c7; display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; color: #ffffff; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                .encc-top-banner .logo-box { display: flex; align-items: center; gap: 10px; }
-                .encc-top-banner img { height: 46px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3)); }
-                .encc-top-banner h1 { margin: 0; font-size: 16px; font-weight: 900; color: #ffffff; letter-spacing: 0.3px; text-transform: uppercase; }
-                .encc-top-banner .sub-title { margin: 2px 0 0 0; font-size: 9px; font-weight: 700; color: #bae6fd; }
-                .encc-top-banner .doc-badge { font-size: 10px; font-weight: 900; color: #ffffff; background: #0284c7; padding: 4px 12px; border-radius: 12px; border: 1px solid #7dd3fc; text-transform: uppercase; white-space: nowrap; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                .official-header { border: 1.5px solid #15803d; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+                .top-banner { background: #15803d !important; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 6px 14px; }
+                .top-banner img { height: 38px; width: auto; }
+                .top-banner h1 { margin: 0; font-size: 13pt; font-weight: 900; color: #fff; text-transform: uppercase; }
+                .sub-tag { font-size: 8pt; font-weight: 700; color: #bbf7d0; }
                 
-                .encc-meta-row { display: flex; justify-content: space-between; align-items: stretch; background: #f0f9ff !important; border-bottom: 1px solid #0284c7; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                .encc-meta-left { padding: 6px 12px; flex: 1; font-size: 9.5px; line-height: 1.5; display: grid; grid-template-columns: 110px 1fr; row-gap: 2px; }
-                .encc-meta-left strong { color: #0369a1; font-weight: 800; }
+                .meta-bar { background: #f0fdf4; border-top: 1px solid #166534; padding: 4px 14px; display: flex; justify-content: space-between; font-size: 8.5pt; font-weight: 700; color: #166534; }
                 
-                .encc-boxes-right { display: flex; border-left: 2px solid #0284c7; text-align: center; background: #ffffff; }
-                .encc-box { width: 85px; border-right: 1px solid #cbd5e1; display: flex; flex-direction: column; justify-content: space-between; }
-                .encc-box:last-child { border-right: none; }
-                .encc-box-num { font-size: 16px; font-weight: 900; color: #0f172a; padding: 4px 0 0 0; }
-                .encc-box-label { font-size: 8.5px; font-weight: 800; color: #0369a1; background: #e0f2fe !important; border-top: 1px solid #0284c7; padding: 2px 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; text-transform: uppercase; }
+                .stat-table { width: 100%; border-collapse: collapse; margin-top: 6px; border: 1.5px solid #0f172a; font-size: 8pt; }
+                .stat-table th { background: #15803d !important; color: #ffffff !important; border: 1px solid #0f172a; padding: 4px 2px; text-align: center; font-weight: 900; }
                 
-                table.attendance-table { width: 100%; border-collapse: collapse; font-size: 8px; border: 1.5px solid #0f172a; margin-top: 0px; }
-                table.attendance-table th, table.attendance-table td { border: 1px solid #64748b; padding: 2px 1px; }
-                table.attendance-table th { font-weight: 800; background-color: #0369a1 !important; color: #ffffff !important; text-align: center; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                .footer-stamp { margin-top: 8px; display: flex; justify-content: space-between; font-size: 8.5px; color: #475569; border-top: 1px solid #cbd5e1; padding-top: 4px; }
-                @media print { .no-print { display: none; } body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
+                .signatures { margin-top: 24px; display: flex; justify-content: space-around; text-align: center; }
+                .sig-box { width: 220px; border-top: 1.5px solid #000; padding-top: 3px; font-size: 8pt; font-weight: bold; }
             </style>
         </head>
         <body>
-            <div class="encc-official-header">
-                <div class="encc-top-banner">
-                    <div class="logo-box">
+            <div class="official-header">
+                <div class="top-banner">
+                    <div style="display:flex; align-items:center; gap:10px;">
                         <img src="logo.png" alt="Logo ENCCO" onerror="this.src='portada-comercio-principal.webp'">
                         <div>
-                            <h1>${h.schoolName || 'Escuela Nacional de Ciencias Comerciales'}</h1>
-                            <div class="sub-title">JUTIAPA, GUATEMALA — FUNDADA EN 1970 | CICLO LECTIVO ${cycleKey}</div>
+                            <h1>${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</h1>
+                            <div class="sub-tag">JUTIAPA — FUNDADA EN 1970 | CICLO ESCOLAR ${STATE.activeCycle || '2026'}</div>
                         </div>
                     </div>
-                    <div style="display:flex; gap:8px; align-items:center;">
-                        <div class="doc-badge" style="background:#e0f2fe; color:#0369a1; border-color:#7dd3fc;">${STATE.config?.activeBimestre || 1}º BIMESTRE ACTIVO</div>
-                        <div class="doc-badge">${isBlank ? '📄 Toma Física en Aula' : '📊 Registro Oficial'}</div>
+                    <div style="text-align:right;">
+                        <div style="font-size:11pt; font-weight:900; text-transform:uppercase;">PLANILLA OFICIAL DE ASISTENCIA</div>
+                        <div style="font-size:8pt; color:#bbf7d0;">MES: ${monthNames[month].toUpperCase()} ${year}</div>
                     </div>
                 </div>
-                <div class="encc-meta-row">
-                    <div class="encc-meta-left">
-                        <strong>Documento:</strong>
-                        <span><strong>${documentTypeTitle}</strong></span>
-                        <strong>Grado / Sección:</strong>
-                        <span>${gradeText}</span>
-                        <strong>Cátedra / Materia:</strong>
-                        <span>${subjectTitle}</span>
-                        <strong>Catedrático(a):</strong>
-                        <span>${teacherName}</span>
-                        <strong>Mes y Año:</strong>
-                        <span>${monthNames[month]} de ${year}</span>
-                    </div>
-                    <div class="encc-boxes-right">
-                        <div class="encc-box">
-                            <div class="encc-box-num">${students.length}</div>
-                            <div class="encc-box-label">Estudiantes</div>
-                        </div>
-                        <div class="encc-box">
-                            <div class="encc-box-num">${monthNames[month].substring(0, 3)}</div>
-                            <div class="encc-box-label">Mes</div>
-                        </div>
-                        <div class="encc-box">
-                            <div class="encc-box-num">${isBlank ? '----' : overallPct + '%'}</div>
-                            <div class="encc-box-label">${isBlank ? 'Estado' : '% Asistencia'}</div>
-                        </div>
-                    </div>
+                <div class="meta-bar">
+                    <div><strong>Grado y Sección:</strong> ${gradeText}</div>
+                    <div><strong>Asignatura:</strong> ${subjectTitle}</div>
+                    <div><strong>Catedrático:</strong> ${teacherName}</div>
+                    <div><strong>Total Alumnos:</strong> ${students.length}</div>
                 </div>
             </div>
 
-            <table class="attendance-table">
+            <table class="stat-table">
                 <thead>
-                    <tr style="background:#d9e9f9;">
-                        <th style="width:24px;" rowspan="2">No.</th>
-                        <th style="min-width:140px; text-align:left; padding-left:4px;" rowspan="2">Alumno (Apellidos y Nombres)</th>
-                        <th colspan="${daysInMonth}">Días del Mes (${monthNames[month]} ${year})</th>
-                        <th style="width:20px;" rowspan="2">P</th>
-                        <th style="width:20px;" rowspan="2">A</th>
-                        <th style="width:20px;" rowspan="2">J</th>
-                        <th style="width:20px;" rowspan="2">T</th>
-                        <th style="width:26px;" rowspan="2">Días</th>
-                        <th style="width:50px; white-space:nowrap;" rowspan="2">% Asist.</th>
+                    <tr>
+                        <th style="width:25px;" rowspan="2">No.</th>
+                        <th style="width:75px;" rowspan="2">Código Personal</th>
+                        <th style="text-align:left; padding-left:6px;" rowspan="2">Apellidos y Nombres</th>
+                        <th colspan="${daysInMonth}">DÍAS DEL MES DE ${monthNames[month].toUpperCase()}</th>
+                        <th style="width:24px;" rowspan="2">P</th>
+                        <th style="width:24px;" rowspan="2">A</th>
+                        <th style="width:24px;" rowspan="2">J</th>
+                        <th style="width:24px;" rowspan="2">T</th>
+                        <th style="width:38px;" rowspan="2">% Asist</th>
                     </tr>
-                    <tr style="background:#f1f5f9;">
-                        ${Array.from({length: daysInMonth}, (_, i) => `<th style="width:11px; font-size:7px;">${i+1}</th>`).join('')}
+                    <tr>
+                        ${thDaysHtml}
                     </tr>
                 </thead>
                 <tbody>
-                    ${tableRowsHtml}
-                </tbody>
-                ${!isBlank ? `
-                <tfoot>
-                    <tr style="background:#0f172a; color:#ffffff; font-weight:bold;">
-                        <td colspan="2" style="border:1px solid #000; padding:2px 4px; text-align:right; background:#0f172a; color:#ffffff; font-size:8px;">TOTAL ASISTENCIAS (P):</td>
-                        ${Array.from({length: daysInMonth}, (_, i) => `<td style="border:1px solid #000; padding:1px 0; text-align:center; font-size:7px; background:#0f172a; color:#ffffff;">${dayPresentTotals[i+1]}</td>`).join('')}
-                        <td style="border:1px solid #000; text-align:center; background:#0f172a; color:#4ade80; font-size:8px;">${totalP}</td>
-                        <td style="border:1px solid #000; text-align:center; background:#0f172a; color:#f87171; font-size:8px;">${totalA}</td>
-                        <td style="border:1px solid #000; text-align:center; background:#0f172a; color:#fb923c; font-size:8px;">${totalJ}</td>
-                        <td style="border:1px solid #000; text-align:center; background:#0f172a; color:#38bdf8; font-size:8px;">${totalT}</td>
-                        <td style="border:1px solid #000; text-align:center; background:#0f172a; color:#ffffff; font-size:8px;">${totalP+totalA+totalJ+totalT}</td>
-                        <td style="border:1px solid #000; text-align:center; font-weight:900; background:#0284c7; color:#ffffff; font-size:9px; white-space:nowrap;">${overallPct}%</td>
+                    ${tbodyRows}
+                    <tr style="background:#dcfce7; font-weight:900; font-size:8.5pt;">
+                        <td colspan="3" style="text-align:right; padding-right:8px; border:1px solid #0f172a;">TOTAL ASISTENCIAS DIARIAS (P):</td>
+                        ${dayPresentTotals.slice(1).map((tot, idx) => {
+                            const dObj = new Date(year, month - 1, idx + 1);
+                            const isWk = (dObj.getDay() === 0 || dObj.getDay() === 6);
+                            return `<td style="text-align:center; border:1px solid #0f172a; ${isWk ? 'background:#cbd5e1;' : ''}">${isWk ? '-' : tot}</td>`;
+                        }).join('')}
+                        <td style="text-align:center; background:#15803d; color:#fff; border:1px solid #0f172a;">${grandSumP}</td>
+                        <td style="text-align:center; background:#b91c1c; color:#fff; border:1px solid #0f172a;">${grandSumA}</td>
+                        <td colspan="3" style="text-align:center; background:#0f172a; color:#fff; border:1px solid #0f172a;">${students.length} Alumnos</td>
                     </tr>
-                </tfoot>
-                ` : ''}
+                </tbody>
             </table>
 
-            <div class="footer-stamp">
-                <span>Total Estudiantes: ${students.length} &nbsp;|&nbsp; Grado: ${gradeText}</span>
-                <span>Documento Impreso el ${new Date().toLocaleDateString('es-GT')} — Plataforma Oficial ENCCO Jutiapa</span>
+            <div class="signatures">
+                <div class="sig-box">
+                    ${teacherName}<br>
+                    Catedrático(a) Titular
+                </div>
+                <div class="sig-box">
+                    Comisión de Asistencia y Disciplina<br>
+                    Vo.Bo. Control de Plantel
+                </div>
+                <div class="sig-box">
+                    Licda. Director(a) ENCCO<br>
+                    Sello Oficial Institucional
+                </div>
             </div>
         </body>
         </html>
@@ -10217,12 +10432,89 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
     setTimeout(() => {
         printWin.focus();
         printWin.print();
-    }, 300);
+    }, 400);
 }
 
-// ==========================================================================
-// 10. CUADROS DE HONOR MÚLTIPLES
-// ==========================================================================
+function exportAttendanceOfficialExcel() {
+    const gradeSelect = document.getElementById('attendanceGradeSelect');
+    const monthSelect = document.getElementById('attendanceMonthSelect');
+    const courseSelect = document.getElementById('attendanceCourseSelect');
+
+    const gradeCode = gradeSelect ? gradeSelect.value : '';
+    const gradeText = gradeSelect && gradeSelect.selectedIndex >= 0 ? gradeSelect.options[gradeSelect.selectedIndex].text : 'Grado';
+    const month = parseInt(monthSelect ? monthSelect.value : '8') || 8;
+    const courseId = courseSelect ? courseSelect.value : 'GENERAL';
+    const year = 2026;
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
+    const rawQ = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
+    let qGradeNum = 0;
+    if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
+    else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
+    else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
+    const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
+
+    const students = (STATE.students || []).filter(s => {
+        if (s.status && s.status !== 'Activo') return false;
+        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+        let sGradeNum = 0;
+        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
+
+        return (qGradeNum === sGradeNum) && (qSec === sSec);
+    }).sort((a, b) => (a.fullName || (a.lastName + ' ' + a.firstName)).localeCompare(b.fullName || (b.lastName + ' ' + b.firstName)));
+
+    if (students.length === 0) {
+        showToast("No hay estudiantes para exportar.", "warning");
+        return;
+    }
+
+    const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
+    const monthData = (STATE.attendanceRecords && STATE.attendanceRecords[recordKey]) || {};
+
+    let csv = `\uFEFFNo,Carne,Apellidos y Nombres,`;
+    for (let d = 1; d <= daysInMonth; d++) csv += `Dia_${d},`;
+    csv += `Total_P,Total_A,Total_J,Total_T,Porcentaje_Asistencia\n`;
+
+    students.forEach((s, idx) => {
+        const sRecords = monthData[s.id] || {};
+        let p = 0, a = 0, j = 0, t = 0;
+        let line = `${idx + 1},"${s.personalCode || s.carne || ''}","${s.fullName || (s.lastName + ', ' + s.firstName)}",`;
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dObj = new Date(year, month - 1, d);
+            const isWeekend = (dObj.getDay() === 0 || dObj.getDay() === 6);
+            if (isWeekend) {
+                line += `-,`;
+            } else {
+                let val = sRecords[d] || 'P';
+                if (val === 'P') p++;
+                else if (val === 'A') a++;
+                else if (val === 'J') j++;
+                else if (val === 'T') t++;
+                line += `${val},`;
+            }
+        }
+        const tot = p + a + j + t;
+        const pct = tot > 0 ? Math.round(((p + j + (t * 0.5)) / tot) * 100) : 100;
+        line += `${p},${a},${j},${t},${pct}%\n`;
+        csv += line;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Asistencia_${gradeCode}_Mes_${month}_2026.csv`;
+    link.click();
+    showToast("Planilla descargada exitosamente en formato CSV / Excel.", "success");
+}
+
+function exportAttendanceToCSV() { exportAttendanceOfficialExcel(); }
+function printAttendanceExcelSheet() { printAttendanceOfficialSheet(); }
+
 function loadHonorRoll() {
     const select = document.getElementById('honorRollTypeSelect');
     const tbody = document.getElementById('honorRollTableBody');
@@ -10233,20 +10525,20 @@ function loadHonorRoll() {
     const curVal = select.value || 'ALL_BALANCED';
     
     let opts = `
-        <option value="ALL_BALANCED">🌟 Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)</option>
-        <option value="GROUP_4TO_5TO">🥇 Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)</option>
+        <option value="ALL_BALANCED">🏆 Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)</option>
+        <option value="GROUP_4TO_5TO">🥈 Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)</option>
         <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (10 Clases - Graduandos)</option>
     `;
 
-    opts += `<optgroup label="📋 Cuadros de Honor por Grado y Sección">`;
+    opts += `<optgroup label="📌 Cuadros de Honor por Grado y Sección">`;
     (STATE.gradesList || []).forEach(g => {
-        opts += `<option value="GRADE_${g.code}">🏆 ${g.name} (${g.section})</option>`;
+        opts += `<option value="GRADE_${g.code}">📘 ${g.name} (${g.section})</option>`;
     });
     opts += `</optgroup>`;
 
     opts += `<optgroup label="🎓 Cuadros de Honor por Carrera">`;
     (STATE.careers || []).forEach(c => {
-        opts += `<option value="CAREER_${c.name}">🎓 Carrera: ${c.name}</option>`;
+        opts += `<option value="CAREER_${c.name}">🏅 Carrera: ${c.name}</option>`;
     });
     opts += `</optgroup>`;
 
@@ -10288,13 +10580,32 @@ function loadHonorRoll() {
         list = list.filter(s => matchingGrades.includes(s.grade));
     }
 
-    // Filtrar estrictamente solo estudiantes elegibles si el checkbox está activo
-    if (onlyEligible) {
-        list = list.filter(s => getStudentAcademicInfo(s).eligibleForHonorRoll);
+    // Filtrar estrictamente solo estudiantes con calificaciones ingresadas y elegibles
+    const evaluatedList = list.filter(s => {
+        const info = getStudentAcademicInfo(s);
+        if (onlyEligible) {
+            return info.eligibleForHonorRoll && info.gradedClasses > 0 && info.average > 0;
+        }
+        return info.gradedClasses > 0 && info.average > 0;
+    });
+
+    if (evaluatedList.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center; padding:45px 20px; color:var(--text-muted);">
+                    <i class="fa-solid fa-trophy" style="font-size:2.4rem; margin-bottom:12px; display:block; color:var(--brand-green); opacity:0.8;"></i>
+                    <strong style="font-size:1.1rem; color:var(--text-primary); display:block; margin-bottom:6px;">Aún no hay calificaciones ingresadas en el sistema</strong>
+                    <span style="font-size:0.88rem; max-width:550px; display:inline-block; line-height:1.4;">
+                        El Cuadro de Honor se calculará y nivelará automáticamente en tiempo real (Base 100 equilibrada) en cuanto los catedráticos ingresen las calificaciones bimestrales de sus asignaturas.
+                    </span>
+                </td>
+            </tr>
+        `;
+        return;
     }
 
     // Ordenamiento estricto: primero los elegibles por promedio descendente, luego no elegibles
-    list.sort((a, b) => {
+    evaluatedList.sort((a, b) => {
         const infoA = getStudentAcademicInfo(a);
         const infoB = getStudentAcademicInfo(b);
         if (infoA.eligibleForHonorRoll !== infoB.eligibleForHonorRoll) {
@@ -10303,26 +10614,18 @@ function loadHonorRoll() {
         return infoB.average - infoA.average;
     });
 
-    if (list.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" style="text-align:center; padding:35px; color:var(--text-muted);">
-                    <i class="fa-solid fa-trophy" style="font-size:2.2rem; margin-bottom:10px; display:block; color:var(--brand-orange);"></i>
-                    <strong>No hay estudiantes elegibles o con calificaciones registradas para este filtro.</strong>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    tbody.innerHTML = list.map((s, idx) => {
+    tbody.innerHTML = evaluatedList.map((s, idx) => {
         const info = getStudentAcademicInfo(s);
         let badgeHtml = '';
         let posBadge = `<span style="font-weight:800; font-size:1.05rem;">#${idx + 1}</span>`;
 
         if (!info.eligibleForHonorRoll) {
             posBadge = `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-size:0.75rem;"><i class="fa-solid fa-ban"></i> No Elegible</span>`;
-            badgeHtml = `<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #f87171; font-weight:700;" title="Materias reprobadas: ${info.failedSubjectsList.join(', ')}"><i class="fa-solid fa-triangle-exclamation"></i> Nota &lt; 60 pts (${info.failedSubjectsList.length})</span>`;
+            if (info.isExonerated) {
+                badgeHtml = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-weight:700;"><i class="fa-solid fa-user-shield"></i> Exonerado (Sin Cuadro)</span>`;
+            } else {
+                badgeHtml = `<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #f87171; font-weight:700;" title="Materias reprobadas: ${info.failedSubjectsList.join(', ')}"><i class="fa-solid fa-triangle-exclamation"></i> Nota &lt; 60 pts (${info.failedSubjectsList.length})</span>`;
+            }
         } else {
             if (idx === 0) {
                 posBadge = `<span style="font-size:1.15rem;">🥇 <strong>#1</strong></span>`;
@@ -10346,7 +10649,7 @@ function loadHonorRoll() {
 
         let exonBadges = '';
         if (info.exoneratedCount > 0) {
-            exonBadges = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-size:0.75rem; margin-right:4px;" title="Tiene ${info.exoneratedCount} consideración(es) o exoneración(es)"><i class="fa-solid fa-hand-holding-medical"></i> ${info.exoneratedCount} Exon.</span>`;
+            exonBadges = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-size:0.75rem; margin-right:4px;" title="Tiene ${info.exoneratedCount} consideración(es) o exoneración(es)"><i class="fa-solid fa-user-shield"></i> Exonerado</span>`;
         }
 
         const actionBtn = `<button type="button" class="btn btn-sm btn-outline-primary" style="padding:2px 8px; font-size:0.75rem;" onclick="openAcademicExonerationModal('${s.id}')" title="Configurar consideración individual o exoneración"><i class="fa-solid fa-user-shield"></i> Exonerar</button>`;
@@ -10371,6 +10674,7 @@ function loadHonorRoll() {
         `;
     }).join('');
 }
+
 
 function printHonorRoll() {
     const h = STATE.schoolHeader || getInitialData().schoolHeader;
@@ -10446,7 +10750,7 @@ function printHonorRoll() {
             <meta charset="UTF-8">
             <title>${titleText} - ENCCO 1970</title>
             <style>
-                @page { size: legal portrait; margin: 8mm 8mm; }
+                @page { size: 8.5in 13in portrait; margin: 6mm 6mm; }
                 body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; margin: 0; padding: 0; background: #fff; font-size: 11px; width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .encc-official-header { border: 1.5px solid #000; margin-bottom: 0px; background: #ffffff; }
                 .encc-top-banner { background-color: #99b958 !important; border-bottom: 1.5px solid #000; display: flex; justify-content: space-between; align-items: center; padding: 4px 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -11072,7 +11376,7 @@ function printRenglonGenderReport() {
             <meta charset="UTF-8">
             <title>Informe Estadístico 011/021 - ${h.schoolName || 'ENCCO JUTIAPA'}</title>
             <style>
-                @page { size: letter portrait; margin: 10mm 12mm; }
+                @page { size: 8.5in 13in portrait; margin: 6mm 8mm; }
                 body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; line-height: 1.3; font-size: 9.5pt; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 
                 .official-header { border: 2px solid #0369a1; border-radius: 6px; overflow: hidden; margin-bottom: 14px; }
@@ -11234,15 +11538,35 @@ function printStudentDemographicsReport() {
     let grandTotal = 0;
 
     const sectionMatrix = gradesList.map(g => {
-        const secStudents = students.filter(s => s.grade === g.code || s.gradeLabel?.includes(g.name));
-        let mCount = 0, fCount = 0;
+        const rawG = `${g.code || ''} ${g.name || ''} ${g.section || ''}`.toUpperCase();
+        let gGradeNum = 0;
+        if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+        else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+        else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
 
+        const gSec = getCleanSectionLetter(g.section || g.code || rawG);
+
+        const secStudents = students.filter(s => {
+            if (s.status && s.status !== 'Activo') return false;
+
+            const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+            let sGradeNum = 0;
+            if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+            else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+            else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+
+            const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
+
+            if (gGradeNum > 0 && sGradeNum > 0 && gGradeNum !== sGradeNum) return false;
+            if (gSec && sSec && gSec !== sSec) return false;
+
+            return (gGradeNum === sGradeNum) && (gSec === sSec);
+        });
+
+        let mCount = 0, fCount = 0;
         secStudents.forEach(s => {
-            if (!s.gender) {
-                const fName = (s.firstName || s.name || '').toLowerCase();
-                s.gender = (fName.endsWith('a') || fName.endsWith('eth') || fName.endsWith('is') || fName.includes('maria') || fName.includes('lucia')) ? 'Femenino' : 'Masculino';
-            }
-            if (s.gender === 'Femenino') fCount++;
+            const gNorm = (s.gender || '').trim().toLowerCase();
+            if (gNorm.startsWith('f') || gNorm === 'femenino') fCount++;
             else mCount++;
         });
 
@@ -11287,7 +11611,7 @@ function printStudentDemographicsReport() {
             <meta charset="UTF-8">
             <title>Informe Estadístico de Matrícula - ${h.schoolName || 'ENCCO JUTIAPA'}</title>
             <style>
-                @page { size: letter portrait; margin: 10mm 12mm; }
+                @page { size: 8.5in 13in portrait; margin: 6mm 8mm; }
                 body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; line-height: 1.3; font-size: 9.5pt; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 
                 .official-header { border: 2px solid #15803d; border-radius: 6px; overflow: hidden; margin-bottom: 14px; }
@@ -11995,7 +12319,7 @@ function executeNativeDocumentPrint() {
             <title>Impresión Oficial - ENCCO</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { size: legal portrait; margin: 8mm; }
+                @page { size: 8.5in 13in portrait; margin: 6mm; }
                 body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; margin: 0; padding: 0; background: #fff; font-size: 11px; }
                 table { width: 100%; border-collapse: collapse; margin-top: 6px; }
                 th, td { border: 1px solid #334155; padding: 5px 6px; }
@@ -12612,69 +12936,7 @@ function savePensumSubjectForm(e) {
     showToast(`Asignatura "${name}" guardada en el pensum exitosamente.`, 'success');
 }
 
-function openClassAssignmentModal() {
-    if (!checkEnrolmentPermissions()) return;
-    const form = document.getElementById('classAssignmentForm');
-    if (form) form.reset();
-    document.getElementById('classAssignmentModalId').value = '';
-    document.getElementById('classAssignmentModalTitle').innerHTML = '<i class="fa-solid fa-chalkboard-user"></i> Asignar Cátedra a Docente';
-    updateClassAssignmentSelects();
-    showModalById('classAssignmentModal');
-}
-
-function closeClassAssignmentModal() {
-    const modal = document.getElementById('classAssignmentModal');
-    if (modal) {
-        modal.classList.remove('active');
-        modal.style.setProperty('display', 'none', 'important');
-    }
-}
-
-function saveClassAssignmentForm(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    const id = document.getElementById('classAssignmentModalId').value;
-    const teacherId = document.getElementById('classAssignmentTeacherSelect').value;
-    const gradeCode = document.getElementById('classAssignmentGradeSelect').value;
-    const subject = document.getElementById('classAssignmentSubjectSelect').value;
-
-    if (!teacherId || !gradeCode || !subject) {
-        showToast('Seleccione docente, grado y asignatura.', 'warning');
-        return;
-    }
-
-    const teacher = (STATE.users || []).find(u => u.id === teacherId);
-    const teacherName = teacher ? teacher.name : 'Catedrático';
-    const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode);
-    const gradeName = gradeObj ? gradeObj.name : gradeCode;
-    const section = gradeObj ? gradeObj.section : 'A';
-
-    if (!Array.isArray(STATE.pensum)) STATE.pensum = [];
-
-    if (id) {
-        const a = STATE.pensum.find(x => x.id === id);
-        if (a) {
-            a.teacherId = teacherId;
-            a.teacher = teacherName;
-            a.grade = gradeName;
-            a.section = section;
-            a.subject = subject;
-        }
-    } else {
-        STATE.pensum.push({
-            id: 'asg-' + Date.now(),
-            teacherId: teacherId,
-            teacher: teacherName,
-            grade: gradeName,
-            section: section,
-            subject: subject
-        });
-    }
-
-    saveStateToLocalStorage();
-    closeClassAssignmentModal();
-    renderClassAssignmentsTable();
-    showToast('Cátedra asignada exitosamente.', 'success');
-}
+// Bloque heredado reemplazado por controlador moderno de asignaciones
 
 function openAssignGuideTeacherModal(gradeId) {
     if (!checkEnrolmentPermissions()) return;
@@ -12870,43 +13132,124 @@ function renderGradesTable(searchQuery = '') {
 }
 
 function updatePensumCatalogSelects() {
-    updateGradeSelects();
-    updateCareerSelects();
+    const careerSelect = document.getElementById('pensumSubjectFormCareer') || document.getElementById('pensumSubjectCareer');
+    const gradeSelect = document.getElementById('pensumSubjectFormGrade') || document.getElementById('pensumSubjectGrade');
+    const careerFilter = document.getElementById('pensumCatalogCareerFilter');
+    const gradeFilter = document.getElementById('pensumCatalogGradeFilter');
+
+    const careers = STATE.careers || [];
+    const careerOptions = careers.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+
+    if (careerSelect) {
+        const curVal = careerSelect.value;
+        careerSelect.innerHTML = careerOptions || '<option value="Perito Contador">Perito Contador</option>';
+        if (curVal && Array.from(careerSelect.options).some(o => o.value === curVal)) {
+            careerSelect.value = curVal;
+        }
+    }
+
+    if (careerFilter) {
+        const curVal = careerFilter.value;
+        careerFilter.innerHTML = '<option value="ALL">Todas las Carreras</option>' + careerOptions;
+        if (curVal && Array.from(careerFilter.options).some(o => o.value === curVal)) {
+            careerFilter.value = curVal;
+        }
+    }
+
+    const gradeNames = [
+        { code: '4TO', label: '4to Grado (4to Perito)' },
+        { code: '5TO', label: '5to Grado (5to Perito)' },
+        { code: '6TO', label: '6to Grado (6to Perito)' }
+    ];
+
+    const gradeOptions = gradeNames.map(g => `<option value="${g.code}">${g.label}</option>`).join('');
+
+    if (gradeSelect) {
+        const curVal = gradeSelect.value;
+        gradeSelect.innerHTML = '<option value="">-- Seleccione Grado --</option>' + gradeOptions;
+        if (curVal && Array.from(gradeSelect.options).some(o => o.value === curVal)) {
+            gradeSelect.value = curVal;
+        }
+    }
+
+    if (gradeFilter) {
+        const curVal = gradeFilter.value;
+        gradeFilter.innerHTML = '<option value="ALL">Todos los Grados</option>' + gradeOptions;
+        if (curVal && Array.from(gradeFilter.options).some(o => o.value === curVal)) {
+            gradeFilter.value = curVal;
+        }
+    }
 }
 
 function renderPensumCatalogTable(searchQuery = '') {
     const tbody = document.getElementById('pensumCatalogTableBody');
     if (!tbody) return;
 
-    const careerFilter = document.getElementById('pensumCatalogCareerFilter') ? document.getElementById('pensumCatalogCareerFilter').value : 'ALL';
-    const gradeFilter = document.getElementById('pensumCatalogGradeFilter') ? document.getElementById('pensumCatalogGradeFilter').value : 'ALL';
-    const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('pensumCatalogSearchInput') ? document.getElementById('pensumCatalogSearchInput').value : '')).toLowerCase();
+    const careerFilterEl = document.getElementById('pensumCatalogCareerFilter');
+    const gradeFilterEl = document.getElementById('pensumCatalogGradeFilter');
+    const searchInputEl = document.getElementById('pensumCatalogSearchInput');
 
-    let list = STATE.pensumCatalog || [];
+    const careerFilter = (careerFilterEl ? careerFilterEl.value : 'ALL') || 'ALL';
+    const gradeFilter = (gradeFilterEl ? gradeFilterEl.value : 'ALL') || 'ALL';
+    const q = (typeof searchQuery === 'string' ? searchQuery : (searchInputEl ? searchInputEl.value : '')).trim().toLowerCase();
 
-    if (careerFilter !== 'ALL') {
-        list = list.filter(p => p.career === careerFilter);
+    // Garantizar que STATE.pensumCatalog tenga las 28 materias oficiales
+    if (!Array.isArray(STATE.pensumCatalog) || STATE.pensumCatalog.length === 0) {
+        STATE.pensumCatalog = JSON.parse(JSON.stringify(OFFICIAL_PENSUM_28_CATALOG));
     }
-    if (gradeFilter !== 'ALL') {
-        list = list.filter(p => p.grade === gradeFilter);
+
+    let list = STATE.pensumCatalog;
+
+    // Filtrar por Carrera
+    if (careerFilter && careerFilter !== 'ALL') {
+        const cLower = careerFilter.toLowerCase();
+        list = list.filter(p => {
+            const pCareer = (p.career || '').toLowerCase();
+            return pCareer.includes(cLower) || cLower.includes(pCareer);
+        });
     }
+
+    // Filtrar por Grado dinámico (detecta 4, 5, 6 en cualquier formato: '4TO', '4to Grado', '4to Perito Contador', etc.)
+    if (gradeFilter && gradeFilter !== 'ALL') {
+        const gRaw = gradeFilter.toUpperCase();
+        let targetNum = 0;
+        if (gRaw.includes('6') || gRaw.includes('SEXTO') || gRaw.includes('6TO')) targetNum = 6;
+        else if (gRaw.includes('5') || gRaw.includes('QUINTO') || gRaw.includes('5TO')) targetNum = 5;
+        else if (gRaw.includes('4') || gRaw.includes('CUARTO') || gRaw.includes('4TO')) targetNum = 4;
+
+        list = list.filter(p => {
+            const pGradeRaw = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
+            let pNum = 0;
+            if (pGradeRaw.includes('6') || pGradeRaw.includes('SEXTO') || pGradeRaw.includes('6TO')) pNum = 6;
+            else if (pGradeRaw.includes('5') || pGradeRaw.includes('QUINTO') || pGradeRaw.includes('5TO')) pNum = 5;
+            else if (pGradeRaw.includes('4') || pGradeRaw.includes('CUARTO') || pGradeRaw.includes('4TO')) pNum = 4;
+
+            if (targetNum > 0 && pNum > 0) return targetNum === pNum;
+            return pGradeRaw.includes(gRaw) || gRaw.includes(pGradeRaw);
+        });
+    }
+
+    // Búsqueda por texto (nombre, código, área)
     if (q) {
         list = list.filter(p => 
             (p.subject || '').toLowerCase().includes(q) ||
+            (p.name || '').toLowerCase().includes(q) ||
+            (p.code || '').toLowerCase().includes(q) ||
+            (p.area || '').toLowerCase().includes(q) ||
             (p.grade || '').toLowerCase().includes(q) ||
             (p.career && p.career.toLowerCase().includes(q))
         );
     }
 
-    // 🔢 Ordenar la lista por el campo de orden numérico (sortOrder)
-    list.sort((a, b) => (parseInt(a.sortOrder || 99) - parseInt(b.sortOrder || 99)));
+    // Ordenar por sortOrder o índice
+    list.sort((a, b) => (parseInt(a.sortOrder || a.order || 99) - parseInt(b.sortOrder || b.order || 99)));
 
     if (list.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">
+                <td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">
                     <i class="fa-solid fa-book-open-reader" style="font-size:2rem; margin-bottom:8px; display:block; color:var(--brand-green);"></i>
-                    No hay asignaturas en el pensum escolar aún. Haga clic en <strong>"Nueva Materia en Pensum"</strong> para agregar.
+                    No se encontraron asignaturas para el filtro seleccionado.
                 </td>
             </tr>
         `;
@@ -12914,160 +13257,39 @@ function renderPensumCatalogTable(searchQuery = '') {
     }
 
     tbody.innerHTML = list.map((p, idx) => {
-        // Secciones que tienen asignada esta materia
-        const assignedSections = (STATE.pensum || []).filter(a => a.subject === p.subject || a.name === p.subject);
-        const sectionBadges = assignedSections.map(a => `<span class="badge badge-info" style="margin-right:3px;">${a.section || a.gradeCode}</span>`).join('') || '<span style="color:var(--text-muted); font-size:0.8rem;">Todas las secciones</span>';
-        const orderVal = p.sortOrder || (idx + 1);
+        const pSubjectName = p.name || p.subject;
+        const orderVal = p.sortOrder || p.order || (idx + 1);
+        const periodsVal = p.periods || p.hours || 4;
+        const areaBadge = p.area ? `<div style="font-size:0.75rem; color:#64748b; margin-top:2px;"><i class="fa-solid fa-tag"></i> ${p.area}</div>` : '';
 
         return `
         <tr>
             <td style="text-align:center;">
                 <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
-                    <input type="number" class="form-control" style="width:54px; height:28px; font-weight:800; text-align:center; padding:2px 4px; border:1px solid #0369a1; background:#f0f9ff; color:#0369a1;" value="${orderVal}" min="1" max="99" onchange="updatePensumSubjectSortOrder('${p.id}', this.value)" title="Cambiar número de orden de la materia">
+                    <input type="number" class="form-control" style="width:52px; height:28px; font-weight:800; text-align:center; padding:2px 4px; border:1px solid #0369a1; background:#f0f9ff; color:#0369a1;" value="${orderVal}" min="1" max="99" onchange="updatePensumSubjectSortOrder('${p.id}', this.value)" title="Cambiar número de orden de la materia">
                     <div style="display:flex; flex-direction:column; gap:1px;">
-                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="movePensumSubjectOrder('${p.id}', -1)" style="padding:0 4px; font-size:0.65rem; height:13px; line-height:1;" title="Subir orden (Mover arriba)"><i class="fa-solid fa-caret-up"></i></button>
-                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="movePensumSubjectOrder('${p.id}', 1)" style="padding:0 4px; font-size:0.65rem; height:13px; line-height:1;" title="Bajar orden (Mover abajo)"><i class="fa-solid fa-caret-down"></i></button>
+                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="movePensumSubjectOrder('${p.id}', -1)" style="padding:0 4px; font-size:0.65rem; height:13px; line-height:1;" title="Subir orden"><i class="fa-solid fa-caret-up"></i></button>
+                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="movePensumSubjectOrder('${p.id}', 1)" style="padding:0 4px; font-size:0.65rem; height:13px; line-height:1;" title="Bajar orden"><i class="fa-solid fa-caret-down"></i></button>
                     </div>
                 </div>
             </td>
-            <td><span class="badge badge-info">${p.career}</span></td>
-            <td><strong>${p.grade}</strong></td>
-            <td><strong style="color:var(--brand-green-dark);">${p.subject}</strong></td>
-            <td style="text-align:center; font-weight:700;">${p.hours || 4} períodos/sem</td>
-            <td>${sectionBadges}</td>
+            <td><span class="badge badge-info" style="font-size:0.8rem;">${p.career || 'Perito Contador'}</span></td>
+            <td><span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700; border:1px solid #cbd5e1; font-size:0.82rem;">${p.grade}</span></td>
             <td>
+                <strong style="color:var(--brand-green-dark); font-size:0.92rem;">${pSubjectName}</strong>
+                ${areaBadge}
+            </td>
+            <td style="text-align:center; font-weight:700; color:#0f172a;">${periodsVal} períodos/sem</td>
+            <td style="text-align:center;">
+                <span class="badge badge-success" style="font-size:0.75rem;"><i class="fa-solid fa-check-double"></i> Grado General (Sec. A, B, C, D)</span>
+            </td>
+            <td style="text-align:center;">
                 <button class="btn btn-sm btn-outline-primary" onclick="openEditPensumSubjectModal('${p.id}')" title="Editar materia"><i class="fa-solid fa-pen-to-square"></i></button>
                 <button class="btn btn-sm btn-outline-danger" onclick="deletePensumSubject('${p.id}')" title="Eliminar materia"><i class="fa-solid fa-trash"></i></button>
             </td>
-        `;
-    }).join('');
-}
-
-function updateAssignmentSelects() {
-    updateGradeSelects();
-    const gradeSelect = document.getElementById('classAssignmentFormGrade');
-    const teacherSelect = document.getElementById('classAssignmentFormTeacher');
-    const teacherFilter = document.getElementById('assignmentTeacherFilter');
-
-    // Lista única de Grados Académicos
-    const uniqueGradeNames = [...new Set((STATE.gradesList || []).map(g => g.name))];
-    const gradeOptions = uniqueGradeNames.map(name => {
-        const gradeObj = (STATE.gradesList || []).find(g => g.name === name);
-        const careerLabel = gradeObj ? `— [${gradeObj.career}]` : '';
-        return `<option value="${name}">${name} ${careerLabel}</option>`;
-    }).join('');
-
-    if (gradeSelect) {
-        const curGrade = gradeSelect.value;
-        gradeSelect.innerHTML = gradeOptions || '<option value="">Sin grados creados aún</option>';
-        if (curGrade && uniqueGradeNames.includes(curGrade)) {
-            gradeSelect.value = curGrade;
-        }
-    }
-
-    const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || u.role === 'director');
-    const teacherOptions = teachers.map(t => `<option value="${t.id}">${t.name} (${t.title || 'Catedrático'})</option>`).join('');
-
-    if (teacherSelect) teacherSelect.innerHTML = teacherOptions || '<option value="">Sin docentes registrados</option>';
-    if (teacherFilter) teacherFilter.innerHTML = '<option value="ALL">Todos los Docentes</option>' + teacherOptions;
-
-    // Disparar la cascada para el grado activo
-    if (gradeSelect && gradeSelect.value) {
-        onClassAssignmentGradeChange(gradeSelect.value);
-    }
-}
-
-function renderAssignmentsTable(searchQuery = '') {
-    const tbody = document.getElementById('assignmentsTableBody');
-    if (!tbody) return;
-
-    const teacherFilter = document.getElementById('assignmentTeacherFilter') ? document.getElementById('assignmentTeacherFilter').value : 'ALL';
-    const gradeFilter = document.getElementById('assignmentGradeFilter') ? document.getElementById('assignmentGradeFilter').value : 'ALL';
-    const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('assignmentSearchInput') ? document.getElementById('assignmentSearchInput').value : '')).toLowerCase();
-
-    let list = STATE.pensum || [];
-
-    if (teacherFilter !== 'ALL') {
-        list = list.filter(a => a.teacherId === teacherFilter);
-    }
-    if (gradeFilter !== 'ALL') {
-        list = list.filter(a => a.gradeCode === gradeFilter);
-    }
-    if (q) {
-        list = list.filter(a => 
-            a.subject.toLowerCase().includes(q) ||
-            a.grade.toLowerCase().includes(q) ||
-            a.section.toLowerCase().includes(q) ||
-            a.teacher.toLowerCase().includes(q) ||
-            (a.career && a.career.toLowerCase().includes(q))
-        );
-    }
-
-    if (list.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align:center; padding:30px; color:var(--text-muted);">
-                    <i class="fa-solid fa-chalkboard-user" style="font-size:2rem; margin-bottom:8px; display:block; color:var(--brand-green);"></i>
-                    No hay clases asignadas a catedráticos aún. Haga clic en <strong>"Asignar Nueva Clase a Docente"</strong> para comenzar.
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    tbody.innerHTML = list.map(a => {
-        const studentCount = getStudentCountByGradeAndSection(a.gradeCode, a.grade, a.section);
-        return `
-        <tr>
-            <td><span class="badge badge-info">${a.career || 'General'}</span></td>
-            <td>
-                <strong>${a.grade}</strong> <span class="badge badge-primary" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-weight:700;">Sección ${a.section}</span>
-                <br><small style="color:var(--brand-green-dark); font-weight:700;"><i class="fa-solid fa-users"></i> ${studentCount} ${studentCount === 1 ? 'alumno' : 'alumnos'}</small>
-            </td>
-            <td><strong style="color:var(--brand-green-dark);">${a.subject}</strong></td>
-            <td><i class="fa-solid fa-chalkboard-user" style="color:var(--brand-green);"></i> <strong>${a.teacher}</strong></td>
-            <td><strong>${a.hours || 4} períodos</strong></td>
-            <td>
-                <div style="display:flex; gap:6px;">
-                    <button class="btn btn-secondary btn-sm" onclick="openEditClassAssignmentModal('${a.id}')" title="Reasignar Docente"><i class="fa-solid fa-pen"></i> Reasignar</button>
-                    <button class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="deleteClassAssignment('${a.id}')" title="Eliminar Asignación"><i class="fa-solid fa-trash"></i> Eliminar</button>
-                </div>
-            </td>
         </tr>
-    `}).join('');
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// 🛠️ FUNCIONES CRUD DE EDICIÓN Y ELIMINACIÓN DE GRADOS, PENSUM Y CÁTEDRAS
-// ──────────────────────────────────────────────────────────────────────────
-
-function openEditGradeModal(gradeId) {
-    if (!checkEnrolmentPermissions()) return;
-    const g = (STATE.gradesList || []).find(x => x.id === gradeId);
-    if (!g) return;
-
-    document.getElementById('gradeModalId').value = g.id;
-    document.getElementById('gradeModalName').value = g.name;
-    document.getElementById('gradeModalSection').value = g.section;
-    document.getElementById('gradeModalCode').value = g.code;
-    updateCareerSelectOptions();
-    document.getElementById('gradeModalCareer').value = g.career;
-    document.getElementById('gradeModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Editar Grado "${g.name} (${g.section})"`;
-    showModalById('gradeModal');
-}
-
-function deleteGrade(gradeId) {
-    if (!checkEnrolmentPermissions()) return;
-    const g = (STATE.gradesList || []).find(x => x.id === gradeId);
-    if (!g) return;
-
-    if (!confirm(`¿Está seguro de eliminar el grado "${g.name} (${g.section})"?`)) return;
-
-    STATE.gradesList = (STATE.gradesList || []).filter(x => x.id !== gradeId);
-    saveStateToLocalStorage();
-    renderGradesTable();
-    updateGradeSelects();
-    showToast('Grado eliminado exitosamente.', 'success');
+        `;
+    }).join('');
 }
 
 function openEditPensumSubjectModal(subjectId) {
@@ -13116,35 +13338,7 @@ function deletePensumSubject(subjectId) {
     showToast('Asignatura eliminada del pensum exitosamente.', 'success');
 }
 
-function openEditClassAssignmentModal(asgId) {
-    if (!checkEnrolmentPermissions()) return;
-    const a = (STATE.pensum || []).find(x => x.id === asgId);
-    if (!a) return;
-
-    document.getElementById('classAssignmentModalId').value = a.id;
-    updateClassAssignmentSelects();
-    document.getElementById('classAssignmentTeacherSelect').value = a.teacherId;
-    
-    const gradeObj = (STATE.gradesList || []).find(g => g.name === a.grade && g.section === a.section);
-    if (gradeObj) document.getElementById('classAssignmentGradeSelect').value = gradeObj.code;
-    
-    document.getElementById('classAssignmentSubjectSelect').value = a.subject;
-    document.getElementById('classAssignmentModalTitle').innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Reasignar Cátedra "${a.subject}"`;
-    showModalById('classAssignmentModal');
-}
-
-function deleteClassAssignment(asgId) {
-    if (!checkEnrolmentPermissions()) return;
-    const a = (STATE.pensum || []).find(x => x.id === asgId);
-    if (!a) return;
-
-    if (!confirm(`¿Está seguro de eliminar la asignación de "${a.subject}" al docente ${a.teacher}?`)) return;
-
-    STATE.pensum = (STATE.pensum || []).filter(x => x.id !== asgId);
-    saveStateToLocalStorage();
-    renderAssignmentsTable();
-    showToast('Asignación de cátedra eliminada exitosamente.', 'success');
-}
+// Bloque heredado reemplazado por controlador moderno de asignaciones
 
 function viewStudentsBySectionModal(gradeCode, section) {
     const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode) || { name: gradeCode, section: section, career: 'Ciclo Diversificado' };
@@ -14502,11 +14696,24 @@ function deleteGrade(gradeId) {
 // 🧑‍🏫 CONTROLADOR AVANZADO DE ASIGNACIÓN DE CLASES A DOCENTES
 // ──────────────────────────────────────────────────────────────────────────
 
+function updateAssignmentSelects() {
+    updateClassAssignmentSelects();
+}
+
 function updateClassAssignmentSelects() {
     const teacherFilter = document.getElementById('assignmentTeacherFilter');
     const gradeFilter = document.getElementById('assignmentGradeFilter');
+    const modalTeacherSelect = document.getElementById('classAssignmentTeacherSelect');
+    const modalGradeSelect = document.getElementById('classAssignmentGradeSelect');
 
-    const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.id.startsWith('usr-doc-'));
+    const teachers = (STATE.users || []).filter(u => 
+        u.role === 'docente' || 
+        u.role === 'catedratico' || 
+        u.role === 'profesor' || 
+        (u.id && u.id.startsWith('usr-doc')) ||
+        (u.title && u.title.toLowerCase().includes('docente')) ||
+        (u.title && u.title.toLowerCase().includes('catedr'))
+    );
     const grades = STATE.gradesList || [];
 
     if (teacherFilter) {
@@ -14520,7 +14727,20 @@ function updateClassAssignmentSelects() {
         gradeFilter.innerHTML = '<option value="ALL">Todos los Grados / Secciones</option>' + grades.map(g => `<option value="${g.code}">${g.name} (${g.section})</option>`).join('');
         if (curVal && Array.from(gradeFilter.options).some(o => o.value === curVal)) gradeFilter.value = curVal;
     }
+
+    if (modalTeacherSelect) {
+        const curT = modalTeacherSelect.value;
+        modalTeacherSelect.innerHTML = '<option value="">-- Seleccionar Docente / Catedrático --</option>' + teachers.map(t => `<option value="${t.id}">${t.name} (${t.title || 'Docente'})</option>`).join('');
+        if (curT && Array.from(modalTeacherSelect.options).some(o => o.value === curT)) modalTeacherSelect.value = curT;
+    }
+
+    if (modalGradeSelect) {
+        const curG = modalGradeSelect.value;
+        modalGradeSelect.innerHTML = '<option value="">-- Seleccionar Grado y Sección --</option>' + grades.map(g => `<option value="${g.code}">${g.name} (${g.section}) - ${g.career || 'Perito Contador'}</option>`).join('');
+        if (curG && Array.from(modalGradeSelect.options).some(o => o.value === curG)) modalGradeSelect.value = curG;
+    }
 }
+
 
 function openClassAssignmentModal() {
     if (!checkEnrolmentPermissions()) return;
@@ -14720,179 +14940,7 @@ function checkClassAssignmentConflict() {
     }
 }
 
-function openEditClassAssignmentModal(asgId) {
-    if (!checkEnrolmentPermissions()) return;
-    const a = (STATE.pensum || []).find(x => x.id === asgId);
-    if (!a) {
-        showToast('Asignación de clase no encontrada.', 'warning');
-        return;
-    }
-
-    openClassAssignmentModal();
-
-    const idInput = document.getElementById('classAssignmentFormId');
-    const gradeSelect = document.getElementById('classAssignmentFormGrade');
-    const subjectSelect = document.getElementById('classAssignmentFormSubject');
-    const teacherSelect = document.getElementById('classAssignmentFormTeacher');
-    const hoursInput = document.getElementById('classAssignmentFormHours');
-
-    if (idInput) idInput.value = a.id;
-    if (gradeSelect && a.grade) {
-        gradeSelect.value = a.grade;
-        onClassAssignmentGradeChange(a.grade);
-    }
-
-    // Activar únicamente la pill de la sección de esta asignación
-    setTimeout(() => {
-        document.querySelectorAll('#classAssignmentSectionsPillsContainer .asg-section-pill').forEach(btn => {
-            const icon = btn.querySelector('i');
-            if (btn.dataset.section === a.section) {
-                btn.classList.add('active');
-                if (icon) icon.className = 'fa-solid fa-circle-check';
-            } else {
-                btn.classList.remove('active');
-                if (icon) icon.className = 'fa-regular fa-circle';
-            }
-        });
-    }, 10);
-
-    if (subjectSelect && (a.subject || a.name)) {
-        subjectSelect.value = a.subject || a.name;
-        onClassAssignmentSubjectChange(subjectSelect);
-    }
-    if (teacherSelect && a.teacherId) teacherSelect.value = a.teacherId;
-    if (hoursInput && a.periodsPerWeek) hoursInput.value = a.periodsPerWeek;
-
-    const titleEl = document.getElementById('classAssignmentModalTitle');
-    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Editar Asignación de Clase`;
-
-    showModalById('classAssignmentModal');
-}
-
-function closeClassAssignmentModal() {
-    const modal = document.getElementById('classAssignmentModal');
-    if (modal) {
-        modal.classList.remove('active');
-        modal.style.setProperty('display', 'none', 'important');
-    }
-}
-
-function saveClassAssignmentForm(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    if (!checkEnrolmentPermissions()) return;
-
-    const idInput = document.getElementById('classAssignmentFormId');
-    const gradeSelect = document.getElementById('classAssignmentFormGrade');
-    const subjectSelect = document.getElementById('classAssignmentFormSubject');
-    const teacherSelect = document.getElementById('classAssignmentFormTeacher');
-    const hoursInput = document.getElementById('classAssignmentFormHours');
-
-    const id = idInput ? idInput.value : '';
-    const gradeName = gradeSelect ? gradeSelect.value : '';
-    const subject = subjectSelect ? subjectSelect.value : '';
-    const teacherId = teacherSelect ? teacherSelect.value : '';
-    const periods = hoursInput ? parseInt(hoursInput.value) || 4 : 4;
-
-    const activePills = document.querySelectorAll('#classAssignmentSectionsPillsContainer .asg-section-pill.active');
-    const selectedSections = Array.from(activePills).map(p => ({
-        section: p.dataset.section || p.textContent.trim(),
-        code: p.dataset.code || `${gradeName} ${p.dataset.section || p.textContent.trim()}`
-    }));
-
-    if (!gradeName || !subject || !teacherId) {
-        showToast('Complete el grado, asignatura y docente a asignar.', 'warning');
-        return;
-    }
-
-    if (selectedSections.length === 0) {
-        showToast('Debe seleccionar al menos una sección haciendo clic en su botón.', 'warning');
-        return;
-    }
-
-    const teacherObj = (STATE.users || []).find(u => u.id === teacherId);
-    const teacherName = teacherObj ? teacherObj.name : 'Docente';
-
-    if (!Array.isArray(STATE.pensum)) STATE.pensum = [];
-
-    if (id) {
-        // Edición de una asignación específica
-        const idx = STATE.pensum.findIndex(x => x.id === id);
-        if (idx !== -1) {
-            const firstSec = selectedSections[0];
-            const gradeObj = (STATE.gradesList || []).find(g => g.name === gradeName && g.section === firstSec.section) || { code: firstSec.code, career: 'Perito Contador' };
-            
-            STATE.pensum[idx].grade = gradeName;
-            STATE.pensum[idx].gradeCode = gradeObj.code;
-            STATE.pensum[idx].section = firstSec.section;
-            STATE.pensum[idx].career = gradeObj.career || 'Perito Contador';
-            STATE.pensum[idx].subject = subject;
-            STATE.pensum[idx].name = subject;
-            STATE.pensum[idx].teacher = teacherName;
-            STATE.pensum[idx].teacherId = teacherId;
-            STATE.pensum[idx].periodsPerWeek = periods;
-        }
-    } else {
-        // Creación múltiple para todas las secciones seleccionadas (con reasignación si ya existía)
-        selectedSections.forEach(secObj => {
-            const gradeObj = (STATE.gradesList || []).find(g => g.name === gradeName && g.section === secObj.section) || { code: secObj.code, career: 'Perito Contador' };
-            const gradeCode = gradeObj.code;
-            const career = gradeObj.career || 'Perito Contador';
-
-            // Buscar si ya existe asignación para esta materia en este grado y sección
-            const existingIdx = STATE.pensum.findIndex(a => 
-                a.grade === gradeName &&
-                a.section === secObj.section &&
-                ((a.subject || a.name || '').toLowerCase() === subject.toLowerCase())
-            );
-
-            if (existingIdx !== -1) {
-                // Reasignar al nuevo docente
-                STATE.pensum[existingIdx].teacher = teacherName;
-                STATE.pensum[existingIdx].teacherId = teacherId;
-                STATE.pensum[existingIdx].periodsPerWeek = periods;
-                STATE.pensum[existingIdx].career = career;
-                STATE.pensum[existingIdx].gradeCode = gradeCode;
-            } else {
-                // Crear nueva asignación
-                const newId = 'asg-' + Date.now() + '-' + Math.floor(Math.random()*10000);
-                STATE.pensum.push({
-                    id: newId,
-                    grade: gradeName,
-                    gradeCode: gradeCode,
-                    section: secObj.section,
-                    career: career,
-                    subject: subject,
-                    name: subject,
-                    teacher: teacherName,
-                    teacherId: teacherId,
-                    periodsPerWeek: periods
-                });
-            }
-        });
-    }
-
-    saveStateToLocalStorage();
-    closeClassAssignmentModal();
-    renderAssignmentsTable();
-    if (typeof renderDashboard === 'function') renderDashboard();
-    showToast(`Asignación de "${subject}" (${periods} períodos) guardada para el docente ${teacherName}.`, 'success');
-}
-
-
-
-function deleteClassAssignment(asgId) {
-    if (!checkEnrolmentPermissions()) return;
-    const a = (STATE.pensum || []).find(x => x.id === asgId);
-    if (!a) return;
-
-    if (confirm(`¿Está seguro de eliminar la asignación de "${a.subject || a.name}" al docente ${a.teacher}?`)) {
-        STATE.pensum = (STATE.pensum || []).filter(x => x.id !== asgId);
-        saveStateToLocalStorage();
-        renderAssignmentsTable();
-        if (typeof renderDashboard === 'function') renderDashboard();
-        showToast('Asignación de clase eliminada exitosamente.', 'info');
-    }
-}
+// Bloque heredado reemplazado por controlador moderno de asignaciones
 
 function filterAssignmentsTable(searchQuery = '') {
     renderAssignmentsTable(searchQuery);
@@ -14904,17 +14952,17 @@ function renderAssignmentsTable(searchQuery = '') {
 
     updateClassAssignmentSelects();
 
-    const teacherFilter = document.getElementById('assignmentTeacherFilter') ? document.getElementById('assignmentTeacherFilter').value : 'ALL';
-    const gradeFilter = document.getElementById('assignmentGradeFilter') ? document.getElementById('assignmentGradeFilter').value : 'ALL';
-    const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('assignmentSearchInput') ? document.getElementById('assignmentSearchInput').value : '')).toLowerCase().trim();
+    const teacherFilter = (document.getElementById('assignmentTeacherFilter')?.value || 'ALL');
+    const gradeFilter = (document.getElementById('assignmentGradeFilter')?.value || 'ALL');
+    const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('assignmentSearchInput')?.value || '')).toLowerCase().trim();
 
-    let list = STATE.pensum || [];
+    let list = Array.isArray(STATE.pensum) ? [...STATE.pensum] : [];
 
-    if (teacherFilter !== 'ALL') {
-        list = list.filter(a => a.teacher === teacherFilter);
+    if (teacherFilter && teacherFilter !== 'ALL') {
+        list = list.filter(a => (a.teacher || '').trim() === teacherFilter.trim());
     }
-    if (gradeFilter !== 'ALL') {
-        list = list.filter(a => a.gradeCode === gradeFilter);
+    if (gradeFilter && gradeFilter !== 'ALL') {
+        list = list.filter(a => a.gradeCode === gradeFilter || `${a.grade} (${a.section})` === gradeFilter);
     }
     if (q) {
         list = list.filter(a => 
@@ -14933,7 +14981,7 @@ function renderAssignmentsTable(searchQuery = '') {
                 <td colspan="6" style="text-align:center; padding:35px; color:var(--text-muted);">
                     <i class="fa-solid fa-chalkboard-user" style="font-size:2.2rem; margin-bottom:10px; display:block; color:var(--brand-green);"></i>
                     <strong>No hay asignaciones de cátedras que coincidan con los filtros.</strong><br>
-                    <span style="font-size:0.85rem;">Haga clic en <strong>"Asignar Clase a Docente"</strong> para crear una nueva asignación.</span>
+                    <span style="font-size:0.85rem;">Haga clic en <strong>"+ Asignar Clase a Docente"</strong> para crear una nueva asignación de materia a un catedrático.</span>
                 </td>
             </tr>
         `;
@@ -14941,14 +14989,20 @@ function renderAssignmentsTable(searchQuery = '') {
     }
 
     tbody.innerHTML = list.map(a => {
-        const subName = a.subject || a.name || 'Asignatura';
+        const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toUpperCase();
+        let gGradeNum = 0;
+        if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+        else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+        else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
+
+        const subName = getFullOfficialSubjectName(a.subject || a.name || 'Asignatura', gGradeNum);
         return `
         <tr>
             <td><span class="badge badge-info" style="font-weight:700;">${a.career || 'Perito Contador'}</span></td>
             <td><strong>${a.grade || a.gradeCode} (${a.section || 'A'})</strong></td>
-            <td><strong style="color:var(--brand-green-dark);">${subName}</strong></td>
+            <td><strong style="color:var(--brand-green-dark); font-size:0.95rem;">${subName}</strong></td>
             <td><strong style="color:var(--text-primary);"><i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${a.teacher}</strong></td>
-            <td style="text-align:center; font-weight:700;">${a.periodsPerWeek || 4} períodos/sem</td>
+            <td style="text-align:center; font-weight:700;">${a.periodsPerWeek || a.hours || 4} períodos/sem</td>
             <td style="text-align:center; white-space:nowrap;">
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${a.id}')" title="Editar asignación" style="padding:3px 8px; margin-right:4px;"><i class="fa-solid fa-pen-to-square"></i></button>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteClassAssignment('${a.id}')" title="Eliminar asignación" style="padding:3px 8px;"><i class="fa-solid fa-trash"></i></button>
@@ -14958,197 +15012,406 @@ function renderAssignmentsTable(searchQuery = '') {
     }).join('');
 }
 
+// ==========================================================================
+// 🎛️ CONTROLADOR INTEGRAL DE ASIGNACIONES DE CLASES A DOCENTES
+// ==========================================================================
 
+function updateAssignmentSelects() {
+    updateClassAssignmentSelects();
+}
 
-// ──────────────────────────────────────────────────────────────────────────
-// 🎓 CONTROLADOR INTEGRAL DE MAESTROS GUÍAS Y DIRECTORIO OFICIAL
-// ──────────────────────────────────────────────────────────────────────────
+function updateClassAssignmentSelects() {
+    const teacherFilter = document.getElementById('assignmentTeacherFilter');
+    const gradeFilter = document.getElementById('assignmentGradeFilter');
+    const modalGradeSelect = document.getElementById('classAssignmentFormGrade');
+    const modalTeacherSelect = document.getElementById('classAssignmentFormTeacher');
 
-function ensureGuideTeachersAssigned() {
-    if (!Array.isArray(STATE.gradesList)) return;
-    const defaultGuides = [
-        { code: "4° A", teacher: "Lic.MA. Carlos Augusto Juarez Alvarez" },
-        { code: "4° B", teacher: "PEM. Aleida Maribel Escobar de Palma" },
-        { code: "4° C", teacher: "Lic. Roberto Alex Tobar Cermeño" },
-        { code: "4° D", teacher: "Lic. Williams Esmely Gudiel Paredes" },
-        { code: "5° A", teacher: "Licda. Sandra Julissa Arana Arana" },
-        { code: "5° B", teacher: "Lic. Wilder Porfirio Rodriguez Garcia" },
-        { code: "5° C", teacher: "PEM. Manuel Alejandro Rodríguez" },
-        { code: "5° D", teacher: "Prof. Carlos Rodolfo Grijalva" },
-        { code: "6° A", teacher: "PEM. Carlos Enrique Hernandez" },
-        { code: "6° B", teacher: "PEM. Nehemias Yalil Salguero" },
-        { code: "6° C", teacher: "Prof. Mario René Morales" },
-        { code: "6° D", teacher: "Licda. Maria Elena Lopez" }
-    ];
+    const teachers = (STATE.users || []).filter(u => 
+        u.role === 'docente' || 
+        u.role === 'catedratico' || 
+        u.role === 'profesor' || 
+        (u.id && u.id.startsWith('usr-doc')) ||
+        (u.title && u.title.toLowerCase().includes('docente')) ||
+        (u.title && u.title.toLowerCase().includes('catedr'))
+    );
+    const grades = STATE.gradesList || [];
 
-    STATE.gradesList.forEach(g => {
-        if (!g.guideTeacher) {
-            const match = defaultGuides.find(d => d.code === g.code || (g.name.includes(d.code.slice(0, 3)) && g.section.includes(d.code.slice(-1))));
-            if (match) g.guideTeacher = match.teacher;
-            else g.guideTeacher = "PEM. Nehemias Yalil Salguero";
+    if (teacherFilter) {
+        const curVal = teacherFilter.value;
+        teacherFilter.innerHTML = '<option value="ALL">Todos los Docentes</option>' + teachers.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+        if (curVal && Array.from(teacherFilter.options).some(o => o.value === curVal)) teacherFilter.value = curVal;
+        else teacherFilter.value = 'ALL';
+    }
+
+    if (gradeFilter) {
+        const curVal = gradeFilter.value;
+        gradeFilter.innerHTML = '<option value="ALL">Todos los Grados / Secciones</option>' + grades.map(g => `<option value="${g.code}">${g.name} (${g.section})</option>`).join('');
+        if (curVal && Array.from(gradeFilter.options).some(o => o.value === curVal)) gradeFilter.value = curVal;
+        else gradeFilter.value = 'ALL';
+    }
+
+    if (modalGradeSelect) {
+        const curG = modalGradeSelect.value;
+        const uniqueGrades = Array.from(new Set(grades.map(g => g.name)));
+        modalGradeSelect.innerHTML = '<option value="">-- Seleccione Grado --</option>' + uniqueGrades.map(gName => `<option value="${gName}">${gName}</option>`).join('');
+        if (curG && Array.from(modalGradeSelect.options).some(o => o.value === curG)) {
+            modalGradeSelect.value = curG;
+        } else if (uniqueGrades.length > 0) {
+            modalGradeSelect.value = uniqueGrades[0];
+            onClassAssignmentGradeChange(uniqueGrades[0]);
+        }
+    }
+
+    if (modalTeacherSelect) {
+        const curT = modalTeacherSelect.value;
+        modalTeacherSelect.innerHTML = '<option value="">-- Seleccione Catedrático Titular --</option>' + teachers.map(t => `<option value="${t.id}">${t.name} (${t.title || 'Docente'})</option>`).join('');
+        if (curT && Array.from(modalTeacherSelect.options).some(o => o.value === curT)) modalTeacherSelect.value = curT;
+    }
+}
+
+function openClassAssignmentModal() {
+    if (!checkEnrolmentPermissions()) return;
+    const form = document.querySelector('#classAssignmentModal form');
+    if (form) form.reset();
+
+    const idInput = document.getElementById('classAssignmentFormId');
+    if (idInput) idInput.value = '';
+
+    const titleEl = document.getElementById('classAssignmentModalTitle');
+    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-chalkboard-user"></i> Asignar Clase a Catedrático';
+
+    const conflictAlert = document.getElementById('classAssignmentConflictAlert');
+    if (conflictAlert) conflictAlert.style.display = 'none';
+
+    updateClassAssignmentSelects();
+
+    const gradeSelect = document.getElementById('classAssignmentFormGrade');
+    if (gradeSelect && gradeSelect.value) {
+        onClassAssignmentGradeChange(gradeSelect.value);
+    }
+
+    showModalById('classAssignmentModal');
+}
+
+function closeClassAssignmentModal() {
+    const modal = document.getElementById('classAssignmentModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+    }
+}
+
+function onClassAssignmentGradeChange(gradeName) {
+    if (!gradeName) return;
+
+    // 1. Poblar Secciones (Pills)
+    const pillsBox = document.getElementById('classAssignmentSectionsPillsContainer');
+    const grades = STATE.gradesList || [];
+    const matchingSections = grades.filter(g => g.name === gradeName);
+
+    if (pillsBox) {
+        if (matchingSections.length === 0) {
+            pillsBox.innerHTML = `
+                <button type="button" class="asg-section-pill active" data-section="Sección A" data-code="A" onclick="toggleAssignmentSectionPill(this)">
+                    <i class="fa-solid fa-circle-check"></i> <span>Sección A</span>
+                </button>
+            `;
+        } else {
+            pillsBox.innerHTML = matchingSections.map((g, idx) => `
+                <button type="button" class="asg-section-pill ${idx === 0 ? 'active' : ''}" 
+                    data-section="${g.section}" data-code="${g.code}" onclick="toggleAssignmentSectionPill(this)">
+                    <i class="${idx === 0 ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle'}"></i>
+                    <span>${g.section}</span>
+                    <small>(${g.code})</small>
+                </button>
+            `).join('');
+        }
+    }
+
+    // 2. Poblar Asignaturas del Pensum
+    const subjectSelect = document.getElementById('classAssignmentFormSubject');
+    const pensumCatalog = STATE.pensumCatalog || [];
+    const gLower = gradeName.toLowerCase();
+
+    const matchingSubjects = pensumCatalog.filter(p => {
+        const pGrade = (p.grade || '').toLowerCase();
+        return (gLower.includes('4to') && pGrade.includes('4to')) ||
+               (gLower.includes('5to') && pGrade.includes('5to')) ||
+               (gLower.includes('6to') && pGrade.includes('6to')) ||
+               (pGrade === gLower);
+    });
+
+    const subjectsToDisplay = matchingSubjects.length > 0 ? matchingSubjects : pensumCatalog;
+
+    if (subjectSelect) {
+        if (subjectsToDisplay.length === 0) {
+            subjectSelect.innerHTML = '<option value="">-- Sin materias en pensum para este grado --</option>';
+        } else {
+            subjectSelect.innerHTML = '<option value="">-- Seleccione Asignatura del Pensum --</option>' + subjectsToDisplay.map(s => {
+                const sName = s.name || s.subject;
+                const hours = s.periods || s.hours || 4;
+                return `<option value="${sName}" data-hours="${hours}">${sName} • (${hours} períodos/sem)</option>`;
+            }).join('');
+        }
+    }
+}
+
+function toggleAssignmentSectionPill(pillBtn) {
+    if (!pillBtn) return;
+    const isActive = pillBtn.classList.contains('active');
+    if (isActive) {
+        pillBtn.classList.remove('active');
+        const icon = pillBtn.querySelector('i');
+        if (icon) {
+            icon.className = 'fa-regular fa-circle';
+        }
+    } else {
+        pillBtn.classList.add('active');
+        const icon = pillBtn.querySelector('i');
+        if (icon) {
+            icon.className = 'fa-solid fa-circle-check';
+        }
+    }
+}
+
+function toggleAllAssignmentSections() {
+    const pills = document.querySelectorAll('#classAssignmentSectionsPillsContainer .asg-section-pill');
+    if (pills.length === 0) return;
+    const allActive = Array.from(pills).every(p => p.classList.contains('active'));
+    pills.forEach(p => {
+        if (allActive) {
+            p.classList.remove('active');
+            const icon = p.querySelector('i');
+            if (icon) icon.className = 'fa-regular fa-circle';
+        } else {
+            p.classList.add('active');
+            const icon = p.querySelector('i');
+            if (icon) icon.className = 'fa-solid fa-circle-check';
         }
     });
 }
 
-function openAssignGuideTeacherModal(gradeId) {
-    if (!checkEnrolmentPermissions()) return;
-    const grade = (STATE.gradesList || []).find(g => g.id === gradeId);
-    if (!grade) {
-        showToast('Grado no encontrado.', 'warning');
-        return;
-    }
-
-    const idInput = document.getElementById('quickGuideGradeId') || document.getElementById('guideTeacherModalGradeId');
-    const titleEl = document.getElementById('quickGuideGradeTitle') || document.getElementById('guideTeacherModalGradeName');
-    const subTitleEl = document.getElementById('quickGuideGradeSubtitle');
-    const teacherSelect = document.getElementById('quickGuideTeacherSelect') || document.getElementById('guideTeacherSelectModal');
-
-    if (idInput) idInput.value = grade.id;
-    if (titleEl) titleEl.textContent = `${grade.name} "${grade.section.replace('Sección', '').trim()}"`;
-    if (subTitleEl) subTitleEl.textContent = `Carrera: ${grade.career || 'Perito Contador'} | Jornada: ${grade.shift || 'Matutina'} | Código: ${grade.code}`;
-
-    if (teacherSelect) {
-        const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.id.startsWith('usr-doc-'));
-        teacherSelect.innerHTML = '<option value="">-- Seleccione Maestro(a) Guía Titular --</option>' + teachers.map(t => {
-            const isSel = grade.guideTeacher === t.name ? 'selected' : '';
-            return `<option value="${t.name}" ${isSel}>${t.name}</option>`;
-        }).join('');
-    }
-
-    showModalById('assignGuideTeacherModal');
-}
-
-function closeAssignGuideTeacherModal() {
-    const modal = document.getElementById('assignGuideTeacherModal');
-    if (modal) {
-        modal.classList.remove('active');
-        modal.style.setProperty('display', 'none', 'important');
-    }
-}
-
-function saveQuickGuideTeacher(e) {
+function saveClassAssignmentForm(e) {
     if (e && e.preventDefault) e.preventDefault();
     if (!checkEnrolmentPermissions()) return;
 
-    const idInput = document.getElementById('quickGuideGradeId') || document.getElementById('guideTeacherModalGradeId');
-    const teacherSelect = document.getElementById('quickGuideTeacherSelect') || document.getElementById('guideTeacherSelectModal');
+    const idInput = document.getElementById('classAssignmentFormId');
+    const gradeSelect = document.getElementById('classAssignmentFormGrade');
+    const subjectSelect = document.getElementById('classAssignmentFormSubject');
+    const teacherSelect = document.getElementById('classAssignmentFormTeacher');
+    const hoursInput = document.getElementById('classAssignmentFormHours') || document.getElementById('classAssignmentFormPeriods');
 
-    const gradeId = idInput ? idInput.value : '';
-    const teacherName = teacherSelect ? teacherSelect.value : '';
+    const id = idInput ? idInput.value : '';
+    const gradeName = gradeSelect ? gradeSelect.value : '';
+    const rawSub = subjectSelect ? subjectSelect.value : '';
+    const teacherId = teacherSelect ? teacherSelect.value : '';
+    const periods = hoursInput ? parseInt(hoursInput.value) || 4 : 4;
 
-    if (!gradeId || !teacherName) {
-        showToast('Seleccione un catedrático titular.', 'warning');
+    const activePills = document.querySelectorAll('#classAssignmentSectionsPillsContainer .asg-section-pill.active');
+    const selectedSections = Array.from(activePills).map(p => ({
+        section: p.dataset.section || p.textContent.trim(),
+        code: p.dataset.code || `${gradeName} ${p.dataset.section || p.textContent.trim()}`
+    }));
+
+    if (!gradeName || !rawSub || !teacherId) {
+        showToast('Complete el grado, asignatura y docente a asignar.', 'warning');
         return;
     }
 
-    const grade = (STATE.gradesList || []).find(g => g.id === gradeId);
-    if (grade) {
-        grade.guideTeacher = teacherName;
+    if (selectedSections.length === 0) {
+        showToast('Debe seleccionar al menos una sección haciendo clic en su botón.', 'warning');
+        return;
+    }
+
+    const teacher = (STATE.users || []).find(u => u.id === teacherId);
+    const teacherName = teacher ? teacher.name : 'Catedrático Titular';
+
+    const rawG = gradeName.toUpperCase();
+    let gGradeNum = 0;
+    if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+    else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+    else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
+
+    const fullSubjectName = getFullOfficialSubjectName(rawSub, gGradeNum);
+
+    if (!Array.isArray(STATE.pensum)) STATE.pensum = [];
+
+    if (id) {
+        const a = STATE.pensum.find(x => x.id === id);
+        if (a) {
+            a.teacherId = teacherId;
+            a.teacher = teacherName;
+            a.grade = gradeName;
+            a.gradeCode = selectedSections[0].code;
+            a.section = selectedSections[0].section;
+            a.subject = fullSubjectName;
+            a.name = fullSubjectName;
+            a.periodsPerWeek = periods;
+            a.hours = periods;
+        }
+    } else {
+        selectedSections.forEach(sec => {
+            const existingIdx = STATE.pensum.findIndex(x => 
+                (x.grade === gradeName || x.gradeCode === sec.code) &&
+                x.section === sec.section &&
+                getFullOfficialSubjectName(x.subject || x.name, gGradeNum) === fullSubjectName
+            );
+
+            if (existingIdx !== -1) {
+                STATE.pensum[existingIdx].teacherId = teacherId;
+                STATE.pensum[existingIdx].teacher = teacherName;
+                STATE.pensum[existingIdx].periodsPerWeek = periods;
+                STATE.pensum[existingIdx].hours = periods;
+                STATE.pensum[existingIdx].subject = fullSubjectName;
+                STATE.pensum[existingIdx].name = fullSubjectName;
+            } else {
+                STATE.pensum.push({
+                    id: 'asg-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+                    teacherId: teacherId,
+                    teacher: teacherName,
+                    grade: gradeName,
+                    gradeCode: sec.code,
+                    section: sec.section,
+                    subject: fullSubjectName,
+                    name: fullSubjectName,
+                    career: 'Perito Contador',
+                    periodsPerWeek: periods,
+                    hours: periods
+                });
+            }
+        });
+    }
+
+    closeClassAssignmentModal();
+    if (typeof synchronizeGlobalDynamicUI === 'function') {
+        synchronizeGlobalDynamicUI();
+    } else {
         saveStateToLocalStorage();
-        closeAssignGuideTeacherModal();
-        renderGradesTable();
-        if (typeof renderGradesDirectory === 'function') renderGradesDirectory();
-        if (typeof renderDashboard === 'function') renderDashboard();
-        showToast(`Maestro(a) Guía ${teacherName} asignado exitosamente a ${grade.name} (${grade.section}).`, 'success');
+        renderAssignmentsTable();
+    }
+
+    showToast(`Asignación de "${fullSubjectName}" a ${teacherName} guardada exitosamente.`, 'success');
+}
+
+function openEditClassAssignmentModal(asgId) {
+    if (!checkEnrolmentPermissions()) return;
+    const a = (STATE.pensum || []).find(x => x.id === asgId);
+    if (!a) return;
+
+    openClassAssignmentModal();
+
+    const titleEl = document.getElementById('classAssignmentModalTitle');
+    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Editar Asignación de Clase';
+
+    document.getElementById('classAssignmentFormId').value = a.id;
+
+    const gradeSelect = document.getElementById('classAssignmentFormGrade');
+    if (gradeSelect) {
+        gradeSelect.value = a.grade;
+        onClassAssignmentGradeChange(a.grade);
+    }
+
+    const teacherSelect = document.getElementById('classAssignmentFormTeacher');
+    if (teacherSelect && a.teacherId) {
+        teacherSelect.value = a.teacherId;
+    }
+
+    const subjectSelect = document.getElementById('classAssignmentFormSubject');
+    if (subjectSelect) {
+        subjectSelect.value = a.subject || a.name;
+    }
+
+    const hoursInput = document.getElementById('classAssignmentFormHours') || document.getElementById('classAssignmentFormPeriods');
+    if (hoursInput) {
+        hoursInput.value = a.periodsPerWeek || a.hours || 4;
     }
 }
 
-function openGradesDirectoryModal(event) {
-    if (event && event.preventDefault) event.preventDefault();
-    ensureGuideTeachersAssigned();
-    ensureMineducSuperUser();
-    renderGradesDirectory();
-    showModalById('gradesDirectoryModal');
-}
+function deleteClassAssignment(asgId) {
+    if (!checkEnrolmentPermissions()) return;
+    const a = (STATE.pensum || []).find(x => x.id === asgId);
+    if (!a) return;
 
-function closeGradesDirectoryModal() {
-    const modal = document.getElementById('gradesDirectoryModal');
-    if (modal) {
-        modal.classList.remove('active');
-        modal.style.setProperty('display', 'none', 'important');
+    if (!confirm(`¿Está seguro de eliminar la asignación de "${a.subject || a.name}" al docente ${a.teacher}?`)) return;
+
+    STATE.pensum = (STATE.pensum || []).filter(x => x.id !== asgId);
+    if (typeof synchronizeGlobalDynamicUI === 'function') {
+        synchronizeGlobalDynamicUI();
+    } else {
+        saveStateToLocalStorage();
+        renderAssignmentsTable();
     }
+    showToast('Asignación de cátedra eliminada exitosamente.', 'success');
 }
 
-function filterGradesDirectory(query = '') {
-    renderGradesDirectory(query);
+function filterAssignmentsTable(searchQuery = '') {
+    renderAssignmentsTable(searchQuery);
 }
 
-function renderGradesDirectory(searchQuery = '') {
-    const container = document.getElementById('gradesDirectoryContainer');
-    if (!container) return;
+function renderAssignmentsTable(searchQuery = '') {
+    const tbody = document.getElementById('assignmentsTableBody');
+    if (!tbody) return;
 
-    ensureGuideTeachersAssigned();
+    updateClassAssignmentSelects();
 
-    const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('gradesDirectorySearchInput')?.value || '')).toLowerCase().trim();
-    let grades = sortGrades(STATE.gradesList || []);
+    const teacherFilter = (document.getElementById('assignmentTeacherFilter')?.value || 'ALL');
+    const gradeFilter = (document.getElementById('assignmentGradeFilter')?.value || 'ALL');
+    const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('assignmentSearchInput')?.value || '')).toLowerCase().trim();
 
+    let list = Array.isArray(STATE.pensum) ? [...STATE.pensum] : [];
+
+    if (teacherFilter && teacherFilter !== 'ALL') {
+        list = list.filter(a => (a.teacher || '').trim() === teacherFilter.trim());
+    }
+    if (gradeFilter && gradeFilter !== 'ALL') {
+        list = list.filter(a => a.gradeCode === gradeFilter || `${a.grade} (${a.section})` === gradeFilter);
+    }
     if (q) {
-        grades = grades.filter(g => 
-            (g.name || '').toLowerCase().includes(q) ||
-            (g.section || '').toLowerCase().includes(q) ||
-            (g.code || '').toLowerCase().includes(q) ||
-            (g.career && g.career.toLowerCase().includes(q)) ||
-            (g.guideTeacher && g.guideTeacher.toLowerCase().includes(q))
+        list = list.filter(a => 
+            (a.teacher || '').toLowerCase().includes(q) ||
+            (a.subject || a.name || '').toLowerCase().includes(q) ||
+            (a.grade || '').toLowerCase().includes(q) ||
+            (a.section || '').toLowerCase().includes(q) ||
+            (a.gradeCode || '').toLowerCase().includes(q) ||
+            (a.career && a.career.toLowerCase().includes(q))
         );
     }
 
-    if (grades.length === 0) {
-        container.innerHTML = `
-            <div style="grid-column: 1 / -1; text-align:center; padding:30px; color:var(--text-muted);">
-                <i class="fa-solid fa-school" style="font-size:2.2rem; color:var(--brand-green); margin-bottom:8px; display:block;"></i>
-                No se encontraron grados que coincidan con la búsqueda.
-            </div>
+    if (list.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align:center; padding:35px; color:var(--text-muted);">
+                    <i class="fa-solid fa-chalkboard-user" style="font-size:2.2rem; margin-bottom:10px; display:block; color:var(--brand-green);"></i>
+                    <strong>No hay asignaciones de cátedras que coincidan con los filtros.</strong><br>
+                    <span style="font-size:0.85rem;">Haga clic en <strong>"+ Asignar Clase a Docente"</strong> para crear una nueva asignación de materia a un catedrático.</span>
+                </td>
+            </tr>
         `;
         return;
     }
 
-    container.innerHTML = grades.map(g => {
-        const studentCount = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
-        const guideName = g.guideTeacher || 'Sin Asignar';
-        const isAssigned = g.guideTeacher && g.guideTeacher !== 'Sin Asignar';
+    tbody.innerHTML = list.map(a => {
+        const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toUpperCase();
+        let gGradeNum = 0;
+        if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+        else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+        else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
 
+        const subName = getFullOfficialSubjectName(a.subject || a.name || 'Asignatura', gGradeNum);
         return `
-        <div style="background:#ffffff; border:1.5px solid ${isAssigned ? '#bbf7d0' : '#e2e8f0'}; border-radius:10px; padding:14px 16px; box-shadow:0 2px 5px rgba(0,0,0,0.04); display:flex; flex-direction:column; justify-content:space-between; transition:transform 0.15s ease;">
-            <div>
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-                    <div>
-                        <span class="badge" style="background:#0f172a; color:#ffffff; font-weight:800; font-size:0.75rem; padding:2px 8px; border-radius:12px;">${g.code}</span>
-                        <h4 style="margin:6px 0 2px 0; font-size:1.05rem; font-weight:800; color:#1e293b;">${g.name}</h4>
-                        <div style="font-size:0.8rem; color:#64748b; font-weight:600;">${g.section} • ${g.career || 'Perito Contador'}</div>
-                    </div>
-                    <span class="badge" style="background:#f1f5f9; color:#334155; font-size:0.75rem; padding:3px 8px;">${g.shift || 'Matutina'}</span>
-                </div>
-
-                <div style="margin:12px 0; background:${isAssigned ? '#f0fdf4' : '#fffbeb'}; border:1px solid ${isAssigned ? '#86efac' : '#fde047'}; border-radius:8px; padding:10px 12px;">
-                    <small style="color:${isAssigned ? '#166534' : '#854d0e'}; font-weight:800; text-transform:uppercase; font-size:0.68rem; display:block; margin-bottom:3px;">
-                        <i class="fa-solid fa-person-chalkboard"></i> Maestro(a) Guía Titular:
-                    </small>
-                    <strong style="color:${isAssigned ? '#15803d' : '#b45309'}; font-size:0.92rem; display:block;">
-                        ${guideName}
-                    </strong>
-                </div>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; padding-top:10px; border-top:1px solid #f1f5f9; margin-top:6px;">
-                <span style="font-size:0.8rem; font-weight:700; color:#475569;">
-                    <i class="fa-solid fa-user-graduate" style="color:var(--brand-green);"></i> ${studentCount} alumnos
-                </span>
-                <div style="display:flex; gap:6px;">
-                    <button type="button" class="btn btn-xs btn-outline-success" onclick="closeGradesDirectoryModal(); openAssignGuideTeacherModal('${g.id}')" title="Cambiar maestro guía" style="font-weight:700; font-size:0.75rem; padding:3px 8px;">
-                        <i class="fa-solid fa-pen"></i> Asignar Guía
-                    </button>
-                    <button type="button" class="btn btn-xs btn-outline-primary" onclick="closeGradesDirectoryModal(); viewStudentsBySectionModal('${g.code}', '${g.section}')" title="Ver estudiantes" style="font-weight:700; font-size:0.75rem; padding:3px 8px;">
-                        <i class="fa-solid fa-users"></i> Alumnos
-                    </button>
-                </div>
-            </div>
-        </div>
+        <tr>
+            <td><span class="badge badge-info" style="font-weight:700;">${a.career || 'Perito Contador'}</span></td>
+            <td><strong>${a.grade || a.gradeCode} (${a.section || 'A'})</strong></td>
+            <td><strong style="color:var(--brand-green-dark); font-size:0.95rem;">${subName}</strong></td>
+            <td><strong style="color:var(--text-primary);"><i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${a.teacher}</strong></td>
+            <td style="text-align:center; font-weight:700;">${a.periodsPerWeek || a.hours || 4} períodos/sem</td>
+            <td style="text-align:center; white-space:nowrap;">
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${a.id}')" title="Editar asignación" style="padding:3px 8px; margin-right:4px;"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteClassAssignment('${a.id}')" title="Eliminar asignación" style="padding:3px 8px;"><i class="fa-solid fa-trash"></i></button>
+            </td>
+        </tr>
         `;
     }).join('');
-}
-
-
-
 function closeCyclePromotionModal() {
     const modal = document.getElementById('cyclePromotionModal');
     if (modal) {
@@ -15188,25 +15451,10 @@ function executeCyclePromotion(e) {
     showToast(`Promoción académica ejecutada exitosamente para ${selectedBoxes.length} estudiantes al ciclo ${targetCycle}.`, 'success');
 }
 
-
-
-function ensureMineducSuperUser() {
-    if (!Array.isArray(STATE.users)) return;
-    const exists = STATE.users.some(u => (u.email && u.email.toLowerCase() === '22-01-0014-46@mineduc.edu.gt') || (u.username && u.username.toLowerCase() === '22-01-0014-46@mineduc.edu.gt'));
-    if (!exists) {
-        STATE.users.unshift({
-            id: 'usr-mineduc-super',
-            name: 'Super Administrador Institucional MINEDUC',
-            username: '22-01-0014-46@mineduc.edu.gt',
-            email: '22-01-0014-46@mineduc.edu.gt',
-            password: 'admin',
-            role: 'admin',
-            title: 'Super Administrador del Sistema / MINEDUC Sede 22-01-0014-46',
-            classes: '',
-            renglon: '011',
-            gender: 'Masculino',
-            active: true
-        });
-        saveStateToLocalStorage();
+function printCurrentSectionSireReport(sectionCode = null) {
+    if (typeof printOfficialSireSectionReport === 'function') {
+        printOfficialSireSectionReport(sectionCode);
     }
+}
+
 }

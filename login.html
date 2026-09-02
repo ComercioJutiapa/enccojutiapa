@@ -298,7 +298,7 @@
     </div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260826_v24"></script>
+    <script src="app.js?v=20260831_v65_logout_to_index"></script>
     <script>
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');
@@ -312,7 +312,7 @@
             }
         }
 
-        function handleLoginPageSubmit(e) {
+                function handleLoginPageSubmit(e) {
             if (e) e.preventDefault();
             const usernameInput = document.getElementById('loginUsername');
             const passwordInput = document.getElementById('loginPassword');
@@ -327,7 +327,7 @@
             if (!username || !password) {
                 if (alertBox) {
                     alertBox.style.display = 'flex';
-                    if (alertText) alertText.textContent = 'Por favor ingrese su usuario y contraseña.';
+                    if (alertText) alertText.textContent = 'Por favor ingrese su usuario o correo y su contraseña.';
                 }
                 return;
             }
@@ -343,28 +343,28 @@
             const user = usersList.find(u => {
                 const uEmail = (u.email || '').trim().toLowerCase();
                 const uName = (u.name || '').trim().toLowerCase();
+                const uUser = (u.username || '').trim().toLowerCase();
+                const uId = (u.id || '').trim().toLowerCase();
                 const uPass = (u.password || '').trim();
 
                 const isUserMatch = (
                     uEmail === username || 
+                    uUser === username ||
                     uName === username || 
                     uEmail.split('@')[0] === username ||
-                    (u.id && u.id.toLowerCase() === username)
+                    uId === username
                 );
 
                 if (!isUserMatch) return false;
 
-                return (
-                    uPass === password ||
-                    uPass.toLowerCase() === password.toLowerCase() ||
-                    (password.toLowerCase() === 'admin' && (u.role === 'admin' || uEmail.includes('admin')))
-                );
+                // Validación estricta de contraseña oficial
+                return uPass === password;
             });
 
             if (!user) {
                 if (alertBox) {
                     alertBox.style.display = 'flex';
-                    if (alertText) alertText.textContent = 'Credenciales no válidas. Verifique su correo y contraseña.';
+                    if (alertText) alertText.textContent = 'Credenciales no válidas. Verifique su usuario y contraseña.';
                 }
                 return;
             }
@@ -392,13 +392,7 @@
         }
     </script>
 
-    <script>
-        function quickLogin(username, password) {
-            document.getElementById('loginUsername').value = username;
-            document.getElementById('loginPassword').value = password;
-            handleLoginPageSubmit();
-        }
-    </script>
+    
 
 </body>
 </html>
