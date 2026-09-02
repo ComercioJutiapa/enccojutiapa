@@ -4267,20 +4267,7 @@ function generateOfficialPrintList(opts = null) {
 
         const pageIndicator = totalPages > 1 ? `<div style="text-align:right; font-size:7px; color:#64748b; margin:1px 0 0 0; line-height:1;">Página ${pageIdx + 1} de ${totalPages}</div>` : '';
 
-        const signatureBlock = isLastPage ? `
-        <div style="display:flex; justify-content:space-around; margin-top:22px; padding:0 20px; page-break-inside:avoid; break-inside:avoid;">
-            <div style="text-align:center; width:220px;">
-                <div style="border-bottom:1px solid #000; height:32px;"></div>
-                <div style="font-size:8px; font-weight:700; margin-top:4px; text-transform:uppercase;">${effectiveTeacher}</div>
-                <div style="font-size:7.5px; color:#475569;">Catedrático(a) Titular</div>
-            </div>
-            <div style="text-align:center; width:220px;">
-                <div style="border-bottom:1px solid #000; height:32px;"></div>
-                <div style="font-size:8px; font-weight:700; margin-top:4px; text-transform:uppercase;">Vo.Bo. Dirección / Secretaría</div>
-                <div style="font-size:7.5px; color:#475569;">Escuela Nacional de Ciencias Comerciales</div>
-            </div>
-        </div>
-        ` : '';
+        const signatureBlock = '';
 
         return `
         <div class="print-page-wrapper"${totalPages > 1 && pageIdx > 0 ? ' style="page-break-before:always;"' : ''}>
@@ -4337,7 +4324,7 @@ function generateOfficialPrintList(opts = null) {
                     ${rowsHtml}
                 </tbody>
             </table>
-            ${signatureBlock}
+            
             ${pageIndicator}
         </div>`;
     };
