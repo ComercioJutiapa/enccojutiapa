@@ -6113,9 +6113,9 @@ function renderUsersTable(filterVal = '') {
     const kpi021El = document.getElementById('kpiRenglon021Count');
     const kpiTotEl = document.getElementById('kpiGenderTotalCount');
 
-    if (kpi011El) kpi011El.innerHTML = `<i class="fa-solid fa-id-card"></i> 011 Presupuestados: <strong>${count011_H + count011_M}</strong> (H: ${count011_H} | M: ${count011_M})`;
-    if (kpi021El) kpi021El.innerHTML = `<i class="fa-solid fa-file-contract"></i> 021 Contratados: <strong>${count021_H + count021_M}</strong> (H: ${count021_H} | M: ${count021_M})`;
-    if (kpiTotEl) kpiTotEl.innerHTML = `<i class="fa-solid fa-users"></i> Total Personal: <strong>${allTeachers.length}</strong> (H: ${countTotal_H} | M: ${countTotal_M})`;
+    if (kpi011El) kpi011El.innerHTML = `<i class="fa-solid fa-id-card"></i> 011: <strong>${count011_H + count011_M}</strong> (H:${count011_H}|M:${count011_M})`;
+    if (kpi021El) kpi021El.innerHTML = `<i class="fa-solid fa-file-contract"></i> 021: <strong>${count021_H + count021_M}</strong> (H:${count021_H}|M:${count021_M})`;
+    if (kpiTotEl) kpiTotEl.innerHTML = `<i class="fa-solid fa-users"></i> Total: <strong>${allTeachers.length}</strong> (H:${countTotal_H}|M:${countTotal_M})`;
 
     const roleFilter = document.getElementById('userRoleFilterSelect')?.value || 'ALL';
     const q = (typeof filterVal === 'string' ? filterVal : (document.getElementById('userSearchInput')?.value || '')).toLowerCase();
@@ -6138,48 +6138,52 @@ function renderUsersTable(filterVal = '') {
 
     tbody.innerHTML = list.map(u => {
         const renglonBadge = u.renglon === '021' 
-            ? `<span class="badge" style="background:#ffedd5; color:#c2410c; border:1px solid #fed7aa; font-weight:800; font-size:0.78rem;"><i class="fa-solid fa-file-contract"></i> 021</span>`
-            : `<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-weight:800; font-size:0.78rem;"><i class="fa-solid fa-id-card"></i> 011</span>`;
+            ? `<span class="badge" style="background:#ffedd5; color:#c2410c; border:1px solid #fed7aa; font-weight:800; font-size:0.70rem; padding:1px 4px;">021</span>`
+            : `<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-weight:800; font-size:0.70rem; padding:1px 4px;">011</span>`;
 
         const genderBadge = u.gender === 'Femenino'
-            ? `<span class="badge" style="background:#fce7f3; color:#be185d; border:1px solid #fbcfe8; font-weight:700; font-size:0.78rem;">👩 Femenino</span>`
-            : `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-weight:700; font-size:0.78rem;">👨 Masculino</span>`;
+            ? `<span class="badge" style="background:#fce7f3; color:#be185d; border:1px solid #fbcfe8; font-weight:700; font-size:0.70rem; padding:1px 4px;">Femenino</span>`
+            : `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-weight:700; font-size:0.70rem; padding:1px 4px;">Masculino</span>`;
 
         const isMaster = (u.id === 'usr-admin-master');
         const passCell = canViewPasswords ? 
-            `<div style="display:flex; align-items:center; gap:6px;">
-                <code id="userPassCode_${u.id}" style="color:var(--brand-orange); font-weight:700;">${u.password || 'C@rolina1'}</code>
-                <button class="btn btn-secondary btn-sm" onclick="toggleUserTableRowPassword('${u.id}')" title="Ver/Ocultar Contraseña" style="padding:2px 6px;">
+            `<div style="display:flex; align-items:center; gap:4px;">
+                <code id="userPassCode_${u.id}" style="color:var(--brand-orange); font-weight:700; font-size:0.75rem;">${u.password || 'C@rolina1'}</code>
+                <button class="btn btn-secondary btn-xs" onclick="toggleUserTableRowPassword('${u.id}')" title="Ver/Ocultar" style="padding:1px 4px; font-size:0.70rem; height:20px; min-width:20px;">
                     <i class="fa-solid fa-eye-slash" id="userPassIcon_${u.id}"></i>
                 </button>
             </div>` : 
-            `<code>••••••••</code>`;
+            `<code style="font-size:0.75rem;">••••••••</code>`;
+
+        const roleBadge = `<span class="user-role-badge role-${u.role}" style="font-size:0.70rem; padding:1px 5px; text-transform:uppercase;">${u.role}</span>`;
 
         return `
             <tr>
-                <td><strong>${u.name}</strong></td>
-                <td>${renglonBadge}</td>
-                <td>${genderBadge}</td>
-                <td>${u.email ? u.email : '<span style="color:#94a3b8; font-size:0.82rem; font-style:italic;"><i class="fa-regular fa-envelope-open"></i> Sin correo</span>'}</td>
+                <td style="font-weight:700; color:#0f172a;">${u.name}</td>
+                <td style="text-align:center;">${renglonBadge}</td>
+                <td style="text-align:center;">${genderBadge}</td>
+                <td style="font-size:0.75rem; color:#475569; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;" title="${u.email || ''}">
+                    ${u.email ? u.email : '<span style="color:#94a3b8; font-style:italic;">Sin correo</span>'}
+                </td>
                 <td>${passCell}</td>
-                <td><span class="user-role-badge role-${u.role}">${u.role}</span></td>
-                <td>${u.title}</td>
-                <td><span class="badge badge-success">Activo</span></td>
-                <td>
-                    <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-                        <button class="btn btn-primary btn-sm" onclick="impersonateUser('${u.id}')" title="Iniciar sesión y navegar como este usuario para verificar su entorno y permisos" style="font-weight:700;">
-                            <i class="fa-solid fa-user-astronaut"></i> Probar Usuario
+                <td style="text-align:center;">${roleBadge}</td>
+                <td style="font-size:0.74rem; color:#475569; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px;" title="${u.title || ''}">${u.title || 'Catedrático'}</td>
+                <td style="text-align:center; white-space:nowrap;">
+                    <div style="display:inline-flex; gap:3px; align-items:center;">
+                        <button class="btn btn-primary btn-xs" onclick="impersonateUser('${u.id}')" title="Probar usuario" style="font-size:0.68rem; padding:1px 5px; height:22px; font-weight:700;">
+                            <i class="fa-solid fa-user-astronaut"></i> Probar
                         </button>
-                        <button class="btn btn-secondary btn-sm" onclick="openEditUserModal('${u.id}')" title="Editar datos y clave">
-                            <i class="fa-solid fa-pen"></i> Editar
+                        <button class="btn btn-secondary btn-xs" onclick="openEditUserModal('${u.id}')" title="Editar" style="font-size:0.68rem; padding:1px 5px; height:22px;">
+                            <i class="fa-solid fa-pen"></i>
                         </button>
-                        ${!isMaster ? `<button class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="deleteUser('${u.id}')" title="Eliminar maestro"><i class="fa-solid fa-trash"></i></button>` : ''}
+                        ${!isMaster ? `<button class="btn btn-secondary btn-xs" style="color:var(--danger); font-size:0.68rem; padding:1px 5px; height:22px;" onclick="deleteUser('${u.id}')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>` : ''}
                     </div>
                 </td>
             </tr>
         `;
     }).join('');
 }
+
 
 function toggleUserTableRowPassword(userId) {
     const codeEl = document.getElementById(`userPassCode_${userId}`);

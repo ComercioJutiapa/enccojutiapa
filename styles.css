@@ -1757,3 +1757,59 @@ body.theme-dark .att-global-pct-bar {
     border-radius: 8px !important;
     border: 1px solid #cbd5e1 !important;
 }
+
+
+/* === AJUSTE DE ALTA DENSIDAD Y AJUSTE A VENTANA (V79) === */
+.page-title-box {
+    min-width: 0;
+    max-width: 340px;
+    overflow: hidden;
+}
+.page-title-box h1 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.page-title-box p {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.table-users-compact {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    table-layout: auto;
+}
+.table-users-compact th {
+    background: #f1f5f9;
+    color: #1e293b;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 6px 8px !important;
+    border-bottom: 2px solid #cbd5e1;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    white-space: nowrap;
+}
+.table-users-compact td {
+    padding: 4px 8px !important;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: middle;
+    line-height: 1.25;
+}
+.table-users-compact tbody tr:hover {
+    background: #f8fafc;
+}
+
+.users-view-scroll-container {
+    max-height: calc(100vh - 195px);
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid #cbd5e1;
+    border-radius: 0 0 6px 6px;
+    background: #ffffff;
+}
