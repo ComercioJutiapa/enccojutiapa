@@ -1591,7 +1591,7 @@ function saveStateToLocalStorage() {
     
     // Si Supabase está conectado, sincronizar inmediatamente en la nube
     if (window.supabaseClient) {
-        syncStateToSupabaseImmediate(false);
+        autoSyncToSupabase(false, false);
     }
 }
 
@@ -7181,6 +7181,20 @@ function initSupabaseConnection() {
             window.supabaseClient = window.supabase.createClient(url, key);
             updateDbStatusIndicator(true);
             pullStateFromSupabaseCloud(false);
+
+            // Escuchar cambios de Supabase en tiempo real (Multi-dispositivo)
+            try {
+                if (typeof window.supabaseClient.channel === 'function') {
+                    window.supabaseClient
+                        .channel('realtime:school_settings')
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'school_settings' }, () => {
+                            pullStateFromSupabaseCloud(false);
+                        })
+                        .subscribe();
+                }
+            } catch (chanErr) {
+                console.warn("Realtime channel no disponible:", chanErr);
+            }
         } catch (e) {
             console.warn("Supabase init error:", e);
             updateDbStatusIndicator(false);
@@ -7334,7 +7348,11 @@ async function testSupabaseConnection() {
     }
 }
 
-// SISTEMA DE SINCRONIZACIÓN INMEDIATA EN LA NUBE CON SUPABASE
+// MOTOR DE SINCRONIZACIÓN AUTOMÁTICA EN TIEMPO REAL CON SUPABASE (V71)
+let _autoCloudSyncTimer = null;
+let _isSyncInProgress = false;
+let _pendingSyncRequest = false;
+
 function updateDbSyncStatus(status) {
     const topBtn = document.getElementById('topDbStatusBtn');
     const topText = document.getElementById('topDbStatusText');
@@ -7344,7 +7362,7 @@ function updateDbSyncStatus(status) {
     if (status === 'syncing') {
         topBtn.style.background = 'rgba(234, 179, 8, 0.35)';
         if (topIcon) topIcon.className = 'fa-solid fa-arrows-rotate fa-spin';
-        if (topText) topText.textContent = 'Sincronizando con Supabase...';
+        if (topText) topText.textContent = 'Guardando en Supabase...';
     } else if (status === 'synced') {
         topBtn.style.background = 'rgba(34, 197, 94, 0.3)';
         if (topIcon) topIcon.className = 'fa-solid fa-cloud-check';
@@ -7354,12 +7372,35 @@ function updateDbSyncStatus(status) {
     } else if (status === 'error') {
         topBtn.style.background = 'rgba(239, 68, 68, 0.3)';
         if (topIcon) topIcon.className = 'fa-solid fa-triangle-exclamation';
-        if (topText) topText.textContent = 'Reintentando Sincronización';
+        if (topText) topText.textContent = 'Error Sincronizando (Reintentando)';
     }
+}
+
+function autoSyncToSupabase(immediate = false, showToastOnSuccess = false) {
+    if (!window.supabaseClient) return;
+
+    if (immediate) {
+        if (_autoCloudSyncTimer) clearTimeout(_autoCloudSyncTimer);
+        syncStateToSupabaseImmediate(showToastOnSuccess);
+        return;
+    }
+
+    updateDbSyncStatus('syncing');
+    if (_autoCloudSyncTimer) clearTimeout(_autoCloudSyncTimer);
+    _autoCloudSyncTimer = setTimeout(() => {
+        syncStateToSupabaseImmediate(showToastOnSuccess);
+    }, 400); // 400ms debounce para fluidez total al escribir
 }
 
 async function syncStateToSupabaseImmediate(showSuccessToast = false) {
     if (!window.supabaseClient) return;
+
+    if (_isSyncInProgress) {
+        _pendingSyncRequest = true;
+        return;
+    }
+
+    _isSyncInProgress = true;
     updateDbSyncStatus('syncing');
 
     STATE.lastModified = Date.now();
@@ -7394,56 +7435,21 @@ async function syncStateToSupabaseImmediate(showSuccessToast = false) {
         if (error) {
             console.error("Error al guardar snapshot en Supabase:", error);
             updateDbSyncStatus('error');
-            return;
-        }
-
-        // 2. Sincronizar tabla relacional de usuarios si existe en Supabase
-        if (Array.isArray(payload.users) && payload.users.length > 0) {
-            const userRows = payload.users.map(u => ({
-                id: u.id,
-                name: u.name,
-                email: u.email || '',
-                role: u.role,
-                title: u.title || '',
-                renglon: u.renglon || '011',
-                gender: u.gender || 'Masculino',
-                active: u.active !== false
-            }));
-            await window.supabaseClient.from('users').upsert(userRows, { onConflict: 'id' }).catch(() => {});
-        }
-
-        // 3. Sincronizar tabla relacional de estudiantes si existe en Supabase
-        if (Array.isArray(payload.students) && payload.students.length > 0) {
-            const stuRows = payload.students.map(s => ({
-                id: s.id,
-                carne: s.carne,
-                personal_code: s.personalCode || null,
-                cui: s.cui,
-                first_name: s.firstName,
-                last_name: s.lastName,
-                birth_date: s.birthDate || null,
-                age: s.age || null,
-                phone: s.phone || null,
-                email: s.email || null,
-                address: s.address || null,
-                grade_code: s.grade,
-                cycle: s.cycle || payload.activeCycle || '',
-                shift: s.shift,
-                status: s.status,
-                tutor_name: s.tutor,
-                tutor_phone: s.tutorPhone,
-                grades_data: s.grades || {}
-            }));
-            await window.supabaseClient.from('students').upsert(stuRows, { onConflict: 'id' }).catch(() => {});
-        }
-
-        updateDbSyncStatus('synced');
-        if (showSuccessToast) {
-            showToast("☁️ Cambios sincronizados inmediatamente en Supabase.", "success");
+        } else {
+            updateDbSyncStatus('synced');
+            if (showSuccessToast) {
+                showToast("☁️ Cambios guardados y respaldados en Supabase en tiempo real.", "success");
+            }
         }
     } catch (e) {
-        console.warn("Excepción al sincronizar con Supabase:", e);
+        console.warn("Excepción en sincronización Supabase:", e);
         updateDbSyncStatus('error');
+    } finally {
+        _isSyncInProgress = false;
+        if (_pendingSyncRequest) {
+            _pendingSyncRequest = false;
+            setTimeout(() => syncStateToSupabaseImmediate(false), 250);
+        }
     }
 }
 
