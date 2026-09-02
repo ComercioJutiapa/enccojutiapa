@@ -7206,51 +7206,67 @@ function initSupabaseConnection() {
 
 async function pullStateFromSupabaseCloud(showSuccessToast = false) {
     if (!window.supabaseClient) {
-        if (showSuccessToast) showToast("No hay conexión con el servidor Supabase.", "warning");
-        return;
+        if (typeof initSupabaseConnection === 'function') initSupabaseConnection();
+    }
+    if (!window.supabaseClient) {
+        if (showSuccessToast && typeof showToast === 'function') showToast("No hay conexión con el servidor Supabase.", "warning");
+        return null;
     }
 
     try {
         const { data, error } = await window.supabaseClient
             .from('school_settings')
-            .select('value')
+            .select('value, updated_at')
             .eq('key', 'ENCCO_DATABASE_SNAPSHOT')
             .maybeSingle();
 
         if (error && error.code !== 'PGRST116') {
             console.warn("Error al consultar datos de Supabase:", error);
-            if (showSuccessToast) showToast("Error al consultar datos remotos del servidor.", "danger");
-            return;
+            if (showSuccessToast && typeof showToast === 'function') showToast("Error al consultar datos remotos del servidor.", "danger");
+            return null;
         }
 
         if (data && data.value) {
             const remoteData = JSON.parse(data.value);
             if (remoteData && (remoteData.users || remoteData.students)) {
-                STATE.users = remoteData.users || STATE.users;
-                STATE.careers = remoteData.careers || STATE.careers;
+                if (!window.STATE) window.STATE = {};
+                STATE.users = remoteData.users || STATE.users || [];
+                STATE.careers = remoteData.careers || STATE.careers || [];
                 STATE.cycles = remoteData.cycles || STATE.cycles || [];
-                STATE.activeCycle = remoteData.activeCycle || STATE.activeCycle || '';
-                STATE.gradesList = remoteData.gradesList || STATE.gradesList;
-                STATE.pensumCatalog = remoteData.pensumCatalog || STATE.pensumCatalog;
-                STATE.students = remoteData.students || STATE.students;
-                STATE.pensum = remoteData.pensum || STATE.pensum;
-                STATE.announcements = remoteData.announcements || STATE.announcements;
-                STATE.disciplineReports = remoteData.disciplineReports || STATE.disciplineReports;
+                STATE.activeCycle = remoteData.activeCycle || STATE.activeCycle || '2026';
+                STATE.gradesList = remoteData.gradesList || STATE.gradesList || [];
+                STATE.pensumCatalog = remoteData.pensumCatalog || STATE.pensumCatalog || [];
+                STATE.students = remoteData.students || STATE.students || [];
+                STATE.pensum = remoteData.pensum || STATE.pensum || [];
+                STATE.announcements = remoteData.announcements || STATE.announcements || [];
+                STATE.disciplineReports = remoteData.disciplineReports || STATE.disciplineReports || [];
                 STATE.attendanceRecords = remoteData.attendanceRecords || STATE.attendanceRecords || {};
+                STATE.dismissedAlerts = remoteData.dismissedAlerts || STATE.dismissedAlerts || {};
+                STATE.schoolHeader = remoteData.schoolHeader || STATE.schoolHeader;
+                STATE.lastModified = remoteData.lastModified || Date.now();
                 
-                localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(STATE)); localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', JSON.stringify(STATE));
-                updateCycleSelects();
-                updateCareerSelects();
-                updateGradeSelects();
-                updateUserAlertsUI();
-                renderCurrentView();
-                if (showSuccessToast) showToast("¡Datos sincronizados desde el servidor en la nube!", "success");
+                try {
+                    localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(STATE));
+                    localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', JSON.stringify(STATE));
+                } catch(e) {}
+
+                if (typeof updateCycleSelects === 'function') updateCycleSelects();
+                if (typeof updateCareerSelects === 'function') updateCareerSelects();
+                if (typeof updateGradeSelects === 'function') updateGradeSelects();
+                if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
+                if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
+                if (typeof renderCurrentView === 'function') renderCurrentView();
+                if (typeof updateDbSyncStatus === 'function') updateDbSyncStatus('synced');
+                if (showSuccessToast && typeof showToast === 'function') showToast("☁️ ¡Datos actualizados desde Supabase!", "success");
+                return remoteData;
             }
         }
     } catch (err) {
         console.warn("Excepción al descargar datos de Supabase:", err);
     }
+    return null;
 }
+
 
 function updateDbStatusIndicator(isConnected) {
     const topBtn = document.getElementById('topDbStatusBtn');

@@ -298,6 +298,7 @@
     </div>
 
     <script src="xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js?v=20260831_v71_realtime_cloud_sync"></script>
     <script>
         function togglePassVisibility() {
@@ -312,10 +313,11 @@
             }
         }
 
-                function handleLoginPageSubmit(e) {
+                        async function handleLoginPageSubmit(e) {
             if (e) e.preventDefault();
             const usernameInput = document.getElementById('loginUsername');
             const passwordInput = document.getElementById('loginPassword');
+            const submitBtn = document.getElementById('loginSubmitBtn') || document.querySelector('button[type="submit"]');
             const alertBox = document.getElementById('loginAlertBox');
             const alertText = document.getElementById('loginAlertText');
 
@@ -330,6 +332,26 @@
                     if (alertText) alertText.textContent = 'Por favor ingrese su usuario o correo y su contraseña.';
                 }
                 return;
+            }
+
+            const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Iniciar Sesión';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down fa-spin"></i> Conectando con Supabase...';
+            }
+
+            // 1. Conectar a Supabase e inicializar cliente
+            if (!window.supabaseClient && typeof initSupabaseConnection === 'function') {
+                initSupabaseConnection();
+            }
+
+            // 2. Leer obligatoriamente la información más reciente desde Supabase en la nube
+            if (typeof pullStateFromSupabaseCloud === 'function') {
+                try {
+                    await pullStateFromSupabaseCloud(false);
+                } catch(err) {
+                    console.warn("Aviso al consultar Supabase:", err);
+                }
             }
 
             if (typeof ensureMasterAccount === 'function') {
@@ -362,6 +384,10 @@
             });
 
             if (!user) {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = origBtnHtml;
+                }
                 if (alertBox) {
                     alertBox.style.display = 'flex';
                     if (alertText) alertText.textContent = 'Credenciales no válidas. Verifique su usuario y contraseña.';
@@ -369,7 +395,19 @@
                 return;
             }
 
-            // Credenciales válidas: Redireccionar de inmediato a la plataforma
+            // Credenciales válidas: Asegurar snapshot completo de Supabase en almacenamiento local
+            try {
+                if (window.STATE && typeof DB_STORAGE_KEY !== 'undefined') {
+                    localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(window.STATE));
+                    localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', JSON.stringify(window.STATE));
+                }
+            } catch(e) {}
+
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Acceso Correcto...';
+            }
+
+            // Redireccionar de inmediato a la plataforma
             directToPlatform(user.role, user.id);
         }
 
