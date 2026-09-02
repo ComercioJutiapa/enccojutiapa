@@ -183,7 +183,7 @@ function getInitialData() {
                 description: 'Gestión académica e institucional, supervisión de notas, asistencia y estudiantes.',
                 color: '#d97706',
                 isSystem: true,
-                permissions: ['dashboard', 'users_view', 'grades', 'pensum', 'class-assignments', 'enrollment', 'students_view', 'students_edit', 'attendance', 'grade-lock', 'cycles', 'discipline_view', 'discipline_resolve', 'reports', 'honor-roll', 'excel-import']
+                permissions: ['dashboard', 'users_view', 'grades', 'pensum', 'class-assignments', 'enrollment', 'students_view', 'students_edit', 'attendance', 'gradebook', 'grade-lock', 'cycles', 'discipline_view', 'discipline_resolve', 'reports', 'honor-roll', 'excel-import']
             },
             {
                 key: 'secretaria',
@@ -191,7 +191,7 @@ function getInitialData() {
                 description: 'Inscripción de alumnos, emisión de certificados, control de expedientes y pensum.',
                 color: '#0284c7',
                 isSystem: true,
-                permissions: ['dashboard', 'users_view', 'grades', 'pensum', 'class-assignments', 'enrollment', 'students_view', 'students_edit', 'attendance', 'cycles', 'reports', 'honor-roll', 'excel-import']
+                permissions: ['dashboard', 'users_view', 'grades', 'pensum', 'class-assignments', 'enrollment', 'students_view', 'students_edit', 'attendance', 'gradebook', 'cycles', 'reports', 'honor-roll', 'excel-import']
             },
             {
                 key: 'profesor_auxiliar',
@@ -934,6 +934,15 @@ function initApp() {
     }
 
     ensureMasterAccount();
+    // Garantizar permisos de supervisión de notas para Dirección y Secretaría
+    if (Array.isArray(STATE.rolesConfig)) {
+        STATE.rolesConfig.forEach(r => {
+            if ((r.key === 'director' || r.key === 'secretaria') && Array.isArray(r.permissions)) {
+                if (!r.permissions.includes('gradebook')) r.permissions.push('gradebook');
+            }
+        });
+    }
+
 
     // 🏷️ Asegurar campos renglon (011/021) y gender (Masculino/Femenino) en todos los catedráticos
     (STATE.users || []).forEach(u => {
@@ -1107,6 +1116,15 @@ function togglePasswordVisibility(inputId) {
 
 function quickLoginAs(role) {
     ensureMasterAccount();
+    // Garantizar permisos de supervisión de notas para Dirección y Secretaría
+    if (Array.isArray(STATE.rolesConfig)) {
+        STATE.rolesConfig.forEach(r => {
+            if ((r.key === 'director' || r.key === 'secretaria') && Array.isArray(r.permissions)) {
+                if (!r.permissions.includes('gradebook')) r.permissions.push('gradebook');
+            }
+        });
+    }
+
 
     // 🏷️ Asegurar campos renglon (011/021) y gender (Masculino/Femenino) en todos los catedráticos
     (STATE.users || []).forEach(u => {
@@ -1186,6 +1204,15 @@ function handleMandatoryLogin(e) {
 
     // Asegurar que las cuentas maestras siempre estén cargadas en STATE.users
     ensureMasterAccount();
+    // Garantizar permisos de supervisión de notas para Dirección y Secretaría
+    if (Array.isArray(STATE.rolesConfig)) {
+        STATE.rolesConfig.forEach(r => {
+            if ((r.key === 'director' || r.key === 'secretaria') && Array.isArray(r.permissions)) {
+                if (!r.permissions.includes('gradebook')) r.permissions.push('gradebook');
+            }
+        });
+    }
+
 
     // 🏷️ Asegurar campos renglon (011/021) y gender (Masculino/Femenino) en todos los catedráticos
     (STATE.users || []).forEach(u => {
@@ -1520,6 +1547,15 @@ function resetDemoData() {
         localStorage.removeItem(DB_STORAGE_KEY);
         loadDefaults();
         ensureMasterAccount();
+    // Garantizar permisos de supervisión de notas para Dirección y Secretaría
+    if (Array.isArray(STATE.rolesConfig)) {
+        STATE.rolesConfig.forEach(r => {
+            if ((r.key === 'director' || r.key === 'secretaria') && Array.isArray(r.permissions)) {
+                if (!r.permissions.includes('gradebook')) r.permissions.push('gradebook');
+            }
+        });
+    }
+
 
     // 🏷️ Asegurar campos renglon (011/021) y gender (Masculino/Femenino) en todos los catedráticos
     (STATE.users || []).forEach(u => {
@@ -13817,6 +13853,11 @@ function getAvailablePermissionsList() {
 function hasRolePermission(permKey, role = STATE.currentRole) {
     if (!role) role = STATE.currentRole || 'guest';
     if (role === 'admin') return true;
+
+    // Supervisión y auditoría de calificaciones para Dirección y Secretaría
+    if (permKey === 'gradebook' && (role === 'director' || role === 'secretaria' || role === 'docente')) {
+        return true;
+    }
 
     const roles = STATE.rolesConfig || (typeof getInitialData === 'function' && getInitialData().rolesConfig) || [];
     const r = roles.find(x => x.key === role);
