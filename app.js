@@ -7160,7 +7160,7 @@ function copyFallbackSQL() {
 window.supabaseClient = null;
 
 function initSupabaseConnection() {
-    const url = localStorage.getItem('ENCCO_SUPABASE_URL') || '';
+    const url = localStorage.getItem('ENCCO_SUPABASE_URL') || 'https://uphgktnkcwrjunxdzhnp.supabase.co';
     const key = localStorage.getItem('ENCCO_SUPABASE_KEY') || '';
 
     if (url && key && window.supabase && window.supabase.createClient) {
@@ -7251,7 +7251,7 @@ function updateDbStatusIndicator(isConnected) {
 function openDbConfigModal() {
     const urlInput = document.getElementById('supabaseUrlInput');
     const keyInput = document.getElementById('supabaseKeyInput');
-    if (urlInput) urlInput.value = localStorage.getItem('ENCCO_SUPABASE_URL') || '';
+    if (urlInput) urlInput.value = localStorage.getItem('ENCCO_SUPABASE_URL') || 'https://uphgktnkcwrjunxdzhnp.supabase.co';
     if (keyInput) keyInput.value = localStorage.getItem('ENCCO_SUPABASE_KEY') || '';
     const modal = document.getElementById('dbConfigModal');
     if (modal) {
