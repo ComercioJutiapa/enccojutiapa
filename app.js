@@ -1,4 +1,102 @@
 // ======================================================================
+//             CONTROLADORES GLOBALES DE VENTANAS MODALES E IMPRESIÓN
+// ======================================================================
+function showModalById(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.setProperty('display', 'flex', 'important');
+        modal.style.display = 'flex';
+    }
+}
+window.showModalById = showModalById;
+
+function hideModalById(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+        modal.style.display = 'none';
+    }
+}
+window.hideModalById = hideModalById;
+
+function closePrintDocumentModal() {
+    hideModalById('printDocumentModal');
+}
+window.closePrintDocumentModal = closePrintDocumentModal;
+
+function renderAndShowPrintDocument(title, htmlContent, orientation = 'portrait') {
+    const modal = document.getElementById('printDocumentModal');
+    const titleEl = document.getElementById('printModalTitle');
+    const contentEl = document.getElementById('printDocumentContent');
+    const paperEl = document.getElementById('printDocumentPaper');
+
+    if (!modal || !contentEl) {
+        console.warn("No se encontró el contenedor modal de impresión.");
+        return;
+    }
+
+    if (titleEl) titleEl.textContent = title;
+    contentEl.innerHTML = htmlContent;
+
+    if (paperEl) {
+        if (orientation === 'landscape') {
+            paperEl.style.maxWidth = '1050px';
+        } else {
+            paperEl.style.maxWidth = '900px';
+        }
+    }
+
+    showModalById('printDocumentModal');
+}
+window.renderAndShowPrintDocument = renderAndShowPrintDocument;
+
+function extractGradeNumber(str) {
+    if (!str) return 0;
+    const s = String(str).toUpperCase();
+    if (s.includes('6') || s.includes('SEXTO') || s.includes('6TO')) return 6;
+    if (s.includes('5') || s.includes('QUINTO') || s.includes('5TO')) return 5;
+    if (s.includes('4') || s.includes('CUARTO') || s.includes('4TO')) return 4;
+    return 0;
+}
+window.extractGradeNumber = extractGradeNumber;
+
+function extractSectionLetter(str) {
+    if (!str) return '';
+    const s = String(str).toUpperCase();
+    if (s.includes('SECCIÓN A') || s.includes('SECCION A') || s.includes('SECCI?N A') || s.includes('PC A') || s.includes('4TO A') || s.includes('5TO A') || s.includes('6TO A') || s.endsWith(' A')) return 'A';
+    if (s.includes('SECCIÓN B') || s.includes('SECCION B') || s.includes('SECCI?N B') || s.includes('PC B') || s.includes('4TO B') || s.includes('5TO B') || s.includes('6TO B') || s.endsWith(' B')) return 'B';
+    if (s.includes('SECCIÓN C') || s.includes('SECCION C') || s.includes('SECCI?N C') || s.includes('PC C') || s.includes('4TO C') || s.includes('5TO C') || s.includes('6TO C') || s.endsWith(' C')) return 'C';
+    if (s.includes('SECCIÓN D') || s.includes('SECCION D') || s.includes('SECCI?N D') || s.includes('PC D') || s.includes('4TO D') || s.includes('5TO D') || s.includes('6TO D') || s.endsWith(' D')) return 'D';
+    if (s === 'A' || s === 'B' || s === 'C' || s === 'D') return s;
+    return '';
+}
+window.extractSectionLetter = extractSectionLetter;
+
+function getStudentCountByGradeAndSection(arg1, arg2, arg3) {
+    if (!Array.isArray(STATE.students) || STATE.students.length === 0) return 0;
+    const combined = `${arg1 || ''} ${arg2 || ''} ${arg3 || ''}`.toUpperCase().trim();
+    if (!combined || combined === 'ALL' || combined === 'TODOS') return STATE.students.length;
+
+    const targetGrade = extractGradeNumber(combined);
+    const targetSec = extractSectionLetter(arg3 || arg1 || combined);
+
+    return STATE.students.filter(s => {
+        if (!s) return false;
+        const sGrade = extractGradeNumber(s.grade || s.gradeCode || s.gradeLabel || '');
+        const sSec = extractSectionLetter(s.section || s.gradeCode || s.gradeLabel || '');
+
+        if (targetGrade > 0 && sGrade > 0 && targetGrade !== sGrade) return false;
+        if (targetSec && sSec && targetSec !== sSec) return false;
+
+        return (targetGrade === sGrade) && (!targetSec || targetSec === sSec);
+    }).length;
+}
+window.getStudentCountByGradeAndSection = getStudentCountByGradeAndSection;
+
+
+// ======================================================================
 //             CONTROLADORES GLOBALES DE VENTANAS MODALES
 // ======================================================================
 function showModalById(modalId) {
@@ -54,13 +152,19 @@ window.updateGradeSelects = updateGradeSelects;
 
 function updateCareerSelects() {
     try {
-        const careerSelects = document.querySelectorAll('.career-select, #studentCareerFilter, #studentFormCareer, #pensumSubjectCareer, #gradeFormCareer');
+        const careers = (STATE.careers && STATE.careers.length > 0) ? STATE.careers : [{ id: 'car-1', name: 'Perito Contador' }];
+        const careerSelects = document.querySelectorAll('.career-select, #studentCareerFilter, #studentFormCareer, #pensumSubjectCareer, #gradeFormCareer, #gradesCareerFilter, #pensumCareerFilterSelect, #careerFilterSelect');
         if (careerSelects && careerSelects.length > 0) {
             careerSelects.forEach(sel => {
                 if (!sel) return;
                 const currentVal = sel.value;
-                sel.innerHTML = '<option value="Perito Contador">Perito Contador</option>';
-                if (currentVal) sel.value = currentVal;
+                const hasAllOption = sel.id && (sel.id.toLowerCase().includes('filter') || sel.id.toLowerCase().includes('search'));
+                let html = hasAllOption ? '<option value="ALL">Todas las Carreras</option>' : '';
+                html += careers.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+                sel.innerHTML = html;
+                if (currentVal && (currentVal === 'ALL' || careers.some(c => c.name === currentVal))) {
+                    sel.value = currentVal;
+                }
             });
         }
     } catch(e) {}
@@ -83,7 +187,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V101';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V105';
 const ENCCO_OFFICIAL_SUPABASE_URL = "https://uphgktnkcwrjunxdzhnp.supabase.co";
 const ENCCO_OFFICIAL_SUPABASE_KEY = "sb_publishable_PrTtclsUq354-M-ykNO7Mw_wLYD4DwB";
 let _autoCloudSyncTimer = null;
@@ -14217,7 +14321,7 @@ function renderDashboard() {
         welcomeSubtitle.textContent = `Panel de Control y Gestión Institucional de la ENCCO Jutiapa 1970.`;
 
         kpiGrid.innerHTML = `
-            <div class="kpi-card"><div class="kpi-icon green"><i class="fa-solid fa-graduation-cap"></i></div><div class="kpi-info"><h4>Estudiantes Activos</h4><h2>${(STATE.students || []).filter(s=>s.status==='Activo').length}</h2><p>Inscritos 2026</p></div></div>
+            <div class="kpi-card"><div class="kpi-icon green"><i class="fa-solid fa-graduation-cap"></i></div><div class="kpi-info"><h4>Estudiantes Activos</h4><h2>${(STATE.students || []).filter(s => s.status === 'Inscrito' || s.status === 'Activo' || s.active !== false).length}</h2><p>Inscritos 2026</p></div></div>
             <div class="kpi-card"><div class="kpi-icon orange"><i class="fa-solid fa-user-shield"></i></div><div class="kpi-info"><h4>Usuarios del Sistema</h4><h2>${(STATE.users || []).length}</h2><p>Docentes y Directivos</p></div></div>
             <div class="kpi-card"><div class="kpi-icon blue"><i class="fa-solid fa-book-open"></i></div><div class="kpi-info"><h4>Cursos Registrados</h4><h2>${(STATE.pensumCatalog && Array.isArray(STATE.pensumCatalog)) ? STATE.pensumCatalog.length : 0}</h2><p>En pensum escolar</p></div></div>
         `;
@@ -14337,33 +14441,23 @@ function openPrintForCourse(grade, section, subject) {
 // ==========================================================================
 // 5. INSCRIPCIÓN, EDICIÓN Y ELIMINACIÓN DE ESTUDIANTES
 // ==========================================================================
-function getStudentCountByGradeAndSection(gradeCode, gradeName = null, sectionName = null) {
-    if (!gradeCode && !gradeName) return 0;
-    const students = Array.isArray(STATE.students) ? STATE.students : [];
-    
-    const rawQ = `${gradeCode || ''} ${gradeName || ''} ${sectionName || ''}`.toUpperCase();
-    let qGradeNum = 0;
-    if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
-    else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
-    else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
+function getStudentCountByGradeAndSection(arg1, arg2, arg3) {
+    if (!Array.isArray(STATE.students) || STATE.students.length === 0) return 0;
+    const combined = `${arg1 || ''} ${arg2 || ''} ${arg3 || ''}`.toUpperCase().trim();
+    if (!combined || combined === 'ALL' || combined === 'TODOS') return STATE.students.length;
 
-    const qSec = getCleanSectionLetter(sectionName || gradeCode || rawQ);
+    const targetGrade = extractGradeNumber(combined);
+    const targetSec = extractSectionLetter(arg3 || arg1 || combined);
 
-    return students.filter(s => {
-        if (s.status && s.status !== 'Activo') return false;
+    return STATE.students.filter(s => {
+        if (!s) return false;
+        const sGrade = extractGradeNumber(s.grade || s.gradeCode || s.gradeLabel || '');
+        const sSec = extractSectionLetter(s.section || s.gradeCode || s.gradeLabel || '');
 
-        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
-        let sGradeNum = 0;
-        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
-        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
-        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+        if (targetGrade > 0 && sGrade > 0 && targetGrade !== sGrade) return false;
+        if (targetSec && sSec && targetSec !== sSec) return false;
 
-        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
-
-        if (qGradeNum > 0 && sGradeNum > 0 && qGradeNum !== sGradeNum) return false;
-        if (qSec && sSec && qSec !== sSec) return false;
-
-        return (qGradeNum === sGradeNum) && (qSec === sSec);
+        return (targetGrade === sGrade) && (!targetSec || targetSec === sSec);
     }).length;
 }
 
@@ -25700,6 +25794,85 @@ function saveQuickGuideTeacher(e) {
         showToast('Maestro guía asignado exitosamente.', 'success');
     }
 }
+
+function renderGradesDirectoryTable() {
+    const tbody = document.getElementById('gradesDirectoryTableBody');
+    if (!tbody) return;
+
+    const list = sortGrades(STATE.gradesList || []);
+    if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-muted);">No hay secciones registradas.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = list.map((g, idx) => {
+        const count = getStudentCountByGradeAndSection(g.code, g.name, g.section);
+        const guideTeacherObj = (STATE.users || []).find(u => u.id === g.guideTeacherId || u.name === g.guideTeacher);
+        const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || 'Sin asignar');
+        const guideEmail = guideTeacherObj ? (guideTeacherObj.email || 'Sin correo') : '---';
+
+        return `
+            <tr>
+                <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+                <td><strong style="color:var(--brand-green-dark);">${g.name}</strong></td>
+                <td style="text-align:center;"><span class="badge badge-success" style="font-weight:800;">${g.section}</span></td>
+                <td style="text-align:center;"><code>${g.code}</code></td>
+                <td>
+                    <div style="display:flex; flex-direction:column;">
+                        <strong style="color:var(--text-primary); font-size:0.92rem;"><i class="fa-solid fa-chalkboard-user" style="color:var(--brand-green); margin-right:6px;"></i>${guideName}</strong>
+                        <span style="font-size:0.75rem; color:var(--text-muted);">${guideEmail}</span>
+                    </div>
+                </td>
+                <td style="text-align:center;">
+                    <span class="badge badge-primary" style="font-weight:800; cursor:pointer;" onclick="closeGradesDirectoryModal(); openSectionStudentsModal('${g.code}')" title="Ver alumnos de esta sección">
+                        <i class="fa-solid fa-users"></i> ${count} alumnos
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+window.renderGradesDirectoryTable = renderGradesDirectoryTable;
+
+function populateGuideTeacherSelect(selectedTeacherIdOrName) {
+    const select = document.getElementById('guideTeacherSelectModal');
+    if (!select) return;
+
+    const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-')));
+    let html = '<option value="">-- Sin Maestro Guía --</option>';
+    html += teachers.map(t => {
+        const isSel = (t.id === selectedTeacherIdOrName || t.name === selectedTeacherIdOrName) ? 'selected' : '';
+        return `<option value="${t.id}" ${isSel}>${t.name} (${t.renglon || '011'} - ${t.role})</option>`;
+    }).join('');
+    select.innerHTML = html;
+}
+window.populateGuideTeacherSelect = populateGuideTeacherSelect;
+
+function saveQuickGuideTeacher(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const gradeId = document.getElementById('guideTeacherModalGradeId').value;
+    const teacherId = document.getElementById('guideTeacherSelectModal').value;
+    
+    const grade = (STATE.gradesList || []).find(g => g.id === gradeId);
+    if (grade) {
+        const teacherObj = (STATE.users || []).find(u => u.id === teacherId);
+        grade.guideTeacherId = teacherId || null;
+        grade.guideTeacher = teacherObj ? teacherObj.name : (teacherId ? teacherId : 'Sin asignar');
+        
+        STATE.lastModified = Date.now();
+        saveStateToLocalStorage();
+        closeAssignGuideTeacherModal();
+        renderGradesTable();
+        if (typeof renderDashboard === 'function') renderDashboard();
+        
+        if (typeof autoSyncToSupabase === 'function') {
+            autoSyncToSupabase(true, false);
+        }
+        showToast(`Maestro Guía "${grade.guideTeacher}" asignado a ${grade.name} (${grade.section}).`, 'success');
+    }
+}
+window.saveQuickGuideTeacher = saveQuickGuideTeacher;
+
 
 function openGradesDirectoryModal(e) {
     if (e && e.preventDefault) e.preventDefault();
