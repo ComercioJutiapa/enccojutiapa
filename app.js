@@ -83,7 +83,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V99';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V100';
 const ENCCO_OFFICIAL_SUPABASE_URL = "https://uphgktnkcwrjunxdzhnp.supabase.co";
 const ENCCO_OFFICIAL_SUPABASE_KEY = "sb_publishable_PrTtclsUq354-M-ykNO7Mw_wLYD4DwB";
 let _autoCloudSyncTimer = null;
@@ -825,143 +825,152 @@ function getInitialData() {
     ],
     "pensumCatalog": [
         {
-            "id": "cat-001",
+            "id": "sub-cat-001",
+            "code": "PC401",
             "name": "Contabilidad de Sociedades",
             "grade": "4to Perito Contador",
             "career": "Perito Contador",
             "area": "Técnico-Profesional",
-            "weeklyHours": 4
+            "weeklyHours": 5
         },
         {
-            "id": "cat-002",
+            "id": "sub-cat-002",
+            "code": "PC402",
             "name": "Matemática I",
             "grade": "4to Perito Contador",
             "career": "Perito Contador",
-            "area": "Académica General",
+            "area": "Académica",
             "weeklyHours": 4
         },
         {
-            "id": "cat-003",
+            "id": "sub-cat-003",
+            "code": "PC403",
             "name": "Lengua y Literatura I",
             "grade": "4to Perito Contador",
             "career": "Perito Contador",
-            "area": "Académica General",
+            "area": "Académica",
             "weeklyHours": 4
         },
         {
-            "id": "cat-004",
+            "id": "sub-cat-004",
+            "code": "PC404",
             "name": "Inglés Comercial I",
             "grade": "4to Perito Contador",
             "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
+            "area": "Académica",
+            "weeklyHours": 3
         },
         {
-            "id": "cat-005",
+            "id": "sub-cat-005",
+            "code": "PC405",
             "name": "Computación I",
-            "grade": "4to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-006",
-            "name": "Administración y Organización de Empresas",
-            "grade": "4to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-007",
-            "name": "Fundamentos de Derecho",
-            "grade": "4to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-008",
-            "name": "Estudios Sociales",
-            "grade": "4to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-009",
-            "name": "Biología",
-            "grade": "4to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-010",
-            "name": "Filosofía",
-            "grade": "4to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-011",
-            "name": "Práctica de Contabilidad I",
             "grade": "4to Perito Contador",
             "career": "Perito Contador",
             "area": "Técnico-Profesional",
             "weeklyHours": 4
         },
         {
-            "id": "cat-012",
+            "id": "sub-cat-006",
+            "code": "PC406",
+            "name": "Administración y Organización de Empresas",
+            "grade": "4to Perito Contador",
+            "career": "Perito Contador",
+            "area": "Técnico-Profesional",
+            "weeklyHours": 3
+        },
+        {
+            "id": "sub-cat-007",
+            "code": "PC407",
+            "name": "Fundamentos de Derecho",
+            "grade": "4to Perito Contador",
+            "career": "Perito Contador",
+            "area": "Técnico-Profesional",
+            "weeklyHours": 3
+        },
+        {
+            "id": "sub-cat-008",
+            "code": "PC408",
+            "name": "Estudios Sociales",
+            "grade": "4to Perito Contador",
+            "career": "Perito Contador",
+            "area": "Académica",
+            "weeklyHours": 3
+        },
+        {
+            "id": "sub-cat-009",
+            "code": "PC409",
+            "name": "Biología",
+            "grade": "4to Perito Contador",
+            "career": "Perito Contador",
+            "area": "Académica",
+            "weeklyHours": 3
+        },
+        {
+            "id": "sub-cat-010",
+            "code": "PC410",
+            "name": "Filosofía",
+            "grade": "4to Perito Contador",
+            "career": "Perito Contador",
+            "area": "Académica",
+            "weeklyHours": 3
+        },
+        {
+            "id": "sub-cat-011",
+            "code": "PC501",
             "name": "Contabilidad de Costos",
             "grade": "5to Perito Contador",
             "career": "Perito Contador",
             "area": "Técnico-Profesional",
-            "weeklyHours": 4
+            "weeklyHours": 5
         },
         {
-            "id": "cat-013",
+            "id": "sub-cat-012",
+            "code": "PC502",
             "name": "Matemática II",
             "grade": "5to Perito Contador",
             "career": "Perito Contador",
-            "area": "Académica General",
+            "area": "Académica",
             "weeklyHours": 4
         },
         {
-            "id": "cat-014",
+            "id": "sub-cat-013",
+            "code": "PC503",
             "name": "Lengua y Literatura II",
             "grade": "5to Perito Contador",
             "career": "Perito Contador",
-            "area": "Académica General",
+            "area": "Académica",
             "weeklyHours": 4
         },
         {
-            "id": "cat-015",
+            "id": "sub-cat-014",
+            "code": "PC504",
             "name": "Inglés Comercial II",
             "grade": "5to Perito Contador",
             "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
+            "area": "Académica",
+            "weeklyHours": 3
         },
         {
-            "id": "cat-016",
+            "id": "sub-cat-015",
+            "code": "PC505",
             "name": "Computación II",
             "grade": "5to Perito Contador",
             "career": "Perito Contador",
-            "area": "Académica General",
+            "area": "Técnico-Profesional",
             "weeklyHours": 4
         },
         {
-            "id": "cat-017",
+            "id": "sub-cat-016",
+            "code": "PC506",
             "name": "Cálculo Mercantil y Financiero",
             "grade": "5to Perito Contador",
             "career": "Perito Contador",
-            "area": "Académica General",
+            "area": "Técnico-Profesional",
             "weeklyHours": 4
         },
         {
-            "id": "cat-018",
+            "id": "sub-cat-017",
+            "code": "PC507",
             "name": "Legislación Fiscal y Aduanera",
             "grade": "5to Perito Contador",
             "career": "Perito Contador",
@@ -969,108 +978,103 @@ function getInitialData() {
             "weeklyHours": 4
         },
         {
-            "id": "cat-019",
+            "id": "sub-cat-018",
+            "code": "PC508",
             "name": "Geografía Económica",
             "grade": "5to Perito Contador",
             "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
+            "area": "Académica",
+            "weeklyHours": 3
         },
         {
-            "id": "cat-020",
+            "id": "sub-cat-019",
+            "code": "PC509",
             "name": "Ética Profesional y Relaciones Humanas",
             "grade": "5to Perito Contador",
             "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
+            "area": "Académica",
+            "weeklyHours": 3
         },
         {
-            "id": "cat-021",
-            "name": "Práctica de Contabilidad II",
-            "grade": "5to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Técnico-Profesional",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-022",
+            "id": "sub-cat-020",
+            "code": "PC601",
             "name": "Contabilidad Gubernamental e Integrada",
             "grade": "6to Perito Contador",
             "career": "Perito Contador",
             "area": "Técnico-Profesional",
-            "weeklyHours": 4
+            "weeklyHours": 5
         },
         {
-            "id": "cat-023",
+            "id": "sub-cat-021",
+            "code": "PC602",
             "name": "Auditoría",
             "grade": "6to Perito Contador",
             "career": "Perito Contador",
             "area": "Técnico-Profesional",
-            "weeklyHours": 4
+            "weeklyHours": 5
         },
         {
-            "id": "cat-024",
+            "id": "sub-cat-022",
+            "code": "PC603",
             "name": "Matemáticas Financieras",
-            "grade": "6to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-025",
-            "name": "Seminario sobre Problemas de la Educación Socioeconómica",
-            "grade": "6to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-026",
-            "name": "Inglés Comercial III",
-            "grade": "6to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-027",
-            "name": "Organización de Empresas y Técnicas de Oficina",
-            "grade": "6to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-028",
-            "name": "Finanzas Públicas",
-            "grade": "6to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-029",
-            "name": "Derecho Mercantil y Laboral",
-            "grade": "6to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-030",
-            "name": "Práctica Supervisada (200 horas)",
-            "grade": "6to Perito Contador",
-            "career": "Perito Contador",
-            "area": "Académica General",
-            "weeklyHours": 4
-        },
-        {
-            "id": "cat-031",
-            "name": "Práctica de Contabilidad Gubernamental",
             "grade": "6to Perito Contador",
             "career": "Perito Contador",
             "area": "Técnico-Profesional",
             "weeklyHours": 4
+        },
+        {
+            "id": "sub-cat-023",
+            "code": "PC604",
+            "name": "Seminario sobre Problemas de la Educación Socioeconómica",
+            "grade": "6to Perito Contador",
+            "career": "Perito Contador",
+            "area": "Académica",
+            "weeklyHours": 4
+        },
+        {
+            "id": "sub-cat-024",
+            "code": "PC605",
+            "name": "Inglés Comercial III",
+            "grade": "6to Perito Contador",
+            "career": "Perito Contador",
+            "area": "Académica",
+            "weeklyHours": 3
+        },
+        {
+            "id": "sub-cat-025",
+            "code": "PC606",
+            "name": "Organización de Empresas y Técnicas de Oficina",
+            "grade": "6to Perito Contador",
+            "career": "Perito Contador",
+            "area": "Técnico-Profesional",
+            "weeklyHours": 4
+        },
+        {
+            "id": "sub-cat-026",
+            "code": "PC607",
+            "name": "Finanzas Públicas",
+            "grade": "6to Perito Contador",
+            "career": "Perito Contador",
+            "area": "Técnico-Profesional",
+            "weeklyHours": 4
+        },
+        {
+            "id": "sub-cat-027",
+            "code": "PC608",
+            "name": "Derecho Mercantil y Laboral",
+            "grade": "6to Perito Contador",
+            "career": "Perito Contador",
+            "area": "Técnico-Profesional",
+            "weeklyHours": 4
+        },
+        {
+            "id": "sub-cat-028",
+            "code": "PC609",
+            "name": "Práctica Supervisada (200 horas)",
+            "grade": "6to Perito Contador",
+            "career": "Perito Contador",
+            "area": "Técnico-Profesional",
+            "weeklyHours": 6
         }
     ],
     "students": [
@@ -15086,7 +15090,8 @@ function getInitialData() {
     "pensum": [
         {
             "id": "pen-grd-4a-01",
-            "subjectId": "sub-001",
+            "subjectId": "sub-cat-PC401",
+            "code": "PC401",
             "subject": "Contabilidad de Sociedades",
             "subjectName": "Contabilidad de Sociedades",
             "name": "Contabilidad de Sociedades",
@@ -15098,12 +15103,13 @@ function getInitialData() {
             "teacherName": "Lic. Roberto Alex Tobar Cermeño",
             "teacherId": "usr-doc-04",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4a-02",
-            "subjectId": "sub-002",
+            "subjectId": "sub-cat-PC402",
+            "code": "PC402",
             "subject": "Matemática I",
             "subjectName": "Matemática I",
             "name": "Matemática I",
@@ -15120,7 +15126,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-4a-03",
-            "subjectId": "sub-003",
+            "subjectId": "sub-cat-PC403",
+            "code": "PC403",
             "subject": "Lengua y Literatura I",
             "subjectName": "Lengua y Literatura I",
             "name": "Lengua y Literatura I",
@@ -15137,7 +15144,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-4a-04",
-            "subjectId": "sub-004",
+            "subjectId": "sub-cat-PC404",
+            "code": "PC404",
             "subject": "Inglés Comercial I",
             "subjectName": "Inglés Comercial I",
             "name": "Inglés Comercial I",
@@ -15149,12 +15157,13 @@ function getInitialData() {
             "teacherName": "Lic. Nery Benjamin Galvez Ramos",
             "teacherId": "usr-doc-07",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4a-05",
-            "subjectId": "sub-005",
+            "subjectId": "sub-cat-PC405",
+            "code": "PC405",
             "subject": "Computación I",
             "subjectName": "Computación I",
             "name": "Computación I",
@@ -15171,7 +15180,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-4a-06",
-            "subjectId": "sub-006",
+            "subjectId": "sub-cat-PC406",
+            "code": "PC406",
             "subject": "Administración y Organización de Empresas",
             "subjectName": "Administración y Organización de Empresas",
             "name": "Administración y Organización de Empresas",
@@ -15183,12 +15193,13 @@ function getInitialData() {
             "teacherName": "Lic. Gamaliel Uzias Medrano",
             "teacherId": "usr-doc-09",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4a-07",
-            "subjectId": "sub-007",
+            "subjectId": "sub-cat-PC407",
+            "code": "PC407",
             "subject": "Fundamentos de Derecho",
             "subjectName": "Fundamentos de Derecho",
             "name": "Fundamentos de Derecho",
@@ -15200,12 +15211,13 @@ function getInitialData() {
             "teacherName": "Lic. Héctor Noé Linares",
             "teacherId": "usr-doc-10",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4a-08",
-            "subjectId": "sub-008",
+            "subjectId": "sub-cat-PC408",
+            "code": "PC408",
             "subject": "Estudios Sociales",
             "subjectName": "Estudios Sociales",
             "name": "Estudios Sociales",
@@ -15217,12 +15229,13 @@ function getInitialData() {
             "teacherName": "Lic.MA. Wilder Porfirio Pérez López",
             "teacherId": "usr-doc-11",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4a-09",
-            "subjectId": "sub-009",
+            "subjectId": "sub-cat-PC409",
+            "code": "PC409",
             "subject": "Biología",
             "subjectName": "Biología",
             "name": "Biología",
@@ -15234,12 +15247,13 @@ function getInitialData() {
             "teacherName": "Licda. Sandra Julissa Arana Lucero",
             "teacherId": "usr-doc-12",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4a-10",
-            "subjectId": "sub-010",
+            "subjectId": "sub-cat-PC410",
+            "code": "PC410",
             "subject": "Filosofía",
             "subjectName": "Filosofía",
             "name": "Filosofía",
@@ -15251,29 +15265,13 @@ function getInitialData() {
             "teacherName": "Lic. Damaris Violeta Escobar de Salguero",
             "teacherId": "usr-doc-13",
             "shift": "Matutina",
-            "weeklyHours": 4,
-            "status": "Activo"
-        },
-        {
-            "id": "pen-grd-4a-11",
-            "subjectId": "sub-011",
-            "subject": "Práctica de Contabilidad I",
-            "subjectName": "Práctica de Contabilidad I",
-            "name": "Práctica de Contabilidad I",
-            "grade": "4to Perito Contador",
-            "gradeCode": "4to A",
-            "section": "Sección A",
-            "career": "Perito Contador",
-            "teacher": "PEM. Elda Argentina López de Valdez",
-            "teacherName": "PEM. Elda Argentina López de Valdez",
-            "teacherId": "usr-doc-14",
-            "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4b-01",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC401",
+            "code": "PC401",
             "subject": "Contabilidad de Sociedades",
             "subjectName": "Contabilidad de Sociedades",
             "name": "Contabilidad de Sociedades",
@@ -15285,12 +15283,13 @@ function getInitialData() {
             "teacherName": "Lic. Roberto Alex Tobar Cermeño",
             "teacherId": "usr-doc-04",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4b-02",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC402",
+            "code": "PC402",
             "subject": "Matemática I",
             "subjectName": "Matemática I",
             "name": "Matemática I",
@@ -15307,7 +15306,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-4b-03",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC403",
+            "code": "PC403",
             "subject": "Lengua y Literatura I",
             "subjectName": "Lengua y Literatura I",
             "name": "Lengua y Literatura I",
@@ -15324,7 +15324,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-4b-04",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC404",
+            "code": "PC404",
             "subject": "Inglés Comercial I",
             "subjectName": "Inglés Comercial I",
             "name": "Inglés Comercial I",
@@ -15336,12 +15337,13 @@ function getInitialData() {
             "teacherName": "Lic. Nery Benjamin Galvez Ramos",
             "teacherId": "usr-doc-07",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4b-05",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC405",
+            "code": "PC405",
             "subject": "Computación I",
             "subjectName": "Computación I",
             "name": "Computación I",
@@ -15358,7 +15360,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-4b-06",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC406",
+            "code": "PC406",
             "subject": "Administración y Organización de Empresas",
             "subjectName": "Administración y Organización de Empresas",
             "name": "Administración y Organización de Empresas",
@@ -15370,12 +15373,13 @@ function getInitialData() {
             "teacherName": "Lic. Gamaliel Uzias Medrano",
             "teacherId": "usr-doc-09",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4b-07",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC407",
+            "code": "PC407",
             "subject": "Fundamentos de Derecho",
             "subjectName": "Fundamentos de Derecho",
             "name": "Fundamentos de Derecho",
@@ -15387,12 +15391,13 @@ function getInitialData() {
             "teacherName": "Lic. Héctor Noé Linares",
             "teacherId": "usr-doc-10",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4b-08",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC408",
+            "code": "PC408",
             "subject": "Estudios Sociales",
             "subjectName": "Estudios Sociales",
             "name": "Estudios Sociales",
@@ -15404,12 +15409,13 @@ function getInitialData() {
             "teacherName": "Lic.MA. Wilder Porfirio Pérez López",
             "teacherId": "usr-doc-11",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4b-09",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC409",
+            "code": "PC409",
             "subject": "Biología",
             "subjectName": "Biología",
             "name": "Biología",
@@ -15421,12 +15427,13 @@ function getInitialData() {
             "teacherName": "Licda. Sandra Julissa Arana Lucero",
             "teacherId": "usr-doc-12",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4b-10",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC410",
+            "code": "PC410",
             "subject": "Filosofía",
             "subjectName": "Filosofía",
             "name": "Filosofía",
@@ -15438,29 +15445,13 @@ function getInitialData() {
             "teacherName": "Lic. Damaris Violeta Escobar de Salguero",
             "teacherId": "usr-doc-13",
             "shift": "Matutina",
-            "weeklyHours": 4,
-            "status": "Activo"
-        },
-        {
-            "id": "pen-grd-4b-11",
-            "subjectId": "sub-012",
-            "subject": "Práctica de Contabilidad I",
-            "subjectName": "Práctica de Contabilidad I",
-            "name": "Práctica de Contabilidad I",
-            "grade": "4to Perito Contador",
-            "gradeCode": "4to B",
-            "section": "Sección B",
-            "career": "Perito Contador",
-            "teacher": "PEM. Elda Argentina López de Valdez",
-            "teacherName": "PEM. Elda Argentina López de Valdez",
-            "teacherId": "usr-doc-14",
-            "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4c-01",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC401",
+            "code": "PC401",
             "subject": "Contabilidad de Sociedades",
             "subjectName": "Contabilidad de Sociedades",
             "name": "Contabilidad de Sociedades",
@@ -15472,12 +15463,13 @@ function getInitialData() {
             "teacherName": "Lic. Roberto Alex Tobar Cermeño",
             "teacherId": "usr-doc-04",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4c-02",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC402",
+            "code": "PC402",
             "subject": "Matemática I",
             "subjectName": "Matemática I",
             "name": "Matemática I",
@@ -15494,7 +15486,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-4c-03",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC403",
+            "code": "PC403",
             "subject": "Lengua y Literatura I",
             "subjectName": "Lengua y Literatura I",
             "name": "Lengua y Literatura I",
@@ -15511,7 +15504,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-4c-04",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC404",
+            "code": "PC404",
             "subject": "Inglés Comercial I",
             "subjectName": "Inglés Comercial I",
             "name": "Inglés Comercial I",
@@ -15523,12 +15517,13 @@ function getInitialData() {
             "teacherName": "Lic. Nery Benjamin Galvez Ramos",
             "teacherId": "usr-doc-07",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4c-05",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC405",
+            "code": "PC405",
             "subject": "Computación I",
             "subjectName": "Computación I",
             "name": "Computación I",
@@ -15545,7 +15540,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-4c-06",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC406",
+            "code": "PC406",
             "subject": "Administración y Organización de Empresas",
             "subjectName": "Administración y Organización de Empresas",
             "name": "Administración y Organización de Empresas",
@@ -15557,12 +15553,13 @@ function getInitialData() {
             "teacherName": "Lic. Gamaliel Uzias Medrano",
             "teacherId": "usr-doc-09",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4c-07",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC407",
+            "code": "PC407",
             "subject": "Fundamentos de Derecho",
             "subjectName": "Fundamentos de Derecho",
             "name": "Fundamentos de Derecho",
@@ -15574,12 +15571,13 @@ function getInitialData() {
             "teacherName": "Lic. Héctor Noé Linares",
             "teacherId": "usr-doc-10",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4c-08",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC408",
+            "code": "PC408",
             "subject": "Estudios Sociales",
             "subjectName": "Estudios Sociales",
             "name": "Estudios Sociales",
@@ -15591,12 +15589,13 @@ function getInitialData() {
             "teacherName": "Lic.MA. Wilder Porfirio Pérez López",
             "teacherId": "usr-doc-11",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4c-09",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC409",
+            "code": "PC409",
             "subject": "Biología",
             "subjectName": "Biología",
             "name": "Biología",
@@ -15608,12 +15607,13 @@ function getInitialData() {
             "teacherName": "Licda. Sandra Julissa Arana Lucero",
             "teacherId": "usr-doc-12",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4c-10",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC410",
+            "code": "PC410",
             "subject": "Filosofía",
             "subjectName": "Filosofía",
             "name": "Filosofía",
@@ -15625,29 +15625,13 @@ function getInitialData() {
             "teacherName": "Lic. Damaris Violeta Escobar de Salguero",
             "teacherId": "usr-doc-13",
             "shift": "Matutina",
-            "weeklyHours": 4,
-            "status": "Activo"
-        },
-        {
-            "id": "pen-grd-4c-11",
-            "subjectId": "sub-012",
-            "subject": "Práctica de Contabilidad I",
-            "subjectName": "Práctica de Contabilidad I",
-            "name": "Práctica de Contabilidad I",
-            "grade": "4to Perito Contador",
-            "gradeCode": "4to C",
-            "section": "Sección C",
-            "career": "Perito Contador",
-            "teacher": "PEM. Elda Argentina López de Valdez",
-            "teacherName": "PEM. Elda Argentina López de Valdez",
-            "teacherId": "usr-doc-14",
-            "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4d-01",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC401",
+            "code": "PC401",
             "subject": "Contabilidad de Sociedades",
             "subjectName": "Contabilidad de Sociedades",
             "name": "Contabilidad de Sociedades",
@@ -15659,12 +15643,13 @@ function getInitialData() {
             "teacherName": "Lic. Roberto Alex Tobar Cermeño",
             "teacherId": "usr-doc-04",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4d-02",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC402",
+            "code": "PC402",
             "subject": "Matemática I",
             "subjectName": "Matemática I",
             "name": "Matemática I",
@@ -15681,7 +15666,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-4d-03",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC403",
+            "code": "PC403",
             "subject": "Lengua y Literatura I",
             "subjectName": "Lengua y Literatura I",
             "name": "Lengua y Literatura I",
@@ -15698,7 +15684,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-4d-04",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC404",
+            "code": "PC404",
             "subject": "Inglés Comercial I",
             "subjectName": "Inglés Comercial I",
             "name": "Inglés Comercial I",
@@ -15710,12 +15697,13 @@ function getInitialData() {
             "teacherName": "Lic. Nery Benjamin Galvez Ramos",
             "teacherId": "usr-doc-07",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4d-05",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC405",
+            "code": "PC405",
             "subject": "Computación I",
             "subjectName": "Computación I",
             "name": "Computación I",
@@ -15732,7 +15720,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-4d-06",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC406",
+            "code": "PC406",
             "subject": "Administración y Organización de Empresas",
             "subjectName": "Administración y Organización de Empresas",
             "name": "Administración y Organización de Empresas",
@@ -15744,12 +15733,13 @@ function getInitialData() {
             "teacherName": "Lic. Gamaliel Uzias Medrano",
             "teacherId": "usr-doc-09",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4d-07",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC407",
+            "code": "PC407",
             "subject": "Fundamentos de Derecho",
             "subjectName": "Fundamentos de Derecho",
             "name": "Fundamentos de Derecho",
@@ -15761,12 +15751,13 @@ function getInitialData() {
             "teacherName": "Lic. Héctor Noé Linares",
             "teacherId": "usr-doc-10",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4d-08",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC408",
+            "code": "PC408",
             "subject": "Estudios Sociales",
             "subjectName": "Estudios Sociales",
             "name": "Estudios Sociales",
@@ -15778,12 +15769,13 @@ function getInitialData() {
             "teacherName": "Lic.MA. Wilder Porfirio Pérez López",
             "teacherId": "usr-doc-11",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4d-09",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC409",
+            "code": "PC409",
             "subject": "Biología",
             "subjectName": "Biología",
             "name": "Biología",
@@ -15795,12 +15787,13 @@ function getInitialData() {
             "teacherName": "Licda. Sandra Julissa Arana Lucero",
             "teacherId": "usr-doc-12",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-4d-10",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC410",
+            "code": "PC410",
             "subject": "Filosofía",
             "subjectName": "Filosofía",
             "name": "Filosofía",
@@ -15812,29 +15805,13 @@ function getInitialData() {
             "teacherName": "Lic. Damaris Violeta Escobar de Salguero",
             "teacherId": "usr-doc-13",
             "shift": "Matutina",
-            "weeklyHours": 4,
-            "status": "Activo"
-        },
-        {
-            "id": "pen-grd-4d-11",
-            "subjectId": "sub-012",
-            "subject": "Práctica de Contabilidad I",
-            "subjectName": "Práctica de Contabilidad I",
-            "name": "Práctica de Contabilidad I",
-            "grade": "4to Perito Contador",
-            "gradeCode": "4to D",
-            "section": "Sección D",
-            "career": "Perito Contador",
-            "teacher": "PEM. Elda Argentina López de Valdez",
-            "teacherName": "PEM. Elda Argentina López de Valdez",
-            "teacherId": "usr-doc-14",
-            "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5a-01",
-            "subjectId": "sub-012",
+            "subjectId": "sub-cat-PC501",
+            "code": "PC501",
             "subject": "Contabilidad de Costos",
             "subjectName": "Contabilidad de Costos",
             "name": "Contabilidad de Costos",
@@ -15846,12 +15823,13 @@ function getInitialData() {
             "teacherName": "Lic. Williams Esmely Gudiel Paredes",
             "teacherId": "usr-doc-05",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5a-02",
-            "subjectId": "sub-013",
+            "subjectId": "sub-cat-PC502",
+            "code": "PC502",
             "subject": "Matemática II",
             "subjectName": "Matemática II",
             "name": "Matemática II",
@@ -15868,7 +15846,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5a-03",
-            "subjectId": "sub-014",
+            "subjectId": "sub-cat-PC503",
+            "code": "PC503",
             "subject": "Lengua y Literatura II",
             "subjectName": "Lengua y Literatura II",
             "name": "Lengua y Literatura II",
@@ -15885,7 +15864,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5a-04",
-            "subjectId": "sub-015",
+            "subjectId": "sub-cat-PC504",
+            "code": "PC504",
             "subject": "Inglés Comercial II",
             "subjectName": "Inglés Comercial II",
             "name": "Inglés Comercial II",
@@ -15897,12 +15877,13 @@ function getInitialData() {
             "teacherName": "Lic. Edwin Osvaldo López Recinos",
             "teacherId": "usr-doc-08",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5a-05",
-            "subjectId": "sub-016",
+            "subjectId": "sub-cat-PC505",
+            "code": "PC505",
             "subject": "Computación II",
             "subjectName": "Computación II",
             "name": "Computación II",
@@ -15919,7 +15900,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5a-06",
-            "subjectId": "sub-017",
+            "subjectId": "sub-cat-PC506",
+            "code": "PC506",
             "subject": "Cálculo Mercantil y Financiero",
             "subjectName": "Cálculo Mercantil y Financiero",
             "name": "Cálculo Mercantil y Financiero",
@@ -15936,7 +15918,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5a-07",
-            "subjectId": "sub-018",
+            "subjectId": "sub-cat-PC507",
+            "code": "PC507",
             "subject": "Legislación Fiscal y Aduanera",
             "subjectName": "Legislación Fiscal y Aduanera",
             "name": "Legislación Fiscal y Aduanera",
@@ -15953,7 +15936,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5a-08",
-            "subjectId": "sub-019",
+            "subjectId": "sub-cat-PC508",
+            "code": "PC508",
             "subject": "Geografía Económica",
             "subjectName": "Geografía Económica",
             "name": "Geografía Económica",
@@ -15965,12 +15949,13 @@ function getInitialData() {
             "teacherName": "Licda. Sandra Julissa Arana Lucero",
             "teacherId": "usr-doc-12",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5a-09",
-            "subjectId": "sub-020",
+            "subjectId": "sub-cat-PC509",
+            "code": "PC509",
             "subject": "Ética Profesional y Relaciones Humanas",
             "subjectName": "Ética Profesional y Relaciones Humanas",
             "name": "Ética Profesional y Relaciones Humanas",
@@ -15982,29 +15967,13 @@ function getInitialData() {
             "teacherName": "Lic. Damaris Violeta Escobar de Salguero",
             "teacherId": "usr-doc-13",
             "shift": "Matutina",
-            "weeklyHours": 4,
-            "status": "Activo"
-        },
-        {
-            "id": "pen-grd-5a-10",
-            "subjectId": "sub-021",
-            "subject": "Práctica de Contabilidad II",
-            "subjectName": "Práctica de Contabilidad II",
-            "name": "Práctica de Contabilidad II",
-            "grade": "5to Perito Contador",
-            "gradeCode": "5to A",
-            "section": "Sección A",
-            "career": "Perito Contador",
-            "teacher": "PEM. Elda Argentina López de Valdez",
-            "teacherName": "PEM. Elda Argentina López de Valdez",
-            "teacherId": "usr-doc-14",
-            "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5b-01",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC501",
+            "code": "PC501",
             "subject": "Contabilidad de Costos",
             "subjectName": "Contabilidad de Costos",
             "name": "Contabilidad de Costos",
@@ -16016,12 +15985,13 @@ function getInitialData() {
             "teacherName": "Lic. Williams Esmely Gudiel Paredes",
             "teacherId": "usr-doc-05",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5b-02",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC502",
+            "code": "PC502",
             "subject": "Matemática II",
             "subjectName": "Matemática II",
             "name": "Matemática II",
@@ -16038,7 +16008,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5b-03",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC503",
+            "code": "PC503",
             "subject": "Lengua y Literatura II",
             "subjectName": "Lengua y Literatura II",
             "name": "Lengua y Literatura II",
@@ -16055,7 +16026,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5b-04",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC504",
+            "code": "PC504",
             "subject": "Inglés Comercial II",
             "subjectName": "Inglés Comercial II",
             "name": "Inglés Comercial II",
@@ -16067,12 +16039,13 @@ function getInitialData() {
             "teacherName": "Lic. Edwin Osvaldo López Recinos",
             "teacherId": "usr-doc-08",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5b-05",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC505",
+            "code": "PC505",
             "subject": "Computación II",
             "subjectName": "Computación II",
             "name": "Computación II",
@@ -16089,7 +16062,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5b-06",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC506",
+            "code": "PC506",
             "subject": "Cálculo Mercantil y Financiero",
             "subjectName": "Cálculo Mercantil y Financiero",
             "name": "Cálculo Mercantil y Financiero",
@@ -16106,7 +16080,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5b-07",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC507",
+            "code": "PC507",
             "subject": "Legislación Fiscal y Aduanera",
             "subjectName": "Legislación Fiscal y Aduanera",
             "name": "Legislación Fiscal y Aduanera",
@@ -16123,7 +16098,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5b-08",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC508",
+            "code": "PC508",
             "subject": "Geografía Económica",
             "subjectName": "Geografía Económica",
             "name": "Geografía Económica",
@@ -16135,12 +16111,13 @@ function getInitialData() {
             "teacherName": "Licda. Sandra Julissa Arana Lucero",
             "teacherId": "usr-doc-12",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5b-09",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC509",
+            "code": "PC509",
             "subject": "Ética Profesional y Relaciones Humanas",
             "subjectName": "Ética Profesional y Relaciones Humanas",
             "name": "Ética Profesional y Relaciones Humanas",
@@ -16152,29 +16129,13 @@ function getInitialData() {
             "teacherName": "Lic. Damaris Violeta Escobar de Salguero",
             "teacherId": "usr-doc-13",
             "shift": "Matutina",
-            "weeklyHours": 4,
-            "status": "Activo"
-        },
-        {
-            "id": "pen-grd-5b-10",
-            "subjectId": "sub-022",
-            "subject": "Práctica de Contabilidad II",
-            "subjectName": "Práctica de Contabilidad II",
-            "name": "Práctica de Contabilidad II",
-            "grade": "5to Perito Contador",
-            "gradeCode": "5to B",
-            "section": "Sección B",
-            "career": "Perito Contador",
-            "teacher": "PEM. Elda Argentina López de Valdez",
-            "teacherName": "PEM. Elda Argentina López de Valdez",
-            "teacherId": "usr-doc-14",
-            "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5c-01",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC501",
+            "code": "PC501",
             "subject": "Contabilidad de Costos",
             "subjectName": "Contabilidad de Costos",
             "name": "Contabilidad de Costos",
@@ -16186,12 +16147,13 @@ function getInitialData() {
             "teacherName": "Lic. Williams Esmely Gudiel Paredes",
             "teacherId": "usr-doc-05",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5c-02",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC502",
+            "code": "PC502",
             "subject": "Matemática II",
             "subjectName": "Matemática II",
             "name": "Matemática II",
@@ -16208,7 +16170,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5c-03",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC503",
+            "code": "PC503",
             "subject": "Lengua y Literatura II",
             "subjectName": "Lengua y Literatura II",
             "name": "Lengua y Literatura II",
@@ -16225,7 +16188,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5c-04",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC504",
+            "code": "PC504",
             "subject": "Inglés Comercial II",
             "subjectName": "Inglés Comercial II",
             "name": "Inglés Comercial II",
@@ -16237,12 +16201,13 @@ function getInitialData() {
             "teacherName": "Lic. Edwin Osvaldo López Recinos",
             "teacherId": "usr-doc-08",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5c-05",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC505",
+            "code": "PC505",
             "subject": "Computación II",
             "subjectName": "Computación II",
             "name": "Computación II",
@@ -16259,7 +16224,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5c-06",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC506",
+            "code": "PC506",
             "subject": "Cálculo Mercantil y Financiero",
             "subjectName": "Cálculo Mercantil y Financiero",
             "name": "Cálculo Mercantil y Financiero",
@@ -16276,7 +16242,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5c-07",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC507",
+            "code": "PC507",
             "subject": "Legislación Fiscal y Aduanera",
             "subjectName": "Legislación Fiscal y Aduanera",
             "name": "Legislación Fiscal y Aduanera",
@@ -16293,7 +16260,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5c-08",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC508",
+            "code": "PC508",
             "subject": "Geografía Económica",
             "subjectName": "Geografía Económica",
             "name": "Geografía Económica",
@@ -16305,12 +16273,13 @@ function getInitialData() {
             "teacherName": "Licda. Sandra Julissa Arana Lucero",
             "teacherId": "usr-doc-12",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5c-09",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC509",
+            "code": "PC509",
             "subject": "Ética Profesional y Relaciones Humanas",
             "subjectName": "Ética Profesional y Relaciones Humanas",
             "name": "Ética Profesional y Relaciones Humanas",
@@ -16322,29 +16291,13 @@ function getInitialData() {
             "teacherName": "Lic. Damaris Violeta Escobar de Salguero",
             "teacherId": "usr-doc-13",
             "shift": "Matutina",
-            "weeklyHours": 4,
-            "status": "Activo"
-        },
-        {
-            "id": "pen-grd-5c-10",
-            "subjectId": "sub-022",
-            "subject": "Práctica de Contabilidad II",
-            "subjectName": "Práctica de Contabilidad II",
-            "name": "Práctica de Contabilidad II",
-            "grade": "5to Perito Contador",
-            "gradeCode": "5to C",
-            "section": "Sección C",
-            "career": "Perito Contador",
-            "teacher": "PEM. Elda Argentina López de Valdez",
-            "teacherName": "PEM. Elda Argentina López de Valdez",
-            "teacherId": "usr-doc-14",
-            "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5d-01",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC501",
+            "code": "PC501",
             "subject": "Contabilidad de Costos",
             "subjectName": "Contabilidad de Costos",
             "name": "Contabilidad de Costos",
@@ -16356,12 +16309,13 @@ function getInitialData() {
             "teacherName": "Lic. Williams Esmely Gudiel Paredes",
             "teacherId": "usr-doc-05",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5d-02",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC502",
+            "code": "PC502",
             "subject": "Matemática II",
             "subjectName": "Matemática II",
             "name": "Matemática II",
@@ -16378,7 +16332,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5d-03",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC503",
+            "code": "PC503",
             "subject": "Lengua y Literatura II",
             "subjectName": "Lengua y Literatura II",
             "name": "Lengua y Literatura II",
@@ -16395,7 +16350,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5d-04",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC504",
+            "code": "PC504",
             "subject": "Inglés Comercial II",
             "subjectName": "Inglés Comercial II",
             "name": "Inglés Comercial II",
@@ -16407,12 +16363,13 @@ function getInitialData() {
             "teacherName": "Lic. Edwin Osvaldo López Recinos",
             "teacherId": "usr-doc-08",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5d-05",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC505",
+            "code": "PC505",
             "subject": "Computación II",
             "subjectName": "Computación II",
             "name": "Computación II",
@@ -16429,7 +16386,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5d-06",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC506",
+            "code": "PC506",
             "subject": "Cálculo Mercantil y Financiero",
             "subjectName": "Cálculo Mercantil y Financiero",
             "name": "Cálculo Mercantil y Financiero",
@@ -16446,7 +16404,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5d-07",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC507",
+            "code": "PC507",
             "subject": "Legislación Fiscal y Aduanera",
             "subjectName": "Legislación Fiscal y Aduanera",
             "name": "Legislación Fiscal y Aduanera",
@@ -16463,7 +16422,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-5d-08",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC508",
+            "code": "PC508",
             "subject": "Geografía Económica",
             "subjectName": "Geografía Económica",
             "name": "Geografía Económica",
@@ -16475,12 +16435,13 @@ function getInitialData() {
             "teacherName": "Licda. Sandra Julissa Arana Lucero",
             "teacherId": "usr-doc-12",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-5d-09",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC509",
+            "code": "PC509",
             "subject": "Ética Profesional y Relaciones Humanas",
             "subjectName": "Ética Profesional y Relaciones Humanas",
             "name": "Ética Profesional y Relaciones Humanas",
@@ -16492,29 +16453,13 @@ function getInitialData() {
             "teacherName": "Lic. Damaris Violeta Escobar de Salguero",
             "teacherId": "usr-doc-13",
             "shift": "Matutina",
-            "weeklyHours": 4,
-            "status": "Activo"
-        },
-        {
-            "id": "pen-grd-5d-10",
-            "subjectId": "sub-022",
-            "subject": "Práctica de Contabilidad II",
-            "subjectName": "Práctica de Contabilidad II",
-            "name": "Práctica de Contabilidad II",
-            "grade": "5to Perito Contador",
-            "gradeCode": "5to D",
-            "section": "Sección D",
-            "career": "Perito Contador",
-            "teacher": "PEM. Elda Argentina López de Valdez",
-            "teacherName": "PEM. Elda Argentina López de Valdez",
-            "teacherId": "usr-doc-14",
-            "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6a-01",
-            "subjectId": "sub-022",
+            "subjectId": "sub-cat-PC601",
+            "code": "PC601",
             "subject": "Contabilidad Gubernamental e Integrada",
             "subjectName": "Contabilidad Gubernamental e Integrada",
             "name": "Contabilidad Gubernamental e Integrada",
@@ -16526,12 +16471,13 @@ function getInitialData() {
             "teacherName": "PEM. Lilian Alas Grijalva",
             "teacherId": "usr-doc-06",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6a-02",
-            "subjectId": "sub-023",
+            "subjectId": "sub-cat-PC602",
+            "code": "PC602",
             "subject": "Auditoría",
             "subjectName": "Auditoría",
             "name": "Auditoría",
@@ -16543,12 +16489,13 @@ function getInitialData() {
             "teacherName": "Lic. Nery Benjamin Galvez Ramos",
             "teacherId": "usr-doc-07",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6a-03",
-            "subjectId": "sub-024",
+            "subjectId": "sub-cat-PC603",
+            "code": "PC603",
             "subject": "Matemáticas Financieras",
             "subjectName": "Matemáticas Financieras",
             "name": "Matemáticas Financieras",
@@ -16565,7 +16512,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6a-04",
-            "subjectId": "sub-025",
+            "subjectId": "sub-cat-PC604",
+            "code": "PC604",
             "subject": "Seminario sobre Problemas de la Educación Socioeconómica",
             "subjectName": "Seminario sobre Problemas de la Educación Socioeconómica",
             "name": "Seminario sobre Problemas de la Educación Socioeconómica",
@@ -16582,7 +16530,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6a-05",
-            "subjectId": "sub-026",
+            "subjectId": "sub-cat-PC605",
+            "code": "PC605",
             "subject": "Inglés Comercial III",
             "subjectName": "Inglés Comercial III",
             "name": "Inglés Comercial III",
@@ -16594,12 +16543,13 @@ function getInitialData() {
             "teacherName": "Lic. Héctor Noé Linares",
             "teacherId": "usr-doc-10",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6a-06",
-            "subjectId": "sub-027",
+            "subjectId": "sub-cat-PC606",
+            "code": "PC606",
             "subject": "Organización de Empresas y Técnicas de Oficina",
             "subjectName": "Organización de Empresas y Técnicas de Oficina",
             "name": "Organización de Empresas y Técnicas de Oficina",
@@ -16616,7 +16566,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6a-07",
-            "subjectId": "sub-028",
+            "subjectId": "sub-cat-PC607",
+            "code": "PC607",
             "subject": "Finanzas Públicas",
             "subjectName": "Finanzas Públicas",
             "name": "Finanzas Públicas",
@@ -16633,7 +16584,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6a-08",
-            "subjectId": "sub-029",
+            "subjectId": "sub-cat-PC608",
+            "code": "PC608",
             "subject": "Derecho Mercantil y Laboral",
             "subjectName": "Derecho Mercantil y Laboral",
             "name": "Derecho Mercantil y Laboral",
@@ -16650,7 +16602,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6a-09",
-            "subjectId": "sub-030",
+            "subjectId": "sub-cat-PC609",
+            "code": "PC609",
             "subject": "Práctica Supervisada (200 horas)",
             "subjectName": "Práctica Supervisada (200 horas)",
             "name": "Práctica Supervisada (200 horas)",
@@ -16662,29 +16615,13 @@ function getInitialData() {
             "teacherName": "PEM. Elda Argentina López de Valdez",
             "teacherId": "usr-doc-14",
             "shift": "Matutina",
-            "weeklyHours": 4,
-            "status": "Activo"
-        },
-        {
-            "id": "pen-grd-6a-10",
-            "subjectId": "sub-031",
-            "subject": "Práctica de Contabilidad Gubernamental",
-            "subjectName": "Práctica de Contabilidad Gubernamental",
-            "name": "Práctica de Contabilidad Gubernamental",
-            "grade": "6to Perito Contador",
-            "gradeCode": "6to A",
-            "section": "Sección A",
-            "career": "Perito Contador",
-            "teacher": "Licda. Enma Leticia Macario Xum de Ruano",
-            "teacherName": "Licda. Enma Leticia Macario Xum de Ruano",
-            "teacherId": "usr-doc-15",
-            "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 6,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6b-01",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC601",
+            "code": "PC601",
             "subject": "Contabilidad Gubernamental e Integrada",
             "subjectName": "Contabilidad Gubernamental e Integrada",
             "name": "Contabilidad Gubernamental e Integrada",
@@ -16696,12 +16633,13 @@ function getInitialData() {
             "teacherName": "PEM. Lilian Alas Grijalva",
             "teacherId": "usr-doc-06",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6b-02",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC602",
+            "code": "PC602",
             "subject": "Auditoría",
             "subjectName": "Auditoría",
             "name": "Auditoría",
@@ -16713,12 +16651,13 @@ function getInitialData() {
             "teacherName": "Lic. Nery Benjamin Galvez Ramos",
             "teacherId": "usr-doc-07",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6b-03",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC603",
+            "code": "PC603",
             "subject": "Matemáticas Financieras",
             "subjectName": "Matemáticas Financieras",
             "name": "Matemáticas Financieras",
@@ -16735,7 +16674,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6b-04",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC604",
+            "code": "PC604",
             "subject": "Seminario sobre Problemas de la Educación Socioeconómica",
             "subjectName": "Seminario sobre Problemas de la Educación Socioeconómica",
             "name": "Seminario sobre Problemas de la Educación Socioeconómica",
@@ -16752,7 +16692,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6b-05",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC605",
+            "code": "PC605",
             "subject": "Inglés Comercial III",
             "subjectName": "Inglés Comercial III",
             "name": "Inglés Comercial III",
@@ -16764,12 +16705,13 @@ function getInitialData() {
             "teacherName": "Lic. Héctor Noé Linares",
             "teacherId": "usr-doc-10",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6b-06",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC606",
+            "code": "PC606",
             "subject": "Organización de Empresas y Técnicas de Oficina",
             "subjectName": "Organización de Empresas y Técnicas de Oficina",
             "name": "Organización de Empresas y Técnicas de Oficina",
@@ -16786,7 +16728,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6b-07",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC607",
+            "code": "PC607",
             "subject": "Finanzas Públicas",
             "subjectName": "Finanzas Públicas",
             "name": "Finanzas Públicas",
@@ -16803,7 +16746,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6b-08",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC608",
+            "code": "PC608",
             "subject": "Derecho Mercantil y Laboral",
             "subjectName": "Derecho Mercantil y Laboral",
             "name": "Derecho Mercantil y Laboral",
@@ -16820,7 +16764,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6b-09",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC609",
+            "code": "PC609",
             "subject": "Práctica Supervisada (200 horas)",
             "subjectName": "Práctica Supervisada (200 horas)",
             "name": "Práctica Supervisada (200 horas)",
@@ -16832,29 +16777,13 @@ function getInitialData() {
             "teacherName": "PEM. Elda Argentina López de Valdez",
             "teacherId": "usr-doc-14",
             "shift": "Matutina",
-            "weeklyHours": 4,
-            "status": "Activo"
-        },
-        {
-            "id": "pen-grd-6b-10",
-            "subjectId": "sub-032",
-            "subject": "Práctica de Contabilidad Gubernamental",
-            "subjectName": "Práctica de Contabilidad Gubernamental",
-            "name": "Práctica de Contabilidad Gubernamental",
-            "grade": "6to Perito Contador",
-            "gradeCode": "6to B",
-            "section": "Sección B",
-            "career": "Perito Contador",
-            "teacher": "Licda. Enma Leticia Macario Xum de Ruano",
-            "teacherName": "Licda. Enma Leticia Macario Xum de Ruano",
-            "teacherId": "usr-doc-15",
-            "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 6,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6c-01",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC601",
+            "code": "PC601",
             "subject": "Contabilidad Gubernamental e Integrada",
             "subjectName": "Contabilidad Gubernamental e Integrada",
             "name": "Contabilidad Gubernamental e Integrada",
@@ -16866,12 +16795,13 @@ function getInitialData() {
             "teacherName": "PEM. Lilian Alas Grijalva",
             "teacherId": "usr-doc-06",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6c-02",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC602",
+            "code": "PC602",
             "subject": "Auditoría",
             "subjectName": "Auditoría",
             "name": "Auditoría",
@@ -16883,12 +16813,13 @@ function getInitialData() {
             "teacherName": "Lic. Nery Benjamin Galvez Ramos",
             "teacherId": "usr-doc-07",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6c-03",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC603",
+            "code": "PC603",
             "subject": "Matemáticas Financieras",
             "subjectName": "Matemáticas Financieras",
             "name": "Matemáticas Financieras",
@@ -16905,7 +16836,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6c-04",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC604",
+            "code": "PC604",
             "subject": "Seminario sobre Problemas de la Educación Socioeconómica",
             "subjectName": "Seminario sobre Problemas de la Educación Socioeconómica",
             "name": "Seminario sobre Problemas de la Educación Socioeconómica",
@@ -16922,7 +16854,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6c-05",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC605",
+            "code": "PC605",
             "subject": "Inglés Comercial III",
             "subjectName": "Inglés Comercial III",
             "name": "Inglés Comercial III",
@@ -16934,12 +16867,13 @@ function getInitialData() {
             "teacherName": "Lic. Héctor Noé Linares",
             "teacherId": "usr-doc-10",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6c-06",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC606",
+            "code": "PC606",
             "subject": "Organización de Empresas y Técnicas de Oficina",
             "subjectName": "Organización de Empresas y Técnicas de Oficina",
             "name": "Organización de Empresas y Técnicas de Oficina",
@@ -16956,7 +16890,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6c-07",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC607",
+            "code": "PC607",
             "subject": "Finanzas Públicas",
             "subjectName": "Finanzas Públicas",
             "name": "Finanzas Públicas",
@@ -16973,7 +16908,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6c-08",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC608",
+            "code": "PC608",
             "subject": "Derecho Mercantil y Laboral",
             "subjectName": "Derecho Mercantil y Laboral",
             "name": "Derecho Mercantil y Laboral",
@@ -16990,7 +16926,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6c-09",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC609",
+            "code": "PC609",
             "subject": "Práctica Supervisada (200 horas)",
             "subjectName": "Práctica Supervisada (200 horas)",
             "name": "Práctica Supervisada (200 horas)",
@@ -17002,29 +16939,13 @@ function getInitialData() {
             "teacherName": "PEM. Elda Argentina López de Valdez",
             "teacherId": "usr-doc-14",
             "shift": "Matutina",
-            "weeklyHours": 4,
-            "status": "Activo"
-        },
-        {
-            "id": "pen-grd-6c-10",
-            "subjectId": "sub-032",
-            "subject": "Práctica de Contabilidad Gubernamental",
-            "subjectName": "Práctica de Contabilidad Gubernamental",
-            "name": "Práctica de Contabilidad Gubernamental",
-            "grade": "6to Perito Contador",
-            "gradeCode": "6to C",
-            "section": "Sección C",
-            "career": "Perito Contador",
-            "teacher": "Licda. Enma Leticia Macario Xum de Ruano",
-            "teacherName": "Licda. Enma Leticia Macario Xum de Ruano",
-            "teacherId": "usr-doc-15",
-            "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 6,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6d-01",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC601",
+            "code": "PC601",
             "subject": "Contabilidad Gubernamental e Integrada",
             "subjectName": "Contabilidad Gubernamental e Integrada",
             "name": "Contabilidad Gubernamental e Integrada",
@@ -17036,12 +16957,13 @@ function getInitialData() {
             "teacherName": "PEM. Lilian Alas Grijalva",
             "teacherId": "usr-doc-06",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6d-02",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC602",
+            "code": "PC602",
             "subject": "Auditoría",
             "subjectName": "Auditoría",
             "name": "Auditoría",
@@ -17053,12 +16975,13 @@ function getInitialData() {
             "teacherName": "Lic. Nery Benjamin Galvez Ramos",
             "teacherId": "usr-doc-07",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 5,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6d-03",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC603",
+            "code": "PC603",
             "subject": "Matemáticas Financieras",
             "subjectName": "Matemáticas Financieras",
             "name": "Matemáticas Financieras",
@@ -17075,7 +16998,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6d-04",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC604",
+            "code": "PC604",
             "subject": "Seminario sobre Problemas de la Educación Socioeconómica",
             "subjectName": "Seminario sobre Problemas de la Educación Socioeconómica",
             "name": "Seminario sobre Problemas de la Educación Socioeconómica",
@@ -17092,7 +17016,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6d-05",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC605",
+            "code": "PC605",
             "subject": "Inglés Comercial III",
             "subjectName": "Inglés Comercial III",
             "name": "Inglés Comercial III",
@@ -17104,12 +17029,13 @@ function getInitialData() {
             "teacherName": "Lic. Héctor Noé Linares",
             "teacherId": "usr-doc-10",
             "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 3,
             "status": "Activo"
         },
         {
             "id": "pen-grd-6d-06",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC606",
+            "code": "PC606",
             "subject": "Organización de Empresas y Técnicas de Oficina",
             "subjectName": "Organización de Empresas y Técnicas de Oficina",
             "name": "Organización de Empresas y Técnicas de Oficina",
@@ -17126,7 +17052,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6d-07",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC607",
+            "code": "PC607",
             "subject": "Finanzas Públicas",
             "subjectName": "Finanzas Públicas",
             "name": "Finanzas Públicas",
@@ -17143,7 +17070,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6d-08",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC608",
+            "code": "PC608",
             "subject": "Derecho Mercantil y Laboral",
             "subjectName": "Derecho Mercantil y Laboral",
             "name": "Derecho Mercantil y Laboral",
@@ -17160,7 +17088,8 @@ function getInitialData() {
         },
         {
             "id": "pen-grd-6d-09",
-            "subjectId": "sub-032",
+            "subjectId": "sub-cat-PC609",
+            "code": "PC609",
             "subject": "Práctica Supervisada (200 horas)",
             "subjectName": "Práctica Supervisada (200 horas)",
             "name": "Práctica Supervisada (200 horas)",
@@ -17172,24 +17101,7 @@ function getInitialData() {
             "teacherName": "PEM. Elda Argentina López de Valdez",
             "teacherId": "usr-doc-14",
             "shift": "Matutina",
-            "weeklyHours": 4,
-            "status": "Activo"
-        },
-        {
-            "id": "pen-grd-6d-10",
-            "subjectId": "sub-032",
-            "subject": "Práctica de Contabilidad Gubernamental",
-            "subjectName": "Práctica de Contabilidad Gubernamental",
-            "name": "Práctica de Contabilidad Gubernamental",
-            "grade": "6to Perito Contador",
-            "gradeCode": "6to D",
-            "section": "Sección D",
-            "career": "Perito Contador",
-            "teacher": "Licda. Enma Leticia Macario Xum de Ruano",
-            "teacherName": "Licda. Enma Leticia Macario Xum de Ruano",
-            "teacherId": "usr-doc-15",
-            "shift": "Matutina",
-            "weeklyHours": 4,
+            "weeklyHours": 6,
             "status": "Activo"
         }
     ],
@@ -17211,7 +17123,7 @@ function getInitialData() {
         "code": "22-01-0014-46",
         "address": "Jutiapa, Jutiapa"
     },
-    "lastModified": 1788401583008
+    "lastModified": 1788402577465
 };
 }
 
