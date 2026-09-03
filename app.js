@@ -125,8 +125,7 @@ async function pullStateFromFirebaseCloud(isInitial = false) {
             const cloudState = await response.json();
             if (cloudState && typeof cloudState === 'object' && cloudState.students) {
                 if (!STATE.lastModified || (cloudState.lastModified && cloudState.lastModified > STATE.lastModified)) {
-                    Object.assign(STATE, cloudState);
-                    saveStateToLocalStorage();
+                    applyIncomingCloudState(cloudState, !isInitial);
                     if (!isInitial) {
                         if (typeof renderCurrentView === 'function') renderCurrentView();
                         if (typeof renderDashboard === 'function') renderDashboard();
@@ -351,7 +350,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V107';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V108';
 const ENCCO_OFFICIAL_SUPABASE_URL = "https://uphgktnkcwrjunxdzhnp.supabase.co";
 const ENCCO_OFFICIAL_SUPABASE_KEY = "sb_publishable_PrTtclsUq354-M-ykNO7Mw_wLYD4DwB";
 let _autoCloudSyncTimer = null;
@@ -14029,6 +14028,123 @@ function loadDefaults() {
     saveStateToLocalStorage();
 }
 
+// ======================================================================
+//      SISTEMA MAESTRO DE SINCRONIZACIÓN EN TIEMPO REAL TOTAL (TRIPLE CAPA)
+// ======================================================================
+
+// 1. Canal de Comunicación Inmediata entre Pestañas (BroadcastChannel)
+let _enccBroadcastChannel = null;
+try {
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        _enccBroadcastChannel = new BroadcastChannel('encc_realtime_channel_2026');
+        _enccBroadcastChannel.onmessage = (event) => {
+            if (event.data && event.data.type === 'SYNC_STATE_UPDATE') {
+                console.log("⚡ [Inter-Pestaña] Cambio en tiempo real recibido desde otra pestaña.");
+                applyIncomingCloudState(event.data.state, false);
+            }
+        };
+    }
+} catch(e) {}
+
+// 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
+if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V108' || e.key === 'ENCCO_SYSTEM_DATABASE_V108' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+            try {
+                const raw = localStorage.getItem(DB_STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed.lastModified && parsed.lastModified > (STATE.lastModified || 0)) {
+                        console.log("⚡ [Storage Event] Actualización detectada en disco local.");
+                        applyIncomingCloudState(parsed, false);
+                    }
+                }
+            } catch(err) {}
+        }
+    });
+
+    // Sincronización inteligente al retomar la pestaña
+    window.addEventListener('focus', () => {
+        autoSyncToCloud(false, false);
+    });
+}
+
+// 3. Aplicación Inteligente del Estado Recibido en Tiempo Real
+function applyIncomingCloudState(incomingState, isFromCloud = true) {
+    if (!incomingState || typeof incomingState !== 'object') return false;
+
+    const incomingTime = incomingState.lastModified || 0;
+    const localTime = STATE.lastModified || 0;
+
+    if (incomingTime <= localTime) {
+        return false;
+    }
+
+    console.log(`⚡ [Tiempo Real] Aplicando actualización recibida (${new Date(incomingTime).toLocaleTimeString()})...`);
+
+    // Fusión limpia del estado
+    if (Array.isArray(incomingState.students)) STATE.students = incomingState.students;
+    if (Array.isArray(incomingState.users)) STATE.users = incomingState.users;
+    if (Array.isArray(incomingState.gradesList)) STATE.gradesList = incomingState.gradesList;
+    if (Array.isArray(incomingState.careers)) STATE.careers = incomingState.careers;
+    if (Array.isArray(incomingState.pensum)) STATE.pensum = incomingState.pensum;
+    if (Array.isArray(incomingState.pensumCatalog)) STATE.pensumCatalog = incomingState.pensumCatalog;
+    if (incomingState.attendanceRecords) STATE.attendanceRecords = incomingState.attendanceRecords;
+    if (Array.isArray(incomingState.disciplineReports)) STATE.disciplineReports = incomingState.disciplineReports;
+    if (Array.isArray(incomingState.cycles)) STATE.cycles = incomingState.cycles;
+    if (incomingState.activeCycle) STATE.activeCycle = incomingState.activeCycle;
+    if (incomingState.config) STATE.config = incomingState.config;
+    if (Array.isArray(incomingState.announcements)) STATE.announcements = incomingState.announcements;
+    STATE.lastModified = incomingTime;
+
+    // Guardado silencioso en localStorage
+    try {
+        const jsonStr = JSON.stringify(STATE);
+        localStorage.setItem(DB_STORAGE_KEY, jsonStr);
+        localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', jsonStr);
+        localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
+    } catch(e) {}
+
+    // Refrescar vistas activas y componentes dinámicos en vivo
+    if (typeof updateGradeSelects === 'function') updateGradeSelects();
+    if (typeof updateCareerSelects === 'function') updateCareerSelects();
+    if (typeof updateCycleSelects === 'function') updateCycleSelects();
+    if (typeof renderCurrentView === 'function') renderCurrentView();
+    if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof renderGradesDirectoryTable === 'function') renderGradesDirectoryTable();
+
+    updateDbStatusIndicator(true);
+
+    if (isFromCloud && typeof showToast === 'function') {
+        showToast("⚡ Datos actualizados en tiempo real.", "info");
+    }
+    return true;
+}
+window.applyIncomingCloudState = applyIncomingCloudState;
+
+// 4. Temporizador Antirrebote para Envío Instantáneo a la Nube
+let _instantCloudPushTimeout = null;
+function triggerInstantCloudPush() {
+    // Transmitir de inmediato a otras pestañas abiertas
+    if (_enccBroadcastChannel) {
+        try {
+            _enccBroadcastChannel.postMessage({
+                type: 'SYNC_STATE_UPDATE',
+                state: STATE,
+                lastModified: STATE.lastModified
+            });
+        } catch(e) {}
+    }
+
+    // Enviar a la nube (Firebase / Supabase) con debounce de 300ms
+    if (_instantCloudPushTimeout) clearTimeout(_instantCloudPushTimeout);
+    _instantCloudPushTimeout = setTimeout(async () => {
+        await autoSyncToCloud(true, false);
+    }, 300);
+}
+window.triggerInstantCloudPush = triggerInstantCloudPush;
+
+
 function saveStateToLocalStorage() {
     const payload = {
         config: STATE.config,
@@ -14049,22 +14165,19 @@ function saveStateToLocalStorage() {
     };
     payload.lastModified = Date.now();
     STATE.lastModified = payload.lastModified;
+
     try {
         const jsonStr = JSON.stringify(payload);
         localStorage.setItem(DB_STORAGE_KEY, jsonStr);
-        // 🛡️ Copia de Respaldo Inmediata Antipérdida de Datos
         localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', jsonStr);
         localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
-        // 🔄 Notificación de Sincronización Inmediata entre pestañas
         window.dispatchEvent(new Event('storage'));
     } catch (e) {
         console.warn("Storage warning:", e);
     }
     
-    // Si Supabase está conectado, sincronizar inmediatamente en la nube
-    if (window.supabaseClient) {
-        autoSyncToSupabase(false, false);
-    }
+    // ⚡ Disparar Sincronización en Tiempo Real Total (Pestañas y Servidores Nube)
+    triggerInstantCloudPush();
 }
 
 function changeAcademicCycle(cycle) {
