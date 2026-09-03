@@ -40,7 +40,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=20260831_v118_dynamic_roles_and_permissions">
+    <link rel="stylesheet" href="styles.css?v=20260831_v120_interactive_role_panel">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -1864,27 +1864,123 @@
             </div>
         
                 <!-- VISTA: GESTOR DE ROLES Y PERMISOS PERSONALIZADOS (EXCLUSIVO SUPER ADMINISTRADOR) -->
-                <div class="view-section" id="view-roles" style="display:none;">
-                    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:18px;">
+                                <!-- VISTA: GESTOR INTERACTIVO DE ROLES Y PERMISOS (SOLO ADMINISTRADOR) -->
+                <section class="app-view" id="view-roles" style="display:none;">
+                    <!-- ENCABEZADO -->
+                    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
                         <div>
-                            <h2><i class="fa-solid fa-user-shield"></i> Gestor de Roles y Permisos de Acceso</h2>
-                            <p class="subtitle">Cree, personalice y configure los roles institucionales y sus permisos por módulo.</p>
+                            <h2 style="margin:0; font-size:1.35rem; color:#0f172a; font-weight:800; display:flex; align-items:center; gap:10px;">
+                                <i class="fa-solid fa-user-shield" style="color:#0284c7;"></i> Control y Asignación de Roles y Permisos
+                            </h2>
+                            <p class="subtitle" style="margin:4px 0 0 0; color:#64748b; font-size:0.88rem;">
+                                Cree nuevos roles y active o desactive qué puede ver y qué puede hacer cada rol en la plataforma.
+                            </p>
                         </div>
-                        <button type="button" class="btn btn-primary" onclick="openRoleModal()" style="font-weight:700;">
-                            <i class="fa-solid fa-plus-circle"></i> Crear Nuevo Rol
-                        </button>
+                        <div>
+                            <button type="button" class="btn btn-primary" onclick="initNewRoleForm()" style="font-weight:700; background:#0284c7; border-color:#0369a1; display:inline-flex; align-items:center; gap:8px;">
+                                <i class="fa-solid fa-plus-circle"></i> + Crear Nuevo Rol
+                            </button>
+                        </div>
                     </div>
 
-                    <div class="table-card">
-                        <div class="table-toolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
-                            <div class="search-box" style="flex:1; max-width:380px;">
-                                <i class="fa-solid fa-magnifying-glass"></i>
-                                <input type="text" id="rolesSearchInput" class="form-control" placeholder="Buscar rol por nombre o clave..." oninput="renderRolesTable(this.value)">
+                    <!-- PESTAÑAS DE ROLES (SELECTOR RÁPIDO INTERACTIVO) -->
+                    <div style="margin-bottom:16px;">
+                        <label style="font-size:0.82rem; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; display:block;">
+                            <i class="fa-solid fa-users-gear" style="color:#0284c7;"></i> Seleccione el Rol a Configurar:
+                        </label>
+                        <div id="roleSelectorTabsContainer" style="display:flex; flex-wrap:wrap; gap:8px;">
+                            <!-- Inyectado dinámicamente con renderRoleSelectorTabs() -->
+                        </div>
+                    </div>
+
+                    <!-- PANEL PRINCIPAL DE EDICIÓN Y ACTIVACIÓN/DESACTIVACIÓN DE PERMISOS -->
+                    <div class="table-card" style="padding:22px; border-top:4px solid #0284c7; margin-bottom:24px; border-radius:12px; background:#ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.06);">
+                        
+                        <!-- DATOS BÁSICOS DEL ROL -->
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:14px; margin-bottom:18px; background:#f8fafc; padding:16px; border-radius:10px; border:1px solid #e2e8f0;">
+                            <div>
+                                <label style="font-size:0.82rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+                                    <i class="fa-solid fa-tag"></i> Clave del Rol *
+                                </label>
+                                <input type="text" id="activeRoleKey" class="form-control" placeholder="ej: orientador" style="font-weight:700; width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:8px 12px;">
+                                <small style="color:#64748b; font-size:0.75rem;">Identificador único del sistema.</small>
                             </div>
                             <div>
-                                <span style="font-size:0.82rem; color:var(--text-muted);">
-                                    <i class="fa-solid fa-circle-info"></i> Los cambios en permisos se aplican en tiempo real a todos los usuarios del rol.
+                                <label style="font-size:0.82rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+                                    <i class="fa-solid fa-id-card-clip"></i> Nombre Visible del Rol *
+                                </label>
+                                <input type="text" id="activeRoleName" class="form-control" placeholder="ej: Orientador Vocacional" style="font-weight:700; width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:8px 12px;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.82rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+                                    <i class="fa-solid fa-file-lines"></i> Descripción / Atribuciones
+                                </label>
+                                <input type="text" id="activeRoleDesc" class="form-control" placeholder="Breve descripción de funciones..." style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:8px 12px;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.82rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">
+                                    <i class="fa-solid fa-palette"></i> Color Distintivo
+                                </label>
+                                <select id="activeRoleColor" class="form-control" style="font-weight:700; width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:8px 12px;">
+                                    <option value="#0284c7">🟦 Azul Institucional</option>
+                                    <option value="#16a34a">🟩 Verde Esmeralda</option>
+                                    <option value="#7c3aed">🟪 Púrpura Real</option>
+                                    <option value="#d97706">🟨 Ámbar / Dorado</option>
+                                    <option value="#dc2626">🟥 Rojo Carmesí</option>
+                                    <option value="#0891b2">🟦 Cian / Turquesa</option>
+                                    <option value="#475569">⬛ Gris Pizarra</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- BARRA DE ACCIÓN PARA PERMISOS -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:2px solid #e2e8f0; padding-bottom:12px; margin-bottom:16px;">
+                            <div>
+                                <h3 style="margin:0; font-size:1.05rem; color:#0f172a; font-weight:800; display:flex; align-items:center; gap:8px;">
+                                    <i class="fa-solid fa-sliders" style="color:#0284c7;"></i> Panel de Activación: ¿Qué puede ver y hacer este rol?
+                                </h3>
+                                <span style="font-size:0.80rem; color:#64748b;">
+                                    Active (✓) los módulos que tendrá permitidos. Desactive los que deban quedar totalmente ocultos.
                                 </span>
+                            </div>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleActiveRoleAllPermissions(true)" style="font-weight:700; padding:5px 12px;">
+                                    <i class="fa-solid fa-check-double"></i> Marcar Todos
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleActiveRoleAllPermissions(false)" style="font-weight:700; padding:5px 12px;">
+                                    <i class="fa-solid fa-ban"></i> Desmarcar Todos
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="saveActiveRolePermissions()" style="font-weight:800; background:#16a34a; border-color:#15803d; padding:6px 16px; font-size:0.88rem; display:inline-flex; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-floppy-disk"></i> Guardar Permisos
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- CUADRÍCULA INTERACTIVA DE PERMISOS -->
+                        <div id="activeRolePermissionsContainer" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:10px; margin-bottom:20px;">
+                            <!-- Inyectado dinámicamente con renderActiveRolePermissionsGrid() -->
+                        </div>
+
+                        <!-- BOTÓN INFERIOR DE GUARDAR -->
+                        <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1.5px solid #e2e8f0; padding-top:14px;">
+                            <button type="button" class="btn btn-primary" onclick="saveActiveRolePermissions()" style="font-weight:800; background:#16a34a; border-color:#15803d; padding:10px 24px; font-size:0.95rem; border-radius:8px; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
+                                <i class="fa-solid fa-floppy-disk"></i> Guardar y Aplicar Permisos Inmediatamente
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TABLA RESUMEN DE ROLES REGISTRADOS -->
+                    <div class="table-card" style="padding:20px; border-radius:12px; background:#ffffff;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                            <div>
+                                <h3 style="margin:0; font-size:1.05rem; font-weight:800; color:#0f172a;">
+                                    <i class="fa-solid fa-list-check" style="color:#0284c7;"></i> Resumen General de Roles en el Sistema
+                                </h3>
+                                <span style="font-size:0.80rem; color:#64748b;">Lista consolidada de roles y cantidad de usuarios asignados.</span>
+                            </div>
+                            <div class="search-box" style="flex:1; max-width:320px;">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="rolesSearchInput" class="form-control" placeholder="Buscar rol..." oninput="renderRolesTable(this.value)">
                             </div>
                         </div>
 
@@ -1892,11 +1988,11 @@
                             <table class="custom-table">
                                 <thead>
                                     <tr>
-                                        <th style="width:220px;">Rol Institucional</th>
-                                        <th>Descripción del Puesto</th>
-                                        <th style="width:160px; text-align:center;">Permisos Asignados</th>
-                                        <th style="width:140px; text-align:center;">Usuarios Asignados</th>
-                                        <th style="width:140px; text-align:center;">Acciones</th>
+                                        <th style="width:210px;">Rol Institucional</th>
+                                        <th>Descripción</th>
+                                        <th style="width:170px; text-align:center;">Módulos Permitidos</th>
+                                        <th style="width:140px; text-align:center;">Usuarios</th>
+                                        <th style="width:130px; text-align:center;">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="rolesTableBody">
@@ -1905,7 +2001,7 @@
                             </table>
                         </div>
                     </div>
-                </div>
+                </section>
 
             </main>
     </div>
@@ -3116,7 +3212,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260831_v119_interactive_realtime_roles"></script>
+    <script src="app.js?v=20260831_v120_interactive_role_panel"></script>
     <script>
         // CÁLCULO DINÁMICO DE PROMOCIONES Y AÑOS DE FUNDACIÓN (BASE 1970)
         (function updateDynamicStats() {

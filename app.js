@@ -1,4 +1,212 @@
 // ======================================================================
+//   PANEL INTERACTIVO COMPLETO DE CONTROL DE ROLES Y PERMISOS (V120)
+// ======================================================================
+
+let _selectedRoleKeyForEditing = 'admin';
+
+function renderRolesManagementView() {
+    normalizeRolesConfig();
+    renderRoleSelectorTabs();
+    loadRoleIntoPermissionsPanel(_selectedRoleKeyForEditing || 'admin');
+    renderRolesTable();
+}
+window.renderRolesManagementView = renderRolesManagementView;
+
+function renderRoleSelectorTabs() {
+    const container = document.getElementById('roleSelectorTabsContainer');
+    if (!container) return;
+
+    normalizeRolesConfig();
+
+    container.innerHTML = (STATE.rolesConfig || []).map(r => {
+        const isSelected = (r.key === _selectedRoleKeyForEditing);
+        const color = r.color || '#0284c7';
+        return `
+            <button type="button" onclick="selectRoleForEditing('${r.key}')" style="background:${isSelected ? color : '#ffffff'}; color:${isSelected ? '#ffffff' : '#334155'}; border:2px solid ${color}; border-radius:8px; padding:7px 16px; font-weight:800; font-size:0.86rem; cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:${isSelected ? '0 4px 6px -1px rgba(0,0,0,0.15)' : 'none'}; transition:all 0.15s ease;">
+                <span style="width:10px; height:10px; border-radius:50%; background:${isSelected ? '#ffffff' : color};"></span>
+                ${r.name}
+            </button>
+        `;
+    }).join('');
+}
+window.renderRoleSelectorTabs = renderRoleSelectorTabs;
+
+function selectRoleForEditing(roleKey) {
+    _selectedRoleKeyForEditing = roleKey;
+    renderRoleSelectorTabs();
+    loadRoleIntoPermissionsPanel(roleKey);
+}
+window.selectRoleForEditing = selectRoleForEditing;
+
+function initNewRoleForm() {
+    _selectedRoleKeyForEditing = 'nuevo';
+    renderRoleSelectorTabs();
+
+    const keyInput = document.getElementById('activeRoleKey');
+    const nameInput = document.getElementById('activeRoleName');
+    const descInput = document.getElementById('activeRoleDesc');
+    const colorInput = document.getElementById('activeRoleColor');
+
+    if (keyInput) { keyInput.value = ''; keyInput.readOnly = false; keyInput.focus(); }
+    if (nameInput) nameInput.value = '';
+    if (descInput) descInput.value = '';
+    if (colorInput) colorInput.value = '#0284c7';
+
+    renderActiveRolePermissionsGrid(['dashboard']);
+    showToast('Complete los datos del nuevo rol y active qué módulos podrá ver.', 'info');
+}
+window.initNewRoleForm = initNewRoleForm;
+
+function loadRoleIntoPermissionsPanel(roleKey) {
+    normalizeRolesConfig();
+    const r = (STATE.rolesConfig || []).find(x => x.key === roleKey) || STATE.rolesConfig[0];
+    if (!r) return;
+
+    _selectedRoleKeyForEditing = r.key;
+
+    const keyInput = document.getElementById('activeRoleKey');
+    const nameInput = document.getElementById('activeRoleName');
+    const descInput = document.getElementById('activeRoleDesc');
+    const colorInput = document.getElementById('activeRoleColor');
+
+    const isSystemRole = (r.isSystem || ['admin','director','secretaria','profesor_auxiliar','docente'].includes(r.key));
+
+    if (keyInput) { keyInput.value = r.key; keyInput.readOnly = isSystemRole; }
+    if (nameInput) nameInput.value = r.name;
+    if (descInput) descInput.value = r.description || '';
+    if (colorInput) colorInput.value = r.color || '#0284c7';
+
+    renderActiveRolePermissionsGrid(r.permissions || []);
+}
+window.loadRoleIntoPermissionsPanel = loadRoleIntoPermissionsPanel;
+
+function renderActiveRolePermissionsGrid(activePerms = []) {
+    const container = document.getElementById('activeRolePermissionsContainer');
+    if (!container) return;
+
+    const isMasterAdminRole = (_selectedRoleKeyForEditing === 'admin');
+
+    container.innerHTML = SYSTEM_MODULES_LIST.map(mod => {
+        const isChecked = activePerms.includes(mod.key) || isMasterAdminRole;
+        const isDisabled = isMasterAdminRole;
+
+        return `
+            <div style="background:${isChecked ? '#f0fdf4' : '#ffffff'}; border:2px solid ${isChecked ? '#86efac' : '#e2e8f0'}; border-radius:10px; padding:12px 14px; display:flex; align-items:flex-start; gap:12px; transition:all 0.15s ease;">
+                <input type="checkbox" name="activeRolePermCheckbox" value="${mod.key}" ${isChecked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''} onchange="this.parentElement.style.background=this.checked?'#f0fdf4':'#ffffff'; this.parentElement.style.borderColor=this.checked?'#86efac':'#e2e8f0';" style="width:20px; height:20px; accent-color:#16a34a; cursor:${isDisabled ? 'not-allowed' : 'pointer'}; margin-top:2px;">
+                <div style="flex:1;">
+                    <div style="font-weight:800; color:#1e293b; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid ${mod.icon}" style="color:#0284c7; width:16px;"></i> ${mod.name}
+                    </div>
+                    <div style="font-size:0.75rem; color:#64748b; margin-top:3px; line-height:1.25;">
+                        ${mod.desc}
+                    </div>
+                    <span style="display:inline-block; margin-top:4px; font-size:0.68rem; font-weight:700; color:${isChecked ? '#15803d' : '#94a3b8'}; text-transform:uppercase;">
+                        ${isChecked ? '● Activo para este rol' : '○ Desactivado'}
+                    </span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+window.renderActiveRolePermissionsGrid = renderActiveRolePermissionsGrid;
+
+function toggleActiveRoleAllPermissions(check = true) {
+    if (_selectedRoleKeyForEditing === 'admin') {
+        showToast('El Super Administrador siempre tiene todos los permisos activos.', 'info');
+        return;
+    }
+
+    const checkboxes = document.querySelectorAll('input[name="activeRolePermCheckbox"]:not(:disabled)');
+    checkboxes.forEach(cb => {
+        cb.checked = check;
+        if (cb.parentElement) {
+            cb.parentElement.style.background = check ? '#f0fdf4' : '#ffffff';
+            cb.parentElement.style.borderColor = check ? '#86efac' : '#e2e8f0';
+        }
+    });
+}
+window.toggleActiveRoleAllPermissions = toggleActiveRoleAllPermissions;
+
+function saveActiveRolePermissions() {
+    if (STATE.currentRole !== 'admin' && STATE.currentUser?.role !== 'admin') {
+        showToast('Solo el Super Administrador del Sistema puede guardar roles y permisos.', 'warning');
+        return;
+    }
+
+    const keyInput = document.getElementById('activeRoleKey');
+    const nameInput = document.getElementById('activeRoleName');
+    const descInput = document.getElementById('activeRoleDesc');
+    const colorInput = document.getElementById('activeRoleColor');
+
+    const key = keyInput ? keyInput.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_') : '';
+    const name = nameInput ? nameInput.value.trim() : '';
+    const desc = descInput ? descInput.value.trim() : '';
+    const color = colorInput ? colorInput.value : '#0284c7';
+
+    if (!key || !name) {
+        showToast('Debe ingresar la clave y el nombre del rol.', 'warning');
+        return;
+    }
+
+    const checkboxes = document.querySelectorAll('input[name="activeRolePermCheckbox"]:checked');
+    let permissions = Array.from(checkboxes).map(c => c.value);
+
+    if (key === 'admin') {
+        permissions = SYSTEM_MODULES_LIST.map(m => m.key);
+    }
+
+    normalizeRolesConfig();
+
+    const existingIdx = STATE.rolesConfig.findIndex(r => r.key === key);
+    if (existingIdx !== -1) {
+        STATE.rolesConfig[existingIdx].name = name;
+        STATE.rolesConfig[existingIdx].description = desc;
+        STATE.rolesConfig[existingIdx].color = color;
+        STATE.rolesConfig[existingIdx].permissions = permissions;
+        _selectedRoleKeyForEditing = key;
+        showToast(`Permisos del rol "${name}" actualizados y sincronizados en tiempo real.`, 'success');
+    } else {
+        STATE.rolesConfig.push({
+            key: key,
+            name: name,
+            description: desc,
+            color: color,
+            isSystem: false,
+            permissions: permissions
+        });
+        _selectedRoleKeyForEditing = key;
+        showToast(`Nuevo rol "${name}" creado y activado exitosamente.`, 'success');
+    }
+
+    // 1. Guardar en almacenamiento local
+    saveStateToLocalStorage();
+
+    // 2. Notificar vía BroadcastChannel
+    try {
+        if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+            _enccBroadcastChannel.postMessage({
+                type: 'SYNC_STATE_UPDATE',
+                state: STATE,
+                timestamp: Date.now()
+            });
+        }
+    } catch(e) {}
+
+    // 3. Sincronizar en Google Firebase Realtime Database
+    if (typeof syncStateToFirebaseImmediate === 'function') {
+        syncStateToFirebaseImmediate(false);
+    }
+
+    // 4. Aplicar permisos en tiempo real
+    applyUserRole(STATE.currentRole);
+
+    // 5. Refrescar interfaz de roles
+    renderRolesManagementView();
+}
+window.saveActiveRolePermissions = saveActiveRolePermissions;
+
+
+// ======================================================================
 //   SISTEMA MAESTRO DE CONTROL DINÁMICO DE ROLES Y PERMISOS (V118)
 // ======================================================================
 
@@ -1349,7 +1557,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V119';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V120';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -15049,7 +15257,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V119' || e.key === 'ENCCO_SYSTEM_DATABASE_V119' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V120' || e.key === 'ENCCO_SYSTEM_DATABASE_V120' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
@@ -15446,7 +15654,7 @@ function renderCurrentView() {
         case 'discipline': renderDisciplineTable(); break;
         case 'honor-roll': loadHonorRoll(); break;
         case 'users': renderUsersTable(); break;
-        case 'roles': renderRolesTable(); break;
+        case 'roles': renderRolesManagementView(); break;
         case 'reports': populateReportStudentSelect(); break;
     }
 }
