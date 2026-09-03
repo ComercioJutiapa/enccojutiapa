@@ -367,7 +367,7 @@ function getInitialData() {
                         },
                         {
                                                 "id": "usr-dir-01",
-                                                "name": "Licda. Director ENCCO",
+                                                "name": "Licda. Mirza Elizabeth Aragón Polanco de Hernández",
                                                 "username": "director",
                                                 "email": "director@comercio.edu.gt",
                                                 "password": "admin",
