@@ -1,3 +1,69 @@
+function purifySchoolStructure() {
+    // 1. Forzar únicamente la carrera oficial: Perito Contador
+    STATE.careers = [
+        { id: 'car-1', name: 'Perito Contador', code: 'PERITO_CONTADOR', duration: '3 Años (4to, 5to y 6to)', status: 'Activa' }
+    ];
+
+    // 2. Grados oficiales de Perito Contador (4to, 5to y 6to - Secciones A, B, C, D)
+    const officialGrades = [
+        { id: 'grd-4a', code: '4to A', name: '4to Perito Contador', section: 'Sección A', career: 'Perito Contador', shift: 'Matutina' },
+        { id: 'grd-4b', code: '4to B', name: '4to Perito Contador', section: 'Sección B', career: 'Perito Contador', shift: 'Matutina' },
+        { id: 'grd-4c', code: '4to C', name: '4to Perito Contador', section: 'Sección C', career: 'Perito Contador', shift: 'Matutina' },
+        { id: 'grd-4d', code: '4to D', name: '4to Perito Contador', section: 'Sección D', career: 'Perito Contador', shift: 'Matutina' },
+        { id: 'grd-5a', code: '5to A', name: '5to Perito Contador', section: 'Sección A', career: 'Perito Contador', shift: 'Matutina' },
+        { id: 'grd-5b', code: '5to B', name: '5to Perito Contador', section: 'Sección B', career: 'Perito Contador', shift: 'Matutina' },
+        { id: 'grd-5c', code: '5to C', name: '5to Perito Contador', section: 'Sección C', career: 'Perito Contador', shift: 'Matutina' },
+        { id: 'grd-5d', code: '5to D', name: '5to Perito Contador', section: 'Sección D', career: 'Perito Contador', shift: 'Matutina' },
+        { id: 'grd-6a', code: '6to A', name: '6to Perito Contador', section: 'Sección A', career: 'Perito Contador', shift: 'Matutina' },
+        { id: 'grd-6b', code: '6to B', name: '6to Perito Contador', section: 'Sección B', career: 'Perito Contador', shift: 'Matutina' },
+        { id: 'grd-6c', code: '6to C', name: '6to Perito Contador', section: 'Sección C', career: 'Perito Contador', shift: 'Matutina' },
+        { id: 'grd-6d', code: '6to D', name: '6to Perito Contador', section: 'Sección D', career: 'Perito Contador', shift: 'Matutina' }
+    ];
+
+    // Depurar gradesList para que no existan básicos ni otras carreras
+    if (Array.isArray(STATE.gradesList)) {
+        STATE.gradesList = STATE.gradesList.filter(g => {
+            if (!g || !g.name) return false;
+            const n = g.name.toLowerCase();
+            if (n.includes('básico') || n.includes('basico') || n.includes('primero') || n.includes('segundo') || n.includes('tercero')) return false;
+            if (g.career && !g.career.toLowerCase().includes('perito')) return false;
+            return true;
+        });
+
+        // Si quedó vacío o incompleto, restaurar los 12 grados oficiales
+        if (STATE.gradesList.length < 12) {
+            STATE.gradesList = officialGrades;
+        }
+    } else {
+        STATE.gradesList = officialGrades;
+    }
+
+    // Depurar catálogo de pensum para eliminar cursos de básicos u otras carreras
+    if (Array.isArray(STATE.pensumCatalog)) {
+        STATE.pensumCatalog = STATE.pensumCatalog.filter(c => {
+            if (!c) return false;
+            const g = (c.grade || '').toLowerCase();
+            const car = (c.career || '').toLowerCase();
+            if (g.includes('básico') || g.includes('basico') || g.includes('1ro') || g.includes('2do') || g.includes('3ro')) return false;
+            if (car && !car.includes('perito')) return false;
+            return true;
+        });
+    }
+
+    // Depurar asignaciones de cátedras en pensum
+    if (Array.isArray(STATE.pensum)) {
+        STATE.pensum = STATE.pensum.filter(p => {
+            if (!p) return false;
+            const g = (p.grade || '').toLowerCase();
+            const car = (p.career || '').toLowerCase();
+            if (g.includes('básico') || g.includes('basico') || g.includes('1ro') || g.includes('2do') || g.includes('3ro')) return false;
+            if (car && !car.includes('perito')) return false;
+            return true;
+        });
+    }
+}
+
+
 function deduplicateUsersCollection(users) {
     if (!Array.isArray(users)) return [];
     const seenIds = new Set();
@@ -98,14 +164,9 @@ function ensureSireOfficialStudents() {
 }
 
 function normalizeCareers() {
-    if (!Array.isArray(STATE.careers) || STATE.careers.length === 0) {
-        STATE.careers = (typeof getInitialData === 'function' && getInitialData().careers) || [
-            { id: 'car-01', name: 'Perito Contador', code: 'PC', duration: '3 años', status: 'Activa' },
-            { id: 'car-02', name: 'Perito en Administración de Empresas', code: 'AE', duration: '3 años', status: 'Activa' },
-            { id: 'car-03', name: 'Bachillerato en Ciencias y Letras', code: 'BCL', duration: '2 años', status: 'Activa' },
-            { id: 'car-04', name: 'Secretariado Bilingüe', code: 'SB', duration: '2 años', status: 'Activa' }
-        ];
-    }
+    STATE.careers = [
+        { id: 'car-1', name: 'Perito Contador', code: 'PERITO_CONTADOR', duration: '3 Años (4to, 5to y 6to)', status: 'Activa' }
+    ];
 }
 
 function updateGradeSelects() {
@@ -577,9 +638,7 @@ function getInitialData() {
                         }
 ],
         careers: [
-            { id: 'car-1', name: 'Perito Contador', code: 'PERITO_CONTADOR', duration: '3 Años (4to, 5to y 6to)' },
-            { id: 'car-2', name: 'Secretariado Bilingüe', code: 'SECRETARIADO_BILINGUE', duration: '3 Años (4to, 5to y 6to)' },
-            { id: 'car-3', name: 'Bachillerato en Ciencias y Letras', code: 'BACHILLERATO_CIENCIAS_LETRAS', duration: '2 Años (4to y 5to)' }
+            { id: 'car-1', name: 'Perito Contador', code: 'PERITO_CONTADOR', duration: '3 Años (4to, 5to y 6to)' }
         ],
         cycles: [{ name: '2026', status: 'Activo' }],
         activeCycle: '2026',
@@ -925,6 +984,7 @@ function initApp() {
     } catch(e) {}
 
     if (window.SecurityEngine) window.SecurityEngine.initInactivityGuard();
+    if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
     ensureSireOfficialStudents();
 
     // Guardias de guardado automático al recargar la página (F5), navegar o cerrar ventana
@@ -7391,7 +7451,7 @@ async function pullStateFromSupabaseCloud(showSuccessToast = false) {
                 const hadLocalOnlyUsers = currentLocalUsers.some(lu => !remoteData.users.some(ru => ru.id === lu.id));
 
                 STATE.users = mergedUsers;
-                STATE.careers = remoteData.careers || STATE.careers || [];
+                if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
                 STATE.cycles = remoteData.cycles || STATE.cycles || [];
                 STATE.activeCycle = remoteData.activeCycle || STATE.activeCycle || '2026';
                 STATE.gradesList = remoteData.gradesList || STATE.gradesList || [];
@@ -14584,7 +14644,7 @@ function updatePensumCatalogSelects() {
         }
     }
 
-    const defaultGrades = ['4to Grado', '5to Grado', '6to Grado', '1ro Básico', '2do Básico', '3ro Básico'];
+    const defaultGrades = ['4to Perito Contador', '5to Perito Contador', '6to Perito Contador'];
     const gradeOptions = defaultGrades.map(g => `<option value="${g}">${g}</option>`).join('');
 
     if (gradeSelect) {

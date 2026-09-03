@@ -3048,7 +3048,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260831_v82_deduplicated_dynamic_crud"></script>
+    <script src="app.js?v=20260831_v83_perito_contador_only"></script>
     <script>
         // CÁLCULO DINÁMICO DE PROMOCIONES Y AÑOS DE FUNDACIÓN (BASE 1970)
         (function updateDynamicStats() {
@@ -3326,38 +3326,14 @@
                 <!-- CONTENIDO PESTAÑA 3: CATÁLOGOS OFICIALES CNB GUATEMALA -->
                 <div id="sireTabContentCnb" class="sire-tab-content" style="display:none;">
                     <div class="alert alert-info" style="font-size:0.82rem; margin-bottom:12px; background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af;">
-                        <i class="fa-solid fa-landmark"></i> <strong>Mallas Curriculares Oficiales del MINEDUC (CNB Diversificado):</strong> Seleccione el paquete oficial para cargarlo automáticamente con todas sus asignaturas, códigos y orden correlativo.
+                        <i class="fa-solid fa-landmark"></i> <strong>Malla Curricular Oficial del MINEDUC (CNB Diversificado - Carrera Activa):</strong>
                     </div>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                        <div style="border:1px solid #cbd5e1; border-radius:6px; padding:12px; background:#fff;">
-                            <h4 style="margin:0 0 4px; font-size:0.92rem; color:#0369a1;"><i class="fa-solid fa-calculator"></i> Perito Contador</h4>
-                            <p style="font-size:0.78rem; color:var(--text-muted); margin:0 0 10px;">29 Asignaturas Oficiales CNB (4to, 5to y 6to)</p>
-                            <button type="button" class="btn btn-outline-primary btn-xs" onclick="loadOfficialCnbPackage('PERITO_CONTADOR')" style="font-weight:700;">
-                                <i class="fa-solid fa-download"></i> Cargar Pensum Perito Contador
-                            </button>
-                        </div>
-
-                        <div style="border:1px solid #cbd5e1; border-radius:6px; padding:12px; background:#fff;">
-                            <h4 style="margin:0 0 4px; font-size:0.92rem; color:#16a34a;"><i class="fa-solid fa-briefcase"></i> Perito en Admón. de Empresas</h4>
-                            <p style="font-size:0.78rem; color:var(--text-muted); margin:0 0 10px;">28 Asignaturas Oficiales CNB (4to, 5to y 6to)</p>
-                            <button type="button" class="btn btn-outline-success btn-xs" onclick="loadOfficialCnbPackage('ADMON_EMPRESAS')" style="font-weight:700;">
-                                <i class="fa-solid fa-download"></i> Cargar Pensum Administración
-                            </button>
-                        </div>
-
-                        <div style="border:1px solid #cbd5e1; border-radius:6px; padding:12px; background:#fff;">
-                            <h4 style="margin:0 0 4px; font-size:0.92rem; color:#7c3aed;"><i class="fa-solid fa-graduation-cap"></i> Bachillerato en Ciencias y Letras</h4>
-                            <p style="font-size:0.78rem; color:var(--text-muted); margin:0 0 10px;">22 Asignaturas Oficiales CNB (4to y 5to)</p>
-                            <button type="button" class="btn btn-outline-primary btn-xs" onclick="loadOfficialCnbPackage('BACHILLERATO')" style="font-weight:700;">
-                                <i class="fa-solid fa-download"></i> Cargar Pensum Bachillerato
-                            </button>
-                        </div>
-
-                        <div style="border:1px solid #cbd5e1; border-radius:6px; padding:12px; background:#fff;">
-                            <h4 style="margin:0 0 4px; font-size:0.92rem; color:#d97706;"><i class="fa-solid fa-keyboard"></i> Secretariado Bilingüe / Oficinista</h4>
-                            <p style="font-size:0.78rem; color:var(--text-muted); margin:0 0 10px;">20 Asignaturas Oficiales CNB (4to y 5to)</p>
-                            <button type="button" class="btn btn-outline-warning btn-xs" onclick="loadOfficialCnbPackage('SECRETARIADO')" style="font-weight:700;">
-                                <i class="fa-solid fa-download"></i> Cargar Pensum Secretariado
+                    <div style="max-width:400px; margin:0 auto;">
+                        <div style="border:2px solid var(--brand-green); border-radius:8px; padding:16px; background:#f0fdf4; text-align:center;">
+                            <h4 style="margin:0 0 6px; font-size:1.05rem; color:#166534;"><i class="fa-solid fa-calculator"></i> Perito Contador</h4>
+                            <p style="font-size:0.82rem; color:#15803d; margin:0 0 14px; font-weight:600;">29 Asignaturas Oficiales CNB (4to, 5to y 6to)</p>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="loadOfficialCnbPackage('PERITO_CONTADOR')" style="font-weight:800; padding:6px 16px;">
+                                <i class="fa-solid fa-download"></i> Cargar Pensum Oficial Perito Contador
                             </button>
                         </div>
                     </div>
