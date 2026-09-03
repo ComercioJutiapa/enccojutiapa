@@ -1,4 +1,359 @@
 // ======================================================================
+//   SISTEMA MAESTRO DE CONTROL DINÁMICO DE ROLES Y PERMISOS (V118)
+// ======================================================================
+
+var SYSTEM_MODULES_LIST = [
+    { key: 'dashboard', name: 'Panel Principal (Dashboard)', icon: 'fa-chart-line', category: 'General', desc: 'Métricas institucionales, accesos rápidos y comunicados.' },
+    { key: 'enrollment', name: 'Inscripción y Matrícula', icon: 'fa-user-plus', category: 'Secretaría y Alumnos', desc: 'Formulario de registro y carga de fotos de estudiantes.' },
+    { key: 'students', name: 'Expedientes de Estudiantes', icon: 'fa-id-card', category: 'Secretaría y Alumnos', desc: 'Consulta, edición y fichas médicas de los 412 alumnos.' },
+    { key: 'excel-import', name: 'Importación SIRE / Excel', icon: 'fa-file-excel', category: 'Secretaría y Alumnos', desc: 'Carga masiva de nóminas oficiales del MINEDUC.' },
+    { key: 'grades', name: 'Grados, Secciones y Guías', icon: 'fa-school', category: 'Académico', desc: 'Directorio oficial de grados y catedráticos titulares.' },
+    { key: 'pensum', name: 'Pensum Oficial CNB', icon: 'fa-book-open', category: 'Académico', desc: 'Malla curricular oficial de 28 asignaturas del ciclo.' },
+    { key: 'class-assignments', name: 'Asignación de Cátedras', icon: 'fa-chalkboard-user', category: 'Académico', desc: 'Asignar cursos a catedráticos por grado y sección.' },
+    { key: 'grade-lock', name: 'Cierre y Bloqueo Bimestral', icon: 'fa-lock', category: 'Calificaciones', desc: 'Bloquear y desbloquear ingreso de notas bimestrales.' },
+    { key: 'gradebook', name: 'Libro de Calificaciones', icon: 'fa-clipboard-list', category: 'Calificaciones', desc: 'Ingreso, edición y auditoría de notas bimestrales.' },
+    { key: 'attendance', name: 'Control de Asistencia', icon: 'fa-calendar-check', category: 'Estudiantil', desc: 'Pase de lista diario por grado, sección o cátedra.' },
+    { key: 'discipline', name: 'Gestión de Disciplina', icon: 'fa-scale-balanced', category: 'Estudiantil', desc: 'Actas de incidencias, tipificación de faltas y acuerdos.' },
+    { key: 'honor-roll', name: 'Cuadro de Honor', icon: 'fa-medal', category: 'Académico', desc: 'Visualización de mejores promedios bimestrales.' },
+    { key: 'users', name: 'Claustro de Docentes y Usuarios', icon: 'fa-users-gear', category: 'Administración', desc: 'Directorio de personal, renglones 011/021 y credenciales.' },
+    { key: 'reports', name: 'Generación e Impresión de Reportes', icon: 'fa-print', category: 'Secretaría y Dirección', desc: 'Impresión de cuadros oficiales, actas y nóminas.' },
+    { key: 'roles', name: 'Gestor de Roles y Permisos', icon: 'fa-user-shield', category: 'Administración', desc: 'Configuración de permisos por módulo (Solo Administrador).' },
+    { key: 'careers', name: 'Gestor de Carreras', icon: 'fa-graduation-cap', category: 'Académico', desc: 'Creación y edición de carreras escolares.' },
+    { key: 'cycles', name: 'Gestor de Ciclos Escolares', icon: 'fa-calendar-days', category: 'Académico', desc: 'Habilitación de ciclos lectivos y promociones.' }
+];
+window.SYSTEM_MODULES_LIST = SYSTEM_MODULES_LIST;
+
+function getAvailablePermissionsList() {
+    return SYSTEM_MODULES_LIST;
+}
+window.getAvailablePermissionsList = getAvailablePermissionsList;
+
+function initDefaultRolesConfig() {
+    const allKeys = SYSTEM_MODULES_LIST.map(m => m.key);
+    return [
+        {
+            key: 'admin',
+            name: 'Super Administrador',
+            description: 'Acceso total y configuración del sistema',
+            color: '#0284c7',
+            isSystem: true,
+            permissions: allKeys
+        },
+        {
+            key: 'director',
+            name: 'Director(a)',
+            description: 'Supervisión institucional, auditoría de notas y aprobación de nóminas',
+            color: '#16a34a',
+            isSystem: true,
+            permissions: allKeys.filter(k => k !== 'roles')
+        },
+        {
+            key: 'secretaria',
+            name: 'Secretaría Académica',
+            description: 'Control de matrículas, actas, expedientes y emisión de certificados',
+            color: '#7c3aed',
+            isSystem: true,
+            permissions: allKeys.filter(k => k !== 'roles' && k !== 'grade-lock')
+        },
+        {
+            key: 'profesor_auxiliar',
+            name: 'Profesor Auxiliar / Disciplina',
+            description: 'Coordinación disciplinaria escolar, control de asistencia y convivencia',
+            color: '#d97706',
+            isSystem: true,
+            permissions: ['dashboard', 'students', 'grades', 'attendance', 'discipline', 'honor-roll', 'reports']
+        },
+        {
+            key: 'docente',
+            name: 'Catedrático Titular',
+            description: 'Ingreso de calificaciones, control de asistencia y seguimiento pedagógico',
+            color: '#0891b2',
+            isSystem: true,
+            permissions: ['dashboard', 'grades', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports']
+        }
+    ];
+}
+window.initDefaultRolesConfig = initDefaultRolesConfig;
+
+function normalizeRolesConfig() {
+    if (!Array.isArray(STATE.rolesConfig) || STATE.rolesConfig.length === 0) {
+        STATE.rolesConfig = initDefaultRolesConfig();
+        return;
+    }
+
+    const defaultRoles = initDefaultRolesConfig();
+    defaultRoles.forEach(def => {
+        const found = STATE.rolesConfig.find(r => r.key === def.key);
+        if (!found) {
+            STATE.rolesConfig.push(def);
+        } else if (!Array.isArray(found.permissions) || found.permissions.length === 0) {
+            found.permissions = def.permissions;
+        }
+    });
+}
+window.normalizeRolesConfig = normalizeRolesConfig;
+
+function hasRolePermission(permKey, role = STATE.currentRole) {
+    if (!role) role = STATE.currentRole || 'guest';
+    if (role === 'admin' || STATE.currentUser?.role === 'admin') return true;
+
+    normalizeRolesConfig();
+    const r = (STATE.rolesConfig || []).find(x => x.key === role);
+    if (!r || !Array.isArray(r.permissions)) return false;
+
+    if (r.permissions.includes(permKey)) return true;
+
+    // Alias y equivalencias
+    if (permKey === 'users' && (r.permissions.includes('users_view') || r.permissions.includes('users'))) return true;
+    if (permKey === 'students' && (r.permissions.includes('students_view') || r.permissions.includes('students'))) return true;
+    if (permKey === 'discipline' && (r.permissions.includes('discipline_view') || r.permissions.includes('discipline'))) return true;
+
+    return false;
+}
+window.hasRolePermission = hasRolePermission;
+
+function renderRolePermissionsCheckboxes(activePerms = []) {
+    const grid = document.getElementById('rolePermissionsCheckboxGrid');
+    if (!grid) return;
+
+    grid.innerHTML = SYSTEM_MODULES_LIST.map(mod => {
+        const isChecked = activePerms.includes(mod.key);
+        return `
+            <label style="display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:${isChecked ? '#f0fdf4' : '#ffffff'}; border:1.5px solid ${isChecked ? '#86efac' : '#e2e8f0'}; border-radius:8px; cursor:pointer; transition:all 0.15s ease;">
+                <input type="checkbox" name="rolePermissionCheckbox" value="${mod.key}" ${isChecked ? 'checked' : ''} onchange="this.parentElement.style.background=this.checked?'#f0fdf4':'#ffffff'; this.parentElement.style.borderColor=this.checked?'#86efac':'#e2e8f0';" style="margin-top:3px; width:17px; height:17px; accent-color:#16a34a; cursor:pointer;">
+                <div style="flex:1;">
+                    <div style="font-weight:700; color:#1e293b; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid ${mod.icon}" style="color:#0284c7; width:16px;"></i> ${mod.name}
+                    </div>
+                    <div style="font-size:0.75rem; color:#64748b; margin-top:2px; line-height:1.25;">
+                        ${mod.desc}
+                    </div>
+                </div>
+            </label>
+        `;
+    }).join('');
+}
+window.renderRolePermissionsCheckboxes = renderRolePermissionsCheckboxes;
+
+function toggleAllRolePermissions(check = true) {
+    const checkboxes = document.querySelectorAll('input[name="rolePermissionCheckbox"]');
+    checkboxes.forEach(cb => {
+        cb.checked = check;
+        if (cb.parentElement) {
+            cb.parentElement.style.background = check ? '#f0fdf4' : '#ffffff';
+            cb.parentElement.style.borderColor = check ? '#86efac' : '#e2e8f0';
+        }
+    });
+}
+window.toggleAllRolePermissions = toggleAllRolePermissions;
+
+function openRoleModal(roleKey = null) {
+    if (STATE.currentRole !== 'admin' && STATE.currentUser?.role !== 'admin') {
+        showToast('Solo el Super Administrador del Sistema tiene autorización para modificar roles y permisos.', 'warning');
+        return;
+    }
+
+    normalizeRolesConfig();
+
+    const keyInput = document.getElementById('roleModalKey');
+    const nameInput = document.getElementById('roleModalName');
+    const descInput = document.getElementById('roleModalDescription');
+    const colorInput = document.getElementById('roleModalColor');
+    const titleEl = document.getElementById('roleModalTitle');
+
+    if (roleKey) {
+        const r = (STATE.rolesConfig || []).find(x => x.key === roleKey);
+        if (!r) return;
+
+        if (keyInput) { keyInput.value = r.key; keyInput.readOnly = (r.isSystem || ['admin','director','secretaria','profesor_auxiliar','docente'].includes(r.key)); }
+        if (nameInput) nameInput.value = r.name;
+        if (descInput) descInput.value = r.description || '';
+        if (colorInput) colorInput.value = r.color || '#0284c7';
+        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Configurar Permisos del Rol: ${r.name}`;
+
+        renderRolePermissionsCheckboxes(r.permissions || []);
+    } else {
+        if (keyInput) { keyInput.value = ''; keyInput.readOnly = false; }
+        if (nameInput) nameInput.value = '';
+        if (descInput) descInput.value = '';
+        if (colorInput) colorInput.value = '#0284c7';
+        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Crear Nuevo Rol Institucional`;
+
+        renderRolePermissionsCheckboxes(['dashboard']);
+    }
+
+    showModalById('roleModal');
+}
+window.openRoleModal = openRoleModal;
+
+function closeRoleModal() {
+    hideModalById('roleModal');
+}
+window.closeRoleModal = closeRoleModal;
+
+function saveRoleForm(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    if (STATE.currentRole !== 'admin' && STATE.currentUser?.role !== 'admin') {
+        showToast('Solo el Super Administrador del Sistema puede guardar permisos.', 'warning');
+        return;
+    }
+
+    const keyInput = document.getElementById('roleModalKey');
+    const nameInput = document.getElementById('roleModalName');
+    const descInput = document.getElementById('roleModalDescription');
+    const colorInput = document.getElementById('roleModalColor');
+
+    const key = keyInput ? keyInput.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_') : '';
+    const name = nameInput ? nameInput.value.trim() : '';
+    const desc = descInput ? descInput.value.trim() : '';
+    const color = colorInput ? colorInput.value : '#0284c7';
+
+    if (!key || !name) {
+        showToast('Ingrese la clave y el nombre del rol.', 'warning');
+        return;
+    }
+
+    const checkedBoxes = document.querySelectorAll('input[name="rolePermissionCheckbox"]:checked');
+    const permissions = Array.from(checkedBoxes).map(c => c.value);
+
+    // El rol admin SIEMPRE conserva todos los permisos
+    if (key === 'admin' && permissions.length < SYSTEM_MODULES_LIST.length) {
+        SYSTEM_MODULES_LIST.forEach(m => {
+            if (!permissions.includes(m.key)) permissions.push(m.key);
+        });
+    }
+
+    normalizeRolesConfig();
+
+    const existingIdx = STATE.rolesConfig.findIndex(r => r.key === key);
+    if (existingIdx !== -1) {
+        STATE.rolesConfig[existingIdx].name = name;
+        STATE.rolesConfig[existingIdx].description = desc;
+        STATE.rolesConfig[existingIdx].color = color;
+        STATE.rolesConfig[existingIdx].permissions = permissions;
+        showToast(`Permisos del rol "${name}" actualizados correctamente.`, "success");
+    } else {
+        STATE.rolesConfig.push({
+            key: key,
+            name: name,
+            description: desc,
+            color: color,
+            isSystem: false,
+            permissions: permissions
+        });
+        showToast(`Rol "${name}" creado exitosamente con sus permisos.`, "success");
+    }
+
+    // 1. Guardar estado local y enviar a Firebase en tiempo real
+    saveStateToLocalStorage();
+
+    // 2. Aplicar permisos en tiempo real a la interfaz
+    applyUserRole(STATE.currentRole);
+
+    // 3. Renderizar tabla de roles
+    renderRolesTable();
+
+    // 4. Cerrar modal de inmediato
+    closeRoleModal();
+}
+window.saveRoleForm = saveRoleForm;
+
+function renderRolesTable(filterVal = '') {
+    const tbody = document.getElementById('rolesTableBody') || document.querySelector('#view-roles tbody');
+    if (!tbody) return;
+
+    normalizeRolesConfig();
+
+    const q = (filterVal || '').toLowerCase().trim();
+    const list = (STATE.rolesConfig || []).filter(r => {
+        if (!q) return true;
+        return (r.name || '').toLowerCase().includes(q) || (r.key || '').toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q);
+    });
+
+    tbody.innerHTML = list.map((r, idx) => {
+        const assignedUsers = (STATE.users || []).filter(u => u.role === r.key);
+        const permCount = Array.isArray(r.permissions) ? r.permissions.length : 0;
+        const totalModules = SYSTEM_MODULES_LIST.length;
+        const isMasterAdmin = (r.key === 'admin');
+
+        // Badges de permisos principales
+        const permBadges = (r.permissions || []).slice(0, 5).map(pk => {
+            const mod = SYSTEM_MODULES_LIST.find(m => m.key === pk);
+            const label = mod ? mod.name.split(' ')[0] : pk;
+            return `<span class="badge" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; font-size:0.70rem; padding:2px 5px; margin:1px;">${label}</span>`;
+        }).join('');
+
+        const moreBadge = permCount > 5 ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.70rem; font-weight:700;">+${permCount - 5} más</span>` : '';
+
+        return `
+            <tr>
+                <td>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="user-role-badge" style="background:${r.color || '#0284c7'}; color:#fff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:6px; text-transform:uppercase;">
+                            ${r.name}
+                        </span>
+                        <code style="font-size:0.72rem; color:#64748b;">${r.key}</code>
+                    </div>
+                </td>
+                <td style="font-size:0.84rem; color:#475569;">${r.description || 'Sin descripción'}</td>
+                <td style="text-align:center;">
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:3px;">
+                        <span class="badge ${permCount === totalModules ? 'badge-success' : 'badge-primary'}" style="font-weight:800; font-size:0.78rem;">
+                            ${permCount} / ${totalModules} Módulos
+                        </span>
+                        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:2px; max-width:200px;">
+                            ${permBadges} ${moreBadge}
+                        </div>
+                    </div>
+                </td>
+                <td style="text-align:center;">
+                    <span class="badge badge-secondary" style="font-weight:700; font-size:0.80rem;">
+                        <i class="fa-solid fa-users"></i> ${assignedUsers.length} Usuarios
+                    </span>
+                </td>
+                <td style="text-align:center;">
+                    <div style="display:inline-flex; gap:4px;">
+                        <button type="button" class="btn btn-primary btn-xs" onclick="openRoleModal('${r.key}')" title="Configurar Qué Puede Ver este Rol" style="font-weight:700; padding:4px 9px;">
+                            <i class="fa-solid fa-sliders"></i> Configurar Permisos
+                        </button>
+                        ${!r.isSystem && !isMasterAdmin ? `
+                        <button type="button" class="btn btn-outline-danger btn-xs" onclick="deleteRole('${r.key}')" title="Eliminar Rol" style="padding:4px 8px;">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+window.renderRolesTable = renderRolesTable;
+
+function deleteRole(roleKey) {
+    if (['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente'].includes(roleKey)) {
+        showToast('Los roles del sistema ministerial no pueden ser eliminados.', 'warning');
+        return;
+    }
+
+    const hasUsers = (STATE.users || []).some(u => u.role === roleKey);
+    if (hasUsers) {
+        showToast('No puede eliminar este rol porque tiene usuarios asignados. Reasigne los usuarios primero.', 'warning');
+        return;
+    }
+
+    if (!confirm(`¿Está seguro de eliminar el rol "${roleKey}"?`)) return;
+
+    normalizeRolesConfig();
+    STATE.rolesConfig = STATE.rolesConfig.filter(r => r.key !== roleKey);
+    saveStateToLocalStorage();
+    renderRolesTable();
+    showToast(`Rol eliminado exitosamente.`, 'info');
+}
+window.deleteRole = deleteRole;
+
+
+// ======================================================================
 //   GESTOR MAESTRO RECONSTRUIDO DE USUARIOS Y DOCENTES (100% SEGURO)
 // ======================================================================
 
@@ -978,7 +1333,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V117';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V118';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -14677,7 +15032,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V117' || e.key === 'ENCCO_SYSTEM_DATABASE_V117' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V118' || e.key === 'ENCCO_SYSTEM_DATABASE_V118' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
@@ -14996,10 +15351,9 @@ function exitImpersonation() {
 function navigateTo(viewName, event = null) {
     if (event) event.preventDefault();
 
-    // BLOQUEO ESTRICTO: Los docentes NO pueden ver Administración, Edición de Pensum, Grados ni Boletines Generales
-    const restrictedDocenteViews = ['users', 'grades', 'pensum', 'class-assignments', 'enrollment', 'grade-lock', 'reports', 'honor-roll'];
-    if (STATE.currentRole === 'docente' && restrictedDocenteViews.includes(viewName)) {
-        showToast("Acceso Restringido: Los reportes académicos consolidados, cuadros de honor y configuración escolar son de uso exclusivo de Dirección y Secretaría.", "warning");
+        // Verificación dinámica de autorización según la configuración de permisos del Administrador
+    if (viewName !== 'dashboard' && !hasRolePermission(viewName, STATE.currentRole)) {
+        showToast(`Acceso Restringido: Su rol (${STATE.currentRole.toUpperCase()}) no tiene autorización para acceder al módulo "${viewName}".`, "warning");
         viewName = 'dashboard';
     }
 
@@ -27970,7 +28324,22 @@ function applyUserRole(role = STATE.currentRole) {
     if (currentRoleTextEl) currentRoleTextEl.textContent = `Acceso: ${activeTitle}`;
     if (loggedDisplayEl) loggedDisplayEl.textContent = `${user.name} (${activeTitle})`;
 
-    // Aplicar visibilidad granular a todos los elementos del menú y vistas
+        // Aplicar visibilidad granular estricta según la configuración de roles del administrador
+    normalizeRolesConfig();
+    document.querySelectorAll('.nav-item').forEach(el => {
+        const targetView = el.dataset.view;
+        if (targetView) {
+            const hasAccess = hasRolePermission(targetView, role);
+            if (hasAccess) {
+                el.style.removeProperty('display');
+                el.classList.remove('hidden');
+            } else {
+                el.style.setProperty('display', 'none', 'important');
+                el.classList.add('hidden');
+            }
+        }
+    });
+
     document.querySelectorAll('.role-restricted, [data-perm]').forEach(el => {
         const allowedRoles = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim()) : [];
         const permKey = el.dataset.perm || el.dataset.view;
@@ -27978,9 +28347,9 @@ function applyUserRole(role = STATE.currentRole) {
         let hasPerm = false;
         if (role === 'admin' || STATE.currentUser?.role === 'admin') {
             hasPerm = true;
-        } else if (allowedRoles.length > 0 && allowedRoles.includes(role)) {
-            hasPerm = true;
         } else if (permKey && hasRolePermission(permKey, role)) {
+            hasPerm = true;
+        } else if (allowedRoles.length > 0 && allowedRoles.includes(role)) {
             hasPerm = true;
         }
 
