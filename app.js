@@ -59,7 +59,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V93';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V96';
 const ENCCO_OFFICIAL_SUPABASE_URL = "https://uphgktnkcwrjunxdzhnp.supabase.co";
 const ENCCO_OFFICIAL_SUPABASE_KEY = "sb_publishable_PrTtclsUq354-M-ykNO7Mw_wLYD4DwB";
 let _autoCloudSyncTimer = null;
@@ -2466,28 +2466,9 @@ function renderStudentsTable() {
     const summaryBox = document.getElementById('studentsFilterSummary');
     const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal);
 
-    // Si NO se ha seleccionado carrera/grado y tampoco se ha escrito término de búsqueda:
-    if (!careerVal && !gradeVal && !searchVal) {
-        if (summaryBox) {
-            summaryBox.style.display = 'none';
-        }
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" style="text-align:center; padding:55px 20px; color:var(--text-muted);">
-                    <i class="fa-solid fa-address-book" style="font-size:2.8rem; margin-bottom:14px; display:block; color:var(--brand-green);"></i>
-                    <h3 style="font-size:1.18rem; font-weight:800; color:var(--brand-green-dark); margin-bottom:8px;">
-                        Búsqueda y Consulta de Estudiantes
-                    </h3>
-                    <p style="font-size:0.92rem; color:var(--text-secondary); max-width:560px; margin:0 auto 16px auto; line-height:1.5;">
-                        Escriba en el buscador de la derecha (nombre, apellido, carné, CUI o código) para encontrar rápidamente a cualquier alumno, o seleccione la <strong>1. Carrera</strong> y <strong>2. Grado y Sección</strong> para ver la nómina completa.
-                    </p>
-                    <div style="display:inline-flex; gap:10px; align-items:center; background:#f0fdf4; border:1px solid #bbf7d0; padding:8px 16px; border-radius:20px; font-size:0.84rem; font-weight:700; color:var(--brand-green-dark);">
-                        <i class="fa-solid fa-magnifying-glass"></i> Búsqueda Rápida Global o Filtro por Grado
-                    </div>
-                </td>
-            </tr>
-        `;
-        return;
+        // Mostrar resumen de filtro o matrícula completa
+    if (summaryBox) {
+        summaryBox.style.display = gradeVal ? 'flex' : 'none';
     }
 
     let list = STATE.students || [];
@@ -2524,16 +2505,17 @@ function renderStudentsTable() {
         });
     }
 
-    // Filtro por Estado (Activo / Retirado / Ausente / ALL)
-    if (statusVal !== 'ALL') {
-        if (statusVal === 'Retirado') {
+    // Filtro por Estado (Activo / Inscrito / Retirado / Ausente / ALL)
+    if (statusVal && statusVal !== 'ALL' && statusVal !== '') {
+        const sValLower = statusVal.toLowerCase();
+        if (sValLower === 'retirado' || sValLower === 'inactivo') {
             list = list.filter(s => s.status === 'Retirado' || (s.status === 'Inactivo' && s.retireReason));
-        } else if (statusVal === 'Ausente') {
+        } else if (sValLower === 'ausente') {
             list = list.filter(s => s.status === 'Ausente');
-        } else if (statusVal === 'Activo') {
-            list = list.filter(s => s.status === 'Activo' || !s.status);
+        } else if (sValLower === 'activo' || sValLower === 'inscrito') {
+            list = list.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || s.statusSire === 'INSCRITO' || s.active !== false || !s.status);
         } else {
-            list = list.filter(s => s.status && s.status.toLowerCase() === statusVal.toLowerCase());
+            list = list.filter(s => s.status && s.status.toLowerCase() === sValLower);
         }
     }
 
