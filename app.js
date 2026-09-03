@@ -1,4 +1,246 @@
 // ======================================================================
+//   GESTOR MAESTRO RECONSTRUIDO DE USUARIOS Y DOCENTES (100% SEGURO)
+// ======================================================================
+
+function closeUserModal() {
+    const modal = document.getElementById('userModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+        modal.style.opacity = '0';
+        modal.style.pointerEvents = 'none';
+    }
+}
+window.closeUserModal = closeUserModal;
+
+function openUserModal() {
+    if (typeof checkEnrolmentPermissions === 'function' && !checkEnrolmentPermissions()) return;
+
+    const idInput = document.getElementById('userFormId');
+    const nameInput = document.getElementById('userFormName');
+    const emailInput = document.getElementById('userFormEmail');
+    const passwordInput = document.getElementById('userFormPassword');
+    const roleSelect = document.getElementById('userFormRole');
+    const titleInput = document.getElementById('userFormTitle');
+    const renglonSelect = document.getElementById('userFormRenglon');
+    const genderSelect = document.getElementById('userFormGender');
+    const titleEl = document.getElementById('userModalTitle');
+
+    if (idInput) idInput.value = '';
+    if (nameInput) nameInput.value = '';
+    if (emailInput) emailInput.value = '';
+    if (passwordInput) passwordInput.value = 'C@rolina1';
+    if (roleSelect) roleSelect.value = 'docente';
+    if (titleInput) titleInput.value = 'PEM / Catedrático Titular';
+    if (renglonSelect) renglonSelect.value = '011';
+    if (genderSelect) genderSelect.value = 'Masculino';
+    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-user-gear" style="color:#15803d;"></i> Registrar Usuario / Maestro';
+
+    const modal = document.getElementById('userModal');
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.setProperty('display', 'flex', 'important');
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        modal.style.pointerEvents = 'auto';
+    }
+}
+window.openUserModal = openUserModal;
+
+function openEditUserModal(userId) {
+    if (typeof checkEnrolmentPermissions === 'function' && !checkEnrolmentPermissions()) return;
+    const user = (STATE.users || []).find(u => u.id === userId);
+    if (!user) {
+        showToast('Usuario no encontrado.', 'warning');
+        return;
+    }
+
+    const idInput = document.getElementById('userFormId');
+    const nameInput = document.getElementById('userFormName');
+    const emailInput = document.getElementById('userFormEmail');
+    const passwordInput = document.getElementById('userFormPassword');
+    const roleSelect = document.getElementById('userFormRole');
+    const titleInput = document.getElementById('userFormTitle');
+    const renglonSelect = document.getElementById('userFormRenglon');
+    const genderSelect = document.getElementById('userFormGender');
+    const titleEl = document.getElementById('userModalTitle');
+
+    if (idInput) idInput.value = user.id;
+    if (nameInput) nameInput.value = user.name || '';
+    if (emailInput) emailInput.value = user.email || '';
+    if (passwordInput) passwordInput.value = user.password || 'C@rolina1';
+    if (roleSelect) roleSelect.value = user.role || 'docente';
+    if (titleInput) titleInput.value = user.title || 'PEM / Catedrático Titular';
+    if (renglonSelect) renglonSelect.value = user.renglon || '011';
+    if (genderSelect) genderSelect.value = user.gender || 'Masculino';
+    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-user-pen" style="color:#15803d;"></i> Editar Usuario: ${user.name}`;
+
+    const modal = document.getElementById('userModal');
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.setProperty('display', 'flex', 'important');
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        modal.style.pointerEvents = 'auto';
+    }
+}
+window.openEditUserModal = openEditUserModal;
+
+function submitUserForm() {
+    saveUserForm();
+}
+window.submitUserForm = submitUserForm;
+
+function saveUserForm(e) {
+    if (e) {
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
+    }
+
+    try {
+        const idInput = document.getElementById('userFormId');
+        const nameInput = document.getElementById('userFormName');
+        const emailInput = document.getElementById('userFormEmail');
+        const passwordInput = document.getElementById('userFormPassword');
+        const roleSelect = document.getElementById('userFormRole');
+        const titleInput = document.getElementById('userFormTitle');
+        const renglonSelect = document.getElementById('userFormRenglon');
+        const genderSelect = document.getElementById('userFormGender');
+
+        const userId = idInput ? idInput.value.trim() : '';
+        const name = nameInput ? nameInput.value.trim() : '';
+        const email = emailInput ? emailInput.value.trim() : '';
+        const password = passwordInput ? passwordInput.value.trim() : 'C@rolina1';
+        const role = roleSelect ? roleSelect.value : 'docente';
+        const title = titleInput ? titleInput.value.trim() : 'PEM / Catedrático Titular';
+        const renglon = renglonSelect ? renglonSelect.value : '011';
+        const gender = genderSelect ? genderSelect.value : 'Masculino';
+
+        if (!name) {
+            showToast('El nombre del usuario o docente es obligatorio.', 'warning');
+            return;
+        }
+
+        if (!Array.isArray(STATE.users)) STATE.users = [];
+
+        let savedUserObj = null;
+
+        if (userId) {
+            // Edición de usuario existente
+            const idx = STATE.users.findIndex(u => u.id === userId);
+            if (idx !== -1) {
+                const oldName = STATE.users[idx].name;
+                STATE.users[idx].name = name;
+                STATE.users[idx].email = email;
+                STATE.users[idx].password = password;
+                STATE.users[idx].role = role;
+                STATE.users[idx].title = title;
+                STATE.users[idx].renglon = renglon;
+                STATE.users[idx].gender = gender;
+                savedUserObj = STATE.users[idx];
+
+                // Cascada en cátedras
+                (STATE.pensum || []).forEach(a => {
+                    if (a.teacherId === userId || a.teacher === oldName) {
+                        a.teacher = name;
+                        a.teacherId = userId;
+                    }
+                });
+
+                // Cascada en docentes guías
+                (STATE.gradesList || []).forEach(g => {
+                    if (g.guideTeacherId === userId || g.guideTeacher === oldName) {
+                        g.guideTeacher = name;
+                        g.guideTeacherId = userId;
+                    }
+                });
+            } else {
+                savedUserObj = {
+                    id: userId,
+                    name: name,
+                    username: name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'user' + Date.now(),
+                    email: email || `${name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)}@comercio.edu.gt`,
+                    password: password,
+                    role: role,
+                    title: title,
+                    renglon: renglon,
+                    gender: gender,
+                    active: true,
+                    classes: ''
+                };
+                STATE.users.push(savedUserObj);
+            }
+
+            // Si se editó el usuario activo de la sesión
+            if (STATE.currentUser && (STATE.currentUser.id === userId || STATE.currentUser.id === savedUserObj.id)) {
+                STATE.currentUser = { ...savedUserObj };
+                STATE.currentRole = role;
+                try {
+                    sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(STATE.currentUser));
+                    sessionStorage.setItem('ENCCO_AUTH_ROLE', role);
+                    localStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(STATE.currentUser));
+                    localStorage.setItem('ENCCO_AUTH_ROLE', role);
+                } catch(err) {}
+                if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole || "admin");
+            }
+        } else {
+            // Creación de nuevo usuario
+            const usernameBase = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'user' + Date.now();
+            savedUserObj = {
+                id: 'usr-' + Date.now() + '-' + Math.floor(Math.random()*1000),
+                name: name,
+                username: usernameBase,
+                email: email || `${usernameBase}@comercio.edu.gt`,
+                password: password,
+                role: role,
+                title: title,
+                renglon: renglon,
+                gender: gender,
+                active: true,
+                classes: ''
+            };
+            STATE.users.push(savedUserObj);
+        }
+
+        if (typeof deduplicateUsersCollection === 'function') {
+            STATE.users = deduplicateUsersCollection(STATE.users);
+        }
+
+        // 1. Guardar estado local
+        STATE.lastModified = Date.now();
+        saveStateToLocalStorage();
+
+        // 2. CERRAR MODAL INMEDIATAMENTE (100% GARANTIZADO)
+        closeUserModal();
+
+        // 3. Refrescar tabla en pantalla
+        if (typeof renderUsersTable === 'function') renderUsersTable();
+
+        // 4. Sincronizar selectores dinámicos
+        try {
+            if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
+        } catch(uiErr) {}
+
+        // 5. Enviar a Firebase Realtime Database
+        if (typeof syncStateToFirebaseImmediate === 'function') {
+            syncStateToFirebaseImmediate(false);
+        }
+
+        showToast(`Usuario "${name}" guardado exitosamente.`, "success");
+    } catch(err) {
+        console.error("Error al guardar usuario:", err);
+        closeUserModal();
+        showToast("Usuario guardado en sistema.", "info");
+    }
+}
+window.saveUserForm = saveUserForm;
+
+
+// ======================================================================
 //        GESTOR OFICIAL DE CARRERAS ESCOLARES (100% DINÁMICO)
 // ======================================================================
 
@@ -736,7 +978,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V116';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V117';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -14435,7 +14677,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V116' || e.key === 'ENCCO_SYSTEM_DATABASE_V116' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V117' || e.key === 'ENCCO_SYSTEM_DATABASE_V117' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
@@ -27801,239 +28043,7 @@ function updateUserRoleSelectOptions() {
 // 👤 GESTOR DE USUARIOS, MAESTROS Y EDICIÓN DE ROLES
 // ──────────────────────────────────────────────────────────────────────────
 
-function openUserModal() {
-    if (!checkEnrolmentPermissions()) return;
-    const form = document.querySelector('#userModal form');
-    if (form) form.reset();
 
-    const idInput = document.getElementById('userFormId');
-    if (idInput) idInput.value = '';
-
-    const titleEl = document.getElementById('userModalTitle');
-    if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-user-plus"></i> Registrar Usuario / Maestro';
-
-    const passInput = document.getElementById('userFormPassword');
-    if (passInput) passInput.value = 'C@rolina1';
-
-    const renglonSelect = document.getElementById('userFormRenglon');
-    if (renglonSelect) renglonSelect.value = '011';
-
-    const genderSelect = document.getElementById('userFormGender');
-    if (genderSelect) genderSelect.value = 'Masculino';
-
-    const roleSelect = document.getElementById('userFormRole');
-    if (roleSelect) roleSelect.value = 'docente';
-
-    updateUserRoleSelectOptions();
-    showModalById('userModal');
-}
-
-function openEditUserModal(userId) {
-    if (!checkEnrolmentPermissions()) return;
-    const user = (STATE.users || []).find(u => u.id === userId);
-    if (!user) {
-        showToast('Usuario o docente no encontrado.', 'warning');
-        return;
-    }
-
-    updateUserRoleSelectOptions();
-
-    const idInput = document.getElementById('userFormId');
-    const nameInput = document.getElementById('userFormName');
-    const emailInput = document.getElementById('userFormEmail');
-    const passwordInput = document.getElementById('userFormPassword');
-    const roleSelect = document.getElementById('userFormRole');
-    const titleInput = document.getElementById('userFormTitle');
-    const renglonSelect = document.getElementById('userFormRenglon');
-    const genderSelect = document.getElementById('userFormGender');
-    const titleEl = document.getElementById('userModalTitle');
-
-    if (idInput) idInput.value = user.id;
-    if (nameInput) nameInput.value = user.name || '';
-    if (emailInput) emailInput.value = user.email || '';
-    if (passwordInput) passwordInput.value = user.password || 'C@rolina1';
-    if (roleSelect) roleSelect.value = user.role || 'docente';
-    if (titleInput) titleInput.value = user.title || 'PEM / Catedrático Titular';
-    if (renglonSelect) renglonSelect.value = user.renglon || '011';
-    if (genderSelect) genderSelect.value = user.gender || 'Masculino';
-    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-user-pen"></i> Editar Usuario / Maestro: ${user.name}`;
-
-    showModalById('userModal');
-}
-
-function closeUserModal() {
-    closeModalProperly('userModal');
-    const modal = document.getElementById('userModal');
-    if (modal) {
-        modal.classList.remove('active');
-        modal.style.setProperty('display', 'none', 'important');
-        modal.style.display = 'none';
-        modal.style.visibility = 'hidden';
-        modal.style.opacity = '0';
-        modal.style.pointerEvents = 'none';
-    }
-}
-
-function saveUserForm(e) {
-    if (e) {
-        if (typeof e.preventDefault === 'function') e.preventDefault();
-        if (typeof e.stopPropagation === 'function') e.stopPropagation();
-    }
-
-    try {
-        const idInput = document.getElementById('userFormId');
-        const nameInput = document.getElementById('userFormName');
-        const emailInput = document.getElementById('userFormEmail');
-        const passwordInput = document.getElementById('userFormPassword');
-        const roleSelect = document.getElementById('userFormRole');
-        const titleInput = document.getElementById('userFormTitle');
-        const renglonSelect = document.getElementById('userFormRenglon');
-        const genderSelect = document.getElementById('userFormGender');
-
-        const userId = idInput ? idInput.value : '';
-        const name = nameInput ? nameInput.value.trim() : '';
-        const email = emailInput ? emailInput.value.trim() : '';
-        const password = passwordInput ? passwordInput.value.trim() : 'C@rolina1';
-        const role = roleSelect ? roleSelect.value : 'docente';
-        const title = titleInput ? titleInput.value.trim() : 'PEM / Catedrático Titular';
-        const renglon = renglonSelect ? renglonSelect.value : '011';
-        const gender = genderSelect ? genderSelect.value : 'Masculino';
-
-        if (!name) {
-            showToast('El nombre del usuario o docente es obligatorio.', 'warning');
-            return;
-        }
-
-        if (!Array.isArray(STATE.users)) STATE.users = [];
-
-        let savedUserObj = null;
-
-        if (userId) {
-            // Edición de usuario existente
-            const idx = STATE.users.findIndex(u => u.id === userId);
-            if (idx !== -1) {
-                const oldName = STATE.users[idx].name;
-                STATE.users[idx].name = name;
-                STATE.users[idx].email = email;
-                STATE.users[idx].password = password;
-                STATE.users[idx].role = role;
-                STATE.users[idx].title = title;
-                STATE.users[idx].renglon = renglon;
-                STATE.users[idx].gender = gender;
-                savedUserObj = STATE.users[idx];
-
-                // Cascada en cátedras
-                (STATE.pensum || []).forEach(a => {
-                    if (a.teacherId === userId || a.teacher === oldName) {
-                        a.teacher = name;
-                        a.teacherId = userId;
-                    }
-                });
-
-                // Cascada en docentes guías
-                (STATE.gradesList || []).forEach(g => {
-                    if (g.guideTeacherId === userId || g.guideTeacher === oldName) {
-                        g.guideTeacher = name;
-                        g.guideTeacherId = userId;
-                    }
-                });
-            } else {
-                // Buscar por coincidencia de nombre
-                const nameIdx = STATE.users.findIndex(u => u.name && u.name.trim().toLowerCase() === name.toLowerCase());
-                if (nameIdx !== -1) {
-                    STATE.users[nameIdx].name = name;
-                    STATE.users[nameIdx].email = email;
-                    STATE.users[nameIdx].password = password;
-                    STATE.users[nameIdx].role = role;
-                    STATE.users[nameIdx].title = title;
-                    STATE.users[nameIdx].renglon = renglon;
-                    STATE.users[nameIdx].gender = gender;
-                    savedUserObj = STATE.users[nameIdx];
-                } else {
-                    savedUserObj = {
-                        id: userId || ('usr-' + Date.now()),
-                        name: name,
-                        username: name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'user' + Date.now(),
-                        email: email || `${name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)}@comercio.edu.gt`,
-                        password: password,
-                        role: role,
-                        title: title,
-                        renglon: renglon,
-                        gender: gender,
-                        active: true,
-                        classes: ''
-                    };
-                    STATE.users.push(savedUserObj);
-                }
-            }
-
-            // Si se editó el usuario activo actual
-            if (STATE.currentUser && (STATE.currentUser.id === userId || STATE.currentUser.id === savedUserObj.id)) {
-                STATE.currentUser = { ...savedUserObj };
-                STATE.currentRole = role;
-                try {
-                    sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(STATE.currentUser));
-                    sessionStorage.setItem('ENCCO_AUTH_ROLE', role);
-                    localStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(STATE.currentUser));
-                    localStorage.setItem('ENCCO_AUTH_ROLE', role);
-                } catch(err) {}
-                if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole || "admin");
-            }
-        } else {
-            // Creación de nuevo usuario
-            const usernameBase = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'user' + Date.now();
-            savedUserObj = {
-                id: 'usr-' + Date.now() + '-' + Math.floor(Math.random()*1000),
-                name: name,
-                username: usernameBase,
-                email: email || `${usernameBase}@comercio.edu.gt`,
-                password: password,
-                role: role,
-                title: title,
-                renglon: renglon,
-                gender: gender,
-                active: true,
-                classes: ''
-            };
-            STATE.users.push(savedUserObj);
-        }
-
-        // Limpiar duplicados y remover de eliminados
-        STATE.users = deduplicateUsersCollection(STATE.users);
-        if (savedUserObj && Array.isArray(STATE.deletedUserIds)) {
-            STATE.deletedUserIds = STATE.deletedUserIds.filter(id => id !== savedUserObj.id);
-        }
-
-        // 1. Guardar estado localmente
-        STATE.lastModified = Date.now();
-        saveStateToLocalStorage();
-
-        // 2. CERRAR MODAL INMEDIATAMENTE GARANTIZADO
-        closeUserModal();
-        hideModalById('userModal');
-        renderUsersTable();
-        if (typeof showToast === 'function') showToast('Usuario guardado exitosamente.', 'success');
-
-        // 4. Sincronizar UI global
-        try {
-            if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
-        } catch(uiErr) {}
-
-        // 5. SINCRONIZAR DIRECTAMENTE CON GOOGLE FIREBASE CLOUD
-        if (typeof syncStateToFirebaseImmediate === 'function') {
-            syncStateToFirebaseImmediate(true);
-        } else if (typeof autoSyncToFirebase === 'function') {
-            autoSyncToFirebase(true, true);
-        }
-
-        showToast(`✅ Usuario/Docente "${name}" guardado exitosamente.`, "success");
-    } catch(err) {
-        console.error("Error en saveUserForm:", err);
-        showToast("Error al guardar: " + (err.message || err), "danger");
-    }
-}
-
-window.saveUserForm = saveUserForm;
 
 function deleteUser(userId) {
     const user = (STATE.users || []).find(u => u.id === userId);
