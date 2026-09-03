@@ -40,7 +40,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=20260831_v122_instant_database_sync">
+    <link rel="stylesheet" href="styles.css?v=20260831_v123_three_tier_permissions">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -1941,18 +1941,21 @@
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:2px solid #e2e8f0; padding-bottom:12px; margin-bottom:16px;">
                             <div>
                                 <h3 style="margin:0; font-size:1.05rem; color:#0f172a; font-weight:800; display:flex; align-items:center; gap:8px;">
-                                    <i class="fa-solid fa-sliders" style="color:#0284c7;"></i> Panel de Activación: ¿Qué puede ver y hacer este rol?
+                                    <i class="fa-solid fa-sliders" style="color:#0284c7;"></i> Nivel de Acceso por Módulo: ¿Qué puede modificar, solo ver o tener bloqueado?
                                 </h3>
                                 <span style="font-size:0.80rem; color:#64748b;">
-                                    Active (✓) los módulos que tendrá permitidos. Desactive los que deban quedar totalmente ocultos.
+                                    Elija entre 🟢 Modificar (acceso total), 🟡 Solo Ver (solo consulta, sin modificar) o 🔴 Bloquear (totalmente oculto).
                                 </span>
                             </div>
-                            <div style="display:flex; gap:8px; align-items:center;">
-                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleActiveRoleAllPermissions(true)" style="font-weight:700; padding:5px 12px;">
-                                    <i class="fa-solid fa-check-double"></i> Marcar Todos
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                <button type="button" class="btn btn-xs" onclick="setAllPermissionsLevel('edit')" style="font-weight:800; background:#f0fdf4; color:#166534; border:1.5px solid #86efac; border-radius:6px; padding:5px 10px; cursor:pointer;">
+                                    <i class="fa-solid fa-pen-to-square"></i> 🟢 Todos: Modificar
                                 </button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleActiveRoleAllPermissions(false)" style="font-weight:700; padding:5px 12px;">
-                                    <i class="fa-solid fa-ban"></i> Desmarcar Todos
+                                <button type="button" class="btn btn-xs" onclick="setAllPermissionsLevel('view')" style="font-weight:800; background:#fefce8; color:#854d0e; border:1.5px solid #fde047; border-radius:6px; padding:5px 10px; cursor:pointer;">
+                                    <i class="fa-solid fa-eye"></i> 🟡 Todos: Solo Ver
+                                </button>
+                                <button type="button" class="btn btn-xs" onclick="setAllPermissionsLevel('none')" style="font-weight:800; background:#fef2f2; color:#991b1b; border:1.5px solid #fca5a5; border-radius:6px; padding:5px 10px; cursor:pointer;">
+                                    <i class="fa-solid fa-ban"></i> 🔴 Todos: Bloquear
                                 </button>
                                 <button type="button" class="btn btn-primary btn-sm" onclick="saveActiveRolePermissions()" style="font-weight:800; background:#16a34a; border-color:#15803d; padding:6px 16px; font-size:0.88rem; display:inline-flex; align-items:center; gap:6px;">
                                     <i class="fa-solid fa-floppy-disk"></i> Guardar Permisos
@@ -3217,7 +3220,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260831_v122_instant_database_sync"></script>
+    <script src="app.js?v=20260831_v123_three_tier_permissions"></script>
     <script>
         // CÁLCULO DINÁMICO DE PROMOCIONES Y AÑOS DE FUNDACIÓN (BASE 1970)
         (function updateDynamicStats() {

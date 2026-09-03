@@ -1,3 +1,212 @@
+function enforceViewReadOnlyMode(viewName) {
+    if (STATE.currentRole === 'admin') return;
+    const viewEl = document.getElementById(`view-${viewName}`);
+    if (!viewEl) return;
+
+    // Remover banner previo
+    const existingBanner = viewEl.querySelector('.readonly-mode-banner');
+    if (existingBanner) existingBanner.remove();
+
+    const canModify = canRoleModify(viewName, STATE.currentRole);
+
+    if (!canModify) {
+        // Inyectar banner visual elegante de Solo Ver
+        const banner = document.createElement('div');
+        banner.className = 'readonly-mode-banner';
+        banner.style.cssText = 'background:#fefce8; border:1.5px solid #fde047; color:#854d0e; padding:10px 16px; border-radius:10px; margin-bottom:16px; font-weight:700; font-size:0.86rem; display:flex; align-items:center; gap:10px; box-shadow:0 2px 4px rgba(0,0,0,0.04);';
+        banner.innerHTML = `<i class="fa-solid fa-eye" style="font-size:1.15rem; color:#d97706;"></i> <span><strong>Modo Solo Consulta:</strong> Su rol tiene permiso para visualizar los datos de este módulo, pero no para realizar modificaciones, guardar ni eliminar registros.</span>`;
+        viewEl.insertBefore(banner, viewEl.firstChild);
+
+        // Desactivar / Ocultar botones de modificación dentro de la vista
+        viewEl.querySelectorAll('button:not(.nav-tab):not(.print-btn):not(.view-btn):not(.theme-toggle-btn), input[type="submit"]').forEach(btn => {
+            const btnText = (btn.textContent || '').toLowerCase();
+            const btnTitle = (btn.title || '').toLowerCase();
+            const onclickText = (btn.getAttribute('onclick') || '').toLowerCase();
+
+            if (btnText.includes('guardar') || btnText.includes('nuevo') || btnText.includes('crear') || 
+                btnText.includes('eliminar') || btnText.includes('importar') || btnText.includes('subir') || 
+                btnText.includes('editar') || btnTitle.includes('eliminar') || btnTitle.includes('editar') ||
+                onclickText.includes('save') || onclickText.includes('delete') || onclickText.includes('open') || onclickText.includes('init')) {
+                btn.style.display = 'none';
+            }
+        });
+    }
+}
+window.enforceViewReadOnlyMode = enforceViewReadOnlyMode;
+
+
+// ======================================================================
+//   MOTOR DE PERMISOS DE 3 NIVELES: MODIFICAR / SOLO VER / BLOQUEADO (V123)
+// ======================================================================
+
+function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
+    if (!roleKey) roleKey = STATE.currentRole || 'guest';
+    if (roleKey === 'admin') return 'edit';
+
+    if (typeof normalizeRolesConfig === 'function') normalizeRolesConfig();
+    const r = (STATE.rolesConfig || []).find(x => x.key === roleKey);
+    if (!r) return 'none';
+
+    if (r.permissionLevels && r.permissionLevels[moduleKey]) {
+        return r.permissionLevels[moduleKey];
+    }
+
+    if (Array.isArray(r.permissions)) {
+        if (r.permissions.includes(moduleKey + '_edit')) return 'edit';
+        if (r.permissions.includes(moduleKey + '_view')) return 'view';
+        if (r.permissions.includes(moduleKey)) return 'edit';
+    }
+
+    return 'none';
+}
+window.getModulePermissionLevel = getModulePermissionLevel;
+
+function hasRolePermission(permKey, role = null) {
+    const targetRole = role || STATE.currentRole || 'guest';
+    if (targetRole === 'admin') return true;
+
+    if (permKey.endsWith('_edit')) {
+        const baseKey = permKey.replace('_edit', '');
+        return canRoleModify(baseKey, targetRole);
+    }
+    if (permKey.endsWith('_view')) {
+        const baseKey = permKey.replace('_view', '');
+        const lvl = getModulePermissionLevel(baseKey, targetRole);
+        return lvl === 'view' || lvl === 'edit';
+    }
+
+    const lvl = getModulePermissionLevel(permKey, targetRole);
+    return lvl === 'view' || lvl === 'edit';
+}
+window.hasRolePermission = hasRolePermission;
+
+function canRoleModify(moduleKey, role = null) {
+    const targetRole = role || STATE.currentRole || 'guest';
+    if (targetRole === 'admin') return true;
+    const lvl = getModulePermissionLevel(moduleKey, targetRole);
+    return lvl === 'edit';
+}
+window.canRoleModify = canRoleModify;
+
+function renderActiveRolePermissionsGrid(activePerms = []) {
+    const container = document.getElementById('activeRolePermissionsContainer');
+    if (!container) return;
+
+    const isMasterAdminRole = (_selectedRoleKeyForEditing === 'admin');
+    const r = (STATE.rolesConfig || []).find(x => x.key === _selectedRoleKeyForEditing);
+
+    container.innerHTML = SYSTEM_MODULES_LIST.map(mod => {
+        let currentLevel = 'none';
+        if (isMasterAdminRole) {
+            currentLevel = 'edit';
+        } else if (r && r.permissionLevels && r.permissionLevels[mod.key]) {
+            currentLevel = r.permissionLevels[mod.key];
+        } else if (activePerms.includes(mod.key + '_edit')) {
+            currentLevel = 'edit';
+        } else if (activePerms.includes(mod.key + '_view')) {
+            currentLevel = 'view';
+        } else if (activePerms.includes(mod.key)) {
+            currentLevel = 'edit';
+        }
+
+        const cardStyles = {
+            'edit': { bg: '#f0fdf4', border: '#86efac', text: '🟢 Ver y Modificar', textColor: '#15803d' },
+            'view': { bg: '#fefce8', border: '#fde047', text: '🟡 Solo Ver (Consulta)', textColor: '#854d0e' },
+            'none': { bg: '#f8fafc', border: '#e2e8f0', text: '🔴 Bloqueado (Oculto)', textColor: '#94a3b8' }
+        };
+        const s = cardStyles[currentLevel] || cardStyles['none'];
+        const isDisabled = isMasterAdminRole;
+
+        return `
+            <div class="perm-level-card" id="permCard_${mod.key}" style="background:${s.bg}; border:2px solid ${s.border}; border-radius:10px; padding:14px; display:flex; flex-direction:column; justify-content:space-between; gap:10px; transition:all 0.15s ease;">
+                <div>
+                    <div style="font-weight:800; color:#0f172a; font-size:0.90rem; display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid ${mod.icon}" style="color:#0284c7; width:18px;"></i> ${mod.name}
+                    </div>
+                    <div style="font-size:0.75rem; color:#64748b; margin-top:3px; line-height:1.3;">
+                        ${mod.desc}
+                    </div>
+                    <div id="permBadge_${mod.key}" style="margin-top:6px; font-size:0.72rem; font-weight:800; color:${s.textColor};">
+                        ${s.text}
+                    </div>
+                </div>
+
+                <!-- SELECTOR DE 3 NIVELES -->
+                <div style="background:#e2e8f0; padding:3px; border-radius:8px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:3px;">
+                    <label id="lbl_edit_${mod.key}" style="display:flex; align-items:center; justify-content:center; padding:6px 2px; font-size:0.72rem; font-weight:800; border-radius:6px; cursor:${isDisabled ? 'not-allowed' : 'pointer'}; background:${currentLevel==='edit'?'#16a34a':'transparent'}; color:${currentLevel==='edit'?'#ffffff':'#334155'}; transition:all 0.15s; text-align:center;">
+                        <input type="radio" name="permLevel_${mod.key}" value="edit" ${currentLevel==='edit'?'checked':''} ${isDisabled?'disabled':''} onchange="updatePermCardStyle('${mod.key}', 'edit')" style="display:none;">
+                        <span>🟢 Modificar</span>
+                    </label>
+                    <label id="lbl_view_${mod.key}" style="display:flex; align-items:center; justify-content:center; padding:6px 2px; font-size:0.72rem; font-weight:800; border-radius:6px; cursor:${isDisabled ? 'not-allowed' : 'pointer'}; background:${currentLevel==='view'?'#d97706':'transparent'}; color:${currentLevel==='view'?'#ffffff':'#334155'}; transition:all 0.15s; text-align:center;">
+                        <input type="radio" name="permLevel_${mod.key}" value="view" ${currentLevel==='view'?'checked':''} ${isDisabled?'disabled':''} onchange="updatePermCardStyle('${mod.key}', 'view')" style="display:none;">
+                        <span>🟡 Solo Ver</span>
+                    </label>
+                    <label id="lbl_none_${mod.key}" style="display:flex; align-items:center; justify-content:center; padding:6px 2px; font-size:0.72rem; font-weight:800; border-radius:6px; cursor:${isDisabled ? 'not-allowed' : 'pointer'}; background:${currentLevel==='none'?'#dc2626':'transparent'}; color:${currentLevel==='none'?'#ffffff':'#64748b'}; transition:all 0.15s; text-align:center;">
+                        <input type="radio" name="permLevel_${mod.key}" value="none" ${currentLevel==='none'?'checked':''} ${isDisabled?'disabled':''} onchange="updatePermCardStyle('${mod.key}', 'none')" style="display:none;">
+                        <span>🔴 Bloquear</span>
+                    </label>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+window.renderActiveRolePermissionsGrid = renderActiveRolePermissionsGrid;
+
+function updatePermCardStyle(modKey, level) {
+    const card = document.getElementById(`permCard_${modKey}`);
+    const badge = document.getElementById(`permBadge_${modKey}`);
+    const lblEdit = document.getElementById(`lbl_edit_${modKey}`);
+    const lblView = document.getElementById(`lbl_view_${modKey}`);
+    const lblNone = document.getElementById(`lbl_none_${modKey}`);
+
+    const cardStyles = {
+        'edit': { bg: '#f0fdf4', border: '#86efac', text: '🟢 Ver y Modificar', textColor: '#15803d' },
+        'view': { bg: '#fefce8', border: '#fde047', text: '🟡 Solo Ver (Consulta)', textColor: '#854d0e' },
+        'none': { bg: '#f8fafc', border: '#e2e8f0', text: '🔴 Bloqueado (Oculto)', textColor: '#94a3b8' }
+    };
+    const s = cardStyles[level] || cardStyles['none'];
+
+    if (card) {
+        card.style.background = s.bg;
+        card.style.borderColor = s.border;
+    }
+    if (badge) {
+        badge.innerHTML = s.text;
+        badge.style.color = s.textColor;
+    }
+
+    if (lblEdit) {
+        lblEdit.style.background = (level === 'edit') ? '#16a34a' : 'transparent';
+        lblEdit.style.color = (level === 'edit') ? '#ffffff' : '#334155';
+    }
+    if (lblView) {
+        lblView.style.background = (level === 'view') ? '#d97706' : 'transparent';
+        lblView.style.color = (level === 'view') ? '#ffffff' : '#334155';
+    }
+    if (lblNone) {
+        lblNone.style.background = (level === 'none') ? '#dc2626' : 'transparent';
+        lblNone.style.color = (level === 'none') ? '#ffffff' : '#64748b';
+    }
+}
+window.updatePermCardStyle = updatePermCardStyle;
+
+function setAllPermissionsLevel(targetLevel = 'edit') {
+    if (_selectedRoleKeyForEditing === 'admin') {
+        showToast('El Super Administrador siempre conserva acceso total de modificación.', 'info');
+        return;
+    }
+
+    SYSTEM_MODULES_LIST.forEach(mod => {
+        const radio = document.querySelector(`input[name="permLevel_${mod.key}"][value="${targetLevel}"]`);
+        if (radio && !radio.disabled) {
+            radio.checked = true;
+            updatePermCardStyle(mod.key, targetLevel);
+        }
+    });
+}
+window.setAllPermissionsLevel = setAllPermissionsLevel;
+
+
 // ======================================================================
 //   SISTEMA DE SINCRONIZACIÓN INMEDIATA CON GOOGLE FIREBASE (V122)
 // ======================================================================
@@ -296,52 +505,7 @@ function loadRoleIntoPermissionsPanel(roleKey) {
 }
 window.loadRoleIntoPermissionsPanel = loadRoleIntoPermissionsPanel;
 
-function renderActiveRolePermissionsGrid(activePerms = []) {
-    const container = document.getElementById('activeRolePermissionsContainer');
-    if (!container) return;
 
-    const isMasterAdminRole = (_selectedRoleKeyForEditing === 'admin');
-
-    container.innerHTML = SYSTEM_MODULES_LIST.map(mod => {
-        const isChecked = activePerms.includes(mod.key) || isMasterAdminRole;
-        const isDisabled = isMasterAdminRole;
-
-        return `
-            <div style="background:${isChecked ? '#f0fdf4' : '#ffffff'}; border:2px solid ${isChecked ? '#86efac' : '#e2e8f0'}; border-radius:10px; padding:12px 14px; display:flex; align-items:flex-start; gap:12px; transition:all 0.15s ease;">
-                <input type="checkbox" name="activeRolePermCheckbox" value="${mod.key}" ${isChecked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''} onchange="this.parentElement.style.background=this.checked?'#f0fdf4':'#ffffff'; this.parentElement.style.borderColor=this.checked?'#86efac':'#e2e8f0';" style="width:20px; height:20px; accent-color:#16a34a; cursor:${isDisabled ? 'not-allowed' : 'pointer'}; margin-top:2px;">
-                <div style="flex:1;">
-                    <div style="font-weight:800; color:#1e293b; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
-                        <i class="fa-solid ${mod.icon}" style="color:#0284c7; width:16px;"></i> ${mod.name}
-                    </div>
-                    <div style="font-size:0.75rem; color:#64748b; margin-top:3px; line-height:1.25;">
-                        ${mod.desc}
-                    </div>
-                    <span style="display:inline-block; margin-top:4px; font-size:0.68rem; font-weight:700; color:${isChecked ? '#15803d' : '#94a3b8'}; text-transform:uppercase;">
-                        ${isChecked ? '● Activo para este rol' : '○ Desactivado'}
-                    </span>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-window.renderActiveRolePermissionsGrid = renderActiveRolePermissionsGrid;
-
-function toggleActiveRoleAllPermissions(check = true) {
-    if (_selectedRoleKeyForEditing === 'admin') {
-        showToast('El Super Administrador siempre tiene todos los permisos activos.', 'info');
-        return;
-    }
-
-    const checkboxes = document.querySelectorAll('input[name="activeRolePermCheckbox"]:not(:disabled)');
-    checkboxes.forEach(cb => {
-        cb.checked = check;
-        if (cb.parentElement) {
-            cb.parentElement.style.background = check ? '#f0fdf4' : '#ffffff';
-            cb.parentElement.style.borderColor = check ? '#86efac' : '#e2e8f0';
-        }
-    });
-}
-window.toggleActiveRoleAllPermissions = toggleActiveRoleAllPermissions;
 
 function saveActiveRolePermissions() {
     if (STATE.currentRole !== 'admin' && STATE.currentUser?.role !== 'admin') {
@@ -364,12 +528,25 @@ function saveActiveRolePermissions() {
         return;
     }
 
-    const checkboxes = document.querySelectorAll('input[name="activeRolePermCheckbox"]:checked');
-    let permissions = Array.from(checkboxes).map(c => c.value);
+    const permissionLevels = {};
+    const permissions = [];
 
-    if (key === 'admin') {
-        permissions = SYSTEM_MODULES_LIST.map(m => m.key);
-    }
+    SYSTEM_MODULES_LIST.forEach(mod => {
+        if (key === 'admin') {
+            permissionLevels[mod.key] = 'edit';
+            permissions.push(mod.key, mod.key + '_edit', mod.key + '_view');
+        } else {
+            const checkedRadio = document.querySelector(`input[name="permLevel_${mod.key}"]:checked`);
+            const level = checkedRadio ? checkedRadio.value : 'none';
+            permissionLevels[mod.key] = level;
+
+            if (level === 'edit') {
+                permissions.push(mod.key, mod.key + '_edit', mod.key + '_view');
+            } else if (level === 'view') {
+                permissions.push(mod.key, mod.key + '_view');
+            }
+        }
+    });
 
     normalizeRolesConfig();
 
@@ -379,8 +556,9 @@ function saveActiveRolePermissions() {
         STATE.rolesConfig[existingIdx].description = desc;
         STATE.rolesConfig[existingIdx].color = color;
         STATE.rolesConfig[existingIdx].permissions = permissions;
+        STATE.rolesConfig[existingIdx].permissionLevels = permissionLevels;
         _selectedRoleKeyForEditing = key;
-        showToast(`Permisos del rol "${name}" actualizados y sincronizados en tiempo real.`, 'success');
+        showToast(`Permisos del rol "${name}" guardados (Modificar, Solo Ver o Bloqueado).`, 'success');
     } else {
         STATE.rolesConfig.push({
             key: key,
@@ -388,13 +566,14 @@ function saveActiveRolePermissions() {
             description: desc,
             color: color,
             isSystem: false,
-            permissions: permissions
+            permissions: permissions,
+            permissionLevels: permissionLevels
         });
         _selectedRoleKeyForEditing = key;
-        showToast(`Nuevo rol "${name}" creado y activado exitosamente.`, 'success');
+        showToast(`Nuevo rol "${name}" creado con sus niveles de acceso.`, 'success');
     }
 
-    // 1. Guardar en almacenamiento local
+    // 1. Guardar localmente
     saveStateToLocalStorage();
 
     // 2. Notificar vía BroadcastChannel
@@ -408,12 +587,12 @@ function saveActiveRolePermissions() {
         }
     } catch(e) {}
 
-    // 3. Sincronizar en Google Firebase Realtime Database
-    if (typeof syncStateToFirebaseImmediate === 'function') {
-        syncStateToFirebaseImmediate(false);
+    // 3. Sincronizar en Google Firebase Realtime Database inmediatamente
+    if (typeof pushStateToFirebaseCloud === 'function') {
+        pushStateToFirebaseCloud(false);
     }
 
-    // 4. Aplicar permisos en tiempo real
+    // 4. Aplicar permisos en tiempo real a la interfaz activa
     applyUserRole(STATE.currentRole);
 
     // 5. Refrescar interfaz de roles
@@ -517,24 +696,7 @@ function normalizeRolesConfig() {
 }
 window.normalizeRolesConfig = normalizeRolesConfig;
 
-function hasRolePermission(permKey, role = null) {
-    const targetRole = role || STATE.currentRole || 'guest';
-    if (targetRole === 'admin') return true;
 
-    normalizeRolesConfig();
-    const r = (STATE.rolesConfig || []).find(x => x.key === targetRole);
-    if (!r || !Array.isArray(r.permissions)) return false;
-
-    if (r.permissions.includes(permKey)) return true;
-
-    // Alias y equivalencias
-    if (permKey === 'users' && (r.permissions.includes('users_view') || r.permissions.includes('users'))) return true;
-    if (permKey === 'students' && (r.permissions.includes('students_view') || r.permissions.includes('students'))) return true;
-    if (permKey === 'discipline' && (r.permissions.includes('discipline_view') || r.permissions.includes('discipline'))) return true;
-
-    return false;
-}
-window.hasRolePermission = hasRolePermission;
 
 function renderRolePermissionsCheckboxes(activePerms = []) {
     const grid = document.getElementById('rolePermissionsCheckboxGrid');
@@ -1688,7 +1850,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V122';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V123';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -15388,7 +15550,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V122' || e.key === 'ENCCO_SYSTEM_DATABASE_V122' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V123' || e.key === 'ENCCO_SYSTEM_DATABASE_V123' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
@@ -15529,6 +15691,7 @@ function changeAcademicCycle(cycle) {
     showToast(`Ciclo lectivo activo cambiado a: ${cycle}`, "info");
     updateCycleSelects();
     renderCurrentView();
+    if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(viewName);
 }
 
 // ==========================================================================
@@ -15641,6 +15804,7 @@ function switchRole(role) {
     // Permitir acceso fluido a todas las funciones configuradas para cada rol
 
     renderCurrentView();
+    if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(viewName);
 }
 
 // ==========================================================================
@@ -15765,6 +15929,7 @@ function navigateTo(viewName, event = null) {
     }
 
     renderCurrentView();
+    if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(viewName);
 }
 
 function renderCurrentView() {
@@ -22727,6 +22892,7 @@ function saveCycleForm(e) {
     renderCycleList();
     updateCycleSelects();
     renderCurrentView();
+    if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(viewName);
 }
 
 function setCycleActive(cycleId) {
@@ -22738,6 +22904,7 @@ function setCycleActive(cycleId) {
     updateCycleSelects();
     showToast(`Ciclo escolar activo cambiado a: ${c.name}`, "info");
     renderCurrentView();
+    if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(viewName);
 }
 
 function deleteCycle(cycleId) {
