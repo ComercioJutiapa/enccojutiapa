@@ -2497,10 +2497,14 @@ function printRosterForCurrentSelection() {
 }
 
 function checkEnrolmentPermissions() {
-    const role = STATE.currentRole;
-    const isAllowed = (role === 'admin' || role === 'director' || role === 'secretaria');
+    const role = STATE.currentRole || STATE.currentUser?.role || (function() {
+        try {
+            return JSON.parse(sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE') || '"admin"');
+        } catch(e) { return 'admin'; }
+    })();
+    const isAllowed = (role === 'admin' || role === 'director' || role === 'secretaria' || role === 'profesor_auxiliar');
     if (!isAllowed) {
-        showToast("Acceso Restringido: La modificación de estructura escolar, matrículas y reportes es exclusiva de Dirección y Secretaría Académica.", "danger");
+        showToast("Acceso Restringido: Esta acción es exclusiva de Dirección, Secretaría o Administrador.", "warning");
         return false;
     }
     return true;
@@ -6327,86 +6331,7 @@ function filterUsersTable(val) {
     renderUsersTable(val);
 }
 
-function openUserModal() {
-    if (!checkEnrolmentPermissions()) return;
-    document.getElementById('userFormId').value = '';
-    document.getElementById('userModalTitle').innerHTML = '<i class="fa-solid fa-user-plus"></i> Registrar Nuevo Maestro / Usuario';
-    document.getElementById('userFormName').value = '';
-    document.getElementById('userFormEmail').value = '';
-    document.getElementById('userFormPassword').value = 'C@rolina1';
-    document.getElementById('userFormRole').value = 'docente';
-    document.getElementById('userFormTitle').value = '';
-    const modal = document.getElementById('userModal');
-    if (modal) {
-        modal.style.display = 'flex';
-        modal.classList.add('active');
-    }
-}
-
-function openEditUserModal(userId) {
-    if (!checkEnrolmentPermissions()) return;
-    const user = STATE.users.find(u => u.id === userId);
-    if (!user) return;
-
-    document.getElementById('userFormId').value = user.id;
-    document.getElementById('userModalTitle').innerHTML = '<i class="fa-solid fa-user-pen"></i> Editar Maestro / Usuario';
-    document.getElementById('userFormName').value = user.name;
-    document.getElementById('userFormEmail').value = user.email;
-    document.getElementById('userFormPassword').value = user.password || 'C@rolina1';
-    document.getElementById('userFormRole').value = user.role;
-    document.getElementById('userFormTitle').value = user.title;
-    const modal = document.getElementById('userModal');
-    if (modal) {
-        modal.style.display = 'flex';
-        modal.classList.add('active');
-    }
-}
-
-function closeUserModal() {
-    const modal = document.getElementById('userModal');
-    if (modal) {
-        modal.classList.remove('active');
-        modal.style.setProperty('display', 'none', 'important');
-    }
-}
-
-// saveUserForm redirigido a la definición maestra unificada al final de app.js
-
-function deleteUser(userId) {
-    if (!checkEnrolmentPermissions()) return;
-    const user = STATE.users.find(u => u.id === userId);
-    if (!user) return;
-
-    if (user.id === 'usr-admin-master' || user.id === 'usr-admin-01') {
-        showToast("No es posible eliminar la cuenta principal de Super Administrador.", "danger");
-        return;
-    }
-
-    if (confirm(`¿Está seguro de eliminar al docente o usuario "${user.name}" del sistema? Esta acción actualizará todas las asignaciones vinculadas.`)) {
-        const oldName = user.name;
-        STATE.users = STATE.users.filter(u => u.id !== userId);
-
-        // Desvincular en cátedras
-        (STATE.pensum || []).forEach(a => {
-            if (a.teacherId === userId || a.teacher === oldName) {
-                a.teacher = 'Sin asignar';
-                a.teacherId = null;
-            }
-        });
-
-        // Desvincular en grados
-        (STATE.gradesList || []).forEach(g => {
-            if (g.guideTeacherId === userId || g.guideTeacher === oldName) {
-                g.guideTeacher = 'Sin asignar';
-                g.guideTeacherId = null;
-            }
-        });
-
-        renderUsersTable();
-        synchronizeGlobalDynamicUI();
-        showToast(`El maestro/usuario "${user.name}" ha sido eliminado y desvinculado de sus cátedras.`, "info");
-    }
-}
+// Controladores de Usuario unificados en la sección principal
 
 // ==========================================================================
 // 14. UTILIDADES Y CARGA DE VISTAS
@@ -14737,6 +14662,18 @@ function openUserModal() {
     const titleEl = document.getElementById('userModalTitle');
     if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-user-plus"></i> Registrar Usuario / Maestro';
 
+    const passInput = document.getElementById('userFormPassword');
+    if (passInput) passInput.value = 'C@rolina1';
+
+    const renglonSelect = document.getElementById('userFormRenglon');
+    if (renglonSelect) renglonSelect.value = '011';
+
+    const genderSelect = document.getElementById('userFormGender');
+    if (genderSelect) genderSelect.value = 'Masculino';
+
+    const roleSelect = document.getElementById('userFormRole');
+    if (roleSelect) roleSelect.value = 'docente';
+
     updateUserRoleSelectOptions();
     showModalById('userModal');
 }
@@ -14745,7 +14682,7 @@ function openEditUserModal(userId) {
     if (!checkEnrolmentPermissions()) return;
     const user = (STATE.users || []).find(u => u.id === userId);
     if (!user) {
-        showToast('Usuario no encontrado.', 'warning');
+        showToast('Usuario o docente no encontrado.', 'warning');
         return;
     }
 
@@ -14759,18 +14696,17 @@ function openEditUserModal(userId) {
     const titleInput = document.getElementById('userFormTitle');
     const renglonSelect = document.getElementById('userFormRenglon');
     const genderSelect = document.getElementById('userFormGender');
+    const titleEl = document.getElementById('userModalTitle');
 
     if (idInput) idInput.value = user.id;
     if (nameInput) nameInput.value = user.name || '';
     if (emailInput) emailInput.value = user.email || '';
     if (passwordInput) passwordInput.value = user.password || 'C@rolina1';
-    if (roleSelect && user.role) roleSelect.value = user.role;
+    if (roleSelect) roleSelect.value = user.role || 'docente';
     if (titleInput) titleInput.value = user.title || 'PEM / Catedrático Titular';
-    if (renglonSelect && user.renglon) renglonSelect.value = user.renglon;
-    if (genderSelect && user.gender) genderSelect.value = user.gender;
-
-    const titleEl = document.getElementById('userModalTitle');
-    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-user-pen"></i> Editar Usuario "${user.name}"`;
+    if (renglonSelect) renglonSelect.value = user.renglon || '011';
+    if (genderSelect) genderSelect.value = user.gender || 'Masculino';
+    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-user-pen"></i> Editar Usuario / Maestro: ${user.name}`;
 
     showModalById('userModal');
 }
@@ -14783,7 +14719,7 @@ function closeUserModal() {
     }
 }
 
-async function saveUserForm(e) {
+function saveUserForm(e) {
     if (e && e.preventDefault) e.preventDefault();
     if (!checkEnrolmentPermissions()) return;
 
@@ -14882,19 +14818,22 @@ async function saveUserForm(e) {
         STATE.deletedUserIds = STATE.deletedUserIds.filter(id => id !== savedUserObj.id);
     }
 
+    // 1. Guardar estado en memoria y almacenamiento local
     STATE.lastModified = Date.now();
     saveStateToLocalStorage();
-    synchronizeGlobalDynamicUI();
+
+    // 2. Cerrar modal y refrescar la tabla dinámicamente al instante
     closeUserModal();
     renderUsersTable();
+    synchronizeGlobalDynamicUI();
     if (typeof renderDashboard === 'function') renderDashboard();
 
-    // Sincronización inmediata obligatoria a la nube de Supabase
-    if (typeof syncStateToSupabaseImmediate === 'function') {
-        await syncStateToSupabaseImmediate(false);
+    // 3. Sincronizar en segundo plano a Supabase sin bloquear la UI
+    if (typeof autoSyncToSupabase === 'function') {
+        autoSyncToSupabase(true, false);
     }
 
-    showToast(`✅ Usuario/Docente "${name}" guardado y respaldado permanentemente en la nube.`, "success");
+    showToast(`✅ Usuario/Docente "${name}" guardado exitosamente.`, "success");
 }
 
 function deleteUser(userId) {
@@ -14932,17 +14871,21 @@ function deleteUser(userId) {
             }
         });
 
+        // 1. Guardar estado
         STATE.lastModified = Date.now();
         saveStateToLocalStorage();
-        synchronizeGlobalDynamicUI();
+
+        // 2. Refrescar la tabla dinámicamente al instante
         renderUsersTable();
+        synchronizeGlobalDynamicUI();
         if (typeof renderDashboard === 'function') renderDashboard();
 
-        if (typeof syncStateToSupabaseImmediate === 'function') {
-            syncStateToSupabaseImmediate(false);
+        // 3. Sincronizar con la nube
+        if (typeof autoSyncToSupabase === 'function') {
+            autoSyncToSupabase(true, false);
         }
 
-        showToast(`Usuario "${oldName}" eliminado del sistema y de la nube.`, "info");
+        showToast(`Usuario "${oldName}" eliminado del sistema.`, "info");
     }
 }
 
