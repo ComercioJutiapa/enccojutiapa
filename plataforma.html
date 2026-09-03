@@ -40,7 +40,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=20260831_v115_perfect_modal_hiding">
+    <link rel="stylesheet" href="styles.css?v=20260831_v116_bulletproof_modals">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -234,6 +234,27 @@
         }
     </style>
 
+    <style id="bulletproofModalStyle">
+        #userModal:not(.active),
+        .modal-overlay:not(.active),
+        .modal-backdrop:not(.active),
+        .custom-modal-container:not(.active) {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+
+        #userModal.active,
+        .modal-overlay.active,
+        .modal-backdrop.active,
+        .custom-modal-container.active {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+    </style>
 </head>
 <body class="theme-light">
 <header class="top-role-bar" id="topRoleBar" style="display:block;">
@@ -2910,7 +2931,7 @@
         <div class="modal-container">
             <div class="modal-header">
                 <h3 id="userModalTitle"><i class="fa-solid fa-user-gear"></i> Registrar Usuario / Maestro</h3>
-                <button class="modal-close" onclick="closeUserModal()">&times;</button>
+                <button type="button" class="modal-close" onclick="forceCloseModal(\'userModal\')">&times;</button>
             </div>
             <form onsubmit="saveUserForm(event)">
                 <input type="hidden" id="userFormId">
@@ -2965,8 +2986,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeUserModal(); hideModalById('userModal');">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" id="userFormSubmitBtn" style="font-weight:700;"><i class="fa-solid fa-floppy-disk"></i> Guardar Usuario</button>
+                    <button type="button" class="btn btn-secondary" onclick="forceCloseModal(\'userModal\')">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="userFormSubmitBtn" onclick="saveUserForm(event); forceCloseModal(\'userModal\');" style="font-weight:700;"><i class="fa-solid fa-floppy-disk"></i> Guardar Usuario</button>
                 </div>
             </form>
         </div>
@@ -3075,7 +3096,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260831_v115_modal_closers_guaranteed"></script>
+    <script src="app.js?v=20260831_v116_bulletproof_modals"></script>
     <script>
         // CÁLCULO DINÁMICO DE PROMOCIONES Y AÑOS DE FUNDACIÓN (BASE 1970)
         (function updateDynamicStats() {

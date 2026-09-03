@@ -443,6 +443,9 @@ function showModalById(modalId) {
         modal.classList.add('active');
         modal.style.setProperty('display', 'flex', 'important');
         modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        modal.style.pointerEvents = 'auto';
     }
 }
 window.showModalById = showModalById;
@@ -450,6 +453,21 @@ window.showModalById = showModalById;
 // ======================================================================
 //   CONTROLADOR MAESTRO UNIVERSAL DE CIERRE Y APERTURA DE VENTANAS MODALES
 // ======================================================================
+function forceCloseModal(modalId) {
+    if (!modalId) return;
+    closeModalProperly(modalId);
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+        modal.style.opacity = '0';
+        modal.style.pointerEvents = 'none';
+    }
+}
+window.forceCloseModal = forceCloseModal;
+
 function closeModalProperly(modalId) {
     if (!modalId) return;
     const modal = document.getElementById(modalId);
@@ -457,11 +475,25 @@ function closeModalProperly(modalId) {
         modal.classList.remove('active');
         modal.style.setProperty('display', 'none', 'important');
         modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+        modal.style.opacity = '0';
+        modal.style.pointerEvents = 'none';
     }
 }
 window.closeModalProperly = closeModalProperly;
 
-function closeUserModal() { closeModalProperly('userModal'); }
+function closeUserModal() {
+    closeModalProperly('userModal');
+    const modal = document.getElementById('userModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+        modal.style.opacity = '0';
+        modal.style.pointerEvents = 'none';
+    }
+}
 window.closeUserModal = closeUserModal;
 
 function closeStudentProfileModal() { closeModalProperly('studentProfileModal'); }
@@ -619,6 +651,9 @@ function showModalById(modalId) {
         modal.classList.add('active');
         modal.style.setProperty('display', 'flex', 'important');
         modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        modal.style.pointerEvents = 'auto';
     }
 }
 window.showModalById = showModalById;
@@ -701,7 +736,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V115';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V116';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -14400,7 +14435,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V115' || e.key === 'ENCCO_SYSTEM_DATABASE_V115' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V116' || e.key === 'ENCCO_SYSTEM_DATABASE_V116' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
@@ -27827,11 +27862,15 @@ function openEditUserModal(userId) {
 }
 
 function closeUserModal() {
+    closeModalProperly('userModal');
     const modal = document.getElementById('userModal');
     if (modal) {
         modal.classList.remove('active');
         modal.style.setProperty('display', 'none', 'important');
         modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+        modal.style.opacity = '0';
+        modal.style.pointerEvents = 'none';
     }
 }
 
