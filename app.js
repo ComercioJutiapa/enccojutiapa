@@ -301,12 +301,12 @@ function normalizeRolesConfig() {
 }
 window.normalizeRolesConfig = normalizeRolesConfig;
 
-function hasRolePermission(permKey, role = STATE.currentRole) {
-    if (!role) role = STATE.currentRole || 'guest';
-    if (role === 'admin' || STATE.currentUser?.role === 'admin') return true;
+function hasRolePermission(permKey, role = null) {
+    const targetRole = role || STATE.currentRole || 'guest';
+    if (targetRole === 'admin') return true;
 
     normalizeRolesConfig();
-    const r = (STATE.rolesConfig || []).find(x => x.key === role);
+    const r = (STATE.rolesConfig || []).find(x => x.key === targetRole);
     if (!r || !Array.isArray(r.permissions)) return false;
 
     if (r.permissions.includes(permKey)) return true;
@@ -1557,7 +1557,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V120';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V121';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -15257,7 +15257,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V120' || e.key === 'ENCCO_SYSTEM_DATABASE_V120' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V121' || e.key === 'ENCCO_SYSTEM_DATABASE_V121' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
@@ -27906,32 +27906,6 @@ function getAvailablePermissionsList() {
         { key: 'roles', label: 'Gestor de Roles y Permisos Personalizados', category: 'Avanzado' },
         { key: 'settings', label: 'Configuraciones Globales del Sistema', category: 'Avanzado' }
     ];
-}
-
-function hasRolePermission(permKey, role = STATE.currentRole) {
-    if (!role) role = STATE.currentRole || 'guest';
-    if (role === 'admin') return true;
-
-    // Supervisión y auditoría de calificaciones para Dirección y Secretaría
-    if (permKey === 'gradebook' && (role === 'director' || role === 'secretaria' || role === 'docente')) {
-        return true;
-    }
-
-    const roles = STATE.rolesConfig || (typeof getInitialData === 'function' && getInitialData().rolesConfig) || [];
-    const r = roles.find(x => x.key === role);
-    if (!r || !Array.isArray(r.permissions)) return false;
-
-    if (typeof permKey === 'string' && permKey.includes(',')) {
-        const keys = permKey.split(',').map(k => k.trim());
-        return keys.some(k => hasRolePermission(k, role));
-    }
-
-    if (r.permissions.includes(permKey)) return true;
-    if (permKey === 'users' && (r.permissions.includes('users_view') || r.permissions.includes('users_edit'))) return true;
-    if (permKey === 'students' && (r.permissions.includes('students_view') || r.permissions.includes('students_edit'))) return true;
-    if (permKey === 'discipline' && (r.permissions.includes('discipline_view') || r.permissions.includes('discipline_resolve'))) return true;
-
-    return false;
 }
 
 function openSirePensumImportModal() {
