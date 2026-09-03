@@ -701,7 +701,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V114';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V115';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -14400,7 +14400,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V114' || e.key === 'ENCCO_SYSTEM_DATABASE_V114' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V115' || e.key === 'ENCCO_SYSTEM_DATABASE_V115' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
