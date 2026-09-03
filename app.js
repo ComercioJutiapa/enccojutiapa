@@ -447,6 +447,84 @@ function showModalById(modalId) {
 }
 window.showModalById = showModalById;
 
+// ======================================================================
+//   CONTROLADOR MAESTRO UNIVERSAL DE CIERRE Y APERTURA DE VENTANAS MODALES
+// ======================================================================
+function closeModalProperly(modalId) {
+    if (!modalId) return;
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+        modal.style.display = 'none';
+    }
+}
+window.closeModalProperly = closeModalProperly;
+
+function closeUserModal() { closeModalProperly('userModal'); }
+window.closeUserModal = closeUserModal;
+
+function closeStudentProfileModal() { closeModalProperly('studentProfileModal'); }
+window.closeStudentProfileModal = closeStudentProfileModal;
+
+function closeGradeModal() { closeModalProperly('gradeModal'); }
+window.closeGradeModal = closeGradeModal;
+
+function closePensumSubjectModal() { closeModalProperly('pensumSubjectModal'); }
+window.closePensumSubjectModal = closePensumSubjectModal;
+
+function closeClassAssignmentModal() { closeModalProperly('classAssignmentModal'); }
+window.closeClassAssignmentModal = closeClassAssignmentModal;
+
+function closeCareerModal() { closeModalProperly('careerModal'); }
+window.closeCareerModal = closeCareerModal;
+
+function closeCycleModal() { closeModalProperly('cycleModal'); }
+window.closeCycleModal = closeCycleModal;
+
+function closeCyclePromotionModal() { closeModalProperly('cyclePromotionModal'); }
+window.closeCyclePromotionModal = closeCyclePromotionModal;
+
+function closeAcademicExonerationModal() { closeModalProperly('academicExonerationModal'); }
+window.closeAcademicExonerationModal = closeAcademicExonerationModal;
+
+function closeDisciplineModal() { closeModalProperly('disciplineModal'); }
+window.closeDisciplineModal = closeDisciplineModal;
+
+function closeDisciplineResolutionModal() { closeModalProperly('disciplineResolutionModal'); }
+window.closeDisciplineResolutionModal = closeDisciplineResolutionModal;
+
+function closeGradingConfigModal() { closeModalProperly('gradingConfigModal'); }
+window.closeGradingConfigModal = closeGradingConfigModal;
+
+function closeAssignGuideTeacherModal() { closeModalProperly('assignGuideTeacherModal'); }
+window.closeAssignGuideTeacherModal = closeAssignGuideTeacherModal;
+
+function closeGradesDirectoryModal() { closeModalProperly('gradesDirectoryModal'); }
+window.closeGradesDirectoryModal = closeGradesDirectoryModal;
+
+function closeSectionStudentsModal() { closeModalProperly('sectionStudentsModal'); }
+window.closeSectionStudentsModal = closeSectionStudentsModal;
+
+function closeDbConfigModal() { closeModalProperly('dbConfigModal'); }
+window.closeDbConfigModal = closeDbConfigModal;
+
+function closeNotificationsModal() { closeModalProperly('notificationsModal'); }
+window.closeNotificationsModal = closeNotificationsModal;
+
+function closeRoleModal() { closeModalProperly('roleModal'); }
+window.closeRoleModal = closeRoleModal;
+
+function closeForgotPasswordModal() { closeModalProperly('forgotPasswordModal'); }
+window.closeForgotPasswordModal = closeForgotPasswordModal;
+
+function closeSirePensumImportModal() { closeModalProperly('sirePensumImportModal'); }
+window.closeSirePensumImportModal = closeSirePensumImportModal;
+
+function closePrintDocumentModal() { closeModalProperly('printDocumentModal'); }
+window.closePrintDocumentModal = closePrintDocumentModal;
+
+
 function hideModalById(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -623,7 +701,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V113';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V114';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -14322,7 +14400,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V113' || e.key === 'ENCCO_SYSTEM_DATABASE_V113' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V114' || e.key === 'ENCCO_SYSTEM_DATABASE_V114' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
@@ -27915,6 +27993,8 @@ function saveUserForm(e) {
         showToast("Error al guardar: " + (err.message || err), "danger");
     }
 }
+
+window.saveUserForm = saveUserForm;
 
 function deleteUser(userId) {
     const user = (STATE.users || []).find(u => u.id === userId);

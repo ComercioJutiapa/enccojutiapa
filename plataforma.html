@@ -2515,7 +2515,7 @@
         <div class="modal-container medium" style="max-width:850px;">
             <div class="modal-header">
                 <h3 id="profileModalTitle"><i class="fa-solid fa-id-card"></i> Expediente y Ficha Integral del Estudiante</h3>
-                <button class="modal-close" onclick="closeCyclePromotionModal()">&times;</button>
+                <button class="modal-close" onclick="closeStudentProfileModal()">&times;</button>&times;</button>
             </div>
             <form onsubmit="saveStudentProfileForm(event)">
                 <div class="modal-body" style="padding-top:12px;">
@@ -2944,8 +2944,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Cancelar</button>
-                    <button type="button" class="btn btn-primary" id="userFormSubmitBtn" onclick="saveUserForm(event)" style="font-weight:700;"><i class="fa-solid fa-floppy-disk"></i> Guardar Usuario</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeUserModal(); hideModalById('userModal');">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="userFormSubmitBtn" style="font-weight:700;"><i class="fa-solid fa-floppy-disk"></i> Guardar Usuario</button>
                 </div>
             </form>
         </div>
@@ -3054,7 +3054,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260831_v113_career_manager_and_directory_flawless"></script>
+    <script src="app.js?v=20260831_v114_modal_closers_guaranteed"></script>
     <script>
         // CÁLCULO DINÁMICO DE PROMOCIONES Y AÑOS DE FUNDACIÓN (BASE 1970)
         (function updateDynamicStats() {
