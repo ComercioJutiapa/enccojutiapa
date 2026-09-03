@@ -2956,49 +2956,68 @@
 
     <!-- MODAL DE CONFIGURACIÓN Y SINCRONIZACIÓN DE SERVIDOR NUBE / BD -->
     <div class="modal-overlay" id="dbConfigModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeDbConfigModal()">
-        <div class="modal-container" style="max-width: 620px;">
+        <div class="modal-container" style="max-width: 650px;">
             <div class="modal-header" style="background: var(--bg-surface); border-bottom: 2px solid var(--border-color);">
                 <h3 style="margin:0; font-size:1.15rem; color:var(--brand-green-dark); display:flex; align-items:center; gap:8px;">
-                    <i class="fa-solid fa-cloud" style="color:var(--brand-green);"></i> Sincronización Servidor Nube (PostgreSQL / Supabase)
+                    <i class="fa-solid fa-cloud" style="color:var(--brand-green);"></i> Sincronización Servidor Nube (Google Firebase & Supabase)
                 </h3>
                 <button class="modal-close" onclick="closeDbConfigModal()">&times;</button>
             </div>
             <div class="modal-body" style="padding:18px 22px;">
-                <div id="dbConnectionStatusBadge" style="padding:10px 14px; border-radius:6px; background:#f1f5f9; border:1px solid #cbd5e1; font-size:0.86rem; margin-bottom:16px;">
-                    <!-- Estado dinámico de conexión -->
+                <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:6px; padding:12px; margin-bottom:16px;">
+                    <strong style="color:#166534; font-size:0.9rem; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-brands fa-google"></i> Google Firebase Realtime Database (100% Gratis e Ilimitado)
+                    </strong>
+                    <p style="font-size:0.82rem; color:#15803d; margin:4px 0 0 0; line-height:1.4;">
+                        El Plan Gratuito (Spark) de Google Firebase ofrece <strong>1 GB de almacenamiento</strong> y <strong>100 conexiones simultáneas</strong> sin límites de lecturas ni bloqueos, con tiempo real instantáneo por WebSockets.
+                    </p>
                 </div>
-                <p style="font-size:0.84rem; color:var(--text-secondary); line-height:1.5; margin-bottom:14px;">
-                    Conecte la plataforma a un servidor de base de datos **Supabase (PostgreSQL en la Nube)** para que los datos ingresados por cualquier docente (notas, asistencias y reportes) se **sincronicen automáticamente en tiempo real** en todas las computadoras.
-                </p>
-                <div class="form-group" style="margin-bottom:12px;">
-                    <label style="font-weight:700; color:var(--text-primary);"><i class="fa-solid fa-link"></i> URL del Proyecto Supabase:</label>
-                    <input type="text" id="supabaseUrlInput" class="form-control" placeholder="https://xyz.supabase.co">
+
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-weight:700; color:var(--text-primary);"><i class="fa-solid fa-server"></i> Proveedor de Nube Activo:</label>
+                    <select id="cloudProviderSelect" class="form-control" onchange="toggleDbProviderFields()" style="font-weight:700;">
+                        <option value="firebase">🔥 Google Firebase Realtime Database (Recomendado - 100% Gratis e Ilimitado)</option>
+                        <option value="supabase">⚡ Supabase Cloud (PostgreSQL)</option>
+                    </select>
                 </div>
-                <div class="form-group" style="margin-bottom:16px;">
-                    <label style="font-weight:700; color:var(--text-primary);"><i class="fa-solid fa-key"></i> Clave API Pública (Anon Key):</label>
-                    <input type="password" id="supabaseKeyInput" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+
+                <!-- CAMPOS PARA GOOGLE FIREBASE -->
+                <div id="firebaseConfigFields">
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label style="font-weight:700; color:var(--text-primary);"><i class="fa-solid fa-link"></i> URL de Firebase Realtime Database:</label>
+                        <input type="text" id="firebaseUrlInput" class="form-control" placeholder="https://mi-escuela-default-rtdb.firebaseio.com">
+                        <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-top:4px;">
+                            Copia la URL que aparece al crear tu <strong>Realtime Database</strong> en <a href="https://console.firebase.google.com" target="_blank" style="color:var(--brand-green); font-weight:700;">Firebase Console</a>.
+                        </small>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:10px;">
+                        <button type="button" class="btn btn-outline-info btn-sm" onclick="testFirebaseConnection()" style="font-weight:700;">
+                            <i class="fa-solid fa-vial"></i> Probar Conexión Firebase
+                        </button>
+                    </div>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; background:#e0f2fe; padding:10px 12px; border-radius:6px; border:1px solid #7dd3fc; margin-bottom:10px;">
-                    <span style="font-size:0.82rem; color:#0369a1; font-weight:700;">
-                        <i class="fa-solid fa-cloud-arrow-down"></i> Bajar datos actualizados del servidor ahora:
-                    </span>
-                    <button type="button" class="btn btn-xs btn-primary" onclick="pullStateFromSupabaseCloud()" style="font-weight:800;">
-                        <i class="fa-solid fa-rotate"></i> Sincronizar Ahora
-                    </button>
+
+                <!-- CAMPOS PARA SUPABASE -->
+                <div id="supabaseConfigFields" style="display:none;">
+                    <div class="form-group" style="margin-bottom:12px;">
+                        <label style="font-weight:700; color:var(--text-primary);"><i class="fa-solid fa-link"></i> URL del Proyecto Supabase:</label>
+                        <input type="text" id="supabaseUrlInput" class="form-control" placeholder="https://xyz.supabase.co">
+                    </div>
+                    <div class="form-group" style="margin-bottom:14px;">
+                        <label style="font-weight:700; color:var(--text-primary);"><i class="fa-solid fa-key"></i> Clave API Pública (Anon Key):</label>
+                        <input type="password" id="supabaseKeyInput" class="form-control" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+                    </div>
                 </div>
-            </div>
-            <div class="modal-footer" style="background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="testSupabaseConnection()">
-                    <i class="fa-solid fa-plug"></i> Probar Conexión
-                </button>
-                <div>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="closeDbConfigModal()">Cancelar</button>
-                    <button type="button" class="btn btn-success btn-sm" onclick="saveSupabaseCredentials(event)" style="font-weight:700;">
-                        <i class="fa-solid fa-floppy-disk"></i> Guardar Servidor
+
+                <div class="modal-footer" style="padding:12px 0 0 0; display:flex; justify-content:flex-end; gap:10px; border-top:1px solid var(--border-color); margin-top:14px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeDbConfigModal()">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveCloudDatabaseConfig(event)" style="font-weight:800;">
+                        <i class="fa-solid fa-floppy-disk"></i> Guardar y Conectar
                     </button>
                 </div>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- MODAL DE NOTIFICACIONES Y ALERTAS DEL USUARIO -->
@@ -3048,7 +3067,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260831_v106_user_roles_dropdown_fixed"></script>
+    <script src="app.js?v=20260831_v107_firebase_realtime_database_integrated"></script>
     <script>
         // CÁLCULO DINÁMICO DE PROMOCIONES Y AÑOS DE FUNDACIÓN (BASE 1970)
         (function updateDynamicStats() {
