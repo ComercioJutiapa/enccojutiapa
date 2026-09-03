@@ -7354,6 +7354,39 @@ function updateDbStatusIndicator(connected = false) {
     }
 }
 
+function updateDbSyncStatus(status = 'synced') {
+    const topBtn = document.getElementById('topDbStatusBtn');
+    const topText = document.getElementById('topDbStatusText');
+    const topIcon = document.getElementById('topDbStatusIcon');
+    if (!topBtn) return;
+
+    if (status === 'syncing') {
+        topBtn.style.background = '#fef3c7';
+        topBtn.style.borderColor = '#f59e0b';
+        topBtn.style.color = '#92400e';
+        if (topIcon) topIcon.className = 'fa-solid fa-arrows-rotate fa-spin';
+        if (topText) topText.textContent = 'Sincronizando con Supabase...';
+    } else if (status === 'synced') {
+        topBtn.style.background = '#ecfdf5';
+        topBtn.style.borderColor = '#10b981';
+        topBtn.style.color = '#065f46';
+        if (topIcon) topIcon.className = 'fa-solid fa-cloud-check';
+        if (topText) topText.textContent = 'Supabase y Local Sincronizados';
+    } else if (status === 'disconnected') {
+        topBtn.style.background = '#ecfdf5';
+        topBtn.style.borderColor = '#10b981';
+        topBtn.style.color = '#065f46';
+        if (topIcon) topIcon.className = 'fa-solid fa-cloud-check';
+        if (topText) topText.textContent = 'Supabase y Local Sincronizados';
+    } else if (status === 'error') {
+        topBtn.style.background = '#fef2f2';
+        topBtn.style.borderColor = '#ef4444';
+        topBtn.style.color = '#991b1b';
+        if (topIcon) topIcon.className = 'fa-solid fa-triangle-exclamation';
+        if (topText) topText.textContent = 'Error de Conexión Nube';
+    }
+}
+
 function initSupabaseConnection() {
     const url = localStorage.getItem('ENCCO_SUPABASE_URL') || ENCCO_OFFICIAL_SUPABASE_URL;
     const key = localStorage.getItem('ENCCO_SUPABASE_KEY') || ENCCO_OFFICIAL_SUPABASE_KEY;
