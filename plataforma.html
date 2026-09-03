@@ -40,7 +40,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css?v=20260831_v120_interactive_role_panel">
+    <link rel="stylesheet" href="styles.css?v=20260831_v122_instant_database_sync">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -271,6 +271,10 @@
             </div>
 
             <div class="role-bar-actions">
+                <button type="button" id="topDbStatusBtn" class="btn btn-xs" onclick="openDbConfigModal()" style="font-weight:800; border-radius:18px; padding:4px 12px; font-size:0.75rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:#065f46; color:#ffffff; border:1.5px solid #10b981; transition:all 0.2s;" title="Estado de Sincronización en Tiempo Real con Firebase (Haga clic para configurar)">
+                    <i class="fa-solid fa-cloud" id="topDbStatusIcon"></i>
+                    <span id="topDbStatusText">Base de Datos: Nube Activa</span>
+                </button>
                 <a href="portal.html" class="btn btn-outline-light btn-xs" target="_blank" title="Ver Portal Web Informativo" style="color:white; border:1px solid rgba(255,255,255,0.4); border-radius:18px; padding:4px 10px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; text-decoration:none;">
                     <i class="fa-solid fa-globe"></i> Portal Web
                 </a>
@@ -3112,57 +3116,58 @@
     </div>
 
     <!-- MODAL DE CONFIGURACIÓN Y SINCRONIZACIÓN DE SERVIDOR NUBE / BD -->
+        <!-- MODAL DE CONFIGURACIÓN DE BASE DE DATOS FIREBASE REALTIME -->
     <div class="modal-overlay" id="dbConfigModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeDbConfigModal()">
-        <div class="modal-container" style="max-width: 620px;">
-            <div class="modal-header" style="background: var(--bg-surface); border-bottom: 2px solid var(--border-color);">
-                <h3 style="margin:0; font-size:1.15rem; color:var(--brand-green-dark); display:flex; align-items:center; gap:8px;">
-                    <i class="fa-brands fa-google" style="color:var(--brand-green);"></i> Sincronización Nube Oficial: Google Firebase Realtime
+        <div class="modal-container" style="max-width: 640px; width:100%; border-radius:14px; overflow:hidden; border:2px solid #10b981; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);">
+            <div class="modal-header" style="background:linear-gradient(135deg, #065f46, #047857); color:#ffffff; padding:16px 22px; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size:1.15rem; color:#ffffff; display:flex; align-items:center; gap:8px; font-weight:800;">
+                    <i class="fa-brands fa-google"></i> Base de Datos: Google Firebase Realtime
                 </h3>
-                <button class="modal-close" onclick="closeDbConfigModal()">&times;</button>
+                <button type="button" class="modal-close" onclick="closeDbConfigModal()" style="color:#fff; background:transparent; border:none; font-size:1.6rem; cursor:pointer;">&times;</button>
             </div>
-            <div class="modal-body" style="padding:18px 22px;">
-                <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:14px; margin-bottom:16px;">
+            <div class="modal-body" style="padding:22px;">
+                <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:10px; padding:14px 16px; margin-bottom:16px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
                         <strong style="color:#166534; font-size:0.95rem; display:flex; align-items:center; gap:8px;">
-                            <i class="fa-solid fa-bolt" style="color:#eab308;"></i> Estado: Sincronización en Tiempo Real Activa
+                            <i class="fa-solid fa-bolt" style="color:#eab308;"></i> Sincronización Automática en Tiempo Real
                         </strong>
-                        <span class="badge badge-success" style="font-weight:800;">100% GRATIS E ILIMITADO</span>
+                        <span class="badge badge-success" id="dbModalStatusBadge" style="font-weight:800;">GRATIS E ILIMITADO</span>
                     </div>
                     <p style="font-size:0.84rem; color:#15803d; margin:0; line-height:1.5;">
-                        Conectado a <strong>Google Firebase Realtime Database</strong>. Cualquier nota, asistencia, docente o estudiante modificado se replica de forma instantánea en todas las computadoras sin límites ni cuotas.
+                        Cada cambio que realice (estudiantes, notas, pensum, maestros, asistencia o roles) se sincroniza en <strong>0 milisegundos</strong> con Google Firebase Realtime Database para que todas las computadoras del colegio vean los cambios inmediatamente.
                     </p>
                 </div>
 
                 <div class="form-group" style="margin-bottom:14px;">
-                    <label style="font-weight:700; color:var(--text-primary);"><i class="fa-solid fa-link"></i> URL de tu Google Firebase Realtime Database:</label>
-                    <input type="text" id="firebaseUrlInput" class="form-control" placeholder="https://enccojutiapa-db-default-rtdb.firebaseio.com">
-                    <small style="color:var(--text-muted); font-size:0.75rem; display:block; margin-top:4px;">
-                        Obtenida de tu proyecto en <a href="https://console.firebase.google.com" target="_blank" style="color:var(--brand-green); font-weight:700;">Google Firebase Console</a> (Ubicación: us-central1).
+                    <label style="font-weight:700; color:#1e293b; display:block; margin-bottom:6px;">
+                        <i class="fa-solid fa-link" style="color:#047857;"></i> URL de tu Google Firebase Realtime Database:
+                    </label>
+                    <input type="text" id="firebaseUrlInput" class="form-control" placeholder="https://tu-proyecto-rtdb.firebaseio.com" style="width:100%; border-radius:8px; border:1.5px solid #cbd5e1; padding:9px 12px; font-size:0.92rem; font-weight:700;">
+                    <small style="color:#64748b; font-size:0.76rem; display:block; margin-top:5px; line-height:1.4;">
+                        Ingrese la URL de su base de datos creada en <a href="https://console.firebase.google.com" target="_blank" style="color:#047857; font-weight:700;">Google Firebase Console</a> (por ejemplo: <code>https://mi-colegio-default-rtdb.firebaseio.com</code>).
                     </small>
                 </div>
 
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; background:#f8fafc; padding:10px 12px; border-radius:6px; border:1px solid #e2e8f0; margin-bottom:14px;">
-                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="forcePushToFirebaseNow()" style="font-weight:700;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; background:#f8fafc; padding:12px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:16px;">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="forcePushToFirebaseNow()" style="font-weight:700; padding:6px 12px;">
                         <i class="fa-solid fa-cloud-arrow-up"></i> Subir Todo Ahora
                     </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="forcePullFromFirebaseNow()" style="font-weight:700;">
-                        <i class="fa-solid fa-cloud-arrow-down"></i> Descargar Todo
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="forcePullFromFirebaseNow()" style="font-weight:700; padding:6px 12px;">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> Descargar de Nube
                     </button>
-                    <button type="button" class="btn btn-outline-info btn-sm" onclick="testFirebaseConnection()" style="font-weight:700;">
+                    <button type="button" class="btn btn-outline-info btn-sm" onclick="testFirebaseConnection()" style="font-weight:700; padding:6px 12px;">
                         <i class="fa-solid fa-vial"></i> Probar Conexión
                     </button>
                 </div>
 
-                <div class="modal-footer" style="padding:12px 0 0 0; display:flex; justify-content:flex-end; gap:10px; border-top:1px solid var(--border-color); margin-top:14px;">
-                    <button type="button" class="btn btn-secondary" onclick="closeDbConfigModal()">Cerrar</button>
-                    <button type="button" class="btn btn-primary" onclick="saveFirebaseDatabaseConfig(event)" style="font-weight:800;">
+                <div class="modal-footer" style="padding:12px 0 0 0; display:flex; justify-content:flex-end; gap:10px; border-top:1.5px solid #e2e8f0;">
+                    <button type="button" class="btn btn-secondary" onclick="closeDbConfigModal()" style="padding:8px 18px; font-weight:700; border-radius:8px;">Cerrar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveFirebaseDatabaseConfig(event)" style="font-weight:800; background:#047857; border-color:#065f46; padding:8px 20px; border-radius:8px; display:inline-flex; align-items:center; gap:8px;">
                         <i class="fa-solid fa-floppy-disk"></i> Guardar y Conectar a Firebase
                     </button>
                 </div>
             </div>
         </div>
-    </div>
-    </div>
     </div>
 
     <!-- MODAL DE NOTIFICACIONES Y ALERTAS DEL USUARIO -->
@@ -3212,7 +3217,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260831_v121_perfect_interactive_sync"></script>
+    <script src="app.js?v=20260831_v122_instant_database_sync"></script>
     <script>
         // CÁLCULO DINÁMICO DE PROMOCIONES Y AÑOS DE FUNDACIÓN (BASE 1970)
         (function updateDynamicStats() {

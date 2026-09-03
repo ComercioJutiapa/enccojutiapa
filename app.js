@@ -1,4 +1,220 @@
 // ======================================================================
+//   SISTEMA DE SINCRONIZACIÓN INMEDIATA CON GOOGLE FIREBASE (V122)
+// ======================================================================
+
+function getFirebaseDatabaseUrl() {
+    let url = localStorage.getItem('ENCCO_FIREBASE_URL') || (typeof FIREBASE_CONFIG !== 'undefined' ? FIREBASE_CONFIG.defaultUrl : '');
+    return (url || '').replace(/\/+$/, '');
+}
+window.getFirebaseDatabaseUrl = getFirebaseDatabaseUrl;
+
+function openDbConfigModal() {
+    const modal = document.getElementById('dbConfigModal');
+    const urlInput = document.getElementById('firebaseUrlInput');
+    if (urlInput) {
+        urlInput.value = localStorage.getItem('ENCCO_FIREBASE_URL') || getFirebaseDatabaseUrl();
+    }
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.setProperty('display', 'flex', 'important');
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
+        modal.style.pointerEvents = 'auto';
+    }
+}
+window.openDbConfigModal = openDbConfigModal;
+
+function closeDbConfigModal() {
+    const modal = document.getElementById('dbConfigModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+        modal.style.opacity = '0';
+        modal.style.pointerEvents = 'none';
+    }
+}
+window.closeDbConfigModal = closeDbConfigModal;
+
+async function testFirebaseConnection() {
+    const urlInput = document.getElementById('firebaseUrlInput');
+    const fbUrl = (urlInput ? urlInput.value.trim() : '') || getFirebaseDatabaseUrl();
+
+    if (!fbUrl) {
+        showToast("Por favor ingrese la URL de su Firebase Realtime Database.", "warning");
+        return;
+    }
+
+    try {
+        const cleanUrl = fbUrl.replace(/\/+$/, '');
+        showToast("Probando conexión con Firebase...", "info");
+        const res = await fetch(`${cleanUrl}/.json?shallow=true`);
+        if (res.ok) {
+            showToast("¡Conexión verificada exitosamente con Google Firebase!", "success");
+            updateDbSyncStatus('synced');
+        } else if (res.status === 404) {
+            showToast("Aviso: La base de datos no existe en esa URL (HTTP 404). Verifique que haya creado la 'Realtime Database' en Firebase Console.", "warning");
+            updateDbSyncStatus('disconnected');
+        } else if (res.status === 401) {
+            showToast("Aviso: Permisos denegados (HTTP 401). En Firebase Console > Realtime Database > Reglas, configure .read y .write como true.", "warning");
+            updateDbSyncStatus('disconnected');
+        } else {
+            showToast(`Respuesta de Firebase: HTTP ${res.status}.`, "info");
+        }
+    } catch(err) {
+        showToast("Error de red al conectar con Firebase. Verifique su conexión a Internet.", "danger");
+        updateDbSyncStatus('disconnected');
+    }
+}
+window.testFirebaseConnection = testFirebaseConnection;
+
+async function saveFirebaseDatabaseConfig(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const urlInput = document.getElementById('firebaseUrlInput');
+    const fbUrl = urlInput ? urlInput.value.trim().replace(/\/+$/, '') : '';
+
+    if (!fbUrl) {
+        showToast("Por favor ingrese una URL válida de Firebase Realtime Database.", "warning");
+        return;
+    }
+
+    localStorage.setItem('ENCCO_FIREBASE_URL', fbUrl);
+    showToast("Conectando y subiendo estado completo a Firebase...", "info");
+
+    const success = await pushStateToFirebaseCloud(false);
+    if (success) {
+        showToast("¡Google Firebase Realtime Database conectado y sincronizado con éxito!", "success");
+        updateDbSyncStatus('synced');
+        closeDbConfigModal();
+        initFirebaseRealtimeConnection();
+    } else {
+        showToast("URL guardada. Si la base de datos es nueva, asegúrese de que sus Reglas en Firebase permitan lectura y escritura.", "info");
+        closeDbConfigModal();
+    }
+}
+window.saveFirebaseDatabaseConfig = saveFirebaseDatabaseConfig;
+
+async function forcePushToFirebaseNow() {
+    showToast("Subiendo toda la información escolar a Firebase...", "info");
+    const ok = await pushStateToFirebaseCloud(true);
+    if (ok) {
+        showToast("¡Base de datos escolar sincronizada en Firebase exitosamente!", "success");
+    } else {
+        showToast("No se pudo sincronizar con Firebase. Verifique la URL y reglas en el botón superior.", "warning");
+    }
+}
+window.forcePushToFirebaseNow = forcePushToFirebaseNow;
+
+async function forcePullFromFirebaseNow() {
+    showToast("Descargando información actualizada desde Firebase...", "info");
+    const ok = await pullStateFromFirebaseCloud(false);
+    if (ok) {
+        showToast("¡Información actualizada descargada desde Firebase!", "success");
+    } else {
+        showToast("No se encontraron datos nuevos en la nube o no se pudo conectar.", "info");
+    }
+}
+window.forcePullFromFirebaseNow = forcePullFromFirebaseNow;
+
+function updateDbSyncStatus(status = 'synced') {
+    try {
+        const topBtn = document.getElementById('topDbStatusBtn');
+        const topText = document.getElementById('topDbStatusText');
+        const topIcon = document.getElementById('topDbStatusIcon');
+
+        const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        if (status === 'syncing') {
+            if (topBtn) {
+                topBtn.style.background = '#d97706';
+                topBtn.style.borderColor = '#f59e0b';
+                topBtn.style.color = '#ffffff';
+            }
+            if (topIcon) topIcon.className = 'fa-solid fa-arrows-rotate fa-spin';
+            if (topText) topText.textContent = 'Sincronizando...';
+        } else if (status === 'synced') {
+            if (topBtn) {
+                topBtn.style.background = '#065f46';
+                topBtn.style.borderColor = '#10b981';
+                topBtn.style.color = '#ffffff';
+            }
+            if (topIcon) topIcon.className = 'fa-solid fa-cloud-check';
+            if (topText) topText.textContent = `Nube Sincronizada (${nowStr})`;
+        } else {
+            if (topBtn) {
+                topBtn.style.background = '#b45309';
+                topBtn.style.borderColor = '#f59e0b';
+                topBtn.style.color = '#ffffff';
+            }
+            if (topIcon) topIcon.className = 'fa-solid fa-cloud';
+            if (topText) topText.textContent = 'Firebase: Configurar URL';
+        }
+    } catch(e) {}
+}
+window.updateDbSyncStatus = updateDbSyncStatus;
+
+async function pushStateToFirebaseCloud(showToastNotification = false) {
+    const firebaseUrl = getFirebaseDatabaseUrl();
+    if (!firebaseUrl) {
+        updateDbSyncStatus('disconnected');
+        return false;
+    }
+
+    const endpoint = `${firebaseUrl}/encc_school_state.json`;
+
+    // Preparar el paquete limpio de toda la institución
+    const cleanPayload = {
+        config: STATE.config,
+        activeCycle: STATE.activeCycle,
+        cycles: STATE.cycles || [],
+        theme: STATE.theme,
+        users: STATE.users,
+        careers: STATE.careers,
+        gradesList: STATE.gradesList,
+        pensumCatalog: STATE.pensumCatalog,
+        students: STATE.students,
+        pensum: STATE.pensum,
+        announcements: STATE.announcements,
+        disciplineReports: STATE.disciplineReports,
+        attendanceRecords: STATE.attendanceRecords || {},
+        dismissedAlerts: STATE.dismissedAlerts || {},
+        rolesConfig: STATE.rolesConfig || (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : []),
+        schoolHeader: STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {}),
+        lastModified: Date.now()
+    };
+
+    updateDbSyncStatus('syncing');
+
+    try {
+        const response = await fetch(endpoint, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cleanPayload)
+        });
+
+        if (response.ok) {
+            updateDbSyncStatus('synced');
+            if (showToastNotification && typeof showToast === 'function') {
+                showToast("Sincronizado con Google Firebase exitosamente.", "success");
+            }
+            return true;
+        } else {
+            console.warn("Firebase PUT status:", response.status);
+            updateDbSyncStatus('disconnected');
+            return false;
+        }
+    } catch(err) {
+        console.warn("Error al enviar a Firebase:", err);
+        updateDbSyncStatus('disconnected');
+        return false;
+    }
+}
+window.pushStateToFirebaseCloud = pushStateToFirebaseCloud;
+
+
+// ======================================================================
 //   PANEL INTERACTIVO COMPLETO DE CONTROL DE ROLES Y PERMISOS (V120)
 // ======================================================================
 
@@ -1111,92 +1327,7 @@ const FIREBASE_CONFIG = {
     storageKey: "ENCCO_FIREBASE_URL"
 };
 
-function getFirebaseDatabaseUrl() {
-    let url = localStorage.getItem(FIREBASE_CONFIG.storageKey) || FIREBASE_CONFIG.defaultUrl;
-    return url.replace(/\/+$/, '');
-}
-window.getFirebaseDatabaseUrl = getFirebaseDatabaseUrl;
 
-let _firebaseEventSource = null;
-
-// Inicialización de la Conexión con Firebase Realtime Database
-function initFirebaseRealtimeConnection() {
-    const firebaseUrl = getFirebaseDatabaseUrl();
-    console.log("🔥 [Firebase] Inicializando conexión oficial con:", firebaseUrl);
-
-    // 1. Descarga inicial en segundo plano
-    pullStateFromFirebaseCloud(true);
-
-    // 2. Conexión continua por WebSockets / Server-Sent Events (SSE)
-    try {
-        if (typeof window !== 'undefined' && typeof window.EventSource !== 'undefined') {
-            if (_firebaseEventSource) {
-                _firebaseEventSource.close();
-                _firebaseEventSource = null;
-            }
-
-            const streamUrl = `${firebaseUrl}/encc_school_state.json`;
-            _firebaseEventSource = new EventSource(streamUrl);
-
-            _firebaseEventSource.addEventListener('put', (event) => {
-                try {
-                    const parsed = JSON.parse(event.data);
-                    if (parsed && parsed.data && typeof parsed.data === 'object') {
-                        const incomingState = parsed.data;
-                        if (incomingState.lastModified && incomingState.lastModified > (STATE.lastModified || 0)) {
-                            console.log("⚡ [Firebase Realtime] Actualización en vivo detectada desde la nube.");
-                            applyIncomingCloudState(incomingState, true);
-                        }
-                    }
-                } catch(e) {}
-            });
-
-            _firebaseEventSource.onopen = () => {
-                console.log("✅ [Firebase Realtime] Canal en vivo abierto y conectado.");
-                updateDbStatusIndicator(true, "Firebase Conectado");
-            };
-
-            _firebaseEventSource.onerror = (err) => {
-                // Modo silencioso tolerante a fallos
-            };
-        }
-    } catch(err) {
-        console.warn("Aviso en conexión en vivo Firebase:", err);
-    }
-}
-window.initFirebaseRealtimeConnection = initFirebaseRealtimeConnection;
-
-// Guardar en Firebase Realtime Database (PUT atómico)
-async function pushStateToFirebaseCloud(showToastNotification = false) {
-    const firebaseUrl = getFirebaseDatabaseUrl();
-    if (!firebaseUrl) return false;
-
-    const endpoint = `${firebaseUrl}/encc_school_state.json`;
-
-    try {
-        STATE.lastModified = Date.now();
-        const response = await fetch(endpoint, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(STATE)
-        });
-
-        if (response.ok) {
-            if (showToastNotification && typeof showToast === 'function') {
-                showToast("Sincronizado con Firebase exitosamente.", "success");
-            }
-            updateDbStatusIndicator(true, "Firebase Nube Activo");
-            return true;
-        } else {
-            console.warn("Firebase PUT HTTP status:", response.status);
-            return false;
-        }
-    } catch(err) {
-        console.warn("Aviso al guardar en Firebase:", err);
-        return false;
-    }
-}
-window.pushStateToFirebaseCloud = pushStateToFirebaseCloud;
 
 // Descargar de Firebase Realtime Database (GET)
 async function pullStateFromFirebaseCloud(isInitial = false) {
@@ -1557,7 +1688,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V121';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V122';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -15257,7 +15388,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V121' || e.key === 'ENCCO_SYSTEM_DATABASE_V121' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V122' || e.key === 'ENCCO_SYSTEM_DATABASE_V122' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
@@ -15339,8 +15470,8 @@ window.applyIncomingCloudState = applyIncomingCloudState;
 // 4. Temporizador Antirrebote para Envío Instantáneo a la Nube
 let _instantCloudPushTimeout = null;
 function triggerInstantCloudPush() {
-    // Transmitir de inmediato a otras pestañas abiertas
-    if (_enccBroadcastChannel) {
+    // 1. Transmitir inmediatamente por BroadcastChannel a todas las pestañas abiertas (0ms)
+    if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
         try {
             _enccBroadcastChannel.postMessage({
                 type: 'SYNC_STATE_UPDATE',
@@ -15350,11 +15481,8 @@ function triggerInstantCloudPush() {
         } catch(e) {}
     }
 
-    // Enviar a la nube (Firebase / Firebase) con debounce de 300ms
-    if (_instantCloudPushTimeout) clearTimeout(_instantCloudPushTimeout);
-    _instantCloudPushTimeout = setTimeout(async () => {
-        await autoSyncToCloud(true, false);
-    }, 300);
+    // 2. Enviar inmediatamente a Google Firebase Realtime Database
+    pushStateToFirebaseCloud(false);
 }
 window.triggerInstantCloudPush = triggerInstantCloudPush;
 
