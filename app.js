@@ -187,7 +187,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V105';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V106';
 const ENCCO_OFFICIAL_SUPABASE_URL = "https://uphgktnkcwrjunxdzhnp.supabase.co";
 const ENCCO_OFFICIAL_SUPABASE_KEY = "sb_publishable_PrTtclsUq354-M-ykNO7Mw_wLYD4DwB";
 let _autoCloudSyncTimer = null;
@@ -796,6 +796,7 @@ function getInitialData() {
             "active": true
         }
     ],
+    "rolesConfig": [{"key": "admin", "name": "Super Administrador", "description": "Acceso total y configuración del sistema"}, {"key": "director", "name": "Director(a)", "description": "Supervisión institucional y aprobación"}, {"key": "secretaria", "name": "Secretaría Académica", "description": "Control de matrículas, actas y expedientes"}, {"key": "profesor_auxiliar", "name": "Profesor Auxiliar / Disciplina", "description": "Coordinación disciplinaria y asistencia"}, {"key": "docente", "name": "Catedrático Titular", "description": "Ingreso de calificaciones y control de clases"}],
     "careers": [
         {
             "id": "car-1",
