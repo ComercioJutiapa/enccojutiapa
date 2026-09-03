@@ -1,4 +1,287 @@
 // ======================================================================
+//        GESTOR OFICIAL DE CARRERAS ESCOLARES (100% DINÁMICO)
+// ======================================================================
+
+function normalizeCareers() {
+    if (!Array.isArray(STATE.careers) || STATE.careers.length === 0) {
+        STATE.careers = [
+            { id: 'car-1', name: 'Perito Contador', code: 'PERITO_CONTADOR', duration: '3 Años (4to, 5to y 6to)', status: 'Activa' }
+        ];
+    }
+    return STATE.careers;
+}
+window.normalizeCareers = normalizeCareers;
+
+function resetCareerForm() {
+    const idInput = document.getElementById('careerFormId');
+    const nameInput = document.getElementById('newCareerName');
+    const durationInput = document.getElementById('newCareerDuration');
+    const cancelBtn = document.getElementById('cancelCareerEditBtn');
+    const submitBtn = document.getElementById('careerSubmitBtn');
+    const headerTitle = document.getElementById('careerFormHeaderTitle');
+
+    if (idInput) idInput.value = '';
+    if (nameInput) nameInput.value = '';
+    if (durationInput) durationInput.value = '';
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Carrera';
+    if (headerTitle) headerTitle.innerHTML = '<i class="fa-solid fa-circle-plus"></i> Registrar Nueva Carrera';
+}
+window.resetCareerForm = resetCareerForm;
+
+function renderCareerList() {
+    normalizeCareers();
+    const box = document.getElementById('careerListDisplay');
+    if (!box) return;
+
+    if (!STATE.careers || STATE.careers.length === 0) {
+        box.innerHTML = `
+            <div style="text-align:center; padding:16px; color:var(--text-muted); font-size:0.85rem;">
+                <i class="fa-solid fa-graduation-cap" style="font-size:1.6rem; display:block; margin-bottom:6px; color:var(--brand-orange);"></i>
+                No hay carreras registradas. Registre una con el formulario inferior.
+            </div>
+        `;
+        return;
+    }
+
+    box.innerHTML = STATE.careers.map((c, idx) => {
+        const studentCount = (STATE.students || []).filter(s => {
+            const raw = `${s.career || ''} ${s.grade || ''}`.toLowerCase();
+            return raw.includes((c.name || '').toLowerCase());
+        }).length;
+
+        const isDefault = c.id === 'car-1' || c.name === 'Perito Contador';
+
+        return `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:#ffffff; border:1px solid var(--border-color); border-radius:8px; padding:10px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <strong style="color:var(--brand-green-dark); font-size:0.95rem;">
+                            <i class="fa-solid fa-graduation-cap" style="color:var(--brand-orange); margin-right:4px;"></i>${c.name}
+                        </strong>
+                        <span class="badge badge-success" style="font-size:0.72rem;">${c.status || 'Activa'}</span>
+                    </div>
+                    <div style="font-size:0.78rem; color:var(--text-muted); margin-top:3px;">
+                        <span><i class="fa-regular fa-clock"></i> ${c.duration || '3 Años'}</span> &bull; 
+                        <span><i class="fa-solid fa-users"></i> ${studentCount} estudiantes matriculados</span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button type="button" class="btn btn-outline-primary btn-xs" onclick="editCareer('${c.id}')" title="Editar Carrera" style="padding:4px 8px;">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    ${!isDefault ? `
+                    <button type="button" class="btn btn-outline-danger btn-xs" onclick="deleteCareer('${c.id}')" title="Eliminar Carrera" style="padding:4px 8px;">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+window.renderCareerList = renderCareerList;
+
+function editCareer(careerId) {
+    normalizeCareers();
+    const c = (STATE.careers || []).find(car => car.id === careerId);
+    if (!c) return;
+
+    const idInput = document.getElementById('careerFormId');
+    const nameInput = document.getElementById('newCareerName');
+    const durationInput = document.getElementById('newCareerDuration');
+    const cancelBtn = document.getElementById('cancelCareerEditBtn');
+    const submitBtn = document.getElementById('careerSubmitBtn');
+    const headerTitle = document.getElementById('careerFormHeaderTitle');
+
+    if (idInput) idInput.value = c.id;
+    if (nameInput) nameInput.value = c.name;
+    if (durationInput) durationInput.value = c.duration || '3 Años (4to, 5to y 6to)';
+    if (cancelBtn) cancelBtn.style.display = 'inline-block';
+    if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Actualizar Carrera';
+    if (headerTitle) headerTitle.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Editando Carrera: ${c.name}`;
+}
+window.editCareer = editCareer;
+
+function deleteCareer(careerId) {
+    if (careerId === 'car-1') {
+        showToast("La carrera oficial Perito Contador no puede ser eliminada.", "warning");
+        return;
+    }
+    if (!confirm("¿Está seguro de eliminar esta carrera?")) return;
+
+    normalizeCareers();
+    STATE.careers = STATE.careers.filter(c => c.id !== careerId);
+    saveStateToLocalStorage();
+    updateCareerSelects();
+    renderCareerList();
+    showToast("Carrera eliminada exitosamente.", "info");
+}
+window.deleteCareer = deleteCareer;
+
+function saveCareerForm(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    normalizeCareers();
+
+    const idInput = document.getElementById('careerFormId');
+    const nameInput = document.getElementById('newCareerName');
+    const durationInput = document.getElementById('newCareerDuration');
+
+    const cid = idInput ? idInput.value.trim() : '';
+    const name = nameInput ? nameInput.value.trim() : '';
+    const duration = durationInput ? durationInput.value.trim() : '3 Años';
+
+    if (!name) {
+        showToast("Ingrese el nombre de la carrera.", "warning");
+        return;
+    }
+
+    if (cid) {
+        const c = STATE.careers.find(car => car.id === cid);
+        if (c) {
+            c.name = name;
+            c.duration = duration;
+            showToast(`Carrera "${name}" actualizada correctamente.`, "success");
+        }
+    } else {
+        const exists = STATE.careers.some(car => car.name.toLowerCase() === name.toLowerCase());
+        if (exists) {
+            showToast(`La carrera "${name}" ya se encuentra registrada.`, "warning");
+            return;
+        }
+        const newCar = {
+            id: 'car-' + Date.now(),
+            name: name,
+            code: name.toUpperCase().replace(/\s+/g, '_').slice(0, 16),
+            duration: duration,
+            status: 'Activa'
+        };
+        STATE.careers.push(newCar);
+        showToast(`Carrera "${name}" agregada exitosamente.`, "success");
+    }
+
+    saveStateToLocalStorage();
+    updateCareerSelects();
+    renderCareerList();
+    resetCareerForm();
+    closeCareerModal();
+}
+window.saveCareerForm = saveCareerForm;
+
+function openCareerModal() {
+    normalizeCareers();
+    resetCareerForm();
+    renderCareerList();
+    showModalById('careerModal');
+}
+window.openCareerModal = openCareerModal;
+
+function closeCareerModal() {
+    hideModalById('careerModal');
+}
+window.closeCareerModal = closeCareerModal;
+
+
+// ======================================================================
+//    DIRECTORIO OFICIAL DE MAESTROS GUÍAS (12 SECCIONES - 100% DINÁMICO)
+// ======================================================================
+
+function renderGradesDirectory(filter = '') {
+    const container = document.getElementById('gradesDirectoryContainer');
+    if (!container) return;
+
+    const list = sortGrades(STATE.gradesList || []);
+    const q = (filter || '').trim().toLowerCase();
+
+    const filtered = list.filter(g => {
+        if (!q) return true;
+        const guideTeacherObj = (STATE.users || []).find(u => u.id === g.guideTeacherId || u.name === g.guideTeacher);
+        const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || '');
+        const raw = `${g.name || ''} ${g.section || ''} ${g.code || ''} ${guideName}`.toLowerCase();
+        return raw.includes(q);
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align:center; padding:30px; color:var(--text-muted); background:#f8fafc; border-radius:8px; border:1px dashed var(--border-color);">
+                <i class="fa-solid fa-person-chalkboard" style="font-size:2rem; margin-bottom:8px; color:var(--text-muted);"></i>
+                <p style="margin:0; font-weight:600;">No se encontraron secciones con el filtro "${filter}".</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = filtered.map((g, idx) => {
+        const count = getStudentCountByGradeAndSection(g.code, g.name, g.section);
+        const guideTeacherObj = (STATE.users || []).find(u => u.id === g.guideTeacherId || u.name === g.guideTeacher);
+        const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || 'Sin asignar');
+        const guideEmail = guideTeacherObj ? (guideTeacherObj.email || 'Docente Titular') : '---';
+        const guideTitle = guideTeacherObj ? (guideTeacherObj.title || 'Catedrático') : 'PEM / Lic.';
+
+        return `
+            <div class="card" style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:10px; padding:14px 16px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 2px 4px rgba(0,0,0,0.04); transition:all 0.2s ease;">
+                <div>
+                    <!-- CABECERA DE LA TARJETA -->
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+                        <div>
+                            <span class="badge badge-success" style="font-weight:800; font-size:0.75rem; letter-spacing:0.5px;">${g.code}</span>
+                            <h4 style="margin:4px 0 0 0; color:var(--brand-green-dark); font-size:1rem; font-weight:800;">${g.name}</h4>
+                            <small style="color:var(--text-muted); font-size:0.75rem;">${g.section} &bull; Jornada Matutina</small>
+                        </div>
+                        <span class="badge badge-primary" style="font-weight:800; font-size:0.8rem;" title="Alumnos asignados">
+                            <i class="fa-solid fa-users"></i> ${count}
+                        </span>
+                    </div>
+
+                    <!-- INFORMACIÓN DEL MAESTRO GUÍA -->
+                    <div style="background:#f8fafc; border-radius:8px; padding:10px; margin-bottom:10px; border:1px solid #e2e8f0;">
+                        <div style="font-size:0.72rem; font-weight:700; color:#0369a1; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
+                            <i class="fa-solid fa-chalkboard-user"></i> Maestro(a) Guía Titular
+                        </div>
+                        <strong style="display:block; color:var(--text-primary); font-size:0.92rem; line-height:1.3;">${guideName}</strong>
+                        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
+                            <span>${guideTitle}</span> &bull; <span>${guideEmail}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTONES DE ACCIÓN -->
+                <div style="display:flex; gap:6px; margin-top:6px;">
+                    <button type="button" class="btn btn-outline-success btn-xs" onclick="closeGradesDirectoryModal(); openSectionStudentsModal('${g.code}')" style="flex:1; font-weight:700; padding:6px;">
+                        <i class="fa-solid fa-eye"></i> Alumnos (${count})
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-xs" onclick="closeGradesDirectoryModal(); openAssignGuideTeacherModal('${g.id}')" style="flex:1; font-weight:700; padding:6px;">
+                        <i class="fa-solid fa-user-pen"></i> Asignar Guía
+                    </button>
+                    <button type="button" class="btn btn-outline-info btn-xs" onclick="closeGradesDirectoryModal(); printStudentsOfficialList('${g.code}')" title="Imprimir Nómina Oficial" style="padding:6px 10px;">
+                        <i class="fa-solid fa-print"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+window.renderGradesDirectory = renderGradesDirectory;
+
+function filterGradesDirectory(query) {
+    renderGradesDirectory(query);
+}
+window.filterGradesDirectory = filterGradesDirectory;
+
+function openGradesDirectoryModal(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    renderGradesDirectory();
+    showModalById('gradesDirectoryModal');
+}
+window.openGradesDirectoryModal = openGradesDirectoryModal;
+
+function closeGradesDirectoryModal() {
+    hideModalById('gradesDirectoryModal');
+}
+window.closeGradesDirectoryModal = closeGradesDirectoryModal;
+
+
+// ======================================================================
 //    MOTOR OFICIAL EXCLUSIVO: GOOGLE FIREBASE REALTIME DATABASE 2026
 // ======================================================================
 
@@ -340,7 +623,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V111';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V113';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -14039,7 +14322,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V111' || e.key === 'ENCCO_SYSTEM_DATABASE_V111' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V113' || e.key === 'ENCCO_SYSTEM_DATABASE_V113' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
