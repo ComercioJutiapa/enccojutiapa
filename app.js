@@ -14918,6 +14918,7 @@ function closeUserModal() {
     if (modal) {
         modal.classList.remove('active');
         modal.style.setProperty('display', 'none', 'important');
+        modal.style.display = 'none';
     }
 }
 
@@ -14985,7 +14986,7 @@ function saveUserForm(e) {
                     }
                 });
             } else {
-                // Buscar por nombre si cambió de ID
+                // Buscar por coincidencia de nombre
                 const nameIdx = STATE.users.findIndex(u => u.name && u.name.trim().toLowerCase() === name.toLowerCase());
                 if (nameIdx !== -1) {
                     STATE.users[nameIdx].name = name;
@@ -15051,22 +15052,32 @@ function saveUserForm(e) {
             STATE.deletedUserIds = STATE.deletedUserIds.filter(id => id !== savedUserObj.id);
         }
 
-        // 1. Guardar estado
+        // 1. Guardar estado localmente
         STATE.lastModified = Date.now();
         saveStateToLocalStorage();
 
-        // 2. Cerrar modal y redibujar la tabla inmediatamente
+        // 2. CERRAR MODAL INMEDIATAMENTE GARANTIZADO
         closeUserModal();
+        const um = document.getElementById('userModal');
+        if (um) {
+            um.classList.remove('active');
+            um.style.setProperty('display', 'none', 'important');
+            um.style.display = 'none';
+        }
+
+        // 3. Redibujar la tabla inmediatamente en pantalla
         renderUsersTable();
 
-        // 3. Sincronizar UI global y Dashboard
+        // 4. Sincronizar UI global
         try {
             if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
         } catch(uiErr) {}
 
-        // 4. Sincronizar a Supabase en segundo plano
-        if (typeof autoSyncToSupabase === 'function') {
-            autoSyncToSupabase(true, false);
+        // 5. SINCRONIZAR DIRECTAMENTE CON SUPABASE CLOUD
+        if (typeof syncStateToSupabaseImmediate === 'function') {
+            syncStateToSupabaseImmediate(true);
+        } else if (typeof autoSyncToSupabase === 'function') {
+            autoSyncToSupabase(true, true);
         }
 
         showToast(`✅ Usuario/Docente "${name}" guardado exitosamente.`, "success");
@@ -15111,7 +15122,7 @@ function deleteUser(userId) {
             }
         });
 
-        // 1. Guardar estado
+        // 1. Guardar estado localmente
         STATE.lastModified = Date.now();
         saveStateToLocalStorage();
 
@@ -15123,9 +15134,11 @@ function deleteUser(userId) {
             if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
         } catch(uiErr) {}
 
-        // 4. Sincronizar con Supabase
-        if (typeof autoSyncToSupabase === 'function') {
-            autoSyncToSupabase(true, false);
+        // 4. Sincronizar de inmediato con Supabase Cloud
+        if (typeof syncStateToSupabaseImmediate === 'function') {
+            syncStateToSupabaseImmediate(true);
+        } else if (typeof autoSyncToSupabase === 'function') {
+            autoSyncToSupabase(true, true);
         }
 
         showToast(`Usuario "${oldName}" eliminado del sistema.`, "info");
