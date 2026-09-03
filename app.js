@@ -1,3 +1,27 @@
+// ======================================================================
+//             CONTROLADORES GLOBALES DE VENTANAS MODALES
+// ======================================================================
+function showModalById(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.setProperty('display', 'flex', 'important');
+        modal.style.display = 'flex';
+    }
+}
+window.showModalById = showModalById;
+
+function hideModalById(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+        modal.style.display = 'none';
+    }
+}
+window.hideModalById = hideModalById;
+
+
 function getCleanSectionLetter(str) {
     if (!str) return '';
     const m = str.match(/Secci[oó]n\s*([A-D])/i) || str.match(/\b([A-D])\b/i);
@@ -59,7 +83,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V98';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V99';
 const ENCCO_OFFICIAL_SUPABASE_URL = "https://uphgktnkcwrjunxdzhnp.supabase.co";
 const ENCCO_OFFICIAL_SUPABASE_KEY = "sb_publishable_PrTtclsUq354-M-ykNO7Mw_wLYD4DwB";
 let _autoCloudSyncTimer = null;
@@ -31467,23 +31491,20 @@ function saveUserForm(e) {
 
 function deleteUser(userId) {
     const user = (STATE.users || []).find(u => u.id === userId);
-    if (!user) return;
-
-    if (user.id === 'usr-admin-master' || user.id === 'usr-admin-01' || (user.role === 'admin' && STATE.users.filter(u => u.role === 'admin').length <= 1)) {
-        showToast("No es posible eliminar la cuenta principal de Administrador.", "danger");
+    if (!user) {
+        showToast("Usuario no encontrado.", "warning");
         return;
     }
 
-    if (confirm(`¿Está seguro de eliminar al docente o usuario "${user.name}" del sistema? Esta acción desvinculará sus cátedras asignadas.`)) {
-        const oldName = user.name;
+    const oldName = user.name;
+    if (confirm(`¿Está seguro de eliminar al docente o usuario "${oldName}"? Esta acción desvinculará sus cátedras asignadas.`)) {
         STATE.deletedUserIds = STATE.deletedUserIds || [];
         if (!STATE.deletedUserIds.includes(userId)) {
             STATE.deletedUserIds.push(userId);
         }
 
         STATE.users = (STATE.users || []).filter(u => u.id !== userId);
-        STATE.users = deduplicateUsersCollection(STATE.users);
-
+        
         // Desvincular en cátedras
         (STATE.pensum || []).forEach(a => {
             if (a.teacherId === userId || a.teacher === oldName) {
@@ -31492,7 +31513,7 @@ function deleteUser(userId) {
             }
         });
 
-        // Desvincular en grados
+        // Desvincular en grados guías
         (STATE.gradesList || []).forEach(g => {
             if (g.guideTeacherId === userId || g.guideTeacher === oldName) {
                 g.guideTeacher = 'Sin asignar';
@@ -31500,26 +31521,27 @@ function deleteUser(userId) {
             }
         });
 
-        // 1. Guardar estado localmente
+        // 1. Guardar localmente
         STATE.lastModified = Date.now();
         saveStateToLocalStorage();
 
-        // 2. Refrescar la tabla al instante
+        // 2. Refrescar la tabla en pantalla
         renderUsersTable();
 
-        // 3. Sincronizar UI global
+        // 3. Sincronizar UI global y Dashboard
         try {
             if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
+            if (typeof renderDashboard === 'function') renderDashboard();
         } catch(uiErr) {}
 
         // 4. Sincronizar de inmediato con Supabase Cloud
-        if (typeof syncStateToSupabaseImmediate === 'function') {
-            syncStateToSupabaseImmediate(true);
-        } else if (typeof autoSyncToSupabase === 'function') {
-            autoSyncToSupabase(true, true);
+        if (typeof autoSyncToSupabase === 'function') {
+            autoSyncToSupabase(true, false);
+        } else if (typeof syncStateToSupabaseImmediate === 'function') {
+            syncStateToSupabaseImmediate(false);
         }
 
-        showToast(`Usuario "${oldName}" eliminado del sistema.`, "info");
+        showToast(`Usuario "${oldName}" eliminado exitosamente.`, "success");
     }
 }
 
