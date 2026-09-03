@@ -2946,7 +2946,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" id="userFormSubmitBtn">Guardar Usuario</button>
+                    <button type="button" class="btn btn-primary" id="userFormSubmitBtn" onclick="saveUserForm(event)" style="font-weight:700;"><i class="fa-solid fa-floppy-disk"></i> Guardar Usuario</button>
                 </div>
             </form>
         </div>
@@ -3048,7 +3048,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260831_v80_dynamic_save_delete_refresh"></script>
+    <script src="app.js?v=20260831_v81_robust_save_and_delete"></script>
     <script>
         // CÁLCULO DINÁMICO DE PROMOCIONES Y AÑOS DE FUNDACIÓN (BASE 1970)
         (function updateDynamicStats() {

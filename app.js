@@ -7237,6 +7237,12 @@ async function testSupabaseConnection() {
     }
 }
 
+function updateDbStatusIndicator(connected = false) {
+    if (typeof updateDbSyncStatus === 'function') {
+        updateDbSyncStatus(connected ? 'synced' : 'disconnected');
+    }
+}
+
 function initSupabaseConnection() {
     const url = localStorage.getItem('ENCCO_SUPABASE_URL') || ENCCO_OFFICIAL_SUPABASE_URL;
     const key = localStorage.getItem('ENCCO_SUPABASE_KEY') || ENCCO_OFFICIAL_SUPABASE_KEY;
@@ -10091,9 +10097,9 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
 
     gradeSelect.innerHTML = gradeOptionsHtml;
 
-    if (!resetSelection && currentSelectedGrade && Array.from(gradeSelect.options).some(o => o.value === currentSelectedGrade)) {
+    if (!resetSelection && currentSelectedGrade && Array.from(gradeSelect.options || []).some(o => o.value === currentSelectedGrade)) {
         gradeSelect.value = currentSelectedGrade;
-    } else if (gradeSelect.options.length > 0) {
+    } else if (gradeSelect.options && gradeSelect.options.length > 0) {
         gradeSelect.selectedIndex = 0;
     }
 
@@ -14720,69 +14726,101 @@ function closeUserModal() {
 }
 
 function saveUserForm(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    if (!checkEnrolmentPermissions()) return;
-
-    const idInput = document.getElementById('userFormId');
-    const nameInput = document.getElementById('userFormName');
-    const emailInput = document.getElementById('userFormEmail');
-    const passwordInput = document.getElementById('userFormPassword');
-    const roleSelect = document.getElementById('userFormRole');
-    const titleInput = document.getElementById('userFormTitle');
-    const renglonSelect = document.getElementById('userFormRenglon');
-    const genderSelect = document.getElementById('userFormGender');
-
-    const userId = idInput ? idInput.value : '';
-    const name = nameInput ? nameInput.value.trim() : '';
-    const email = emailInput ? emailInput.value.trim() : '';
-    const password = passwordInput ? passwordInput.value.trim() : 'C@rolina1';
-    const role = roleSelect ? roleSelect.value : 'docente';
-    const title = titleInput ? titleInput.value.trim() : 'PEM / Catedrático Titular';
-    const renglon = renglonSelect ? renglonSelect.value : '011';
-    const gender = genderSelect ? genderSelect.value : 'Masculino';
-
-    if (!name) {
-        showToast('El nombre del usuario o docente es obligatorio.', 'warning');
-        return;
+    if (e) {
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof e.stopPropagation === 'function') e.stopPropagation();
     }
 
-    if (!Array.isArray(STATE.users)) STATE.users = [];
+    try {
+        const idInput = document.getElementById('userFormId');
+        const nameInput = document.getElementById('userFormName');
+        const emailInput = document.getElementById('userFormEmail');
+        const passwordInput = document.getElementById('userFormPassword');
+        const roleSelect = document.getElementById('userFormRole');
+        const titleInput = document.getElementById('userFormTitle');
+        const renglonSelect = document.getElementById('userFormRenglon');
+        const genderSelect = document.getElementById('userFormGender');
 
-    let savedUserObj = null;
+        const userId = idInput ? idInput.value : '';
+        const name = nameInput ? nameInput.value.trim() : '';
+        const email = emailInput ? emailInput.value.trim() : '';
+        const password = passwordInput ? passwordInput.value.trim() : 'C@rolina1';
+        const role = roleSelect ? roleSelect.value : 'docente';
+        const title = titleInput ? titleInput.value.trim() : 'PEM / Catedrático Titular';
+        const renglon = renglonSelect ? renglonSelect.value : '011';
+        const gender = genderSelect ? genderSelect.value : 'Masculino';
 
-    if (userId) {
-        // Edición de usuario existente
-        const idx = STATE.users.findIndex(u => u.id === userId);
-        if (idx !== -1) {
-            const oldName = STATE.users[idx].name;
-            STATE.users[idx].name = name;
-            STATE.users[idx].email = email;
-            STATE.users[idx].password = password;
-            STATE.users[idx].role = role;
-            STATE.users[idx].title = title;
-            STATE.users[idx].renglon = renglon;
-            STATE.users[idx].gender = gender;
-            savedUserObj = STATE.users[idx];
+        if (!name) {
+            showToast('El nombre del usuario o docente es obligatorio.', 'warning');
+            return;
+        }
 
-            // Cascada en cátedras
-            (STATE.pensum || []).forEach(a => {
-                if (a.teacherId === userId || a.teacher === oldName) {
-                    a.teacher = name;
-                    a.teacherId = userId;
+        if (!Array.isArray(STATE.users)) STATE.users = [];
+
+        let savedUserObj = null;
+
+        if (userId) {
+            // Edición de usuario existente
+            const idx = STATE.users.findIndex(u => u.id === userId);
+            if (idx !== -1) {
+                const oldName = STATE.users[idx].name;
+                STATE.users[idx].name = name;
+                STATE.users[idx].email = email;
+                STATE.users[idx].password = password;
+                STATE.users[idx].role = role;
+                STATE.users[idx].title = title;
+                STATE.users[idx].renglon = renglon;
+                STATE.users[idx].gender = gender;
+                savedUserObj = STATE.users[idx];
+
+                // Cascada en cátedras
+                (STATE.pensum || []).forEach(a => {
+                    if (a.teacherId === userId || a.teacher === oldName) {
+                        a.teacher = name;
+                        a.teacherId = userId;
+                    }
+                });
+
+                // Cascada en docentes guías
+                (STATE.gradesList || []).forEach(g => {
+                    if (g.guideTeacherId === userId || g.guideTeacher === oldName) {
+                        g.guideTeacher = name;
+                        g.guideTeacherId = userId;
+                    }
+                });
+            } else {
+                // Si no se encontró por ID directo, buscar por coincidencia de nombre
+                const nameIdx = STATE.users.findIndex(u => u.name && u.name.trim().toLowerCase() === name.toLowerCase());
+                if (nameIdx !== -1) {
+                    STATE.users[nameIdx].name = name;
+                    STATE.users[nameIdx].email = email;
+                    STATE.users[nameIdx].password = password;
+                    STATE.users[nameIdx].role = role;
+                    STATE.users[nameIdx].title = title;
+                    STATE.users[nameIdx].renglon = renglon;
+                    STATE.users[nameIdx].gender = gender;
+                    savedUserObj = STATE.users[nameIdx];
+                } else {
+                    savedUserObj = {
+                        id: userId || ('usr-' + Date.now()),
+                        name: name,
+                        username: name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'user' + Date.now(),
+                        email: email || `${name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)}@comercio.edu.gt`,
+                        password: password,
+                        role: role,
+                        title: title,
+                        renglon: renglon,
+                        gender: gender,
+                        active: true,
+                        classes: ''
+                    };
+                    STATE.users.push(savedUserObj);
                 }
-            });
-
-            // Cascada en docentes guías
-            (STATE.gradesList || []).forEach(g => {
-                if (g.guideTeacherId === userId || g.guideTeacher === oldName) {
-                    g.guideTeacher = name;
-                    g.guideTeacherId = userId;
-                }
-            });
+            }
 
             // Si se editó el usuario activo actual
             if (STATE.currentUser && STATE.currentUser.id === userId) {
-                STATE.currentUser = { ...STATE.users[idx] };
+                STATE.currentUser = { ...savedUserObj };
                 STATE.currentRole = role;
                 try {
                     sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(STATE.currentUser));
@@ -14790,51 +14828,64 @@ function saveUserForm(e) {
                     localStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(STATE.currentUser));
                     localStorage.setItem('ENCCO_AUTH_ROLE', role);
                 } catch(err) {}
-                applyUserRole(STATE.currentRole || "admin");
+                if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole || "admin");
             }
+        } else {
+            // Creación de nuevo usuario
+            const usernameBase = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'user' + Date.now();
+            const newId = 'usr-' + Date.now() + '-' + Math.floor(Math.random()*1000);
+            savedUserObj = {
+                id: newId,
+                name: name,
+                username: usernameBase,
+                email: email || `${usernameBase}@comercio.edu.gt`,
+                password: password,
+                role: role,
+                title: title,
+                renglon: renglon,
+                gender: gender,
+                active: true,
+                classes: ''
+            };
+            STATE.users.push(savedUserObj);
         }
-    } else {
-        // Creación de nuevo usuario
-        const usernameBase = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'user' + Date.now();
-        const newId = 'usr-' + Date.now() + '-' + Math.floor(Math.random()*1000);
-        savedUserObj = {
-            id: newId,
-            name: name,
-            username: usernameBase,
-            email: email || `${usernameBase}@comercio.edu.gt`,
-            password: password,
-            role: role,
-            title: title,
-            renglon: renglon,
-            gender: gender,
-            active: true,
-            classes: ''
-        };
-        STATE.users.push(savedUserObj);
+
+        // Remover de lista de eliminados
+        if (savedUserObj && Array.isArray(STATE.deletedUserIds)) {
+            STATE.deletedUserIds = STATE.deletedUserIds.filter(id => id !== savedUserObj.id);
+        }
+
+        // 1. Guardar estado en memoria y almacenamiento local
+        STATE.lastModified = Date.now();
+        saveStateToLocalStorage();
+
+        // 2. Cerrar modal de inmediato
+        closeUserModal();
+
+        // 3. Refrescar la tabla dinámicamente
+        renderUsersTable();
+
+        // 4. Sincronizar UI global y dashboard de forma segura
+        try {
+            if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
+        } catch(uiErr) { console.warn("Aviso UI:", uiErr); }
+
+        try {
+            if (typeof renderDashboard === 'function') renderDashboard();
+        } catch(dashErr) { console.warn("Aviso Dashboard:", dashErr); }
+
+        // 5. Sincronización en segundo plano a Supabase
+        if (typeof autoSyncToSupabase === 'function') {
+            autoSyncToSupabase(true, false);
+        }
+
+        showToast(`✅ Usuario/Docente "${name}" guardado exitosamente.`, "success");
+    } catch(err) {
+        console.error("Error en saveUserForm:", err);
+        showToast("Error al guardar usuario: " + (err.message || err), "danger");
     }
-
-    // Asegurar que no esté en la lista de eliminados
-    if (savedUserObj && Array.isArray(STATE.deletedUserIds)) {
-        STATE.deletedUserIds = STATE.deletedUserIds.filter(id => id !== savedUserObj.id);
-    }
-
-    // 1. Guardar estado en memoria y almacenamiento local
-    STATE.lastModified = Date.now();
-    saveStateToLocalStorage();
-
-    // 2. Cerrar modal y refrescar la tabla dinámicamente al instante
-    closeUserModal();
-    renderUsersTable();
-    synchronizeGlobalDynamicUI();
-    if (typeof renderDashboard === 'function') renderDashboard();
-
-    // 3. Sincronizar en segundo plano a Supabase sin bloquear la UI
-    if (typeof autoSyncToSupabase === 'function') {
-        autoSyncToSupabase(true, false);
-    }
-
-    showToast(`✅ Usuario/Docente "${name}" guardado exitosamente.`, "success");
 }
+
 
 function deleteUser(userId) {
     if (!checkEnrolmentPermissions()) return;
