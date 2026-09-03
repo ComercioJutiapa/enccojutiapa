@@ -298,7 +298,7 @@
     </div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260831_v109_pure_google_firebase_realtime_only"></script>
+    <script src="app.js?v=20260831_v111_google_firebase_realtime_flawless"></script>
     <script>
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');
@@ -336,20 +336,20 @@
             const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Iniciar Sesión';
             if (submitBtn) {
                 submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down fa-spin"></i> Conectando con Supabase...';
+                submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down fa-spin"></i> Conectando con Google Firebase Realtime...';
             }
 
-            // 1. Conectar a Supabase e inicializar cliente
-            if (!window.supabaseClient && typeof initSupabaseConnection === 'function') {
-                initSupabaseConnection();
+            // 1. Conectar a Google Firebase Realtime Database e inicializar cliente
+            if (!window.firebaseClient && typeof initGoogle Firebase Realtime DatabaseConnection === 'function') {
+                initGoogle Firebase Realtime DatabaseConnection();
             }
 
-            // 2. Leer obligatoriamente la información más reciente desde Supabase en la nube
-            if (typeof pullStateFromSupabaseCloud === 'function') {
+            // 2. Leer obligatoriamente la información más reciente desde Google Firebase Realtime Database en la nube
+            if (typeof pullStateFromGoogle Firebase Realtime DatabaseCloud === 'function') {
                 try {
-                    await pullStateFromSupabaseCloud(false);
+                    await pullStateFromGoogle Firebase Realtime DatabaseCloud(false);
                 } catch(err) {
-                    console.warn("Aviso al consultar Supabase:", err);
+                    console.warn("Aviso al consultar Google Firebase Realtime Database:", err);
                 }
             }
 
@@ -394,7 +394,7 @@
                 return;
             }
 
-            // Credenciales válidas: Asegurar snapshot completo de Supabase en almacenamiento local
+            // Credenciales válidas: Asegurar snapshot completo de Google Firebase Realtime Database en almacenamiento local
             try {
                 if (window.STATE && typeof DB_STORAGE_KEY !== 'undefined') {
                     localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(window.STATE));

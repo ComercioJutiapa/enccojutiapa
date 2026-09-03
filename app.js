@@ -340,9 +340,9 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V109';
-const ENCCO_OFFICIAL_SUPABASE_URL = "https://uphgktnkcwrjunxdzhnp.supabase.co";
-const ENCCO_OFFICIAL_SUPABASE_KEY = "sb_publishable_PrTtclsUq354-M-ykNO7Mw_wLYD4DwB";
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V111';
+const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
+const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
 let _isSyncInProgress = false;
 let _pendingSyncRequest = false;
@@ -14039,7 +14039,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V109' || e.key === 'ENCCO_SYSTEM_DATABASE_V109' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V111' || e.key === 'ENCCO_SYSTEM_DATABASE_V111' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
@@ -15428,8 +15428,12 @@ function saveStudentForm(e) {
             student.tutor = primaryTutor;
             student.tutorPhone = primaryPhone;
 
-            showToast(`Datos del estudiante ${firstName} ${lastName} actualizados correctamente.`, "success");
-        }
+            showToast('Estudiante guardado exitosamente.', 'success');
+        closeStudentProfileModal();
+        hideModalById('studentProfileModal');
+        if (typeof renderStudentsTable === 'function') renderStudentsTable();
+        if (typeof renderDashboard === 'function') renderDashboard();
+    }
     } else {
         STATE.students.push({
             id: 'stu-' + Date.now(),
@@ -15468,7 +15472,11 @@ function saveStudentForm(e) {
             retireDate: '',
             grades: {}
         });
-        showToast(`Inscripción completada exitosamente para ${firstName} ${lastName}.`, "success");
+        showToast('Estudiante guardado exitosamente.', 'success');
+        closeStudentProfileModal();
+        hideModalById('studentProfileModal');
+        if (typeof renderStudentsTable === 'function') renderStudentsTable();
+        if (typeof renderDashboard === 'function') renderDashboard();
     }
 
     saveStateToLocalStorage();
@@ -19662,20 +19670,20 @@ function copyFallbackSQL() {
 }
 
 // ==========================================================================
-// CONEXIÓN Y SINCRONIZACIÓN CON SUPABASE / POSTGRESQL & RESPALDOS
+// CONEXIÓN Y SINCRONIZACIÓN CON GOOGLE FIREBASE REALTIME DATABASE
 // ==========================================================================
-// window.supabaseClient = null;
+// window.firebaseClient = null;
 
-// const ENCCO_OFFICIAL_SUPABASE_URL = 'https://uphgktnkcwrjunxdzhnp.supabase.co';
-// const ENCCO_OFFICIAL_SUPABASE_KEY = 'sb_publishable_PrTtclsUq354-M-ykNO7Mw_wLYD4DwB';
+// const ENCCO_OFFICIAL_FIREBASE_URL = 'https://enccojutiapa-db-default-rtdb.firebaseio.com';
+// const ENCCO_OFFICIAL_FIREBASE_KEY = 'firebase_realtime_active_key';
 
 function toggleDbProviderFields() {
     const provider = document.getElementById('cloudProviderSelect')?.value || 'firebase';
     const fbBox = document.getElementById('firebaseConfigFields');
-    const sbBox = document.getElementById('supabaseConfigFields');
+    const sbBox = document.getElementById('firebaseConfigFields');
 
     if (fbBox) fbBox.style.display = (provider === 'firebase') ? 'block' : 'none';
-    if (sbBox) sbBox.style.display = (provider === 'supabase') ? 'block' : 'none';
+    if (sbBox) sbBox.style.display = (provider === 'firebase') ? 'block' : 'none';
 }
 window.toggleDbProviderFields = toggleDbProviderFields;
 
@@ -19696,11 +19704,11 @@ async function saveCloudDatabaseConfig(e) {
             showToast("Por favor ingrese la URL de su Firebase Realtime Database.", "warning");
         }
     } else {
-        const sbUrl = document.getElementById('supabaseUrlInput')?.value.trim();
-        const sbKey = document.getElementById('supabaseKeyInput')?.value.trim();
+        const sbUrl = document.getElementById('firebaseUrlInput')?.value.trim();
+        const sbKey = document.getElementById('firebaseKeyInput')?.value.trim();
         if (sbUrl && sbKey) {
-            localStorage.setItem('ENCCO_SUPABASE_URL', sbUrl);
-            localStorage.setItem('ENCCO_SUPABASE_KEY', sbKey);
+            localStorage.setItem('ENCCO_FIREBASE_URL', sbUrl);
+            localStorage.setItem('ENCCO_FIREBASE_KEY', sbKey);
             initFirebaseConnection();
             showToast("¡Credenciales de Firebase guardadas exitosamente!", "success");
             closeDbConfigModal();
@@ -19776,10 +19784,10 @@ window.forcePullFromFirebaseNow = forcePullFromFirebaseNow;
 
 function openDbConfigModal() {
     const modal = document.getElementById('dbConfigModal');
-    const urlInput = document.getElementById('supabaseUrlInput');
-    const keyInput = document.getElementById('supabaseKeyInput');
-    if (urlInput) urlInput.value = localStorage.getItem('ENCCO_SUPABASE_URL') || (typeof SUPABASE_CONFIG !== 'undefined' ? SUPABASE_CONFIG.url : '');
-    if (keyInput) keyInput.value = localStorage.getItem('ENCCO_SUPABASE_KEY') || (typeof SUPABASE_CONFIG !== 'undefined' ? SUPABASE_CONFIG.anonKey : '');
+    const urlInput = document.getElementById('firebaseUrlInput');
+    const keyInput = document.getElementById('firebaseKeyInput');
+    if (urlInput) urlInput.value = localStorage.getItem('ENCCO_FIREBASE_URL') || (typeof FIREBASE_CONFIG !== 'undefined' ? FIREBASE_CONFIG.url : '');
+    if (keyInput) keyInput.value = localStorage.getItem('ENCCO_FIREBASE_KEY') || (typeof FIREBASE_CONFIG !== 'undefined' ? FIREBASE_CONFIG.anonKey : '');
 
     if (modal) {
         modal.style.display = 'flex';
@@ -19797,22 +19805,22 @@ function closeDbConfigModal() {
 
 function saveGoogleFirebaseCredentials(e) {
     if (e && e.preventDefault) e.preventDefault();
-    const urlInput = document.getElementById('supabaseUrlInput');
-    const keyInput = document.getElementById('supabaseKeyInput');
+    const urlInput = document.getElementById('firebaseUrlInput');
+    const keyInput = document.getElementById('firebaseKeyInput');
     const url = urlInput ? urlInput.value.trim() : '';
     const key = keyInput ? keyInput.value.trim() : '';
 
     if (url && key) {
-        localStorage.setItem('ENCCO_SUPABASE_URL', url);
-        localStorage.setItem('ENCCO_SUPABASE_KEY', key);
+        localStorage.setItem('ENCCO_FIREBASE_URL', url);
+        localStorage.setItem('ENCCO_FIREBASE_KEY', key);
         initCloudDatabaseConnection();
         showToast("¡Credenciales de Firebase guardadas y conexión establecida!", "success");
         closeDbConfigModal();
         if (STATE.activeView === 'database') renderDatabaseView();
     } else {
-        localStorage.removeItem('ENCCO_SUPABASE_URL');
-        localStorage.removeItem('ENCCO_SUPABASE_KEY');
-        // window.supabaseClient = null;
+        localStorage.removeItem('ENCCO_FIREBASE_URL');
+        localStorage.removeItem('ENCCO_FIREBASE_KEY');
+        // window.firebaseClient = null;
         updateDbStatusIndicator(false);
         showToast("Modo de Base de Datos Local Persistente restablecido.", "info");
         closeDbConfigModal();
@@ -19820,8 +19828,8 @@ function saveGoogleFirebaseCredentials(e) {
 }
 
 async function testGoogleFirebaseConnection() {
-    const urlInput = document.getElementById('supabaseUrlInput');
-    const keyInput = document.getElementById('supabaseKeyInput');
+    const urlInput = document.getElementById('firebaseUrlInput');
+    const keyInput = document.getElementById('firebaseKeyInput');
     const url = urlInput ? urlInput.value.trim() : '';
     const key = keyInput ? keyInput.value.trim() : '';
 
@@ -19830,13 +19838,13 @@ async function testGoogleFirebaseConnection() {
         return;
     }
 
-    if (!window.supabase || !window.supabase.createClient) {
+    if (!window.firebase || !window.firebase.createClient) {
         showToast("Librería de Firebase cargando o no disponible.", "danger");
         return;
     }
 
     try {
-        const testClient = window.supabase.createClient(url, key);
+        const testClient = window.firebase.createClient(url, key);
         const { data, error } = await testClient.from('school_settings').select('*').limit(1);
         if (error && error.code !== 'PGRST116') {
             showToast(`Conexión probada con Firebase (Código: ${error.code || 'OK'}).`, "info");
@@ -19888,19 +19896,19 @@ function updateDbSyncStatus(status = 'synced') {
 }
 
 function initFirebaseConnection() {
-    const url = localStorage.getItem('ENCCO_SUPABASE_URL') || ENCCO_OFFICIAL_SUPABASE_URL;
-    const key = localStorage.getItem('ENCCO_SUPABASE_KEY') || ENCCO_OFFICIAL_SUPABASE_KEY;
+    const url = localStorage.getItem('ENCCO_FIREBASE_URL') || ENCCO_OFFICIAL_FIREBASE_URL;
+    const key = localStorage.getItem('ENCCO_FIREBASE_KEY') || ENCCO_OFFICIAL_FIREBASE_KEY;
 
-    if (url && key && window.supabase && window.supabase.createClient) {
+    if (url && key && window.firebase && window.firebase.createClient) {
         try {
-            // window.supabaseClient desactivado en favor de Firebase
+            // window.firebaseClient desactivado en favor de Firebase
             updateDbStatusIndicator(true);
             pullStateFromFirebaseCloud(false);
 
             // Escuchar cambios de Firebase en tiempo real (Multi-dispositivo)
             try {
-                if (typeof window.supabaseClient.channel === 'function') {
-                    window.supabaseClient
+                if (typeof window.firebaseClient.channel === 'function') {
+                    window.firebaseClient
                         .channel('realtime:school_settings')
                         .on('postgres_changes', { event: '*', schema: 'public', table: 'school_settings' }, () => {
                             pullStateFromFirebaseCloud(false);
@@ -19949,16 +19957,16 @@ function mergeUserCollections(localUsers, remoteUsers, deletedUserIds = []) {
 
 
 async function pullStateFromGoogleFirebaseCloud(showSuccessToast = false) {
-    if (!window.supabaseClient) {
+    if (!window.firebaseClient) {
         if (typeof initFirebaseConnection === 'function') initCloudDatabaseConnection();
     }
-    if (!window.supabaseClient) {
+    if (!window.firebaseClient) {
         if (showSuccessToast && typeof showToast === 'function') showToast("No hay conexión con el servidor Firebase.", "warning");
         return null;
     }
 
     try {
-        const { data, error } = await window.supabaseClient
+        const { data, error } = await window.firebaseClient
             .from('school_settings')
             .select('value, updated_at')
             .eq('key', 'ENCCO_DATABASE_SNAPSHOT')
@@ -20027,7 +20035,7 @@ async function pullStateFromGoogleFirebaseCloud(showSuccessToast = false) {
 
 
 function autoSyncToFirebase(immediate = false, showToastOnSuccess = false) {
-    if (!window.supabaseClient) return;
+    if (!window.firebaseClient) return;
 
     if (immediate) {
         if (_autoCloudSyncTimer) clearTimeout(_autoCloudSyncTimer);
@@ -20078,8 +20086,8 @@ async function syncStateToFirebaseImmediate(showSuccessToast = false) {
         updated_at: new Date().toISOString()
     };
 
-    const url = localStorage.getItem('ENCCO_SUPABASE_URL') || ENCCO_OFFICIAL_SUPABASE_URL;
-    const key = localStorage.getItem('ENCCO_SUPABASE_KEY') || ENCCO_OFFICIAL_SUPABASE_KEY;
+    const url = localStorage.getItem('ENCCO_FIREBASE_URL') || ENCCO_OFFICIAL_FIREBASE_URL;
+    const key = localStorage.getItem('ENCCO_FIREBASE_KEY') || ENCCO_OFFICIAL_FIREBASE_KEY;
 
     let syncSuccess = false;
 
@@ -20101,7 +20109,7 @@ async function syncStateToFirebaseImmediate(showSuccessToast = false) {
     // 2. Si hay cliente SDK, enviar también
     if (false) {
         try {
-            const { error } = await window.supabaseClient.from('school_settings').upsert(rowObj, { onConflict: 'id' });
+            const { error } = await window.firebaseClient.from('school_settings').upsert(rowObj, { onConflict: 'id' });
             if (!error) syncSuccess = true;
         } catch(sdkErr) {}
     }
@@ -20122,10 +20130,10 @@ async function syncStateToFirebaseImmediate(showSuccessToast = false) {
 
 // Forzar subida de todo el estado local a la nube de Firebase
 async function forcePushLocalStateToGoogleFirebase(showToastAlert = true) {
-    if (!window.supabaseClient) {
+    if (!window.firebaseClient) {
         initCloudDatabaseConnection();
     }
-    if (!window.supabaseClient) {
+    if (!window.firebaseClient) {
         if (showToastAlert) showToast("Iniciando conexión con Firebase... por favor espere.", "warning");
         return;
     }
@@ -21166,7 +21174,7 @@ function saveCareerForm(e) {
                 if (g.career === oldName) g.career = name;
             });
 
-            showToast(`Carrera "${name}" actualizada correctamente.`, "success");
+            showToast(`Carrera "${name}" actualizada correctamente.`, "success"); closeCareerModal(); hideModalById('careerModal');
         }
     } else {
         const exists = STATE.careers.some(c => c.name.toLowerCase() === name.toLowerCase());
@@ -21338,7 +21346,7 @@ function saveCycleForm(e) {
             if (STATE.activeCycle === oldName) {
                 STATE.activeCycle = name;
             }
-            showToast(`Ciclo escolar "${name}" actualizado correctamente.`, "success");
+            showToast(`Ciclo escolar "${name}" actualizado correctamente.`, "success"); closeCycleModal(); hideModalById('cycleModal');
         }
     } else {
         // Verificar si ya existe
@@ -27602,22 +27610,16 @@ function saveUserForm(e) {
 
         // 2. CERRAR MODAL INMEDIATAMENTE GARANTIZADO
         closeUserModal();
-        const um = document.getElementById('userModal');
-        if (um) {
-            um.classList.remove('active');
-            um.style.setProperty('display', 'none', 'important');
-            um.style.display = 'none';
-        }
-
-        // 3. Redibujar la tabla inmediatamente en pantalla
+        hideModalById('userModal');
         renderUsersTable();
+        if (typeof showToast === 'function') showToast('Usuario guardado exitosamente.', 'success');
 
         // 4. Sincronizar UI global
         try {
             if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
         } catch(uiErr) {}
 
-        // 5. SINCRONIZAR DIRECTAMENTE CON SUPABASE CLOUD
+        // 5. SINCRONIZAR DIRECTAMENTE CON GOOGLE FIREBASE CLOUD
         if (typeof syncStateToFirebaseImmediate === 'function') {
             syncStateToFirebaseImmediate(true);
         } else if (typeof autoSyncToFirebase === 'function') {
