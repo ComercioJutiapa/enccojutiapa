@@ -245,16 +245,32 @@ function saveRoleForm(e) {
         showToast(`Rol "${name}" creado exitosamente con sus permisos.`, "success");
     }
 
-    // 1. Guardar estado local y enviar a Firebase en tiempo real
+    // 1. Guardar estado local
     saveStateToLocalStorage();
 
-    // 2. Aplicar permisos en tiempo real a la interfaz
+    // 2. Transmisión instantánea a todas las pestañas y dispositivos en tiempo real
+    try {
+        if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+            _enccBroadcastChannel.postMessage({
+                type: 'SYNC_STATE_UPDATE',
+                state: STATE,
+                timestamp: Date.now()
+            });
+        }
+    } catch(bcErr) {}
+
+    // 3. Enviar actualización atómica a Google Firebase Realtime Database
+    if (typeof syncStateToFirebaseImmediate === 'function') {
+        syncStateToFirebaseImmediate(false);
+    }
+
+    // 4. Aplicar permisos en tiempo real a la interfaz activa
     applyUserRole(STATE.currentRole);
 
-    // 3. Renderizar tabla de roles
+    // 5. Renderizar tabla de roles actualizada
     renderRolesTable();
 
-    // 4. Cerrar modal de inmediato
+    // 6. Cerrar modal de inmediato
     closeRoleModal();
 }
 window.saveRoleForm = saveRoleForm;
@@ -1333,7 +1349,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V118';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V119';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -14338,6 +14354,7 @@ function initApp() {
             STATE.disciplineReports = parsed.disciplineReports || [];
             STATE.attendanceRecords = parsed.attendanceRecords || {};
             STATE.dismissedAlerts = parsed.dismissedAlerts || {};
+            STATE.rolesConfig = (parsed.rolesConfig && Array.isArray(parsed.rolesConfig) && parsed.rolesConfig.length > 0) ? parsed.rolesConfig : (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : []);
             STATE.schoolHeader = parsed.schoolHeader || getInitialData().schoolHeader;
             STATE.config = parsed.config || { activeBimestre: 1, globalLocked: false, minPassingScore: 60, teacherBypass: {} };
             STATE.config.activeBimestre = parseInt(STATE.config.activeBimestre) || 1;
@@ -15032,7 +15049,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V118' || e.key === 'ENCCO_SYSTEM_DATABASE_V118' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V119' || e.key === 'ENCCO_SYSTEM_DATABASE_V119' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
@@ -15074,6 +15091,12 @@ function applyIncomingCloudState(incomingState, isFromCloud = true) {
     if (Array.isArray(incomingState.pensumCatalog)) STATE.pensumCatalog = incomingState.pensumCatalog;
     if (incomingState.attendanceRecords) STATE.attendanceRecords = incomingState.attendanceRecords;
     if (Array.isArray(incomingState.disciplineReports)) STATE.disciplineReports = incomingState.disciplineReports;
+    if (Array.isArray(incomingState.rolesConfig)) {
+        STATE.rolesConfig = incomingState.rolesConfig;
+        if (typeof normalizeRolesConfig === 'function') normalizeRolesConfig();
+        if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
+        if (STATE.activeView === 'roles' && typeof renderRolesTable === 'function') renderRolesTable();
+    }
     if (Array.isArray(incomingState.cycles)) STATE.cycles = incomingState.cycles;
     if (incomingState.activeCycle) STATE.activeCycle = incomingState.activeCycle;
     if (incomingState.config) STATE.config = incomingState.config;
@@ -15144,6 +15167,7 @@ function saveStateToLocalStorage() {
         disciplineReports: STATE.disciplineReports,
         attendanceRecords: STATE.attendanceRecords || {},
         dismissedAlerts: STATE.dismissedAlerts || {},
+        rolesConfig: STATE.rolesConfig || initDefaultRolesConfig(),
         schoolHeader: STATE.schoolHeader || getInitialData().schoolHeader
     };
     payload.lastModified = Date.now();
