@@ -1,3 +1,49 @@
+function deduplicateUsersCollection(users) {
+    if (!Array.isArray(users)) return [];
+    const seenIds = new Set();
+    const seenNameRole = new Set();
+    const result = [];
+
+    users.forEach(u => {
+        if (!u || !u.id) return;
+        const normName = (u.name || '').trim().toLowerCase();
+        const normRole = (u.role || '').trim().toLowerCase();
+        const nameRoleKey = normName + '___' + normRole;
+
+        // Si es la cuenta principal de Nehemias como Super Administrador
+        if (normName.includes('nehemias') && normRole === 'admin') {
+            if (seenNameRole.has(nameRoleKey)) return;
+            seenNameRole.add(nameRoleKey);
+            seenIds.add('usr-admin-01');
+            result.push({
+                ...u,
+                id: 'usr-admin-01',
+                name: 'PEM. Nehemias Yalil Salguero',
+                username: 'nehemias',
+                email: 'nehemias.salguero1982@gmail.com',
+                password: 'C@rolina1',
+                role: 'admin',
+                title: 'Super Administrador del Sistema / Catedrático Titular',
+                renglon: '011',
+                gender: 'Masculino',
+                active: true
+            });
+            return;
+        }
+
+        if (seenIds.has(u.id) || seenNameRole.has(nameRoleKey)) {
+            return; // Descartar duplicado
+        }
+
+        seenIds.add(u.id);
+        seenNameRole.add(nameRoleKey);
+        result.push(u);
+    });
+
+    return result;
+}
+
+
 // ==========================================================================
 // 🏛️ CATÁLOGOS MAESTROS OFICIALES ENCCO JUTIAPA (PENSUM 28, 116 CÁTEDRAS, 412 ALUMNOS)
 // ==========================================================================
@@ -6093,6 +6139,11 @@ function renderUsersTable(filterVal = '') {
     const tbody = document.getElementById('usersTableBody');
     if (!tbody) return;
 
+    // Asegurar colección sin duplicados
+    if (Array.isArray(STATE.users)) {
+        STATE.users = deduplicateUsersCollection(STATE.users);
+    }
+
     // Calcular KPIs de Renglón 011 / 021 y Género en tiempo real
     const allTeachers = (STATE.users || []).filter(u => u.role === 'docente' || u.id.startsWith('usr-doc-'));
     let count011_H = 0, count011_M = 0;
@@ -7280,29 +7331,29 @@ function mergeUserCollections(localUsers, remoteUsers, deletedUserIds = []) {
     const deletedSet = new Set(deletedUserIds || []);
     const map = new Map();
 
-    // 1. Cargar usuarios remotos de Supabase
+    // 1. Cargar remotos
     (remoteUsers || []).forEach(u => {
         if (!u || !u.id) return;
         if (deletedSet.has(u.id)) return;
         map.set(u.id, { ...u });
     });
 
-    // 2. Preservar TODOS los usuarios locales (no permitir que ninguno se borre)
+    // 2. Preservar locales
     (localUsers || []).forEach(u => {
         if (!u || !u.id) return;
         if (deletedSet.has(u.id)) return;
         if (!map.has(u.id)) {
-            // Usuario creado localmente que no está en el servidor remoto: ¡PRESERVARLO!
             map.set(u.id, { ...u });
         } else {
-            // Usuario en ambos: conservar los cambios más completos
             const existing = map.get(u.id);
             map.set(u.id, { ...existing, ...u });
         }
     });
 
-    return Array.from(map.values());
+    const merged = Array.from(map.values());
+    return deduplicateUsersCollection(merged);
 }
+
 
 async function pullStateFromSupabaseCloud(showSuccessToast = false) {
     if (!window.supabaseClient) {
@@ -14789,7 +14840,7 @@ function saveUserForm(e) {
                     }
                 });
             } else {
-                // Si no se encontró por ID directo, buscar por coincidencia de nombre
+                // Buscar por nombre si cambió de ID
                 const nameIdx = STATE.users.findIndex(u => u.name && u.name.trim().toLowerCase() === name.toLowerCase());
                 if (nameIdx !== -1) {
                     STATE.users[nameIdx].name = name;
@@ -14819,7 +14870,7 @@ function saveUserForm(e) {
             }
 
             // Si se editó el usuario activo actual
-            if (STATE.currentUser && STATE.currentUser.id === userId) {
+            if (STATE.currentUser && (STATE.currentUser.id === userId || STATE.currentUser.id === savedUserObj.id)) {
                 STATE.currentUser = { ...savedUserObj };
                 STATE.currentRole = role;
                 try {
@@ -14833,9 +14884,8 @@ function saveUserForm(e) {
         } else {
             // Creación de nuevo usuario
             const usernameBase = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'user' + Date.now();
-            const newId = 'usr-' + Date.now() + '-' + Math.floor(Math.random()*1000);
             savedUserObj = {
-                id: newId,
+                id: 'usr-' + Date.now() + '-' + Math.floor(Math.random()*1000),
                 name: name,
                 username: usernameBase,
                 email: email || `${usernameBase}@comercio.edu.gt`,
@@ -14850,31 +14900,26 @@ function saveUserForm(e) {
             STATE.users.push(savedUserObj);
         }
 
-        // Remover de lista de eliminados
+        // Limpiar duplicados y remover de eliminados
+        STATE.users = deduplicateUsersCollection(STATE.users);
         if (savedUserObj && Array.isArray(STATE.deletedUserIds)) {
             STATE.deletedUserIds = STATE.deletedUserIds.filter(id => id !== savedUserObj.id);
         }
 
-        // 1. Guardar estado en memoria y almacenamiento local
+        // 1. Guardar estado
         STATE.lastModified = Date.now();
         saveStateToLocalStorage();
 
-        // 2. Cerrar modal de inmediato
+        // 2. Cerrar modal y redibujar la tabla inmediatamente
         closeUserModal();
-
-        // 3. Refrescar la tabla dinámicamente
         renderUsersTable();
 
-        // 4. Sincronizar UI global y dashboard de forma segura
+        // 3. Sincronizar UI global y Dashboard
         try {
             if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
-        } catch(uiErr) { console.warn("Aviso UI:", uiErr); }
+        } catch(uiErr) {}
 
-        try {
-            if (typeof renderDashboard === 'function') renderDashboard();
-        } catch(dashErr) { console.warn("Aviso Dashboard:", dashErr); }
-
-        // 5. Sincronización en segundo plano a Supabase
+        // 4. Sincronizar a Supabase en segundo plano
         if (typeof autoSyncToSupabase === 'function') {
             autoSyncToSupabase(true, false);
         }
@@ -14882,17 +14927,15 @@ function saveUserForm(e) {
         showToast(`✅ Usuario/Docente "${name}" guardado exitosamente.`, "success");
     } catch(err) {
         console.error("Error en saveUserForm:", err);
-        showToast("Error al guardar usuario: " + (err.message || err), "danger");
+        showToast("Error al guardar: " + (err.message || err), "danger");
     }
 }
 
-
 function deleteUser(userId) {
-    if (!checkEnrolmentPermissions()) return;
     const user = (STATE.users || []).find(u => u.id === userId);
     if (!user) return;
 
-    if (user.id === 'usr-admin-master' || user.id === 'usr-admin-01' || user.role === 'admin' && STATE.users.filter(u => u.role === 'admin').length <= 1) {
+    if (user.id === 'usr-admin-master' || user.id === 'usr-admin-01' || (user.role === 'admin' && STATE.users.filter(u => u.role === 'admin').length <= 1)) {
         showToast("No es posible eliminar la cuenta principal de Administrador.", "danger");
         return;
     }
@@ -14904,7 +14947,8 @@ function deleteUser(userId) {
             STATE.deletedUserIds.push(userId);
         }
 
-        STATE.users = STATE.users.filter(u => u.id !== userId);
+        STATE.users = (STATE.users || []).filter(u => u.id !== userId);
+        STATE.users = deduplicateUsersCollection(STATE.users);
 
         // Desvincular en cátedras
         (STATE.pensum || []).forEach(a => {
@@ -14926,12 +14970,15 @@ function deleteUser(userId) {
         STATE.lastModified = Date.now();
         saveStateToLocalStorage();
 
-        // 2. Refrescar la tabla dinámicamente al instante
+        // 2. Refrescar la tabla al instante
         renderUsersTable();
-        synchronizeGlobalDynamicUI();
-        if (typeof renderDashboard === 'function') renderDashboard();
 
-        // 3. Sincronizar con la nube
+        // 3. Sincronizar UI global
+        try {
+            if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
+        } catch(uiErr) {}
+
+        // 4. Sincronizar con Supabase
         if (typeof autoSyncToSupabase === 'function') {
             autoSyncToSupabase(true, false);
         }
