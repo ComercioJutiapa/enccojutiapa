@@ -2052,19 +2052,57 @@ window.sortGrades = sortGrades;
 //   MOTOR DE PERSISTENCIA Y RECUPERACIÓN MAESTRA DE BASE DE DATOS (V126)
 // ======================================================================
 
-function loadMasterDatabaseState() {
-    // 1. Intentar recuperar desde la clave maestra permanente
-    let saved = localStorage.getItem(DB_STORAGE_KEY);
+var DB_STORAGE_KEY = 'ENCCO_DATABASE';
+window.DB_STORAGE_KEY = DB_STORAGE_KEY;
 
-    // 2. Si no existe o está vacía, buscar en todas las versiones históricas existentes en localStorage
-    if (!saved) {
-        let bestParsed = null;
+function purgeOldDatabaseVersions() {
+    try {
+        if (typeof localStorage === 'undefined') return;
+
+        let currentMaster = localStorage.getItem(DB_STORAGE_KEY);
+        let bestCandidate = null;
         let bestTime = 0;
 
-        try {
-            for (let i = 0; i < localStorage.length; i++) {
-                const k = localStorage.key(i);
-                if (k && (k.startsWith('ENCCO_SYSTEM_DATABASE_') || k.startsWith('ENCCO_STATE_BACKUP_') || k === 'ENCCO_DATABASE_PROD_CLEAN_V1')) {
+        if (currentMaster) {
+            try {
+                const parsed = JSON.parse(currentMaster);
+                if (parsed && typeof parsed === 'object' && (parsed.students || parsed.users)) {
+                    bestCandidate = currentMaster;
+                    bestTime = parsed.lastModified || 1;
+                }
+            } catch(e) {}
+        }
+
+        const legacyKeysToDelete = [];
+
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (!k) continue;
+
+            const isLegacy = (
+                k !== DB_STORAGE_KEY &&
+                k !== 'ENCCO_LAST_LOCAL_MODIFIED' &&
+                k !== 'ENCCO_AUTH_USER' &&
+                k !== 'ENCCO_AUTH_ROLE' &&
+                k !== 'ENCCO_AUTH_REMEMBER' &&
+                k !== 'ENCCO_FIREBASE_URL' &&
+                k !== 'ENCCO_FIREBASE_KEY' &&
+                (
+                    k.startsWith('ENCCO_SYSTEM_DATABASE_') ||
+                    k.startsWith('ENCCO_STATE_BACKUP_') ||
+                    k.startsWith('ENCCO_SYSTEM_DATA_') ||
+                    k.startsWith('ENCCO_DATABASE_PROD_') ||
+                    k.startsWith('ENCCO_DATABASE_BLANK_') ||
+                    k.startsWith('ENCCO_DATABASE_SNAPSHOT') ||
+                    k.startsWith('ENCCO_DB_') ||
+                    k.includes('_BACKUP') ||
+                    k.includes('_V')
+                )
+            );
+
+            if (isLegacy) {
+                legacyKeysToDelete.push(k);
+                if (!currentMaster) {
                     try {
                         const raw = localStorage.getItem(k);
                         if (raw) {
@@ -2073,29 +2111,47 @@ function loadMasterDatabaseState() {
                                 const t = p.lastModified || 0;
                                 if (t >= bestTime) {
                                     bestTime = t;
-                                    bestParsed = p;
+                                    bestCandidate = raw;
                                 }
                             }
                         }
                     } catch(e) {}
                 }
             }
-        } catch(e) {}
-
-        if (bestParsed) {
-            console.log("? [Base de Datos] Migrando datos hist?ricos recuperados a la base maestra permanente...");
-            saved = JSON.stringify(bestParsed);
-            localStorage.setItem(DB_STORAGE_KEY, saved);
-            localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', saved);
         }
-    }
 
+        // Si no teníamos ENCCO_DATABASE y encontramos datos en alguna versión antigua, migrarlos
+        if (!currentMaster && bestCandidate) {
+            localStorage.setItem(DB_STORAGE_KEY, bestCandidate);
+            currentMaster = bestCandidate;
+        }
+
+        // Eliminar definitivamente todas las versiones antiguas
+        legacyKeysToDelete.forEach(k => {
+            try {
+                localStorage.removeItem(k);
+            } catch(e) {}
+        });
+
+        if (legacyKeysToDelete.length > 0) {
+            console.log(`🧹 [Base de Datos Única] Se purgaron ${legacyKeysToDelete.length} versiones anteriores obsoletas. Única base activa: ENCCO_DATABASE.`);
+        }
+    } catch(err) {
+        console.warn("Aviso durante purga de versiones antiguas:", err);
+    }
+}
+window.purgeOldDatabaseVersions = purgeOldDatabaseVersions;
+
+function loadMasterDatabaseState() {
+    // 1. Purgar versiones antiguas y consolidar todo en la base única ENCCO_DATABASE
+    purgeOldDatabaseVersions();
+
+    // 2. Recuperar exclusivamente desde la clave única sin versiones
+    let saved = localStorage.getItem(DB_STORAGE_KEY);
     return saved;
 }
 window.loadMasterDatabaseState = loadMasterDatabaseState;
 
-
-var DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_MASTER';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -2440,12 +2496,12 @@ function getInitialData() {
         },
         {
             "id": "usr-sec-01",
-            "name": "Secretaría Académica",
+            "name": "Licda. Jhoana Jarro",
             "username": "secretaria",
             "email": "jhoanajarro@gmail.com",
             "password": "Jhoana1",
             "role": "secretaria",
-            "title": "PEM / Catedrático Titular",
+            "title": "Secretaria Académica / Catedrática Titular",
             "renglon": "011",
             "gender": "Femenino",
             "active": true
@@ -15129,11 +15185,21 @@ function initApp() {
             return;
         }
         try {
-            STATE.currentUser = JSON.parse(authUserStr);
-            STATE.currentRole = authRoleStr || STATE.currentUser.role || 'admin';
+            const parsedAuth = JSON.parse(authUserStr);
+            // Si el usuario existe en STATE.users (base de datos cargada), usar el objeto más actualizado
+            const freshUser = (Array.isArray(STATE.users) && STATE.users.length > 0)
+                ? (STATE.users.find(u => u.id === parsedAuth.id || (u.email && parsedAuth.email && u.email.toLowerCase() === parsedAuth.email.toLowerCase())) || parsedAuth)
+                : parsedAuth;
+
+            STATE.currentUser = freshUser;
+            STATE.currentRole = authRoleStr || freshUser.role || 'admin';
             STATE.isLoggedIn = true;
-            sessionStorage.setItem('ENCCO_AUTH_USER', authUserStr);
-            if (authRoleStr) sessionStorage.setItem('ENCCO_AUTH_ROLE', authRoleStr);
+            sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(freshUser));
+            localStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(freshUser));
+            if (authRoleStr) {
+                sessionStorage.setItem('ENCCO_AUTH_ROLE', authRoleStr);
+                localStorage.setItem('ENCCO_AUTH_ROLE', authRoleStr);
+            }
         } catch(e) {
             console.error("Error al parsear credenciales:", e);
             window.location.replace('login.html');
@@ -15666,7 +15732,6 @@ function performLogout() {
     
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
     window.location.replace(baseUrl + '/login.html?v=' + Date.now());
-    window.location.replace('index.html');
 }
 
 function logoutUser() {
@@ -15746,7 +15811,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V125' || e.key === 'ENCCO_SYSTEM_DATABASE_V125' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === DB_STORAGE_KEY || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
@@ -15826,11 +15891,10 @@ function applyIncomingCloudState(incomingState, force = false) {
 
     STATE.lastModified = incomingTime || Date.now();
 
-    // Guardado en almacenamiento local garantizado
+    // Guardado en almacenamiento local garantizado (Base única sin duplicados)
     try {
         const jsonStr = JSON.stringify(STATE);
         localStorage.setItem(DB_STORAGE_KEY, jsonStr);
-        localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', jsonStr);
         localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
     } catch(e) {}
 
@@ -15898,7 +15962,6 @@ function saveStateToLocalStorage() {
     try {
         const jsonStr = JSON.stringify(payload);
         localStorage.setItem(DB_STORAGE_KEY, jsonStr);
-        localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', jsonStr);
         localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
         window.dispatchEvent(new Event('storage'));
     } catch (e) {
@@ -15908,6 +15971,7 @@ function saveStateToLocalStorage() {
     // ⚡ Disparar Sincronización en Tiempo Real Total (Pestañas y Servidores Nube)
     triggerInstantCloudPush();
 }
+window.saveStateToLocalStorage = saveStateToLocalStorage;
 
 function changeAcademicCycle(cycle) {
     STATE.activeCycle = cycle;
@@ -21749,7 +21813,6 @@ async function pullStateFromGoogleFirebaseCloud(showSuccessToast = false) {
 
                 try {
                     localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(STATE));
-                    localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', JSON.stringify(STATE));
                 } catch(e) {}
 
                 // Si teníamos usuarios locales nuevos que la nube aún no tenía, subirlos de inmediato
@@ -27643,10 +27706,10 @@ function handleLoginPageSubmit(e) {
         } else if (uLower === 'secretaria') {
             matchedUser = users.find(u => u.role === 'secretaria') || {
                 id: 'usr-sec-01',
-                name: 'Secretaría Académica Central',
+                name: 'Licda. Jhoana Jarro',
                 username: 'secretaria',
                 role: 'secretaria',
-                email: 'secretaria@comercio.edu.gt',
+                email: 'jhoanajarro@gmail.com',
                 password: 'admin'
             };
         } else if (uLower === 'auxiliar' || uLower === 'profesor_auxiliar') {

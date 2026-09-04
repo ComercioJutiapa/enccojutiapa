@@ -298,7 +298,7 @@
     </div>
 
         <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260904_v128_persistence_guaranteed"></script>
+    <script src="app.js?v=20260904_v129_single_unversioned_database"></script>
     <script>
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');
@@ -312,8 +312,19 @@
             }
         }
 
-        // Recuperar inmediatamente los datos m?s recientes de la Base de Datos al abrir la pantalla de login
+        // Recuperar inmediatamente la base de datos única y los datos más recientes al abrir login
         document.addEventListener('DOMContentLoaded', async () => {
+            if (typeof loadMasterDatabaseState === 'function') {
+                try {
+                    const saved = loadMasterDatabaseState();
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (parsed && typeof parsed === 'object') {
+                            window.STATE = Object.assign(window.STATE || {}, parsed);
+                        }
+                    }
+                } catch(e) {}
+            }
             if (typeof pullStateFromFirebaseCloud === 'function') {
                 try {
                     await pullStateFromFirebaseCloud(true);
@@ -355,6 +366,18 @@
                 } catch(err) {
                     console.warn("Aviso al consultar Base de Datos Nube:", err);
                 }
+            }
+
+            if (typeof loadMasterDatabaseState === 'function') {
+                try {
+                    const saved = loadMasterDatabaseState();
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.users) && parsed.users.length > 0) {
+                            window.STATE = Object.assign(window.STATE || {}, parsed);
+                        }
+                    }
+                } catch(e) {}
             }
 
             if (typeof ensureMasterAccount === 'function') {
