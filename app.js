@@ -2176,41 +2176,12 @@ window.ensureSireOfficialStudents = ensureSireOfficialStudents;
 function deduplicateUsersCollection(users) {
     if (!Array.isArray(users)) return [];
     const seenIds = new Set();
-    const seenNameRole = new Set();
     const result = [];
 
     users.forEach(u => {
         if (!u || !u.id) return;
-        const normName = (u.name || '').trim().toLowerCase();
-        const normRole = (u.role || '').trim().toLowerCase();
-        const nameRoleKey = normName + '___' + normRole;
-
-        if (normName.includes('nehemias') && normRole === 'admin') {
-            if (seenNameRole.has(nameRoleKey)) return;
-            seenNameRole.add(nameRoleKey);
-            seenIds.add('usr-admin-01');
-            result.push({
-                ...u,
-                id: 'usr-admin-01',
-                name: 'PEM. Nehemias Yalil Salguero',
-                username: 'nehemias',
-                email: 'nehemias.salguero1982@gmail.com',
-                password: 'C@rolina1',
-                role: 'admin',
-                title: 'Super Administrador del Sistema / Catedrático Titular',
-                renglon: '011',
-                gender: 'Masculino',
-                active: true
-            });
-            return;
-        }
-
-        if (seenIds.has(u.id) || seenNameRole.has(nameRoleKey)) {
-            return;
-        }
-
+        if (seenIds.has(u.id)) return;
         seenIds.add(u.id);
-        seenNameRole.add(nameRoleKey);
         result.push(u);
     });
 
@@ -15229,21 +15200,12 @@ function ensureMasterAccount() {
     let adminUser = (STATE.users || []).find(u => 
         (u.email && u.email.trim().toLowerCase() === masterAccount.email.toLowerCase()) ||
         (u.name && u.name.toLowerCase().includes('nehemias') && u.role === 'admin') ||
-        u.id === masterAccount.id
+        u.id === masterAccount.id ||
+        u.role === 'admin'
     );
 
     if (!adminUser) {
         STATE.users.unshift(masterAccount);
-    } else {
-        adminUser.name = "PEM. Nehemias Yalil Salguero";
-        adminUser.email = "nehemias.salguero1982@gmail.com";
-        adminUser.username = "nehemias";
-        adminUser.password = "C@rolina1";
-        adminUser.role = "admin";
-        adminUser.title = "Super Administrador del Sistema / Catedrático Titular";
-        adminUser.renglon = "011";
-        adminUser.gender = "Masculino";
-        adminUser.active = true;
     }
 }
 
@@ -21856,82 +21818,9 @@ function autoSyncToFirebase(immediate = false, showToastOnSuccess = false) {
 }
 
 async function syncStateToFirebaseImmediate(showSuccessToast = false) {
-    if (_isSyncInProgress) {
-        _pendingSyncRequest = true;
-        return;
-    }
-
-    _isSyncInProgress = true;
-    updateDbSyncStatus('syncing');
-
-    STATE.lastModified = Date.now();
-    const payload = {
-        config: STATE.config,
-        activeCycle: STATE.activeCycle,
-        cycles: STATE.cycles || [],
-        theme: STATE.theme,
-        users: STATE.users,
-        careers: STATE.careers,
-        gradesList: STATE.gradesList,
-        pensumCatalog: STATE.pensumCatalog,
-        students: STATE.students,
-        pensum: STATE.pensum,
-        announcements: STATE.announcements,
-        disciplineReports: STATE.disciplineReports,
-        attendanceRecords: STATE.attendanceRecords || {},
-        dismissedAlerts: STATE.dismissedAlerts || {},
-        schoolHeader: STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {}),
-        lastModified: STATE.lastModified
-    };
-
-    const rowObj = {
-        id: 'encc-jutiapa-main-state',
-        key: 'ENCCO_DATABASE_SNAPSHOT',
-        value: JSON.stringify(payload),
-        updated_at: new Date().toISOString()
-    };
-
-    const url = localStorage.getItem('ENCCO_FIREBASE_URL') || ENCCO_OFFICIAL_FIREBASE_URL;
-    const key = localStorage.getItem('ENCCO_FIREBASE_KEY') || ENCCO_OFFICIAL_FIREBASE_KEY;
-
-    let syncSuccess = false;
-
-    // 1. Enviar directamente por REST Fetch Nativo
-    try {
-        const resp = await fetch(`${url}/rest/v1/school_settings?on_conflict=id`, {
-            method: 'POST',
-            headers: {
-                "apikey": key,
-                "Authorization": `Bearer ${key}`,
-                "Content-Type": "application/json",
-                "Prefer": "resolution=merge-duplicates"
-            },
-            body: JSON.stringify([rowObj])
-        });
-        if (resp.ok) syncSuccess = true;
-    } catch(fetchErr) {}
-
-    // 2. Si hay cliente SDK, enviar también
-    if (false) {
-        try {
-            const { error } = await window.firebaseClient.from('school_settings').upsert(rowObj, { onConflict: 'id' });
-            if (!error) syncSuccess = true;
-        } catch(sdkErr) {}
-    }
-
-    _isSyncInProgress = false;
-    updateDbSyncStatus('synced');
-
-
-    if (showSuccessToast && typeof showToast === 'function') {
-        showToast("☁️ Cambios sincronizados con Firebase Realtime en tiempo real.", "success");
-    }
-
-    if (_pendingSyncRequest) {
-        _pendingSyncRequest = false;
-        setTimeout(() => syncStateToFirebaseImmediate(false), 250);
-    }
+    return pushStateToFirebaseCloud(showSuccessToast);
 }
+window.syncStateToFirebaseImmediate = syncStateToFirebaseImmediate;
 
 
 // Forzar subida de todo el estado local a la nube de Firebase
