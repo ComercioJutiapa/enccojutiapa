@@ -276,6 +276,29 @@ function updatePermCardStyle(modKey, level) {
         lblNone.style.background = (level === 'none') ? '#dc2626' : 'transparent';
         lblNone.style.color = (level === 'none') ? '#ffffff' : '#64748b';
     }
+
+    // ⚡ SINCRONIZACIÓN INMEDIATA EN BASE DE DATOS SIN NECESIDAD DE PRESIONAR BOTÓN
+    const targetRoleKey = (typeof _selectedRoleKeyForEditing !== 'undefined' && _selectedRoleKeyForEditing) ? _selectedRoleKeyForEditing : null;
+    if (targetRoleKey && targetRoleKey !== 'admin' && Array.isArray(STATE.rolesConfig)) {
+        const roleObj = STATE.rolesConfig.find(r => r.key === targetRoleKey);
+        if (roleObj) {
+            if (!roleObj.permissionLevels) roleObj.permissionLevels = {};
+            roleObj.permissionLevels[modKey] = level;
+
+            if (!Array.isArray(roleObj.permissions)) roleObj.permissions = [];
+            // Remover tokens anteriores del módulo
+            roleObj.permissions = roleObj.permissions.filter(p => p !== modKey && p !== modKey + '_edit' && p !== modKey + '_view');
+            
+            if (level === 'edit') {
+                roleObj.permissions.push(modKey, modKey + '_edit', modKey + '_view');
+            } else if (level === 'view') {
+                roleObj.permissions.push(modKey, modKey + '_view');
+            }
+
+            saveStateToLocalStorage();
+            if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
+        }
+    }
 }
 window.updatePermCardStyle = updatePermCardStyle;
 
@@ -285,13 +308,37 @@ function setAllPermissionsLevel(targetLevel = 'edit') {
         return;
     }
 
+    const targetRoleKey = (typeof _selectedRoleKeyForEditing !== 'undefined' && _selectedRoleKeyForEditing) ? _selectedRoleKeyForEditing : null;
+    let roleObj = null;
+    if (targetRoleKey && Array.isArray(STATE.rolesConfig)) {
+        roleObj = STATE.rolesConfig.find(r => r.key === targetRoleKey);
+        if (roleObj) {
+            if (!roleObj.permissionLevels) roleObj.permissionLevels = {};
+            roleObj.permissions = [];
+        }
+    }
+
     SYSTEM_MODULES_LIST.forEach(mod => {
         const radio = document.querySelector(`input[name="permLevel_${mod.key}"][value="${targetLevel}"]`);
         if (radio && !radio.disabled) {
             radio.checked = true;
             updatePermCardStyle(mod.key, targetLevel);
         }
+        if (roleObj) {
+            roleObj.permissionLevels[mod.key] = targetLevel;
+            if (targetLevel === 'edit') {
+                roleObj.permissions.push(mod.key, mod.key + '_edit', mod.key + '_view');
+            } else if (targetLevel === 'view') {
+                roleObj.permissions.push(mod.key, mod.key + '_view');
+            }
+        }
     });
+
+    if (roleObj) {
+        saveStateToLocalStorage();
+        if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
+        showToast(`Todos los módulos actualizados a: ${targetLevel === 'edit' ? 'Ver y Modificar' : (targetLevel === 'view' ? 'Solo Ver' : 'Bloqueado')}`, 'info');
+    }
 }
 window.setAllPermissionsLevel = setAllPermissionsLevel;
 
@@ -353,17 +400,6 @@ async function testFirebaseConnection() {
             showToast("¡Conexión verificada exitosamente con Google Firebase!", "success");
             updateDbSyncStatus('synced');
 
-    // ? RECUPERACI?N INMEDIATA DE LA BASE DE DATOS NUBE AL ENTRAR A LA P?GINA
-    if (typeof pullStateFromFirebaseCloud === 'function') {
-        pullStateFromFirebaseCloud(true).then(applied => {
-            if (applied) {
-                console.log("? [Base de Datos] Datos actualizados recuperados de la nube y mostrados en pantalla.");
-                if (typeof renderCurrentView === 'function') renderCurrentView();
-                if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
-            }
-        });
-    }
-
         } else if (res.status === 404) {
             showToast("Aviso: La base de datos no existe en esa URL (HTTP 404). Verifique que haya creado la 'Realtime Database' en Firebase Console.", "warning");
             updateDbSyncStatus('disconnected');
@@ -397,17 +433,6 @@ async function saveFirebaseDatabaseConfig(e) {
     if (success) {
         showToast("¡Google Firebase Realtime Database conectado y sincronizado con éxito!", "success");
         updateDbSyncStatus('synced');
-
-    // ? RECUPERACI?N INMEDIATA DE LA BASE DE DATOS NUBE AL ENTRAR A LA P?GINA
-    if (typeof pullStateFromFirebaseCloud === 'function') {
-        pullStateFromFirebaseCloud(true).then(applied => {
-            if (applied) {
-                console.log("? [Base de Datos] Datos actualizados recuperados de la nube y mostrados en pantalla.");
-                if (typeof renderCurrentView === 'function') renderCurrentView();
-                if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
-            }
-        });
-    }
 
         closeDbConfigModal();
         initFirebaseRealtimeConnection();
@@ -518,17 +543,6 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
 
         if (response.ok) {
             updateDbSyncStatus('synced');
-
-    // ? RECUPERACI?N INMEDIATA DE LA BASE DE DATOS NUBE AL ENTRAR A LA P?GINA
-    if (typeof pullStateFromFirebaseCloud === 'function') {
-        pullStateFromFirebaseCloud(true).then(applied => {
-            if (applied) {
-                console.log("? [Base de Datos] Datos actualizados recuperados de la nube y mostrados en pantalla.");
-                if (typeof renderCurrentView === 'function') renderCurrentView();
-                if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
-            }
-        });
-    }
 
             if (showToastNotification && typeof showToast === 'function') {
                 showToast("Sincronizado con la base de datos exitosamente.", "success");
@@ -814,8 +828,24 @@ function normalizeRolesConfig() {
         const found = STATE.rolesConfig.find(r => r.key === def.key);
         if (!found) {
             STATE.rolesConfig.push(def);
-        } else if (!Array.isArray(found.permissions) || found.permissions.length === 0) {
-            found.permissions = def.permissions;
+        } else {
+            if (!Array.isArray(found.permissions)) {
+                found.permissions = def.permissions;
+            }
+            if (!found.permissionLevels) {
+                found.permissionLevels = {};
+                SYSTEM_MODULES_LIST.forEach(m => {
+                    if (found.key === 'admin') {
+                        found.permissionLevels[m.key] = 'edit';
+                    } else if (found.permissions.includes(m.key + '_edit') || found.permissions.includes(m.key)) {
+                        found.permissionLevels[m.key] = 'edit';
+                    } else if (found.permissions.includes(m.key + '_view')) {
+                        found.permissionLevels[m.key] = 'view';
+                    } else {
+                        found.permissionLevels[m.key] = 'none';
+                    }
+                });
+            }
         }
     });
 }
@@ -1632,17 +1662,6 @@ async function pullStateFromFirebaseCloud(force = false) {
                 if (applied) {
                     updateDbSyncStatus('synced');
 
-    // ? RECUPERACI?N INMEDIATA DE LA BASE DE DATOS NUBE AL ENTRAR A LA P?GINA
-    if (typeof pullStateFromFirebaseCloud === 'function') {
-        pullStateFromFirebaseCloud(true).then(applied => {
-            if (applied) {
-                console.log("? [Base de Datos] Datos actualizados recuperados de la nube y mostrados en pantalla.");
-                if (typeof renderCurrentView === 'function') renderCurrentView();
-                if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
-            }
-        });
-    }
-
                     return true;
                 }
             }
@@ -1673,6 +1692,48 @@ function syncStateToFirebaseImmediate(showNotification = false) {
     return pushStateToFirebaseCloud(showNotification);
 }
 window.syncStateToFirebaseImmediate = syncStateToFirebaseImmediate;
+
+let _firebaseEventSource = null;
+
+function initFirebaseRealtimeConnection() {
+    const firebaseUrl = getFirebaseDatabaseUrl();
+    if (!firebaseUrl) {
+        updateDbSyncStatus('synced');
+        return;
+    }
+
+    // 1. Escuchar cambios en tiempo real vía Server-Sent Events (SSE de Firebase RTDB)
+    if (typeof EventSource !== 'undefined') {
+        try {
+            if (_firebaseEventSource) {
+                _firebaseEventSource.close();
+                _firebaseEventSource = null;
+            }
+            const sseUrl = `${firebaseUrl}/encc_school_state.json`;
+            _firebaseEventSource = new EventSource(sseUrl);
+            _firebaseEventSource.addEventListener('put', (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data && data.data && typeof data.data === 'object' && (data.data.users || data.data.students)) {
+                        applyIncomingCloudState(data.data, false);
+                    }
+                } catch(err) {}
+            });
+            _firebaseEventSource.onerror = () => {
+                if (_firebaseEventSource) {
+                    _firebaseEventSource.close();
+                    _firebaseEventSource = null;
+                }
+            };
+        } catch(e) {}
+    }
+
+    // 2. Consulta inicial silenciosa de la nube
+    if (typeof pullStateFromFirebaseCloud === 'function') {
+        pullStateFromFirebaseCloud(false);
+    }
+}
+window.initFirebaseRealtimeConnection = initFirebaseRealtimeConnection;
 
 function initCloudDatabaseConnection() {
     initFirebaseRealtimeConnection();
@@ -2034,7 +2095,7 @@ function loadMasterDatabaseState() {
 window.loadMasterDatabaseState = loadMasterDatabaseState;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_MASTER';
+var DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_MASTER';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -14984,66 +15045,33 @@ window.addEventListener('hashchange', function() {
 
 
 function initApp() {
-    // Limpieza forzada y garantía de 0 cursos para todas las sesiones
-    try {
-        for (let i = 1; i <= 23; i++) {
-            localStorage.removeItem('ENCCO_SYSTEM_DATABASE_V' + i);
-            localStorage.removeItem('ENCCO_STATE_BACKUP_V' + i);
-        }
-        localStorage.removeItem('ENCCO_SYSTEM_DATABASE_BACKUP');
-        localStorage.removeItem('ENCCO_SYSTEM_DATABASE_V22');
-        localStorage.removeItem('ENCCO_SYSTEM_DATABASE_V23');
-    } catch(e) {}
-
     if (window.SecurityEngine) window.SecurityEngine.initInactivityGuard();
-    if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
-    ensureSireOfficialStudents();
 
-    // Guardias de guardado automático al recargar la página (F5), navegar o cerrar ventana
-    window.addEventListener('beforeunload', () => {
-        if (typeof saveStateToLocalStorage === 'function') {
-            saveStateToLocalStorage();
-        }
-    });
-
-    window.addEventListener('pagehide', () => {
-        if (typeof saveStateToLocalStorage === 'function') {
-            saveStateToLocalStorage();
-        }
-    });
-
-    // Purga de versiones antiguas
-    [
-        'ENCCO_SYSTEM_DATA_V1',
-        'ENCCO_SYSTEM_DATA_V2',
-        'ENCCO_SYSTEM_DATA_V3',
-        'ENCCO_SYSTEM_DATA_V4',
-        'ENCCO_DATABASE_PROD_V1',
-        'ENCCO_DATABASE_BLANK_V1',
-        'ENCCO_DATABASE_BLANK_V2'
-    ].forEach(k => localStorage.removeItem(k));
-
+    // 1. Cargar el estado maestro permanente de la Base de Datos
     const saved = loadMasterDatabaseState();
     if (saved) {
         try {
             const parsed = JSON.parse(saved);
-            STATE.users = (parsed.users && parsed.users.length > 0) ? parsed.users : getInitialData().users;
-            STATE.careers = (parsed.careers && parsed.careers.length > 0) ? parsed.careers : getInitialData().careers;
-            STATE.cycles = (parsed.cycles && parsed.cycles.length > 0) ? parsed.cycles : getInitialData().cycles;
-            STATE.gradesList = parsed.gradesList ? sortGrades(parsed.gradesList) : [];
-            STATE.pensumCatalog = parsed.pensumCatalog || [];
-            STATE.students = parsed.students || [];
-            STATE.pensum = parsed.pensum || [];
-            STATE.announcements = parsed.announcements || [];
-            STATE.disciplineReports = parsed.disciplineReports || [];
-            STATE.attendanceRecords = parsed.attendanceRecords || {};
-            STATE.dismissedAlerts = parsed.dismissedAlerts || {};
-            STATE.rolesConfig = (parsed.rolesConfig && Array.isArray(parsed.rolesConfig) && parsed.rolesConfig.length > 0) ? parsed.rolesConfig : (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : []);
-            STATE.schoolHeader = parsed.schoolHeader || getInitialData().schoolHeader;
-            STATE.config = parsed.config || { activeBimestre: 1, globalLocked: false, minPassingScore: 60, teacherBypass: {} };
-            STATE.config.activeBimestre = parseInt(STATE.config.activeBimestre) || 1;
-            STATE.activeCycle = parsed.activeCycle || (STATE.cycles.find(c => c.status === 'Activo')?.name || '2026');
-            if (parsed.theme) STATE.theme = parsed.theme;
+            if (parsed && typeof parsed === 'object') {
+                STATE.users = (parsed.users && parsed.users.length > 0) ? parsed.users : getInitialData().users;
+                STATE.careers = (parsed.careers && parsed.careers.length > 0) ? parsed.careers : getInitialData().careers;
+                STATE.cycles = (parsed.cycles && parsed.cycles.length > 0) ? parsed.cycles : getInitialData().cycles;
+                STATE.gradesList = (parsed.gradesList && parsed.gradesList.length > 0) ? sortGrades(parsed.gradesList) : (getInitialData().gradesList || []);
+                STATE.pensumCatalog = parsed.pensumCatalog || [];
+                STATE.students = parsed.students || [];
+                STATE.pensum = (parsed.pensum && parsed.pensum.length > 0) ? parsed.pensum : (getInitialData().pensum || []);
+                STATE.announcements = parsed.announcements || [];
+                STATE.disciplineReports = parsed.disciplineReports || [];
+                STATE.attendanceRecords = parsed.attendanceRecords || {};
+                STATE.dismissedAlerts = parsed.dismissedAlerts || {};
+                STATE.rolesConfig = (parsed.rolesConfig && Array.isArray(parsed.rolesConfig) && parsed.rolesConfig.length > 0) ? parsed.rolesConfig : (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : []);
+                STATE.schoolHeader = parsed.schoolHeader || getInitialData().schoolHeader;
+                STATE.config = parsed.config || { activeBimestre: 1, globalLocked: false, minPassingScore: 60, teacherBypass: {} };
+                STATE.config.activeBimestre = parseInt(STATE.config.activeBimestre) || 1;
+                STATE.activeCycle = parsed.activeCycle || (STATE.cycles.find(c => c.status === 'Activo')?.name || '2026');
+                if (parsed.theme) STATE.theme = parsed.theme;
+                if (parsed.lastModified) STATE.lastModified = parsed.lastModified;
+            }
         } catch (e) {
             console.warn("Error cargando snapshot local:", e);
             loadDefaults();
@@ -15052,73 +15080,52 @@ function initApp() {
         loadDefaults();
     }
 
-    ensureMasterAccount();
-    // Garantizar permisos de supervisión de notas para Dirección y Secretaría
-    if (Array.isArray(STATE.rolesConfig)) {
-        STATE.rolesConfig.forEach(r => {
-            if ((r.key === 'director' || r.key === 'secretaria') && Array.isArray(r.permissions)) {
-                if (!r.permissions.includes('gradebook')) r.permissions.push('gradebook');
-            }
-        });
+    // 2. Inicializar estructura solo si está totalmente vacía
+    if (!STATE.careers || STATE.careers.length === 0 || !STATE.gradesList || STATE.gradesList.length === 0) {
+        if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
+    }
+    if (!STATE.students || STATE.students.length === 0) {
+        ensureSireOfficialStudents();
     }
 
+    ensureMasterAccount();
 
-    // 🏷️ Asegurar campos renglon (011/021) y gender (Masculino/Femenino) en todos los catedráticos
+    // 3. Asegurar campos renglon y gender sin sobreescribir claves ni asignaciones
     (STATE.users || []).forEach(u => {
         if (!u.renglon) u.renglon = u.name && (u.name.includes('Williams') || u.name.includes('Nery') || u.name.includes('Gamaliel') || u.name.includes('Wilder') || u.name.includes('Bernal') || u.name.includes('Pereira')) ? '021' : '011';
         if (!u.gender) {
             const nLower = (u.name || '').toLowerCase();
             u.gender = (nLower.includes('licda.') || nLower.includes('profa.') || nLower.includes('maría') || nLower.includes('maria') || nLower.includes('sandra') || nLower.includes('enma') || nLower.includes('lilian') || nLower.includes('elda') || nLower.includes('milvia') || nLower.includes('aleida') || nLower.includes('damaris')) ? 'Femenino' : 'Masculino';
         }
-    });
-
-
-    // 🔄 SINCRONIZACIÓN AUTOMÁTICA: Asegurar que los 20 catedráticos oficiales y 124 materias del pensum estén presentes
-    const initialData = getInitialData();
-
-    // 1. Mención explícita: No re-crear usuarios/maestros eliminados automáticamente.
-    // El registro de usuarios/maestros queda estrictamente limitado a cuando el Administrador lo invoque.
-
-    // 2. Sincronizar Grados y Secciones
-    (initialData.gradesList || []).forEach(defG => {
-        const exists = (STATE.gradesList || []).some(g => g.code === defG.code);
-        if (!exists) {
-            STATE.gradesList.push(defG);
-        }
-    });
-    STATE.gradesList = sortGrades(STATE.gradesList || []);
-
-    // 3. Sincronizar Pensum Oficial con asignaciones exactas de catedráticos del Excel
-    (initialData.pensum || []).forEach(defP => {
-        const existing = (STATE.pensum || []).find(p => p.gradeCode === defP.gradeCode && ((p.name && p.name.toLowerCase() === defP.name.toLowerCase()) || (p.subject && p.subject.toLowerCase() === defP.subject.toLowerCase())));
-        if (existing) {
-            existing.teacher = defP.teacher;
-            existing.teacherId = defP.teacherId;
-            existing.periodsPerWeek = defP.periodsPerWeek;
-        } else {
-            STATE.pensum.push(defP);
+        if (!u.password) {
+            u.password = (typeof generateTeacherPassword === 'function') ? generateTeacherPassword(u.name) : 'Docente1';
         }
     });
 
-    
-    // 🔒 Actualizar contraseñas de catedráticos a PrimerNombre + 1 (ej: Nehemias1, Maria1)
-    (STATE.users || []).forEach(u => {
-        if (u.role === 'docente' || u.id.startsWith('usr-doc-')) {
-            u.password = generateTeacherPassword(u.name);
+    // 4. Normalizar Ciclos lectivos
+    ensureOfficialCycles();
+
+    // 5. Guardias de guardado al recargar o cerrar pestaña (nunca durante logout activo)
+    window.addEventListener('beforeunload', () => {
+        if (!window._isLoggingOut && typeof saveStateToLocalStorage === 'function') {
+            saveStateToLocalStorage();
         }
     });
 
-    saveStateToLocalStorage();
+    window.addEventListener('pagehide', () => {
+        if (!window._isLoggingOut && typeof saveStateToLocalStorage === 'function') {
+            saveStateToLocalStorage();
+        }
+    });
 
-    // Si estamos en plataforma.html, verificar sesión
-        // Verificación de sesión activa al cargar plataforma.html
+    // 6. Si estamos en plataforma.html, verificar sesión
     if (window.location.pathname.includes('plataforma.html') || window.location.href.includes('plataforma.html')) {
         const authUserStr = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
         const authRoleStr = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
         
         if (!authUserStr) {
             const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
-            window.location.replace(baseUrl + '/index.html?v=' + Date.now());
+            window.location.replace(baseUrl + '/login.html?v=' + Date.now());
             return;
         }
         try {
@@ -15140,7 +15147,7 @@ function initApp() {
     updateLoginAccountSelect();
     initCloudDatabaseConnection();
 
-    // Iniciar siempre obligatoriamente en el Panel Principal (dashboard) y aplicar permisos dinámicos del rol
+    // Iniciar en dashboard y aplicar rol activo
     if (typeof navigateTo === 'function') {
         navigateTo('dashboard');
     }
@@ -15637,6 +15644,13 @@ function updateTopRoleBar() {
 }
 
 function performLogout() {
+    window._isLoggingOut = true;
+    try {
+        if (typeof saveStateToLocalStorage === 'function') {
+            saveStateToLocalStorage();
+        }
+    } catch(e) {}
+
     STATE.currentUser = null;
     STATE.currentRole = 'guest';
     STATE.isLoggedIn = false;
@@ -15650,9 +15664,8 @@ function performLogout() {
         sessionStorage.removeItem('ENCCO_AUTH_ROLE');
     } catch(e) {}
     
-    // Redirección segura anti-caché para romper cualquier redirección 301 anterior de CNAME
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
-    window.location.replace(baseUrl + '/index.html?v=' + Date.now());
+    window.location.replace(baseUrl + '/login.html?v=' + Date.now());
     window.location.replace('index.html');
 }
 
@@ -15760,6 +15773,11 @@ function applyIncomingCloudState(incomingState, force = false) {
     const incomingTime = incomingState.lastModified || 0;
     const localTime = STATE.lastModified || 0;
 
+    // Proteger contra sobreescritura de datos locales más recientes
+    if (incomingTime < localTime && Array.isArray(STATE.users) && STATE.users.length > 0) {
+        console.log(`ℹ️ [Tiempo Real] Se conservan cambios locales más recientes (${localTime} vs nube ${incomingTime}).`);
+        return false;
+    }
     if (!force && incomingTime <= localTime) {
         return false;
     }
@@ -21747,17 +21765,6 @@ async function pullStateFromGoogleFirebaseCloud(showSuccessToast = false) {
                 if (typeof renderCurrentView === 'function') renderCurrentView();
                 if (typeof updateDbSyncStatus === 'function') updateDbSyncStatus('synced');
 
-    // ? RECUPERACI?N INMEDIATA DE LA BASE DE DATOS NUBE AL ENTRAR A LA P?GINA
-    if (typeof pullStateFromFirebaseCloud === 'function') {
-        pullStateFromFirebaseCloud(true).then(applied => {
-            if (applied) {
-                console.log("? [Base de Datos] Datos actualizados recuperados de la nube y mostrados en pantalla.");
-                if (typeof renderCurrentView === 'function') renderCurrentView();
-                if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
-            }
-        });
-    }
-
                 if (showSuccessToast && typeof showToast === 'function') showToast("🔄 ¡Datos y usuarios sincronizados con Firebase!", "success");
                 return remoteData;
             }
@@ -21851,17 +21858,6 @@ async function syncStateToFirebaseImmediate(showSuccessToast = false) {
 
     _isSyncInProgress = false;
     updateDbSyncStatus('synced');
-
-    // ? RECUPERACI?N INMEDIATA DE LA BASE DE DATOS NUBE AL ENTRAR A LA P?GINA
-    if (typeof pullStateFromFirebaseCloud === 'function') {
-        pullStateFromFirebaseCloud(true).then(applied => {
-            if (applied) {
-                console.log("? [Base de Datos] Datos actualizados recuperados de la nube y mostrados en pantalla.");
-                if (typeof renderCurrentView === 'function') renderCurrentView();
-                if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
-            }
-        });
-    }
 
 
     if (showSuccessToast && typeof showToast === 'function') {
