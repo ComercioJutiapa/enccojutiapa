@@ -263,6 +263,18 @@ async function testFirebaseConnection() {
         if (res.ok) {
             showToast("¡Conexión verificada exitosamente con Google Firebase!", "success");
             updateDbSyncStatus('synced');
+
+    // ? RECUPERACI?N INMEDIATA DE LA BASE DE DATOS NUBE AL ENTRAR A LA P?GINA
+    if (typeof pullStateFromFirebaseCloud === 'function') {
+        pullStateFromFirebaseCloud(true).then(applied => {
+            if (applied) {
+                console.log("? [Base de Datos] Datos actualizados recuperados de la nube y mostrados en pantalla.");
+                if (typeof renderCurrentView === 'function') renderCurrentView();
+                if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
+            }
+        });
+    }
+
         } else if (res.status === 404) {
             showToast("Aviso: La base de datos no existe en esa URL (HTTP 404). Verifique que haya creado la 'Realtime Database' en Firebase Console.", "warning");
             updateDbSyncStatus('disconnected');
@@ -296,6 +308,18 @@ async function saveFirebaseDatabaseConfig(e) {
     if (success) {
         showToast("¡Google Firebase Realtime Database conectado y sincronizado con éxito!", "success");
         updateDbSyncStatus('synced');
+
+    // ? RECUPERACI?N INMEDIATA DE LA BASE DE DATOS NUBE AL ENTRAR A LA P?GINA
+    if (typeof pullStateFromFirebaseCloud === 'function') {
+        pullStateFromFirebaseCloud(true).then(applied => {
+            if (applied) {
+                console.log("? [Base de Datos] Datos actualizados recuperados de la nube y mostrados en pantalla.");
+                if (typeof renderCurrentView === 'function') renderCurrentView();
+                if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
+            }
+        });
+    }
+
         closeDbConfigModal();
         initFirebaseRealtimeConnection();
     } else {
@@ -405,6 +429,18 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
 
         if (response.ok) {
             updateDbSyncStatus('synced');
+
+    // ? RECUPERACI?N INMEDIATA DE LA BASE DE DATOS NUBE AL ENTRAR A LA P?GINA
+    if (typeof pullStateFromFirebaseCloud === 'function') {
+        pullStateFromFirebaseCloud(true).then(applied => {
+            if (applied) {
+                console.log("? [Base de Datos] Datos actualizados recuperados de la nube y mostrados en pantalla.");
+                if (typeof renderCurrentView === 'function') renderCurrentView();
+                if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
+            }
+        });
+    }
+
             if (showToastNotification && typeof showToast === 'function') {
                 showToast("Sincronizado con la base de datos exitosamente.", "success");
             }
@@ -1506,6 +1542,18 @@ async function pullStateFromFirebaseCloud(force = false) {
                 const applied = applyIncomingCloudState(cloudState, force);
                 if (applied) {
                     updateDbSyncStatus('synced');
+
+    // ? RECUPERACI?N INMEDIATA DE LA BASE DE DATOS NUBE AL ENTRAR A LA P?GINA
+    if (typeof pullStateFromFirebaseCloud === 'function') {
+        pullStateFromFirebaseCloud(true).then(applied => {
+            if (applied) {
+                console.log("? [Base de Datos] Datos actualizados recuperados de la nube y mostrados en pantalla.");
+                if (typeof renderCurrentView === 'function') renderCurrentView();
+                if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
+            }
+        });
+    }
+
                     return true;
                 }
             }
@@ -1850,7 +1898,54 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V125';
+// ======================================================================
+//   MOTOR DE PERSISTENCIA Y RECUPERACIÓN MAESTRA DE BASE DE DATOS (V126)
+// ======================================================================
+
+function loadMasterDatabaseState() {
+    // 1. Intentar recuperar desde la clave maestra permanente
+    let saved = localStorage.getItem(DB_STORAGE_KEY);
+
+    // 2. Si no existe o está vacía, buscar en todas las versiones históricas existentes en localStorage
+    if (!saved) {
+        let bestParsed = null;
+        let bestTime = 0;
+
+        try {
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && (k.startsWith('ENCCO_SYSTEM_DATABASE_') || k.startsWith('ENCCO_STATE_BACKUP_') || k === 'ENCCO_DATABASE_PROD_CLEAN_V1')) {
+                    try {
+                        const raw = localStorage.getItem(k);
+                        if (raw) {
+                            const p = JSON.parse(raw);
+                            if (p && typeof p === 'object' && (p.students || p.users)) {
+                                const t = p.lastModified || 0;
+                                if (t >= bestTime) {
+                                    bestTime = t;
+                                    bestParsed = p;
+                                }
+                            }
+                        }
+                    } catch(e) {}
+                }
+            }
+        } catch(e) {}
+
+        if (bestParsed) {
+            console.log("? [Base de Datos] Migrando datos hist?ricos recuperados a la base maestra permanente...");
+            saved = JSON.stringify(bestParsed);
+            localStorage.setItem(DB_STORAGE_KEY, saved);
+            localStorage.setItem(DB_STORAGE_KEY + '_BACKUP', saved);
+        }
+    }
+
+    return saved;
+}
+window.loadMasterDatabaseState = loadMasterDatabaseState;
+
+
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_MASTER';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -14839,7 +14934,7 @@ function initApp() {
         'ENCCO_DATABASE_BLANK_V2'
     ].forEach(k => localStorage.removeItem(k));
 
-    const saved = localStorage.getItem(DB_STORAGE_KEY);
+    const saved = loadMasterDatabaseState();
     if (saved) {
         try {
             const parsed = JSON.parse(saved);
@@ -21558,6 +21653,18 @@ async function pullStateFromGoogleFirebaseCloud(showSuccessToast = false) {
                 if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
                 if (typeof renderCurrentView === 'function') renderCurrentView();
                 if (typeof updateDbSyncStatus === 'function') updateDbSyncStatus('synced');
+
+    // ? RECUPERACI?N INMEDIATA DE LA BASE DE DATOS NUBE AL ENTRAR A LA P?GINA
+    if (typeof pullStateFromFirebaseCloud === 'function') {
+        pullStateFromFirebaseCloud(true).then(applied => {
+            if (applied) {
+                console.log("? [Base de Datos] Datos actualizados recuperados de la nube y mostrados en pantalla.");
+                if (typeof renderCurrentView === 'function') renderCurrentView();
+                if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
+            }
+        });
+    }
+
                 if (showSuccessToast && typeof showToast === 'function') showToast("🔄 ¡Datos y usuarios sincronizados con Firebase!", "success");
                 return remoteData;
             }
@@ -21651,6 +21758,18 @@ async function syncStateToFirebaseImmediate(showSuccessToast = false) {
 
     _isSyncInProgress = false;
     updateDbSyncStatus('synced');
+
+    // ? RECUPERACI?N INMEDIATA DE LA BASE DE DATOS NUBE AL ENTRAR A LA P?GINA
+    if (typeof pullStateFromFirebaseCloud === 'function') {
+        pullStateFromFirebaseCloud(true).then(applied => {
+            if (applied) {
+                console.log("? [Base de Datos] Datos actualizados recuperados de la nube y mostrados en pantalla.");
+                if (typeof renderCurrentView === 'function') renderCurrentView();
+                if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
+            }
+        });
+    }
+
 
     if (showSuccessToast && typeof showToast === 'function') {
         showToast("☁️ Cambios sincronizados con Firebase Realtime en tiempo real.", "success");
