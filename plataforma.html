@@ -7,7 +7,7 @@
             try {
                 var authUser = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
                 if (!authUser) {
-                    window.location.replace('index.html');
+                    window.location.replace('login.html');
                 } else {
                     sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
                     var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
@@ -30,6 +30,9 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:;">
     <meta http-equiv="X-Frame-Options" content="DENY">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="logo.png">
@@ -3220,7 +3223,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260904_v130_user_editing_fixed"></script>
+    <script src="app.js?v=20260904_v131_user_persistence_guaranteed"></script>
     <script>
         // CÁLCULO DINÁMICO DE PROMOCIONES Y AÑOS DE FUNDACIÓN (BASE 1970)
         (function updateDynamicStats() {

@@ -7,6 +7,9 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:;">
     <meta http-equiv="X-Frame-Options" content="DENY">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <!-- Guardia de Flujo Obligatorio: Impide ingresar directamente a login.html sin pasar por index.html -->
     
@@ -298,7 +301,7 @@
     </div>
 
         <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260904_v130_user_editing_fixed"></script>
+    <script src="app.js?v=20260904_v131_user_persistence_guaranteed"></script>
     <script>
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');
@@ -319,7 +322,7 @@
                     const saved = loadMasterDatabaseState();
                     if (saved) {
                         const parsed = JSON.parse(saved);
-                        if (parsed && typeof parsed === 'object') {
+                        if (parsed && typeof parsed === 'object' && Array.isArray(parsed.users) && parsed.users.length > 0) {
                             window.STATE = Object.assign(window.STATE || {}, parsed);
                         }
                     }
@@ -327,7 +330,7 @@
             }
             if (typeof pullStateFromFirebaseCloud === 'function') {
                 try {
-                    await pullStateFromFirebaseCloud(true);
+                    await pullStateFromFirebaseCloud(false);
                 } catch(e) {}
             }
         });
@@ -348,26 +351,18 @@
             if (!username || !password) {
                 if (alertBox) {
                     alertBox.style.display = 'flex';
-                    if (alertText) alertText.textContent = 'Por favor ingrese su usuario o correo y su contrase?a.';
+                    if (alertText) alertText.textContent = 'Por favor ingrese su usuario o correo y su contraseña.';
                 }
                 return;
             }
 
-            const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Iniciar Sesi?n';
+            const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Iniciar Sesión';
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Verificando con Base de Datos...';
             }
 
-            // 1. Recuperar obligatoriamente los usuarios y roles m?s recientes desde la Base de Datos Nube
-            if (typeof pullStateFromFirebaseCloud === 'function') {
-                try {
-                    await pullStateFromFirebaseCloud(true);
-                } catch(err) {
-                    console.warn("Aviso al consultar Base de Datos Nube:", err);
-                }
-            }
-
+            // 1. Cargar obligatoriamente los datos más recientes desde ENCCO_DATABASE
             if (typeof loadMasterDatabaseState === 'function') {
                 try {
                     const saved = loadMasterDatabaseState();
@@ -378,6 +373,15 @@
                         }
                     }
                 } catch(e) {}
+            }
+
+            // 2. Consulta de respaldo no destructiva a la nube
+            if (typeof pullStateFromFirebaseCloud === 'function') {
+                try {
+                    await pullStateFromFirebaseCloud(false);
+                } catch(err) {
+                    console.warn("Aviso al consultar Base de Datos Nube:", err);
+                }
             }
 
             if (typeof ensureMasterAccount === 'function') {
@@ -405,7 +409,7 @@
 
                 if (!isUserMatch) return false;
 
-                // Validaci?n estricta de contrase?a
+                // Validación estricta de contraseña
                 return uPass === password;
             });
 
@@ -416,12 +420,11 @@
                 }
                 if (alertBox) {
                     alertBox.style.display = 'flex';
-                    if (alertText) alertText.textContent = 'Credenciales no v?lidas. Verifique su usuario y contrase?a.';
+                    if (alertText) alertText.textContent = 'Credenciales no válidas. Verifique su usuario y contraseña.';
                 }
                 return;
             }
             // Credenciales validadas exitosamente
-
 
             if (submitBtn) {
                 submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Acceso Correcto...';
@@ -432,9 +435,24 @@
         }
 
         function directToPlatform(role, userId) {
-            const usersList = (window.STATE && Array.isArray(window.STATE.users) && window.STATE.users.length > 0)
-                ? window.STATE.users
-                : (typeof getInitialData === 'function' ? getInitialData().users : []);
+            let freshUsers = [];
+            if (typeof loadMasterDatabaseState === 'function') {
+                try {
+                    const saved = loadMasterDatabaseState();
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (parsed && Array.isArray(parsed.users) && parsed.users.length > 0) {
+                            freshUsers = parsed.users;
+                        }
+                    }
+                } catch(e) {}
+            }
+
+            const usersList = freshUsers.length > 0 
+                ? freshUsers 
+                : ((window.STATE && Array.isArray(window.STATE.users) && window.STATE.users.length > 0)
+                    ? window.STATE.users
+                    : (typeof getInitialData === 'function' ? getInitialData().users : []));
 
             const user = usersList.find(u => u.id === userId) || usersList[0];
             sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(user));

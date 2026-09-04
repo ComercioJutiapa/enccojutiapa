@@ -27532,6 +27532,19 @@ function handleLoginPageSubmit(e) {
 
     const uLower = rawUsername.toLowerCase();
 
+    // Cargar obligatoriamente los datos más recientes desde ENCCO_DATABASE
+    if (typeof loadMasterDatabaseState === 'function') {
+        try {
+            const saved = loadMasterDatabaseState();
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed && Array.isArray(parsed.users) && parsed.users.length > 0) {
+                    STATE.users = parsed.users;
+                }
+            }
+        } catch(e) {}
+    }
+
     if (!STATE.users || STATE.users.length === 0) {
         loadDefaults();
     }
@@ -27545,11 +27558,27 @@ function handleLoginPageSubmit(e) {
         const username = (u.username || '').toLowerCase();
         const carne = (u.carne || '').toLowerCase();
         const name = (u.name || '').toLowerCase();
+        const id = (u.id || '').toLowerCase();
 
-        return email === uLower || username === uLower || carne === uLower || name === uLower;
+        return email === uLower || username === uLower || carne === uLower || name === uLower || id === uLower;
     });
 
-    // 2. Búsqueda en catálogo de estudiantes por carné o código personal
+    // 2. Búsqueda por rol rápido si ingresó rol como palabra clave
+    if (!matchedUser) {
+        if (uLower === 'admin' || uLower === 'nehemias') {
+            matchedUser = users.find(u => u.role === 'admin');
+        } else if (uLower === 'director' || uLower === 'direccion') {
+            matchedUser = users.find(u => u.role === 'director');
+        } else if (uLower === 'secretaria') {
+            matchedUser = users.find(u => u.role === 'secretaria');
+        } else if (uLower === 'auxiliar' || uLower === 'profesor_auxiliar') {
+            matchedUser = users.find(u => u.role === 'profesor_auxiliar');
+        } else if (uLower === 'docente' || uLower === 'catedratico') {
+            matchedUser = users.find(u => u.role === 'docente');
+        }
+    }
+
+    // 3. Búsqueda en catálogo de estudiantes por carné o código personal
     if (!matchedUser) {
         const matchedStudent = students.find(s => {
             const c = (s.carne || '').toLowerCase();
@@ -27568,65 +27597,6 @@ function handleLoginPageSubmit(e) {
                 studentId: matchedStudent.id,
                 grade: matchedStudent.grade,
                 section: matchedStudent.section
-            };
-        }
-    }
-
-    // 3. Cuentas rápidas de demostración de respaldo
-    if (!matchedUser) {
-        if (uLower === 'admin' || uLower === 'admin@comercio.edu.gt' || uLower === 'nehemias') {
-            matchedUser = users.find(u => u.role === 'admin') || {
-                id: 'usr-admin-nehemias',
-                name: 'PEM. Nehemias Yalil Salguero',
-                username: 'admin',
-                role: 'admin',
-                email: 'admin@comercio.edu.gt',
-                password: 'admin'
-            };
-        } else if (uLower === 'director' || uLower === 'direccion') {
-            matchedUser = users.find(u => u.role === 'director') || {
-                id: 'usr-dir-01',
-                name: 'Licda. María Elena Morales',
-                username: 'director',
-                role: 'director',
-                email: 'direccion@comercio.edu.gt',
-                password: 'admin'
-            };
-        } else if (uLower === 'secretaria') {
-            matchedUser = users.find(u => u.role === 'secretaria') || {
-                id: 'usr-sec-01',
-                name: 'Licda. Jhoana Jarro',
-                username: 'secretaria',
-                role: 'secretaria',
-                email: 'jhoanajarro@gmail.com',
-                password: 'admin'
-            };
-        } else if (uLower === 'auxiliar' || uLower === 'profesor_auxiliar') {
-            matchedUser = users.find(u => u.role === 'profesor_auxiliar') || {
-                id: 'usr-aux-01',
-                name: 'PEM. Profesor Auxiliar Disciplinario',
-                username: 'auxiliar',
-                role: 'profesor_auxiliar',
-                email: 'auxiliar@comercio.edu.gt',
-                password: 'admin'
-            };
-        } else if (uLower === 'docente' || uLower === 'catedratico' || uLower === 'marodriguez') {
-            matchedUser = users.find(u => u.role === 'docente') || {
-                id: 'usr-doc-01',
-                name: 'PEM. Manuel Alejandro Rodríguez',
-                username: 'marodriguez',
-                role: 'docente',
-                email: 'docente@comercio.edu.gt',
-                password: 'admin'
-            };
-        } else if (uLower === 'estudiante' || uLower === 'alumno' || uLower === '2026-0001') {
-            matchedUser = {
-                id: 'est-demo-01',
-                name: 'Estudiante Demostración 2026',
-                username: '2026-0001',
-                role: 'estudiante',
-                email: 'estudiante@comercio.edu.gt',
-                password: 'admin'
             };
         }
     }
