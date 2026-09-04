@@ -1,3 +1,92 @@
+// ======================================================================
+//   GESTIÓN Y RECUPERACIÓN OFICIAL DEL CICLO LECTIVO 2026 (V127)
+// ======================================================================
+
+function ensureOfficialCycles() {
+    if (!Array.isArray(STATE.cycles) || STATE.cycles.length === 0) {
+        STATE.cycles = [
+            {
+                id: "cyc-2026",
+                name: "2026",
+                year: "2026",
+                status: "Activo",
+                description: "Ciclo Escolar Oficial MINEDUC 2026"
+            }
+        ];
+    }
+
+    // Normalizar nombres para que no haya inconsistencias entre "Ciclo Escolar 2026" y "2026"
+    STATE.cycles.forEach(c => {
+        const yr = (c.year || c.name || '').toString().match(/\d{4}/);
+        c.year = yr ? yr[0] : '2026';
+        // Normalizar name al a?o limpio para consistencia total en selectores
+        if (c.name.includes('Ciclo')) {
+            c.name = c.year;
+        }
+    });
+
+    // Garantizar que exista el ciclo 2026
+    const has2026 = STATE.cycles.some(c => c.name === '2026' || c.year === '2026');
+    if (!has2026) {
+        STATE.cycles.unshift({
+            id: "cyc-2026",
+            name: "2026",
+            year: "2026",
+            status: "Activo",
+            description: "Ciclo Escolar Oficial MINEDUC 2026"
+        });
+    }
+
+    // Normalizar ciclo activo
+    if (!STATE.activeCycle || STATE.activeCycle.includes('Ciclo')) {
+        const yr = (STATE.activeCycle || '').toString().match(/\d{4}/);
+        STATE.activeCycle = yr ? yr[0] : '2026';
+    }
+
+    const activeObj = STATE.cycles.find(c => c.name === STATE.activeCycle || c.year === STATE.activeCycle);
+    if (!activeObj && STATE.cycles.length > 0) {
+        STATE.activeCycle = STATE.cycles[0].name;
+    }
+}
+window.ensureOfficialCycles = ensureOfficialCycles;
+
+function updateCycleSelects() {
+    ensureOfficialCycles();
+
+    const sidebarSelect = document.getElementById('sidebarCycleSelect');
+    const studentFormCycle = document.getElementById('studentFormCycle');
+
+    const cycles = STATE.cycles || [];
+
+    // Generar opciones con formato oficial limpio
+    const options = cycles.map(c => {
+        const isSelected = (c.name === STATE.activeCycle || c.year === STATE.activeCycle) ? 'selected' : '';
+        return `<option value="${c.name}" ${isSelected}>Ciclo Escolar ${c.year || c.name} ${c.status === 'Activo' ? '(Activo)' : '(Hist?rico)'}</option>`;
+    }).join('');
+
+    if (sidebarSelect) {
+        sidebarSelect.innerHTML = options;
+        // Asignar el valor garantizado
+        if (STATE.activeCycle) {
+            sidebarSelect.value = STATE.activeCycle;
+        }
+        // Si a?n no coincide, forzar el primer ?tem para que nunca est? en blanco
+        if (!sidebarSelect.value && sidebarSelect.options.length > 0) {
+            sidebarSelect.selectedIndex = 0;
+            STATE.activeCycle = sidebarSelect.value;
+        }
+    }
+
+    if (studentFormCycle) {
+        studentFormCycle.innerHTML = cycles.map(c => {
+            const isSelected = (c.name === STATE.activeCycle || c.year === STATE.activeCycle) ? 'selected' : '';
+            return `<option value="${c.name}" ${isSelected}>Ciclo ${c.year || c.name}</option>`;
+        }).join('') || '<option value="2026" selected>Ciclo 2026</option>';
+    }
+}
+window.updateCycleSelects = updateCycleSelects;
+
+
 function enforceViewReadOnlyMode(viewName) {
     if (STATE.currentRole === 'admin') return;
     const viewEl = document.getElementById(`view-${viewName}`);
@@ -15707,7 +15796,11 @@ function applyIncomingCloudState(incomingState, force = false) {
     if (Array.isArray(incomingState.disciplineReports)) STATE.disciplineReports = incomingState.disciplineReports;
 
     // 6. Ciclos y Configuraci?n
-    if (Array.isArray(incomingState.cycles)) STATE.cycles = incomingState.cycles;
+    if (Array.isArray(incomingState.cycles)) {
+        STATE.cycles = incomingState.cycles;
+        ensureOfficialCycles();
+        updateCycleSelects();
+    }
     if (incomingState.activeCycle) STATE.activeCycle = incomingState.activeCycle;
     if (incomingState.config) STATE.config = incomingState.config;
     if (Array.isArray(incomingState.announcements)) STATE.announcements = incomingState.announcements;
@@ -22877,31 +22970,7 @@ function deleteCareer(careerId) {
 // ==========================================================================
 // 7B. ADMIN Y GESTIÓN COMPLETA DE CICLOS LECTIVOS ESCOLARES
 // ==========================================================================
-function updateCycleSelects() {
-    const sidebarSelect = document.getElementById('sidebarCycleSelect');
-    const studentFormCycle = document.getElementById('studentFormCycle');
 
-    const cycles = STATE.cycles || [];
-    let options = '';
-    
-    if (cycles.length === 0) {
-        options = '<option value="">-- Ingrese un ciclo --</option>';
-    } else {
-        options = cycles.map(c => {
-            const isSelected = (c.name === STATE.activeCycle) ? 'selected' : '';
-            return `<option value="${c.name}" ${isSelected}>Ciclo Escolar ${c.name} ${c.status === 'Activo' ? '(Activo)' : '(Histórico)'}</option>`;
-        }).join('');
-    }
-
-    if (sidebarSelect) sidebarSelect.innerHTML = options;
-    if (studentFormCycle) {
-        studentFormCycle.innerHTML = cycles.map(c => `<option value="${c.name}" ${c.name === STATE.activeCycle ? 'selected' : ''}>Ciclo ${c.name}</option>`).join('') || '<option value="">Sin ciclos registrados</option>';
-    }
-    
-    if (sidebarSelect && STATE.activeCycle) {
-        sidebarSelect.value = STATE.activeCycle;
-    }
-}
 
 function openCycleModal(e) {
     if (e && e.preventDefault) e.preventDefault();
