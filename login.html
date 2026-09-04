@@ -297,8 +297,8 @@
         </div>
     </div>
 
-    <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260831_v124_seamless_immediate_sync"></script>
+        <script src="xlsx.full.min.js"></script>
+    <script src="app.js?v=20260831_v125_full_cloud_sync_and_login"></script>
     <script>
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');
@@ -312,7 +312,16 @@
             }
         }
 
-                        async function handleLoginPageSubmit(e) {
+        // Recuperar inmediatamente los datos m?s recientes de la Base de Datos al abrir la pantalla de login
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (typeof pullStateFromFirebaseCloud === 'function') {
+                try {
+                    await pullStateFromFirebaseCloud(true);
+                } catch(e) {}
+            }
+        });
+
+        async function handleLoginPageSubmit(e) {
             if (e) e.preventDefault();
             const usernameInput = document.getElementById('loginUsername');
             const passwordInput = document.getElementById('loginPassword');
@@ -328,28 +337,23 @@
             if (!username || !password) {
                 if (alertBox) {
                     alertBox.style.display = 'flex';
-                    if (alertText) alertText.textContent = 'Por favor ingrese su usuario o correo y su contraseña.';
+                    if (alertText) alertText.textContent = 'Por favor ingrese su usuario o correo y su contrase?a.';
                 }
                 return;
             }
 
-            const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Iniciar Sesión';
+            const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Iniciar Sesi?n';
             if (submitBtn) {
                 submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down fa-spin"></i> Conectando con Google Firebase Realtime...';
+                submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Verificando con Base de Datos...';
             }
 
-            // 1. Conectar a Google Firebase Realtime Database e inicializar cliente
-            if (!window.firebaseClient && typeof initGoogle Firebase Realtime DatabaseConnection === 'function') {
-                initGoogle Firebase Realtime DatabaseConnection();
-            }
-
-            // 2. Leer obligatoriamente la información más reciente desde Google Firebase Realtime Database en la nube
-            if (typeof pullStateFromGoogle Firebase Realtime DatabaseCloud === 'function') {
+            // 1. Recuperar obligatoriamente los usuarios y roles m?s recientes desde la Base de Datos Nube
+            if (typeof pullStateFromFirebaseCloud === 'function') {
                 try {
-                    await pullStateFromGoogle Firebase Realtime DatabaseCloud(false);
+                    await pullStateFromFirebaseCloud(true);
                 } catch(err) {
-                    console.warn("Aviso al consultar Google Firebase Realtime Database:", err);
+                    console.warn("Aviso al consultar Base de Datos Nube:", err);
                 }
             }
 
@@ -378,7 +382,7 @@
 
                 if (!isUserMatch) return false;
 
-                // Validación estricta de contraseña oficial
+                // Validaci?n estricta de contrase?a
                 return uPass === password;
             });
 
@@ -389,12 +393,12 @@
                 }
                 if (alertBox) {
                     alertBox.style.display = 'flex';
-                    if (alertText) alertText.textContent = 'Credenciales no válidas. Verifique su usuario y contraseña.';
+                    if (alertText) alertText.textContent = 'Credenciales no v?lidas. Verifique su usuario y contrase?a.';
                 }
                 return;
             }
 
-            // Credenciales válidas: Asegurar snapshot completo de Google Firebase Realtime Database en almacenamiento local
+            // Credenciales v?lidas: asegurar snapshot completo en almacenamiento local
             try {
                 if (window.STATE && typeof DB_STORAGE_KEY !== 'undefined') {
                     localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(window.STATE));
@@ -418,6 +422,8 @@
             const user = usersList.find(u => u.id === userId) || usersList[0];
             sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(user));
             sessionStorage.setItem('ENCCO_AUTH_ROLE', role || user.role || 'admin');
+            localStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(user));
+            localStorage.setItem('ENCCO_AUTH_ROLE', role || user.role || 'admin');
             window.location.href = 'plataforma.html';
         }
 
@@ -428,8 +434,5 @@
             if (loginForm) loginForm.style.display = 'block';
         }
     </script>
-
-    
-
 </body>
 </html>

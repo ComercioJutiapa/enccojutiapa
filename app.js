@@ -1492,7 +1492,7 @@ const FIREBASE_CONFIG = {
 
 
 // Descargar de Firebase Realtime Database (GET)
-async function pullStateFromFirebaseCloud(isInitial = false) {
+async function pullStateFromFirebaseCloud(force = false) {
     const firebaseUrl = getFirebaseDatabaseUrl();
     if (!firebaseUrl) return false;
 
@@ -1502,16 +1502,16 @@ async function pullStateFromFirebaseCloud(isInitial = false) {
         const response = await fetch(endpoint);
         if (response.ok) {
             const cloudState = await response.json();
-            if (cloudState && typeof cloudState === 'object' && cloudState.students) {
-                if (!STATE.lastModified || (cloudState.lastModified && cloudState.lastModified > STATE.lastModified)) {
-                    applyIncomingCloudState(cloudState, !isInitial);
-                    updateDbStatusIndicator(true, "Firebase Nube Activo");
+            if (cloudState && typeof cloudState === 'object' && (cloudState.students || cloudState.users)) {
+                const applied = applyIncomingCloudState(cloudState, force);
+                if (applied) {
+                    updateDbSyncStatus('synced');
                     return true;
                 }
             }
         }
     } catch(err) {
-        console.warn("Aviso al consultar Firebase:", err);
+        console.warn("Aviso al consultar Base de Datos Nube:", err);
     }
     return false;
 }
@@ -1850,7 +1850,7 @@ function sortGrades(grades) {
 window.sortGrades = sortGrades;
 
 
-const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V124';
+const DB_STORAGE_KEY = 'ENCCO_SYSTEM_DATABASE_V125';
 const ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
 const ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
@@ -15549,7 +15549,7 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === 'ENCCO_SYSTEM_DATABASE_V124' || e.key === 'ENCCO_SYSTEM_DATABASE_V124' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+        if (e.key === 'ENCCO_SYSTEM_DATABASE_V125' || e.key === 'ENCCO_SYSTEM_DATABASE_V125' || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
             try {
                 const raw = localStorage.getItem(DB_STORAGE_KEY);
                 if (raw) {
@@ -15570,40 +15570,57 @@ if (typeof window !== 'undefined') {
 }
 
 // 3. Aplicación Inteligente del Estado Recibido en Tiempo Real
-function applyIncomingCloudState(incomingState, isFromCloud = true) {
+function applyIncomingCloudState(incomingState, force = false) {
     if (!incomingState || typeof incomingState !== 'object') return false;
 
     const incomingTime = incomingState.lastModified || 0;
     const localTime = STATE.lastModified || 0;
 
-    if (incomingTime <= localTime) {
+    if (!force && incomingTime <= localTime) {
         return false;
     }
 
-    console.log(`⚡ [Tiempo Real] Aplicando actualización recibida (${new Date(incomingTime).toLocaleTimeString()})...`);
+    console.log(`? [Tiempo Real] Sincronizando estado completo desde la Base de Datos (${new Date(incomingTime || Date.now()).toLocaleTimeString()})...`);
 
-    // Fusión limpia del estado
-    if (Array.isArray(incomingState.students)) STATE.students = incomingState.students;
-    if (Array.isArray(incomingState.users)) STATE.users = incomingState.users;
-    if (Array.isArray(incomingState.gradesList)) STATE.gradesList = incomingState.gradesList;
-    if (Array.isArray(incomingState.careers)) STATE.careers = incomingState.careers;
-    if (Array.isArray(incomingState.pensum)) STATE.pensum = incomingState.pensum;
-    if (Array.isArray(incomingState.pensumCatalog)) STATE.pensumCatalog = incomingState.pensumCatalog;
-    if (incomingState.attendanceRecords) STATE.attendanceRecords = incomingState.attendanceRecords;
-    if (Array.isArray(incomingState.disciplineReports)) STATE.disciplineReports = incomingState.disciplineReports;
-    if (Array.isArray(incomingState.rolesConfig)) {
+    // 1. Usuarios y Maestros (Creaciones, modificaciones, eliminaciones y contrase?as)
+    if (Array.isArray(incomingState.users) && incomingState.users.length > 0) {
+        STATE.users = incomingState.users;
+    }
+
+    // 2. Roles y Permisos (Matriz de 3 niveles: Modificar, Solo Ver y Bloqueado)
+    if (Array.isArray(incomingState.rolesConfig) && incomingState.rolesConfig.length > 0) {
         STATE.rolesConfig = incomingState.rolesConfig;
         if (typeof normalizeRolesConfig === 'function') normalizeRolesConfig();
-        if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
+        if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole || 'admin');
         if (STATE.activeView === 'roles' && typeof renderRolesTable === 'function') renderRolesTable();
+        if (STATE.activeView === 'roles' && typeof renderRoleSelectorTabs === 'function') renderRoleSelectorTabs();
     }
+
+    // 3. Ingreso de Notas y Calificaciones
+    if (Array.isArray(incomingState.students) && incomingState.students.length > 0) {
+        STATE.students = incomingState.students;
+    }
+
+    // 4. Asignaci?n de C?tedras y Pensum
+    if (Array.isArray(incomingState.pensum)) STATE.pensum = incomingState.pensum;
+    if (Array.isArray(incomingState.pensumCatalog)) STATE.pensumCatalog = incomingState.pensumCatalog;
+    if (Array.isArray(incomingState.gradesList)) STATE.gradesList = incomingState.gradesList;
+    if (Array.isArray(incomingState.careers)) STATE.careers = incomingState.careers;
+
+    // 5. Asistencia y Disciplina
+    if (incomingState.attendanceRecords) STATE.attendanceRecords = incomingState.attendanceRecords;
+    if (Array.isArray(incomingState.disciplineReports)) STATE.disciplineReports = incomingState.disciplineReports;
+
+    // 6. Ciclos y Configuraci?n
     if (Array.isArray(incomingState.cycles)) STATE.cycles = incomingState.cycles;
     if (incomingState.activeCycle) STATE.activeCycle = incomingState.activeCycle;
     if (incomingState.config) STATE.config = incomingState.config;
     if (Array.isArray(incomingState.announcements)) STATE.announcements = incomingState.announcements;
-    STATE.lastModified = incomingTime;
+    if (incomingState.schoolHeader) STATE.schoolHeader = incomingState.schoolHeader;
 
-    // Guardado silencioso en localStorage
+    STATE.lastModified = incomingTime || Date.now();
+
+    // Guardado en almacenamiento local garantizado
     try {
         const jsonStr = JSON.stringify(STATE);
         localStorage.setItem(DB_STORAGE_KEY, jsonStr);
@@ -15611,19 +15628,18 @@ function applyIncomingCloudState(incomingState, isFromCloud = true) {
         localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
     } catch(e) {}
 
-    // Refrescar vistas activas y componentes dinámicos en vivo
-    if (typeof updateGradeSelects === 'function') updateGradeSelects();
-    if (typeof updateCareerSelects === 'function') updateCareerSelects();
-    if (typeof updateCycleSelects === 'function') updateCycleSelects();
-    if (typeof renderCurrentView === 'function') renderCurrentView();
-    if (typeof renderDashboard === 'function') renderDashboard();
-    if (typeof renderGradesDirectoryTable === 'function') renderGradesDirectoryTable();
+    // Refrescar vistas activas en tiempo real
+    try {
+        if (typeof renderCurrentView === 'function') renderCurrentView();
+        if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
+        if (typeof updateGradeSelects === 'function') updateGradeSelects();
+        if (typeof updateCareerSelects === 'function') updateCareerSelects();
+        if (typeof updatePensumCatalogSelects === 'function') updatePensumCatalogSelects();
+        if (typeof updateAssignmentSelects === 'function') updateAssignmentSelects();
+        if (typeof populateAttendanceSelects === 'function') populateAttendanceSelects();
+        if (typeof populatePensumTeacherSelect === 'function') populatePensumTeacherSelect();
+    } catch(e) {}
 
-    updateDbStatusIndicator(true);
-
-    if (isFromCloud && typeof showToast === 'function') {
-        showToast("⚡ Datos actualizados en tiempo real.", "info");
-    }
     return true;
 }
 window.applyIncomingCloudState = applyIncomingCloudState;
