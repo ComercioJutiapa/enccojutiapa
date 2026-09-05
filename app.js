@@ -506,8 +506,8 @@ window.EnccoAuthStore = EnccoAuthStore;
 
 if (window.STATE) {
     window.STATE.isLocalReadOnlyMode = false;
-    window.STATE.isExclusivelyOnlineMode = true;
-    window.STATE.cachePolicy = 'memoryLocalCache';
+    window.STATE.isExclusivelyOnlineMode = false;
+    window.STATE.cachePolicy = 'persistentLocalCache';
 }
 
 // ======================================================================
@@ -16253,6 +16253,87 @@ function completeLoginWithRole(selectedRole, userObj = null) {
 }
 
 
+
+// ======================================================================
+// POBLADO DINMICO INSTITUCIONAL DE SELECTORES DE DOCENTES Y CTEDRAS
+// ======================================================================
+function populatePensumTeacherSelect() {
+    try {
+        if (typeof updateClassAssignmentSelects === 'function') {
+            updateClassAssignmentSelects();
+        }
+        if (typeof updateAssignmentSelects === 'function') {
+            updateAssignmentSelects();
+        }
+        if (typeof populateAttendanceSelects === 'function') {
+            populateAttendanceSelects();
+        }
+        if (typeof updateLoginAccountSelect === 'function') {
+            updateLoginAccountSelect();
+        }
+
+        const teachers = (STATE.users || []).filter(u => 
+            u.role === 'docente' || 
+            u.role === 'profesor' || 
+            u.role === 'catedratico' ||
+            (u.id && u.id.startsWith('usr-doc-')) ||
+            (u.title && (u.title.toLowerCase().includes('docente') || u.title.toLowerCase().includes('catedr')))
+        );
+
+        // 1. Selector de Maestro Gua en modal de creacin/edicin de grado
+        const guideSelect = document.getElementById('gradeFormGuideTeacher');
+        if (guideSelect) {
+            const cur = guideSelect.value;
+            guideSelect.innerHTML = '<option value="">-- Sin Maestro Gua Asignado --</option>' + teachers.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+            if (cur && Array.from(guideSelect.options).some(o => o.value === cur)) guideSelect.value = cur;
+        }
+
+        // 2. Selector rpido de Maestro Gua titular
+        const quickGuide = document.getElementById('quickGuideTeacherSelect') || document.getElementById('guideTeacherSelectModal');
+        if (quickGuide) {
+            const cur = quickGuide.value;
+            quickGuide.innerHTML = '<option value="">-- Sin Maestro Gua --</option>' + teachers.map(t => `<option value="${t.id}">${t.name} (${t.renglon || '011'} - ${t.role})</option>`).join('');
+            if (cur && Array.from(quickGuide.options).some(o => o.value === cur)) quickGuide.value = cur;
+        }
+
+        // 3. Filtro de Asistencia por Catedrtico
+        const attendanceSelect = document.getElementById('attendanceTeacherSelect');
+        if (attendanceSelect) {
+            const cur = attendanceSelect.value;
+            let html = `<option value="">?? General por Grado (Todos los Maestros)</option>`;
+            if (teachers.length > 0) {
+                html += `<optgroup label="??? Catedrticos del Plantel">`;
+                teachers.forEach(t => {
+                    html += `<option value="${t.id}">??? ${t.name} ? ${t.title || t.role}</option>`;
+                });
+                html += `</optgroup>`;
+            }
+            attendanceSelect.innerHTML = html;
+            if (cur && Array.from(attendanceSelect.options).some(o => o.value === cur)) attendanceSelect.value = cur;
+        }
+
+        // 4. Selector de Docente en Formulario Asignacin de Ctedra
+        const classTeacherSelect = document.getElementById('classAssignmentFormTeacher');
+        if (classTeacherSelect) {
+            const cur = classTeacherSelect.value;
+            classTeacherSelect.innerHTML = '<option value="">-- Seleccione Catedrtico Titular --</option>' + teachers.map(t => `<option value="${t.id}">${t.name} (${t.title || 'Docente'})</option>`).join('');
+            if (cur && Array.from(classTeacherSelect.options).some(o => o.value === cur)) classTeacherSelect.value = cur;
+        }
+
+        // 5. Filtro de Docentes en Tabla de Asignaciones
+        const assignFilter = document.getElementById('assignmentTeacherFilter');
+        if (assignFilter) {
+            const cur = assignFilter.value;
+            assignFilter.innerHTML = '<option value="ALL">Todos los Docentes</option>' + teachers.map(t => `<option value="${t.name}">${t.name}</option>`).join('');
+            if (cur && Array.from(assignFilter.options).some(o => o.value === cur)) assignFilter.value = cur;
+            else assignFilter.value = 'ALL';
+        }
+    } catch(err) {
+        console.warn("Aviso en populatePensumTeacherSelect:", err);
+    }
+}
+window.populatePensumTeacherSelect = populatePensumTeacherSelect;
+
 function synchronizeGlobalDynamicUI() {
     saveStateToLocalStorage();
     if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
@@ -16608,28 +16689,25 @@ function applyIncomingCloudState(incomingState, force = false) {
         return false;
     }
 
-    // Prohibir terminantemente sobreescribir la base de datos desde páginas que no son la plataforma (login.html, index.html)
-    if (typeof window !== 'undefined') {
-        const path = (window.location.pathname || '') + (window.location.href || '');
-        if (path.includes('login.html') || path.includes('index.html')) {
-            // Permitir refrescar usuarios en memoria si es necesario para autenticación, pero NUNCA sobrescribir ENCCO_DATABASE en disco
-            if (Array.isArray(incomingState.users) && incomingState.users.length > 0 && window.STATE) {
-                window.STATE.users = incomingState.users;
-            }
-            return false;
-        }
-    }
-
-    const incomingTime = incomingState.lastModified || 0;
+        const incomingTime = incomingState.lastModified || 0;
     const localLastModified = (typeof localStorage !== 'undefined') ? Number(localStorage.getItem('ENCCO_LAST_LOCAL_MODIFIED') || 0) : 0;
     const localTime = Math.max(STATE.lastModified || 0, localLastModified);
 
-    // Proteger contra sobreescritura de datos locales más recientes
+    // Proteger contra sobreescritura de datos locales ms recientes (prioridad absoluta a cambios locales)
     if (incomingTime < localTime && Array.isArray(STATE.users) && STATE.users.length > 0) {
-        console.log(`ℹ️ [Tiempo Real] Se conservan cambios locales más recientes (${localTime} vs nube ${incomingTime}).`);
+        console.log(`?? [Tiempo Real] Se conservan cambios locales ms recientes (${localTime} vs nube ${incomingTime}).`);
         return false;
     }
     if (!force && incomingTime <= localTime) {
+        return false;
+    }
+
+    // Si estamos en login.html o index.html, y la nube es estrictamente ms reciente, solo actualizamos memoria para auth
+    if (typeof isAuthOrLandingPage === 'function' && isAuthOrLandingPage()) {
+        if (Array.isArray(incomingState.users) && incomingState.users.length > 0 && window.STATE) {
+            window.STATE.users = incomingState.users;
+            if (incomingState.rolesConfig) window.STATE.rolesConfig = incomingState.rolesConfig;
+        }
         return false;
     }
 
@@ -16728,6 +16806,19 @@ function triggerInstantCloudPush() {
 window.triggerInstantCloudPush = triggerInstantCloudPush;
 
 
+
+function isAuthOrLandingPage() {
+    if (typeof window === 'undefined' || !window.location) return false;
+    try {
+        const pathname = (window.location.pathname || '').toLowerCase();
+        const filename = pathname.split('/').pop().split('?')[0].split('#')[0] || '';
+        return (filename === 'login.html' || filename === 'index.html');
+    } catch(e) {
+        return false;
+    }
+}
+window.isAuthOrLandingPage = isAuthOrLandingPage;
+
 function saveStateToLocalStorage() {
     // 1. Bloqueo estricto si estamos inspeccionando copia local en Modo Solo Lectura
     if (window.STATE && window.STATE.isLocalReadOnlyMode) {
@@ -16736,11 +16827,9 @@ function saveStateToLocalStorage() {
     }
 
     // Prohibir terminantemente sobreescribir la base de datos desde páginas que no son la plataforma
-    if (typeof window !== 'undefined') {
-        const path = (window.location.pathname || '') + (window.location.href || '');
-        if (path.includes('login.html') || path.includes('index.html')) {
-            return;
-        }
+        // Prohibir terminantemente sobreescribir la base de datos desde login.html o index.html
+    if (typeof isAuthOrLandingPage === 'function' && isAuthOrLandingPage()) {
+        return;
     }
     const payload = {
         config: STATE.config,
@@ -28243,11 +28332,14 @@ function openAssignGuideTeacherModal(gradeId) {
     if (!checkEnrolmentPermissions()) return;
     const grade = (STATE.gradesList || []).find(g => g.id === gradeId);
     if (!grade) return;
-    document.getElementById('guideTeacherModalGradeId').value = grade.id;
-    document.getElementById('guideTeacherModalGradeName').textContent = `${grade.name} (${grade.section}) - ${grade.career}`;
-    populateGuideTeacherSelect(grade.guideTeacher);
+    const idEl = document.getElementById('guideTeacherModalGradeId') || document.getElementById('quickGuideGradeId');
+    if (idEl) idEl.value = grade.id;
+    const nameEl = document.getElementById('guideTeacherModalGradeName') || document.getElementById('quickGuideGradeTitle');
+    if (nameEl) nameEl.textContent = `${grade.name} (${grade.section}) - ${grade.career}`;
+    populateGuideTeacherSelect(grade.guideTeacherId || grade.guideTeacher);
     showModalById('assignGuideTeacherModal');
 }
+window.openAssignGuideTeacherModal = openAssignGuideTeacherModal;
 
 function closeAssignGuideTeacherModal() {
     const modal = document.getElementById('assignGuideTeacherModal');
@@ -28256,20 +28348,48 @@ function closeAssignGuideTeacherModal() {
         modal.style.setProperty('display', 'none', 'important');
     }
 }
+window.closeAssignGuideTeacherModal = closeAssignGuideTeacherModal;
+
+function populateGuideTeacherSelect(selectedTeacherIdOrName) {
+    const select = document.getElementById('guideTeacherSelectModal') || document.getElementById('quickGuideTeacherSelect');
+    if (!select) return;
+
+    const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-')));
+    let html = '<option value="">-- Sin Maestro Gua --</option>';
+    html += teachers.map(t => {
+        const isSel = (t.id === selectedTeacherIdOrName || t.name === selectedTeacherIdOrName) ? 'selected' : '';
+        return `<option value="${t.id}" ${isSel}>${t.name} (${t.renglon || '011'} - ${t.role})</option>`;
+    }).join('');
+    select.innerHTML = html;
+}
+window.populateGuideTeacherSelect = populateGuideTeacherSelect;
 
 function saveQuickGuideTeacher(e) {
     if (e && e.preventDefault) e.preventDefault();
-    const gradeId = document.getElementById('guideTeacherModalGradeId').value;
-    const teacherId = document.getElementById('guideTeacherSelectModal').value;
+    const gradeId = (document.getElementById('guideTeacherModalGradeId') || document.getElementById('quickGuideGradeId'))?.value;
+    const teacherId = (document.getElementById('guideTeacherSelectModal') || document.getElementById('quickGuideTeacherSelect'))?.value;
+    
     const grade = (STATE.gradesList || []).find(g => g.id === gradeId);
     if (grade) {
-        grade.guideTeacher = teacherId;
+        const teacherObj = (STATE.users || []).find(u => u.id === teacherId);
+        grade.guideTeacherId = teacherId || null;
+        grade.guideTeacher = teacherObj ? teacherObj.name : (teacherId ? teacherId : 'Sin asignar');
+        
+        STATE.lastModified = Date.now();
         saveStateToLocalStorage();
         closeAssignGuideTeacherModal();
         renderGradesTable();
-        showToast('Maestro guía asignado exitosamente.', 'success');
+        if (typeof renderDashboard === 'function') renderDashboard();
+        
+        if (typeof autoSyncToFirebase === 'function') {
+            autoSyncToCloud(true, false);
+        } else if (typeof syncStateToFirebaseImmediate === 'function') {
+            syncStateToFirebaseImmediate(false);
+        }
+        showToast(`Maestro Gua "${grade.guideTeacher}" asignado a ${grade.name} (${grade.section}).`, 'success');
     }
 }
+window.saveQuickGuideTeacher = saveQuickGuideTeacher;
 
 function renderGradesDirectoryTable() {
     const tbody = document.getElementById('gradesDirectoryTableBody');
@@ -28309,47 +28429,47 @@ function renderGradesDirectoryTable() {
     }).join('');
 }
 window.renderGradesDirectoryTable = renderGradesDirectoryTable;
-
-function populateGuideTeacherSelect(selectedTeacherIdOrName) {
-    const select = document.getElementById('guideTeacherSelectModal');
-    if (!select) return;
-
-    const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-')));
-    let html = '<option value="">-- Sin Maestro Guía --</option>';
-    html += teachers.map(t => {
-        const isSel = (t.id === selectedTeacherIdOrName || t.name === selectedTeacherIdOrName) ? 'selected' : '';
-        return `<option value="${t.id}" ${isSel}>${t.name} (${t.renglon || '011'} - ${t.role})</option>`;
-    }).join('');
-    select.innerHTML = html;
-}
-window.populateGuideTeacherSelect = populateGuideTeacherSelect;
-
-function saveQuickGuideTeacher(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    const gradeId = document.getElementById('guideTeacherModalGradeId').value;
-    const teacherId = document.getElementById('guideTeacherSelectModal').value;
-    
-    const grade = (STATE.gradesList || []).find(g => g.id === gradeId);
-    if (grade) {
-        const teacherObj = (STATE.users || []).find(u => u.id === teacherId);
-        grade.guideTeacherId = teacherId || null;
-        grade.guideTeacher = teacherObj ? teacherObj.name : (teacherId ? teacherId : 'Sin asignar');
-        
-        STATE.lastModified = Date.now();
-        saveStateToLocalStorage();
-        closeAssignGuideTeacherModal();
-        renderGradesTable();
-        if (typeof renderDashboard === 'function') renderDashboard();
-        
-        if (typeof autoSyncToFirebase === 'function') {
-            autoSyncToCloud(true, false);
-        }
-        showToast(`Maestro Guía "${grade.guideTeacher}" asignado a ${grade.name} (${grade.section}).`, 'success');
-    }
-}
-window.saveQuickGuideTeacher = saveQuickGuideTeacher;
-
-
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
+// [DUPLICATE REMOVED]
 function openGradesDirectoryModal(e) {
     if (e && e.preventDefault) e.preventDefault();
     renderGradesDirectoryTable();
@@ -30635,6 +30755,9 @@ function renderAssignmentsTable(searchQuery = '') {
         </tr>
         `;
     }).join('');
+}
+window.renderAssignmentsTable = renderAssignmentsTable;
+
 function closeCyclePromotionModal() {
     const modal = document.getElementById('cyclePromotionModal');
     if (modal) {
@@ -30680,4 +30803,40 @@ function printCurrentSectionSireReport(sectionCode = null) {
     }
 }
 
-}
+// ======================================================================
+// EXPORTACIONES GLOBALES EXPLCITAS A WINDOW (100% REACTIVIDAD DINMICA)
+// ======================================================================
+window.getInitialData = getInitialData;
+window.deleteUser = deleteUser;
+window.impersonateUser = impersonateUser;
+window.filterUsersTable = filterUsersTable;
+window.toggleUserTableRowPassword = toggleUserTableRowPassword;
+window.printUserCredentialsList = printUserCredentialsList;
+window.openAssignGuideTeacherModal = openAssignGuideTeacherModal;
+window.closeAssignGuideTeacherModal = closeAssignGuideTeacherModal;
+window.populateGuideTeacherSelect = populateGuideTeacherSelect;
+window.saveQuickGuideTeacher = saveQuickGuideTeacher;
+window.openGradesDirectoryModal = openGradesDirectoryModal;
+window.closeGradesDirectoryModal = closeGradesDirectoryModal;
+window.renderGradesDirectoryTable = renderGradesDirectoryTable;
+window.updateClassAssignmentSelects = updateClassAssignmentSelects;
+window.updateAssignmentSelects = updateAssignmentSelects;
+window.openClassAssignmentModal = openClassAssignmentModal;
+window.openEditClassAssignmentModal = openEditClassAssignmentModal;
+window.saveClassAssignmentForm = saveClassAssignmentForm;
+window.deleteClassAssignment = deleteClassAssignment;
+window.filterAssignmentsTable = filterAssignmentsTable;
+window.renderAssignmentsTable = renderAssignmentsTable;
+window.checkClassAssignmentConflict = checkClassAssignmentConflict;
+window.closeCyclePromotionModal = closeCyclePromotionModal;
+window.openCyclePromotionModal = openCyclePromotionModal;
+window.selectAllPromotedStudents = selectAllPromotedStudents;
+window.executeCyclePromotion = executeCyclePromotion;
+window.printCurrentSectionSireReport = printCurrentSectionSireReport;
+window.onPromotionCycleChange = function() { if (typeof renderPromotionStudentsTable === 'function') renderPromotionStudentsTable(); };
+window.renderPromotionTable = function() { if (typeof renderPromotionStudentsTable === 'function') renderPromotionStudentsTable(); };
+window.filterPromotionTable = function() { if (typeof renderPromotionStudentsTable === 'function') renderPromotionStudentsTable(); };
+window.toggleAllPromotionCheckboxes = function(checked) {
+    document.querySelectorAll('#promotionStudentsList input[type="checkbox"], .promo-student-check').forEach(cb => cb.checked = !!checked);
+};
+
