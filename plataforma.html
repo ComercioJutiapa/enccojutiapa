@@ -65,14 +65,12 @@
                                     storageBucket: "enccojutiapa-db-default-rtdb.appspot.com"
                                 };
                                 const app = appMod.initializeApp(firebaseConfig, 'enccoCache_' + Date.now());
-                                const cacheConfig = (mode === 'persistent')
-                                    ? fsMod.persistentLocalCache({ tabManager: fsMod.persistentMultipleTabManager() })
-                                    : fsMod.memoryLocalCache();
+                                const cacheConfig = fsMod.memoryLocalCache();
                                 
                                 this.dbInstance = fsMod.initializeFirestore(app, {
                                     localCache: cacheConfig
                                 });
-                                console.log(`✅ [Firebase Modular SDK] Firestore inicializado con ${mode === 'persistent' ? 'persistentLocalCache() (Súper Usuario)' : 'memoryLocalCache() (Modo Online Estricto)'}.`);
+                                console.log(`✅ [Firebase Modular SDK] Firestore inicializado con memoryLocalCache() (Modo 100% Online para Todos los Usuarios).`);
                                 return this.dbInstance;
                             } catch(err) {
                                 console.warn("Aviso al inicializar Firestore Modular:", err);
@@ -333,7 +331,7 @@
             <div class="role-bar-actions">
                 <button type="button" id="topDbStatusBtn" class="btn btn-xs" onclick="openDbConfigModal()" style="font-weight:800; border-radius:18px; padding:4px 14px; font-size:0.75rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:#065f46; color:#ffffff; border:1.5px solid #10b981; transition:all 0.2s;" title="Sincronización en Tiempo Real Activa: Cada cambio se guarda inmediatamente en la base de datos">
                     <i class="fa-solid fa-cloud-check" id="topDbStatusIcon" style="color:#a7f3d0;"></i>
-                    <span id="topDbStatusText">Base de Datos: Sincronizada</span>
+                    <span id="topDbStatusText">Base de Datos: 100% En Línea</span>
                 </button>
                 <a href="portal.html" class="btn btn-outline-light btn-xs" target="_blank" title="Ver Portal Web Informativo" style="color:white; border:1px solid rgba(255,255,255,0.4); border-radius:18px; padding:4px 10px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; text-decoration:none;">
                     <i class="fa-solid fa-globe"></i> Portal Web
@@ -432,11 +430,7 @@
                     <i class="fa-solid fa-users-gear"></i>
                     <span>Usuarios y Maestros</span>
                 </a>
-                <a href="#" class="nav-item role-restricted" data-view="superuser-backup" data-perm="roles" data-allowed="admin,super_usuario" onclick="navigateTo('superuser-backup', event)" id="nav-item-superuser-backup">
-                    <i class="fa-solid fa-hard-drive"></i>
-                    <span>Copia Local / Caché</span>
-                    <span class="badge" style="background:#f59e0b; color:#ffffff; font-size:0.65rem; font-weight:800; padding:2px 6px; border-radius:4px; margin-left:auto;">SÚPER</span>
-                </a>
+
 
 
                 <!-- SECCIÓN SECRETARÍA Y DIRECCIÓN ACADÉMICA -->
@@ -2076,154 +2070,7 @@
                     </div>
                 </section>
 
-                <!-- ========================================================================= -->
-                <!-- VISTA: COPIA LOCAL Y CACHÉ DE SEGURIDAD (EXCLUSIVO SÚPER USUARIO)         -->
-                <!-- ========================================================================= -->
-                <section class="app-view" id="view-superuser-backup" style="display:none;">
-                    <!-- ENCABEZADO DEL MÓDULO -->
-                    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; margin-bottom:20px;">
-                        <div>
-                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-                                <span class="badge" style="background:#f59e0b; color:#ffffff; font-size:0.75rem; font-weight:800; padding:3px 8px; border-radius:4px;">
-                                    <i class="fa-solid fa-shield-halved"></i> PRIVILEGIO SÚPER USUARIO
-                                </span>
-                                <span class="badge" style="background:#0284c7; color:#ffffff; font-size:0.75rem; font-weight:800; padding:3px 8px; border-radius:4px;">
-                                    <i class="fa-solid fa-cloud"></i> CONTROL DE CACHÉ Y PERSISTENCIA
-                                </span>
-                            </div>
-                            <h2 style="margin:0; font-size:1.45rem; color:#0f172a; font-weight:800; display:flex; align-items:center; gap:10px;">
-                                <i class="fa-solid fa-hard-drive" style="color:#d97706;"></i> Copia Local y Caché de Seguridad
-                            </h2>
-                            <p class="subtitle" style="margin:4px 0 0 0; color:#64748b; font-size:0.88rem;">
-                                Gestión de persistencia local en disco/IndexedDB, sincronización de snapshots y modo solo lectura para auditoría y respaldo institucional.
-                            </p>
-                        </div>
-                        <!-- BARRA DE ACCIONES PRINCIPALES -->
-                        <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-                            <button type="button" class="btn" onclick="syncAndGenerateSuperUserBackup()" id="btnSyncSuperUserBackup" style="background:#d97706; color:#ffffff; font-weight:800; padding:10px 18px; border-radius:8px; border:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer; box-shadow:0 2px 5px rgba(217,119,6,0.3); transition:all 0.2s;">
-                                <i class="fa-solid fa-arrows-rotate" id="syncBackupIcon"></i> Sincronizar y Generar Copia Local
-                            </button>
-                            <button type="button" class="btn" onclick="downloadLatestBackupJSON()" style="background:#1e293b; color:#ffffff; font-weight:700; padding:10px 16px; border-radius:8px; border:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-                                <i class="fa-solid fa-download"></i> Descargar Copia JSON (Offline)
-                            </button>
-                            <button type="button" class="btn" onclick="toggleLocalReadOnlyView()" id="btnToggleReadOnlyView" style="background:#0284c7; color:#ffffff; font-weight:700; padding:10px 16px; border-radius:8px; border:none; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
-                                <i class="fa-solid fa-eye"></i> Inspeccionar Copia Local (Solo Lectura)
-                            </button>
-                            <button type="button" class="btn" onclick="exitLocalReadOnlyMode()" id="btnExitReadOnlyView" style="display:none; background:#16a34a; color:#ffffff; font-weight:800; padding:10px 16px; border-radius:8px; border:none; align-items:center; gap:8px; cursor:pointer; box-shadow:0 2px 6px rgba(22,163,74,0.3);">
-                                <i class="fa-solid fa-cloud-arrow-up"></i> Restablecer a Modo En Línea (Servidor)
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- BANNER INFORMATIVO: POLÍTICA INSTITUCIONAL ONLINE VS SUPER USUARIO -->
-                    <div style="background:#f8fafc; border:1.5px solid #cbd5e1; border-left:5px solid #0284c7; border-radius:10px; padding:16px 20px; margin-bottom:22px;">
-                        <div style="display:flex; align-items:flex-start; gap:14px;">
-                            <div style="background:#e0f2fe; color:#0284c7; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.25rem; flex-shrink:0; margin-top:2px;">
-                                <i class="fa-solid fa-shield-cat"></i>
-                            </div>
-                            <div style="font-size:0.88rem; color:#334155; line-height:1.55;">
-                                <strong style="color:#0f172a; font-size:0.95rem; display:block; margin-bottom:4px;">
-                                    🛡️ Arquitectura de Seguridad: Modo Exclusivamente Online para Docentes y Estudiantes
-                                </strong>
-                                Por normativa de confidencialidad y prevención de fugas de datos, las cuentas de <strong>docentes, secretarias y estudiantes</strong> operan bajo la directiva <code style="background:#e2e8f0; padding:2px 6px; border-radius:4px; font-weight:700; color:#0f172a;">memoryLocalCache()</code>. Esto garantiza que ningún equipo compartido almacene registros de notas ni expedientes en el disco del navegador. 
-                                Únicamente el <strong>Súper Administrador</strong> cuenta con privilegios para inicializar persistencia en disco (<code style="background:#e2e8f0; padding:2px 6px; border-radius:4px; font-weight:700; color:#0f172a;">persistentLocalCache</code>) y almacenar snapshots locales en <strong>IndexedDB</strong> con estricta protección de <strong>Solo Lectura</strong> para evitar conflictos de sincronización.
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- TARJETAS DE ESTADO Y MÉTRICAS DEL MOTOR DE CACHÉ -->
-                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:14px; margin-bottom:24px;">
-                        <!-- TARJETA 1: POLÍTICA FIREBASE -->
-                        <div class="kpi-card" style="background:#ffffff; border-radius:10px; padding:18px; border:1px solid #e2e8f0; box-shadow:0 2px 4px rgba(0,0,0,0.04);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <span style="font-size:0.80rem; font-weight:800; color:#64748b; text-transform:uppercase;">Motor Firebase</span>
-                                <i class="fa-solid fa-server" style="color:#0284c7; font-size:1.2rem;"></i>
-                            </div>
-                            <div id="kpiSuperUserCacheBadge" style="margin-bottom:6px;">
-                                <span class="badge" style="background:#16a34a; color:#ffffff; font-weight:800; padding:4px 10px; border-radius:6px;">
-                                    <i class="fa-solid fa-circle-check"></i> persistentLocalCache Activo
-                                </span>
-                            </div>
-                            <span style="font-size:0.75rem; color:#64748b; display:block;">memoryLocalCache para docentes</span>
-                        </div>
-
-                        <!-- TARJETA 2: ÚLTIMO SNAPSHOT -->
-                        <div class="kpi-card" style="background:#ffffff; border-radius:10px; padding:18px; border:1px solid #e2e8f0; box-shadow:0 2px 4px rgba(0,0,0,0.04);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <span style="font-size:0.80rem; font-weight:800; color:#64748b; text-transform:uppercase;">Último Respaldo Local</span>
-                                <i class="fa-solid fa-clock-rotate-left" style="color:#d97706; font-size:1.2rem;"></i>
-                            </div>
-                            <div id="kpiSuperUserLastSync" style="font-size:0.95rem; font-weight:800; color:#0f172a; margin-bottom:4px;">
-                                Sin snapshot aún
-                            </div>
-                            <span style="font-size:0.75rem; color:#64748b; display:block;">Base IndexedDB ENCCO_SUPERUSER_BACKUP_DB</span>
-                        </div>
-
-                        <!-- TARJETA 3: ESTUDIANTES RESPALDADOS -->
-                        <div class="kpi-card" style="background:#ffffff; border-radius:10px; padding:18px; border:1px solid #e2e8f0; box-shadow:0 2px 4px rgba(0,0,0,0.04);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <span style="font-size:0.80rem; font-weight:800; color:#64748b; text-transform:uppercase;">Estudiantes Respaldados</span>
-                                <i class="fa-solid fa-user-graduate" style="color:#15803d; font-size:1.2rem;"></i>
-                            </div>
-                            <div id="kpiSuperUserStudentsCount" style="font-size:1.35rem; font-weight:800; color:#15803d; margin-bottom:4px;">
-                                --
-                            </div>
-                            <span style="font-size:0.75rem; color:#64748b; display:block;" id="kpiSuperUserTeachersCount">-- Docentes</span>
-                        </div>
-
-                        <!-- TARJETA 4: MODO DE INTEGRIDAD -->
-                        <div class="kpi-card" style="background:#ffffff; border-radius:10px; padding:18px; border:1px solid #e2e8f0; box-shadow:0 2px 4px rgba(0,0,0,0.04);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                                <span style="font-size:0.80rem; font-weight:800; color:#64748b; text-transform:uppercase;">Modo de Integridad</span>
-                                <i class="fa-solid fa-lock" style="color:#7c3aed; font-size:1.2rem;"></i>
-                            </div>
-                            <div style="font-size:0.95rem; font-weight:800; color:#7c3aed; margin-bottom:4px;" id="kpiSuperUserIntegrityStatus">
-                                Solo Lectura (Offline Seguro)
-                            </div>
-                            <span style="font-size:0.75rem; color:#64748b; display:block;">Bloqueo de escrituras desconectadas</span>
-                        </div>
-                    </div>
-
-                    <!-- TABLA: HISTORIAL DE SNAPSHOTS LOCALES EN INDEXEDDB -->
-                    <div class="table-card" style="padding:22px; border-radius:12px; background:#ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.06);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
-                            <div>
-                                <h3 style="margin:0; font-size:1.1rem; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
-                                    <i class="fa-solid fa-database" style="color:#d97706;"></i> Réplicas y Snapshots Guardados en IndexedDB
-                                </h3>
-                                <span style="font-size:0.82rem; color:#64748b;">Copias históricas completas almacenadas localmente en este dispositivo con protección de solo lectura.</span>
-                            </div>
-                            <button type="button" class="btn btn-xs" onclick="refreshSnapshotsTableUI()" style="background:#f1f5f9; color:#475569; font-weight:700; border:1px solid #cbd5e1; padding:6px 12px; border-radius:6px; cursor:pointer;">
-                                <i class="fa-solid fa-rotate"></i> Refrescar Lista
-                            </button>
-                        </div>
-
-                        <div class="table-responsive">
-                            <table class="custom-table" style="width:100%;">
-                                <thead>
-                                    <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">
-                                        <th style="padding:10px 14px; text-align:left; font-size:0.82rem; color:#475569;">Fecha y Hora del Snapshot</th>
-                                        <th style="padding:10px 14px; text-align:left; font-size:0.82rem; color:#475569;">Origen</th>
-                                        <th style="padding:10px 14px; text-align:center; font-size:0.82rem; color:#475569;">Estudiantes</th>
-                                        <th style="padding:10px 14px; text-align:center; font-size:0.82rem; color:#475569;">Docentes</th>
-                                        <th style="padding:10px 14px; text-align:center; font-size:0.82rem; color:#475569;">Notas / Regs</th>
-                                        <th style="padding:10px 14px; text-align:center; font-size:0.82rem; color:#475569;">Tamaño</th>
-                                        <th style="padding:10px 14px; text-align:center; font-size:0.82rem; color:#475569;">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="snapshotsTableBody">
-                                    <tr>
-                                        <td colspan="7" style="text-align:center; padding:24px; color:#64748b; font-size:0.88rem;">
-                                            <i class="fa-solid fa-spinner fa-spin" style="margin-right:8px;"></i> Cargando snapshots de IndexedDB...
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </section>
-
-            </main>
+                </main>
     </div>
 
 

@@ -186,43 +186,24 @@ const EnccoFirebaseCacheEngine = {
     },
 
     applyCachePolicy(user = null, role = null) {
-        const superUser = this.isSuperUser(user, role);
-        const activeRole = role || (user ? user.role : 'docente');
+        const activeRole = role || (user ? user.role : 'admin');
 
-        if (!superUser) {
-            // ============================================================
-            // POLÍTICA: MODO EXCLUSIVAMENTE ONLINE PARA DOCENTES Y ALUMNOS
-            // ============================================================
-            console.log(`🔒 [Caché Institucional ENCCO] Usuario estándar (${activeRole}). Aplicando modo EXCLUSIVAMENTE ONLINE.`);
-            console.log("🔒 [Caché Institucional ENCCO] Inicializando memoryLocalCache() por defecto. Ningún dato persistirá en disco.");
+        // ============================================================
+        // POLÍTICA INSTITUCIONAL: MODO 100% ONLINE PARA TODOS LOS USUARIOS
+        // ============================================================
+        console.log(`🌐 [Modo Institucional ENCCO] Usuario (${activeRole}). Configuración unificada: 100% EXCLUSIVAMENTE ONLINE para TODOS los usuarios.`);
+        console.log("🌐 [Modo Institucional ENCCO] Inicializando memoryLocalCache() universal. Ningún dato persistirá en disco.");
 
-            // 1. Inicializar Firestore Modular con memoria volátil (memoryLocalCache)
-            if (window.FirebaseModular && typeof window.FirebaseModular.initFirestoreWithCache === 'function') {
-                window.FirebaseModular.initFirestoreWithCache('memory');
-            }
+        // 1. Inicializar Firestore Modular con memoria volátil (memoryLocalCache) para TODOS los usuarios sin excepción
+        if (window.FirebaseModular && typeof window.FirebaseModular.initFirestoreWithCache === 'function') {
+            window.FirebaseModular.initFirestoreWithCache('memory');
+        }
 
-            // 3. Establecer banderas de modo en memoria en STATE
-            if (window.STATE) {
-                window.STATE.isExclusivelyOnlineMode = true;
-                window.STATE.cachePolicy = 'memoryLocalCache';
-            }
-        } else {
-            // ============================================================
-            // PRIVILEGIO: PERSISTENCIA EN DISCO PARA SÚPER USUARIO
-            // ============================================================
-            console.log(`🛡️ [Caché Institucional ENCCO] Súper Usuario autenticado (${user?.name || user?.email}).`);
-            console.log("🛡️ [Caché Institucional ENCCO] Activando persistentLocalCache() y servicio de copias locales en IndexedDB.");
-
-            // 1. Inicializar Firestore Modular con persistencia en disco
-            if (window.FirebaseModular && typeof window.FirebaseModular.initFirestoreWithCache === 'function') {
-                window.FirebaseModular.initFirestoreWithCache('persistent');
-            }
-
-            // 2. Establecer banderas en STATE
-            if (window.STATE) {
-                window.STATE.isExclusivelyOnlineMode = false;
-                window.STATE.cachePolicy = 'persistentLocalCache';
-            }
+        // 2. Establecer banderas de modo online en memoria en STATE
+        if (window.STATE) {
+            window.STATE.isExclusivelyOnlineMode = true;
+            window.STATE.cachePolicy = 'memoryLocalCache';
+            window.STATE.isLocalReadOnlyMode = false;
         }
     }
 };
@@ -725,9 +706,7 @@ function hasRolePermission(permKey, role = null) {
     if (!targetRole || targetRole === 'guest') return false;
     if (targetRole === 'admin' || targetRole === 'super_usuario') return true;
 
-    if (permKey === 'superuser-backup' || permKey === 'superuser_backup') {
-        return targetRole === 'admin' || targetRole === 'super_usuario';
-    }
+
 
     try {
         if (permKey.endsWith('_edit')) {
@@ -1121,10 +1100,10 @@ function updateDbSyncStatus(status = 'synced', customDetail = null) {
                 topIcon.className = 'fa-solid fa-cloud-check';
                 topIcon.style.color = '#a7f3d0';
             }
-            if (topText) topText.textContent = customDetail || `Firebase y Local: Sincronizados (${nowStr})`;
+            if (topText) topText.textContent = customDetail || `Firebase: 100% En Línea (${nowStr})`;
             if (dbBadge) {
                 dbBadge.className = 'badge badge-success';
-                dbBadge.textContent = 'En Línea y Sincronizado';
+                dbBadge.textContent = '100% En Línea (Todos los Usuarios)';
             }
         }
     } catch(e) {
@@ -16979,7 +16958,6 @@ function navigateTo(viewName, event = null) {
         'enrollment': { title: 'Inscripción de Estudiantes', sub: 'Ficha de matrícula y registro de alumnos' },
         'students': { title: 'Nómina Oficial de Estudiantes', sub: 'Listado general y consulta de expedientes' },
         'grade-lock': { title: 'Control de Bloqueo y Bimestre Activo', sub: 'Configuración del bimestre oficial para docentes' },
-        'superuser-backup': { title: 'Copia Local y Caché de Seguridad', sub: 'Gestión exclusiva de persistencia en disco, snapshots en IndexedDB y modo solo lectura para Súper Usuario' }
     };
     const t = titles[viewName];
     if (t) {
@@ -17009,7 +16987,6 @@ function renderCurrentView() {
         case 'honor-roll': loadHonorRoll(); break;
         case 'users': renderUsersTable(); break;
         case 'roles': renderRolesManagementView(); break;
-        case 'superuser-backup': renderSuperUserBackupView(); break;
         case 'reports': populateReportStudentSelect(); break;
     }
 }
