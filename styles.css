@@ -1819,3 +1819,15 @@ body.theme-dark .att-global-pct-bar {
     border-radius: 0 0 6px 6px;
     background: #ffffff;
 }
+
+
+/* ⚡ ANIMACIÓN TIEMPO REAL & PROTECCIÓN ANTI-DDOS */
+@keyframes realtimePulse {
+    0% { transform: scale(1); filter: drop-shadow(0 0 1px rgba(254, 240, 138, 0.4)); }
+    50% { transform: scale(1.22); filter: drop-shadow(0 0 6px rgba(254, 240, 138, 0.9)); }
+    100% { transform: scale(1); filter: drop-shadow(0 0 1px rgba(254, 240, 138, 0.4)); }
+}
+.pulse-live {
+    display: inline-block;
+    animation: realtimePulse 2s infinite ease-in-out;
+}

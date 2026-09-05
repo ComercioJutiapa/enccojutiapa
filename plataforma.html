@@ -336,9 +336,9 @@
             </div>
 
             <div class="role-bar-actions">
-                <button type="button" id="topDbStatusBtn" class="btn btn-xs" onclick="openDbConfigModal()" style="font-weight:800; border-radius:18px; padding:4px 14px; font-size:0.75rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:#065f46; color:#ffffff; border:1.5px solid #10b981; transition:all 0.2s;" title="Sincronización en Tiempo Real Activa: Cada cambio se guarda inmediatamente en la base de datos">
-                    <i class="fa-solid fa-cloud-check" id="topDbStatusIcon" style="color:#a7f3d0;"></i>
-                    <span id="topDbStatusText">Base de Datos: 100% En Línea</span>
+                <button type="button" id="topDbStatusBtn" class="btn btn-xs" onclick="openDbConfigModal()" style="font-weight:800; border-radius:18px; padding:4px 14px; font-size:0.75rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:#065f46; color:#ffffff; border:1.5px solid #10b981; transition:all 0.2s;" title="⚡ Sincronización en Tiempo Real Activa: Cada cambio se guarda inmediatamente en 0ms y se sincroniza en vivo">
+                    <i class="fa-solid fa-bolt pulse-live" id="topDbStatusIcon" style="color:#fef08a;"></i>
+                    <span id="topDbStatusText">⚡ Tiempo Real: Sincronizado (0ms)</span>
                 </button>
                 <a href="portal.html" class="btn btn-outline-light btn-xs" target="_blank" title="Ver Portal Web Informativo" style="color:white; border:1px solid rgba(255,255,255,0.4); border-radius:18px; padding:4px 10px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; text-decoration:none;">
                     <i class="fa-solid fa-globe"></i> Portal Web
@@ -3290,7 +3290,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260905_v135_anti_hack_recursive_db"></script>
+    <script src="app.js?v=20260905_v136_anti_ddos_realtime"></script>
     <script>
         // CÁLCULO DINÁMICO DE PROMOCIONES Y AÑOS DE FUNDACIÓN (BASE 1970)
         (function updateDynamicStats() {

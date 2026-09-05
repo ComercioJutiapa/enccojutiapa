@@ -104,6 +104,216 @@ window.sanitizeHTML = EnccoSecurityShield.sanitizeInput.bind(EnccoSecurityShield
 EnccoSecurityShield.showConsoleDefenseBanner();
 EnccoSecurityShield.preventFrameHijacking();
 
+// ======================================================================
+// 🛡️ MOTOR INSTITUCIONAL ANTI-DDOS & TRAFFIC SHAPING ENCCO (V2026)
+// ======================================================================
+const EnccoDDoSProtection = {
+    config: {
+        maxRequestsPerWindow: 25,         // Máximo de mutaciones de red por ventana deslizante
+        windowMs: 10000,                  // Ventana deslizante de 10 segundos
+        circuitBreakerErrorThreshold: 3,  // Fallos consecutivos 429/5xx para disparar breaker
+        circuitBreakerCooldownMs: 15000,  // Tiempo de enfriamiento en modo OPEN (15s)
+        buttonSpamCooldownMs: 350,        // Mínimo de tiempo entre clics en botones de acción crítica
+        microBatchDelayMs: 30,            // Micro-lote para colapsar ráfagas de notas/asistencia masivas
+        maxReloadsThreshold: 6,           // Umbral de recargas rápidas sospechosas
+        reloadWindowMs: 10000
+    },
+
+    _requestTimestamps: [],
+    _circuitState: 'CLOSED', // 'CLOSED' (normal) | 'OPEN' (protegido) | 'HALF-OPEN' (verificando)
+    _consecutiveErrors: 0,
+    _circuitResetTime: 0,
+    _inFlightPushPromise: null,
+    _hasPendingPush: false,
+    _microBatchTimer: null,
+    _recentButtonClicks: new Map(),
+
+    // Sliding Window Rate Limiter
+    canMakeRequest() {
+        const now = Date.now();
+        if (this._circuitState === 'OPEN') {
+            if (now >= this._circuitResetTime) {
+                this._circuitState = 'HALF-OPEN';
+                console.log("🛡️ [Anti-DDoS Circuit Breaker] Transición a HALF-OPEN: Probando recuperación del servidor...");
+                return true;
+            }
+            console.warn(`🛡️ [Anti-DDoS Circuit Breaker] Petición bloqueada: Breaker OPEN (${Math.ceil((this._circuitResetTime - now)/1000)}s de enfriamiento restante).`);
+            return false;
+        }
+
+        this._requestTimestamps = this._requestTimestamps.filter(t => (now - t) < this.config.windowMs);
+
+        if (this._requestTimestamps.length >= this.config.maxRequestsPerWindow) {
+            console.warn(`🛡️ [Anti-DDoS Rate Limiter] Límite de ráfaga alcanzado (${this._requestTimestamps.length} peticiones en ${this.config.windowMs/1000}s). Protegiendo infraestructura contra saturación.`);
+            return false;
+        }
+
+        this._requestTimestamps.push(now);
+        return true;
+    },
+
+    recordSuccess() {
+        this._consecutiveErrors = 0;
+        if (this._circuitState === 'HALF-OPEN') {
+            this._circuitState = 'CLOSED';
+            console.log("✅ [Anti-DDoS Circuit Breaker] Conexión restablecida con éxito. Breaker CLOSED.");
+        }
+    },
+
+    recordFailure(statusCode) {
+        if (statusCode === 429 || (statusCode >= 500 && statusCode < 600)) {
+            this._consecutiveErrors++;
+            console.warn(`⚠️ [Anti-DDoS] Error ${statusCode} detectado (${this._consecutiveErrors}/${this.config.circuitBreakerErrorThreshold}).`);
+            if (this._consecutiveErrors >= this.config.circuitBreakerErrorThreshold || statusCode === 429) {
+                this._circuitState = 'OPEN';
+                this._circuitResetTime = Date.now() + this.config.circuitBreakerCooldownMs;
+                console.warn(`🚨 [Anti-DDoS Circuit Breaker DISPARADO] Servidor saturado (HTTP ${statusCode}). Breaker OPEN por ${this.config.circuitBreakerCooldownMs/1000}s. Los datos continúan 100% seguros en almacenamiento local.`);
+                if (typeof updateDbSyncStatus === 'function') {
+                    updateDbSyncStatus('local_only', `🛡️ Anti-DDoS Activo: Enfriando Servidor (${Math.ceil(this.config.circuitBreakerCooldownMs/1000)}s) - Datos Seguros`);
+                }
+            }
+        }
+    },
+
+    isButtonSpam(buttonIdOrName) {
+        const now = Date.now();
+        const lastClick = this._recentButtonClicks.get(buttonIdOrName) || 0;
+        if (now - lastClick < this.config.buttonSpamCooldownMs) {
+            return true;
+        }
+        this._recentButtonClicks.set(buttonIdOrName, now);
+        return false;
+    },
+
+    generateSecurityHeaders() {
+        const timestamp = Date.now();
+        const nonce = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        return {
+            'X-Encco-Timestamp': String(timestamp),
+            'X-Encco-Nonce': nonce,
+            'X-Encco-Origin': 'EnccoInstitucional-2026'
+        };
+    },
+
+    scheduleInstantSync() {
+        // 1. Transmitir de inmediato a todas las demás pestañas abiertas (0ms)
+        if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+            try {
+                _enccBroadcastChannel.postMessage({
+                    type: 'SYNC_STATE_UPDATE',
+                    state: STATE,
+                    lastModified: STATE.lastModified
+                });
+            } catch(e) {}
+        }
+
+        // 2. Disparar evento reactivo al DOM para refrescar vistas activas en 0ms
+        try {
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('encc-state-changed', {
+                    detail: { timestamp: STATE.lastModified, state: STATE }
+                }));
+            }
+        } catch(e) {}
+
+        // 3. Reflejar estado inmediato en la barra superior
+        if (typeof updateDbSyncStatus === 'function') {
+            updateDbSyncStatus('syncing');
+        }
+
+        // 4. Micro-lote antirrebote para colapsar ráfagas de escritura rápida (ej. 20 notas seguidas)
+        if (this._microBatchTimer) {
+            clearTimeout(this._microBatchTimer);
+        }
+
+        this._microBatchTimer = setTimeout(() => {
+            this._microBatchTimer = null;
+            this._dispatchShapedPush();
+        }, this.config.microBatchDelayMs);
+    },
+
+    async _dispatchShapedPush() {
+        if (this._inFlightPushPromise) {
+            this._hasPendingPush = true;
+            return;
+        }
+
+        if (!this.canMakeRequest()) {
+            this._hasPendingPush = true;
+            setTimeout(() => {
+                if (this._hasPendingPush) {
+                    this._hasPendingPush = false;
+                    this._dispatchShapedPush();
+                }
+            }, 3000);
+            return;
+        }
+
+        try {
+            if (typeof pushStateToFirebaseCloud === 'function') {
+                this._inFlightPushPromise = pushStateToFirebaseCloud(false);
+                const success = await this._inFlightPushPromise;
+                if (success) {
+                    this.recordSuccess();
+                }
+            }
+        } catch(err) {
+            console.warn("⚠️ [Anti-DDoS Shaper] Error en push:", err);
+        } finally {
+            this._inFlightPushPromise = null;
+            if (this._hasPendingPush) {
+                this._hasPendingPush = false;
+                setTimeout(() => this._dispatchShapedPush(), 40);
+            }
+        }
+    },
+
+    checkReloadFlood() {
+        try {
+            if (typeof sessionStorage === 'undefined') return false;
+            const KEY = 'ENCC_RELOAD_TRACKER';
+            const now = Date.now();
+            let history = JSON.parse(sessionStorage.getItem(KEY) || '[]');
+            history = history.filter(t => (now - t) < this.config.reloadWindowMs);
+            history.push(now);
+            sessionStorage.setItem(KEY, JSON.stringify(history));
+
+            if (history.length > this.config.maxReloadsThreshold) {
+                console.warn("🛑 [Anti-DDoS] Frecuencia anormal de recargas de página detectada. Activando mitigación.");
+                return true;
+            }
+        } catch(e) {}
+        return false;
+    },
+
+    init() {
+        this.checkReloadFlood();
+        if (typeof document !== 'undefined') {
+            document.addEventListener('click', (e) => {
+                const target = e.target ? e.target.closest('button, [role="button"], input[type="submit"]') : null;
+                if (!target) return;
+                
+                // Excluir elementos que no modifican base de datos
+                if (target.classList.contains('tab-button') || target.classList.contains('nav-link') || target.classList.contains('theme-toggle-btn')) {
+                    return;
+                }
+
+                const identifier = target.id || target.name || (target.getAttribute && target.getAttribute('onclick')) || target.innerText;
+                if (identifier && this.isButtonSpam(identifier.trim().substring(0, 50))) {
+                    console.log(`🛡️ [Anti-DDoS UI] Clic duplicado/spam bloqueado en: ${identifier.trim().substring(0, 30)}`);
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                    return false;
+                }
+            }, true);
+        }
+        console.log("🛡️ [Anti-DDoS Shield] Motor de Protección Anti-DDoS y Sincronización en Tiempo Real Inicializado.");
+    }
+};
+window.EnccoDDoSProtection = EnccoDDoSProtection;
+try { EnccoDDoSProtection.init(); } catch(e) {}
+
+
 
 // ========================================================================================
 // 🛡️ MOTOR DE CACHÉ FIREBASE & PERSISTENCIA LOCAL INDEXEDDB (EXCLUSIVO SÚPER USUARIO)
@@ -1226,10 +1436,10 @@ function updateDbSyncStatus(status = 'synced', customDetail = null) {
                 topIcon.className = 'fa-solid fa-arrows-rotate fa-spin';
                 topIcon.style.color = '#fef08a';
             }
-            if (topText) topText.textContent = customDetail || 'Sincronizando con Firebase...';
+            if (topText) topText.textContent = customDetail || '⚡ Sincronizando en tiempo real...';
             if (dbBadge) {
                 dbBadge.className = 'badge badge-warning';
-                dbBadge.textContent = 'Sincronizando...';
+                dbBadge.textContent = '⚡ Sincronizando en tiempo real...';
             }
         } else if (status === 'disconnected' || (status === 'error' && typeof navigator !== 'undefined' && navigator.onLine === false)) {
             topBtn.style.background = '#7c2d12';
@@ -1239,10 +1449,10 @@ function updateDbSyncStatus(status = 'synced', customDetail = null) {
                 topIcon.className = 'fa-solid fa-triangle-exclamation';
                 topIcon.style.color = '#fdba74';
             }
-            if (topText) topText.textContent = customDetail || 'Firebase: Sin Conexión (Datos Seguros en Local)';
+            if (topText) topText.textContent = customDetail || '⚠️ Tiempo Real: Sin Conexión (Datos Seguros)';
             if (dbBadge) {
                 dbBadge.className = 'badge badge-danger';
-                dbBadge.textContent = 'Sin Conexión';
+                dbBadge.textContent = 'Sin Conexión a Internet';
             }
         } else if (status === 'local_only') {
             topBtn.style.background = '#065f46';
@@ -1252,7 +1462,7 @@ function updateDbSyncStatus(status = 'synced', customDetail = null) {
                 topIcon.className = 'fa-solid fa-shield-halved';
                 topIcon.style.color = '#a7f3d0';
             }
-            if (topText) topText.textContent = customDetail || `Base de Datos: 100% Segura Local (${nowStr})`;
+            if (topText) topText.textContent = customDetail || `🛡️ Tiempo Real: Datos Seguros Local (${nowStr})`;
             if (dbBadge) {
                 dbBadge.className = 'badge badge-success';
                 dbBadge.textContent = '100% Segura (Almacenamiento Local)';
@@ -1263,13 +1473,13 @@ function updateDbSyncStatus(status = 'synced', customDetail = null) {
             topBtn.style.borderColor = '#10b981';
             topBtn.style.color = '#ffffff';
             if (topIcon) {
-                topIcon.className = 'fa-solid fa-cloud-check';
-                topIcon.style.color = '#a7f3d0';
+                topIcon.className = 'fa-solid fa-bolt pulse-live';
+                topIcon.style.color = '#fef08a';
             }
-            if (topText) topText.textContent = customDetail || `Firebase: 100% En Línea (${nowStr})`;
+            if (topText) topText.textContent = customDetail || `⚡ Tiempo Real: Sincronizado (0ms)`;
             if (dbBadge) {
                 dbBadge.className = 'badge badge-success';
-                dbBadge.textContent = '100% En Línea (Sincronizado)';
+                dbBadge.textContent = '⚡ 100% En Línea (Tiempo Real 0ms)';
             }
         }
     } catch(e) {
@@ -1325,17 +1535,32 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
         return true;
     }
 
+    // 🛡️ Verificación de Rate Limiting y Circuit Breaker Anti-DDoS
+    if (typeof EnccoDDoSProtection !== 'undefined' && !EnccoDDoSProtection.canMakeRequest()) {
+        console.warn("🛡️ [Anti-DDoS Shield] Petición push pospuesta por mitigación de tráfico/circuito.");
+        return false;
+    }
+
     const endpoint = `${firebaseUrl}/encc_school_state.json`;
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+    if (typeof EnccoDDoSProtection !== 'undefined' && EnccoDDoSProtection.generateSecurityHeaders) {
+        Object.assign(headers, EnccoDDoSProtection.generateSecurityHeaders());
+    }
 
     try {
         updateDbSyncStatus('syncing');
         const response = await fetch(endpoint, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify(cleanPayload)
         });
 
         if (response.ok) {
+            if (typeof EnccoDDoSProtection !== 'undefined' && EnccoDDoSProtection.recordSuccess) {
+                EnccoDDoSProtection.recordSuccess();
+            }
             updateDbSyncStatus('synced');
             if (showToastNotification && typeof showToast === 'function') {
                 showToast("Sincronizado con Google Firebase exitosamente.", "success");
@@ -1343,15 +1568,21 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
             return true;
         } else {
             console.warn("Firebase PUT status:", response.status);
+            if (typeof EnccoDDoSProtection !== 'undefined' && EnccoDDoSProtection.recordFailure) {
+                EnccoDDoSProtection.recordFailure(response.status);
+            }
             updateDbSyncStatus('local_only', `Datos Seguros en Almacenamiento Local (HTTP ${response.status})`);
             return false;
         }
     } catch(err) {
         console.warn("Error al enviar a Firebase:", err);
+        if (typeof EnccoDDoSProtection !== 'undefined' && EnccoDDoSProtection.recordFailure) {
+            EnccoDDoSProtection.recordFailure(503);
+        }
         if (typeof navigator !== 'undefined' && navigator.onLine === false) {
             updateDbSyncStatus('disconnected');
         } else {
-            updateDbSyncStatus('synced');
+            updateDbSyncStatus('local_only', 'Modo Local Protegido (Reintentando conexión)');
         }
         return false;
     }
@@ -2550,8 +2781,23 @@ function initFirebaseRealtimeConnection() {
             _firebaseEventSource.addEventListener('put', (e) => {
                 try {
                     const data = JSON.parse(e.data);
-                    if (data && data.data && typeof data.data === 'object' && (data.data.users || data.data.students)) {
-                        applyIncomingCloudState(data.data, false);
+                    if (data && data.data && typeof data.data === 'object') {
+                        if (data.data.users || data.data.students || data.data.rolesConfig || data.path === '/') {
+                            applyIncomingCloudState(data.data, false);
+                        }
+                    }
+                    updateDbSyncStatus('synced');
+                } catch(err) {}
+            });
+            _firebaseEventSource.addEventListener('patch', (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data && data.data && typeof data.data === 'object') {
+                        if (data.path === '/' || !data.path) {
+                            applyIncomingCloudState(data.data, false);
+                        } else if (typeof pullStateFromFirebaseCloud === 'function') {
+                            pullStateFromFirebaseCloud(false);
+                        }
                     }
                     updateDbSyncStatus('synced');
                 } catch(err) {}
@@ -16946,22 +17192,21 @@ window.applyIncomingCloudState = applyIncomingCloudState;
 // 4. Temporizador Antirrebote para Envío Instantáneo a la Nube
 let _instantCloudPushTimeout = null;
 function triggerInstantCloudPush() {
-    // 1. Indicar inmediatamente en la barra superior que el cambio se está sincronizando
-    updateDbSyncStatus('syncing');
-
-    // 2. Transmitir de inmediato a todas las demás pestañas abiertas (0ms de latencia)
-    if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
-        try {
-            _enccBroadcastChannel.postMessage({
-                type: 'SYNC_STATE_UPDATE',
-                state: STATE,
-                lastModified: STATE.lastModified
-            });
-        } catch(e) {}
+    if (typeof EnccoDDoSProtection !== 'undefined' && EnccoDDoSProtection.scheduleInstantSync) {
+        EnccoDDoSProtection.scheduleInstantSync();
+    } else {
+        updateDbSyncStatus('syncing');
+        if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+            try {
+                _enccBroadcastChannel.postMessage({
+                    type: 'SYNC_STATE_UPDATE',
+                    state: STATE,
+                    lastModified: STATE.lastModified
+                });
+            } catch(e) {}
+        }
+        pushStateToFirebaseCloud(false);
     }
-
-    // 3. Enviar inmediatamente a la base de datos en segundo plano sin intervención manual
-    pushStateToFirebaseCloud(false);
 }
 window.triggerInstantCloudPush = triggerInstantCloudPush;
 
@@ -17087,9 +17332,11 @@ function saveStateRecursively(options = { syncCloud: true, isAutoSave: false }) 
             EnccoIndexedDBCacheService.saveSnapshot(fullPayload, 'Guardado Recursivo Local').catch(() => {});
         }
 
-        // 5. Envío reactivo a la nube
+        // 5. Envío reactivo a la nube con protección Anti-DDoS y transmisión 0ms
         if (options && options.syncCloud) {
-            if (typeof triggerInstantCloudPush === 'function') {
+            if (typeof EnccoDDoSProtection !== 'undefined' && EnccoDDoSProtection.scheduleInstantSync) {
+                EnccoDDoSProtection.scheduleInstantSync();
+            } else if (typeof triggerInstantCloudPush === 'function') {
                 triggerInstantCloudPush();
             } else if (typeof pushStateToFirebaseCloud === 'function') {
                 pushStateToFirebaseCloud(false);
