@@ -1,3 +1,247 @@
+
+// ========================================================================================
+// 🛡️ MOTOR DE CACHÉ FIREBASE & PERSISTENCIA LOCAL INDEXEDDB (EXCLUSIVO SÚPER USUARIO)
+// ========================================================================================
+
+const EnccoIndexedDBCacheService = {
+    DB_NAME: 'ENCCO_SUPERUSER_BACKUP_DB',
+    DB_VERSION: 1,
+    STORE_NAME: 'snapshots',
+    _db: null,
+
+    async openDB() {
+        if (this._db) return this._db;
+        return new Promise((resolve, reject) => {
+            if (typeof indexedDB === 'undefined') {
+                return reject(new Error("IndexedDB no disponible en este navegador"));
+            }
+            const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
+            request.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains(this.STORE_NAME)) {
+                    const store = db.createObjectStore(this.STORE_NAME, { keyPath: 'id' });
+                    store.createIndex('timestamp', 'timestamp', { unique: false });
+                }
+            };
+            request.onsuccess = (e) => {
+                this._db = e.target.result;
+                resolve(this._db);
+            };
+            request.onerror = (e) => {
+                reject(e.target.error);
+            };
+        });
+    },
+
+    async saveSnapshot(stateData, source = 'Servidor Google Firebase') {
+        const db = await this.openDB();
+        const timestamp = Date.now();
+        const dateObj = new Date();
+        const dateStr = dateObj.toLocaleDateString('es-GT', { 
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+
+        // Limpiar y clonar payload íntegro de colecciones críticas
+        const cleanState = {
+            config: stateData.config || {},
+            activeCycle: stateData.activeCycle || '2026',
+            cycles: stateData.cycles || [],
+            theme: stateData.theme || 'light',
+            users: stateData.users || [],
+            careers: stateData.careers || [],
+            gradesList: stateData.gradesList || [],
+            pensumCatalog: stateData.pensumCatalog || [],
+            students: stateData.students || [],
+            pensum: stateData.pensum || [],
+            announcements: stateData.announcements || [],
+            disciplineReports: stateData.disciplineReports || [],
+            attendanceRecords: stateData.attendanceRecords || {},
+            dismissedAlerts: stateData.dismissedAlerts || {},
+            rolesConfig: stateData.rolesConfig || [],
+            schoolHeader: stateData.schoolHeader || {},
+            lastModified: stateData.lastModified || timestamp
+        };
+
+        const stateJson = JSON.stringify(cleanState);
+        const sizeBytes = (typeof Blob !== 'undefined') ? new Blob([stateJson]).size : stateJson.length;
+        const teachers = (cleanState.users || []).filter(u => u.role === 'docente');
+        
+        let gradesCount = 0;
+        if (Array.isArray(cleanState.students)) {
+            cleanState.students.forEach(s => {
+                if (s.grades && typeof s.grades === 'object') {
+                    gradesCount += Object.keys(s.grades).length;
+                }
+            });
+        }
+
+        const snapshot = {
+            id: 'snap_' + timestamp,
+            timestamp: timestamp,
+            dateStr: dateStr,
+            source: source,
+            author: (window.STATE && STATE.currentUser) ? `${STATE.currentUser.name} (${STATE.currentUser.email || 'Super Admin'})` : 'Super Administrador',
+            metrics: {
+                studentsCount: cleanState.students.length,
+                teachersCount: teachers.length,
+                usersCount: cleanState.users.length,
+                gradesRecordsCount: gradesCount,
+                pensumCount: cleanState.pensum.length,
+                careersCount: cleanState.careers.length,
+                sizeBytes: sizeBytes,
+                sizeKB: (sizeBytes / 1024).toFixed(1)
+            },
+            data: cleanState
+        };
+
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(this.STORE_NAME, 'readwrite');
+            const store = tx.objectStore(this.STORE_NAME);
+            const req = store.put(snapshot);
+            req.onsuccess = () => {
+                try {
+                    localStorage.setItem('ENCCO_LATEST_SUPERUSER_SNAPSHOT', JSON.stringify({
+                        id: snapshot.id,
+                        timestamp: snapshot.timestamp,
+                        dateStr: snapshot.dateStr,
+                        metrics: snapshot.metrics
+                    }));
+                } catch(e) {}
+                resolve(snapshot);
+            };
+            req.onerror = (e) => reject(e.target.error);
+        });
+    },
+
+    async getAllSnapshots() {
+        try {
+            const db = await this.openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(this.STORE_NAME, 'readonly');
+                const store = tx.objectStore(this.STORE_NAME);
+                const req = store.getAll();
+                req.onsuccess = () => {
+                    const list = req.result || [];
+                    list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    resolve(list);
+                };
+                req.onerror = (e) => reject(e.target.error);
+            });
+        } catch(e) {
+            console.warn("Aviso al listar snapshots de IndexedDB:", e);
+            return [];
+        }
+    },
+
+    async getSnapshot(id) {
+        const db = await this.openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(this.STORE_NAME, 'readonly');
+            const store = tx.objectStore(this.STORE_NAME);
+            const req = store.get(id);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = (e) => reject(e.target.error);
+        });
+    },
+
+    async deleteSnapshot(id) {
+        const db = await this.openDB();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(this.STORE_NAME, 'readwrite');
+            const store = tx.objectStore(this.STORE_NAME);
+            const req = store.delete(id);
+            req.onsuccess = () => resolve(true);
+            req.onerror = (e) => reject(e.target.error);
+        });
+    },
+
+    downloadSnapshotJSON(snapshot) {
+        if (!snapshot || !snapshot.data) return;
+        const blob = new Blob([JSON.stringify(snapshot.data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const tsFormatted = new Date(snapshot.timestamp || Date.now()).toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        a.href = url;
+        a.download = `ENCCO_RESPALDO_LOCAL_SUPERUSUARIO_${tsFormatted}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+};
+window.EnccoIndexedDBCacheService = EnccoIndexedDBCacheService;
+
+const EnccoFirebaseCacheEngine = {
+    isSuperUser(user = null, role = null) {
+        const u = user || (window.STATE ? window.STATE.currentUser : null);
+        const r = role || (u ? u.role : null) || (window.STATE ? window.STATE.currentRole : null);
+        const email = (u && u.email ? u.email.trim().toLowerCase() : '');
+        return (
+            r === 'super_usuario' || 
+            r === 'admin' || 
+            email === 'nehemias.salguero1982@gmail.com' ||
+            (u && (u.role === 'super_usuario' || u.role === 'admin'))
+        );
+    },
+
+    applyCachePolicy(user = null, role = null) {
+        const superUser = this.isSuperUser(user, role);
+        const activeRole = role || (user ? user.role : 'docente');
+
+        if (!superUser) {
+            // ============================================================
+            // POLÍTICA: MODO EXCLUSIVAMENTE ONLINE PARA DOCENTES Y ALUMNOS
+            // ============================================================
+            console.log(`🔒 [Caché Institucional ENCCO] Usuario estándar (${activeRole}). Aplicando modo EXCLUSIVAMENTE ONLINE.`);
+            console.log("🔒 [Caché Institucional ENCCO] Inicializando memoryLocalCache() por defecto. Ningún dato persistirá en disco.");
+
+            // 1. Purgar inmediatamente cualquier dato previo en disco en terminales compartidas
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.removeItem(window.DB_STORAGE_KEY || 'ENCCO_DATABASE');
+                    localStorage.removeItem('ENCCO_LAST_LOCAL_MODIFIED');
+                }
+            } catch(e) {}
+
+            // 2. Inicializar Firestore Modular con memoria volátil
+            if (window.FirebaseModular && typeof window.FirebaseModular.initFirestoreWithCache === 'function') {
+                window.FirebaseModular.initFirestoreWithCache('memory');
+            }
+
+            // 3. Establecer banderas de modo en memoria en STATE
+            if (window.STATE) {
+                window.STATE.isExclusivelyOnlineMode = true;
+                window.STATE.cachePolicy = 'memoryLocalCache';
+            }
+        } else {
+            // ============================================================
+            // PRIVILEGIO: PERSISTENCIA EN DISCO PARA SÚPER USUARIO
+            // ============================================================
+            console.log(`🛡️ [Caché Institucional ENCCO] Súper Usuario autenticado (${user?.name || user?.email}).`);
+            console.log("🛡️ [Caché Institucional ENCCO] Activando persistentLocalCache() y servicio de copias locales en IndexedDB.");
+
+            // 1. Inicializar Firestore Modular con persistencia en disco
+            if (window.FirebaseModular && typeof window.FirebaseModular.initFirestoreWithCache === 'function') {
+                window.FirebaseModular.initFirestoreWithCache('persistent');
+            }
+
+            // 2. Establecer banderas en STATE
+            if (window.STATE) {
+                window.STATE.isExclusivelyOnlineMode = false;
+                window.STATE.cachePolicy = 'persistentLocalCache';
+            }
+        }
+    }
+};
+window.EnccoFirebaseCacheEngine = EnccoFirebaseCacheEngine;
+
+if (window.STATE) {
+    window.STATE.isLocalReadOnlyMode = false;
+    window.STATE.isExclusivelyOnlineMode = true;
+    window.STATE.cachePolicy = 'memoryLocalCache';
+}
+
 // ======================================================================
 //   GESTIÓN Y RECUPERACIÓN OFICIAL DEL CICLO LECTIVO 2026 (V127)
 // ======================================================================
@@ -88,13 +332,46 @@ window.updateCycleSelects = updateCycleSelects;
 
 
 function enforceViewReadOnlyMode(viewName) {
-    if (STATE.currentRole === 'admin') return;
     const viewEl = document.getElementById(`view-${viewName}`);
     if (!viewEl) return;
 
     // Remover banner previo
     const existingBanner = viewEl.querySelector('.readonly-mode-banner');
     if (existingBanner) existingBanner.remove();
+
+    // CASO ESPECIAL: MODO COPIA LOCAL (SOLO LECTURA) PARA AUDITORÍA DE RESPALDO
+    if (window.STATE && window.STATE.isLocalReadOnlyMode) {
+        const banner = document.createElement('div');
+        banner.className = 'readonly-mode-banner';
+        banner.style.cssText = 'background:#fef2f2; border:1.5px solid #fca5a5; color:#991b1b; padding:12px 18px; border-radius:10px; margin-bottom:18px; font-weight:700; font-size:0.88rem; display:flex; align-items:center; justify-content:space-between; gap:12px; box-shadow:0 2px 5px rgba(0,0,0,0.06);';
+        banner.innerHTML = `
+            <div style="display:flex; align-items:center; gap:10px;">
+                <i class="fa-solid fa-lock" style="font-size:1.3rem; color:#dc2626;"></i>
+                <span><strong>Copia Local Protegida (Solo Lectura):</strong> Este módulo se encuentra en modo de consulta de respaldo. Todas las acciones de edición, creación o eliminación están bloqueadas para prevenir conflictos de concurrencia con el servidor central.</span>
+            </div>
+            <button type="button" onclick="exitLocalReadOnlyMode()" style="background:#dc2626; color:#ffffff; border:none; padding:6px 12px; border-radius:6px; font-weight:800; font-size:0.80rem; cursor:pointer; white-space:nowrap;">
+                Volver a Modo En Vivo
+            </button>
+        `;
+        viewEl.insertBefore(banner, viewEl.firstChild);
+
+        // Desactivar botones de modificación dentro de la vista
+        viewEl.querySelectorAll('button:not(.nav-tab):not(.print-btn):not(.view-btn):not(.theme-toggle-btn), input[type="submit"]').forEach(btn => {
+            const btnText = (btn.textContent || '').toLowerCase();
+            const btnTitle = (btn.title || '').toLowerCase();
+            const onclickText = (btn.getAttribute('onclick') || '').toLowerCase();
+
+            if (btnText.includes('guardar') || btnText.includes('nuevo') || btnText.includes('crear') || 
+                btnText.includes('eliminar') || btnText.includes('importar') || btnText.includes('subir') || 
+                btnText.includes('editar') || btnTitle.includes('eliminar') || btnTitle.includes('editar') ||
+                onclickText.includes('save') || onclickText.includes('delete') || onclickText.includes('open') || onclickText.includes('init')) {
+                btn.style.display = 'none';
+            }
+        });
+        return;
+    }
+
+    if (STATE.currentRole === 'admin') return;
 
     const canModify = canRoleModify(viewName, STATE.currentRole);
 
@@ -152,7 +429,11 @@ window.getModulePermissionLevel = getModulePermissionLevel;
 
 function hasRolePermission(permKey, role = null) {
     const targetRole = role || STATE.currentRole || 'guest';
-    if (targetRole === 'admin') return true;
+    if (targetRole === 'admin' || targetRole === 'super_usuario') return true;
+
+    if (permKey === 'superuser-backup' || permKey === 'superuser_backup') {
+        return targetRole === 'admin' || targetRole === 'super_usuario';
+    }
 
     if (permKey.endsWith('_edit')) {
         const baseKey = permKey.replace('_edit', '');
@@ -503,6 +784,10 @@ function updateDbSyncStatus(status = 'synced') {
 window.updateDbSyncStatus = updateDbSyncStatus;
 
 async function pushStateToFirebaseCloud(showToastNotification = false) {
+    if (window.STATE && window.STATE.isLocalReadOnlyMode) {
+        console.warn("⚠️ [Solo Lectura] Operación push a la nube cancelada: Modo copia local de respaldo activo.");
+        return false;
+    }
     const firebaseUrl = getFirebaseDatabaseUrl();
 
     // Paquete completo e íntegro de la institución
@@ -2146,8 +2431,26 @@ function loadMasterDatabaseState() {
     // 1. Purgar versiones antiguas y consolidar todo en la base única ENCCO_DATABASE
     purgeOldDatabaseVersions();
 
-    // 2. Recuperar exclusivamente desde la clave única sin versiones
-    let saved = localStorage.getItem(DB_STORAGE_KEY);
+    // 2. POLÍTICA: Modo EXCLUSIVAMENTE ONLINE para docentes y estudiantes (sin persistencia en disco)
+    try {
+        if (typeof sessionStorage !== 'undefined') {
+            const authUserStr = sessionStorage.getItem('ENCCO_AUTH_USER') || (typeof localStorage !== 'undefined' ? localStorage.getItem('ENCCO_AUTH_USER') : null);
+            const authRoleStr = sessionStorage.getItem('ENCCO_AUTH_ROLE') || (typeof localStorage !== 'undefined' ? localStorage.getItem('ENCCO_AUTH_ROLE') : null);
+            if (authUserStr) {
+                const parsed = JSON.parse(authUserStr);
+                const role = authRoleStr || parsed.role;
+                const email = (parsed.email || '').toLowerCase();
+                const isSuper = (role === 'super_usuario' || role === 'admin' || email === 'nehemias.salguero1982@gmail.com');
+                if (!isSuper) {
+                    // Usuario estándar: operar en memoria volátil y consultar servidor central
+                    return null;
+                }
+            }
+        }
+    } catch(e) {}
+
+    // 3. Recuperar exclusivamente desde la clave única para Súper Usuario
+    let saved = (typeof localStorage !== 'undefined') ? localStorage.getItem(DB_STORAGE_KEY) : null;
     return saved;
 }
 window.loadMasterDatabaseState = loadMasterDatabaseState;
@@ -15192,6 +15495,11 @@ function initApp() {
                 sessionStorage.setItem('ENCCO_AUTH_ROLE', authRoleStr);
                 localStorage.setItem('ENCCO_AUTH_ROLE', authRoleStr);
             }
+
+            // Aplicar motor de caché según el rol (memoryLocalCache para docentes/estudiantes, persistentLocalCache para Súper Usuario)
+            if (window.EnccoFirebaseCacheEngine && typeof window.EnccoFirebaseCacheEngine.applyCachePolicy === 'function') {
+                window.EnccoFirebaseCacheEngine.applyCachePolicy(STATE.currentUser, STATE.currentRole);
+            }
         } catch(e) {
             console.error("Error al parsear credenciales:", e);
             window.location.replace('login.html');
@@ -15833,6 +16141,12 @@ if (typeof window !== 'undefined') {
 function applyIncomingCloudState(incomingState, force = false) {
     if (!incomingState || typeof incomingState !== 'object') return false;
 
+    // Si estamos inspeccionando copia local en Modo Solo Lectura, no sobrescribir la vista de inspección
+    if (window.STATE && window.STATE.isLocalReadOnlyMode) {
+        console.warn("⚠️ [Solo Lectura] Estado entrante de la nube ignorado para preservar la copia local en inspección.");
+        return false;
+    }
+
     const incomingTime = incomingState.lastModified || 0;
     const localTime = STATE.lastModified || 0;
 
@@ -15889,12 +16203,23 @@ function applyIncomingCloudState(incomingState, force = false) {
 
     STATE.lastModified = incomingTime || Date.now();
 
-    // Guardado en almacenamiento local garantizado (Base única sin duplicados)
-    try {
-        const jsonStr = JSON.stringify(STATE);
-        localStorage.setItem(DB_STORAGE_KEY, jsonStr);
-        localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
-    } catch(e) {}
+    // Guardado en almacenamiento local: Solo para Súper Usuario. Docentes y alumnos quedan en memoria volátil.
+    const isSuperForIncoming = (typeof window !== 'undefined' && window.EnccoFirebaseCacheEngine)
+        ? window.EnccoFirebaseCacheEngine.isSuperUser(STATE.currentUser, STATE.currentRole)
+        : (STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario');
+
+    if (isSuperForIncoming) {
+        try {
+            const jsonStr = JSON.stringify(STATE);
+            localStorage.setItem(DB_STORAGE_KEY, jsonStr);
+            localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
+        } catch(e) {}
+    } else {
+        try {
+            localStorage.removeItem(DB_STORAGE_KEY);
+            localStorage.removeItem('ENCCO_LAST_LOCAL_MODIFIED');
+        } catch(e) {}
+    }
 
     // Refrescar vistas activas en tiempo real
     try {
@@ -15936,6 +16261,12 @@ window.triggerInstantCloudPush = triggerInstantCloudPush;
 
 
 function saveStateToLocalStorage() {
+    // 1. Bloqueo estricto si estamos inspeccionando copia local en Modo Solo Lectura
+    if (window.STATE && window.STATE.isLocalReadOnlyMode) {
+        console.warn("⚠️ [Solo Lectura] Operación de guardado local bloqueada en copia de respaldo.");
+        return;
+    }
+
     // Prohibir terminantemente sobreescribir la base de datos desde páginas que no son la plataforma
     if (typeof window !== 'undefined') {
         const path = (window.location.pathname || '') + (window.location.href || '');
@@ -15964,13 +16295,28 @@ function saveStateToLocalStorage() {
     payload.lastModified = Date.now();
     STATE.lastModified = payload.lastModified;
 
-    try {
-        const jsonStr = JSON.stringify(payload);
-        localStorage.setItem(DB_STORAGE_KEY, jsonStr);
-        localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
-        window.dispatchEvent(new Event('storage'));
-    } catch (e) {
-        console.warn("Storage warning:", e);
+    // 2. Control de persistencia en disco:
+    // Los usuarios comunes (docentes/alumnos) operan en modo EXCLUSIVAMENTE ONLINE con memoria volátil (memoryLocalCache).
+    // Solo el Súper Usuario guarda en disco como respaldo local permanente.
+    const isSuperUser = (typeof window !== 'undefined' && window.EnccoFirebaseCacheEngine)
+        ? window.EnccoFirebaseCacheEngine.isSuperUser(STATE.currentUser, STATE.currentRole)
+        : (STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario');
+
+    if (isSuperUser) {
+        try {
+            const jsonStr = JSON.stringify(payload);
+            localStorage.setItem(DB_STORAGE_KEY, jsonStr);
+            localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
+            window.dispatchEvent(new Event('storage'));
+        } catch (e) {
+            console.warn("Storage warning:", e);
+        }
+    } else {
+        // Docentes y estudiantes: Garantizar que el disco no conserve réplicas sensibles
+        try {
+            localStorage.removeItem(DB_STORAGE_KEY);
+            localStorage.removeItem('ENCCO_LAST_LOCAL_MODIFIED');
+        } catch(e) {}
     }
     
     // ⚡ Disparar Sincronización en Tiempo Real Total (Pestañas y Servidores Nube)
@@ -16211,7 +16557,8 @@ function navigateTo(viewName, event = null) {
         'class-assignments': { title: 'Asignación de Cátedras a Docentes', sub: 'Distribución de materias a catedráticos' },
         'enrollment': { title: 'Inscripción de Estudiantes', sub: 'Ficha de matrícula y registro de alumnos' },
         'students': { title: 'Nómina Oficial de Estudiantes', sub: 'Listado general y consulta de expedientes' },
-        'grade-lock': { title: 'Control de Bloqueo y Bimestre Activo', sub: 'Configuración del bimestre oficial para docentes' }
+        'grade-lock': { title: 'Control de Bloqueo y Bimestre Activo', sub: 'Configuración del bimestre oficial para docentes' },
+        'superuser-backup': { title: 'Copia Local y Caché de Seguridad', sub: 'Gestión exclusiva de persistencia en disco, snapshots en IndexedDB y modo solo lectura para Súper Usuario' }
     };
     const t = titles[viewName];
     if (t) {
@@ -16241,6 +16588,7 @@ function renderCurrentView() {
         case 'honor-roll': loadHonorRoll(); break;
         case 'users': renderUsersTable(); break;
         case 'roles': renderRolesManagementView(); break;
+        case 'superuser-backup': renderSuperUserBackupView(); break;
         case 'reports': populateReportStudentSelect(); break;
     }
 }
@@ -24338,6 +24686,12 @@ function handleExamScoreChange(studentId, value, subjectName, unit) {
 
 
 function saveGradebookChanges() {
+    if (window.STATE && window.STATE.isLocalReadOnlyMode) {
+        if (typeof showToast === 'function') {
+            showToast("⚠️ Acción Bloqueada: La copia local está en modo SOLO LECTURA para evitar conflictos con el servidor central.", "warning");
+        }
+        return;
+    }
     const isDocente = (STATE.currentRole === 'docente');
     const currentUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente');
 
@@ -24352,6 +24706,7 @@ function saveGradebookChanges() {
     saveStateToLocalStorage();
     showToast("¡Calificaciones y actividades guardadas exitosamente en el sistema!", "success");
 }
+window.saveGradebookChanges = saveGradebookChanges;
 
 // ==========================================================================
 // 8. CONTROL DE ASISTENCIA PLANILLA ESTILO EXCEL CON PORCENTAJES

@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Funciones auxiliares de verificación de privilegios
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Validación estricta de Súper Usuario (Custom Claims, rol o correo institucional)
+    function isSuperUser() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'super_usuario' ||
+        request.auth.token.role == 'admin' ||
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'nehemias.salguero1982@gmail.com'
+      );
+    }
+
+    function isTeacher() {
+      return isAuthenticated() && request.auth.token.role == 'docente';
+    }
+
+    function isSecretary() {
+      return isAuthenticated() && (request.auth.token.role == 'secretaria' || request.auth.token.role == 'director');
+    }
+
+    // 1. ZONA EXCLUSIVA DE RESPALDOS Y SNAPSHOTS COMPLETOS (Solo Súper Usuario)
+    match /backup_snapshots/{snapshotId} {
+      allow read, write, delete: if isSuperUser();
+    }
+
+    match /system_backups/{backupId} {
+      allow read, write, delete: if isSuperUser();
+    }
+
+    match /audit_logs/{logId} {
+      allow read: if isSuperUser();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Inmutable
+    }
+
+    // 2. DESCARGA MASIVA Y BACKUP DE COLECCIONES COMPLETAS
+    // Los usuarios comunes (docentes/alumnos) operan exclusivamente online con lecturas limitadas.
+    // Solo el Súper Usuario puede solicitar volcados o lecturas de colección completas.
+    match /encc_school_state/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperUser() || isSecretary() || isTeacher();
+    }
+
+    // 3. COLECCIONES ESPECÍFICAS
+    match /estudiantes/{studentId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperUser() || isSecretary();
+    }
+
+    match /calificaciones/{gradeId} {
+      allow read: if isAuthenticated();
+      // Docentes pueden calificar, pero no descargar la colección completa
+      allow write: if isSuperUser() || isSecretary() || isTeacher();
+    }
+
+    match /usuarios/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperUser();
+    }
+
+    // Regla global por defecto: Denegar cualquier otra lectura/escritura no autorizada
+    match /{document=**} {
+      allow read, write: if isSuperUser();
+    }
+  }
+}
