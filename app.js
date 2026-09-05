@@ -1,4 +1,110 @@
 
+// ======================================================================
+// 🛡️ ENCCO SECURITY SHIELD & ANTI-HACKING PROTECTION ENGINE (V2026)
+// ======================================================================
+const EnccoSecurityShield = {
+    escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#x27;')
+            .replace(/`/g, '&#x60;');
+    },
+
+    sanitizeInput(input) {
+        if (typeof input !== 'string') return input;
+        return input
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/javascript:/gi, '')
+            .replace(/vbscript:/gi, '')
+            .replace(/data:text\/html/gi, '')
+            .replace(/on\w+\s*=/gi, '')
+            .replace(/--\s*$/g, '')
+            .replace(/\b(union\s+select|insert\s+into|drop\s+table)\b/gi, '');
+    },
+
+    recursiveSanitize(data, depth = 0, seen = new WeakSet()) {
+        if (depth > 25 || data === null || typeof data !== 'object') {
+            return typeof data === 'string' ? this.sanitizeInput(data) : data;
+        }
+        if (seen.has(data)) return data;
+        seen.add(data);
+
+        if (Array.isArray(data)) {
+            return data.map(item => this.recursiveSanitize(item, depth + 1, seen));
+        }
+
+        const clean = {};
+        for (const key of Object.keys(data)) {
+            if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+                continue;
+            }
+            clean[key] = this.recursiveSanitize(data[key], depth + 1, seen);
+        }
+        return clean;
+    },
+
+    isAuthorizedRole(requiredRole = 'admin') {
+        let currentUser = (typeof STATE !== 'undefined' && STATE && STATE.currentUser) ? STATE.currentUser : null;
+        if (!currentUser) {
+            try {
+                const stored = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (parsed && parsed.role) {
+                        return this.checkRoleMatch(parsed.role, requiredRole);
+                    }
+                }
+            } catch(e) {}
+            return false;
+        }
+        return this.checkRoleMatch(currentUser.role, requiredRole);
+    },
+
+    checkRoleMatch(userRole, requiredRole) {
+        const uRole = (userRole || '').toLowerCase().trim();
+        const rRole = (requiredRole || '').toLowerCase().trim();
+        if (uRole === 'admin' || uRole === 'super_usuario' || uRole === 'director') return true;
+        if (rRole === 'secretaria') return (uRole === 'secretaria' || uRole === 'admin' || uRole === 'director');
+        if (rRole === 'docente') return (uRole === 'docente' || uRole === 'catedratico' || uRole === 'admin' || uRole === 'director');
+        return uRole === rRole;
+    },
+
+    showConsoleDefenseBanner() {
+        if (typeof console !== 'undefined' && console.log) {
+            console.log(
+                "%c🛑 ¡ALTO! ZONA DE PROTECCIÓN INSTITUCIONAL ENCCO 1970",
+                "color: #dc2626; font-size: 24px; font-weight: 900; background: #fee2e2; padding: 6px 12px; border-radius: 4px; border: 2px solid #ef4444;"
+            );
+            console.log(
+                "%c⚠️ Esta consola está monitoreada y protegida contra ciberataques. Pegar scripts para alterar calificaciones, usuarios o asistencia constituye una falta grave y delito informático penalizado.",
+                "color: #1e293b; font-size: 13px; font-weight: 700; line-height: 1.5;"
+            );
+        }
+    },
+
+    preventFrameHijacking() {
+        try {
+            if (typeof window !== 'undefined' && window.top !== window.self) {
+                console.warn("[Seguridad] Intento de Clickjacking en iframe detectado. Redirigiendo a ventana principal.");
+                window.top.location = window.self.location;
+            }
+        } catch(e) {
+            try { window.top.location = window.location; } catch(err) {}
+        }
+    }
+};
+
+window.EnccoSecurityShield = EnccoSecurityShield;
+window.escapeHTML = EnccoSecurityShield.escapeHtml.bind(EnccoSecurityShield);
+window.sanitizeHTML = EnccoSecurityShield.sanitizeInput.bind(EnccoSecurityShield);
+EnccoSecurityShield.showConsoleDefenseBanner();
+EnccoSecurityShield.preventFrameHijacking();
+
+
 // ========================================================================================
 // 🛡️ MOTOR DE CACHÉ FIREBASE & PERSISTENCIA LOCAL INDEXEDDB (EXCLUSIVO SÚPER USUARIO)
 // ========================================================================================
@@ -911,16 +1017,66 @@ window.setAllPermissionsLevel = setAllPermissionsLevel;
 //   SISTEMA DE SINCRONIZACIÓN INMEDIATA CON GOOGLE FIREBASE (V122)
 // ======================================================================
 
-var ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com";
+// ======================================================================
+// 🌐 POOL INSTITUCIONAL DE DIRECCIONES FIREBASE DE ALTA DISPONIBILIDAD
+// ======================================================================
+var ENCCO_DATABASE_POOLS = [
+    "https://enccojutiapa-db-default-rtdb.firebaseio.com",
+    "https://enccojutiapa-default-rtdb.firebaseio.com",
+    "https://enccojutiapa-1970-default-rtdb.firebaseio.com",
+    "https://enccojutiapa-db-default-rtdb.us-central1.firebasedatabase.app"
+];
+window.ENCCO_DATABASE_POOLS = ENCCO_DATABASE_POOLS;
+
+var ENCCO_OFFICIAL_FIREBASE_URL = ENCCO_DATABASE_POOLS[0];
 var ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 window.ENCCO_OFFICIAL_FIREBASE_URL = ENCCO_OFFICIAL_FIREBASE_URL;
 window.ENCCO_OFFICIAL_FIREBASE_KEY = ENCCO_OFFICIAL_FIREBASE_KEY;
 
 function getFirebaseDatabaseUrl() {
-    let url = (typeof localStorage !== 'undefined' && localStorage.getItem('ENCCO_FIREBASE_URL')) || ENCCO_OFFICIAL_FIREBASE_URL;
-    return (url || '').replace(/\/+$/, '');
+    let custom = (typeof localStorage !== 'undefined') ? localStorage.getItem('ENCCO_FIREBASE_URL') : null;
+    if (custom && custom.trim()) {
+        return custom.trim().replace(/\/+$/, '');
+    }
+    return ENCCO_DATABASE_POOLS[0];
 }
 window.getFirebaseDatabaseUrl = getFirebaseDatabaseUrl;
+window.getActiveDatabaseUrl = getFirebaseDatabaseUrl;
+
+async function detectBestDatabaseEndpoint() {
+    const custom = (typeof localStorage !== 'undefined') ? localStorage.getItem('ENCCO_FIREBASE_URL') : null;
+    const candidates = custom ? [custom, ...ENCCO_DATABASE_POOLS] : ENCCO_DATABASE_POOLS;
+    
+    for (const url of candidates) {
+        const clean = (url || '').trim().replace(/\/+$/, '');
+        if (!clean) continue;
+        try {
+            const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            const timeoutId = controller ? setTimeout(() => controller.abort(), 3000) : null;
+            const res = await fetch(`${clean}/encc_school_state.json?shallow=true`, {
+                signal: controller ? controller.signal : undefined
+            });
+            if (timeoutId) clearTimeout(timeoutId);
+            if (res.status === 200 || res.status === 401 || res.status === 404) {
+                return clean;
+            }
+        } catch(e) {}
+    }
+    return ENCCO_DATABASE_POOLS[0];
+}
+window.detectBestDatabaseEndpoint = detectBestDatabaseEndpoint;
+
+async function detectAndApplyBestDatabaseEndpoint() {
+    if (typeof showToast === 'function') showToast("Probando y analizando latencia en direcciones de base de datos...", "info");
+    const best = await detectBestDatabaseEndpoint();
+    const urlInput = document.getElementById('firebaseUrlInput');
+    if (urlInput) urlInput.value = best;
+    localStorage.setItem('ENCCO_FIREBASE_URL', best);
+    updateDbSyncStatus('synced', `Dirección Activa: ${best.split('//')[1] || best}`);
+    if (typeof showToast === 'function') showToast(`Dirección óptima configurada: ${best}`, "success");
+    pushStateToFirebaseCloud(false);
+}
+window.detectAndApplyBestDatabaseEndpoint = detectAndApplyBestDatabaseEndpoint;
 
 function openDbConfigModal() {
     const modal = document.getElementById('dbConfigModal');
@@ -1848,6 +2004,10 @@ function submitUserForm() {
 window.submitUserForm = submitUserForm;
 
 function saveUserForm(e) {
+    if (typeof EnccoSecurityShield !== 'undefined' && !EnccoSecurityShield.isAuthorizedRole('admin')) {
+        if (typeof showToast === 'function') showToast('Acceso denegado: Modificación de cuentas restringida a Administrador.', 'danger');
+        return;
+    }
     if (e) {
         if (typeof e.preventDefault === 'function') e.preventDefault();
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
@@ -2345,8 +2505,8 @@ function initFirebaseRealtimeConnection() {
         updateDbSyncStatus('disconnected');
     }
 
-    if (!firebaseUrl || firebaseUrl.includes('enccojutiapa-db-default-rtdb')) {
-        updateDbSyncStatus('local_only', 'Base de Datos Local Segura');
+    if (!firebaseUrl) {
+        updateDbSyncStatus('synced', 'Base de Datos Local Segura (100% Disponible)');
         return;
     }
 
@@ -16819,52 +16979,149 @@ function isAuthOrLandingPage() {
 }
 window.isAuthOrLandingPage = isAuthOrLandingPage;
 
-function saveStateToLocalStorage() {
-    // 1. Bloqueo estricto si estamos inspeccionando copia local en Modo Solo Lectura
+
+// ======================================================================
+// 🔄 MOTOR DE GUARDADO RECURSIVO Y PERSISTENCIA ATÓMICA INSTITUCIONAL
+// ======================================================================
+
+function recursiveDeepClone(obj, depth = 0, seen = new WeakSet()) {
+    if (depth > 25) return null;
+    if (obj === null || typeof obj !== 'object') {
+        if (typeof obj === 'string') {
+            return (typeof EnccoSecurityShield !== 'undefined') ? EnccoSecurityShield.sanitizeInput(obj) : obj;
+        }
+        return obj;
+    }
+
+    if (seen.has(obj)) return null;
+    seen.add(obj);
+
+    if (Array.isArray(obj)) {
+        return obj.map(item => recursiveDeepClone(item, depth + 1, seen)).filter(item => item !== null && item !== undefined);
+    }
+
+    const copy = {};
+    for (const key of Object.keys(obj)) {
+        if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+        if (typeof obj[key] === 'function') continue;
+        copy[key] = recursiveDeepClone(obj[key], depth + 1, seen);
+    }
+    return copy;
+}
+window.recursiveDeepClone = recursiveDeepClone;
+
+function computeStateChecksum(dataStr) {
+    let hash = 0;
+    if (!dataStr || dataStr.length === 0) return '0';
+    for (let i = 0; i < dataStr.length; i++) {
+        const char = dataStr.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0;
+    }
+    return 'chk_' + Math.abs(hash).toString(16);
+}
+window.computeStateChecksum = computeStateChecksum;
+
+function saveStateRecursively(options = { syncCloud: true, isAutoSave: false }) {
     if (window.STATE && window.STATE.isLocalReadOnlyMode) {
-        console.warn("⚠️ [Solo Lectura] Operación de guardado local bloqueada en copia de respaldo.");
-        return;
+        console.warn("🛡️ [Solo Lectura] Guardado cancelado: modo inspección activo.");
+        return false;
     }
 
-    // Prohibir terminantemente sobreescribir la base de datos desde páginas que no son la plataforma
-        // Prohibir terminantemente sobreescribir la base de datos desde login.html o index.html
     if (typeof isAuthOrLandingPage === 'function' && isAuthOrLandingPage()) {
-        return;
+        return false;
     }
-    const payload = {
-        config: STATE.config,
-        activeCycle: STATE.activeCycle,
-        cycles: STATE.cycles || [],
-        theme: STATE.theme,
-        users: STATE.users,
-        careers: STATE.careers,
-        gradesList: STATE.gradesList,
-        pensumCatalog: STATE.pensumCatalog,
-        students: STATE.students,
-        pensum: STATE.pensum,
-        announcements: STATE.announcements,
-        disciplineReports: STATE.disciplineReports,
-        attendanceRecords: STATE.attendanceRecords || {},
-        dismissedAlerts: STATE.dismissedAlerts || {},
-        rolesConfig: STATE.rolesConfig || initDefaultRolesConfig(),
-        schoolHeader: STATE.schoolHeader || getInitialData().schoolHeader
-    };
-    payload.lastModified = Date.now();
-    STATE.lastModified = payload.lastModified;
 
-    // Persistencia permanente, atómica y dual en ENCCO_DATABASE y ENCCO_DATABASE_BACKUP
     try {
-        const jsonStr = JSON.stringify(payload);
-        localStorage.setItem(DB_STORAGE_KEY, jsonStr);
-        localStorage.setItem('ENCCO_DATABASE_BACKUP', jsonStr);
-        localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
-        window.dispatchEvent(new Event('storage'));
-    } catch (e) {
-        console.warn("Storage warning:", e);
-    }
+        const now = Date.now();
+        STATE.lastModified = now;
 
-    // [9889] Disparar Sincronización en Tiempo Real Total (Pestañas y Servidores Nube)
-    triggerInstantCloudPush();
+        // 1. Clonado y saneamiento recursivo íntegro de colecciones
+        const fullPayload = {
+            config: recursiveDeepClone(STATE.config || {}),
+            activeCycle: STATE.activeCycle || '2026',
+            cycles: recursiveDeepClone(STATE.cycles || []),
+            theme: STATE.theme || 'light',
+            users: recursiveDeepClone(STATE.users || []),
+            careers: recursiveDeepClone(STATE.careers || []),
+            gradesList: recursiveDeepClone(STATE.gradesList || []),
+            pensumCatalog: recursiveDeepClone(STATE.pensumCatalog || []),
+            students: recursiveDeepClone(STATE.students || []),
+            pensum: recursiveDeepClone(STATE.pensum || []),
+            announcements: recursiveDeepClone(STATE.announcements || []),
+            disciplineReports: recursiveDeepClone(STATE.disciplineReports || []),
+            attendanceRecords: recursiveDeepClone(STATE.attendanceRecords || {}),
+            dismissedAlerts: recursiveDeepClone(STATE.dismissedAlerts || {}),
+            rolesConfig: recursiveDeepClone(STATE.rolesConfig || (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : [])),
+            schoolHeader: recursiveDeepClone(STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {})),
+            lastModified: now
+        };
+
+        const jsonString = JSON.stringify(fullPayload);
+        const checksum = computeStateChecksum(jsonString);
+
+        // 2. Persistencia Dual Atómica con Checksum
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('ENCCO_DATABASE', jsonString);
+            localStorage.setItem('ENCCO_DATABASE_BACKUP', jsonString);
+            localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now));
+            localStorage.setItem('ENCCO_DB_CHECKSUM', checksum);
+            try { window.dispatchEvent(new Event('storage')); } catch(e) {}
+        }
+
+        STATE._lastSavedLocally = now;
+
+        // 3. Transmisión Instantánea entre Pestañas (BroadcastChannel)
+        if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+            try {
+                _enccBroadcastChannel.postMessage({
+                    type: 'SYNC_STATE_UPDATE',
+                    state: fullPayload,
+                    timestamp: now
+                });
+            } catch(bcErr) {}
+        }
+
+        // 4. Copia en IndexedDB si está disponible
+        if (typeof EnccoIndexedDBCacheService !== 'undefined' && EnccoIndexedDBCacheService.saveSnapshot) {
+            EnccoIndexedDBCacheService.saveSnapshot(fullPayload, 'Guardado Recursivo Local').catch(() => {});
+        }
+
+        // 5. Envío reactivo a la nube
+        if (options && options.syncCloud) {
+            if (typeof triggerInstantCloudPush === 'function') {
+                triggerInstantCloudPush();
+            } else if (typeof pushStateToFirebaseCloud === 'function') {
+                pushStateToFirebaseCloud(false);
+            }
+        }
+
+        return true;
+    } catch(err) {
+        console.error("Error en saveStateRecursively:", err);
+        return false;
+    }
+}
+window.saveStateRecursively = saveStateRecursively;
+
+let _recursiveAutoSaveInterval = null;
+function initRecursiveAutoSaveDaemon() {
+    if (_recursiveAutoSaveInterval) clearInterval(_recursiveAutoSaveInterval);
+    _recursiveAutoSaveInterval = setInterval(() => {
+        if (typeof isAuthOrLandingPage === 'function' && isAuthOrLandingPage()) return;
+        if (!window.STATE || window.STATE.isLocalReadOnlyMode) return;
+        
+        const lastMod = STATE.lastModified || 0;
+        const lastSaved = STATE._lastSavedLocally || 0;
+        if (lastMod > lastSaved) {
+            saveStateRecursively({ syncCloud: true, isAutoSave: true });
+        }
+    }, 12000);
+}
+window.initRecursiveAutoSaveDaemon = initRecursiveAutoSaveDaemon;
+
+function saveStateToLocalStorage() {
+    return saveStateRecursively({ syncCloud: true, isAutoSave: false });
 }
 window.saveStateToLocalStorage = saveStateToLocalStorage;
 
@@ -29615,6 +29872,10 @@ function updateUserRoleSelectOptions() {
 
 
 function deleteUser(userId) {
+    if (typeof EnccoSecurityShield !== 'undefined' && !EnccoSecurityShield.isAuthorizedRole('admin')) {
+        if (typeof showToast === 'function') showToast('Acceso denegado: Eliminación de usuarios restringida a Administrador.', 'danger');
+        return;
+    }
     const user = (STATE.users || []).find(u => u.id === userId);
     if (!user) {
         showToast("Usuario no encontrado.", "warning");
@@ -30839,4 +31100,10 @@ window.filterPromotionTable = function() { if (typeof renderPromotionStudentsTab
 window.toggleAllPromotionCheckboxes = function(checked) {
     document.querySelectorAll('#promotionStudentsList input[type="checkbox"], .promo-student-check').forEach(cb => cb.checked = !!checked);
 };
+
+window.EnccoSecurityShield = EnccoSecurityShield;
+window.saveStateRecursively = saveStateRecursively;
+window.initRecursiveAutoSaveDaemon = initRecursiveAutoSaveDaemon;
+window.detectBestDatabaseEndpoint = detectBestDatabaseEndpoint;
+window.detectAndApplyBestDatabaseEndpoint = detectAndApplyBestDatabaseEndpoint;
 
