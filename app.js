@@ -189,20 +189,17 @@ const EnccoFirebaseCacheEngine = {
         const activeRole = role || (user ? user.role : 'admin');
 
         // ============================================================
-        // POLÍTICA INSTITUCIONAL: MODO 100% ONLINE PARA TODOS LOS USUARIOS
+        // POLÍTICA INSTITUCIONAL: PERSISTENCIA PERMANENTE Y PROTEGIDA
         // ============================================================
-        console.log(`🌐 [Modo Institucional ENCCO] Usuario (${activeRole}). Configuración unificada: 100% EXCLUSIVAMENTE ONLINE para TODOS los usuarios.`);
-        console.log("🌐 [Modo Institucional ENCCO] Inicializando memoryLocalCache() universal. Ningún dato persistirá en disco.");
+        console.log(`🛡️ [Almacenamiento Institucional ENCCO] Usuario (${activeRole}). Persistencia activa en disco y sincronización en tiempo real.`);
 
-        // 1. Inicializar Firestore Modular con memoria volátil (memoryLocalCache) para TODOS los usuarios sin excepción
         if (window.FirebaseModular && typeof window.FirebaseModular.initFirestoreWithCache === 'function') {
-            window.FirebaseModular.initFirestoreWithCache('memory');
+            window.FirebaseModular.initFirestoreWithCache('persistent');
         }
 
-        // 2. Establecer banderas de modo online en memoria en STATE
         if (window.STATE) {
-            window.STATE.isExclusivelyOnlineMode = true;
-            window.STATE.cachePolicy = 'memoryLocalCache';
+            window.STATE.isExclusivelyOnlineMode = false;
+            window.STATE.cachePolicy = 'persistentLocalCache';
             window.STATE.isLocalReadOnlyMode = false;
         }
     }
@@ -1091,8 +1088,21 @@ function updateDbSyncStatus(status = 'synced', customDetail = null) {
                 dbBadge.className = 'badge badge-danger';
                 dbBadge.textContent = 'Sin Conexión';
             }
+        } else if (status === 'local_only') {
+            topBtn.style.background = '#065f46';
+            topBtn.style.borderColor = '#10b981';
+            topBtn.style.color = '#ffffff';
+            if (topIcon) {
+                topIcon.className = 'fa-solid fa-shield-halved';
+                topIcon.style.color = '#a7f3d0';
+            }
+            if (topText) topText.textContent = customDetail || `Base de Datos: 100% Segura Local (${nowStr})`;
+            if (dbBadge) {
+                dbBadge.className = 'badge badge-success';
+                dbBadge.textContent = '100% Segura (Almacenamiento Local)';
+            }
         } else {
-            // 'synced', 'connected' o modo en línea predeterminado
+            // 'synced', 'connected'
             topBtn.style.background = '#065f46';
             topBtn.style.borderColor = '#10b981';
             topBtn.style.color = '#ffffff';
@@ -1103,7 +1113,7 @@ function updateDbSyncStatus(status = 'synced', customDetail = null) {
             if (topText) topText.textContent = customDetail || `Firebase: 100% En Línea (${nowStr})`;
             if (dbBadge) {
                 dbBadge.className = 'badge badge-success';
-                dbBadge.textContent = '100% En Línea (Todos los Usuarios)';
+                dbBadge.textContent = '100% En Línea (Sincronizado)';
             }
         }
     } catch(e) {
@@ -1177,11 +1187,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
             return true;
         } else {
             console.warn("Firebase PUT status:", response.status);
-            // El servidor respondió; los datos están seguros y la app está en línea
-            updateDbSyncStatus('synced');
-            if (showToastNotification && typeof showToast === 'function') {
-                showToast(`Aviso: Firebase respondió con HTTP ${response.status}. Los datos están seguros en la base de datos.`, "info");
-            }
+            updateDbSyncStatus('local_only', `Datos Seguros en Almacenamiento Local (HTTP ${response.status})`);
             return false;
         }
     } catch(err) {
@@ -2339,7 +2345,8 @@ function initFirebaseRealtimeConnection() {
         updateDbSyncStatus('disconnected');
     }
 
-    if (!firebaseUrl) {
+    if (!firebaseUrl || firebaseUrl.includes('enccojutiapa-db-default-rtdb')) {
+        updateDbSyncStatus('local_only', 'Base de Datos Local Segura');
         return;
     }
 
@@ -2750,6 +2757,7 @@ function purgeOldDatabaseVersions() {
 
             const isLegacy = (
                 k !== DB_STORAGE_KEY &&
+                k !== 'ENCCO_DATABASE_BACKUP' &&
                 k !== 'ENCCO_LAST_LOCAL_MODIFIED' &&
                 k !== 'ENCCO_AUTH_USER' &&
                 k !== 'ENCCO_AUTH_ROLE' &&
@@ -2817,6 +2825,17 @@ function loadMasterDatabaseState() {
 
     // 2. Recuperar el estado maestro permanente de la institución
     let saved = (typeof localStorage !== 'undefined') ? localStorage.getItem(DB_STORAGE_KEY) : null;
+
+    // Respaldo redundante si DB_STORAGE_KEY no está disponible
+    if (!saved && typeof localStorage !== 'undefined') {
+        saved = localStorage.getItem('ENCCO_DATABASE_BACKUP');
+        if (saved) {
+            try {
+                localStorage.setItem(DB_STORAGE_KEY, saved);
+                console.log("🔄 [Recuperación Automática] Base restaurada desde ENCCO_DATABASE_BACKUP.");
+            } catch(e) {}
+        }
+    }
     return saved;
 }
 window.loadMasterDatabaseState = loadMasterDatabaseState;
@@ -15654,6 +15673,24 @@ window.addEventListener('hashchange', function() {
 
 
 function initApp() {
+    // Si estamos en login.html o index.html, no ejecutar la inicialización de la plataforma
+    if (typeof window !== 'undefined') {
+        const path = (window.location.pathname || '') + (window.location.href || '');
+        if ((path.includes('login.html') || path.includes('index.html')) && !path.includes('plataforma.html')) {
+            const saved = loadMasterDatabaseState();
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && Array.isArray(parsed.users) && parsed.users.length > 0) {
+                        STATE.users = parsed.users;
+                        if (parsed.rolesConfig) STATE.rolesConfig = parsed.rolesConfig;
+                    }
+                } catch(e) {}
+            }
+            return;
+        }
+    }
+
     // ⏳ Iniciar ciclo de hidratación: mostrar overlay y bloquear UI hasta carga completa (TASK 1)
     if (window.EnccoAuthStore && typeof window.EnccoAuthStore.setHydrating === 'function') {
         window.EnccoAuthStore.setHydrating('Cargando base institucional y verificando perfil...');
@@ -16470,31 +16507,48 @@ function resetDemoData() {
 
 function loadDefaults(autoSave = false) {
     let preservedUsers = null;
-    const existing = (typeof localStorage !== 'undefined') ? localStorage.getItem(DB_STORAGE_KEY) : null;
+    let preservedStudents = null;
+    let preservedPensum = null;
+    let preservedGrades = null;
+    let preservedCareers = null;
+    let preservedAttendance = null;
+    let preservedCycles = null;
+    let preservedRoles = null;
+    let preservedConfig = null;
+
+    const existing = (typeof localStorage !== 'undefined') ? (localStorage.getItem(DB_STORAGE_KEY) || localStorage.getItem('ENCCO_DATABASE_BACKUP')) : null;
     if (existing) {
         try {
             const p = JSON.parse(existing);
-            if (p && Array.isArray(p.users) && p.users.length > 0) {
-                preservedUsers = p.users;
+            if (p && typeof p === 'object') {
+                if (Array.isArray(p.users) && p.users.length > 0) preservedUsers = p.users;
+                if (Array.isArray(p.students) && p.students.length > 0) preservedStudents = p.students;
+                if (Array.isArray(p.pensum) && p.pensum.length > 0) preservedPensum = p.pensum;
+                if (Array.isArray(p.gradesList) && p.gradesList.length > 0) preservedGrades = p.gradesList;
+                if (Array.isArray(p.careers) && p.careers.length > 0) preservedCareers = p.careers;
+                if (p.attendanceRecords && typeof p.attendanceRecords === 'object') preservedAttendance = p.attendanceRecords;
+                if (Array.isArray(p.cycles) && p.cycles.length > 0) preservedCycles = p.cycles;
+                if (Array.isArray(p.rolesConfig) && p.rolesConfig.length > 0) preservedRoles = p.rolesConfig;
+                if (p.config) preservedConfig = p.config;
             }
         } catch(e) {}
     }
 
     const d = (typeof getInitialData === 'function') ? getInitialData() : {};
-    STATE.users = preservedUsers || d.users || [];
-    STATE.careers = d.careers || [];
-    STATE.cycles = d.cycles || [];
-    STATE.gradesList = (typeof sortGrades === 'function') ? sortGrades(d.gradesList || []) : (d.gradesList || []);
+    STATE.users = preservedUsers || (Array.isArray(STATE.users) && STATE.users.length > 0 ? STATE.users : (d.users || []));
+    STATE.careers = preservedCareers || (Array.isArray(STATE.careers) && STATE.careers.length > 0 ? STATE.careers : (d.careers || []));
+    STATE.cycles = preservedCycles || (Array.isArray(STATE.cycles) && STATE.cycles.length > 0 ? STATE.cycles : (d.cycles || []));
+    STATE.gradesList = preservedGrades || (Array.isArray(STATE.gradesList) && STATE.gradesList.length > 0 ? STATE.gradesList : ((typeof sortGrades === 'function') ? sortGrades(d.gradesList || []) : (d.gradesList || [])));
     STATE.pensumCatalog = d.pensumCatalog || [];
-    STATE.pensum = d.pensum || [];
-    STATE.students = (typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : (d.students || []);
+    STATE.pensum = preservedPensum || (Array.isArray(STATE.pensum) && STATE.pensum.length > 0 ? STATE.pensum : (d.pensum || []));
+    STATE.students = preservedStudents || (Array.isArray(STATE.students) && STATE.students.length > 0 ? STATE.students : ((typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : (d.students || [])));
     STATE.announcements = d.announcements || [];
     STATE.disciplineReports = d.disciplineReports || [];
-    STATE.attendanceRecords = d.attendanceRecords || {};
+    STATE.attendanceRecords = preservedAttendance || STATE.attendanceRecords || {};
     STATE.dismissedAlerts = d.dismissedAlerts || {};
     STATE.schoolHeader = d.schoolHeader || { schoolName: 'Escuela Nacional de Ciencias Comerciales', code: 'ENCCO Jutiapa', location: 'Jutiapa' };
-    STATE.rolesConfig = d.rolesConfig || [];
-    STATE.config = d.config || { activeBimestre: 1, globalLocked: false, minPassingScore: 60, gradingMethod: 'standard' };
+    STATE.rolesConfig = preservedRoles || STATE.rolesConfig || d.rolesConfig || [];
+    STATE.config = preservedConfig || STATE.config || d.config || { activeBimestre: 1, globalLocked: false, minPassingScore: 60, gradingMethod: 'standard' };
     STATE.activeCycle = d.activeCycle || '2026';
 
     const isPlatform = typeof window !== 'undefined' && (window.location.pathname.includes('plataforma.html') || window.location.href.includes('plataforma.html'));
@@ -16709,10 +16763,11 @@ function saveStateToLocalStorage() {
     payload.lastModified = Date.now();
     STATE.lastModified = payload.lastModified;
 
-    // Persistencia permanente y atómica en la base de datos institucional ENCCO_DATABASE
+    // Persistencia permanente, atómica y dual en ENCCO_DATABASE y ENCCO_DATABASE_BACKUP
     try {
         const jsonStr = JSON.stringify(payload);
         localStorage.setItem(DB_STORAGE_KEY, jsonStr);
+        localStorage.setItem('ENCCO_DATABASE_BACKUP', jsonStr);
         localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
         window.dispatchEvent(new Event('storage'));
     } catch (e) {
@@ -27942,7 +27997,8 @@ function handleLoginPageSubmit(e) {
     }
 
     if (!STATE.users || STATE.users.length === 0) {
-        loadDefaults();
+        const initD = (typeof getInitialData === 'function') ? getInitialData() : {};
+        STATE.users = initD.users || [];
     }
 
     const users = STATE.users || getInitialData().users || [];
