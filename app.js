@@ -196,15 +196,7 @@ const EnccoFirebaseCacheEngine = {
             console.log(`🔒 [Caché Institucional ENCCO] Usuario estándar (${activeRole}). Aplicando modo EXCLUSIVAMENTE ONLINE.`);
             console.log("🔒 [Caché Institucional ENCCO] Inicializando memoryLocalCache() por defecto. Ningún dato persistirá en disco.");
 
-            // 1. Purgar inmediatamente cualquier dato previo en disco en terminales compartidas
-            try {
-                if (typeof localStorage !== 'undefined') {
-                    localStorage.removeItem(window.DB_STORAGE_KEY || 'ENCCO_DATABASE');
-                    localStorage.removeItem('ENCCO_LAST_LOCAL_MODIFIED');
-                }
-            } catch(e) {}
-
-            // 2. Inicializar Firestore Modular con memoria volátil
+            // 1. Inicializar Firestore Modular con memoria volátil (memoryLocalCache)
             if (window.FirebaseModular && typeof window.FirebaseModular.initFirestoreWithCache === 'function') {
                 window.FirebaseModular.initFirestoreWithCache('memory');
             }
@@ -2405,7 +2397,7 @@ function initFirebaseRealtimeConnection() {
                             _firebaseEventSource.close();
                             _firebaseEventSource = null;
                             console.log("🔒 [Cleanup Effect] Firebase EventSource cerrado.");
-                        } catch(e) {}
+        } catch(e) {}
                     }
                 });
             }
@@ -2813,7 +2805,7 @@ function purgeOldDatabaseVersions() {
                                 }
                             }
                         }
-                    } catch(e) {}
+    } catch(e) {}
                 }
             }
         }
@@ -2844,25 +2836,7 @@ function loadMasterDatabaseState() {
     // 1. Purgar versiones antiguas y consolidar todo en la base única ENCCO_DATABASE
     purgeOldDatabaseVersions();
 
-    // 2. POLÍTICA: Modo EXCLUSIVAMENTE ONLINE para docentes y estudiantes (sin persistencia en disco)
-    try {
-        if (typeof sessionStorage !== 'undefined') {
-            const authUserStr = sessionStorage.getItem('ENCCO_AUTH_USER') || (typeof localStorage !== 'undefined' ? localStorage.getItem('ENCCO_AUTH_USER') : null);
-            const authRoleStr = sessionStorage.getItem('ENCCO_AUTH_ROLE') || (typeof localStorage !== 'undefined' ? localStorage.getItem('ENCCO_AUTH_ROLE') : null);
-            if (authUserStr) {
-                const parsed = JSON.parse(authUserStr);
-                const role = authRoleStr || parsed.role;
-                const email = (parsed.email || '').toLowerCase();
-                const isSuper = (role === 'super_usuario' || role === 'admin' || email === 'nehemias.salguero1982@gmail.com');
-                if (!isSuper) {
-                    // Usuario estándar: operar en memoria volátil y consultar servidor central
-                    return null;
-                }
-            }
-        }
-    } catch(e) {}
-
-    // 3. Recuperar exclusivamente desde la clave única para Súper Usuario
+    // 2. Recuperar el estado maestro permanente de la institución
     let saved = (typeof localStorage !== 'undefined') ? localStorage.getItem(DB_STORAGE_KEY) : null;
     return saved;
 }
@@ -16393,8 +16367,6 @@ function performLogout() {
         localStorage.removeItem('ENCCO_AUTH_USER');
         localStorage.removeItem('ENCCO_AUTH_ROLE');
         localStorage.removeItem('ENCCO_AUTH_REMEMBER');
-        localStorage.removeItem('ENCCO_LAST_LOCAL_MODIFIED');
-        localStorage.removeItem(DB_STORAGE_KEY);
     } catch(e) {}
     
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
@@ -16584,23 +16556,12 @@ function applyIncomingCloudState(incomingState, force = false) {
 
     STATE.lastModified = incomingTime || Date.now();
 
-    // Guardado en almacenamiento local: Solo para Súper Usuario. Docentes y alumnos quedan en memoria volátil.
-    const isSuperForIncoming = (typeof window !== 'undefined' && window.EnccoFirebaseCacheEngine)
-        ? window.EnccoFirebaseCacheEngine.isSuperUser(STATE.currentUser, STATE.currentRole)
-        : (STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario');
-
-    if (isSuperForIncoming) {
-        try {
-            const jsonStr = JSON.stringify(STATE);
-            localStorage.setItem(DB_STORAGE_KEY, jsonStr);
-            localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
-        } catch(e) {}
-    } else {
-        try {
-            localStorage.removeItem(DB_STORAGE_KEY);
-            localStorage.removeItem('ENCCO_LAST_LOCAL_MODIFIED');
-        } catch(e) {}
-    }
+    // Guardado permanente del estado consolidado en la base de datos local
+    try {
+        const jsonStr = JSON.stringify(STATE);
+        localStorage.setItem(DB_STORAGE_KEY, jsonStr);
+        localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
+    } catch(e) {}
 
     // Refrescar vistas activas en tiempo real
     try {
@@ -16676,31 +16637,17 @@ function saveStateToLocalStorage() {
     payload.lastModified = Date.now();
     STATE.lastModified = payload.lastModified;
 
-    // 2. Control de persistencia en disco:
-    // Los usuarios comunes (docentes/alumnos) operan en modo EXCLUSIVAMENTE ONLINE con memoria volátil (memoryLocalCache).
-    // Solo el Súper Usuario guarda en disco como respaldo local permanente.
-    const isSuperUser = (typeof window !== 'undefined' && window.EnccoFirebaseCacheEngine)
-        ? window.EnccoFirebaseCacheEngine.isSuperUser(STATE.currentUser, STATE.currentRole)
-        : (STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario');
-
-    if (isSuperUser) {
-        try {
-            const jsonStr = JSON.stringify(payload);
-            localStorage.setItem(DB_STORAGE_KEY, jsonStr);
-            localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
-            window.dispatchEvent(new Event('storage'));
-        } catch (e) {
-            console.warn("Storage warning:", e);
-        }
-    } else {
-        // Docentes y estudiantes: Garantizar que el disco no conserve réplicas sensibles
-        try {
-            localStorage.removeItem(DB_STORAGE_KEY);
-            localStorage.removeItem('ENCCO_LAST_LOCAL_MODIFIED');
-        } catch(e) {}
+    // Persistencia permanente y atómica en la base de datos institucional ENCCO_DATABASE
+    try {
+        const jsonStr = JSON.stringify(payload);
+        localStorage.setItem(DB_STORAGE_KEY, jsonStr);
+        localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
+        window.dispatchEvent(new Event('storage'));
+    } catch (e) {
+        console.warn("Storage warning:", e);
     }
-    
-    // ⚡ Disparar Sincronización en Tiempo Real Total (Pestañas y Servidores Nube)
+
+    // [9889] Disparar Sincronización en Tiempo Real Total (Pestañas y Servidores Nube)
     triggerInstantCloudPush();
 }
 window.saveStateToLocalStorage = saveStateToLocalStorage;
