@@ -348,7 +348,7 @@ window.setAllPermissionsLevel = setAllPermissionsLevel;
 // ======================================================================
 
 function getFirebaseDatabaseUrl() {
-    let url = localStorage.getItem('ENCCO_FIREBASE_URL') || (typeof FIREBASE_CONFIG !== 'undefined' ? FIREBASE_CONFIG.defaultUrl : '');
+    let url = localStorage.getItem('ENCCO_FIREBASE_URL') || '';
     return (url || '').replace(/\/+$/, '');
 }
 window.getFirebaseDatabaseUrl = getFirebaseDatabaseUrl;
@@ -543,20 +543,20 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
 
         if (response.ok) {
             updateDbSyncStatus('synced');
-
             if (showToastNotification && typeof showToast === 'function') {
-                showToast("Sincronizado con la base de datos exitosamente.", "success");
+                showToast("Sincronizado con Google Firebase exitosamente.", "success");
             }
             return true;
         } else {
-            // Guardado persistente garantizado
-            setTimeout(() => updateDbSyncStatus('synced'), 200);
-            return true;
+            updateDbSyncStatus('disconnected');
+            if (showToastNotification && typeof showToast === 'function') {
+                showToast(`Aviso: Firebase respondió con HTTP ${response.status}. Los datos están seguros en la base de datos local.`, "warning");
+            }
+            return false;
         }
     } catch(err) {
-        // En caso de corte de red, el almacenamiento local y la cola en segundo plano conservan el dato
-        setTimeout(() => updateDbSyncStatus('synced'), 200);
-        return true;
+        updateDbSyncStatus('disconnected');
+        return false;
     }
 }
 window.pushStateToFirebaseCloud = pushStateToFirebaseCloud;
@@ -2472,8 +2472,8 @@ function getInitialData() {
             "email": "jhoanajarro@gmail.com",
             "password": "Jhoana1",
             "role": "secretaria",
-            "title": "Secretaria Académica / Catedrática Titular",
-            "renglon": "011",
+            "title": "Secretaria Académica Oficial",
+            "renglon": "021",
             "gender": "Femenino",
             "active": true
         },
@@ -15074,37 +15074,55 @@ window.addEventListener('hashchange', function() {
 function initApp() {
     if (window.SecurityEngine) window.SecurityEngine.initInactivityGuard();
 
-    // 1. Cargar el estado maestro permanente de la Base de Datos
+    // 1. Cargar el estado maestro permanente de la Base de Datos con aislamiento total
     const saved = loadMasterDatabaseState();
+    let hasLoadedExistingUsers = false;
     if (saved) {
         try {
             const parsed = JSON.parse(saved);
             if (parsed && typeof parsed === 'object') {
-                STATE.users = (parsed.users && parsed.users.length > 0) ? parsed.users : getInitialData().users;
-                STATE.careers = (parsed.careers && parsed.careers.length > 0) ? parsed.careers : getInitialData().careers;
-                STATE.cycles = (parsed.cycles && parsed.cycles.length > 0) ? parsed.cycles : getInitialData().cycles;
-                STATE.gradesList = (parsed.gradesList && parsed.gradesList.length > 0) ? sortGrades(parsed.gradesList) : (getInitialData().gradesList || []);
-                STATE.pensumCatalog = parsed.pensumCatalog || [];
-                STATE.students = parsed.students || [];
-                STATE.pensum = (parsed.pensum && parsed.pensum.length > 0) ? parsed.pensum : (getInitialData().pensum || []);
-                STATE.announcements = parsed.announcements || [];
-                STATE.disciplineReports = parsed.disciplineReports || [];
-                STATE.attendanceRecords = parsed.attendanceRecords || {};
-                STATE.dismissedAlerts = parsed.dismissedAlerts || {};
-                STATE.rolesConfig = (parsed.rolesConfig && Array.isArray(parsed.rolesConfig) && parsed.rolesConfig.length > 0) ? parsed.rolesConfig : (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : []);
-                STATE.schoolHeader = parsed.schoolHeader || getInitialData().schoolHeader;
-                STATE.config = parsed.config || { activeBimestre: 1, globalLocked: false, minPassingScore: 60, teacherBypass: {} };
+                if (Array.isArray(parsed.users) && parsed.users.length > 0) {
+                    STATE.users = parsed.users;
+                    hasLoadedExistingUsers = true;
+                } else if (!Array.isArray(STATE.users) || STATE.users.length === 0) {
+                    STATE.users = getInitialData().users;
+                }
+
+                if (Array.isArray(parsed.careers) && parsed.careers.length > 0) STATE.careers = parsed.careers;
+                else if (!STATE.careers || STATE.careers.length === 0) STATE.careers = getInitialData().careers;
+
+                if (Array.isArray(parsed.cycles) && parsed.cycles.length > 0) STATE.cycles = parsed.cycles;
+                else if (!STATE.cycles || STATE.cycles.length === 0) STATE.cycles = getInitialData().cycles;
+
+                if (Array.isArray(parsed.gradesList) && parsed.gradesList.length > 0) {
+                    try { STATE.gradesList = sortGrades(parsed.gradesList); } catch(ge) { STATE.gradesList = parsed.gradesList; }
+                } else if (!STATE.gradesList || STATE.gradesList.length === 0) {
+                    STATE.gradesList = getInitialData().gradesList || [];
+                }
+
+                STATE.pensumCatalog = Array.isArray(parsed.pensumCatalog) ? parsed.pensumCatalog : (STATE.pensumCatalog || []);
+                STATE.students = Array.isArray(parsed.students) ? parsed.students : (STATE.students || []);
+                STATE.pensum = Array.isArray(parsed.pensum) ? parsed.pensum : (STATE.pensum || getInitialData().pensum || []);
+                STATE.announcements = Array.isArray(parsed.announcements) ? parsed.announcements : (STATE.announcements || []);
+                STATE.disciplineReports = Array.isArray(parsed.disciplineReports) ? parsed.disciplineReports : (STATE.disciplineReports || []);
+                STATE.attendanceRecords = (parsed.attendanceRecords && typeof parsed.attendanceRecords === 'object') ? parsed.attendanceRecords : (STATE.attendanceRecords || {});
+                STATE.dismissedAlerts = (parsed.dismissedAlerts && typeof parsed.dismissedAlerts === 'object') ? parsed.dismissedAlerts : (STATE.dismissedAlerts || {});
+                STATE.rolesConfig = (Array.isArray(parsed.rolesConfig) && parsed.rolesConfig.length > 0) ? parsed.rolesConfig : (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : []);
+                STATE.schoolHeader = (parsed.schoolHeader && typeof parsed.schoolHeader === 'object') ? parsed.schoolHeader : (STATE.schoolHeader || getInitialData().schoolHeader);
+                STATE.config = parsed.config || STATE.config || { activeBimestre: 1, globalLocked: false, minPassingScore: 60, teacherBypass: {} };
                 STATE.config.activeBimestre = parseInt(STATE.config.activeBimestre) || 1;
-                STATE.activeCycle = parsed.activeCycle || (STATE.cycles.find(c => c.status === 'Activo')?.name || '2026');
+                STATE.activeCycle = parsed.activeCycle || STATE.activeCycle || (STATE.cycles?.find(c => c.status === 'Activo')?.name || '2026');
                 if (parsed.theme) STATE.theme = parsed.theme;
                 if (parsed.lastModified) STATE.lastModified = parsed.lastModified;
             }
         } catch (e) {
-            console.warn("Error cargando snapshot local:", e);
-            loadDefaults();
+            console.warn("Aviso al parsear snapshot de base de datos:", e);
         }
-    } else {
-        loadDefaults();
+    }
+
+    // Inicializar sólo si está totalmente vacío, sin sobreescribir nunca si ya hay datos
+    if (!hasLoadedExistingUsers && (!Array.isArray(STATE.users) || STATE.users.length === 0)) {
+        loadDefaults(false);
     }
 
     // 2. Inicializar estructura solo si está totalmente vacía
@@ -15119,7 +15137,7 @@ function initApp() {
 
     // 3. Asegurar campos renglon y gender sin sobreescribir claves ni asignaciones
     (STATE.users || []).forEach(u => {
-        if (!u.renglon) u.renglon = u.name && (u.name.includes('Williams') || u.name.includes('Nery') || u.name.includes('Gamaliel') || u.name.includes('Wilder') || u.name.includes('Bernal') || u.name.includes('Pereira')) ? '021' : '011';
+        if (!u.renglon) u.renglon = (u.id === 'usr-sec-01' || (u.name && (u.name.includes('Jhoana') || u.name.includes('Jarro') || u.name.includes('Williams') || u.name.includes('Nery') || u.name.includes('Gamaliel') || u.name.includes('Wilder') || u.name.includes('Bernal') || u.name.includes('Pereira')))) ? '021' : '011';
         if (!u.gender) {
             const nLower = (u.name || '').toLowerCase();
             u.gender = (nLower.includes('licda.') || nLower.includes('profa.') || nLower.includes('maría') || nLower.includes('maria') || nLower.includes('sandra') || nLower.includes('enma') || nLower.includes('lilian') || nLower.includes('elda') || nLower.includes('milvia') || nLower.includes('aleida') || nLower.includes('damaris')) ? 'Femenino' : 'Masculino';
@@ -15132,18 +15150,21 @@ function initApp() {
     // 4. Normalizar Ciclos lectivos
     ensureOfficialCycles();
 
-    // 5. Guardias de guardado al recargar o cerrar pestaña (nunca durante logout activo)
-    window.addEventListener('beforeunload', () => {
-        if (!window._isLoggingOut && typeof saveStateToLocalStorage === 'function') {
-            saveStateToLocalStorage();
-        }
-    });
+    // 5. Guardias de guardado al recargar o cerrar pestaña (SOLO en plataforma.html, NUNCA en login.html ni durante logout)
+    const isPlatformActive = typeof window !== 'undefined' && (window.location.pathname.includes('plataforma.html') || window.location.href.includes('plataforma.html'));
+    if (isPlatformActive) {
+        window.addEventListener('beforeunload', () => {
+            if (!window._isLoggingOut && typeof saveStateToLocalStorage === 'function') {
+                saveStateToLocalStorage();
+            }
+        });
 
-    window.addEventListener('pagehide', () => {
-        if (!window._isLoggingOut && typeof saveStateToLocalStorage === 'function') {
-            saveStateToLocalStorage();
-        }
-    });
+        window.addEventListener('pagehide', () => {
+            if (!window._isLoggingOut && typeof saveStateToLocalStorage === 'function') {
+                saveStateToLocalStorage();
+            }
+        });
+    }
 
     // 6. Si estamos en plataforma.html, verificar sesión
     if (window.location.pathname.includes('plataforma.html') || window.location.href.includes('plataforma.html')) {
@@ -15282,7 +15303,7 @@ function quickLoginAs(role) {
 
     // 🏷️ Asegurar campos renglon (011/021) y gender (Masculino/Femenino) en todos los catedráticos
     (STATE.users || []).forEach(u => {
-        if (!u.renglon) u.renglon = u.name && (u.name.includes('Williams') || u.name.includes('Nery') || u.name.includes('Gamaliel') || u.name.includes('Wilder') || u.name.includes('Bernal') || u.name.includes('Pereira')) ? '021' : '011';
+        if (!u.renglon) u.renglon = (u.id === 'usr-sec-01' || (u.name && (u.name.includes('Jhoana') || u.name.includes('Jarro') || u.name.includes('Williams') || u.name.includes('Nery') || u.name.includes('Gamaliel') || u.name.includes('Wilder') || u.name.includes('Bernal') || u.name.includes('Pereira')))) ? '021' : '011';
         if (!u.gender) {
             const nLower = (u.name || '').toLowerCase();
             u.gender = (nLower.includes('licda.') || nLower.includes('profa.') || nLower.includes('maría') || nLower.includes('maria') || nLower.includes('sandra') || nLower.includes('enma') || nLower.includes('lilian') || nLower.includes('elda') || nLower.includes('milvia') || nLower.includes('aleida') || nLower.includes('damaris')) ? 'Femenino' : 'Masculino';
@@ -15370,7 +15391,7 @@ function handleMandatoryLogin(e) {
 
     // 🏷️ Asegurar campos renglon (011/021) y gender (Masculino/Femenino) en todos los catedráticos
     (STATE.users || []).forEach(u => {
-        if (!u.renglon) u.renglon = u.name && (u.name.includes('Williams') || u.name.includes('Nery') || u.name.includes('Gamaliel') || u.name.includes('Wilder') || u.name.includes('Bernal') || u.name.includes('Pereira')) ? '021' : '011';
+        if (!u.renglon) u.renglon = (u.id === 'usr-sec-01' || (u.name && (u.name.includes('Jhoana') || u.name.includes('Jarro') || u.name.includes('Williams') || u.name.includes('Nery') || u.name.includes('Gamaliel') || u.name.includes('Wilder') || u.name.includes('Bernal') || u.name.includes('Pereira')))) ? '021' : '011';
         if (!u.gender) {
             const nLower = (u.name || '').toLowerCase();
             u.gender = (nLower.includes('licda.') || nLower.includes('profa.') || nLower.includes('maría') || nLower.includes('maria') || nLower.includes('sandra') || nLower.includes('enma') || nLower.includes('lilian') || nLower.includes('elda') || nLower.includes('milvia') || nLower.includes('aleida') || nLower.includes('damaris')) ? 'Femenino' : 'Masculino';
@@ -15718,7 +15739,7 @@ function resetDemoData() {
 
     // 🏷️ Asegurar campos renglon (011/021) y gender (Masculino/Femenino) en todos los catedráticos
     (STATE.users || []).forEach(u => {
-        if (!u.renglon) u.renglon = u.name && (u.name.includes('Williams') || u.name.includes('Nery') || u.name.includes('Gamaliel') || u.name.includes('Wilder') || u.name.includes('Bernal') || u.name.includes('Pereira')) ? '021' : '011';
+        if (!u.renglon) u.renglon = (u.id === 'usr-sec-01' || (u.name && (u.name.includes('Jhoana') || u.name.includes('Jarro') || u.name.includes('Williams') || u.name.includes('Nery') || u.name.includes('Gamaliel') || u.name.includes('Wilder') || u.name.includes('Bernal') || u.name.includes('Pereira')))) ? '021' : '011';
         if (!u.gender) {
             const nLower = (u.name || '').toLowerCase();
             u.gender = (nLower.includes('licda.') || nLower.includes('profa.') || nLower.includes('maría') || nLower.includes('maria') || nLower.includes('sandra') || nLower.includes('enma') || nLower.includes('lilian') || nLower.includes('elda') || nLower.includes('milvia') || nLower.includes('aleida') || nLower.includes('damaris')) ? 'Femenino' : 'Masculino';
@@ -15732,15 +15753,26 @@ function resetDemoData() {
     }
 }
 
-function loadDefaults() {
+function loadDefaults(autoSave = false) {
+    let preservedUsers = null;
+    const existing = (typeof localStorage !== 'undefined') ? localStorage.getItem(DB_STORAGE_KEY) : null;
+    if (existing) {
+        try {
+            const p = JSON.parse(existing);
+            if (p && Array.isArray(p.users) && p.users.length > 0) {
+                preservedUsers = p.users;
+            }
+        } catch(e) {}
+    }
+
     const d = (typeof getInitialData === 'function') ? getInitialData() : {};
-    STATE.users = d.users || [];
+    STATE.users = preservedUsers || d.users || [];
     STATE.careers = d.careers || [];
     STATE.cycles = d.cycles || [];
     STATE.gradesList = (typeof sortGrades === 'function') ? sortGrades(d.gradesList || []) : (d.gradesList || []);
     STATE.pensumCatalog = d.pensumCatalog || [];
     STATE.pensum = d.pensum || [];
-    STATE.students = d.students || [];
+    STATE.students = (typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : (d.students || []);
     STATE.announcements = d.announcements || [];
     STATE.disciplineReports = d.disciplineReports || [];
     STATE.attendanceRecords = d.attendanceRecords || {};
@@ -15749,7 +15781,11 @@ function loadDefaults() {
     STATE.rolesConfig = d.rolesConfig || [];
     STATE.config = d.config || { activeBimestre: 1, globalLocked: false, minPassingScore: 60, gradingMethod: 'standard' };
     STATE.activeCycle = d.activeCycle || '2026';
-    saveStateToLocalStorage();
+
+    const isPlatform = typeof window !== 'undefined' && (window.location.pathname.includes('plataforma.html') || window.location.href.includes('plataforma.html'));
+    if (autoSave && isPlatform) {
+        saveStateToLocalStorage();
+    }
 }
 
 // ======================================================================
@@ -15900,6 +15936,13 @@ window.triggerInstantCloudPush = triggerInstantCloudPush;
 
 
 function saveStateToLocalStorage() {
+    // Prohibir terminantemente sobreescribir la base de datos desde páginas que no son la plataforma
+    if (typeof window !== 'undefined') {
+        const path = (window.location.pathname || '') + (window.location.href || '');
+        if (path.includes('login.html') || path.includes('index.html')) {
+            return;
+        }
+    }
     const payload = {
         config: STATE.config,
         activeCycle: STATE.activeCycle,
@@ -21635,30 +21678,47 @@ function updateDbSyncStatus(status = 'synced') {
     const topIcon = document.getElementById('topDbStatusIcon');
     if (!topBtn) return;
 
+    const hasFirebaseUrl = Boolean(getFirebaseDatabaseUrl());
+    const now = new Date();
+    const nowStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
     if (status === 'syncing') {
-        topBtn.style.background = '#fef3c7';
-        topBtn.style.borderColor = '#f59e0b';
-        topBtn.style.color = '#92400e';
-        if (topIcon) topIcon.className = 'fa-solid fa-arrows-rotate fa-spin';
-        if (topText) topText.textContent = 'Sincronizando con Firebase...';
-    } else if (status === 'synced') {
-        topBtn.style.background = '#ecfdf5';
+        topBtn.style.background = '#047857';
+        topBtn.style.borderColor = '#34d399';
+        topBtn.style.color = '#ffffff';
+        if (topIcon) {
+            topIcon.className = 'fa-solid fa-arrows-rotate fa-spin';
+            topIcon.style.color = '#fef08a';
+        }
+        if (topText) topText.textContent = hasFirebaseUrl ? 'Sincronizando con Firebase...' : 'Guardando en Base de Datos...';
+    } else if (status === 'synced' && hasFirebaseUrl) {
+        topBtn.style.background = '#065f46';
         topBtn.style.borderColor = '#10b981';
-        topBtn.style.color = '#065f46';
-        if (topIcon) topIcon.className = 'fa-solid fa-cloud-check';
-        if (topText) topText.textContent = 'Firebase y Local Sincronizados';
-    } else if (status === 'disconnected') {
-        topBtn.style.background = '#ecfdf5';
+        topBtn.style.color = '#ffffff';
+        if (topIcon) {
+            topIcon.className = 'fa-solid fa-cloud-check';
+            topIcon.style.color = '#a7f3d0';
+        }
+        if (topText) topText.textContent = `Firebase y Local: Sincronizados (${nowStr})`;
+    } else if (status === 'disconnected' || (status === 'error' && hasFirebaseUrl)) {
+        topBtn.style.background = '#7c2d12';
+        topBtn.style.borderColor = '#f97316';
+        topBtn.style.color = '#ffffff';
+        if (topIcon) {
+            topIcon.className = 'fa-solid fa-triangle-exclamation';
+            topIcon.style.color = '#fdba74';
+        }
+        if (topText) topText.textContent = 'Firebase: Sin Conexión (Datos Seguros en Local)';
+    } else {
+        // Modo Local 100% Persistente y Activo
+        topBtn.style.background = '#065f46';
         topBtn.style.borderColor = '#10b981';
-        topBtn.style.color = '#065f46';
-        if (topIcon) topIcon.className = 'fa-solid fa-cloud-check';
-        if (topText) topText.textContent = 'Firebase y Local Sincronizados';
-    } else if (status === 'error') {
-        topBtn.style.background = '#fef2f2';
-        topBtn.style.borderColor = '#ef4444';
-        topBtn.style.color = '#991b1b';
-        if (topIcon) topIcon.className = 'fa-solid fa-triangle-exclamation';
-        if (topText) topText.textContent = 'Error de Conexión Nube';
+        topBtn.style.color = '#ffffff';
+        if (topIcon) {
+            topIcon.className = 'fa-solid fa-hard-drive';
+            topIcon.style.color = '#a7f3d0';
+        }
+        if (topText) topText.textContent = `Base de Datos: Guardada Localmente (${nowStr})`;
     }
 }
 
