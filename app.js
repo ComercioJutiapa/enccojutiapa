@@ -236,6 +236,304 @@ const EnccoFirebaseCacheEngine = {
 };
 window.EnccoFirebaseCacheEngine = EnccoFirebaseCacheEngine;
 
+// ========================================================================================
+// ⚡ MOTOR REACTIVO DATA-DRIVEN & STORE DE AUTENTICACIÓN (ENCCO AUTH STORE & REACTIVE HOOK)
+// ========================================================================================
+
+const EnccoAuthStore = {
+    _state: {
+        status: 'unhydrated', // 'unhydrated' | 'hydrating' | 'authenticated' | 'unauthenticated' | 'error'
+        user: null,
+        role: 'guest',        // Principio de Menor Privilegio por defecto
+        permissions: {},
+        lastSyncedServerTime: 0,
+        error: null
+    },
+    _listeners: new Set(),
+    _effectDisposers: new Set(),
+
+    getState() {
+        return this._state;
+    },
+
+    isHydrated() {
+        return this._state.status === 'authenticated';
+    },
+
+    getUser() {
+        return this._state.user;
+    },
+
+    getRole() {
+        return this._state.role || 'guest';
+    },
+
+    subscribe(listener) {
+        if (typeof listener === 'function') {
+            this._listeners.add(listener);
+            try { listener(this._state); } catch(e) { console.warn("Aviso en listener inicial AuthStore:", e); }
+            return () => this._listeners.delete(listener);
+        }
+        return () => {};
+    },
+
+    notify() {
+        for (const listener of this._listeners) {
+            try {
+                listener(this._state);
+            } catch(e) {
+                console.warn("Aviso en suscriptor reactivo AuthStore:", e);
+            }
+        }
+    },
+
+    registerEffect(cleanupFn) {
+        if (typeof cleanupFn === 'function') {
+            this._effectDisposers.add(cleanupFn);
+        }
+    },
+
+    cleanupAllEffects() {
+        console.log("🧹 [AuthStore] Limpiando todos los efectos y escuchadores de Firebase...");
+        for (const cleanup of this._effectDisposers) {
+            try { cleanup(); } catch(e) { console.warn("Aviso en limpieza de efecto:", e); }
+        }
+        this._effectDisposers.clear();
+    },
+
+    setHydrating(message = 'Verificando sesión y sincronizando perfil...') {
+        this._state.status = 'hydrating';
+        this.updateHydrationUI(true, message);
+        this.notify();
+    },
+
+    setError(err) {
+        console.error("🛡️ [AuthStore Error Boundary]", err);
+        this._state.status = 'error';
+        this._state.error = err ? (err.message || String(err)) : 'Error de autenticación';
+        this._state.role = 'guest'; // Principio de Menor Privilegio: degradación segura
+        this._state.permissions = {};
+        this.updateHydrationUI(true, 'Acceso bloqueado por seguridad. Redirigiendo...');
+        this.notify();
+    },
+
+    setUnauthenticated() {
+        this._state.status = 'unauthenticated';
+        this._state.user = null;
+        this._state.role = 'guest';
+        this._state.permissions = {};
+        this.cleanupAllEffects();
+        this.notify();
+    },
+
+    setHydrated(user, role) {
+        try {
+            if (!user) {
+                this.setError(new Error("Usuario nulo o indefinido al hidratar"));
+                return;
+            }
+
+            // Normalización defensiva con Principio de Menor Privilegio:
+            let resolvedRole = (role || user.role || 'guest').trim().toLowerCase();
+            const validRoles = ['admin', 'super_usuario', 'director', 'secretaria', 'docente', 'profesor_auxiliar', 'estudiante', 'guest'];
+            if (!validRoles.includes(resolvedRole)) {
+                console.warn(`⚠️ [AuthStore] Rol no reconocido '${resolvedRole}'. Aplicando Principio de Menor Privilegio (guest).`);
+                resolvedRole = 'guest';
+            }
+
+            this._state.status = 'authenticated';
+            this._state.user = user;
+            this._state.role = resolvedRole;
+            this._state.error = null;
+            this._state.lastSyncedServerTime = Date.now();
+
+            if (window.STATE) {
+                STATE.currentUser = user;
+                STATE.currentRole = resolvedRole;
+                STATE.isLoggedIn = (resolvedRole !== 'guest');
+            }
+
+            this.updateHydrationUI(false);
+            this.applyReactivePermissions();
+            this.notify();
+            console.log(`✅ [AuthStore Hidratado] Usuario: ${user.name} | Rol: ${resolvedRole}`);
+        } catch(e) {
+            this.setError(e);
+        }
+    },
+
+    syncUserFromServer(serverUsers, serverRolesConfig) {
+        if (!this.isHydrated() || !this._state.user) return false;
+
+        const currentId = this._state.user.id;
+        const currentEmail = (this._state.user.email || '').toLowerCase().trim();
+
+        if (Array.isArray(serverUsers) && serverUsers.length > 0) {
+            const matchedServerUser = serverUsers.find(u => 
+                (u.id && u.id === currentId) || 
+                (u.email && u.email.toLowerCase().trim() === currentEmail)
+            );
+
+            if (!matchedServerUser) {
+                console.warn("⚠️ [AuthStore] El usuario actual fue removido en el servidor. Desconectando...");
+                if (typeof showToast === 'function') {
+                    showToast("Su cuenta ha sido desactivada en el servidor central.", "danger");
+                }
+                setTimeout(() => performLogout(), 1200);
+                return true;
+            }
+
+            const oldRole = this._state.role;
+            const newRole = (matchedServerUser.role || 'guest').trim().toLowerCase();
+
+            if (oldRole !== newRole || matchedServerUser.active === false || matchedServerUser.status === 'Inactivo') {
+                console.log(`🔄 [AuthStore Tiempo Real] Cambio de rol detectado en servidor: ${oldRole} -> ${newRole}`);
+                
+                this._state.user = matchedServerUser;
+                this._state.role = newRole;
+                if (window.STATE) {
+                    STATE.currentUser = matchedServerUser;
+                    STATE.currentRole = newRole;
+                }
+
+                if (typeof showToast === 'function') {
+                    showToast(`⚠️ Sus permisos institucionales han sido actualizados en tiempo real por la administración (Rol: ${newRole.toUpperCase()}).`, "warning");
+                }
+
+                this.applyReactivePermissions();
+                this.notify();
+
+                if (window.STATE && STATE.activeView && !hasRolePermission(STATE.activeView, newRole)) {
+                    navigateTo('dashboard');
+                }
+
+                return true;
+            }
+        }
+
+        if (Array.isArray(serverRolesConfig) && serverRolesConfig.length > 0) {
+            this.applyReactivePermissions();
+            this.notify();
+        }
+
+        return false;
+    },
+
+    applyReactivePermissions() {
+        const role = this.getRole();
+        const user = this.getUser();
+        const isAuth = this.isHydrated();
+
+        // 1. Si no está autenticado o es guest, bloquear y ocultar todo
+        if (!isAuth || role === 'guest') {
+            document.querySelectorAll('.role-restricted, [data-perm], [data-requires-write]').forEach(el => {
+                el.style.setProperty('display', 'none', 'important');
+                el.classList.add('hidden');
+                if (el.tagName === 'BUTTON' || el.tagName === 'INPUT' || el.tagName === 'SELECT') {
+                    el.disabled = true;
+                }
+            });
+            return;
+        }
+
+        const isSuper = (role === 'admin' || role === 'super_usuario' || (user && user.email === 'nehemias.salguero1982@gmail.com'));
+
+        // 2. Navegación lateral reactiva
+        document.querySelectorAll('.nav-item').forEach(el => {
+            const targetView = el.dataset.view;
+            if (targetView) {
+                const hasAccess = isSuper || hasRolePermission(targetView, role);
+                if (hasAccess) {
+                    el.style.removeProperty('display');
+                    el.classList.remove('hidden');
+                } else {
+                    el.style.setProperty('display', 'none', 'important');
+                    el.classList.add('hidden');
+                }
+            }
+        });
+
+        // 3. Secciones y elementos restringidos por roles
+        document.querySelectorAll('.role-restricted, [data-perm]').forEach(el => {
+            const allowedRoles = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim().toLowerCase()) : [];
+            const permKey = el.dataset.perm || el.dataset.view;
+
+            let hasPerm = false;
+            if (isSuper) {
+                hasPerm = true;
+            } else if (permKey && hasRolePermission(permKey, role)) {
+                hasPerm = true;
+            } else if (allowedRoles.length > 0 && allowedRoles.includes(role)) {
+                hasPerm = true;
+            }
+
+            if (hasPerm) {
+                el.style.removeProperty('display');
+                el.classList.remove('hidden');
+            } else {
+                el.style.setProperty('display', 'none', 'important');
+                el.classList.add('hidden');
+            }
+        });
+
+        // 4. Control de Botones de Escritura Dinámicos en la vista activa
+        if (window.STATE && STATE.activeView) {
+            const canWriteCurrentView = isSuper || canRoleModify(STATE.activeView, role);
+            const activeViewEl = document.getElementById(`view-${STATE.activeView}`);
+            if (activeViewEl) {
+                activeViewEl.querySelectorAll('button:not(.nav-tab):not(.print-btn):not(.view-btn):not(.theme-toggle-btn), input[type="submit"]').forEach(btn => {
+                    const btnText = (btn.textContent || '').toLowerCase();
+                    const btnTitle = (btn.title || '').toLowerCase();
+                    const onclickText = (typeof btn.getAttribute === 'function' ? (btn.getAttribute('onclick') || '') : (btn.onclick ? String(btn.onclick) : '')).toLowerCase();
+
+                    const isWriteAction = (
+                        btnText.includes('guardar') || btnText.includes('nuevo') || btnText.includes('crear') || 
+                        btnText.includes('eliminar') || btnText.includes('importar') || btnText.includes('subir') || 
+                        btnText.includes('editar') || btnTitle.includes('eliminar') || btnTitle.includes('editar') ||
+                        onclickText.includes('save') || onclickText.includes('delete') || onclickText.includes('open') || onclickText.includes('init')
+                    );
+
+                    if (isWriteAction) {
+                        const requiredPerm = (btn.dataset && btn.dataset.perm) ? btn.dataset.perm : null;
+                        const canPerformAction = requiredPerm 
+                            ? (isSuper || hasRolePermission(requiredPerm, role))
+                            : canWriteCurrentView;
+
+                        if (!canPerformAction || (STATE.isLocalReadOnlyMode && !btn.classList.contains('allow-in-readonly'))) {
+                            btn.disabled = true;
+                            btn.style.opacity = '0.45';
+                            btn.style.cursor = 'not-allowed';
+                            btn.title = 'Acción deshabilitada por permisos de su rol o modo solo lectura';
+                        } else {
+                            btn.disabled = false;
+                            btn.style.removeProperty('opacity');
+                            btn.style.removeProperty('cursor');
+                        }
+                    }
+                });
+            }
+        }
+    },
+
+    updateHydrationUI(isHydrating, message = '') {
+        if (typeof document === 'undefined') return;
+        const overlay = document.getElementById('appHydrationOverlay');
+        const textEl = document.getElementById('hydrationStatusText');
+        if (overlay) {
+            if (isHydrating) {
+                overlay.style.display = 'flex';
+                overlay.style.opacity = '1';
+                if (textEl && message) textEl.textContent = message;
+            } else {
+                overlay.style.opacity = '0';
+                setTimeout(() => { overlay.style.display = 'none'; }, 300);
+            }
+        }
+    }
+};
+window.EnccoAuthStore = EnccoAuthStore;
+
+
 if (window.STATE) {
     window.STATE.isLocalReadOnlyMode = false;
     window.STATE.isExclusivelyOnlineMode = true;
@@ -359,7 +657,7 @@ function enforceViewReadOnlyMode(viewName) {
         viewEl.querySelectorAll('button:not(.nav-tab):not(.print-btn):not(.view-btn):not(.theme-toggle-btn), input[type="submit"]').forEach(btn => {
             const btnText = (btn.textContent || '').toLowerCase();
             const btnTitle = (btn.title || '').toLowerCase();
-            const onclickText = (btn.getAttribute('onclick') || '').toLowerCase();
+            const onclickText = (typeof btn.getAttribute === 'function' ? (btn.getAttribute('onclick') || '') : (btn.onclick ? String(btn.onclick) : '')).toLowerCase();
 
             if (btnText.includes('guardar') || btnText.includes('nuevo') || btnText.includes('crear') || 
                 btnText.includes('eliminar') || btnText.includes('importar') || btnText.includes('subir') || 
@@ -387,7 +685,7 @@ function enforceViewReadOnlyMode(viewName) {
         viewEl.querySelectorAll('button:not(.nav-tab):not(.print-btn):not(.view-btn):not(.theme-toggle-btn), input[type="submit"]').forEach(btn => {
             const btnText = (btn.textContent || '').toLowerCase();
             const btnTitle = (btn.title || '').toLowerCase();
-            const onclickText = (btn.getAttribute('onclick') || '').toLowerCase();
+            const onclickText = (typeof btn.getAttribute === 'function' ? (btn.getAttribute('onclick') || '') : (btn.onclick ? String(btn.onclick) : '')).toLowerCase();
 
             if (btnText.includes('guardar') || btnText.includes('nuevo') || btnText.includes('crear') || 
                 btnText.includes('eliminar') || btnText.includes('importar') || btnText.includes('subir') || 
@@ -428,33 +726,50 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
 window.getModulePermissionLevel = getModulePermissionLevel;
 
 function hasRolePermission(permKey, role = null) {
-    const targetRole = role || STATE.currentRole || 'guest';
+    // 🛡️ Principio de Menor Privilegio Defensivo:
+    const targetRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
+    
+    // Si el rol es guest o undefined, denegar terminantemente por defecto
+    if (!targetRole || targetRole === 'guest') return false;
     if (targetRole === 'admin' || targetRole === 'super_usuario') return true;
 
     if (permKey === 'superuser-backup' || permKey === 'superuser_backup') {
         return targetRole === 'admin' || targetRole === 'super_usuario';
     }
 
-    if (permKey.endsWith('_edit')) {
-        const baseKey = permKey.replace('_edit', '');
-        return canRoleModify(baseKey, targetRole);
-    }
-    if (permKey.endsWith('_view')) {
-        const baseKey = permKey.replace('_view', '');
-        const lvl = getModulePermissionLevel(baseKey, targetRole);
-        return lvl === 'view' || lvl === 'edit';
-    }
+    try {
+        if (permKey.endsWith('_edit')) {
+            const baseKey = permKey.replace('_edit', '');
+            return canRoleModify(baseKey, targetRole);
+        }
+        if (permKey.endsWith('_view')) {
+            const baseKey = permKey.replace('_view', '');
+            const lvl = getModulePermissionLevel(baseKey, targetRole);
+            return lvl === 'view' || lvl === 'edit';
+        }
 
-    const lvl = getModulePermissionLevel(permKey, targetRole);
-    return lvl === 'view' || lvl === 'edit';
+        const lvl = getModulePermissionLevel(permKey, targetRole);
+        return lvl === 'view' || lvl === 'edit';
+    } catch(err) {
+        console.warn(`🛡️ [Defensive Perm Error] Fallo al evaluar '${permKey}' para '${targetRole}'. Denegando.`);
+        return false;
+    }
 }
 window.hasRolePermission = hasRolePermission;
 
 function canRoleModify(moduleKey, role = null) {
-    const targetRole = role || STATE.currentRole || 'guest';
-    if (targetRole === 'admin') return true;
-    const lvl = getModulePermissionLevel(moduleKey, targetRole);
-    return lvl === 'edit';
+    // 🛡️ Principio de Menor Privilegio Defensivo:
+    const targetRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
+    if (!targetRole || targetRole === 'guest') return false;
+    if (targetRole === 'admin' || targetRole === 'super_usuario') return true;
+
+    try {
+        const lvl = getModulePermissionLevel(moduleKey, targetRole);
+        return lvl === 'edit';
+    } catch(err) {
+        console.warn(`🛡️ [Defensive Modify Error] Fallo al evaluar modificación en '${moduleKey}'. Denegando.`);
+        return false;
+    }
 }
 window.canRoleModify = canRoleModify;
 
@@ -1996,6 +2311,19 @@ function initFirebaseRealtimeConnection() {
             }
             const sseUrl = `${firebaseUrl}/encc_school_state.json`;
             _firebaseEventSource = new EventSource(sseUrl);
+
+            // Registrar efecto de limpieza en AuthStore para destrucción garantizada en logout (TASK 5)
+            if (window.EnccoAuthStore && typeof window.EnccoAuthStore.registerEffect === 'function') {
+                window.EnccoAuthStore.registerEffect(() => {
+                    if (_firebaseEventSource) {
+                        try {
+                            _firebaseEventSource.close();
+                            _firebaseEventSource = null;
+                            console.log("🔌 [Cleanup Effect] Firebase EventSource cerrado.");
+                        } catch(e) {}
+                    }
+                });
+            }
             _firebaseEventSource.addEventListener('put', (e) => {
                 try {
                     const data = JSON.parse(e.data);
@@ -15375,6 +15703,11 @@ window.addEventListener('hashchange', function() {
 
 
 function initApp() {
+    // ⏳ Iniciar ciclo de hidratación: mostrar overlay y bloquear UI hasta carga completa (TASK 1)
+    if (window.EnccoAuthStore && typeof window.EnccoAuthStore.setHydrating === 'function') {
+        window.EnccoAuthStore.setHydrating('Cargando base institucional y verificando perfil...');
+    }
+
     if (window.SecurityEngine) window.SecurityEngine.initInactivityGuard();
 
     // 1. Cargar el estado maestro permanente de la Base de Datos con aislamiento total
@@ -15502,6 +15835,7 @@ function initApp() {
             }
         } catch(e) {
             console.error("Error al parsear credenciales:", e);
+            if (window.EnccoAuthStore) window.EnccoAuthStore.setError(e);
             window.location.replace('login.html');
             return;
         }
@@ -15513,12 +15847,17 @@ function initApp() {
     updateLoginAccountSelect();
     initCloudDatabaseConnection();
 
+    // ⚡ Hidratación completa exitosa: Desbloquear UI y evaluar permisos reactivos
+    if (window.EnccoAuthStore && typeof window.EnccoAuthStore.setHydrated === 'function') {
+        window.EnccoAuthStore.setHydrated(STATE.currentUser, STATE.currentRole);
+    }
+
     // Iniciar en dashboard y aplicar rol activo
     if (typeof navigateTo === 'function') {
         navigateTo('dashboard');
     }
     if (typeof applyUserRole === 'function') {
-        applyUserRole(STATE.currentRole || 'admin');
+        applyUserRole(STATE.currentRole || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : 'guest'));
     }
 }
 
@@ -16002,23 +16341,62 @@ function updateTopRoleBar() {
 
 function performLogout() {
     window._isLoggingOut = true;
+    console.log("🚪 [Logout] Cerrando sesión y destruyendo listeners...");
+
     try {
         if (typeof saveStateToLocalStorage === 'function') {
             saveStateToLocalStorage();
         }
     } catch(e) {}
 
+    // 1. Destruir y desconectar de inmediato todos los listeners de Firebase y EventSource
+    const eventSrc = (typeof _firebaseEventSource !== 'undefined' && _firebaseEventSource) || (typeof window !== 'undefined' ? window._firebaseEventSource : null);
+    if (eventSrc) {
+        try {
+            eventSrc.close();
+            _firebaseEventSource = null;
+            if (typeof window !== 'undefined') window._firebaseEventSource = null;
+            console.log("🔌 [Cleanup] Firebase EventSource SSE cerrado exitosamente.");
+        } catch(e) {}
+    }
+
+    // 2. Cerrar canales de Broadcast
+    if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+        try {
+            _enccBroadcastChannel.close();
+            _enccBroadcastChannel = null;
+            console.log("🔌 [Cleanup] BroadcastChannel cerrado exitosamente.");
+        } catch(e) {}
+    }
+
+    // 3. Cancelar temporizadores pendientes
+    if (typeof _autoCloudSyncTimer !== 'undefined' && _autoCloudSyncTimer) {
+        clearInterval(_autoCloudSyncTimer);
+        _autoCloudSyncTimer = null;
+    }
+    if (typeof _instantCloudPushTimeout !== 'undefined' && _instantCloudPushTimeout) {
+        clearTimeout(_instantCloudPushTimeout);
+        _instantCloudPushTimeout = null;
+    }
+
+    // 4. Limpiar todos los efectos secundarios registrados en el AuthStore
+    if (window.EnccoAuthStore && typeof window.EnccoAuthStore.cleanupAllEffects === 'function') {
+        window.EnccoAuthStore.cleanupAllEffects();
+        window.EnccoAuthStore.setUnauthenticated();
+    }
+
     STATE.currentUser = null;
     STATE.currentRole = 'guest';
     STATE.isLoggedIn = false;
     STATE.impersonatorAdmin = null;
+
     try {
         sessionStorage.clear();
         localStorage.removeItem('ENCCO_AUTH_USER');
         localStorage.removeItem('ENCCO_AUTH_ROLE');
         localStorage.removeItem('ENCCO_AUTH_REMEMBER');
-        sessionStorage.removeItem('ENCCO_AUTH_USER');
-        sessionStorage.removeItem('ENCCO_AUTH_ROLE');
+        localStorage.removeItem('ENCCO_LAST_LOCAL_MODIFIED');
+        localStorage.removeItem(DB_STORAGE_KEY);
     } catch(e) {}
     
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
@@ -16164,6 +16542,11 @@ function applyIncomingCloudState(incomingState, force = false) {
     // 1. Usuarios y Maestros (Creaciones, modificaciones, eliminaciones y contrase?as)
     if (Array.isArray(incomingState.users) && incomingState.users.length > 0) {
         STATE.users = incomingState.users;
+
+        // ⚡ Sincronización Reactiva en Tiempo Real con Firebase (TASK 4)
+        if (window.EnccoAuthStore && typeof window.EnccoAuthStore.syncUserFromServer === 'function') {
+            window.EnccoAuthStore.syncUserFromServer(incomingState.users, incomingState.rolesConfig);
+        }
     }
 
     // 2. Roles y Permisos (Matriz de 3 niveles: Modificar, Solo Ver y Bloqueado)
@@ -29340,7 +29723,10 @@ function updatePensumCatalogSelects() {
 // ──────────────────────────────────────────────────────────────────────────
 
 function applyUserRole(role = STATE.currentRole) {
-    if (!role) role = 'admin';
+    // 🛡️ Principio de Menor Privilegio: NUNCA elevar a 'admin' si el rol es undefined
+    if (!role) {
+        role = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : null)) || 'guest';
+    }
     STATE.currentRole = role;
 
     const user = STATE.currentUser || (STATE.users || []).find(u => u.role === role) || { name: 'Usuario', role: role };

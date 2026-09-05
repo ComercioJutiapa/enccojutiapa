@@ -305,6 +305,18 @@
     </style>
 </head>
 <body class="theme-light">
+    <!-- ⏳ PANTALLA DE CARGA E HIDRATACIÓN (TASK 1: Loading/Hydration States) -->
+    <div id="appHydrationOverlay" style="position:fixed; inset:0; background:#0f172a; z-index:9999999; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#ffffff; font-family:'Plus Jakarta Sans',sans-serif; transition:opacity 0.3s ease;">
+        <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); padding:32px 40px; border-radius:16px; text-align:center; max-width:440px; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+            <img src="logo.png" style="width:68px; height:68px; margin-bottom:16px; border-radius:50%; box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+            <h3 style="margin:0 0 8px 0; font-size:1.25rem; font-weight:800; color:#f8fafc;">ENCCO Jutiapa</h3>
+            <p style="margin:0 0 20px 0; font-size:0.85rem; color:#94a3b8;">Verificando credenciales y sincronizando perfil en tiempo real...</p>
+            <div style="display:flex; justify-content:center; margin-bottom:12px;">
+                <i class="fa-solid fa-circle-notch fa-spin" style="font-size:2rem; color:#22c55e;"></i>
+            </div>
+            <span id="hydrationStatusText" style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Conectando con Google Firebase...</span>
+        </div>
+    </div>
 <header class="top-role-bar" id="topRoleBar" style="display:block;">
         <div class="role-bar-container">
             <div class="role-bar-brand">
