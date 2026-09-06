@@ -346,27 +346,6 @@
             font-size: 0.76rem;
             color: #94a3b8;
         }
-
-        .quick-role-chip {
-            padding: 8px 10px;
-            background: #f8fafc;
-            border: 1.5px solid #cbd5e1;
-            border-radius: 10px;
-            font-size: 0.8rem;
-            color: #1e293b;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            transition: all 0.2s ease;
-            font-family: var(--font-body);
-        }
-        .quick-role-chip:hover {
-            background: #f0fdf4;
-            border-color: #16a34a;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
-        }
     </style>
 </head>
 <body>
@@ -399,14 +378,9 @@
                 </div>
             </div>
 
-            <div class="login-alert-box" id="loginAlertBox" style="flex-direction:column; align-items:flex-start;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <i class="fa-solid fa-circle-exclamation"></i>
-                    <span id="loginAlertText">Correo o contraseña incorrectos.</span>
-                </div>
-                <button type="button" id="btnUnlockLockout" onclick="forceUnlockSecurityLockout()" style="display:none; margin-top:6px; background:#dc2626; color:white; border:none; border-radius:6px; padding:4px 10px; font-size:0.75rem; font-weight:700; cursor:pointer;">
-                    <i class="fa-solid fa-lock-open"></i> Desbloquear intentos de prueba
-                </button>
+            <div class="login-alert-box" id="loginAlertBox">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span id="loginAlertText">Correo o contraseña incorrectos.</span>
             </div>
 
             <button type="submit" class="btn-submit" id="loginSubmitBtn">
@@ -416,47 +390,6 @@
             <a href="index.html" class="btn-back-portal">
                 <i class="fa-solid fa-arrow-left"></i> Volver al Portal Informativo
             </a>
-
-            <!-- ACCESO RÁPIDO POR PERFILES INSTITUCIONALES -->
-            <div class="quick-profiles-container" style="margin-top:20px; border-top:1px dashed #cbd5e1; padding-top:16px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <span style="font-size:0.76rem; font-weight:800; color:#475569; text-transform:uppercase; letter-spacing:0.5px;">
-                        <i class="fa-solid fa-users"></i> Acceso Rápido por Perfil (Demo)
-                    </span>
-                    <button type="button" onclick="toggleQuickProfilesHelp()" style="background:none; border:none; color:#15803d; font-size:0.75rem; font-weight:700; cursor:pointer; text-decoration:underline;">
-                        Ver Guía
-                    </button>
-                </div>
-                <div class="quick-profiles-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                    <button type="button" class="quick-role-chip" onclick="quickFillAndLogin('mirza.aragon', 'Mirza1')" title="Directora Licda. Mirza Aragón">
-                        <i class="fa-solid fa-user-tie" style="color:#16a34a;"></i> <strong>Directora</strong>
-                    </button>
-                    <button type="button" class="quick-role-chip" onclick="quickFillAndLogin('secretaria', 'Jhoana1')" title="Secretaría Licda. Sara Najarro">
-                        <i class="fa-solid fa-id-card-clip" style="color:#7c3aed;"></i> <strong>Secretaría</strong>
-                    </button>
-                    <button type="button" class="quick-role-chip" onclick="quickFillAndLogin('carlos.augusto', 'Carlos1')" title="Catedrático Lic. Carlos Juárez">
-                        <i class="fa-solid fa-chalkboard-user" style="color:#0891b2;"></i> <strong>Docente</strong>
-                    </button>
-                    <button type="button" class="quick-role-chip" onclick="quickFillAndLogin('francisca.gonzalez', 'Francisca1')" title="Auxiliar Licda. Francisca González">
-                        <i class="fa-solid fa-clipboard-user" style="color:#d97706;"></i> <strong>Auxiliar</strong>
-                    </button>
-                    <button type="button" class="quick-role-chip" onclick="quickFillAndLogin('nehemias', 'C@rolina1')" title="Super Administrador">
-                        <i class="fa-solid fa-shield-halved" style="color:#0284c7;"></i> <strong>Super Admin</strong>
-                    </button>
-                    <button type="button" class="quick-role-chip" onclick="quickFillAndLogin('estudiante', 'estudiante2026')" title="Portal de Estudiante">
-                        <i class="fa-solid fa-graduation-cap" style="color:#6366f1;"></i> <strong>Estudiante</strong>
-                    </button>
-                </div>
-                <div id="quickProfilesInfoBox" style="display:none; margin-top:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px; font-size:0.75rem; color:#334155; line-height:1.45;">
-                    <strong>Credenciales Oficiales Institucionales:</strong><br>
-                    • <b>Director(a):</b> <code>mirza.aragon</code> / <code>Mirza1</code> (o <code>mirzaaragon6@gmail.com</code>)<br>
-                    • <b>Secretaría:</b> <code>secretaria</code> / <code>Jhoana1</code> (o <code>jhoanajarro@gmail.com</code>)<br>
-                    • <b>Profesor Auxiliar:</b> <code>francisca.gonzalez</code> / <code>Francisca1</code><br>
-                    • <b>Docentes:</b> <code>carlos.augusto</code> / <code>Carlos1</code>, <code>hector</code> / <code>hector1</code>, <code>wilder</code> / <code>Wilder1</code> (o <code>docente2026</code>)<br>
-                    • <b>Admin:</b> <code>nehemias</code> / <code>C@rolina1</code><br>
-                    • <b>Estudiantes:</b> Por carné estudiantil o palabra clave <code>estudiante</code> / <code>estudiante2026</code>
-                </div>
-            </div>
         </form>
 
         <!-- SELECCIÓN DE ROL MULTI-PERFIL TRAS VALIDAR -->
@@ -490,44 +423,13 @@
             }
         }
 
-        function forceUnlockSecurityLockout() {
-            if (typeof resetLoginSecurityRecord === 'function') resetLoginSecurityRecord();
-            const submitBtn = document.getElementById('loginSubmitBtn');
-            const alertBox = document.getElementById('loginAlertBox');
-            const btnUnlock = document.getElementById('btnUnlockLockout');
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.style.opacity = '1';
-                submitBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Iniciar Sesión';
-            }
-            if (alertBox) alertBox.style.display = 'none';
-            if (btnUnlock) btnUnlock.style.display = 'none';
-        }
-
-        function toggleQuickProfilesHelp() {
-            const el = document.getElementById('quickProfilesInfoBox');
-            if (el) el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none';
-        }
-
-        function quickFillAndLogin(userVal, passVal) {
-            forceUnlockSecurityLockout();
-            const uInput = document.getElementById('loginUsername');
-            const pInput = document.getElementById('loginPassword');
-            if (uInput) uInput.value = userVal;
-            if (pInput) pInput.value = passVal;
-            handleLoginPageSubmit();
-        }
-
         // Recuperar inmediatamente la base de datos única y los datos más recientes al abrir login
         document.addEventListener('DOMContentLoaded', async () => {
-            // Limpiar bloqueos residuales de sesiones anteriores
             const lockout = (typeof checkLoginLockout === 'function') ? checkLoginLockout() : { locked: false };
             if (!lockout.locked) {
                 if (typeof resetLoginSecurityRecord === 'function') resetLoginSecurityRecord();
             } else {
                 if (typeof applyLockoutCountdownIfActive === 'function') applyLockoutCountdownIfActive();
-                const btnUnlock = document.getElementById('btnUnlockLockout');
-                if (btnUnlock) btnUnlock.style.display = 'inline-block';
             }
 
             if (typeof loadMasterDatabaseState === 'function') {
@@ -557,8 +459,6 @@
             const lockout = (typeof checkLoginLockout === 'function') ? checkLoginLockout() : { locked: false };
             if (lockout.locked) {
                 if (typeof applyLockoutCountdownIfActive === 'function') applyLockoutCountdownIfActive();
-                const btnUnlock = document.getElementById('btnUnlockLockout');
-                if (btnUnlock) btnUnlock.style.display = 'inline-block';
                 return;
             }
 
@@ -574,10 +474,8 @@
             const submitBtn = document.getElementById('loginSubmitBtn') || document.querySelector('button[type="submit"]');
             const alertBox = document.getElementById('loginAlertBox');
             const alertText = document.getElementById('loginAlertText');
-            const btnUnlock = document.getElementById('btnUnlockLockout');
 
             if (alertBox) alertBox.style.display = 'none';
-            if (btnUnlock) btnUnlock.style.display = 'none';
 
             const username = (usernameInput ? usernameInput.value : '').trim();
             const password = (passwordInput ? passwordInput.value : '').trim();
@@ -630,7 +528,7 @@
                 ? window.STATE.students
                 : (typeof getInitialData === 'function' ? getInitialData().students : []);
 
-            // 3. Verificación universal de credenciales (con insensibilidad a tildes, mayúsculas y atajos de rol)
+            // 3. Verificación de credenciales oficiales del usuario
             const authRes = (typeof verifyUserAuthCredentials === 'function')
                 ? verifyUserAuthCredentials(username, password, usersList, studentsList)
                 : { success: false, error: 'Función de autenticación no disponible.' };
@@ -649,9 +547,6 @@
                     if (alertText) {
                         alertText.textContent = curLock.locked ? curLock.message : (authRes.error || 'Credenciales no válidas. Verifique su usuario y contraseña.');
                     }
-                    if (curLock.locked && btnUnlock) {
-                        btnUnlock.style.display = 'inline-block';
-                    }
                 }
                 return;
             }
@@ -663,7 +558,7 @@
                 submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Acceso Correcto...';
             }
 
-            // Redireccionar de inmediato a la plataforma con el objeto usuario autenticado
+            // Redireccionar de inmediato a la plataforma con el objeto de usuario y rol correspondiente
             directToPlatform(authRes.role, authRes.user);
         }
 
