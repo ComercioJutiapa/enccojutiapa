@@ -1225,10 +1225,8 @@ window.setAllPermissionsLevel = setAllPermissionsLevel;
 // 🌐 POOL INSTITUCIONAL DE DIRECCIONES FIREBASE DE ALTA DISPONIBILIDAD
 // ======================================================================
 var ENCCO_DATABASE_POOLS = [
-    "https://enccojutiapa-db-default-rtdb.firebaseio.com",
-    "https://enccojutiapa-default-rtdb.firebaseio.com",
-    "https://enccojutiapa-1970-default-rtdb.firebaseio.com",
-    "https://enccojutiapa-db-default-rtdb.us-central1.firebasedatabase.app"
+    "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com",
+    "https://encco-jutiapa-live-2026-default-rtdb.us-central1.firebasedatabase.app"
 ];
 window.ENCCO_DATABASE_POOLS = ENCCO_DATABASE_POOLS;
 
@@ -1239,7 +1237,7 @@ window.ENCCO_OFFICIAL_FIREBASE_KEY = ENCCO_OFFICIAL_FIREBASE_KEY;
 
 function getFirebaseDatabaseUrl() {
     let custom = (typeof localStorage !== 'undefined') ? localStorage.getItem('ENCCO_FIREBASE_URL') : null;
-    if (custom && custom.trim()) {
+    if (custom && custom.trim() && !custom.includes('enccojutiapa-db-default') && !custom.includes('tu-proyecto') && !custom.includes('mi-colegio')) {
         return custom.trim().replace(/\/+$/, '');
     }
     return ENCCO_DATABASE_POOLS[0];

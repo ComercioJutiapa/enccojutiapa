@@ -1,18 +1,6 @@
 {
   "rules": {
-    ".read": "auth != null",
-    ".write": "auth != null",
-    "backup_snapshots": {
-      ".read": "auth != null && (auth.token.role === 'super_usuario' || auth.token.role === 'admin' || auth.token.admin === true || auth.token.email === 'nehemias.salguero1982@gmail.com')",
-      ".write": "auth != null && (auth.token.role === 'super_usuario' || auth.token.role === 'admin' || auth.token.admin === true || auth.token.email === 'nehemias.salguero1982@gmail.com')"
-    },
-    "system_backups": {
-      ".read": "auth != null && (auth.token.role === 'super_usuario' || auth.token.role === 'admin' || auth.token.admin === true || auth.token.email === 'nehemias.salguero1982@gmail.com')",
-      ".write": "auth != null && (auth.token.role === 'super_usuario' || auth.token.role === 'admin' || auth.token.admin === true || auth.token.email === 'nehemias.salguero1982@gmail.com')"
-    },
-    "encc_school_state": {
-      ".read": "auth != null",
-      ".write": "auth != null && (auth.token.role === 'super_usuario' || auth.token.role === 'admin' || auth.token.role === 'secretaria' || auth.token.role === 'director' || auth.token.role === 'docente' || auth.token.email === 'nehemias.salguero1982@gmail.com')"
-    }
+    ".read": true,
+    ".write": true
   }
 }
