@@ -2997,14 +2997,6 @@ function printGuideTeachersOfficialDirectory() {
 
     if (filteredList.length === 0) filteredList = list;
 
-    // Directora y Secretaría oficiales
-    const directorUser = (STATE.users || []).find(u => u.role === 'director');
-    const secretaryUser = (STATE.users || []).find(u => u.role === 'secretaria');
-    const directorName = (h && h.directorName) || (directorUser ? directorUser.name : 'Licda. Carmen Morales');
-    const directorTitle = (h && h.directorTitle) || (directorUser ? (directorUser.title || 'Directora del Plantel') : 'Directora del Plantel');
-    const secretaryName = (h && h.secretaryName) || (secretaryUser ? secretaryUser.name : 'Sra. Beatriz Fuentes');
-    const secretaryTitle = (h && h.secretaryTitle) || (secretaryUser ? (secretaryUser.title || 'Secretaría Académica') : 'Secretaría Académica');
-
     const todayDate = new Date();
     const dateFormatted = todayDate.toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const capDate = dateFormatted.charAt(0).toUpperCase() + dateFormatted.slice(1);
@@ -3030,13 +3022,12 @@ function printGuideTeachersOfficialDirectory() {
 
         return `
             <tr>
-                <td style="text-align:center; font-weight:bold; padding:6px 4px; border:1px solid #000;">${idx + 1}</td>
-                <td style="padding:6px 8px; border:1px solid #000; font-weight:bold;">${escapeHtml(g.name)}</td>
-                <td style="text-align:center; padding:6px 4px; border:1px solid #000; font-weight:bold; font-size:11px;">${escapeHtml(sectionClean)}</td>
-                <td style="padding:6px 8px; border:1px solid #000; font-weight:bold;">${escapeHtml(guideName)}</td>
-                <td style="padding:6px 8px; border:1px solid #000; font-size:9.5px;">${escapeHtml(guideEmail)}</td>
-                <td style="text-align:center; padding:6px 4px; border:1px solid #000; font-weight:bold;">${count}</td>
-                <td style="border:1px solid #000; width:110px;"></td>
+                <td style="text-align:center; font-weight:bold; padding:7px 5px; border:1px solid #000;">${idx + 1}</td>
+                <td style="padding:7px 10px; border:1px solid #000; font-weight:bold;">${escapeHtml(g.name)}</td>
+                <td style="text-align:center; padding:7px 5px; border:1px solid #000; font-weight:bold; font-size:11px;">${escapeHtml(sectionClean)}</td>
+                <td style="padding:7px 10px; border:1px solid #000; font-weight:bold;">${escapeHtml(guideName)}</td>
+                <td style="padding:7px 10px; border:1px solid #000; font-size:10px;">${escapeHtml(guideEmail)}</td>
+                <td style="text-align:center; padding:7px 5px; border:1px solid #000; font-weight:bold; font-size:11px;">${count}</td>
             </tr>
         `;
     }).join('');
@@ -3047,7 +3038,7 @@ function printGuideTeachersOfficialDirectory() {
 
     const printWin = window.open('', '_blank');
     if (!printWin) {
-        showToast("Por favor permita las ventanas emergentes en su navegador para imprimir la nómina.", "warning");
+        showToast("Por favor permita las ventanas emergentes en su navegador para imprimir la lista.", "warning");
         return;
     }
 
@@ -3079,7 +3070,7 @@ function printGuideTeachersOfficialDirectory() {
         .header-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 12px;
+            margin-bottom: 14px;
             border-bottom: 2px solid #000;
             padding-bottom: 8px;
         }
@@ -3108,14 +3099,14 @@ function printGuideTeachersOfficialDirectory() {
             text-transform: uppercase;
         }
         .line-school {
-            font-size: 14.5px;
+            font-size: 15px;
             font-weight: 900;
             margin: 2px 0;
             color: #000;
             text-transform: uppercase;
         }
         .line-title {
-            font-size: 11.5px;
+            font-size: 12px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.3px;
@@ -3130,14 +3121,14 @@ function printGuideTeachersOfficialDirectory() {
         .simple-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 8px;
-            font-size: 10px;
+            margin-top: 10px;
+            font-size: 10.5px;
         }
         .simple-table th {
             background-color: #f2f2f2;
             border: 1px solid #000;
-            padding: 6px 4px;
-            font-size: 9px;
+            padding: 7px 5px;
+            font-size: 9.5px;
             font-weight: bold;
             text-transform: uppercase;
             text-align: center;
@@ -3150,43 +3141,15 @@ function printGuideTeachersOfficialDirectory() {
             background-color: #f9f9f9;
             font-weight: bold;
             border: 1px solid #000;
-            padding: 5px 6px;
-        }
-        /* ÁREA DE FIRMAS OFICIALES */
-        .signatures-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 38px;
-            page-break-inside: avoid;
-        }
-        .signatures-table td {
-            width: 50%;
-            text-align: center;
-            vertical-align: top;
-            padding: 0 25px;
-        }
-        .sig-line {
-            width: 80%;
-            margin: 0 auto;
-            border-top: 1px solid #000;
-            padding-top: 4px;
-        }
-        .sig-name {
-            font-size: 10.5px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        .sig-title {
-            font-size: 9px;
-            color: #333;
+            padding: 7px 10px;
         }
         .footer-note {
-            margin-top: 24px;
+            margin-top: 20px;
             font-size: 8.5px;
             color: #555;
             text-align: right;
             border-top: 1px dashed #bbb;
-            padding-top: 4px;
+            padding-top: 5px;
         }
         .print-btn-bar {
             text-align: right;
@@ -3231,13 +3194,12 @@ function printGuideTeachersOfficialDirectory() {
     <table class="simple-table">
         <thead>
             <tr>
-                <th style="width:28px;">No.</th>
+                <th style="width:35px;">No.</th>
                 <th>Grado y Carrera</th>
-                <th style="width:45px;">Sección</th>
+                <th style="width:60px;">Sección</th>
                 <th>Docente Guía Titular</th>
                 <th>Correo Institucional</th>
-                <th style="width:50px;">Alumnos</th>
-                <th style="width:110px;">Firma de Recibido</th>
+                <th style="width:70px;">Alumnos</th>
             </tr>
         </thead>
         <tbody>
@@ -3245,28 +3207,10 @@ function printGuideTeachersOfficialDirectory() {
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="5" style="text-align:right; font-weight:bold; padding-right:8px;">TOTAL GENERAL DE ALUMNOS EN SECCIONES:</td>
+                <td colspan="5" style="text-align:right; font-weight:bold; text-transform:uppercase; padding-right:12px;">TOTAL GENERAL DE ALUMNOS EN SECCIONES:</td>
                 <td style="text-align:center; font-weight:bold;">${totalStudentsCount}</td>
-                <td></td>
             </tr>
         </tfoot>
-    </table>
-
-    <table class="signatures-table">
-        <tr>
-            <td>
-                <div class="sig-line">
-                    <div class="sig-name">${escapeHtml(directorName)}</div>
-                    <div class="sig-title">${escapeHtml(directorTitle)}<br>Vo.Bo. Dirección</div>
-                </div>
-            </td>
-            <td>
-                <div class="sig-line">
-                    <div class="sig-name">${escapeHtml(secretaryName)}</div>
-                    <div class="sig-title">${escapeHtml(secretaryTitle)}<br>Secretaría Académica</div>
-                </div>
-            </td>
-        </tr>
     </table>
 
     <div class="footer-note">
