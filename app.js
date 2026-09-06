@@ -23197,17 +23197,15 @@ function printStudentReportCardOfficial() {
 
 function openSectionStudentsModal(gradeCode) {
     STATE.activeSectionModalGrade = gradeCode;
-    const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode);
+    const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
     const title = document.getElementById('sectionStudentsGradeName');
     const subtitle = document.getElementById('sectionStudentsSubtitle');
     const badge = document.getElementById('sectionStudentsCountBadge');
     const tbody = document.getElementById('sectionStudentsTableBody');
 
-    const students = (STATE.students || []).filter(s => {
-        if (s.grade === gradeCode) return true;
-        if (gradeObj && s.gradeLabel && s.gradeLabel.includes(gradeObj.name) && s.gradeLabel.includes(gradeObj.section)) return true;
-        return false;
-    });
+    const students = (typeof getSortedGradebookStudents === 'function') ? 
+        getSortedGradebookStudents(gradeCode, gradeObj) : 
+        (STATE.students || []).filter(s => s.grade === gradeCode || (gradeObj && s.grade === gradeObj.name));
 
     if (title) title.textContent = gradeObj ? `${gradeObj.name} - Sección ${gradeObj.section}` : gradeCode;
     if (subtitle) subtitle.textContent = `Carrera: ${gradeObj?.career || 'Perito Contador'} | Jornada: ${gradeObj?.shift || 'Matutina'}`;
@@ -23217,22 +23215,19 @@ function openSectionStudentsModal(gradeCode) {
         tbody.innerHTML = students.map((s, idx) => `
             <tr>
                 <td style="text-align:center;"><strong>${idx + 1}</strong></td>
-                <td style="text-align:center;"><img src="${s.photo || 'https://ui-avatars.com/api/?name='+encodeURIComponent(s.firstName+' '+s.lastName)}" style="width:28px; height:28px; border-radius:50%; object-fit:cover;"></td>
-                <td><code>${s.carne || s.personalCode}</code></td>
-                <td><strong>${s.lastName}, ${s.firstName}</strong></td>
-                <td style="text-align:center;">${s.age || calculateStudentAge(s.birthDate) || '—'}</td>
+                <td style="text-align:center;"><img src="${s.photo || 'https://ui-avatars.com/api/?name='+encodeURIComponent((s.firstName||'')+' '+(s.lastName||''))}" style="width:28px; height:28px; border-radius:50%; object-fit:cover;"></td>
+                <td><code>${s.carne || s.personalCode || '---'}</code></td>
+                <td><strong>${s.lastName || ''}, ${s.firstName || s.name || ''}</strong></td>
+                <td style="text-align:center;">${s.age || (typeof calculateStudentAge === 'function' ? calculateStudentAge(s.birthDate) : '—') || '—'}</td>
                 <td>${s.tutorPhone || s.phone || 'Sin teléfono'}</td>
-                <td><span class="badge badge-success">${s.status}</span></td>
+                <td><span class="badge ${s.status === 'Activo' ? 'badge-success' : 'badge-danger'}">${s.status || 'Activo'}</span></td>
             </tr>
         `).join('') || `<tr><td colspan="7" style="text-align:center; padding:20px; color:#64748b;">No hay estudiantes asignados a esta sección.</td></tr>`;
     }
 
-    const modal = document.getElementById('sectionStudentsModal');
-    if (modal) {
-        modal.style.display = 'flex';
-        modal.classList.add('active');
-    }
+    showModalById('sectionStudentsModal');
 }
+window.openSectionStudentsModal = openSectionStudentsModal;
 
 // ==========================================================================
 // 🎓 CIERRE DE CICLO ESCOLAR, PROMOCIÓN DE ESTUDIANTES Y APERTURA DE NUEVO CICLO
@@ -28989,25 +28984,24 @@ window.renderGradesDirectoryTable = renderGradesDirectoryTable;
 // [DUPLICATE REMOVED]
 function openGradesDirectoryModal(e) {
     if (e && e.preventDefault) e.preventDefault();
-    renderGradesDirectoryTable();
+    const searchInput = document.getElementById('gradesDirectorySearchInput');
+    if (searchInput) searchInput.value = '';
+    if (typeof renderGradesDirectory === 'function') {
+        renderGradesDirectory('');
+    }
     showModalById('gradesDirectoryModal');
 }
+window.openGradesDirectoryModal = openGradesDirectoryModal;
 
 function closeGradesDirectoryModal() {
-    const modal = document.getElementById('gradesDirectoryModal');
-    if (modal) {
-        modal.classList.remove('active');
-        modal.style.setProperty('display', 'none', 'important');
-    }
+    hideModalById('gradesDirectoryModal');
 }
+window.closeGradesDirectoryModal = closeGradesDirectoryModal;
 
 function closeSectionStudentsModal() {
-    const modal = document.getElementById('sectionStudentsModal');
-    if (modal) {
-        modal.classList.remove('active');
-        modal.style.setProperty('display', 'none', 'important');
-    }
+    hideModalById('sectionStudentsModal');
 }
+window.closeSectionStudentsModal = closeSectionStudentsModal;
 
 function printSectionStudentsList(gradeCode, section) {
     const students = (STATE.students || []).filter(s => (s.gradeCode === gradeCode || s.grade === gradeCode || (s.gradeLabel && s.gradeLabel.includes(gradeCode))) && (!section || s.section === section));
