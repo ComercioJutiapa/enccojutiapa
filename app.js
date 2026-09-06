@@ -1014,6 +1014,7 @@ function hasRolePermission(permKey, role = null) {
     // Si el rol es guest o undefined, denegar terminantemente por defecto
     if (!targetRole || targetRole === 'guest') return false;
     if (targetRole === 'admin' || targetRole === 'super_usuario') return true;
+    if (permKey === 'guide-teachers' || permKey === 'guide_teachers') return true;
 
 
 
@@ -1042,6 +1043,7 @@ function canRoleModify(moduleKey, role = null) {
     const targetRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
     if (!targetRole || targetRole === 'guest') return false;
     if (targetRole === 'admin' || targetRole === 'super_usuario') return true;
+    if (permKey === 'guide-teachers' || permKey === 'guide_teachers') return true;
 
     try {
         const lvl = getModulePermissionLevel(moduleKey, targetRole);
@@ -2796,6 +2798,286 @@ window.initFirebaseConnection = initFirebaseConnection;
 // ======================================================================
 //             CONTROLADORES GLOBALES DE VENTANAS MODALES E IMPRESIÓN
 // ======================================================================
+
+// ======================================================================
+// 🌟 VISTA OFICIAL DE MAESTROS GUÍAS (LISTA INTEGRADA, NO FLOTANTE, DINÁMICA)
+// ======================================================================
+
+function renderGuideTeachersView(searchQuery = '') {
+    const tbody = document.getElementById('guideTeachersTableBody');
+    if (!tbody) return;
+
+    const careerFilterEl = document.getElementById('guideTeachersCareerFilter');
+    const careerFilter = (careerFilterEl && careerFilterEl.value) ? careerFilterEl.value : 'ALL';
+    const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('guideTeachersSearchInput') ? document.getElementById('guideTeachersSearchInput').value : '')).toLowerCase().trim();
+
+    // Actualizar selector de carreras
+    if (careerFilterEl && careerFilterEl.options.length <= 1) {
+        const careers = STATE.careers || [];
+        careerFilterEl.innerHTML = '<option value="ALL">Todas las Carreras</option>' + 
+            careers.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+    }
+
+    let list = sortGrades(STATE.gradesList || []);
+    
+    // Contadores para KPIs
+    const totalSections = list.length;
+    let totalAssignedStudents = 0;
+    let assignedGuideCount = 0;
+
+    list.forEach(g => {
+        const count = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
+        totalAssignedStudents += count;
+        if (g.guideTeacher && g.guideTeacher !== 'Sin asignar') assignedGuideCount++;
+    });
+
+    const kpiSec = document.getElementById('guideKpiTotalSections');
+    const kpiGui = document.getElementById('guideKpiAssignedTeachers');
+    const kpiPct = document.getElementById('guideKpiAssignedPercent');
+    const kpiStu = document.getElementById('guideKpiTotalStudents');
+    if (kpiSec) kpiSec.textContent = totalSections;
+    if (kpiGui) kpiGui.textContent = `${assignedGuideCount} de ${totalSections}`;
+    if (kpiPct) kpiPct.textContent = totalSections > 0 ? `${Math.round((assignedGuideCount / totalSections) * 100)}% asignado` : '0%';
+    if (kpiStu) kpiStu.textContent = totalAssignedStudents;
+
+    // Filtros
+    if (careerFilter && careerFilter !== 'ALL') {
+        list = list.filter(g => (g.career || '').toLowerCase() === careerFilter.toLowerCase());
+    }
+    if (q) {
+        list = list.filter(g => {
+            const guideTeacherObj = (STATE.users || []).find(u => u.id === g.guideTeacherId || u.name === g.guideTeacher);
+            const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || '');
+            const raw = `${g.name || ''} ${g.section || ''} ${g.code || ''} ${g.career || ''} ${guideName}`.toLowerCase();
+            return raw.includes(q);
+        });
+    }
+
+    if (list.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center; padding:35px; color:var(--text-muted);">
+                    <i class="fa-solid fa-person-chalkboard" style="font-size:2rem; color:var(--text-muted); display:block; margin-bottom:10px;"></i>
+                    No se encontraron grados o maestros guías que coincidan con la búsqueda.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    const canManageGuides = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria');
+
+    tbody.innerHTML = list.map((g, idx) => {
+        const count = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
+        const guideTeacherObj = (STATE.users || []).find(u => u.id === g.guideTeacherId || u.name === g.guideTeacher);
+        const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || 'Sin asignar');
+        const guideEmail = guideTeacherObj ? (guideTeacherObj.email || 'Sin correo registrado') : '---';
+        const guideTitle = guideTeacherObj ? (guideTeacherObj.title || 'Catedrático Titular') : 'PEM / Lic.';
+        const guideRenglon = guideTeacherObj?.renglon ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.7rem; margin-left:6px;">${guideTeacherObj.renglon}</span>` : '';
+        const isAssigned = (guideName && guideName !== 'Sin asignar');
+
+        let guideDisplayHtml = '';
+        if (canManageGuides) {
+            // Dropdown dinámico inline para asignación en tiempo real para administradores/dirección
+            const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-')));
+            guideDisplayHtml = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <select class="form-control form-control-sm" style="font-size:0.86rem; font-weight:700; color:var(--text-primary); border-color:#93c5fd; background:#f0f9ff; max-width:260px;"
+                        onchange="handleDirectGuideTeacherChange('${g.id}', this.value)">
+                        <option value="">-- Sin Maestro Guía --</option>
+                        ${teachers.map(t => {
+                            const isSel = (t.id === g.guideTeacherId || t.name === g.guideTeacher) ? 'selected' : '';
+                            return `<option value="${t.id}" ${isSel}>${escapeHtml(t.name)} (${t.renglon || '011'})</option>`;
+                        }).join('')}
+                    </select>
+                </div>
+            `;
+        } else {
+            // Modo lectura institucional dinámica para docentes
+            guideDisplayHtml = `
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="width:34px; height:34px; border-radius:50%; background:${isAssigned ? '#dcfce7' : '#fee2e2'}; color:${isAssigned ? '#15803d' : '#dc2626'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem;">
+                        <i class="fa-solid fa-chalkboard-user"></i>
+                    </div>
+                    <div>
+                        <strong style="color:var(--text-primary); font-size:0.92rem; display:block;">${escapeHtml(guideName)} ${guideRenglon}</strong>
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            <tr>
+                <td style="text-align:center; font-weight:700; color:var(--text-muted);">${idx + 1}</td>
+                <td>
+                    <strong style="color:var(--brand-green-dark); font-size:0.95rem;">${escapeHtml(g.name)}</strong>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">${escapeHtml(g.career || 'Perito Contador')}</div>
+                </td>
+                <td style="text-align:center;">
+                    <span class="badge badge-success" style="font-weight:800; font-size:0.85rem; padding:5px 10px;">${escapeHtml(g.section)}</span>
+                </td>
+                <td style="text-align:center;">
+                    <code style="font-weight:800; font-size:0.85rem; color:#0f766e; background:#ccfbf1; padding:2px 6px; border-radius:4px;">${escapeHtml(g.code)}</code>
+                </td>
+                <td>${guideDisplayHtml}</td>
+                <td>
+                    <div style="font-size:0.82rem; color:var(--text-primary);"><i class="fa-solid fa-id-badge" style="color:#0284c7; margin-right:4px;"></i>${escapeHtml(guideTitle)}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted);"><i class="fa-regular fa-envelope" style="margin-right:4px;"></i>${escapeHtml(guideEmail)}</div>
+                </td>
+                <td style="text-align:center;">
+                    <button type="button" class="btn btn-xs btn-outline-success" onclick="openSectionStudentsModal('${escapeHtml(g.code)}')" style="font-weight:800; padding:4px 8px; border-radius:6px;" title="Ver los ${count} alumnos matriculados">
+                        <i class="fa-solid fa-users"></i> ${count} alumnos
+                    </button>
+                </td>
+                <td style="text-align:center; white-space:nowrap;">
+                    <button type="button" class="btn btn-xs btn-primary" onclick="openSectionStudentsModal('${escapeHtml(g.code)}')" title="Ver nómina de alumnos" style="margin-right:4px; padding:5px 9px;">
+                        <i class="fa-solid fa-eye"></i> Alumnos
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-info" onclick="printStudentsOfficialList('${escapeHtml(g.code)}')" title="Imprimir nómina oficial" style="padding:5px 8px;">
+                        <i class="fa-solid fa-print"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+window.renderGuideTeachersView = renderGuideTeachersView;
+
+function filterGuideTeachersView(query = '') {
+    renderGuideTeachersView(query);
+}
+window.filterGuideTeachersView = filterGuideTeachersView;
+
+function handleDirectGuideTeacherChange(gradeId, newTeacherId) {
+    const grade = (STATE.gradesList || []).find(g => g.id === gradeId);
+    if (!grade) return;
+    const teacherObj = (STATE.users || []).find(u => u.id === newTeacherId);
+    grade.guideTeacherId = newTeacherId || null;
+    grade.guideTeacher = teacherObj ? teacherObj.name : (newTeacherId ? newTeacherId : 'Sin asignar');
+
+    STATE.lastModified = Date.now();
+    saveStateToLocalStorage();
+    renderGuideTeachersView();
+    if (typeof renderGradesTable === 'function') renderGradesTable();
+    if (typeof renderDashboard === 'function') renderDashboard();
+
+    if (typeof autoSyncToCloud === 'function') {
+        autoSyncToCloud(true, false);
+    } else if (typeof syncStateToFirebaseImmediate === 'function') {
+        syncStateToFirebaseImmediate(false);
+    }
+    showToast(`Maestro(a) Guía "${grade.guideTeacher}" asignado exitosamente a ${grade.name} (${grade.section}).`, 'success');
+}
+window.handleDirectGuideTeacherChange = handleDirectGuideTeacherChange;
+
+function printGuideTeachersOfficialDirectory() {
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
+    const list = sortGrades(STATE.gradesList || []);
+    const cycle = STATE.activeCycle || '2026';
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast("Habilite las ventanas emergentes para imprimir el directorio.", "warning");
+        return;
+    }
+
+    const rows = list.map((g, idx) => {
+        const count = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
+        const guideTeacherObj = (STATE.users || []).find(u => u.id === g.guideTeacherId || u.name === g.guideTeacher);
+        const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || 'Sin asignar');
+        const guideEmail = guideTeacherObj ? (guideTeacherObj.email || '---') : '---';
+        const guideRenglon = guideTeacherObj?.renglon ? `(${guideTeacherObj.renglon})` : '';
+
+        return `
+            <tr>
+                <td style="text-align:center; padding:6px 8px; border:1px solid #333; font-weight:bold;">${idx + 1}</td>
+                <td style="padding:6px 8px; border:1px solid #333; font-weight:bold;">${escapeHtml(g.name)}</td>
+                <td style="text-align:center; padding:6px 8px; border:1px solid #333; font-weight:bold;">${escapeHtml(g.section)}</td>
+                <td style="text-align:center; padding:6px 8px; border:1px solid #333; font-family:monospace; font-weight:bold;">${escapeHtml(g.code)}</td>
+                <td style="padding:6px 8px; border:1px solid #333; font-weight:bold;">${escapeHtml(guideName)} ${guideRenglon}</td>
+                <td style="padding:6px 8px; border:1px solid #333; font-size:11px;">${escapeHtml(guideEmail)}</td>
+                <td style="text-align:center; padding:6px 8px; border:1px solid #333; font-weight:bold;">${count}</td>
+            </tr>
+        `;
+    }).join('');
+
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Directorio Oficial de Maestros Guías - Ciclo ${cycle}</title>
+            <style>
+                @page { size: letter portrait; margin: 15mm; }
+                body { font-family: 'Arial', sans-serif; font-size: 11px; margin: 0; padding: 10px; color: #111; }
+                .header-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+                .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                .data-table th { background: #f0f0f0; border: 1px solid #333; padding: 6px; font-size: 10.5px; text-transform: uppercase; }
+                .footer-signatures { margin-top: 40px; display: flex; justify-content: space-around; }
+                .sig-box { text-align: center; width: 40%; border-top: 1px solid #000; padding-top: 5px; font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <table class="header-table">
+                <tr>
+                    <td style="width:70px; text-align:center; vertical-align:middle;">
+                        <img src="images/logo.png" style="height:60px;" onerror="this.style.display='none'">
+                    </td>
+                    <td style="text-align:center; vertical-align:middle;">
+                        <div style="font-size:10px; font-weight:bold; letter-spacing:1px; color:#444;">MINISTERIO DE EDUCACIÓN - DIRECCIÓN DEPARTAMENTAL DE JUTIAPA</div>
+                        <div style="font-size:15px; font-weight:bold; margin:3px 0; color:#0f5132;">${escapeHtml(h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES')}</div>
+                        <div style="font-size:10px; font-weight:bold;">DIRECTORIO OFICIAL DE GRADOS, SECCIONES Y MAESTROS GUÍAS</div>
+                        <div style="font-size:9.5px; color:#555;">CICLO ESCOLAR ${escapeHtml(cycle)} &bull; JORNADA MATUTINA &bull; CÓDIGO: ${escapeHtml(h.schoolCode || '22-01-0014-46')}</div>
+                    </td>
+                </tr>
+            </table>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width:30px;">#</th>
+                        <th>Grado Escolar</th>
+                        <th style="width:70px;">Sección</th>
+                        <th style="width:65px;">Código</th>
+                        <th>Maestro(a) Guía Titular</th>
+                        <th>Correo Institucional</th>
+                        <th style="width:65px;">Alumnos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+
+            <div class="footer-signatures">
+                <div class="sig-box">
+                    Licda. Mirza Elizabeth Aragón Polanco<br>
+                    <span style="font-size:9px; font-weight:normal;">Directora Oficial ENCCO Jutiapa</span>
+                </div>
+                <div class="sig-box">
+                    Licda. Jhoana Jarro<br>
+                    <span style="font-size:9px; font-weight:normal;">Secretaria Académica Oficial</span>
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+    printWin.document.close();
+    setTimeout(() => {
+        printWin.focus();
+        printWin.print();
+    }, 300);
+}
+window.printGuideTeachersOfficialDirectory = printGuideTeachersOfficialDirectory;
+
+// Si cualquier enlace o botón llama a openGradesDirectoryModal, navega fluidamente a la lista completa (no flotante)
+function openGradesDirectoryModal(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    navigateTo('guide-teachers', e);
+}
+window.openGradesDirectoryModal = openGradesDirectoryModal;
+
+
 function showModalById(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) {
@@ -17612,6 +17894,7 @@ function navigateTo(viewName, event = null) {
         'reports': { title: 'Boletines de Calificaciones', sub: 'Tarjetas de notas oficiales por estudiante' },
         'users': { title: 'Gestión de Usuarios y Claustro Docente', sub: 'Administración de cuentas, roles y credenciales' },
         'grades': { title: 'Editor de Grados y Secciones', sub: 'Configuración de grados y estructura escolar' },
+        'guide-teachers': { title: 'Directorio Oficial de Maestros Guías', sub: 'Nómina oficial de grados escolares y catedráticos guías titulares asignados' },
         'pensum': { title: 'Editor de Pensum y Asignaturas', sub: 'Catálogo de cursos por carrera y grado' },
         'class-assignments': { title: 'Asignación de Cátedras a Docentes', sub: 'Distribución de materias a catedráticos' },
         'enrollment': { title: 'Inscripción de Estudiantes', sub: 'Ficha de matrícula y registro de alumnos' },
@@ -17637,6 +17920,7 @@ function renderCurrentView() {
         case 'students': updateCareerSelects(); renderStudentsTable(); break;
         case 'excel-import': loadSchoolHeaderConfig(); updatePrintModelSelects(); break;
         case 'grades': updateCareerSelects(); renderGradesTable(); break;
+        case 'guide-teachers': renderGuideTeachersView(); break;
         case 'pensum': updateCareerSelects(); updatePensumCatalogSelects(); renderPensumCatalogTable(); break;
         case 'class-assignments': updateCareerSelects(); updateAssignmentSelects(); renderAssignmentsTable(); break;
         case 'grade-lock': loadLockStatus(); break;
