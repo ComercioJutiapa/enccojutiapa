@@ -18183,6 +18183,7 @@ function renderDashboard() {
             gradeKeys.forEach(k => {
                 const g = groupedGrades[k];
                 const studentCount = getStudentCountByGradeAndSection(g.grade, g.grade, g.section);
+                const secClean = (g.section || '').toLowerCase().startsWith('secci') ? g.section : 'Sección ' + (g.section || 'A');
 
                 cardsHtml += `
                     <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:10px; margin-bottom:20px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
@@ -18193,7 +18194,7 @@ function renderDashboard() {
                                     <i class="fa-solid fa-graduation-cap"></i>
                                 </div>
                                 <div>
-                                    <strong style="font-size:1.08rem; display:block; letter-spacing:0.3px;">${g.grade} — Sección ${g.section}</strong>
+                                    <strong style="font-size:1.08rem; display:block; letter-spacing:0.3px;">${g.grade} — ${secClean}</strong>
                                     <span style="font-size:0.82rem; opacity:0.92;"><i class="fa-solid fa-award"></i> ${g.career}</span>
                                 </div>
                             </div>
@@ -18225,7 +18226,7 @@ function renderDashboard() {
                                             <button type="button" class="btn btn-primary btn-sm" onclick="openGradebookForCourse('${c.id}')" style="flex:2; font-weight:700;">
                                                 <i class="fa-solid fa-pen-to-square"></i> Ingresar Notas
                                             </button>
-                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openPrintForCourse('${g.grade}', '${g.section}', '${c.subject}')" style="flex:1;" title="Imprimir Lista Oficial">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openCoursePrintModal('${c.id}', '${escapeHtml(g.grade)}', '${escapeHtml(g.section)}', '${escapeHtml(c.subject)}')" style="flex:1;" title="Imprimir Listas Oficiales">
                                                 <i class="fa-solid fa-print"></i> Lista
                                             </button>
                                         </div>
@@ -18347,35 +18348,410 @@ function openAttendanceForGrade(grade, section) {
     }
 }
 
-function openPrintForCourse(grade, section, subject) {
+let _currentPrintCourseId = null;
+
+function openCoursePrintModal(courseId, grade = '', section = '', subject = '') {
+    _currentPrintCourseId = courseId;
+    let targetCourse = (STATE.pensum || []).find(p => p.id === courseId);
+    if (!targetCourse && (grade || subject)) {
+        targetCourse = (STATE.pensum || []).find(p => {
+            const matchGrade = (p.grade === grade || (p.gradeCode && p.gradeCode.includes(grade)));
+            const matchSec = (!section || p.section === section);
+            const matchSub = (!subject || p.subject === subject || p.name === subject);
+            return matchGrade && matchSec && matchSub;
+        });
+    }
+
+    const subName = targetCourse ? targetCourse.subject : (subject || 'Cátedra');
+    const gName = targetCourse ? targetCourse.grade : (grade || 'Grado');
+    const rawSec = targetCourse ? (targetCourse.section || section) : (section || 'A');
+    const secClean = (rawSec || '').toLowerCase().startsWith('secci') ? rawSec : `Sección ${rawSec || 'A'}`;
+    const tName = targetCourse ? (targetCourse.teacher || (STATE.currentUser ? STATE.currentUser.name : 'Catedrático')) : (STATE.currentUser ? STATE.currentUser.name : 'Catedrático');
+    const stCount = getStudentCountByGradeAndSection(gName, gName, rawSec);
+
+    const subEl = document.getElementById('coursePrintSubjectName');
+    const metaEl = document.getElementById('coursePrintMetaInfo');
+    const countEl = document.getElementById('coursePrintStudentCount');
+    const bimSelect = document.getElementById('coursePrintBimestreSelect');
+
+    if (subEl) subEl.textContent = subName;
+    if (metaEl) metaEl.innerHTML = `<i class="fa-solid fa-graduation-cap"></i> ${gName} — ${secClean} &nbsp;|&nbsp; <i class="fa-solid fa-chalkboard-user"></i> Catedrático: <strong>${tName}</strong>`;
+    if (countEl) countEl.innerHTML = `<i class="fa-solid fa-users"></i> ${stCount} Estudiantes`;
+    if (bimSelect) bimSelect.value = (STATE.config?.activeBimestre || 2).toString();
+
+    showModalById('coursePrintModal');
+}
+window.openCoursePrintModal = openCoursePrintModal;
+
+function closeCoursePrintModal() {
+    hideModalById('coursePrintModal');
+    _currentPrintCourseId = null;
+}
+window.closeCoursePrintModal = closeCoursePrintModal;
+
+function triggerCoursePrintGradebook() {
+    if (!_currentPrintCourseId) {
+        showToast("No se ha seleccionado ninguna cátedra.", "warning");
+        return;
+    }
+    const targetCourse = (STATE.pensum || []).find(p => p.id === _currentPrintCourseId);
+    if (!targetCourse) {
+        showToast("Cátedra no encontrada en el pensum.", "warning");
+        return;
+    }
+    const bimSelect = document.getElementById('coursePrintBimestreSelect');
+    const bNum = bimSelect ? bimSelect.value : (STATE.config?.activeBimestre || '2');
+
+    generateOfficialPrintList({
+        targetPensum: targetCourse,
+        career: targetCourse.career || 'Perito Contador',
+        gradeCode: targetCourse.gradeCode || targetCourse.grade,
+        subjectName: targetCourse.subject,
+        teacherName: targetCourse.teacher || (STATE.currentUser ? STATE.currentUser.name : 'Catedrático'),
+        bimestreNum: String(bNum),
+        modelType: 'CUADRO_CALIFICACIONES_EXCEL'
+    });
+}
+window.triggerCoursePrintGradebook = triggerCoursePrintGradebook;
+
+function triggerCoursePrintStudentRoster() {
+    if (!_currentPrintCourseId) {
+        showToast("No se ha seleccionado ninguna cátedra.", "warning");
+        return;
+    }
+    printCourseStudentList(_currentPrintCourseId);
+}
+window.triggerCoursePrintStudentRoster = triggerCoursePrintStudentRoster;
+
+function triggerCoursePrintAttendance() {
+    if (!_currentPrintCourseId) {
+        showToast("No se ha seleccionado ninguna cátedra.", "warning");
+        return;
+    }
+    const monthSelect = document.getElementById('coursePrintMonthSelect');
+    const month = monthSelect ? parseInt(monthSelect.value) || 8 : 8;
+    printCourseAttendanceSheet(_currentPrintCourseId, month);
+}
+window.triggerCoursePrintAttendance = triggerCoursePrintAttendance;
+
+function printCourseStudentList(courseId) {
+    const targetCourse = (STATE.pensum || []).find(p => p.id === courseId);
+    if (!targetCourse) {
+        showToast("Cátedra no encontrada para imprimir la nómina.", "warning");
+        return;
+    }
+
+    const gradeCode = targetCourse.gradeCode || targetCourse.grade;
+    const students = (typeof getSortedGradebookStudents === 'function')
+        ? getSortedGradebookStudents(gradeCode, targetCourse)
+        : (STATE.students || []).filter(s => s.active !== false && (s.grade === gradeCode || (s.gradeLabel && s.gradeLabel.includes(gradeCode))));
+
+    students.sort((a, b) => {
+        const lastA = (a.lastName || '').localeCompare(b.lastName || '', 'es', { sensitivity: 'base' });
+        if (lastA !== 0) return lastA;
+        return (a.firstName || '').localeCompare(b.firstName || '', 'es', { sensitivity: 'base' });
+    });
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast("Por favor permita las ventanas emergentes (popups) para imprimir.", "warning");
+        return;
+    }
+
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
+    const dateStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const capDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+    const rawSec = targetCourse.section || 'A';
+    const secClean = rawSec.toLowerCase().startsWith('secci') ? rawSec : `Sección ${rawSec}`;
+
+    const rowsHtml = students.length === 0 ? `
+        <tr><td colspan="5" style="text-align:center; padding:20px; font-weight:bold; color:#666;">No hay estudiantes inscritos en esta sección.</td></tr>
+    ` : students.map((s, idx) => `
+        <tr>
+            <td style="border:1px solid #333; padding:4px 6px; text-align:center; font-weight:bold;">${idx + 1}</td>
+            <td style="border:1px solid #333; padding:4px 6px; text-align:center; font-family:monospace; font-weight:700;">${s.personalCode || s.carne || '---'}</td>
+            <td style="border:1px solid #333; padding:4px 6px; text-align:center; font-family:monospace;">${s.cui || '---'}</td>
+            <td style="border:1px solid #333; padding:4px 8px; font-weight:bold; text-transform:uppercase;">${s.lastName || ''}, ${s.firstName || s.name || ''}</td>
+            <td style="border:1px solid #333; padding:4px 6px;"></td>
+        </tr>
+    `).join('');
+
+    printWin.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Nómina Oficial de Estudiantes - ${targetCourse.subject} - ${targetCourse.grade}</title>
+    <style>
+        @page { size: 8.5in 11in portrait; margin: 8mm 10mm; }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; padding: 0; margin: 0; color: #000; background: #fff; line-height: 1.25; font-size: 9pt; }
+        .header-box { border: 2px solid #15803d; border-radius: 6px; overflow: hidden; margin-bottom: 8px; }
+        .top-banner { background: #166534 !important; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; }
+        .school-title { font-size: 15px; font-weight: 900; text-transform: uppercase; margin: 0; letter-spacing: 0.3px; }
+        .school-sub { font-size: 9.5px; opacity: 0.95; }
+        .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 8.5pt; border: 1px solid #cbd5e1; }
+        .meta-table td { padding: 4px 8px; border: 1px solid #cbd5e1; }
+        .meta-lbl { font-weight: 800; background: #f0fdf4; width: 130px; color: #166534; }
+        .meta-val { font-weight: 600; color: #0f172a; }
+        table.roster-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+        table.roster-table th { background: #15803d !important; color: #fff !important; padding: 6px 4px; text-align: center; font-weight: 800; font-size: 8pt; text-transform: uppercase; border: 1px solid #333; }
+        table.roster-table td { border: 1px solid #333; padding: 4px 6px; font-size: 8.5pt; }
+        table.roster-table tr:nth-child(even) { background-color: #f8fafc; }
+        .footer-note { margin-top: 14px; display: flex; justify-content: space-between; font-size: 8pt; color: #64748b; border-top: 1px dashed #94a3b8; padding-top: 6px; }
+    </style>
+</head>
+<body>
+    <div class="header-box">
+        <div class="top-banner">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <img src="${h.schoolLogoUrl || 'logo.png'}" style="height:44px; width:auto; max-width:55px;" onerror="this.style.display='none'">
+                <div>
+                    <h1 class="school-title">${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</h1>
+                    <div class="school-sub">ENCCO Jutiapa (1970) | Jornada Matutina — Ciclo Lectivo ${STATE.activeCycle || '2026'}</div>
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <span style="background:rgba(255,255,255,0.25); color:#fff; font-size:9.5px; font-weight:800; padding:4px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.4);">NÓMINA OFICIAL</span>
+            </div>
+        </div>
+    </div>
+
+    <table class="meta-table">
+        <tr>
+            <td class="meta-lbl">CARRERA:</td>
+            <td class="meta-val">${targetCourse.career || 'Perito Contador'}</td>
+            <td class="meta-lbl">GRADO Y SECCIÓN:</td>
+            <td class="meta-val"><strong>${targetCourse.grade} — ${secClean}</strong></td>
+        </tr>
+        <tr>
+            <td class="meta-lbl">CÁTEDRA:</td>
+            <td class="meta-val"><strong style="color:#15803d;">${targetCourse.subject}</strong></td>
+            <td class="meta-lbl">CATEDRÁTICO(A):</td>
+            <td class="meta-val"><strong>${targetCourse.teacher || (STATE.currentUser ? STATE.currentUser.name : 'Catedrático Titular')}</strong></td>
+        </tr>
+    </table>
+
+    <table class="roster-table">
+        <thead>
+            <tr>
+                <th style="width:30px;">No.</th>
+                <th style="width:95px;">Código Personal</th>
+                <th style="width:110px;">CUI</th>
+                <th>Apellidos y Nombres del Estudiante</th>
+                <th style="width:140px;">Observaciones / Firma</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml}
+        </tbody>
+    </table>
+
+    <div class="footer-note">
+        <span>Total de estudiantes inscritos: <strong>${students.length}</strong></span>
+        <span>Fecha de emisión: ${capDate}</span>
+    </div>
+
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 300);
+        };
+    </script>
+</body>
+</html>`);
+    printWin.document.close();
+}
+window.printCourseStudentList = printCourseStudentList;
+
+function printCourseAttendanceSheet(courseId, monthNum = null) {
+    const targetCourse = (STATE.pensum || []).find(p => p.id === courseId);
+    if (!targetCourse) {
+        showToast("Cátedra no encontrada para imprimir la asistencia.", "warning");
+        return;
+    }
+
+    const month = parseInt(monthNum) || (new Date().getMonth() + 1);
+    const year = parseInt(STATE.activeCycle) || 2026;
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const dayNames = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
+    const monthNames = {
+        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril', 5: 'Mayo', 6: 'Junio',
+        7: 'Julio', 8: 'Agosto', 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+    };
+
+    const gradeCode = targetCourse.gradeCode || targetCourse.grade;
+    const students = (typeof getSortedGradebookStudents === 'function')
+        ? getSortedGradebookStudents(gradeCode, targetCourse)
+        : (STATE.students || []).filter(s => s.active !== false && (s.grade === gradeCode || (s.gradeLabel && s.gradeLabel.includes(gradeCode))));
+
+    students.sort((a, b) => {
+        const lastA = (a.lastName || '').localeCompare(b.lastName || '', 'es', { sensitivity: 'base' });
+        if (lastA !== 0) return lastA;
+        return (a.firstName || '').localeCompare(b.firstName || '', 'es', { sensitivity: 'base' });
+    });
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast("Por favor permita las ventanas emergentes (popups) para imprimir.", "warning");
+        return;
+    }
+
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
+    const rawSec = targetCourse.section || 'A';
+    const secClean = rawSec.toLowerCase().startsWith('secci') ? rawSec : `Sección ${rawSec}`;
+
+    let dayHeaders = '';
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateObj = new Date(year, month - 1, d);
+        const dayOfWeek = dateObj.getDay();
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+        const bg = isWeekend ? '#e2e8f0' : '#ffffff';
+        dayHeaders += `<th style="width:16px; padding:2px 0; font-size:7px; text-align:center; background:${bg}; border:1px solid #64748b;">${d}<br><span style="font-size:6px; font-weight:normal;">${dayNames[dayOfWeek]}</span></th>`;
+    }
+
+    const rowsHtml = students.map((s, idx) => {
+        let dayCells = '';
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateObj = new Date(year, month - 1, d);
+            const dayOfWeek = dateObj.getDay();
+            const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+            const bg = isWeekend ? '#e2e8f0' : '#ffffff';
+            dayCells += `<td style="background:${bg}; border:1px solid #64748b; padding:0; height:18px;"></td>`;
+        }
+        return `
+            <tr>
+                <td style="border:1px solid #333; text-align:center; font-weight:bold; font-size:7.5px; padding:2px;">${idx + 1}</td>
+                <td style="border:1px solid #333; font-family:monospace; font-size:7.5px; text-align:center; padding:2px;">${s.personalCode || s.carne || ''}</td>
+                <td style="border:1px solid #333; font-weight:600; font-size:7.5px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:2px 4px;">${s.lastName || ''}, ${s.firstName || s.name || ''}</td>
+                ${dayCells}
+                <td style="border:1px solid #333; width:22px;"></td>
+                <td style="border:1px solid #333; width:22px;"></td>
+            </tr>
+        `;
+    }).join('');
+
+    printWin.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Control de Asistencia - ${targetCourse.subject} - ${monthNames[month]} ${year}</title>
+    <style>
+        @page { size: 13in 8.5in landscape; margin: 6mm 8mm; }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; padding: 0; margin: 0; color: #000; background: #fff; line-height: 1.15; font-size: 8pt; }
+        .header-box { border: 1.5px solid #166534; border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+        .top-banner { background: #166534 !important; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; }
+        .school-title { font-size: 14px; font-weight: 900; text-transform: uppercase; margin: 0; }
+        .school-sub { font-size: 9px; opacity: 0.95; }
+        .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; font-size: 8pt; border: 1px solid #cbd5e1; }
+        .meta-table td { padding: 3px 6px; border: 1px solid #cbd5e1; }
+        .meta-lbl { font-weight: 800; background: #f0fdf4; width: 110px; color: #166534; font-size:7.5pt; }
+        .meta-val { font-weight: 600; color: #0f172a; font-size:7.5pt; }
+        table.att-table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+        table.att-table th { background: #15803d !important; color: #fff !important; padding: 4px 2px; text-align: center; font-weight: 800; font-size: 7pt; text-transform: uppercase; border: 1px solid #333; }
+        table.att-table td { border: 1px solid #64748b; }
+    </style>
+</head>
+<body>
+    <div class="header-box">
+        <div class="top-banner">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <img src="${h.schoolLogoUrl || 'logo.png'}" style="height:36px; width:auto; max-width:48px;" onerror="this.style.display='none'">
+                <div>
+                    <h1 class="school-title">${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</h1>
+                    <div class="school-sub">ENCCO Jutiapa (1970) | Ciclo Lectivo ${year} — CONTROL MENSUAL DE ASISTENCIA (${monthNames[month].toUpperCase()})</div>
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <span style="background:rgba(255,255,255,0.25); color:#fff; font-size:9px; font-weight:800; padding:3px 8px; border-radius:10px;">${monthNames[month].toUpperCase()} ${year}</span>
+            </div>
+        </div>
+    </div>
+
+    <table class="meta-table">
+        <tr>
+            <td class="meta-lbl">CARRERA:</td>
+            <td class="meta-val">${targetCourse.career || 'Perito Contador'}</td>
+            <td class="meta-lbl">GRADO Y SECCIÓN:</td>
+            <td class="meta-val"><strong>${targetCourse.grade} — ${secClean}</strong></td>
+            <td class="meta-lbl">MES:</td>
+            <td class="meta-val"><strong>${monthNames[month]} ${year}</strong></td>
+        </tr>
+        <tr>
+            <td class="meta-lbl">CÁTEDRA:</td>
+            <td class="meta-val"><strong style="color:#15803d;">${targetCourse.subject}</strong></td>
+            <td class="meta-lbl">CATEDRÁTICO(A):</td>
+            <td class="meta-val"><strong>${targetCourse.teacher || (STATE.currentUser ? STATE.currentUser.name : 'Catedrático Titular')}</strong></td>
+            <td class="meta-lbl">ALUMNOS:</td>
+            <td class="meta-val"><strong>${students.length}</strong></td>
+        </tr>
+    </table>
+
+    <table class="att-table">
+        <thead>
+            <tr>
+                <th rowspan="2" style="width:24px;">No.</th>
+                <th rowspan="2" style="width:75px;">Código Personal</th>
+                <th rowspan="2" style="width:190px;">Apellidos y Nombres</th>
+                <th colspan="${daysInMonth}">Días del Mes de ${monthNames[month]}</th>
+                <th rowspan="2" style="width:22px; font-size:6.5px;">Total<br>Asist.</th>
+                <th rowspan="2" style="width:22px; font-size:6.5px;">Total<br>Faltas</th>
+            </tr>
+            <tr>
+                ${dayHeaders}
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml}
+        </tbody>
+    </table>
+
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 300);
+        };
+    </script>
+</body>
+</html>`);
+    printWin.document.close();
+}
+window.printCourseAttendanceSheet = printCourseAttendanceSheet;
+
+function openPrintForCourse(grade, section, subject, courseId = null) {
+    if (courseId) {
+        openCoursePrintModal(courseId, grade, section, subject);
+        return;
+    }
+    const targetPensum = (STATE.pensum || []).find(p => {
+        const matchGrade = (p.grade === grade || (p.gradeCode && p.gradeCode.includes(grade)));
+        const matchSec = (!section || p.section === section);
+        const matchSub = (!subject || p.subject === subject || p.name === subject);
+        return matchGrade && matchSec && matchSub;
+    });
+    if (targetPensum) {
+        openCoursePrintModal(targetPensum.id, grade, section, subject);
+        return;
+    }
+
     const gradeObj = (STATE.gradesList || []).find(g => g.name === grade && g.section === section) || (STATE.gradesList || []).find(g => g.code.includes(grade));
     const gradeCode = gradeObj ? gradeObj.code : (grade || '4TO_PERITO_A');
     const career = gradeObj ? gradeObj.career : 'Perito Contador';
     const currentUser = STATE.currentUser || STATE.users[0];
 
-    navigateTo('excel-import');
-
-    setTimeout(() => {
-        const gradeSel = document.getElementById('printModelGradeSelect');
-        const careerSel = document.getElementById('printModelCareerSelect');
-        const subInput = document.getElementById('printModelSubjectName');
-        const teachInput = document.getElementById('printModelTeacherName');
-        const typeSel = document.getElementById('printModelTypeSelect');
-        const bimSel = document.getElementById('printModelBimestreSelect');
-
-        if (careerSel) careerSel.value = career;
-        if (gradeSel) {
-            gradeSel.value = gradeCode;
-            updatePrintModelSelects();
-        }
-        if (subInput) subInput.value = subject;
-        if (teachInput) teachInput.value = currentUser ? currentUser.name : 'Catedrático Titular';
-        if (bimSel) bimSel.value = (STATE.config?.activeBimestre || 2).toString();
-        if (typeSel) typeSel.value = 'CUADRO_CALIFICACIONES_EXCEL';
-
-        generateOfficialPrintList();
-    }, 60);
+    generateOfficialPrintList({
+        targetPensum: targetPensum,
+        career: career,
+        gradeCode: gradeCode,
+        subjectName: subject,
+        teacherName: currentUser ? currentUser.name : 'Catedrático Titular',
+        bimestreNum: (STATE.config?.activeBimestre || 2).toString(),
+        modelType: 'CUADRO_CALIFICACIONES_EXCEL'
+    });
 }
+window.openPrintForCourse = openPrintForCourse;
 
 // ==========================================================================
 // 5. INSCRIPCIÓN, EDICIÓN Y ELIMINACIÓN DE ESTUDIANTES
@@ -23663,7 +24039,8 @@ function openSectionStudentsModal(gradeCode) {
         getSortedGradebookStudents(gradeCode, gradeObj) : 
         (STATE.students || []).filter(s => s.grade === gradeCode || (gradeObj && s.grade === gradeObj.name));
 
-    if (title) title.textContent = gradeObj ? `${gradeObj.name} - Sección ${gradeObj.section}` : gradeCode;
+    const secClean = (gradeObj?.section || '').toLowerCase().startsWith('secci') ? gradeObj.section : ('Sección ' + (gradeObj?.section || 'A'));
+    if (title) title.textContent = gradeObj ? `${gradeObj.name} - ${secClean}` : gradeCode;
     if (subtitle) subtitle.textContent = `Carrera: ${gradeObj?.career || 'Perito Contador'} | Jornada: ${gradeObj?.shift || 'Matutina'}`;
     if (badge) badge.textContent = `${students.length} Estudiantes`;
 

@@ -2405,6 +2405,111 @@
         </div>
     </div>
 
+    <!-- MODAL IMPRESIÓN DE LISTAS DE CLASE (ACCESIBLE PARA DOCENTES Y DIRECTIVOS) -->
+    <div class="modal-overlay" id="coursePrintModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeCoursePrintModal()">
+        <div class="modal-container" style="max-width: 760px;">
+            <div class="modal-header" style="background:linear-gradient(135deg, #15803d, #166534); color:#ffffff;">
+                <h3 style="color:#ffffff; margin:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-print"></i> Opciones de Impresión de Listas Oficiales
+                </h3>
+                <button class="modal-close" onclick="closeCoursePrintModal()" style="color:#ffffff;">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:20px; max-height: calc(85vh - 120px); overflow-y: auto;">
+                <!-- Tarjeta informativa de la cátedra -->
+                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:14px 18px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                    <div>
+                        <h4 id="coursePrintSubjectName" style="margin:0; font-size:1.12rem; color:#166534; font-weight:800;">Cálculo Mercantil</h4>
+                        <div id="coursePrintMetaInfo" style="margin-top:4px; font-size:0.85rem; color:#15803d; font-weight:600;">
+                            5to Perito Contador — Sección A | Catedrático: PEM. Nehemias Yalil Salguero
+                        </div>
+                    </div>
+                    <div>
+                        <span id="coursePrintStudentCount" class="badge" style="background:#15803d; color:white; font-size:0.85rem; padding:6px 14px; border-radius:20px; font-weight:700;">
+                            <i class="fa-solid fa-users"></i> 37 Estudiantes
+                        </span>
+                    </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:14px;">
+                    <!-- OPCIÓN 1: CUADRO OFICIAL DE CALIFICACIONES Y ZONA -->
+                    <div style="background:var(--bg-main); border:1.5px solid #0284c7; border-radius:8px; padding:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                        <div style="flex:1; min-width:240px;">
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                                <span style="background:#0284c7; color:white; font-size:0.75rem; padding:2px 8px; border-radius:12px; font-weight:800;">RECOMENDADO</span>
+                                <strong style="font-size:0.98rem; color:#0369a1;"><i class="fa-solid fa-table-list"></i> Cuadro Oficial de Calificaciones y Zona</strong>
+                            </div>
+                            <p style="margin:0; font-size:0.82rem; color:var(--text-secondary);">
+                                Formato oficial membretado con desglose de zona (60 pts), examen (40 pts) y total de 100 pts.
+                            </p>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <select id="coursePrintBimestreSelect" class="form-control form-control-sm" style="width:130px; font-weight:700;">
+                                <option value="1">1º Bimestre</option>
+                                <option value="2" selected>2º Bimestre</option>
+                                <option value="3">3º Bimestre</option>
+                                <option value="4">4º Bimestre</option>
+                            </select>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="triggerCoursePrintGradebook()" style="font-weight:700; white-space:nowrap;">
+                                <i class="fa-solid fa-print"></i> Imprimir Cuadro
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- OPCIÓN 2: NÓMINA OFICIAL DE ESTUDIANTES -->
+                    <div style="background:var(--bg-main); border:1px solid var(--border-color); border-radius:8px; padding:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                        <div style="flex:1; min-width:240px;">
+                            <strong style="font-size:0.98rem; color:var(--text-primary); display:block; margin-bottom:4px;">
+                                <i class="fa-solid fa-list-ol" style="color:var(--brand-green);"></i> Nómina Oficial de Estudiantes (Lista Simple)
+                            </strong>
+                            <p style="margin:0; font-size:0.82rem; color:var(--text-secondary);">
+                                Listado limpio institucional con correlativo, carné, CUI, apellidos y nombres completos para control de aula.
+                            </p>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-outline-success btn-sm" onclick="triggerCoursePrintStudentRoster()" style="font-weight:700; white-space:nowrap;">
+                                <i class="fa-solid fa-print"></i> Imprimir Nómina
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- OPCIÓN 3: CUADRO DE ASISTENCIA DIARIA / MENSUAL -->
+                    <div style="background:var(--bg-main); border:1px solid var(--border-color); border-radius:8px; padding:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                        <div style="flex:1; min-width:240px;">
+                            <strong style="font-size:0.98rem; color:var(--text-primary); display:block; margin-bottom:4px;">
+                                <i class="fa-solid fa-calendar-days" style="color:#d97706;"></i> Control Diario de Asistencia Mensual
+                            </strong>
+                            <p style="margin:0; font-size:0.82rem; color:var(--text-secondary);">
+                                Formato con cuadrícula del día 1 al 31 para registrar la asistencia diaria de los alumnos en clase.
+                            </p>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <select id="coursePrintMonthSelect" class="form-control form-control-sm" style="width:130px; font-weight:700;">
+                                <option value="1">Enero</option>
+                                <option value="2">Febrero</option>
+                                <option value="3">Marzo</option>
+                                <option value="4">Abril</option>
+                                <option value="5">Mayo</option>
+                                <option value="6">Junio</option>
+                                <option value="7">Julio</option>
+                                <option value="8" selected>Agosto</option>
+                                <option value="9">Septiembre</option>
+                                <option value="10">Octubre</option>
+                                <option value="11">Noviembre</option>
+                            </select>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="triggerCoursePrintAttendance()" style="font-weight:700; white-space:nowrap;">
+                                <i class="fa-solid fa-print"></i> Imprimir Asistencia
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
+                <small style="color:var(--text-muted); font-size:0.8rem;"><i class="fa-solid fa-circle-check" style="color:#15803d;"></i> Formatos oficiales membretados listos para impresión física o PDF.</small>
+                <button type="button" class="btn btn-secondary" onclick="closeCoursePrintModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 1B. MODAL NÓMINA DE ESTUDIANTES POR SECCIÓN -->
     <div class="modal-overlay" id="sectionStudentsModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeSectionStudentsModal()">
         <div class="modal-container medium" style="max-width: 800px;">
