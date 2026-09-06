@@ -28349,9 +28349,485 @@ function exportAttendanceOfficialExcel() {
     exportAttendanceToCSV();
 }
 
+// ==========================================================================
+// ? EXPORTACIÓN E IMPORTACIÓN OFICIAL DE CALIFICACIONES EN FORMATO EXCEL
+// ==========================================================================
+
 function exportGradebookOfficialExcel() {
-    exportGradebookToCSV();
+    const courseSelect = document.getElementById('teacherCourseSelect');
+    const selectedCourseId = courseSelect ? courseSelect.value : null;
+    let targetPensum = (STATE.pensum || []).find(p => p.id === selectedCourseId);
+
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentUser = STATE.currentUser || (STATE.users || []).find(u => u.role === 'docente');
+
+    if (!targetPensum && isDocente && currentUser) {
+        targetPensum = (STATE.pensum || []).find(p => 
+            p.teacherId === currentUser.id || 
+            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())
+        );
+    } else if (!targetPensum) {
+        targetPensum = (STATE.pensum || [])[0];
+    }
+
+    if (!targetPensum) {
+        showToast("Por favor seleccione una cátedra para exportar su cuadro de notas.", "warning");
+        return;
+    }
+
+    const currentUnit = isDocente ? 
+        (parseInt(STATE.config?.activeBimestre) || 2) : 
+        (parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 2);
+
+    const gradeCode = targetPensum.gradeCode || targetPensum.grade;
+    let students = (typeof getSortedGradebookStudents === 'function') ? getSortedGradebookStudents(gradeCode, targetPensum) : [];
+    if (!students || students.length === 0) {
+        students = (STATE.students || []).filter(s => {
+            if (s.active === false) return false;
+            if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
+            const sg = `${s.grade || ''} ${s.section || ''}`.toLowerCase();
+            const tg = `${targetPensum.grade || ''} ${targetPensum.section || ''}`.toLowerCase();
+            return sg.includes(tg);
+        });
+    }
+
+    if (!students || students.length === 0) {
+        showToast(`No hay estudiantes asignados en ${targetPensum.grade} (${targetPensum.section}) para exportar.`, "warning");
+        return;
+    }
+
+    students.sort((a, b) => {
+        const nameA = `${a.lastName || ''} ${a.firstName || a.name || ''}`.toUpperCase().trim();
+        const nameB = `${b.lastName || ''} ${b.firstName || b.name || ''}`.toUpperCase().trim();
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
+
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
+    const cycle = STATE.activeCycle || '2026';
+    const cfg = (typeof getGradingConfig === 'function') 
+        ? getGradingConfig(targetPensum, currentUnit) 
+        : { zonaMax: 60, examMax: 40, activities: [] };
+
+    // Formatear actividades (hasta 10)
+    let actsConfig = (cfg.activities && Array.isArray(cfg.activities)) ? cfg.activities : [];
+    if (actsConfig.length < 10) {
+        for (let i = actsConfig.length; i < 10; i++) {
+            actsConfig.push({ id: i + 1, name: `Actividad ${i + 1}`, max: 0 });
+        }
+    } else if (actsConfig.length > 10) {
+        actsConfig = actsConfig.slice(0, 10);
+    }
+
+    const cleanSubject = (targetPensum.subject || 'Materia').replace(/[\\/:*?"<>|]/g, '_');
+    const cleanGrade = (targetPensum.grade || 'Grado').replace(/[\\/:*?"<>|]/g, '_');
+    const cleanSection = (targetPensum.section || 'Sec').replace(/[\\/:*?"<>|]/g, '_');
+    const fileName = `Cuadro_Notas_${cleanGrade}_${cleanSection}_${cleanSubject}_B${currentUnit}_${cycle}.xlsx`;
+
+    const xlsxLib = (typeof window !== 'undefined' && window.XLSX) ? window.XLSX : (typeof XLSX !== 'undefined' ? XLSX : null);
+
+    if (xlsxLib && xlsxLib.utils) {
+        try {
+            const aoa = [
+                [`${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'} - ENCCO JUTIAPA`],
+                [`CUADRO OFICIAL DE REGISTRO DE CALIFICACIONES - CICLO ESCOLAR ${cycle}`],
+                [
+                    'Catedra:', targetPensum.subject,
+                    'Catedratico:', targetPensum.teacher,
+                    'Ciclo Escolar:', cycle
+                ],
+                [
+                    'Carrera:', targetPensum.career || 'Perito Contador',
+                    'Grado:', targetPensum.grade,
+                    'Seccion:', targetPensum.section || 'A',
+                    'Bimestre:', `${currentUnit}o. Bimestre`
+                ],
+                [
+                    'Ponderacion Oficial:',
+                    `Zona Maxima: ${cfg.zonaMax || 60} pts`,
+                    `Examen / Evaluacion: ${cfg.examMax || 40} pts`,
+                    'Total Oficial: 100 pts'
+                ],
+                []
+            ];
+
+            const colHeaders = [
+                'No.',
+                'Codigo Personal',
+                'CUI / DPI',
+                'Apellidos y Nombres'
+            ];
+
+            actsConfig.forEach((act, i) => {
+                const actName = act.name || `Actividad ${i+1}`;
+                const actMax = (act.max !== undefined && act.max !== null && act.max !== '') ? act.max : 0;
+                colHeaders.push(`Act ${i+1}: ${actName} (${actMax} pts)`);
+            });
+
+            colHeaders.push('Total Zona');
+            colHeaders.push('Examen');
+            colHeaders.push('Total Bimestre');
+            colHeaders.push('Resultado');
+
+            aoa.push(colHeaders);
+
+            const startRowIdx = aoa.length;
+
+            students.forEach((s, idx) => {
+                const rowNum = startRowIdx + idx + 1;
+                const fullName = `${s.lastName || ''}, ${s.firstName || ''}`.trim() || s.name || '';
+                const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
+
+                const row = [
+                    s.clave || (idx + 1),
+                    s.personalCode || '',
+                    s.cui || '',
+                    fullName
+                ];
+
+                const uData = (s.gradebookDetails && s.gradebookDetails[targetPensum.subject] && s.gradebookDetails[targetPensum.subject][currentUnit])
+                    ? s.gradebookDetails[targetPensum.subject][currentUnit]
+                    : null;
+
+                const acts = (uData && Array.isArray(uData.activities)) ? uData.activities : [0,0,0,0,0,0,0,0,0,0];
+                let sumZona = 0;
+
+                actsConfig.forEach((act, actIdx) => {
+                    const score = (acts[actIdx] !== undefined && acts[actIdx] !== null && acts[actIdx] !== '') ? Number(acts[actIdx]) : 0;
+                    sumZona += score;
+                    row.push(score);
+                });
+
+                const examVal = (uData && uData.exam !== undefined && uData.exam !== null && uData.exam !== '') ? Number(uData.exam) : 0;
+                const totalVal = sumZona + examVal;
+                const resultVal = totalVal >= 60 ? 'APROBADO' : 'NO APROBADO';
+
+                // Fórmulas de Excel en mayúsculas estándar
+                row.push({ t: 'n', f: `SUM(E${rowNum}:N${rowNum})`, v: sumZona });
+                row.push(examVal);
+                row.push({ t: 'n', f: `O${rowNum}+P${rowNum}`, v: totalVal });
+                row.push({ t: 's', f: `IF(Q${rowNum}>=60,"APROBADO","NO APROBADO")`, v: resultVal });
+
+                aoa.push(row);
+            });
+
+            // Fila de promedios generales
+            const lastDataRow = startRowIdx + students.length;
+            const summaryRow = ['', '', '', 'PROMEDIO GENERAL DE LA SECCIÓN:'];
+            for (let c = 0; c < 10; c++) summaryRow.push('');
+            summaryRow.push({ t: 'n', f: `AVERAGE(O${startRowIdx + 1}:O${lastDataRow})` });
+            summaryRow.push({ t: 'n', f: `AVERAGE(P${startRowIdx + 1}:P${lastDataRow})` });
+            summaryRow.push({ t: 'n', f: `AVERAGE(Q${startRowIdx + 1}:Q${lastDataRow})` });
+            summaryRow.push('');
+            aoa.push(summaryRow);
+
+            const ws = xlsxLib.utils.aoa_to_sheet(aoa);
+
+            ws['!cols'] = [
+                { wch: 6 },  // No.
+                { wch: 16 }, // Codigo Personal
+                { wch: 18 }, // CUI
+                { wch: 38 }, // Estudiante
+                { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+                { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
+                { wch: 13 }, // Total Zona
+                { wch: 13 }, // Examen
+                { wch: 15 }, // Total Bimestre
+                { wch: 15 }  // Resultado
+            ];
+
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 17 } },
+                { s: { r: 1, c: 0 }, e: { r: 1, c: 17 } }
+            ];
+
+            const wb = xlsxLib.utils.book_new();
+            const sheetTitle = `${(targetPensum.grade || 'Grado').slice(0, 10)} ${targetPensum.section || ''} - B${currentUnit}`.replace(/[\\/:*?"<>|]/g, '_');
+            xlsxLib.utils.book_append_sheet(wb, ws, sheetTitle);
+
+            xlsxLib.writeFile(wb, fileName);
+            showToast(`Cuadro de notas exportado exitosamente como "${fileName}".`, "success");
+            return;
+        } catch (err) {
+            console.error("Error al exportar con SheetJS:", err);
+        }
+    }
+
+    // Fallback si SheetJS no está cargado
+    exportGradebookHtmlExcelFallback(targetPensum, currentUnit, students, actsConfig, cfg, fileName);
 }
+window.exportGradebookOfficialExcel = exportGradebookOfficialExcel;
+window.exportGradebookOfficialCSV = exportGradebookOfficialExcel;
+
+function exportGradebookHtmlExcelFallback(targetPensum, unit, students, actsConfig, cfg, fileName) {
+    const cycle = STATE.activeCycle || '2026';
+    const h = STATE.schoolHeader || {};
+
+    let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head><meta charset="utf-8">
+    <style>
+        th { background:#f1f5f9; font-weight:bold; border:1px solid #000; padding:6px; font-family:Arial; }
+        td { border:1px solid #000; padding:5px; font-family:Arial; }
+    </style>
+    </head>
+    <body>
+    <table>
+        <tr><th colspan="18" style="font-size:14pt; background:#166534; color:#fff;">${escapeHtml(h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES')} - ENCCO JUTIAPA</th></tr>
+        <tr><th colspan="18" style="font-size:12pt; background:#0f172a; color:#fff;">CUADRO OFICIAL DE CALIFICACIONES - CICLO ESCOLAR ${escapeHtml(cycle)}</th></tr>
+        <tr>
+            <td colspan="3"><strong>Cátedra:</strong> ${escapeHtml(targetPensum.subject)}</td>
+            <td colspan="6"><strong>Catedrático:</strong> ${escapeHtml(targetPensum.teacher)}</td>
+            <td colspan="4"><strong>Grado y Sección:</strong> ${escapeHtml(targetPensum.grade)} "${escapeHtml(targetPensum.section || 'A')}"</td>
+            <td colspan="5"><strong>Bimestre:</strong> ${unit}o. Bimestre</td>
+        </tr>
+        <tr></tr>
+        <tr>
+            <th>No.</th><th>Código Personal</th><th>CUI / DPI</th><th>Apellidos y Nombres</th>
+            ${actsConfig.map((a, i) => `<th>Act ${i+1}: ${escapeHtml(a.name)} (${a.max} pts)</th>`).join('')}
+            <th>Total Zona</th><th>Examen</th><th>Total Bimestre</th><th>Resultado</th>
+        </tr>`;
+
+    students.forEach((s, idx) => {
+        const fullName = `${s.lastName || ''}, ${s.firstName || ''}`.trim() || s.name || '';
+        const uData = (s.gradebookDetails && s.gradebookDetails[targetPensum.subject] && s.gradebookDetails[targetPensum.subject][unit])
+            ? s.gradebookDetails[targetPensum.subject][unit] : null;
+        const acts = (uData && Array.isArray(uData.activities)) ? uData.activities : [0,0,0,0,0,0,0,0,0,0];
+        const zona = uData ? (uData.zona || 0) : 0;
+        const exam = uData ? (uData.exam || 0) : 0;
+        const total = uData ? (uData.total || (zona + exam)) : 0;
+
+        html += `<tr>
+            <td style="text-align:center;">${idx + 1}</td>
+            <td style="text-align:center;">${escapeHtml(s.personalCode || '')}</td>
+            <td style="text-align:center;">${escapeHtml(s.cui || '')}</td>
+            <td>${escapeHtml(fullName)}</td>
+            ${actsConfig.map((a, i) => `<td style="text-align:center;">${acts[i] || 0}</td>`).join('')}
+            <td style="text-align:center; font-weight:bold;">${zona}</td>
+            <td style="text-align:center; font-weight:bold;">${exam}</td>
+            <td style="text-align:center; font-weight:bold;">${total}</td>
+            <td style="text-align:center;">${total >= 60 ? 'APROBADO' : 'NO APROBADO'}</td>
+        </tr>`;
+    });
+
+    html += `</table></body></html>`;
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const cleanName = fileName.replace(/\.xlsx$/i, '.xls');
+    triggerBlobDownload(blob, cleanName);
+    showToast(`Cuadro de notas descargado como "${cleanName}".`, "success");
+}
+
+function triggerGradebookExcelImport() {
+    let fileInput = document.getElementById('gradebookExcelFileInput');
+    if (!fileInput) {
+        fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.id = 'gradebookExcelFileInput';
+        fileInput.accept = '.xlsx, .xls, .csv';
+        fileInput.style.display = 'none';
+        fileInput.onchange = handleGradebookExcelImport;
+        document.body.appendChild(fileInput);
+    }
+    fileInput.value = '';
+    fileInput.click();
+}
+window.triggerGradebookExcelImport = triggerGradebookExcelImport;
+
+function handleGradebookExcelImport(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    const courseSelect = document.getElementById('teacherCourseSelect');
+    const selectedCourseId = courseSelect ? courseSelect.value : null;
+    let targetPensum = (STATE.pensum || []).find(p => p.id === selectedCourseId);
+
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentUser = STATE.currentUser || (STATE.users || []).find(u => u.role === 'docente');
+
+    if (!targetPensum && isDocente && currentUser) {
+        targetPensum = (STATE.pensum || []).find(p => 
+            p.teacherId === currentUser.id || 
+            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())
+        );
+    } else if (!targetPensum) {
+        targetPensum = (STATE.pensum || [])[0];
+    }
+
+    const currentUnit = isDocente ? 
+        (parseInt(STATE.config?.activeBimestre) || 2) : 
+        (parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 2);
+
+    if (window.XLSX) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+                processGradebookImportRows(rawRows, targetPensum, currentUnit);
+            } catch (err) {
+                console.warn("Error leyendo con SheetJS, usando fallback de texto:", err);
+                fallbackTextGradebookRead(file, targetPensum, currentUnit);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    } else {
+        fallbackTextGradebookRead(file, targetPensum, currentUnit);
+    }
+}
+window.handleGradebookExcelImport = handleGradebookExcelImport;
+
+function fallbackTextGradebookRead(file, targetPensum, currentUnit) {
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        const text = evt.target.result;
+        const rawLines = parseImportFileRows(text);
+        const rawRows = rawLines.map(line => line.split(/,|;|\t/).map(c => c.replace(/^["']|["']$/g, '').trim()));
+        processGradebookImportRows(rawRows, targetPensum, currentUnit);
+    };
+    reader.readAsText(file);
+}
+
+function processGradebookImportRows(rawRows, targetPensum, fallbackUnit) {
+    if (!rawRows || rawRows.length === 0) {
+        showToast("El archivo de calificaciones está vacío.", "warning");
+        return;
+    }
+
+    let headerRowIdx = -1;
+    let detectedSubject = '';
+    let detectedUnit = fallbackUnit;
+
+    for (let r = 0; r < Math.min(rawRows.length, 12); r++) {
+        const row = rawRows[r];
+        if (!Array.isArray(row)) continue;
+        const rowStr = row.map(c => String(c).toLowerCase()).join(' ');
+
+        if (rowStr.includes('catedra:') || rowStr.includes('cátedra:')) {
+            const idxC = row.findIndex(c => String(c).toLowerCase().includes('catedra'));
+            if (idxC !== -1 && row[idxC + 1]) detectedSubject = String(row[idxC + 1]).trim();
+        }
+
+        const bimMatch = rowStr.match(/(\d+)\s*(?:o\.|o|er|do|to|er\.)?\s*bimestre/i);
+        if (bimMatch) detectedUnit = parseInt(bimMatch[1]);
+
+        if (rowStr.includes('clave') || rowStr.includes('no.') || (rowStr.includes('codigo') && rowStr.includes('estudiante')) || rowStr.includes('apellidos y nombres')) {
+            headerRowIdx = r;
+            break;
+        }
+    }
+
+    if (headerRowIdx === -1) headerRowIdx = 6;
+    if (headerRowIdx >= rawRows.length) headerRowIdx = 0;
+
+    const headers = (rawRows[headerRowIdx] || []).map(c => String(c).trim().toLowerCase());
+    const colIdxClave = headers.findIndex(h => h === 'no.' || h === 'no' || h === 'clave' || h === '#');
+    const colIdxCode = headers.findIndex(h => h.includes('codigo') || h.includes('personal') || h.includes('carne'));
+    const colIdxCui = headers.findIndex(h => h.includes('cui') || h.includes('dpi'));
+    const colIdxName = headers.findIndex(h => h.includes('nombre') || h.includes('estudiante') || h.includes('apellidos'));
+
+    const actColIndices = [];
+    for (let i = 1; i <= 10; i++) {
+        const idxAct = headers.findIndex(h => h.startsWith(`act ${i}:`) || h.startsWith(`act ${i} `) || h.startsWith(`act.${i}`) || h.startsWith(`actividad ${i}`));
+        actColIndices.push(idxAct);
+    }
+
+    const colIdxZona = headers.findIndex(h => h.includes('total zona') || h === 'zona');
+    const colIdxExam = headers.findIndex(h => h.includes('examen') || h.includes('evaluacion') || h.includes('evaluación') || h === 'prueba');
+    const colIdxTotal = headers.findIndex(h => h.includes('total bimestre') || h === 'total' || h.includes('nota final'));
+
+    const effectiveSubject = detectedSubject || (targetPensum ? targetPensum.subject : 'Computacion III');
+    const effectiveUnit = detectedUnit || fallbackUnit || 2;
+
+    let updatedCount = 0;
+
+    for (let r = headerRowIdx + 1; r < rawRows.length; r++) {
+        const row = rawRows[r];
+        if (!Array.isArray(row) || row.length === 0) continue;
+
+        const claveVal = colIdxClave !== -1 ? row[colIdxClave] : null;
+        const codeVal = colIdxCode !== -1 ? String(row[colIdxCode]).trim() : '';
+        const cuiVal = colIdxCui !== -1 ? String(row[colIdxCui]).replace(/[^0-9]/g, '') : '';
+        const nameVal = colIdxName !== -1 ? String(row[colIdxName]).trim().toLowerCase() : '';
+
+        if (!nameVal && !codeVal && !cuiVal) continue;
+        if (nameVal.includes('promedio') || nameVal.includes('total')) continue;
+
+        // Buscar coincidencia en la base de estudiantes
+        const matched = (STATE.students || []).find(s => {
+            if (cuiVal && s.cui && s.cui.replace(/[^0-9]/g, '') === cuiVal) return true;
+            if (codeVal && ((s.personalCode && s.personalCode.toLowerCase() === codeVal.toLowerCase()) || (s.carne && s.carne.toLowerCase() === codeVal.toLowerCase()))) return true;
+            if (nameVal) {
+                const sFull = `${s.lastName || ''}, ${s.firstName || ''}`.trim().toLowerCase();
+                const sName = (s.name || '').trim().toLowerCase();
+                if (sFull === nameVal || sName === nameVal || nameVal.includes(s.lastName?.toLowerCase() || '___')) return true;
+            }
+            if (claveVal && s.clave && Number(s.clave) === Number(claveVal)) return true;
+            return false;
+        });
+
+        if (!matched) continue;
+
+        ensureStudentGradebookStructure(matched, effectiveSubject);
+        const gDetail = matched.gradebookDetails[effectiveSubject][effectiveUnit];
+
+        let sumZona = 0;
+        let hasActValues = false;
+        const newActs = [];
+
+        for (let a = 0; a < 10; a++) {
+            const cIdx = actColIndices[a];
+            if (cIdx !== -1 && row[cIdx] !== undefined && row[cIdx] !== '' && !isNaN(row[cIdx])) {
+                const actScore = Math.max(0, Number(row[cIdx]));
+                newActs.push(actScore);
+                sumZona += actScore;
+                hasActValues = true;
+            } else {
+                newActs.push(0);
+            }
+        }
+
+        let examScore = 0;
+        if (colIdxExam !== -1 && row[colIdxExam] !== undefined && row[colIdxExam] !== '' && !isNaN(row[colIdxExam])) {
+            examScore = Math.max(0, Number(row[colIdxExam]));
+        }
+
+        if (hasActValues) {
+            gDetail.activities = newActs;
+            gDetail.zona = sumZona;
+        } else if (colIdxZona !== -1 && row[colIdxZona] !== undefined && row[colIdxZona] !== '' && !isNaN(row[colIdxZona])) {
+            gDetail.zona = Math.max(0, Number(row[colIdxZona]));
+            sumZona = gDetail.zona;
+        }
+
+        gDetail.exam = examScore;
+        const finalTotal = sumZona + examScore;
+        gDetail.total = finalTotal;
+        matched.grades[effectiveSubject][effectiveUnit - 1] = finalTotal;
+
+        updatedCount++;
+    }
+
+    if (updatedCount === 0) {
+        showToast("No se encontraron estudiantes coincidentes en el archivo para actualizar.", "warning");
+        return;
+    }
+
+    saveStateToLocalStorage();
+
+    if (typeof syncStateToFirebaseImmediate === 'function') {
+        syncStateToFirebaseImmediate(false);
+    } else if (typeof autoSyncToCloud === 'function') {
+        autoSyncToCloud(true, false);
+    }
+
+    if (typeof loadTeacherGradebook === 'function') {
+        loadTeacherGradebook();
+    }
+
+    showToast(`¡Notas importadas exitosamente! Se actualizaron ${updatedCount} estudiantes para ${effectiveSubject} (Bimestre ${effectiveUnit}).`, "success");
+}
+
 
 // printGradebookOfficialList implementado arriba con soporte completo de notas
 
@@ -31822,3 +32298,7 @@ window.initRecursiveAutoSaveDaemon = initRecursiveAutoSaveDaemon;
 window.detectBestDatabaseEndpoint = detectBestDatabaseEndpoint;
 window.detectAndApplyBestDatabaseEndpoint = detectAndApplyBestDatabaseEndpoint;
 
+
+window.exportGradebookOfficialExcel = exportGradebookOfficialExcel;
+window.triggerGradebookExcelImport = triggerGradebookExcelImport;
+window.handleGradebookExcelImport = handleGradebookExcelImport;
