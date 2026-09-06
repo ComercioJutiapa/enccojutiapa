@@ -1402,6 +1402,8 @@ body.theme-dark .att-global-pct-bar {
     .gradebook-tabs-nav,
     .card-tools,
     .no-print,
+    .kpi-grid,
+    .info-alert,
     .modal-backdrop,
     .modal-container {
         display: none !important;

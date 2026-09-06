@@ -2972,101 +2972,334 @@ window.handleDirectGuideTeacherChange = handleDirectGuideTeacherChange;
 
 function printGuideTeachersOfficialDirectory() {
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
-    const list = sortGrades(STATE.gradesList || []);
     const cycle = STATE.activeCycle || '2026';
+    const list = sortGrades(STATE.gradesList || []);
 
-    const printWin = window.open('', '_blank');
-    if (!printWin) {
-        showToast("Habilite las ventanas emergentes para imprimir el directorio.", "warning");
-        return;
+    // Filtros activos en la vista
+    const careerFilterEl = document.getElementById('guideTeachersCareerFilter');
+    const careerFilter = (careerFilterEl && careerFilterEl.value) ? careerFilterEl.value : 'ALL';
+    const searchInput = document.getElementById('guideTeachersSearchInput');
+    const searchVal = (searchInput && searchInput.value) ? searchInput.value.trim().toLowerCase() : '';
+
+    let filteredList = list.filter(g => {
+        if (careerFilter !== 'ALL' && g.career !== careerFilter) return false;
+        if (searchVal) {
+            const name = (g.name || '').toLowerCase();
+            const sec = (g.section || '').toLowerCase();
+            const code = (g.code || '').toLowerCase();
+            const guide = (g.guideTeacher || '').toLowerCase();
+            if (!name.includes(searchVal) && !sec.includes(searchVal) && !code.includes(searchVal) && !guide.includes(searchVal)) {
+                return false;
+            }
+        }
+        return true;
+    });
+
+    if (filteredList.length === 0) filteredList = list;
+
+    // Directora y Secretaría oficiales
+    const directorUser = (STATE.users || []).find(u => u.role === 'director');
+    const secretaryUser = (STATE.users || []).find(u => u.role === 'secretaria');
+    const directorName = (h && h.directorName) || (directorUser ? directorUser.name : 'Licda. Carmen Morales');
+    const directorTitle = (h && h.directorTitle) || (directorUser ? (directorUser.title || 'Directora del Plantel') : 'Directora del Plantel');
+    const secretaryName = (h && h.secretaryName) || (secretaryUser ? secretaryUser.name : 'Sra. Beatriz Fuentes');
+    const secretaryTitle = (h && h.secretaryTitle) || (secretaryUser ? (secretaryUser.title || 'Secretaría Académica') : 'Secretaría Académica');
+
+    const todayDate = new Date();
+    const dateFormatted = todayDate.toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const capDate = dateFormatted.charAt(0).toUpperCase() + dateFormatted.slice(1);
+
+    const baseUrl = window.location.href;
+    let logoUrl = 'logo.png';
+    try {
+        if (typeof URL !== 'undefined' && window.location && window.location.href) {
+            logoUrl = new URL('logo.png', window.location.href).href;
+        }
+    } catch (e) {
+        logoUrl = 'logo.png';
     }
 
-    const rows = list.map((g, idx) => {
+    let totalStudentsCount = 0;
+    const rowsHtml = filteredList.map((g, idx) => {
         const count = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
+        totalStudentsCount += count;
         const guideTeacherObj = (STATE.users || []).find(u => u.id === g.guideTeacherId || u.name === g.guideTeacher);
-        const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || 'Sin asignar');
+        const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || 'Pendiente de asignación');
         const guideEmail = guideTeacherObj ? (guideTeacherObj.email || '---') : '---';
-        const guideRenglon = guideTeacherObj?.renglon ? `(${guideTeacherObj.renglon})` : '';
+        const sectionClean = (g.section || '').replace(/Secci[oó]n\s*/i, '').trim() || g.section;
 
         return `
             <tr>
-                <td style="text-align:center; padding:6px 8px; border:1px solid #333; font-weight:bold;">${idx + 1}</td>
-                <td style="padding:6px 8px; border:1px solid #333; font-weight:bold;">${escapeHtml(g.name)}</td>
-                <td style="text-align:center; padding:6px 8px; border:1px solid #333; font-weight:bold;">${escapeHtml(g.section)}</td>
-                <td style="text-align:center; padding:6px 8px; border:1px solid #333; font-family:monospace; font-weight:bold;">${escapeHtml(g.code)}</td>
-                <td style="padding:6px 8px; border:1px solid #333; font-weight:bold;">${escapeHtml(guideName)} ${guideRenglon}</td>
-                <td style="padding:6px 8px; border:1px solid #333; font-size:11px;">${escapeHtml(guideEmail)}</td>
-                <td style="text-align:center; padding:6px 8px; border:1px solid #333; font-weight:bold;">${count}</td>
+                <td style="text-align:center; font-weight:bold; padding:6px 4px; border:1px solid #000;">${idx + 1}</td>
+                <td style="padding:6px 8px; border:1px solid #000; font-weight:bold;">${escapeHtml(g.name)}</td>
+                <td style="text-align:center; padding:6px 4px; border:1px solid #000; font-weight:bold; font-size:11px;">${escapeHtml(sectionClean)}</td>
+                <td style="padding:6px 8px; border:1px solid #000; font-weight:bold;">${escapeHtml(guideName)}</td>
+                <td style="padding:6px 8px; border:1px solid #000; font-size:9.5px;">${escapeHtml(guideEmail)}</td>
+                <td style="text-align:center; padding:6px 4px; border:1px solid #000; font-weight:bold;">${count}</td>
+                <td style="border:1px solid #000; width:110px;"></td>
             </tr>
         `;
     }).join('');
 
-    printWin.document.write(`
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <title>Directorio Oficial de Maestros Guías - Ciclo ${cycle}</title>
-            <style>
-                @page { size: letter portrait; margin: 15mm; }
-                body { font-family: 'Arial', sans-serif; font-size: 11px; margin: 0; padding: 10px; color: #111; }
-                .header-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-                .data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                .data-table th { background: #f0f0f0; border: 1px solid #333; padding: 6px; font-size: 10.5px; text-transform: uppercase; }
-                .footer-signatures { margin-top: 40px; display: flex; justify-content: space-around; }
-                .sig-box { text-align: center; width: 40%; border-top: 1px solid #000; padding-top: 5px; font-weight: bold; }
-            </style>
-        </head>
-        <body>
-            <table class="header-table">
-                <tr>
-                    <td style="width:70px; text-align:center; vertical-align:middle;">
-                        <img src="images/logo.png" style="height:60px;" onerror="this.style.display='none'">
-                    </td>
-                    <td style="text-align:center; vertical-align:middle;">
-                        <div style="font-size:10px; font-weight:bold; letter-spacing:1px; color:#444;">MINISTERIO DE EDUCACIÓN - DIRECCIÓN DEPARTAMENTAL DE JUTIAPA</div>
-                        <div style="font-size:15px; font-weight:bold; margin:3px 0; color:#0f5132;">${escapeHtml(h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES')}</div>
-                        <div style="font-size:10px; font-weight:bold;">DIRECTORIO OFICIAL DE GRADOS, SECCIONES Y MAESTROS GUÍAS</div>
-                        <div style="font-size:9.5px; color:#555;">CICLO ESCOLAR ${escapeHtml(cycle)} &bull; JORNADA MATUTINA &bull; CÓDIGO: ${escapeHtml(h.schoolCode || '22-01-0014-46')}</div>
-                    </td>
-                </tr>
-            </table>
+    const filterSubtitle = (careerFilter !== 'ALL')
+        ? `<div style="font-size:10.5px; font-weight:bold; margin-top:2px; text-transform:uppercase;">CARRERA: ${escapeHtml(careerFilter)}</div>`
+        : '';
 
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th style="width:30px;">#</th>
-                        <th>Grado Escolar</th>
-                        <th style="width:70px;">Sección</th>
-                        <th style="width:65px;">Código</th>
-                        <th>Maestro(a) Guía Titular</th>
-                        <th>Correo Institucional</th>
-                        <th style="width:65px;">Alumnos</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rows}
-                </tbody>
-            </table>
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast("Por favor permita las ventanas emergentes en su navegador para imprimir la nómina.", "warning");
+        return;
+    }
 
-            <div class="footer-signatures">
-                <div class="sig-box">
-                    Licda. Mirza Elizabeth Aragón Polanco<br>
-                    <span style="font-size:9px; font-weight:normal;">Directora Oficial ENCCO Jutiapa</span>
+    const htmlContent = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <base href="${escapeHtml(baseUrl)}">
+    <title>Nómina Oficial de Docentes Guías - Ciclo ${escapeHtml(cycle)}</title>
+    <style>
+        @page {
+            size: letter portrait;
+            margin: 15mm 12mm 15mm 12mm;
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            color: #000;
+            background: #fff;
+            margin: 0;
+            padding: 5px;
+        }
+        /* ENCABEZADO SIMPLE Y FORMAL CON LOGOTIPO */
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 8px;
+        }
+        .header-table td {
+            vertical-align: middle;
+        }
+        .header-logo {
+            width: 75px;
+            text-align: center;
+        }
+        .header-logo img {
+            max-height: 65px;
+            max-width: 70px;
+            display: block;
+            margin: 0 auto;
+        }
+        .header-text {
+            text-align: center;
+            padding: 0 10px;
+        }
+        .line-mineduc {
+            font-size: 9.5px;
+            font-weight: bold;
+            color: #333;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .line-school {
+            font-size: 14.5px;
+            font-weight: 900;
+            margin: 2px 0;
+            color: #000;
+            text-transform: uppercase;
+        }
+        .line-title {
+            font-size: 11.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            margin-top: 2px;
+        }
+        .line-meta {
+            font-size: 9px;
+            color: #444;
+            margin-top: 2px;
+        }
+        /* LISTA SIMPLE / TABLA SIN ADORNOS */
+        .simple-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            font-size: 10px;
+        }
+        .simple-table th {
+            background-color: #f2f2f2;
+            border: 1px solid #000;
+            padding: 6px 4px;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            text-align: center;
+        }
+        .simple-table td {
+            border: 1px solid #000;
+            vertical-align: middle;
+        }
+        .simple-table tfoot td {
+            background-color: #f9f9f9;
+            font-weight: bold;
+            border: 1px solid #000;
+            padding: 5px 6px;
+        }
+        /* ÁREA DE FIRMAS OFICIALES */
+        .signatures-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 38px;
+            page-break-inside: avoid;
+        }
+        .signatures-table td {
+            width: 50%;
+            text-align: center;
+            vertical-align: top;
+            padding: 0 25px;
+        }
+        .sig-line {
+            width: 80%;
+            margin: 0 auto;
+            border-top: 1px solid #000;
+            padding-top: 4px;
+        }
+        .sig-name {
+            font-size: 10.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .sig-title {
+            font-size: 9px;
+            color: #333;
+        }
+        .footer-note {
+            margin-top: 24px;
+            font-size: 8.5px;
+            color: #555;
+            text-align: right;
+            border-top: 1px dashed #bbb;
+            padding-top: 4px;
+        }
+        .print-btn-bar {
+            text-align: right;
+            margin-bottom: 10px;
+        }
+        .btn-print-now {
+            background: #000;
+            color: #fff;
+            padding: 6px 14px;
+            border: none;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        @media print {
+            .print-btn-bar { display: none !important; }
+            body { padding: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-btn-bar">
+        <button class="btn-print-now" onclick="window.print()">🖨️ Imprimir Documento</button>
+    </div>
+
+    <table class="header-table">
+        <tr>
+            <td class="header-logo">
+                <img src="${escapeHtml(logoUrl)}" alt="Logo ENCCO" onerror="this.style.display='none'">
+            </td>
+            <td class="header-text">
+                <div class="line-mineduc">MINISTERIO DE EDUCACIÓN &bull; DIRECCIÓN DEPARTAMENTAL DE EDUCACIÓN DE JUTIAPA</div>
+                <div class="line-school">${escapeHtml(h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES')}</div>
+                <div class="line-title">NÓMINA OFICIAL DE DOCENTES GUÍAS</div>
+                ${filterSubtitle}
+                <div class="line-meta">CICLO ESCOLAR ${escapeHtml(cycle)} &bull; JORNADA VESPERTINA &bull; CÓDIGO: ${escapeHtml(h.mineducCode || h.schoolCode || '22-01-0014-46')}</div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="simple-table">
+        <thead>
+            <tr>
+                <th style="width:28px;">No.</th>
+                <th>Grado y Carrera</th>
+                <th style="width:45px;">Sección</th>
+                <th>Docente Guía Titular</th>
+                <th>Correo Institucional</th>
+                <th style="width:50px;">Alumnos</th>
+                <th style="width:110px;">Firma de Recibido</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="5" style="text-align:right; font-weight:bold; padding-right:8px;">TOTAL GENERAL DE ALUMNOS EN SECCIONES:</td>
+                <td style="text-align:center; font-weight:bold;">${totalStudentsCount}</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <table class="signatures-table">
+        <tr>
+            <td>
+                <div class="sig-line">
+                    <div class="sig-name">${escapeHtml(directorName)}</div>
+                    <div class="sig-title">${escapeHtml(directorTitle)}<br>Vo.Bo. Dirección</div>
                 </div>
-                <div class="sig-box">
-                    Licda. Jhoana Jarro<br>
-                    <span style="font-size:9px; font-weight:normal;">Secretaria Académica Oficial</span>
+            </td>
+            <td>
+                <div class="sig-line">
+                    <div class="sig-name">${escapeHtml(secretaryName)}</div>
+                    <div class="sig-title">${escapeHtml(secretaryTitle)}<br>Secretaría Académica</div>
                 </div>
-            </div>
-        </body>
-        </html>
-    `);
+            </td>
+        </tr>
+    </table>
+
+    <div class="footer-note">
+        Documento Oficial &bull; Fecha de emisión: ${escapeHtml(capDate)} &bull; ENCCO Jutiapa
+    </div>
+</body>
+</html>`;
+
+    printWin.document.open();
+    printWin.document.write(htmlContent);
     printWin.document.close();
-    setTimeout(() => {
-        printWin.focus();
-        printWin.print();
-    }, 300);
+
+    const triggerPrint = () => {
+        try {
+            printWin.focus();
+            printWin.print();
+        } catch (e) {
+            console.error("Error al imprimir nómina:", e);
+        }
+    };
+
+    const imgEl = printWin.document.querySelector('img');
+    if (imgEl) {
+        if (imgEl.complete) {
+            setTimeout(triggerPrint, 250);
+        } else {
+            imgEl.onload = () => setTimeout(triggerPrint, 200);
+            imgEl.onerror = () => setTimeout(triggerPrint, 200);
+            setTimeout(triggerPrint, 1000);
+        }
+    } else {
+        setTimeout(triggerPrint, 300);
+    }
 }
 window.printGuideTeachersOfficialDirectory = printGuideTeachersOfficialDirectory;
 
