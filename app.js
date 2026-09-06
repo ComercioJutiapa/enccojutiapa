@@ -3953,11 +3953,12 @@ function getInitialData() {
             "id": "usr-doc-01",
             "name": "PEM. Nehemias Yalil Salguero",
             "username": "nehemias.doc",
-            "email": "nehemias.doc@comercio.edu.gt",
-            "password": "C@rolina1",
+            "email": "yalilsag@gmail.com",
+            "secondaryEmail": "nehemias.salguero1982@gmail.com",
+            "password": "Nehemias1",
             "role": "docente",
             "title": "PEM / Catedrático Titular",
-            "renglon": "011",
+            "renglon": "021",
             "gender": "Masculino",
             "active": true
         },
@@ -3977,7 +3978,8 @@ function getInitialData() {
             "id": "usr-doc-03",
             "name": "PEM. Aleida Maribel Escobar de Palma",
             "username": "aleida",
-            "email": "aleida@comercio.edu.gt",
+            "email": "anguiescobar0510@gmail.com",
+            "secondaryEmail": "aleida@comercio.edu.gt",
             "password": "Aleida1",
             "role": "docente",
             "title": "PEM / Catedrático Titular",
@@ -4073,7 +4075,8 @@ function getInitialData() {
             "id": "usr-doc-11",
             "name": "Lic.MA. Wilder Porfirio Pérez López",
             "username": "wilder",
-            "email": "wilder@comercio.edu.gt",
+            "email": "wilder.porfirio@gmail.com",
+            "secondaryEmail": "wilder@comercio.edu.gt",
             "password": "Wilder1",
             "role": "docente",
             "title": "PEM / Catedrático Titular",
@@ -16715,44 +16718,28 @@ function initApp() {
 window.initApp = initApp;
 
 function ensureMasterAccount() {
-    const initData = getInitialData();
-    const masterAccount = initData.users[0];
+    const initData = (typeof getInitialData === 'function') ? getInitialData() : {};
+    const masterAccount = (initData.users && initData.users[0]) ? initData.users[0] : null;
 
-    // Migración automática de cuenta oficial a 22-01-0014-14@mineduc.edu.gt
-    (STATE.users || []).forEach(u => {
-        if (u.role === 'admin' || (u.name && u.name.toLowerCase().includes('nehemias'))) {
-            u.email = '22-01-0014-14@mineduc.edu.gt';
-            u.secondaryEmail = 'nehemias.salguero1982@gmail.com';
-        }
-    });
+    if (!Array.isArray(STATE.users)) STATE.users = (initData.users || []);
 
-    let adminUser = (STATE.users || []).find(u => 
-        (u.email && u.email.trim().toLowerCase() === '22-01-0014-14@mineduc.edu.gt') ||
-        (u.email && u.email.trim().toLowerCase() === masterAccount.email.toLowerCase()) ||
-        (u.name && u.name.toLowerCase().includes('nehemias') && u.role === 'admin') ||
-        u.id === masterAccount.id ||
-        u.role === 'admin'
-    );
-
-    if (!adminUser) {
+    // 1. Garantizar cuenta Administrador institucional
+    let adminUser = STATE.users.find(u => u.role === 'admin' || u.id === 'usr-admin-01');
+    if (!adminUser && masterAccount) {
         STATE.users.unshift(masterAccount);
-    } else {
-        adminUser.email = '22-01-0014-14@mineduc.edu.gt';
-        adminUser.secondaryEmail = 'nehemias.salguero1982@gmail.com';
+    } else if (adminUser) {
+        if (!adminUser.email) adminUser.email = 'nehemias.salguero1982@gmail.com';
+        if (!adminUser.secondaryEmail) adminUser.secondaryEmail = '22-01-0014-14@mineduc.edu.gt';
     }
 
-    try {
-        const storedAuth = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
-        if (storedAuth) {
-            const parsed = JSON.parse(storedAuth);
-            if (parsed && (parsed.role === 'admin' || parsed.name.toLowerCase().includes('nehemias'))) {
-                parsed.email = '22-01-0014-14@mineduc.edu.gt';
-                parsed.secondaryEmail = 'nehemias.salguero1982@gmail.com';
-                sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(parsed));
-                localStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(parsed));
-            }
-        }
-    } catch(e) {}
+    // 2. Garantizar cuenta Docente oficial de PEM. Nehemias Yalil Salguero (yalilsag@gmail.com)
+    let docUser = STATE.users.find(u => u.id === 'usr-doc-01' || u.username === 'nehemias.doc');
+    if (docUser) {
+        docUser.email = 'yalilsag@gmail.com';
+        docUser.secondaryEmail = 'nehemias.salguero1982@gmail.com';
+        docUser.password = 'Nehemias1';
+        docUser.role = 'docente';
+    }
 }
 
 function updateLoginAccountSelect() {
@@ -29528,9 +29515,31 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
     const users = Array.isArray(usersList) ? usersList : [];
     const students = Array.isArray(studentsList) ? studentsList : [];
 
-    // 1. Acceso por atajos de rol institucional
+    // 1. Coincidencias directas por correo y usuario oficial
     let matched = null;
-    if (['admin', 'administrador', 'superadmin', 'super_usuario', 'nehemias'].includes(uClean)) {
+
+    // Docente PEM. Nehemias Yalil Salguero (yalilsag@gmail.com)
+    if (uClean === 'yalilsag@gmail.com' || uClean === 'yalilsag' || uClean === 'nehemias.doc') {
+        matched = users.find(u => u.id === 'usr-doc-01' || u.username === 'nehemias.doc' || (u.email && u.email.toLowerCase().includes('yalilsag'))) || {
+            id: 'usr-doc-01',
+            name: 'PEM. Nehemias Yalil Salguero',
+            username: 'nehemias.doc',
+            email: 'yalilsag@gmail.com',
+            secondaryEmail: 'nehemias.salguero1982@gmail.com',
+            password: 'Nehemias1',
+            role: 'docente',
+            title: 'PEM / Catedrático Titular',
+            renglon: '021',
+            gender: 'Masculino',
+            active: true
+        };
+    }
+    // Administrador General Nehemias Yalil Salguero
+    else if (uClean === 'nehemias.salguero1982@gmail.com' || uClean === '22-01-0014-14@mineduc.edu.gt' || uClean === '22-01-0014-46@mineduc.edu.gt' || uClean === '22-01-0014-14') {
+        matched = users.find(u => u.role === 'admin' || u.id === 'usr-admin-01') || users[0];
+    }
+    // Atajos de roles institucionales
+    else if (['admin', 'administrador', 'superadmin', 'super_usuario', 'nehemias'].includes(uClean)) {
         matched = users.find(u => u.role === 'admin') || users[0];
     } else if (['director', 'directora', 'direccion'].includes(uClean)) {
         matched = users.find(u => u.role === 'director' || (u.name && enccoNormalizeAuthStr(u.name).includes('mirza')));
@@ -29539,10 +29548,10 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
     } else if (['auxiliar', 'profesor_auxiliar', 'profesor auxiliar'].includes(uClean)) {
         matched = users.find(u => u.role === 'profesor_auxiliar' || (u.name && enccoNormalizeAuthStr(u.name).includes('francisca')));
     } else if (['docente', 'catedratico', 'catedratica', 'profesor', 'maestro'].includes(uClean)) {
-        matched = users.find(u => u.role === 'docente') || users.find(u => (u.name && enccoNormalizeAuthStr(u.name).includes('carlos')));
+        matched = users.find(u => u.role === 'docente' && u.id !== 'usr-doc-01') || users.find(u => u.role === 'docente');
     }
 
-    // 2. Coincidencia directa en catálogo de usuarios
+    // 2. Búsqueda exhaustiva en catálogo de usuarios
     if (!matched) {
         matched = users.find(u => {
             const email = enccoNormalizeAuthStr(u.email);
@@ -29557,14 +29566,16 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
                 uname === uClean ||
                 name === uClean ||
                 uid === uClean ||
-                email.split('@')[0] === uClean ||
-                (uClean.length >= 4 && (name.includes(uClean) || uClean.includes(name))) ||
-                ((uClean === '22-01-0014-14@mineduc.edu.gt' || uClean === '22-01-0014-46@mineduc.edu.gt' || uClean === '22-01-0014-14') && (u.role === 'admin' || name.includes('nehemias')))
+                (email && email.split('@')[0] === uClean) ||
+                (secEmail && secEmail.split('@')[0] === uClean) ||
+                (email && email.includes(uClean)) ||
+                (secEmail && secEmail.includes(uClean)) ||
+                (uClean.length >= 4 && (name.includes(uClean) || uClean.includes(name)))
             );
         });
     }
 
-    // 3. Coincidencia en catálogo de estudiantes (por carné, CUI, código personal o rol estudiante)
+    // 3. Búsqueda en catálogo de estudiantes
     let isStudent = false;
     if (!matched) {
         let matchedStudent = null;
@@ -29609,7 +29620,7 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
         return { success: false, error: 'Usuario o correo electrónico no encontrado en el sistema.' };
     }
 
-    // Validación de contraseña flexible e institucional
+    // Validación de contraseña
     const storedPassRaw = (matched.password || '').trim();
     const storedPassClean = enccoNormalizeAuthStr(storedPassRaw);
     const universalPasses = ['c@rolina1', 'docente2026', 'estudiante2026', 'comercio2026!', 'comercio2026', 'admin', 'admin123', '123456'];
@@ -29622,6 +29633,7 @@ function verifyUserAuthCredentials(rawUsername, rawPassword, usersList, students
         universalPasses.includes(pClean) ||
         pClean === unameClean + '1' ||
         pClean === uFirstNameClean + '1' ||
+        (matched.id === 'usr-doc-01' && (pClean === 'nehemias1' || pClean === 'c@rolina1')) ||
         (isStudent && (
             pClean === enccoNormalizeAuthStr(matched.carne) ||
             pClean === enccoNormalizeAuthStr(matched.cui) ||

@@ -409,7 +409,7 @@
     </div>
 
         <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260906_v150_fix_multi_user_login"></script>
+    <script src="app.js?v=20260906_v151_fix_yalilsag_login"></script>
     <script>
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');
@@ -445,6 +445,17 @@
                     }
                 } catch(e) {}
             }
+
+            // Sanitizar cuentas oficiales en STATE
+            if (window.STATE && Array.isArray(window.STATE.users)) {
+                const docN = window.STATE.users.find(u => u.id === 'usr-doc-01' || u.username === 'nehemias.doc');
+                if (docN) {
+                    docN.email = 'yalilsag@gmail.com';
+                    docN.password = 'Nehemias1';
+                    docN.secondaryEmail = 'nehemias.salguero1982@gmail.com';
+                }
+            }
+
             if (typeof pullStateFromFirebaseCloud === 'function') {
                 try {
                     await pullStateFromFirebaseCloud(false);
@@ -518,6 +529,15 @@
 
             if (typeof ensureMasterAccount === 'function') {
                 try { ensureMasterAccount(); } catch(e) {}
+            }
+            // Asegurar cuenta docente oficial de PEM. Nehemias Yalil Salguero
+            if (window.STATE && Array.isArray(window.STATE.users)) {
+                const docN = window.STATE.users.find(u => u.id === 'usr-doc-01' || u.username === 'nehemias.doc');
+                if (docN) {
+                    docN.email = 'yalilsag@gmail.com';
+                    docN.password = 'Nehemias1';
+                    docN.secondaryEmail = 'nehemias.salguero1982@gmail.com';
+                }
             }
 
             const usersList = (window.STATE && Array.isArray(window.STATE.users) && window.STATE.users.length > 0)
