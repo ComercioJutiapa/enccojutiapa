@@ -18465,14 +18465,18 @@ function printCourseStudentList(courseId) {
     const secClean = rawSec.toLowerCase().startsWith('secci') ? rawSec : `Sección ${rawSec}`;
 
     const rowsHtml = students.length === 0 ? `
-        <tr><td colspan="5" style="text-align:center; padding:20px; font-weight:bold; color:#666;">No hay estudiantes inscritos en esta sección.</td></tr>
+        <tr><td colspan="9" style="text-align:center; padding:20px; font-weight:bold; color:#666;">No hay estudiantes inscritos en esta sección.</td></tr>
     ` : students.map((s, idx) => `
-        <tr>
-            <td style="border:1px solid #333; padding:4px 6px; text-align:center; font-weight:bold;">${idx + 1}</td>
-            <td style="border:1px solid #333; padding:4px 6px; text-align:center; font-family:monospace; font-weight:700;">${s.personalCode || s.carne || '---'}</td>
-            <td style="border:1px solid #333; padding:4px 6px; text-align:center; font-family:monospace;">${s.cui || '---'}</td>
+        <tr style="height:22px;">
+            <td style="border:1px solid #333; padding:4px 4px; text-align:center; font-weight:bold; width:30px;">${idx + 1}</td>
+            <td style="border:1px solid #333; padding:4px 4px; text-align:center; font-family:monospace; font-weight:700; width:95px;">${s.personalCode || s.carne || '---'}</td>
             <td style="border:1px solid #333; padding:4px 8px; font-weight:bold; text-transform:uppercase;">${s.lastName || ''}, ${s.firstName || s.name || ''}</td>
-            <td style="border:1px solid #333; padding:4px 6px;"></td>
+            <td style="border:1px solid #333; width:44px; text-align:center;"></td>
+            <td style="border:1px solid #333; width:44px; text-align:center;"></td>
+            <td style="border:1px solid #333; width:44px; text-align:center;"></td>
+            <td style="border:1px solid #333; width:44px; text-align:center;"></td>
+            <td style="border:1px solid #333; width:44px; text-align:center;"></td>
+            <td style="border:1px solid #333; width:130px;"></td>
         </tr>
     `).join('');
 
@@ -18536,9 +18540,13 @@ function printCourseStudentList(courseId) {
             <tr>
                 <th style="width:30px;">No.</th>
                 <th style="width:95px;">Código Personal</th>
-                <th style="width:110px;">CUI</th>
                 <th>Apellidos y Nombres del Estudiante</th>
-                <th style="width:140px;">Observaciones / Firma</th>
+                <th style="width:44px; text-align:center;">1</th>
+                <th style="width:44px; text-align:center;">2</th>
+                <th style="width:44px; text-align:center;">3</th>
+                <th style="width:44px; text-align:center;">4</th>
+                <th style="width:44px; text-align:center;">5</th>
+                <th style="width:130px; text-align:center;">Observaciones / Firma</th>
             </tr>
         </thead>
         <tbody>
