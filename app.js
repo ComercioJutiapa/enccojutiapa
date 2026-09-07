@@ -1024,7 +1024,7 @@ window.enforceViewReadOnlyMode = enforceViewReadOnlyMode;
 function normalizePermKey(key) {
     if (!key) return '';
     let k = String(key).trim().toLowerCase();
-    if (k === 'guide_teachers') return 'guide-teachers';
+    if (k === 'guide_teachers' || k === 'guide-teachers' || k === 'maestros_guias' || k === 'maestros-guias' || k === 'maestrosguias' || k === 'docentes_guias' || k === 'docentes-guias' || k === 'guias') return 'guide-teachers';
     if (k === 'excel_import') return 'excel-import';
     if (k === 'grade_lock') return 'grade-lock';
     if (k === 'honor_roll') return 'honor-roll';
@@ -1817,7 +1817,7 @@ var SYSTEM_MODULES_LIST = [
     { key: 'students', name: 'Expedientes de Estudiantes', icon: 'fa-id-card', category: 'Secretaría y Alumnos', desc: 'Consulta, edición y fichas médicas de los 412 alumnos.' },
     { key: 'excel-import', name: 'Importación SIRE / Excel', icon: 'fa-file-excel', category: 'Secretaría y Alumnos', desc: 'Carga masiva de nóminas oficiales del MINEDUC.' },
     { key: 'grades', name: 'Editor de Grados y Secciones', icon: 'fa-graduation-cap', category: 'Académico', desc: 'Configuración de grados y secciones (Dirección y Secretaría).' },
-    { key: 'guide-teachers', name: 'Directorio de Maestros Guías', icon: 'fa-person-chalkboard', category: 'Académico', desc: 'Directorio oficial y consulta de catedráticos guías por grado y sección.' },
+    { key: 'guide-teachers', name: 'Apartado de Maestros Guías', icon: 'fa-person-chalkboard', category: 'Académico', desc: 'Directorio oficial, consulta y asignación de catedráticos guías por grado y sección.' },
     { key: 'pensum', name: 'Pensum Oficial CNB', icon: 'fa-book-open', category: 'Académico', desc: 'Malla curricular oficial de 28 asignaturas del ciclo.' },
     { key: 'class-assignments', name: 'Asignación de Cátedras', icon: 'fa-chalkboard-user', category: 'Académico', desc: 'Asignar cursos a catedráticos por grado y sección.' },
     { key: 'grade-lock', name: 'Cierre y Bloqueo Bimestral', icon: 'fa-lock', category: 'Calificaciones', desc: 'Bloquear y desbloquear ingreso de notas bimestrales.' },
@@ -2786,8 +2786,11 @@ window.filterGradesDirectory = filterGradesDirectory;
 
 function openGradesDirectoryModal(e) {
     if (e && e.preventDefault) e.preventDefault();
-    renderGradesDirectory();
-    showModalById('gradesDirectoryModal');
+    if (typeof hasRolePermission === 'function' && !hasRolePermission('guide-teachers', STATE.currentRole)) {
+        showToast('Acceso Restringido: Su rol no tiene autorización para acceder al Directorio de Maestros Guías.', 'warning');
+        return;
+    }
+    navigateTo('guide-teachers', e);
 }
 window.openGradesDirectoryModal = openGradesDirectoryModal;
 
@@ -2971,6 +2974,18 @@ function renderGuideTeachersView(searchQuery = '') {
     const tbody = document.getElementById('guideTeachersTableBody');
     if (!tbody) return;
 
+    if (typeof hasRolePermission === 'function' && !hasRolePermission('guide-teachers', STATE.currentRole)) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center; padding:35px; color:var(--text-muted);">
+                    <i class="fa-solid fa-lock" style="font-size:2rem; color:#dc2626; display:block; margin-bottom:10px;"></i>
+                    Acceso Bloqueado: Su rol (${(STATE.currentRole || '').toUpperCase()}) no tiene autorización para acceder al Directorio de Maestros Guías.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
     const careerFilterEl = document.getElementById('guideTeachersCareerFilter');
     const careerFilter = (careerFilterEl && careerFilterEl.value) ? careerFilterEl.value : 'ALL';
     const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('guideTeachersSearchInput') ? document.getElementById('guideTeachersSearchInput').value : '')).toLowerCase().trim();
@@ -3029,7 +3044,7 @@ function renderGuideTeachersView(searchQuery = '') {
         return;
     }
 
-    const canManageGuides = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria');
+    const canManageGuides = typeof canRoleModify === 'function' ? canRoleModify('guide-teachers', STATE.currentRole) : (STATE.currentRole === 'admin' || STATE.currentRole === 'director');
 
     tbody.innerHTML = list.map((g, idx) => {
         const count = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
@@ -3042,7 +3057,7 @@ function renderGuideTeachersView(searchQuery = '') {
 
         let guideDisplayHtml = '';
         if (canManageGuides) {
-            // Dropdown dinámico inline para asignación en tiempo real para administradores/dirección
+            // Dropdown dinámico inline para asignación en tiempo real para usuarios con permiso de modificación
             const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-')));
             guideDisplayHtml = `
                 <div style="display:flex; align-items:center; gap:8px;">
@@ -3057,7 +3072,7 @@ function renderGuideTeachersView(searchQuery = '') {
                 </div>
             `;
         } else {
-            // Modo lectura institucional dinámica para docentes
+            // Modo lectura institucional dinámica para usuarios con permiso Solo Ver
             guideDisplayHtml = `
                 <div style="display:flex; align-items:center; gap:8px;">
                     <div style="width:34px; height:34px; border-radius:50%; background:${isAssigned ? '#dcfce7' : '#fee2e2'}; color:${isAssigned ? '#15803d' : '#dc2626'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem;">
@@ -3113,6 +3128,11 @@ function filterGuideTeachersView(query = '') {
 window.filterGuideTeachersView = filterGuideTeachersView;
 
 function handleDirectGuideTeacherChange(gradeId, newTeacherId) {
+    if (typeof canRoleModify === 'function' && !canRoleModify('guide-teachers', STATE.currentRole)) {
+        showToast('Acceso Restringido: Su rol no tiene autorización para modificar o asignar Maestros Guías.', 'warning');
+        return;
+    }
+
     const grade = (STATE.gradesList || []).find(g => g.id === gradeId);
     if (!grade) return;
     const teacherObj = (STATE.users || []).find(u => u.id === newTeacherId);
@@ -18253,10 +18273,12 @@ function exitImpersonation() {
 function navigateTo(viewName, event = null) {
     if (event) event.preventDefault();
 
-    // Verificación estricta: Docentes no pueden acceder al editor de grados y secciones, pero sí al directorio de maestros guías
-    if (viewName === 'grades' && STATE.currentRole === 'docente') {
-        showToast('Acceso Restringido: El personal docente no tiene acceso al Editor de Grados y Secciones. Se ha mostrado el Directorio de Maestros Guías.', 'info');
-        viewName = 'guide-teachers';
+    // Si no tiene acceso al editor de grados pero sí tiene permiso a maestros guías, redirigir al directorio
+    if (viewName === 'grades' && !hasRolePermission('grades', STATE.currentRole)) {
+        if (hasRolePermission('guide-teachers', STATE.currentRole)) {
+            showToast('Acceso Restringido al Editor de Grados y Secciones. Se ha mostrado el Directorio de Maestros Guías.', 'info');
+            viewName = 'guide-teachers';
+        }
     }
 
     // Verificación dinámica de autorización según la configuración de permisos del Administrador
@@ -18470,15 +18492,18 @@ function renderDashboard() {
                 `;
             });
 
+            const guideBtnHtml = (typeof hasRolePermission === 'function' && hasRolePermission('guide-teachers', STATE.currentRole)) ? `
+                        <button type="button" class="btn btn-sm btn-outline-success" onclick="openGradesDirectoryModal(event)" style="font-weight:700;">
+                            <i class="fa-solid fa-person-chalkboard"></i> Directorio de Maestros Guías
+                        </button>` : '';
+
             mainBody.innerHTML = `
                 <div style="padding:4px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
                         <h4 style="color:var(--brand-green-dark); margin:0; font-size:1.02rem; font-weight:800;">
                             <i class="fa-solid fa-layer-group"></i> Clases Asignadas Agrupadas por Grado y Sección:
                         </h4>
-                        <button type="button" class="btn btn-sm btn-outline-success" onclick="openGradesDirectoryModal(event)" style="font-weight:700;">
-                            <i class="fa-solid fa-person-chalkboard"></i> Directorio de Maestros Guías
-                        </button>
+                        ${guideBtnHtml}
                     </div>
                     ${cardsHtml}
                 </div>
@@ -30937,7 +30962,10 @@ function saveGradeForm(e) {
 // Bloque de pensum gestionado por el controlador moderno (ver seccion 31940)
 
 function openAssignGuideTeacherModal(gradeId) {
-    if (!checkEnrolmentPermissions()) return;
+    if (typeof canRoleModify === 'function' && !canRoleModify('guide-teachers', STATE.currentRole)) {
+        showToast('Acceso Restringido: Su rol no tiene autorización para asignar o modificar Maestros Guías.', 'warning');
+        return;
+    }
     const grade = (STATE.gradesList || []).find(g => g.id === gradeId);
     if (!grade) return;
     const idEl = document.getElementById('guideTeacherModalGradeId') || document.getElementById('quickGuideGradeId');
@@ -30963,7 +30991,7 @@ function populateGuideTeacherSelect(selectedTeacherIdOrName) {
     if (!select) return;
 
     const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-')));
-    let html = '<option value="">-- Sin Maestro Gua --</option>';
+    let html = '<option value="">-- Sin Maestro Guía --</option>';
     html += teachers.map(t => {
         const isSel = (t.id === selectedTeacherIdOrName || t.name === selectedTeacherIdOrName) ? 'selected' : '';
         return `<option value="${t.id}" ${isSel}>${t.name} (${t.renglon || '011'} - ${t.role})</option>`;
@@ -30974,6 +31002,10 @@ window.populateGuideTeacherSelect = populateGuideTeacherSelect;
 
 function saveQuickGuideTeacher(e) {
     if (e && e.preventDefault) e.preventDefault();
+    if (typeof canRoleModify === 'function' && !canRoleModify('guide-teachers', STATE.currentRole)) {
+        showToast('Acceso Restringido: Su rol no tiene autorización para asignar o modificar Maestros Guías.', 'warning');
+        return;
+    }
     const gradeId = (document.getElementById('guideTeacherModalGradeId') || document.getElementById('quickGuideGradeId'))?.value;
     const teacherId = (document.getElementById('guideTeacherSelectModal') || document.getElementById('quickGuideTeacherSelect'))?.value;
     
@@ -30994,7 +31026,7 @@ function saveQuickGuideTeacher(e) {
         } else if (typeof syncStateToFirebaseImmediate === 'function') {
             syncStateToFirebaseImmediate(false);
         }
-        showToast(`Maestro Gua "${grade.guideTeacher}" asignado a ${grade.name} (${grade.section}).`, 'success');
+        showToast(`Maestro Guía "${grade.guideTeacher}" asignado a ${grade.name} (${grade.section}).`, 'success');
     }
 }
 window.saveQuickGuideTeacher = saveQuickGuideTeacher;
@@ -31080,12 +31112,11 @@ window.renderGradesDirectoryTable = renderGradesDirectoryTable;
 // [DUPLICATE REMOVED]
 function openGradesDirectoryModal(e) {
     if (e && e.preventDefault) e.preventDefault();
-    const searchInput = document.getElementById('gradesDirectorySearchInput');
-    if (searchInput) searchInput.value = '';
-    if (typeof renderGradesDirectory === 'function') {
-        renderGradesDirectory('');
+    if (typeof hasRolePermission === 'function' && !hasRolePermission('guide-teachers', STATE.currentRole)) {
+        showToast('Acceso Restringido: Su rol no tiene autorización para acceder al Directorio de Maestros Guías.', 'warning');
+        return;
     }
-    showModalById('gradesDirectoryModal');
+    navigateTo('guide-teachers', e);
 }
 window.openGradesDirectoryModal = openGradesDirectoryModal;
 
