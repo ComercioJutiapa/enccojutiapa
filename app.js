@@ -3109,8 +3109,8 @@ function renderGuideTeachersView(searchQuery = '') {
                     </button>
                 </td>
                 <td style="text-align:center; white-space:nowrap;">
-                    <button type="button" class="btn btn-xs btn-outline-success" onclick="printStudentsBlankRoster8Casillas('${escapeHtml(g.code)}')" title="Imprimir nómina en blanco (8 casillas, sin firmas)" style="margin-right:4px; padding:5px 8px; font-weight:700;">
-                        <i class="fa-solid fa-table-cells"></i> 8 Casillas
+                    <button type="button" class="btn btn-xs btn-outline-success" onclick="printStudentsBlankRoster10Casillas('${escapeHtml(g.code)}')" title="Imprimir nómina en blanco (10 casillas, hoja oficio 8.5x13 in, sin firmas)" style="margin-right:4px; padding:5px 8px; font-weight:700;">
+                        <i class="fa-solid fa-table-cells"></i> 10 Casillas
                     </button>
                     <button type="button" class="btn btn-xs btn-primary" onclick="openSectionStudentsModal('${escapeHtml(g.code)}')" title="Ver nómina de alumnos" style="margin-right:4px; padding:5px 9px;">
                         <i class="fa-solid fa-eye"></i> Alumnos
@@ -3154,7 +3154,10 @@ window.initGuideTeacherSelectors = initGuideTeacherSelectors;
 function onGuideTeacherCareerChange(careerName) {
     const gradeSel = document.getElementById('guideTeacherGradeSelect');
     const secSel = document.getElementById('guideTeacherSectionSelect');
+    const subjSel = document.getElementById('guideTeacherSubjectSelect');
     if (!gradeSel || !secSel) return;
+
+    if (subjSel) subjSel.innerHTML = '<option value="">-- En blanco (a mano) --</option>';
 
     if (!careerName) {
         gradeSel.innerHTML = '<option value="">-- Primero elija carrera --</option>';
@@ -3182,9 +3185,18 @@ window.onGuideTeacherCareerChange = onGuideTeacherCareerChange;
 function onGuideTeacherGradeChange(gradeName) {
     const careerSel = document.getElementById('guideTeacherCareerSelect');
     const secSel = document.getElementById('guideTeacherSectionSelect');
+    const subjSel = document.getElementById('guideTeacherSubjectSelect');
     if (!secSel) return;
 
     const careerName = careerSel ? careerSel.value : '';
+
+    if (subjSel) {
+        if (typeof populateSubjectSelect === 'function') {
+            populateSubjectSelect(subjSel, gradeName, careerName);
+        } else {
+            subjSel.innerHTML = '<option value="">-- En blanco (a mano) --</option>';
+        }
+    }
 
     if (!gradeName) {
         secSel.innerHTML = '<option value="">-- Primero elija grado --</option>';
@@ -3237,12 +3249,13 @@ function renderGuideTeacherStudentsContent(gradeCode = '') {
                     Seleccione Carrera, Grado y Sección
                 </h4>
                 <p style="font-size:0.88rem; color:#64748b; max-width:500px; margin:0 auto 14px auto;">
-                    Elija los tres filtros superiores para visualizar el catedrático titular asignado, los alumnos matriculados y poder generar la <strong>Nómina en Blanco de 8 Casillas (sin firmas)</strong>.
+                    Elija los filtros superiores para visualizar el catedrático titular asignado, los alumnos matriculados y poder generar la <strong>Nómina en Blanco de 10 Casillas (Hoja Oficio 8.5" x 13", sin firmas)</strong>.
                 </p>
                 <div style="display:flex; justify-content:center; gap:10px; font-size:0.8rem; font-weight:700;">
                     <span class="badge" style="background:#e2e8f0; color:#334155; padding:5px 10px;"><i class="fa-solid fa-graduation-cap"></i> 1. Carrera</span>
                     <span class="badge" style="background:#e2e8f0; color:#334155; padding:5px 10px;"><i class="fa-solid fa-school"></i> 2. Grado</span>
                     <span class="badge" style="background:#e2e8f0; color:#334155; padding:5px 10px;"><i class="fa-solid fa-users-rectangle"></i> 3. Sección</span>
+                    <span class="badge" style="background:#e2e8f0; color:#334155; padding:5px 10px;"><i class="fa-solid fa-book"></i> 4. Materia</span>
                 </div>
             </div>
         `;
@@ -3282,7 +3295,7 @@ function renderGuideTeacherStudentsContent(gradeCode = '') {
     const rowsHtml = activeStudents.map((s, idx) => `
         <tr>
             <td style="text-align:center; font-weight:700; width:35px;">${idx + 1}</td>
-            <td style="text-align:center; font-weight:700; width:95px;"><code>${escapeHtml(s.carne || s.personalCode || '-')}</code></td>
+            <td style="text-align:center; font-weight:700; width:100px;"><code>${escapeHtml(s.personalCode || s.cui || s.carne || '-')}</code></td>
             <td><strong>${escapeHtml(s.lastName || '')}, ${escapeHtml(s.firstName || s.name || '')}</strong></td>
             <td style="text-align:center; width:60px;">${(s.gender || '').toLowerCase().startsWith('f') ? '<span class="badge" style="background:#fce7f3; color:#be185d;">F</span>' : '<span class="badge" style="background:#e0f2fe; color:#0369a1;">M</span>'}</td>
             <td style="font-size:0.82rem; color:var(--text-secondary);">${escapeHtml(s.tutor || s.tutorName || 'No reg.')} (${escapeHtml(s.tutorPhone || s.phone || 'Sin tel.')})</td>
@@ -3314,8 +3327,8 @@ function renderGuideTeacherStudentsContent(gradeCode = '') {
                     <div style="font-size:0.78rem; color:#166534; font-weight:700;">Estudiantes Inscritos</div>
                     <div style="font-size:1.15rem; font-weight:900; color:#15803d;">${activeStudents.length} <span style="font-size:0.8rem; font-weight:600; color:#4b5563;">(H: ${countMale} | M: ${countFemale})</span></div>
                 </div>
-                <button type="button" class="btn btn-success btn-sm" onclick="printStudentsBlankRoster8Casillas('${escapeHtml(gradeCode)}')" style="font-weight:800; display:flex; align-items:center; gap:6px;">
-                    <i class="fa-solid fa-table-cells"></i> Imprimir Nómina 8 Casillas
+                <button type="button" class="btn btn-success btn-sm" onclick="printGuideTeacherBlankRoster10Casillas('${escapeHtml(gradeCode)}')" style="font-weight:800; display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-table-cells"></i> Imprimir Nómina 10 Casillas
                 </button>
                 <button type="button" class="btn btn-outline-secondary btn-sm" onclick="printStudentsOfficialList('${escapeHtml(gradeCode)}')" style="font-weight:700;">
                     <i class="fa-solid fa-print"></i> Nómina Oficial
@@ -3328,7 +3341,7 @@ function renderGuideTeacherStudentsContent(gradeCode = '') {
                 <thead style="background:#f8fafc; position:sticky; top:0; z-index:2;">
                     <tr>
                         <th style="width:35px; text-align:center;">#</th>
-                        <th style="width:95px; text-align:center;">Carné</th>
+                        <th style="width:100px; text-align:center;">Cód. Personal</th>
                         <th>Apellidos y Nombres</th>
                         <th style="width:60px; text-align:center;">Género</th>
                         <th>Encargado / Contacto</th>
@@ -3344,17 +3357,19 @@ function renderGuideTeacherStudentsContent(gradeCode = '') {
 }
 window.renderGuideTeacherStudentsContent = renderGuideTeacherStudentsContent;
 
-function printGuideTeacherBlankRoster8Casillas() {
-    const gradeCode = getGuideTeacherSelectedGradeCode();
+function printGuideTeacherBlankRoster10Casillas(targetGradeCode = null) {
+    const gradeCode = targetGradeCode || getGuideTeacherSelectedGradeCode();
     if (!gradeCode) {
-        showToast("Por favor seleccione Carrera, Grado y Sección para imprimir la nómina en blanco de 8 casillas.", "warning");
+        showToast("Por favor seleccione Carrera, Grado y Sección para imprimir la nómina en blanco de 10 casillas.", "warning");
         const secSel = document.getElementById('guideTeacherSectionSelect') || document.getElementById('guideTeacherCareerSelect');
         if (secSel) secSel.focus();
         return;
     }
-    printStudentsBlankRoster8Casillas(gradeCode);
+    const subject = document.getElementById('guideTeacherSubjectSelect')?.value || '';
+    printStudentsBlankRoster10Casillas(gradeCode, subject);
 }
-window.printGuideTeacherBlankRoster8Casillas = printGuideTeacherBlankRoster8Casillas;
+window.printGuideTeacherBlankRoster10Casillas = printGuideTeacherBlankRoster10Casillas;
+window.printGuideTeacherBlankRoster8Casillas = printGuideTeacherBlankRoster10Casillas;
 
 function printGuideTeacherOfficialList() {
     const gradeCode = getGuideTeacherSelectedGradeCode();
@@ -19290,10 +19305,109 @@ function getStudentCountByGradeAndSection(arg1, arg2, arg3) {
     }).length;
 }
 
+function getSubjectsForGradeAndCareer(gradeName, careerName = '') {
+    const results = new Set();
+    const initData = (typeof getInitialData === 'function') ? getInitialData() : {};
+
+    // 1. Catálogo oficial de Pensum
+    const pensumCatList = (Array.isArray(STATE.pensumCatalog) && STATE.pensumCatalog.length > 0)
+        ? STATE.pensumCatalog
+        : (Array.isArray(initData.pensumCatalog) ? initData.pensumCatalog : []);
+
+    pensumCatList.forEach(item => {
+        if (!item || !item.name) return;
+        const itemGrade = (item.grade || '').toLowerCase();
+        const itemCareer = (item.career || '').toLowerCase();
+        const targetGrade = (gradeName || '').toLowerCase();
+        const targetCareer = (careerName || '').toLowerCase();
+
+        const gradeMatches = !gradeName || itemGrade === targetGrade || itemGrade.includes(targetGrade) || targetGrade.includes(itemGrade);
+        const careerMatches = !careerName || itemCareer === targetCareer || itemCareer.includes(targetCareer) || targetCareer.includes(itemCareer);
+
+        if (gradeMatches && careerMatches) {
+            results.add(item.name.trim());
+        }
+    });
+
+    // 2. Pensum general / asignaturas
+    const pensumList = (Array.isArray(STATE.pensum) && STATE.pensum.length > 0)
+        ? STATE.pensum
+        : (Array.isArray(initData.pensum) ? initData.pensum : []);
+
+    pensumList.forEach(item => {
+        if (!item || !item.name) return;
+        const itemGrade = (item.grade || '').toLowerCase();
+        const itemCareer = (item.career || '').toLowerCase();
+        const targetGrade = (gradeName || '').toLowerCase();
+        const targetCareer = (careerName || '').toLowerCase();
+
+        const gradeMatches = !gradeName || itemGrade === targetGrade || itemGrade.includes(targetGrade) || targetGrade.includes(itemGrade);
+        const careerMatches = !careerName || itemCareer === targetCareer || itemCareer.includes(targetCareer) || targetCareer.includes(itemCareer);
+
+        if (gradeMatches && careerMatches) {
+            results.add(item.name.trim());
+        }
+    });
+
+    // 3. Asignaciones de catedráticos
+    const asgList = (Array.isArray(STATE.assignments) && STATE.assignments.length > 0)
+        ? STATE.assignments
+        : (Array.isArray(initData.assignments) ? initData.assignments : []);
+
+    asgList.forEach(asg => {
+        const subj = asg.subject || asg.courseName || asg.course;
+        if (!subj) return;
+        const asgGrade = (asg.grade || asg.gradeName || '').toLowerCase();
+        const asgCareer = (asg.career || '').toLowerCase();
+        const targetGrade = (gradeName || '').toLowerCase();
+        const targetCareer = (careerName || '').toLowerCase();
+
+        const gradeMatches = !gradeName || asgGrade === targetGrade || asgGrade.includes(targetGrade) || targetGrade.includes(asgGrade);
+        const careerMatches = !careerName || asgCareer === targetCareer || asgCareer.includes(targetCareer) || targetCareer.includes(asgCareer);
+
+        if (gradeMatches && careerMatches) {
+            results.add(subj.trim());
+        }
+    });
+
+    return Array.from(results).sort((a, b) => a.localeCompare(b, 'es'));
+}
+window.getSubjectsForGradeAndCareer = getSubjectsForGradeAndCareer;
+
+function populateSubjectSelect(selectEl, gradeName, careerName = '') {
+    if (!selectEl) return;
+    if (!gradeName) {
+        selectEl.innerHTML = '<option value="">-- En blanco (a mano) --</option>';
+        selectEl.value = '';
+        return;
+    }
+    const subjects = getSubjectsForGradeAndCareer(gradeName, careerName);
+    let html = '<option value="">-- En blanco (a mano) --</option>';
+    if (subjects.length > 0) {
+        subjects.forEach(subj => {
+            html += `<option value="${escapeHtml(subj)}">${escapeHtml(subj)}</option>`;
+        });
+    }
+    selectEl.innerHTML = html;
+    selectEl.value = '';
+}
+window.populateSubjectSelect = populateSubjectSelect;
+
 function onStudentCareerFilterChange(careerName) {
+    const careerSelect = document.getElementById('studentCareerFilterSelect');
     const gradeOnlySelect = document.getElementById('studentGradeOnlyFilterSelect');
     const sectionSelect = document.getElementById('studentSectionFilterSelect');
+    const subjSelect = document.getElementById('studentSubjectFilterSelect');
     const hiddenGradeSelect = document.getElementById('gradeFilterSelect');
+
+    if (careerSelect && careerName && careerSelect.value !== careerName) {
+        careerSelect.value = careerName;
+    }
+
+    if (subjSelect) {
+        subjSelect.innerHTML = '<option value="">-- En blanco (a mano) --</option>';
+        subjSelect.value = '';
+    }
 
     if (!careerName || careerName === 'ALL') {
         if (gradeOnlySelect) {
@@ -19335,9 +19449,14 @@ window.onStudentCareerFilterChange = onStudentCareerFilterChange;
 function onStudentGradeOnlyChange(gradeName) {
     const careerSelect = document.getElementById('studentCareerFilterSelect');
     const sectionSelect = document.getElementById('studentSectionFilterSelect');
+    const subjSelect = document.getElementById('studentSubjectFilterSelect');
     const hiddenGradeSelect = document.getElementById('gradeFilterSelect');
 
     const careerName = careerSelect ? careerSelect.value : '';
+
+    if (subjSelect) {
+        populateSubjectSelect(subjSelect, gradeName, careerName);
+    }
 
     if (!gradeName) {
         if (sectionSelect) {
@@ -19384,6 +19503,7 @@ function resetStudentFilters() {
     const careerSelect = document.getElementById('studentCareerFilterSelect');
     const gradeOnlySelect = document.getElementById('studentGradeOnlyFilterSelect');
     const sectionSelect = document.getElementById('studentSectionFilterSelect');
+    const subjSelect = document.getElementById('studentSubjectFilterSelect');
     const hiddenGradeSelect = document.getElementById('gradeFilterSelect');
     const statusSelect = document.getElementById('statusFilterSelect');
     const searchInput = document.getElementById('studentSearchInput');
@@ -19391,6 +19511,10 @@ function resetStudentFilters() {
     if (careerSelect) careerSelect.value = '';
     if (gradeOnlySelect) gradeOnlySelect.innerHTML = '<option value="">-- Primero elija carrera --</option>';
     if (sectionSelect) sectionSelect.innerHTML = '<option value="">-- Elija grado --</option>';
+    if (subjSelect) {
+        subjSelect.innerHTML = '<option value="">-- En blanco (a mano) --</option>';
+        subjSelect.value = '';
+    }
     if (hiddenGradeSelect) hiddenGradeSelect.value = '';
     if (statusSelect) statusSelect.value = 'Activo';
     if (searchInput) searchInput.value = '';
@@ -23246,14 +23370,14 @@ function printStudentsOfficialList(targetGrade = null) {
 }
 window.printStudentsOfficialList = printStudentsOfficialList;
 
-function printStudentsBlankRoster8Casillas(targetGrade = null) {
+function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = null) {
     const hiddenGradeSel = document.getElementById('gradeFilterSelect');
     const guideTeacherSecSel = document.getElementById('guideTeacherSectionSelect');
     const gradeVal = targetGrade || (hiddenGradeSel ? hiddenGradeSel.value : '') || (guideTeacherSecSel ? guideTeacherSecSel.value : '') || (STATE.activeSectionModalGrade || '');
 
     // 1. Validación estricta: debe seleccionarse un grado/sección específico
     if (!gradeVal || gradeVal === 'ALL') {
-        showToast("Por favor seleccione Carrera, Grado y Sección para imprimir la nómina en blanco de 8 casillas.", "warning");
+        showToast("Por favor seleccione Carrera, Grado y Sección para imprimir la nómina en blanco de 10 casillas.", "warning");
         const focusEl = document.getElementById('studentSectionFilterSelect') || document.getElementById('guideTeacherSectionSelect') || document.getElementById('studentCareerFilterSelect');
         if (focusEl) {
             focusEl.focus();
@@ -23328,120 +23452,165 @@ function printStudentsBlankRoster8Casillas(targetGrade = null) {
     const guideTeacher = (targetGradeObj && targetGradeObj.guideTeacher) ? targetGradeObj.guideTeacher : 'Por Asignar';
     const careerName = (targetGradeObj && targetGradeObj.career) ? targetGradeObj.career : (list[0]?.career || 'Perito Contador');
 
+    // Asignatura / Materia (seleccionada o en blanco)
+    const studentSubjSel = document.getElementById('studentSubjectFilterSelect');
+    const guideTeacherSubjSel = document.getElementById('guideTeacherSubjectSelect');
+    const selectedSubject = targetSubject || (studentSubjSel ? studentSubjSel.value : '') || (guideTeacherSubjSel ? guideTeacherSubjSel.value : '') || '';
+
+    // Catedrático que imprime (automáticamente del usuario logueado)
+    const loggedTeacherName = (STATE.currentUser && STATE.currentUser.name) ? STATE.currentUser.name : '';
+
+    // Bimestre activo en el sistema
+    const activeBimestre = Number(STATE.config?.activeBimestre || 1);
+    const bimCheck = (b) => (b === activeBimestre ? '[ <b>X</b> ]' : '[ &nbsp; ]');
+
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : null) || {};
     const dateStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const capDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
-    // 5. Filas con 8 casillas en blanco para calificación manual (alto suficiente para escribir notas a mano)
+    // 5. Filas con 10 casillas en blanco para calificación manual (ajustadas para Hoja Oficio de 8.5in x 13in)
     const rowsHtml = list.map((s, idx) => `
-        <tr style="height:25px;">
-            <td style="text-align:center; font-weight:bold; width:28px; border:1px solid #334155; padding:3px 2px; font-size:8.5pt;">${idx + 1}</td>
-            <td style="text-align:center; font-weight:bold; width:80px; border:1px solid #334155; padding:3px 2px; font-size:8pt;">${s.carne || s.personalCode || '-'}</td>
-            <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:3px 6px; font-size:8.5pt; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:210px;">
-                ${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}
+        <tr style="height:22px;">
+            <td style="text-align:center; font-weight:bold; width:26px; border:1px solid #334155; padding:2px 1px; font-size:8pt;">${idx + 1}</td>
+            <td style="text-align:center; font-weight:bold; width:78px; border:1px solid #334155; padding:2px 2px; font-size:7.5pt; font-family:monospace;">${escapeHtml(s.personalCode || s.cui || s.carne || '-')}</td>
+            <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:2px 5px; font-size:8pt; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:215px;">
+                ${escapeHtml((s.lastName || '').toUpperCase())}, ${escapeHtml((s.firstName || '').toUpperCase())}
             </td>
-            <td style="text-align:center; width:26px; font-weight:600; border:1px solid #334155; padding:3px 2px; font-size:8pt;">${(s.gender || '').toLowerCase().startsWith('f') ? 'F' : 'M'}</td>
+            <td style="text-align:center; width:22px; font-weight:600; border:1px solid #334155; padding:2px 1px; font-size:7.5pt;">${(s.gender || '').toLowerCase().startsWith('f') ? 'F' : 'M'}</td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
             <td style="border:1px solid #334155; width:44px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:44px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:44px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:44px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:44px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:44px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:44px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:44px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:50px; text-align:center;"></td>
         </tr>
     `).join('');
 
     const htmlContent = `
-        <div style="border:2px solid #15803d; border-radius:6px; overflow:hidden; margin-bottom:10px; font-family:'Segoe UI', Arial, sans-serif;">
-            <!-- ENCABEZADO INSTITUCIONAL -->
-            <div style="background:linear-gradient(135deg, #064e3b 0%, #15803d 60%, #16a34a 100%); color:#ffffff; padding:7px 14px; display:flex; justify-content:space-between; align-items:center;">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <img src="logo.png" alt="Logo" onerror="this.src='portada-comercio-principal.webp'" style="height:42px; width:auto; object-fit:contain;">
-                    <div>
-                        <h2 style="margin:0; font-size:1.05rem; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">${h.name || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</h2>
-                        <div style="font-size:0.75rem; font-weight:600; color:#bbf7d0;">JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}</div>
-                    </div>
-                </div>
-                <div style="text-align:right;">
-                    <div style="background:#166534; color:#fff; font-size:0.74rem; font-weight:800; padding:3px 10px; border-radius:10px; border:1px solid #86efac; text-transform:uppercase;">
-                        CONTROL DE TAREAS Y ZONA (8 CASILLAS)
-                    </div>
-                </div>
-            </div>
-            
-            <!-- DATOS DEL GRADO, MAESTRO GUÍA Y CAMPOS EN BLANCO PARA EL CATEDRÁTICO -->
-            <div style="background:#f0fdf4; border-top:2px solid #16a34a; padding:8px 12px; font-size:8.5pt; color:#0f172a;">
-                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px; margin-bottom:6px;">
-                    <div>
-                        <div style="font-size:10.5pt; font-weight:900; color:#15803d; text-transform:uppercase;">
-                            NÓMINA DE CONTROL — ${gradeName} (${sectionName})
+        <style>
+            @page {
+                size: 8.5in 13in portrait;
+                margin: 5mm 6mm 5mm 6mm;
+            }
+            @media print {
+                html, body {
+                    width: 8.5in !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                .roster-oficio-container {
+                    width: 100% !important;
+                    max-width: 8.5in !important;
+                }
+            }
+        </style>
+        <div class="roster-oficio-container" style="font-family:'Segoe UI', Arial, sans-serif; color:#0f172a;">
+            <div style="border:2px solid #15803d; border-radius:6px; overflow:hidden; margin-bottom:8px;">
+                <!-- ENCABEZADO INSTITUCIONAL -->
+                <div style="background:linear-gradient(135deg, #064e3b 0%, #15803d 60%, #16a34a 100%); color:#ffffff; padding:6px 12px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <img src="logo.png" alt="Logo" onerror="this.src='portada-comercio-principal.webp'" style="height:38px; width:auto; object-fit:contain;">
+                        <div>
+                            <h2 style="margin:0; font-size:1rem; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">${escapeHtml(h.name || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES')}</h2>
+                            <div style="font-size:0.72rem; font-weight:600; color:#bbf7d0;">JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}</div>
                         </div>
-                        <div style="color:#1e293b; font-size:8.5pt; margin-top:2px;">
-                            <strong>Carrera:</strong> ${careerName} &nbsp;|&nbsp; 👨‍🏫 <strong>Maestro(a) Guía:</strong> <span style="color:#166534; font-weight:bold;">${guideTeacher}</span>
-                        </div>
                     </div>
-                    <div style="text-align:right; font-size:8pt; color:#475569;">
-                        <strong>Emisión:</strong> ${capDate}
-                    </div>
-                </div>
-
-                <!-- CAMPOS EN BLANCO PARA LLENAR POR EL DOCENTE -->
-                <div style="display:grid; grid-template-columns: 1.4fr 1.4fr 1fr; gap:10px; margin-top:4px; padding-top:6px; border-top:1px solid #bbf7d0; font-size:8.5pt;">
-                    <div><strong>Asignatura / Materia:</strong> ___________________________________</div>
-                    <div><strong>Catedrático(a):</strong> ___________________________________</div>
                     <div style="text-align:right;">
-                        <strong>Bimestre:</strong> [ &nbsp; ] 1º &nbsp; [ &nbsp; ] 2º &nbsp; [ &nbsp; ] 3º &nbsp; [ &nbsp; ] 4º
+                        <div style="background:#166534; color:#fff; font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:8px; border:1px solid #86efac; text-transform:uppercase;">
+                            CONTROL DE TAREAS Y ZONA (10 CASILLAS)
+                        </div>
+                        <div style="font-size:0.68rem; color:#dcfce7; margin-top:2px;">HOJA OFICIO (8.5" × 13")</div>
                     </div>
                 </div>
+                
+                <!-- DATOS DEL GRADO, MAESTRO GUÍA Y CAMPOS DEL CATEDRÁTICO -->
+                <div style="background:#f0fdf4; border-top:2px solid #16a34a; padding:6px 10px; font-size:8pt; color:#0f172a;">
+                    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:8px; margin-bottom:4px;">
+                        <div>
+                            <div style="font-size:10pt; font-weight:900; color:#15803d; text-transform:uppercase;">
+                                NÓMINA DE CONTROL — ${escapeHtml(gradeName)} (${escapeHtml(sectionName)})
+                            </div>
+                            <div style="color:#1e293b; font-size:8pt; margin-top:1px;">
+                                <strong>Carrera:</strong> ${escapeHtml(careerName)} &nbsp;|&nbsp; 👨‍🏫 <strong>Maestro(a) Guía:</strong> <span style="color:#166534; font-weight:bold;">${escapeHtml(guideTeacher)}</span>
+                            </div>
+                        </div>
+                        <div style="text-align:right; font-size:7.5pt; color:#475569;">
+                            <strong>Emisión:</strong> ${capDate}
+                        </div>
+                    </div>
 
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:5px; padding-top:4px; border-top:1px dashed #cbd5e1; font-size:8pt; color:#475569;">
-                    <span>Total Alumnos: <strong style="color:#15803d;">${list.length}</strong></span>
-                    <span>Varones: <strong style="color:#0284c7;">${countMale}</strong></span>
-                    <span>Mujeres: <strong style="color:#db2777;">${countFemale}</strong></span>
-                    <span>Instructivo: Registre en cada casilla el punteo obtenido por el alumno en cada tarea o actividad formativa.</span>
+                    <!-- CAMPOS: ASIGNATURA (OPCIONAL/MANO), CATEDRÁTICO AUTOMÁTICO Y BIMESTRE ACTIVO -->
+                    <div style="display:grid; grid-template-columns: 1.3fr 1.3fr 1.4fr; gap:8px; margin-top:4px; padding-top:4px; border-top:1px solid #bbf7d0; font-size:8pt; align-items:center;">
+                        <div>
+                            <strong>Asignatura / Materia:</strong> 
+                            ${selectedSubject ? `<span style="font-weight:800; color:#15803d; text-transform:uppercase;">${escapeHtml(selectedSubject)}</span>` : `_________________________`}
+                        </div>
+                        <div>
+                            <strong>Catedrático(a):</strong> 
+                            ${loggedTeacherName ? `<span style="font-weight:800; color:#0f172a;">${escapeHtml(loggedTeacherName)}</span>` : `_________________________`}
+                        </div>
+                        <div style="text-align:right;">
+                            <strong>Bimestre:</strong> 
+                            ${bimCheck(1)} 1º &nbsp; ${bimCheck(2)} 2º &nbsp; ${bimCheck(3)} 3º &nbsp; ${bimCheck(4)} 4º
+                            <span style="background:#15803d; color:#fff; font-size:6.8pt; font-weight:800; padding:1px 5px; border-radius:3px; margin-left:3px;">${activeBimestre}º Activo</span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:3px; border-top:1px dashed #cbd5e1; font-size:7.5pt; color:#475569;">
+                        <span>Total Alumnos: <strong style="color:#15803d;">${list.length}</strong> (Varones: <strong style="color:#0284c7;">${countMale}</strong> | Mujeres: <strong style="color:#db2777;">${countFemale}</strong>)</span>
+                        <span>Instructivo: Registre el punteo de cada tarea formativa en las casillas C-1 a C-10 y sume el Total Zona.</span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- TABLA CON 8 CASILLAS EN BLANCO -->
-        <table style="width:100%; border-collapse:collapse; font-size:8pt; font-family:'Segoe UI', Arial, sans-serif;">
-            <thead>
-                <tr style="background:#15803d; color:#ffffff; font-weight:800; text-transform:uppercase; font-size:7.5pt; text-align:center;">
-                    <th rowspan="2" style="padding:4px 2px; width:28px; border:1px solid #064e3b;">No.</th>
-                    <th rowspan="2" style="padding:4px 2px; width:80px; border:1px solid #064e3b;">Carné / Cód.</th>
-                    <th rowspan="2" style="padding:4px 6px; text-align:left; border:1px solid #064e3b;">Apellidos y Nombres</th>
-                    <th rowspan="2" style="padding:4px 2px; width:26px; border:1px solid #064e3b;">Sex</th>
-                    <th colspan="8" style="padding:3px; border:1px solid #064e3b; background:#166534;">CONTROL DE TAREAS Y ACTIVIDADES FORMATIVAS (8 CASILLAS)</th>
-                    <th rowspan="2" style="padding:4px 2px; width:50px; border:1px solid #064e3b; background:#14532d;">TOTAL<br><span style="font-size:6.5pt; font-weight:normal;">ZONA</span></th>
-                </tr>
-                <tr style="background:#16a34a; color:#ffffff; font-weight:700; font-size:7pt; text-align:center;">
-                    <th style="padding:3px 1px; width:44px; border:1px solid #064e3b;">C-1<br><span style="font-size:6pt; font-weight:normal;">Pts: ___</span></th>
-                    <th style="padding:3px 1px; width:44px; border:1px solid #064e3b;">C-2<br><span style="font-size:6pt; font-weight:normal;">Pts: ___</span></th>
-                    <th style="padding:3px 1px; width:44px; border:1px solid #064e3b;">C-3<br><span style="font-size:6pt; font-weight:normal;">Pts: ___</span></th>
-                    <th style="padding:3px 1px; width:44px; border:1px solid #064e3b;">C-4<br><span style="font-size:6pt; font-weight:normal;">Pts: ___</span></th>
-                    <th style="padding:3px 1px; width:44px; border:1px solid #064e3b;">C-5<br><span style="font-size:6pt; font-weight:normal;">Pts: ___</span></th>
-                    <th style="padding:3px 1px; width:44px; border:1px solid #064e3b;">C-6<br><span style="font-size:6pt; font-weight:normal;">Pts: ___</span></th>
-                    <th style="padding:3px 1px; width:44px; border:1px solid #064e3b;">C-7<br><span style="font-size:6pt; font-weight:normal;">Pts: ___</span></th>
-                    <th style="padding:3px 1px; width:44px; border:1px solid #064e3b;">C-8<br><span style="font-size:6pt; font-weight:normal;">Pts: ___</span></th>
-                </tr>
-            </thead>
-            <tbody>
-                ${rowsHtml}
-            </tbody>
-        </table>
+            <!-- TABLA CON 10 CASILLAS EN BLANCO -->
+            <table style="width:100%; border-collapse:collapse; font-size:7.5pt; font-family:'Segoe UI', Arial, sans-serif;">
+                <thead>
+                    <tr style="background:#15803d; color:#ffffff; font-weight:800; text-transform:uppercase; font-size:7pt; text-align:center;">
+                        <th rowspan="2" style="padding:3px 1px; width:26px; border:1px solid #064e3b;">No.</th>
+                        <th rowspan="2" style="padding:3px 2px; width:78px; border:1px solid #064e3b;">CÓDIGO PERSONAL</th>
+                        <th rowspan="2" style="padding:3px 5px; text-align:left; border:1px solid #064e3b;">Apellidos y Nombres</th>
+                        <th rowspan="2" style="padding:3px 1px; width:22px; border:1px solid #064e3b;">Sex</th>
+                        <th colspan="10" style="padding:2px; border:1px solid #064e3b; background:#166534;">CONTROL DE TAREAS Y ACTIVIDADES FORMATIVAS (10 CASILLAS)</th>
+                        <th rowspan="2" style="padding:3px 1px; width:44px; border:1px solid #064e3b; background:#14532d;">TOTAL<br><span style="font-size:6pt; font-weight:normal;">ZONA</span></th>
+                    </tr>
+                    <tr style="background:#16a34a; color:#ffffff; font-weight:700; font-size:6.5pt; text-align:center;">
+                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-1<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-2<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-3<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-4<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-5<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-6<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-7<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-8<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-9<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                        <th style="padding:2px 1px; width:38px; border:1px solid #064e3b;">C-10<br><span style="font-size:5.5pt; font-weight:normal;">Pts: ___</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
 
-        <!-- PIE DE PÁGINA: SIN LÍNEAS DE FIRMAS POR REQUERIMIENTO EXPLÍCITO -->
-        <div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center; font-size:7.5pt; color:#64748b; font-family:'Segoe UI', Arial, sans-serif; border-top:1px solid #cbd5e1; padding-top:4px;">
-            <span>ENCCO Jutiapa • Sistema Oficial de Control Académico • Formato de Nómina en Blanco de 8 Casillas</span>
-            <span>Total Evaluados: ${list.length} alumnos • Página 1</span>
+            <!-- PIE DE PÁGINA: SIN LÍNEAS DE FIRMAS POR REQUERIMIENTO EXPLÍCITO -->
+            <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center; font-size:7pt; color:#64748b; font-family:'Segoe UI', Arial, sans-serif; border-top:1px solid #cbd5e1; padding-top:3px;">
+                <span>ENCCO Jutiapa • Sistema Oficial de Control Académico • Formato de Nómina en Blanco de 10 Casillas (Hoja Oficio 8.5" × 13")</span>
+                <span>Total Evaluados: ${list.length} alumnos • Página 1</span>
+            </div>
         </div>
     `;
 
-    renderAndShowPrintDocument(`Nómina en Blanco 8 Casillas - ${gradeName} (${sectionName})`, htmlContent, 'portrait');
+    renderAndShowPrintDocument(`Nómina en Blanco 10 Casillas - ${gradeName} (${sectionName})`, htmlContent, 'portrait');
 }
-window.printStudentsBlankRoster8Casillas = printStudentsBlankRoster8Casillas;
+window.printStudentsBlankRoster10Casillas = printStudentsBlankRoster10Casillas;
+window.printStudentsBlankRoster8Casillas = printStudentsBlankRoster10Casillas;
 
 function printOfficialUsersRoster() {
     const h = STATE.schoolHeader || getInitialData().schoolHeader;
