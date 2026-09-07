@@ -1029,6 +1029,7 @@ function normalizePermKey(key) {
     if (k === 'grade_lock') return 'grade-lock';
     if (k === 'honor_roll') return 'honor-roll';
     if (k === 'class_assignments') return 'class-assignments';
+    if (k === 'boletin' || k === 'boletines' || k === 'boletin_calificaciones' || k === 'boletin-calificaciones' || k === 'report_card' || k === 'report-card') return 'reports';
     return k;
 }
 
@@ -1825,7 +1826,7 @@ var SYSTEM_MODULES_LIST = [
     { key: 'discipline', name: 'Gestión de Disciplina', icon: 'fa-scale-balanced', category: 'Estudiantil', desc: 'Actas de incidencias, tipificación de faltas y acuerdos.' },
     { key: 'honor-roll', name: 'Cuadro de Honor', icon: 'fa-medal', category: 'Académico', desc: 'Visualización de mejores promedios bimestrales.' },
     { key: 'users', name: 'Claustro de Docentes y Usuarios', icon: 'fa-users-gear', category: 'Administración', desc: 'Directorio de personal, renglones 011/021 y credenciales.' },
-    { key: 'reports', name: 'Generación e Impresión de Reportes', icon: 'fa-print', category: 'Secretaría y Dirección', desc: 'Impresión de cuadros oficiales, actas y nóminas.' },
+    { key: 'reports', name: 'Boletín de Calificaciones', icon: 'fa-print', category: 'Calificaciones', desc: 'Generación, consulta e impresión de tarjetas y boletines oficiales de notas por estudiante.' },
     { key: 'roles', name: 'Gestor de Roles y Permisos', icon: 'fa-user-shield', category: 'Administración', desc: 'Configuración de permisos por módulo (Solo Administrador).' },
     { key: 'careers', name: 'Gestor de Carreras', icon: 'fa-graduation-cap', category: 'Académico', desc: 'Creación y edición de carreras escolares.' },
     { key: 'cycles', name: 'Gestor de Ciclos Escolares', icon: 'fa-calendar-days', category: 'Académico', desc: 'Habilitación de ciclos lectivos y promociones.' }
@@ -20498,6 +20499,15 @@ function renderStudentProfileGrades(student) {
 }
 
 function printStudentReportCardFromProfile(studentId) {
+    if (!hasRolePermission('reports', STATE.currentRole)) {
+        showToast("Acceso Restringido: Su rol actual no tiene autorización para acceder al Boletín de Calificaciones.", "warning");
+        return;
+    }
+    if (!canRoleModify('reports', STATE.currentRole)) {
+        showToast("Acceso Restringido: Su rol tiene permiso de solo consulta para el Boletín de Calificaciones.", "info");
+        return;
+    }
+
     if (!studentId) studentId = STATE.selectedStudentId;
     const s = (STATE.students || []).find(x => x.id === studentId);
     if (!s) {
@@ -24248,15 +24258,29 @@ function importDataBackupJSON(e) {
 }
 
 function populateReportStudentSelect() {
+    if (!hasRolePermission('reports', STATE.currentRole)) {
+        return;
+    }
+
     const select = document.getElementById('reportStudentSelect');
     if (!select) return;
 
     let students = STATE.students || [];
-    if (STATE.currentRole === 'docente') {
+    if (STATE.currentRole === 'estudiante') {
+        const currentUserId = STATE.currentUser?.id;
+        const currentCarne = STATE.currentUser?.username || STATE.currentUser?.carne;
+        students = students.filter(s => s.id === currentUserId || (currentCarne && s.carne === currentCarne));
+    } else if (STATE.currentRole === 'docente') {
         const currentUser = STATE.currentUser || STATE.users[0];
-        const myGrades = (STATE.pensum || []).filter(p => p.teacherId === currentUser.id || (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())).map(p => p.gradeCode);
+        const teacherName = (currentUser.name || '').toLowerCase();
+        const teacherPensum = (STATE.pensum || []).filter(p => 
+            (p.teacherId && p.teacherId === currentUser.id) || 
+            (p.teacher && p.teacher.toLowerCase().includes(teacherName)) || 
+            (p.teacherName && p.teacherName.toLowerCase().includes(teacherName))
+        );
+        const myGrades = Array.from(new Set(teacherPensum.map(p => p.grade || p.gradeCode)));
         if (myGrades.length > 0) {
-            students = students.filter(s => myGrades.includes(s.grade));
+            students = students.filter(s => myGrades.includes(s.grade) || myGrades.some(g => (s.gradeLabel || '').includes(g) || (s.gradeCode || '').includes(g)));
         }
     }
 
@@ -24339,8 +24363,13 @@ function previewStudentReportCard(studentId) {
 }
 
 function printStudentReportCardOfficial() {
-    if (STATE.currentRole === 'docente') {
-        showToast("Acceso Restringido: La emisión de boletines de calificaciones es de uso exclusivo para Dirección, Secretaría y Administración.", "danger");
+    if (!hasRolePermission('reports', STATE.currentRole)) {
+        showToast("Acceso Restringido: Su rol actual no tiene autorización para acceder o emitir boletines de calificaciones.", "warning");
+        return;
+    }
+
+    if (!canRoleModify('reports', STATE.currentRole)) {
+        showToast("Acceso Restringido: Su rol tiene permiso de solo consulta para el Boletín de Calificaciones. La impresión oficial requiere nivel de modificación asignado por el Administrador.", "info");
         return;
     }
 
