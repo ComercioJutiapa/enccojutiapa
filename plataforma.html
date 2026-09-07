@@ -2132,11 +2132,18 @@
                             <!-- Inyectado dinámicamente con renderActiveRolePermissionsGrid() -->
                         </div>
 
-                        <!-- BOTÓN INFERIOR DE GUARDAR -->
-                        <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1.5px solid #e2e8f0; padding-top:14px;">
-                            <button type="button" class="btn btn-primary" onclick="saveActiveRolePermissions()" style="font-weight:800; background:#16a34a; border-color:#15803d; padding:10px 24px; font-size:0.95rem; border-radius:8px; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
-                                <i class="fa-solid fa-floppy-disk"></i> Guardar y Aplicar Permisos Inmediatamente
-                            </button>
+                        <!-- BOTÓN INFERIOR DE GUARDAR Y ACCIONES -->
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-top:1.5px solid #e2e8f0; padding-top:14px;">
+                            <div>
+                                <button type="button" class="btn btn-outline-danger btn-sm" id="btnDeleteActiveRole" style="display:none; font-weight:700; padding:8px 18px; border-radius:8px; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-trash-can"></i> Eliminar este Rol
+                                </button>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <button type="button" class="btn btn-primary" onclick="saveActiveRolePermissions()" style="font-weight:800; background:#16a34a; border-color:#15803d; padding:10px 24px; font-size:0.95rem; border-radius:8px; display:inline-flex; align-items:center; gap:8px; cursor:pointer;">
+                                    <i class="fa-solid fa-floppy-disk"></i> Guardar y Aplicar Permisos Inmediatamente
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -2163,7 +2170,7 @@
                                         <th>Descripción</th>
                                         <th style="width:170px; text-align:center;">Módulos Permitidos</th>
                                         <th style="width:140px; text-align:center;">Usuarios</th>
-                                        <th style="width:130px; text-align:center;">Acciones</th>
+                                        <th style="width:240px; text-align:center;">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="rolesTableBody">

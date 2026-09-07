@@ -1697,6 +1697,16 @@ function loadRoleIntoPermissionsPanel(roleKey) {
     if (colorInput) colorInput.value = r.color || '#0284c7';
 
     renderActiveRolePermissionsGrid(r.permissions || []);
+
+    const delBtn = document.getElementById('btnDeleteActiveRole');
+    if (delBtn) {
+        if (r.key === 'admin') {
+            delBtn.style.display = 'none';
+        } else {
+            delBtn.style.display = 'inline-flex';
+            delBtn.setAttribute('onclick', `deleteRole('${r.key}')`);
+        }
+    }
 }
 window.loadRoleIntoPermissionsPanel = loadRoleIntoPermissionsPanel;
 
@@ -1889,13 +1899,19 @@ function normalizeRolesConfig() {
 
     const defaultRoles = initDefaultRolesConfig();
     
-    // Asegurar que los roles base del sistema existan
-    defaultRoles.forEach(def => {
-        const found = STATE.rolesConfig.find(r => r.key === def.key);
-        if (!found) {
-            STATE.rolesConfig.push(def);
-        }
-    });
+    // Asegurar únicamente que el rol maestro 'admin' siempre exista para evitar bloqueos
+    const adminFound = STATE.rolesConfig.find(r => r.key === 'admin');
+    if (!adminFound) {
+        const defAdmin = defaultRoles.find(d => d.key === 'admin') || {
+            key: 'admin',
+            name: 'Super Administrador',
+            description: 'Acceso total y configuración del sistema',
+            color: '#0284c7',
+            isSystem: true,
+            permissions: SYSTEM_MODULES_LIST.map(m => m.key)
+        };
+        STATE.rolesConfig.unshift(defAdmin);
+    }
 
     // Normalizar todos los roles (base y personalizados)
     STATE.rolesConfig.forEach(roleObj => {
@@ -1980,21 +1996,21 @@ function openRoleModal(roleKey = null) {
 
     normalizeRolesConfig();
 
-    const keyInput = document.getElementById('roleModalKey');
-    const nameInput = document.getElementById('roleModalName');
-    const descInput = document.getElementById('roleModalDescription');
-    const colorInput = document.getElementById('roleModalColor');
+    const keyInput = document.getElementById('roleModalKey') || document.getElementById('roleFormKey');
+    const nameInput = document.getElementById('roleModalName') || document.getElementById('roleFormName');
+    const descInput = document.getElementById('roleModalDescription') || document.getElementById('roleFormDescription');
+    const colorInput = document.getElementById('roleModalColor') || document.getElementById('roleFormColor');
     const titleEl = document.getElementById('roleModalTitle');
 
     if (roleKey) {
         const r = (STATE.rolesConfig || []).find(x => x.key === roleKey);
         if (!r) return;
 
-        if (keyInput) { keyInput.value = r.key; keyInput.readOnly = (r.isSystem || ['admin','director','secretaria','profesor_auxiliar','docente'].includes(r.key)); }
+        if (keyInput) { keyInput.value = r.key; keyInput.readOnly = true; }
         if (nameInput) nameInput.value = r.name;
         if (descInput) descInput.value = r.description || '';
         if (colorInput) colorInput.value = r.color || '#0284c7';
-        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Configurar Permisos del Rol: ${r.name}`;
+        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-user-pen"></i> Editar Rol y Permisos: ${r.name}`;
 
         renderRolePermissionsCheckboxes(r.permissions || []);
     } else {
@@ -2002,7 +2018,7 @@ function openRoleModal(roleKey = null) {
         if (nameInput) nameInput.value = '';
         if (descInput) descInput.value = '';
         if (colorInput) colorInput.value = '#0284c7';
-        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Crear Nuevo Rol Institucional`;
+        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-plus-circle"></i> Crear Nuevo Rol Institucional`;
 
         renderRolePermissionsCheckboxes(['dashboard']);
     }
@@ -2010,11 +2026,23 @@ function openRoleModal(roleKey = null) {
     showModalById('roleModal');
 }
 window.openRoleModal = openRoleModal;
+window.editRole = openRoleModal;
 
 function closeRoleModal() {
     hideModalById('roleModal');
 }
 window.closeRoleModal = closeRoleModal;
+
+function selectRoleAndScroll(roleKey) {
+    selectRoleForEditing(roleKey);
+    const target = document.getElementById('activeRoleKey') || document.getElementById('view-roles');
+    if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    const r = (STATE.rolesConfig || []).find(x => x.key === roleKey);
+    showToast(`Mostrando matriz de permisos para: ${r ? r.name : roleKey}`, 'info');
+}
+window.selectRoleAndScroll = selectRoleAndScroll;
 
 function saveRoleForm(e) {
     if (e && e.preventDefault) e.preventDefault();
@@ -2154,15 +2182,22 @@ function renderRolesTable(filterVal = '') {
                     </span>
                 </td>
                 <td style="text-align:center;">
-                    <div style="display:inline-flex; gap:4px;">
-                        <button type="button" class="btn btn-primary btn-xs" onclick="openRoleModal('${r.key}')" title="Configurar Qué Puede Ver este Rol" style="font-weight:700; padding:4px 9px;">
-                            <i class="fa-solid fa-sliders"></i> Configurar Permisos
+                    <div style="display:inline-flex; gap:6px; flex-wrap:wrap; justify-content:center; align-items:center;">
+                        <button type="button" class="btn btn-outline-primary btn-xs" onclick="openRoleModal('${r.key}')" title="Editar Nombre, Descripción, Color y Módulos del Rol" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; border-radius:6px;">
+                            <i class="fa-solid fa-pen-to-square"></i> Editar
                         </button>
-                        ${!r.isSystem && !isMasterAdmin ? `
-                        <button type="button" class="btn btn-outline-danger btn-xs" onclick="deleteRole('${r.key}')" title="Eliminar Rol" style="padding:4px 8px;">
-                            <i class="fa-solid fa-trash-can"></i>
+                        <button type="button" class="btn btn-primary btn-xs" onclick="selectRoleAndScroll('${r.key}')" title="Configurar Matriz Detallada de Permisos (Modificar / Solo Ver / Bloquear)" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; background:#16a34a; border-color:#15803d; color:#fff; border-radius:6px;">
+                            <i class="fa-solid fa-sliders"></i> Permisos
                         </button>
-                        ` : ''}
+                        ${!isMasterAdmin ? `
+                        <button type="button" class="btn btn-outline-danger btn-xs" onclick="deleteRole('${r.key}')" title="Eliminar Rol del Sistema" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; border-radius:6px; color:#dc2626; border-color:#fca5a5;">
+                            <i class="fa-solid fa-trash-can"></i> Eliminar
+                        </button>
+                        ` : `
+                        <span class="badge" style="background:#f1f5f9; color:#94a3b8; border:1px solid #cbd5e1; font-size:0.75rem; padding:4px 8px; border-radius:6px;" title="El rol principal de Super Administrador está protegido contra eliminación">
+                            <i class="fa-solid fa-lock"></i> Protegido
+                        </span>
+                        `}
                     </div>
                 </td>
             </tr>
@@ -2172,24 +2207,58 @@ function renderRolesTable(filterVal = '') {
 window.renderRolesTable = renderRolesTable;
 
 function deleteRole(roleKey) {
-    if (['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente'].includes(roleKey)) {
-        showToast('Los roles del sistema ministerial no pueden ser eliminados.', 'warning');
+    if (STATE.currentRole !== 'admin' && STATE.currentUser?.role !== 'admin') {
+        showToast('Solo el Super Administrador tiene autorización para eliminar roles.', 'warning');
         return;
     }
 
-    const hasUsers = (STATE.users || []).some(u => u.role === roleKey);
-    if (hasUsers) {
-        showToast('No puede eliminar este rol porque tiene usuarios asignados. Reasigne los usuarios primero.', 'warning');
+    if (roleKey === 'admin') {
+        showToast('El rol principal de Super Administrador está protegido y no puede ser eliminado.', 'warning');
         return;
     }
 
-    if (!confirm(`¿Está seguro de eliminar el rol "${roleKey}"?`)) return;
+    const roleObj = (STATE.rolesConfig || []).find(r => r.key === roleKey);
+    const roleName = roleObj ? roleObj.name : roleKey;
 
-    normalizeRolesConfig();
-    STATE.rolesConfig = STATE.rolesConfig.filter(r => r.key !== roleKey);
+    const assignedUsers = (STATE.users || []).filter(u => u.role === roleKey);
+    if (assignedUsers.length > 0) {
+        if (!confirm(`El rol "${roleName}" (${roleKey}) tiene actualmente ${assignedUsers.length} usuario(s) asignado(s).\n\nSi continúa, el rol será eliminado y los usuarios asignados serán transferidos automáticamente al rol "docente".\n\n¿Desea eliminar el rol y reasignar los usuarios?`)) {
+            return;
+        }
+        assignedUsers.forEach(u => {
+            u.role = 'docente';
+        });
+    } else {
+        if (!confirm(`¿Está seguro de que desea eliminar permanentemente el rol "${roleName}" (${roleKey})?\n\nEsta acción no se puede deshacer.`)) {
+            return;
+        }
+    }
+
+    STATE.rolesConfig = (STATE.rolesConfig || []).filter(r => r.key !== roleKey);
     saveStateToLocalStorage();
+
+    // Broadcast y sincronización en tiempo real
+    try {
+        if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+            _enccBroadcastChannel.postMessage({ type: 'SYNC_STATE_UPDATE', state: STATE, timestamp: Date.now() });
+        }
+    } catch(e) {}
+    if (typeof pushStateToFirebaseCloud === 'function') {
+        pushStateToFirebaseCloud(false);
+    } else if (typeof syncStateToFirebaseImmediate === 'function') {
+        syncStateToFirebaseImmediate(false);
+    }
+
+    if (typeof _selectedRoleKeyForEditing !== 'undefined' && _selectedRoleKeyForEditing === roleKey) {
+        _selectedRoleKeyForEditing = (STATE.rolesConfig && STATE.rolesConfig[0]) ? STATE.rolesConfig[0].key : 'admin';
+    }
+
+    renderRoleSelectorTabs();
+    loadRoleIntoPermissionsPanel((typeof _selectedRoleKeyForEditing !== 'undefined') ? _selectedRoleKeyForEditing : 'admin');
     renderRolesTable();
-    showToast(`Rol eliminado exitosamente.`, 'info');
+    if (typeof updateUserRoleSelectOptions === 'function') updateUserRoleSelectOptions();
+    applyUserRole(STATE.currentRole);
+    showToast(`El rol "${roleName}" ha sido eliminado exitosamente.`, 'info');
 }
 window.deleteRole = deleteRole;
 
@@ -32256,173 +32325,10 @@ function deleteUser(userId) {
 }
 
 
-function openRoleModal(roleKey = null) {
-    if (STATE.currentRole !== 'admin' && STATE.currentUser?.role !== 'admin') {
-        showToast('Solo el Super Administrador puede configurar roles y permisos.', 'warning');
-        return;
-    }
-
-    const modal = document.getElementById('roleModal');
-    if (!modal) return;
-
-    const keyInput = document.getElementById('roleFormKey');
-    const nameInput = document.getElementById('roleFormName');
-    const descInput = document.getElementById('roleFormDescription');
-    const colorInput = document.getElementById('roleFormColor');
-    const container = document.getElementById('rolePermissionsMatrixContainer');
-    const titleEl = document.getElementById('roleModalTitle');
-
-    const allPerms = getAvailablePermissionsList();
-
-    if (roleKey) {
-        const r = (STATE.rolesConfig || []).find(x => x.key === roleKey);
-        if (!r) return;
-
-        if (keyInput) { keyInput.value = r.key; keyInput.readOnly = true; }
-        if (nameInput) nameInput.value = r.name;
-        if (descInput) descInput.value = r.description || '';
-        if (colorInput) colorInput.value = r.color || '#0284c7';
-        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Editar Permisos del Rol: ${r.name}`;
-
-        const activePerms = r.permissions || [];
-        if (container) {
-            container.innerHTML = allPerms.map(p => `
-                <label style="display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:4px; font-size:0.85rem; cursor:pointer;">
-                    <input type="checkbox" name="rolePerm" value="${p.key}" ${activePerms.includes(p.key) ? 'checked' : ''} style="width:16px; height:16px;">
-                    <div>
-                        <strong>${p.name}</strong>
-                        <small style="display:block; color:var(--text-muted); font-size:0.75rem;">Módulo: ${p.category}</small>
-                    </div>
-                </label>
-            `).join('');
-        }
-    } else {
-        if (keyInput) { keyInput.value = ''; keyInput.readOnly = false; }
-        if (nameInput) nameInput.value = '';
-        if (descInput) descInput.value = '';
-        if (colorInput) colorInput.value = '#0284c7';
-        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Crear Nuevo Rol Personalizado`;
-
-        if (container) {
-            container.innerHTML = allPerms.map(p => `
-                <label style="display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--bg-main); border:1px solid var(--border-color); border-radius:4px; font-size:0.85rem; cursor:pointer;">
-                    <input type="checkbox" name="rolePerm" value="${p.key}" ${p.key === 'dashboard' ? 'checked' : ''} style="width:16px; height:16px;">
-                    <div>
-                        <strong>${p.name}</strong>
-                        <small style="display:block; color:var(--text-muted); font-size:0.75rem;">Módulo: ${p.category}</small>
-                    </div>
-                </label>
-            `).join('');
-        }
-    }
-
-    showModalById('roleModal');
-}
-
-function closeRoleModal() {
-    const modal = document.getElementById('roleModal');
-    if (modal) {
-        modal.classList.remove('active');
-        modal.style.setProperty('display', 'none', 'important');
-    }
-}
-
-function saveRoleForm(e) {
-    if (e && e.preventDefault) e.preventDefault();
-
-    const keyInput = document.getElementById('roleModalKey') || document.getElementById('roleFormKey');
-    const nameInput = document.getElementById('roleModalName') || document.getElementById('roleFormName');
-    const descInput = document.getElementById('roleModalDescription') || document.getElementById('roleFormDescription');
-    const colorInput = document.getElementById('roleModalColor') || document.getElementById('roleFormColor');
-
-    const key = keyInput ? keyInput.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_') : '';
-    const name = nameInput ? nameInput.value.trim() : '';
-    const desc = descInput ? descInput.value.trim() : '';
-    const color = colorInput ? colorInput.value : '#0284c7';
-
-    if (!key || !name) {
-        showToast('Ingrese la clave y el nombre del rol.', 'warning');
-        return;
-    }
-
-    const checkboxes = document.querySelectorAll('input[name="rolePermissionCheckbox"]:checked, input[name="rolePerm"]:checked');
-    const permissions = Array.from(checkboxes).map(c => c.value);
-
-    // Si es admin, asegurar todos los permisos
-    if (key === 'admin' && permissions.length < SYSTEM_MODULES_LIST.length) {
-        SYSTEM_MODULES_LIST.forEach(m => {
-            if (!permissions.includes(m.key)) permissions.push(m.key);
-        });
-    }
-
-    const permissionLevels = {};
-    SYSTEM_MODULES_LIST.forEach(m => {
-        if (key === 'admin') {
-            permissionLevels[m.key] = 'edit';
-        } else if (permissions.includes(m.key)) {
-            permissionLevels[m.key] = (key === 'docente' && (m.key === 'guide-teachers' || m.key === 'reports' || m.key === 'honor-roll')) ? 'view' : 'edit';
-        } else {
-            permissionLevels[m.key] = 'none';
-        }
-    });
-
-    if (!Array.isArray(STATE.rolesConfig)) STATE.rolesConfig = [];
-
-    const existingIdx = STATE.rolesConfig.findIndex(r => r.key === key);
-    if (existingIdx !== -1) {
-        STATE.rolesConfig[existingIdx].name = name;
-        STATE.rolesConfig[existingIdx].description = desc;
-        STATE.rolesConfig[existingIdx].color = color;
-        STATE.rolesConfig[existingIdx].permissions = permissions;
-        STATE.rolesConfig[existingIdx].permissionLevels = permissionLevels;
-    } else {
-        STATE.rolesConfig.push({
-            key: key,
-            name: name,
-            description: desc,
-            color: color,
-            isSystem: false,
-            permissions: permissions,
-            permissionLevels: permissionLevels
-        });
-    }
-
-    saveStateToLocalStorage();
-    closeRoleModal();
-    if (typeof renderRolesTable === 'function') renderRolesTable();
-    if (typeof renderRoleSelectorTabs === 'function') renderRoleSelectorTabs();
-    updateUserRoleSelectOptions();
-    applyUserRole(STATE.currentRole);
-    showToast(`Rol "${name}" guardado exitosamente.`, 'success');
-}
-
-function deleteRole(roleKey) {
-    const r = (STATE.rolesConfig || []).find(x => x.key === roleKey);
-    if (!r) return;
-    if (r.isSystem) {
-        showToast('Los roles base del sistema no pueden ser eliminados.', 'danger');
-        return;
-    }
-
-    if (confirm(`¿Está seguro de eliminar el rol "${r.name}"? Los usuarios asignados a este rol pasarán a rol Docente.`)) {
-        STATE.rolesConfig = STATE.rolesConfig.filter(x => x.key !== roleKey);
-        (STATE.users || []).forEach(u => {
-            if (u.role === roleKey) u.role = 'docente';
-        });
-        saveStateToLocalStorage();
-        renderRolesTable();
-        updateUserRoleSelectOptions();
-        applyUserRole(STATE.currentRole);
-        showToast(`Rol "${r.name}" eliminado.`, 'info');
-    }
-}
-
-
-function toggleAllRolePermissions(checkAll = true) {
-    document.querySelectorAll('input[name="rolePerm"]').forEach(cb => {
-        cb.checked = checkAll;
-    });
-}
+// ======================================================================
+// NOTA: La gestión y edición de roles y permisos se encuentra centralizada
+// en el controlador maestro unificado (openRoleModal, saveRoleForm, deleteRole).
+// ======================================================================
 
 
 
