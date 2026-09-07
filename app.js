@@ -720,52 +720,66 @@ const EnccoAuthStore = {
 
         const isSuper = (role === 'admin' || role === 'super_usuario');
 
-        // 2. Navegación lateral reactiva
+        // 2. Navegación lateral reactiva 100% dinámica
         document.querySelectorAll('.nav-item').forEach(el => {
             const targetView = el.dataset.view;
-            const allowedRoles = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim().toLowerCase()) : [];
             const permKey = el.dataset.perm || targetView;
 
-            if (targetView) {
-                let hasAccess = false;
-                if (isSuper) {
-                    hasAccess = true;
-                } else if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
-                    hasAccess = false;
-                } else if (permKey) {
-                    const perms = permKey.split(',').map(p => p.trim());
-                    hasAccess = perms.some(p => hasRolePermission(p, role));
-                } else {
-                    hasAccess = hasRolePermission(targetView, role);
-                }
+            let hasAccess = false;
+            if (isSuper) {
+                hasAccess = true;
+            } else if (permKey) {
+                hasAccess = hasRolePermission(permKey, role);
+            } else if (targetView) {
+                hasAccess = hasRolePermission(targetView, role);
+            }
 
-                if (hasAccess) {
-                    el.style.removeProperty('display');
-                    el.classList.remove('hidden');
-                } else {
-                    el.style.setProperty('display', 'none', 'important');
-                    el.classList.add('hidden');
-                }
+            if (hasAccess) {
+                el.style.removeProperty('display');
+                el.classList.remove('hidden');
+            } else {
+                el.style.setProperty('display', 'none', 'important');
+                el.classList.add('hidden');
             }
         });
 
-        // 3. Secciones y elementos restringidos por roles
-        document.querySelectorAll('.role-restricted, [data-perm]').forEach(el => {
-            if (el.classList.contains('nav-item')) return; // Ya evaluado en el bloque de nav-items
+        // 3. Encabezados de sección (.nav-section-label): ocultar si no tienen ningún ítem visible
+        document.querySelectorAll('.nav-section-label').forEach(header => {
+            let sibling = header.nextElementSibling;
+            let hasVisibleChild = false;
+            while (sibling && !sibling.classList.contains('nav-section-label')) {
+                if (sibling.classList.contains('nav-item')) {
+                    const isHidden = sibling.classList.contains('hidden') || 
+                                     sibling.style.display === 'none' || 
+                                     (sibling.getAttribute && (sibling.getAttribute('style') || '').includes('display: none'));
+                    if (!isHidden) {
+                        hasVisibleChild = true;
+                        break;
+                    }
+                }
+                sibling = sibling.nextElementSibling;
+            }
 
-            const allowedRoles = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim().toLowerCase()) : [];
+            if (hasVisibleChild) {
+                header.style.removeProperty('display');
+                header.classList.remove('hidden');
+            } else {
+                header.style.setProperty('display', 'none', 'important');
+                header.classList.add('hidden');
+            }
+        });
+
+        // 4. Secciones y elementos restringidos por roles
+        document.querySelectorAll('.role-restricted, [data-perm]').forEach(el => {
+            if (el.classList.contains('nav-item') || el.classList.contains('nav-section-label')) return;
+
             const permKey = el.dataset.perm || el.dataset.view;
 
             let hasPerm = false;
             if (isSuper) {
                 hasPerm = true;
-            } else if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
-                hasPerm = false;
             } else if (permKey) {
-                const perms = permKey.split(',').map(p => p.trim());
-                hasPerm = perms.some(p => hasRolePermission(p, role));
-            } else if (allowedRoles.length > 0 && allowedRoles.includes(role)) {
-                hasPerm = true;
+                hasPerm = hasRolePermission(permKey, role);
             }
 
             if (hasPerm) {
@@ -1007,22 +1021,38 @@ window.enforceViewReadOnlyMode = enforceViewReadOnlyMode;
 //   MOTOR DE PERMISOS DE 3 NIVELES: MODIFICAR / SOLO VER / BLOQUEADO (V123)
 // ======================================================================
 
+function normalizePermKey(key) {
+    if (!key) return '';
+    let k = String(key).trim().toLowerCase();
+    if (k === 'guide_teachers') return 'guide-teachers';
+    if (k === 'excel_import') return 'excel-import';
+    if (k === 'grade_lock') return 'grade-lock';
+    if (k === 'honor_roll') return 'honor-roll';
+    if (k === 'class_assignments') return 'class-assignments';
+    return k;
+}
+
 function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
-    if (!roleKey) roleKey = STATE.currentRole || 'guest';
-    if (roleKey === 'admin') return 'edit';
+    if (!roleKey) roleKey = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
+    if (roleKey === 'admin' || roleKey === 'super_usuario') return 'edit';
+    if (!roleKey || roleKey === 'guest') return 'none';
+
+    const key = normalizePermKey(moduleKey);
 
     if (typeof normalizeRolesConfig === 'function') normalizeRolesConfig();
     const r = (STATE.rolesConfig || []).find(x => x.key === roleKey);
     if (!r) return 'none';
 
-    if (r.permissionLevels && r.permissionLevels[moduleKey]) {
-        return r.permissionLevels[moduleKey];
+    // 1. Nivel explícito en permissionLevels
+    if (r.permissionLevels && typeof r.permissionLevels[key] !== 'undefined') {
+        return r.permissionLevels[key];
     }
 
+    // 2. Mapeo derivado desde el arreglo permissions
     if (Array.isArray(r.permissions)) {
-        if (r.permissions.includes(moduleKey + '_edit')) return 'edit';
-        if (r.permissions.includes(moduleKey + '_view')) return 'view';
-        if (r.permissions.includes(moduleKey)) return 'edit';
+        if (r.permissions.includes(key + '_edit')) return 'edit';
+        if (r.permissions.includes(key + '_view')) return 'view';
+        if (r.permissions.includes(key)) return 'edit';
     }
 
     return 'none';
@@ -1030,54 +1060,55 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
 window.getModulePermissionLevel = getModulePermissionLevel;
 
 function hasRolePermission(permKey, role = null) {
-    // 🛡️ Principio de Menor Privilegio Defensivo:
+    // 🛡️ Principio de Menor Privilegio Defensivo
     const targetRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
     
-    // Si el rol es guest o undefined, denegar terminantemente por defecto
+    // Si el rol es guest o indefinido, denegar terminantemente
     if (!targetRole || targetRole === 'guest') return false;
     if (targetRole === 'admin' || targetRole === 'super_usuario') return true;
-    
-    // Directorio de Maestros Guías: Vista pública institucional permitida para todo el personal docente
-    if (permKey === 'guide-teachers' || permKey === 'guide_teachers') return true;
 
-    // Regla estricta: Los catedráticos y estudiantes NO pueden ver el Editor de Grados y Secciones
-    if ((targetRole === 'docente' || targetRole === 'estudiante') && (permKey === 'grades' || permKey === 'grades_edit' || permKey === 'grades_view')) {
-        return false;
-    }
+    if (!permKey) return false;
 
     try {
-        if (permKey.endsWith('_edit')) {
-            const baseKey = permKey.replace('_edit', '');
+        const rawKey = String(permKey).trim();
+        // Si contiene múltiples permisos separados por comas, verificar si tiene al menos uno
+        if (rawKey.includes(',')) {
+            const keys = rawKey.split(',').map(k => k.trim()).filter(Boolean);
+            return keys.some(k => hasRolePermission(k, targetRole));
+        }
+
+        const key = normalizePermKey(rawKey);
+
+        if (key.endsWith('_edit')) {
+            const baseKey = key.replace(/_edit$/, '');
             return canRoleModify(baseKey, targetRole);
         }
-        if (permKey.endsWith('_view')) {
-            const baseKey = permKey.replace('_view', '');
+        if (key.endsWith('_view')) {
+            const baseKey = key.replace(/_view$/, '');
             const lvl = getModulePermissionLevel(baseKey, targetRole);
             return lvl === 'view' || lvl === 'edit';
         }
 
-        const lvl = getModulePermissionLevel(permKey, targetRole);
+        const lvl = getModulePermissionLevel(key, targetRole);
         return lvl === 'view' || lvl === 'edit';
     } catch(err) {
-        console.warn(`🛡️ [Defensive Perm Error] Fallo al evaluar '${permKey}' para '${targetRole}'. Denegando.`);
+        console.warn(`🛡️ [Perm Error] Fallo al evaluar '${permKey}' para '${targetRole}'. Denegando.`);
         return false;
     }
 }
 window.hasRolePermission = hasRolePermission;
 
 function canRoleModify(moduleKey, role = null) {
-    // 🛡️ Principio de Menor Privilegio Defensivo:
+    // 🛡️ Principio de Menor Privilegio Defensivo
     const targetRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
     if (!targetRole || targetRole === 'guest') return false;
     if (targetRole === 'admin' || targetRole === 'super_usuario') return true;
 
-    // Regla estricta: Docentes y estudiantes NO pueden modificar la estructura escolar ni reasignar maestros guías
-    if ((targetRole === 'docente' || targetRole === 'estudiante') && (moduleKey === 'grades' || moduleKey === 'guide-teachers' || moduleKey === 'guide_teachers')) {
-        return false;
-    }
+    if (!moduleKey) return false;
 
     try {
-        const lvl = getModulePermissionLevel(moduleKey, targetRole);
+        const key = normalizePermKey(moduleKey);
+        const lvl = getModulePermissionLevel(key, targetRole);
         return lvl === 'edit';
     } catch(err) {
         console.warn(`🛡️ [Defensive Modify Error] Fallo al evaluar modificación en '${moduleKey}'. Denegando.`);
@@ -1854,50 +1885,52 @@ window.initDefaultRolesConfig = initDefaultRolesConfig;
 function normalizeRolesConfig() {
     if (!Array.isArray(STATE.rolesConfig) || STATE.rolesConfig.length === 0) {
         STATE.rolesConfig = initDefaultRolesConfig();
-        return;
     }
 
     const defaultRoles = initDefaultRolesConfig();
+    
+    // Asegurar que los roles base del sistema existan
     defaultRoles.forEach(def => {
         const found = STATE.rolesConfig.find(r => r.key === def.key);
         if (!found) {
             STATE.rolesConfig.push(def);
-        } else {
-            // Regla institucional: Docentes y estudiantes nunca tienen acceso a grades (Editor de Grados y Secciones)
-            if (found.key === 'docente') {
-                found.permissions = (found.permissions || []).filter(p => p !== 'grades' && p !== 'grades_edit' && p !== 'grades_view');
-                if (!found.permissions.includes('guide-teachers')) {
-                    found.permissions.push('guide-teachers');
-                }
-            } else if (found.key === 'estudiante') {
-                found.permissions = (found.permissions || []).filter(p => p !== 'grades' && p !== 'grades_edit' && p !== 'grades_view');
-                if (!found.permissions.includes('guide-teachers')) {
-                    found.permissions.push('guide-teachers');
-                }
-            }
-
-            if (!Array.isArray(found.permissions)) {
-                found.permissions = def.permissions;
-            }
-            if (!found.permissionLevels) {
-                found.permissionLevels = {};
-            }
-            SYSTEM_MODULES_LIST.forEach(m => {
-                if (found.key === 'admin') {
-                    found.permissionLevels[m.key] = 'edit';
-                } else if ((found.key === 'docente' || found.key === 'estudiante') && m.key === 'grades') {
-                    found.permissionLevels['grades'] = 'none';
-                } else if (found.key === 'docente' && m.key === 'guide-teachers') {
-                    found.permissionLevels['guide-teachers'] = 'view';
-                } else if (found.permissions.includes(m.key + '_edit') || found.permissions.includes(m.key)) {
-                    found.permissionLevels[m.key] = 'edit';
-                } else if (found.permissions.includes(m.key + '_view')) {
-                    found.permissionLevels[m.key] = 'view';
-                } else {
-                    found.permissionLevels[m.key] = 'none';
-                }
-            });
         }
+    });
+
+    // Normalizar todos los roles (base y personalizados)
+    STATE.rolesConfig.forEach(roleObj => {
+        if (!Array.isArray(roleObj.permissions)) {
+            const defMatch = defaultRoles.find(d => d.key === roleObj.key);
+            roleObj.permissions = defMatch ? [...defMatch.permissions] : [];
+        }
+
+        if (!roleObj.permissionLevels || typeof roleObj.permissionLevels !== 'object') {
+            roleObj.permissionLevels = {};
+        }
+
+        SYSTEM_MODULES_LIST.forEach(m => {
+            if (roleObj.key === 'admin') {
+                roleObj.permissionLevels[m.key] = 'edit';
+            } else if (typeof roleObj.permissionLevels[m.key] === 'undefined') {
+                // Si aún no se ha definido el nivel explícito para este módulo, derivarlo de permissions
+                if (roleObj.permissions.includes(m.key + '_edit')) {
+                    roleObj.permissionLevels[m.key] = 'edit';
+                } else if (roleObj.permissions.includes(m.key + '_view')) {
+                    roleObj.permissionLevels[m.key] = 'view';
+                } else if (roleObj.permissions.includes(m.key)) {
+                    // Si el módulo base está incluido, si es docente/estudiante en guide-teachers o reports es view por defecto
+                    if (roleObj.key === 'docente' && (m.key === 'guide-teachers' || m.key === 'reports' || m.key === 'honor-roll')) {
+                        roleObj.permissionLevels[m.key] = 'view';
+                    } else if (roleObj.key === 'estudiante') {
+                        roleObj.permissionLevels[m.key] = 'view';
+                    } else {
+                        roleObj.permissionLevels[m.key] = 'edit';
+                    }
+                } else {
+                    roleObj.permissionLevels[m.key] = 'none';
+                }
+            }
+        });
     });
 }
 window.normalizeRolesConfig = normalizeRolesConfig;
@@ -31749,31 +31782,69 @@ function applyUserRole(role = STATE.currentRole) {
 
         // Aplicar visibilidad granular estricta según la configuración de roles del administrador
     normalizeRolesConfig();
+
+    const isSuper = (role === 'admin' || role === 'super_usuario' || STATE.currentUser?.role === 'admin');
+
+    // 1. Navegación lateral reactiva 100% dinámica
     document.querySelectorAll('.nav-item').forEach(el => {
         const targetView = el.dataset.view;
-        if (targetView) {
-            const hasAccess = hasRolePermission(targetView, role);
-            if (hasAccess) {
-                el.style.removeProperty('display');
-                el.classList.remove('hidden');
-            } else {
-                el.style.setProperty('display', 'none', 'important');
-                el.classList.add('hidden');
-            }
+        const permKey = el.dataset.perm || targetView;
+
+        let hasAccess = false;
+        if (isSuper) {
+            hasAccess = true;
+        } else if (permKey) {
+            hasAccess = hasRolePermission(permKey, role);
+        } else if (targetView) {
+            hasAccess = hasRolePermission(targetView, role);
+        }
+
+        if (hasAccess) {
+            el.style.removeProperty('display');
+            el.classList.remove('hidden');
+        } else {
+            el.style.setProperty('display', 'none', 'important');
+            el.classList.add('hidden');
         }
     });
 
+    // 2. Encabezados de sección (.nav-section-label): ocultar si no tienen ningún ítem visible
+    document.querySelectorAll('.nav-section-label').forEach(header => {
+        let sibling = header.nextElementSibling;
+        let hasVisibleChild = false;
+        while (sibling && !sibling.classList.contains('nav-section-label')) {
+            if (sibling.classList.contains('nav-item')) {
+                const isHidden = sibling.classList.contains('hidden') || 
+                                 sibling.style.display === 'none' || 
+                                 (sibling.getAttribute && (sibling.getAttribute('style') || '').includes('display: none'));
+                if (!isHidden) {
+                    hasVisibleChild = true;
+                    break;
+                }
+            }
+            sibling = sibling.nextElementSibling;
+        }
+
+        if (hasVisibleChild) {
+            header.style.removeProperty('display');
+            header.classList.remove('hidden');
+        } else {
+            header.style.setProperty('display', 'none', 'important');
+            header.classList.add('hidden');
+        }
+    });
+
+    // 3. Otros elementos restringidos de la interfaz
     document.querySelectorAll('.role-restricted, [data-perm]').forEach(el => {
-        const allowedRoles = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim()) : [];
+        if (el.classList.contains('nav-item') || el.classList.contains('nav-section-label')) return;
+
         const permKey = el.dataset.perm || el.dataset.view;
 
         let hasPerm = false;
-        if (role === 'admin' || STATE.currentUser?.role === 'admin') {
+        if (isSuper) {
             hasPerm = true;
-        } else if (permKey && hasRolePermission(permKey, role)) {
-            hasPerm = true;
-        } else if (allowedRoles.length > 0 && allowedRoles.includes(role)) {
-            hasPerm = true;
+        } else if (permKey) {
+            hasPerm = hasRolePermission(permKey, role);
         }
 
         if (hasPerm) {
@@ -31786,7 +31857,7 @@ function applyUserRole(role = STATE.currentRole) {
     });
 
     // Actualizar los selectores de roles en modales y filtros
-    updateUserRoleSelectOptions();
+    if (typeof updateUserRoleSelectOptions === 'function') updateUserRoleSelectOptions();
 
     if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
     if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
@@ -31800,7 +31871,7 @@ function switchRole(role) {
             return;
         }
     }
-    applyUserRole(STATE.currentRole || "admin");
+    applyUserRole(role || STATE.currentRole || "admin");
 }
 
 function updateUserRoleSelectOptions() {
@@ -31973,10 +32044,10 @@ function closeRoleModal() {
 function saveRoleForm(e) {
     if (e && e.preventDefault) e.preventDefault();
 
-    const keyInput = document.getElementById('roleFormKey');
-    const nameInput = document.getElementById('roleFormName');
-    const descInput = document.getElementById('roleFormDescription');
-    const colorInput = document.getElementById('roleFormColor');
+    const keyInput = document.getElementById('roleModalKey') || document.getElementById('roleFormKey');
+    const nameInput = document.getElementById('roleModalName') || document.getElementById('roleFormName');
+    const descInput = document.getElementById('roleModalDescription') || document.getElementById('roleFormDescription');
+    const colorInput = document.getElementById('roleModalColor') || document.getElementById('roleFormColor');
 
     const key = keyInput ? keyInput.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_') : '';
     const name = nameInput ? nameInput.value.trim() : '';
@@ -31988,8 +32059,26 @@ function saveRoleForm(e) {
         return;
     }
 
-    const checkboxes = document.querySelectorAll('input[name="rolePerm"]:checked');
+    const checkboxes = document.querySelectorAll('input[name="rolePermissionCheckbox"]:checked, input[name="rolePerm"]:checked');
     const permissions = Array.from(checkboxes).map(c => c.value);
+
+    // Si es admin, asegurar todos los permisos
+    if (key === 'admin' && permissions.length < SYSTEM_MODULES_LIST.length) {
+        SYSTEM_MODULES_LIST.forEach(m => {
+            if (!permissions.includes(m.key)) permissions.push(m.key);
+        });
+    }
+
+    const permissionLevels = {};
+    SYSTEM_MODULES_LIST.forEach(m => {
+        if (key === 'admin') {
+            permissionLevels[m.key] = 'edit';
+        } else if (permissions.includes(m.key)) {
+            permissionLevels[m.key] = (key === 'docente' && (m.key === 'guide-teachers' || m.key === 'reports' || m.key === 'honor-roll')) ? 'view' : 'edit';
+        } else {
+            permissionLevels[m.key] = 'none';
+        }
+    });
 
     if (!Array.isArray(STATE.rolesConfig)) STATE.rolesConfig = [];
 
@@ -31999,6 +32088,7 @@ function saveRoleForm(e) {
         STATE.rolesConfig[existingIdx].description = desc;
         STATE.rolesConfig[existingIdx].color = color;
         STATE.rolesConfig[existingIdx].permissions = permissions;
+        STATE.rolesConfig[existingIdx].permissionLevels = permissionLevels;
     } else {
         STATE.rolesConfig.push({
             key: key,
@@ -32006,13 +32096,15 @@ function saveRoleForm(e) {
             description: desc,
             color: color,
             isSystem: false,
-            permissions: permissions
+            permissions: permissions,
+            permissionLevels: permissionLevels
         });
     }
 
     saveStateToLocalStorage();
     closeRoleModal();
-    renderRolesTable();
+    if (typeof renderRolesTable === 'function') renderRolesTable();
+    if (typeof renderRoleSelectorTabs === 'function') renderRoleSelectorTabs();
     updateUserRoleSelectOptions();
     applyUserRole(STATE.currentRole);
     showToast(`Rol "${name}" guardado exitosamente.`, 'success');
