@@ -22654,164 +22654,202 @@ function importAdminStaffCSV(e) {
 
 function importAdminStaffExcel(e) { importAdminStaffCSV(e); }
 
-function printStudentsOfficialList() {
-    const searchInput = document.getElementById('studentSearchInput');
-    const careerFilterSel = document.getElementById('studentCareerFilterSelect');
+function printStudentsOfficialList(targetGrade = null) {
     const gradeFilterSel = document.getElementById('gradeFilterSelect');
-    const statusFilterSel = document.getElementById('statusFilterSelect');
+    const gradeVal = targetGrade || (gradeFilterSel ? gradeFilterSel.value : '');
 
-    const searchVal = searchInput ? searchInput.value.trim().toLowerCase() : '';
-    const careerVal = careerFilterSel ? careerFilterSel.value : 'ALL';
-    const gradeVal = gradeFilterSel ? gradeFilterSel.value : 'ALL';
-    const statusVal = statusFilterSel ? statusFilterSel.value : 'Activo';
+    // 1. Validación estricta: La nómina debe generarse exclusivamente para un grado seleccionado
+    if (!gradeVal || gradeVal === 'ALL') {
+        showToast("Por favor seleccione un Grado y Sección en el filtro superior para generar la nómina correspondiente.", "warning");
+        if (gradeFilterSel) {
+            gradeFilterSel.focus();
+            gradeFilterSel.style.outline = '2px solid #dc2626';
+            setTimeout(() => { if (gradeFilterSel) gradeFilterSel.style.outline = ''; }, 2500);
+        }
+        return;
+    }
 
-    // Obtener y filtrar lista exactamente con la lógica de renderStudentsTable
+    const cycle = STATE.activeCycle || '2026';
+    const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal || g.name === gradeVal);
+
     let list = (STATE.students || []).filter(s => {
-        if (STATE.activeCycle && s.cycle && s.cycle !== STATE.activeCycle) return false;
+        if (cycle && s.cycle && s.cycle !== cycle) return false;
         return true;
     });
 
-    if (statusVal !== 'ALL') {
-        list = list.filter(s => s.status === statusVal);
+    // 2. Filtrado riguroso por Grado y Sección
+    const rawQ = `${gradeVal || ''} ${targetGradeObj ? (targetGradeObj.name + ' ' + targetGradeObj.section) : ''}`.toUpperCase();
+    let qGradeNum = 0;
+    if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
+    else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
+    else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
+
+    const qSec = typeof getCleanSectionLetter === 'function'
+        ? getCleanSectionLetter(targetGradeObj ? targetGradeObj.section : gradeVal)
+        : (targetGradeObj ? targetGradeObj.section : gradeVal).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+
+    list = list.filter(s => {
+        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+        let sGradeNum = 0;
+        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+
+        const sSec = typeof getCleanSectionLetter === 'function'
+            ? getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS)
+            : (s.section || s.gradeCode || s.gradeLabel || rawS).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+
+        if (qGradeNum > 0 && sGradeNum > 0 && qGradeNum !== sGradeNum) return false;
+        if (qSec && sSec && qSec !== sSec) return false;
+
+        return (qGradeNum === sGradeNum) && (qSec === sSec);
+    });
+
+    // 3. Filtro de Estado (si se ejecuta desde la vista de estudiantes con filtro activo)
+    const statusFilterSel = document.getElementById('statusFilterSelect');
+    const statusVal = statusFilterSel ? statusFilterSel.value : 'Activo';
+    if (statusVal && statusVal !== 'ALL') {
+        const sValLower = statusVal.toLowerCase();
+        if (sValLower === 'retirado' || sValLower === 'inactivo') {
+            list = list.filter(s => s.status === 'Retirado' || (s.status === 'Inactivo' && s.retireReason));
+        } else if (sValLower === 'ausente') {
+            list = list.filter(s => s.status === 'Ausente');
+        } else if (sValLower === 'activo' || sValLower === 'inscrito') {
+            list = list.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || s.statusSire === 'INSCRITO' || s.active !== false || !s.status);
+        } else {
+            list = list.filter(s => s.status && s.status.toLowerCase() === sValLower);
+        }
     }
-    if (careerVal !== 'ALL' && careerVal !== '') {
-        list = list.filter(s => s.career === careerVal);
-    }
-    if (gradeVal !== 'ALL' && gradeVal !== '') {
-        list = list.filter(s => s.grade === gradeVal || (s.gradeLabel && s.gradeLabel.includes(gradeVal)));
-    }
+
+    // 4. Filtro por Búsqueda de Texto
+    const searchInput = document.getElementById('studentSearchInput');
+    const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
     if (searchVal) {
         list = list.filter(s => {
             const fullName = `${s.lastName || ''} ${s.firstName || ''}`.toLowerCase();
             const carne = (s.carne || '').toLowerCase();
             const cui = (s.cui || '').toLowerCase();
-            return fullName.includes(searchVal) || carne.includes(searchVal) || cui.includes(searchVal);
+            const code = (s.personalCode || '').toLowerCase();
+            return fullName.includes(searchVal) || carne.includes(searchVal) || cui.includes(searchVal) || code.includes(searchVal);
         });
     }
 
-    // Ordenar alfabéticamente por Apellido y luego Nombre
+    if (list.length === 0) {
+        showToast("No se encontraron estudiantes para el grado seleccionado con los filtros actuales.", "warning");
+        return;
+    }
+
+    // 5. Ordenar alfabéticamente por Apellidos y luego Nombres
     list.sort((a, b) => {
         const lastA = (a.lastName || '').localeCompare(b.lastName || '', 'es', { sensitivity: 'base' });
         if (lastA !== 0) return lastA;
         return (a.firstName || '').localeCompare(b.firstName || '', 'es', { sensitivity: 'base' });
     });
 
-    const printWin = window.open('', '_blank');
-    if (!printWin) {
-        showToast("Por favor permita las ventanas emergentes (popups) para imprimir la nómina oficial.", "warning");
-        return;
-    }
+    // 6. Estadísticas oficiales
+    const countMale = list.filter(s => {
+        const g = (s.gender || '').toLowerCase();
+        return g.startsWith('m') || g === 'varón' || g === 'hombre';
+    }).length;
+    const countFemale = list.filter(s => {
+        const g = (s.gender || '').toLowerCase();
+        return g.startsWith('f') || g === 'mujer';
+    }).length;
 
-    const h = STATE.schoolHeader || getInitialData().schoolHeader;
+    const gradeName = targetGradeObj ? targetGradeObj.name : (gradeVal || 'Grado');
+    const sectionName = targetGradeObj ? (targetGradeObj.section || (qSec ? `Sección ${qSec}` : '')) : (qSec ? `Sección ${qSec}` : '');
+    const guideTeacher = (targetGradeObj && targetGradeObj.guideTeacher) ? targetGradeObj.guideTeacher : 'Por Asignar';
+    const careerName = (targetGradeObj && targetGradeObj.career) ? targetGradeObj.career : (list[0]?.career || 'Ciclo Diversificado');
+
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : null) || {};
     const dateStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const capDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
-    let filterSubtitle = 'NÓMINA GENERAL DE ESTUDIANTES MATRICULADOS';
-    if (gradeVal !== 'ALL' && gradeVal !== '') {
-        const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal);
-        const gName = targetGradeObj ? `${targetGradeObj.name} (${targetGradeObj.section})` : gradeVal;
-        filterSubtitle = `NÓMINA OFICIAL DE ESTUDIANTES - ${gName}`;
-    } else if (searchVal) {
-        filterSubtitle = `NÓMINA DE ESTUDIANTES - RESULTADOS DE BÚSQUEDA: "${searchVal.toUpperCase()}"`;
-    } else if (careerVal !== 'ALL' && careerVal !== '') {
-        filterSubtitle = `NÓMINA DE ESTUDIANTES - CARRERA: ${careerVal.toUpperCase()}`;
-    }
-
-    const rowsHtml = list.length === 0 ? `
+    const rowsHtml = list.map((s, idx) => `
         <tr>
-            <td colspan="9" style="text-align:center; padding:20px; font-weight:bold; color:#666;">No se encontraron registros de estudiantes con los filtros seleccionados.</td>
-        </tr>
-    ` : list.map((s, idx) => `
-        <tr>
-            <td style="border:1px solid #333; padding:5px; text-align:center; font-weight:bold;">${idx + 1}</td>
-            <td style="border:1px solid #333; padding:5px; text-align:center; font-weight:bold;">${s.carne || 'N/A'}</td>
-            <td style="border:1px solid #333; padding:5px; text-align:center;">${s.cui || 'N/A'}</td>
-            <td style="border:1px solid #333; padding:5px; font-weight:bold;">${s.lastName || ''}, ${s.firstName || ''}</td>
-            <td style="border:1px solid #333; padding:5px; font-weight:600;">${formatStudentGradeAndSection(s)}</td>
-            <td style="border:1px solid #333; padding:5px;">${s.career || 'N/A'}</td>
-            <td style="border:1px solid #333; padding:5px; text-align:center;">${s.age || calculateStudentAge(s.birthDate) || 'N/A'}</td>
-            <td style="border:1px solid #333; padding:5px;">${s.tutor || 'No reg.'} (${s.tutorPhone || s.phone || 'Sin tel.'})</td>
-            <td style="border:1px solid #333; padding:5px; text-align:center; font-weight:bold; color:${s.status === 'Activo' ? '#15803d' : '#b91c1c'};">${s.status || 'Activo'}</td>
+            <td style="text-align:center; font-weight:bold; width:35px; border:1px solid #334155; padding:5px;">${idx + 1}</td>
+            <td style="text-align:center; font-weight:bold; width:85px; border:1px solid #334155; padding:5px;">${s.carne || '-'}</td>
+            <td style="text-align:center; width:110px; border:1px solid #334155; padding:5px;">${s.personalCode || s.cui || '-'}</td>
+            <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:5px;">${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}</td>
+            <td style="text-align:center; width:50px; font-weight:600; border:1px solid #334155; padding:5px;">${(s.gender || '').toLowerCase().startsWith('f') ? 'F' : 'M'}</td>
+            <td style="width:140px; border:1px solid #334155; padding:5px; font-size:8.5pt;">${s.tutor || s.tutorName || 'No reg.'} (${s.tutorPhone || s.phone || 'Sin tel.'})</td>
+            <td style="text-align:center; width:75px; font-weight:bold; border:1px solid #334155; padding:5px; color:${s.status === 'Activo' || s.status === 'Inscrito' ? '#15803d' : '#b91c1c'};">${s.status || 'Activo'}</td>
         </tr>
     `).join('');
 
-    printWin.document.write(`
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <title>Nómina Oficial de Estudiantes - ENCCO Jutiapa</title>
-            <style>
-                @page { size: 8.5in 13in portrait; margin: 6mm 8mm; }
-                body { font-family: 'Segoe UI', Arial, sans-serif; padding: 0; color: #000; background: #fff; line-height: 1.3; font-size: 9.5pt; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                
-                .encc-official-header { border: 2px solid #0369a1; border-radius: 6px; overflow: hidden; margin-bottom: 10px; background: #fff; }
-                .encc-top-banner { background: linear-gradient(135deg, #0f172a 0%, #0369a1 60%, #0284c7 100%) !important; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 6px 14px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                .encc-top-banner .logo-box { display: flex; align-items: center; gap: 10px; }
-                .encc-top-banner img { height: 46px; width: auto; object-fit: contain; }
-                .encc-top-banner h1 { margin: 0; font-size: 16px; font-weight: 900; color: #fff; text-transform: uppercase; letter-spacing: 0.4px; }
-                .encc-top-banner .sub-tag { font-size: 9.5px; font-weight: 700; color: #bae6fd; }
-                .bimestre-badge { background: #0284c7; color: #fff; font-size: 10.5px; font-weight: 900; padding: 4px 12px; border-radius: 12px; border: 1px solid #7dd3fc; text-transform: uppercase; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                
-                .report-title-box { background: #f0f9ff !important; border-top: 2px solid #0284c7; padding: 6px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 9.5pt; color: #0f172a; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                .report-title { font-size: 10pt; font-weight: 900; color: #0369a1; text-transform: uppercase; margin: 0; }
-                .meta-info { font-size: 9pt; color: #334155; font-weight: 700; }
-                
-                table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 8.5pt; border: 1.5px solid #0f172a; }
-                th { background: #0369a1 !important; color: #ffffff !important; border: 1px solid #0f172a; padding: 6px; text-align: center; font-weight: 800; text-transform: uppercase; font-size: 8pt; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                td { border: 1px solid #64748b; padding: 5px; }
-                tr:nth-child(even) { background-color: #f8fafc; }
-            </style>
-        </head>
-        <body>
-            <div class="encc-official-header">
-                <div class="encc-top-banner">
-                    <div class="logo-box">
-                        <img src="logo.png" alt="Logo ENCCO" onerror="this.src='portada-comercio-principal.webp'">
-                        <div>
-                            <h1>${h.name || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</h1>
-                            <div class="sub-tag">JUTIAPA — FUNDADA EN 1970 | CICLO LECTIVO ${STATE.activeCycle || '2026'}</div>
-                        </div>
+    const htmlContent = `
+        <div style="border:2px solid #0369a1; border-radius:6px; overflow:hidden; margin-bottom:12px; font-family:'Segoe UI', Arial, sans-serif;">
+            <div style="background:linear-gradient(135deg, #0f172a 0%, #0369a1 60%, #0284c7 100%); color:#ffffff; padding:8px 14px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <img src="logo.png" alt="Logo" onerror="this.src='portada-comercio-principal.webp'" style="height:44px; width:auto; object-fit:contain;">
+                    <div>
+                        <h2 style="margin:0; font-size:1.05rem; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">${h.name || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</h2>
+                        <div style="font-size:0.75rem; font-weight:600; color:#bae6fd;">JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}</div>
                     </div>
-                    <div class="bimestre-badge">
+                </div>
+                <div style="text-align:right;">
+                    <div style="background:#0284c7; color:#fff; font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:12px; border:1px solid #7dd3fc; text-transform:uppercase;">
                         ${STATE.config?.activeBimestre || 1}º BIMESTRE ACTIVO
                     </div>
                 </div>
-                <div class="report-title-box">
-                    <div class="report-title">${filterSubtitle}</div>
-                    <div class="meta-info">Total Inscritos: <strong>${list.length}</strong> &nbsp;|&nbsp; Emisión: <strong>${capDate}</strong></div>
+            </div>
+            
+            <div style="background:#f0f9ff; border-top:2px solid #0284c7; padding:8px 14px; font-size:9pt; color:#0f172a;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+                    <div>
+                        <div style="font-size:10.5pt; font-weight:900; color:#0369a1; text-transform:uppercase;">
+                            NÓMINA OFICIAL DE ESTUDIANTES — ${gradeName} (${sectionName})
+                        </div>
+                        <div style="color:#334155; font-size:8.5pt; margin-top:2px;">
+                            <strong>Carrera:</strong> ${careerName} &nbsp;|&nbsp; 👨‍🏫 <strong>Catedrático(a) Guía:</strong> <span style="color:#166534; font-weight:bold;">${guideTeacher}</span>
+                        </div>
+                    </div>
+                    <div style="text-align:right; font-size:8.5pt; color:#475569;">
+                        <strong>Emisión:</strong> ${capDate}
+                    </div>
+                </div>
+                <div style="display:flex; gap:15px; margin-top:5px; padding-top:4px; border-top:1px dashed #cbd5e1; font-size:8.5pt;">
+                    <span>Total Inscritos: <strong style="color:#0369a1;">${list.length}</strong></span>
+                    <span>Hombres (Varones): <strong style="color:#0284c7;">${countMale}</strong></span>
+                    <span>Mujeres: <strong style="color:#db2777;">${countFemale}</strong></span>
                 </div>
             </div>
+        </div>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width:30px;">#</th>
-                        <th style="width:90px;">Carné</th>
-                        <th style="width:115px;">CUI / MINEDUC</th>
-                        <th>Apellidos y Nombres</th>
-                        <th style="width:150px;">Grado y Sección</th>
-                        <th style="width:160px;">Carrera</th>
-                        <th style="width:50px;">Edad</th>
-                        <th style="width:180px;">Encargado / Contacto</th>
-                        <th style="width:70px;">Estado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rowsHtml}
-                </tbody>
-            </table>
+        <table style="width:100%; border-collapse:collapse; font-size:8.5pt; font-family:'Segoe UI', Arial, sans-serif;">
+            <thead>
+                <tr style="background:#0369a1; color:#ffffff; font-weight:800; text-transform:uppercase; font-size:8pt; text-align:center;">
+                    <th style="padding:6px 4px; width:35px; border:1px solid #0f172a;">No.</th>
+                    <th style="padding:6px 4px; width:85px; border:1px solid #0f172a;">Carné</th>
+                    <th style="padding:6px 4px; width:110px; border:1px solid #0f172a;">Cód. Personal / CUI</th>
+                    <th style="padding:6px 6px; text-align:left; border:1px solid #0f172a;">Apellidos y Nombres</th>
+                    <th style="padding:6px 4px; width:50px; border:1px solid #0f172a;">Género</th>
+                    <th style="padding:6px 6px; text-align:left; width:140px; border:1px solid #0f172a;">Encargado / Contacto</th>
+                    <th style="padding:6px 4px; width:75px; border:1px solid #0f172a;">Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rowsHtml}
+            </tbody>
+        </table>
 
-            <script>
-                window.onload = function() {
-                    window.print();
-                };
-            </script>
-        </body>
-        </html>
-    `);
-    printWin.document.close();
+        <div style="margin-top:40px; display:flex; justify-content:space-around; text-align:center; font-size:8.5pt; font-family:'Segoe UI', Arial, sans-serif; page-break-inside:avoid;">
+            <div style="width:260px;">
+                <div style="border-bottom:1.5px solid #000; margin-bottom:5px; height:35px;"></div>
+                <strong>${guideTeacher}</strong><br>
+                <span style="color:#475569; font-size:8pt;">Catedrático(a) Guía</span>
+            </div>
+            <div style="width:260px;">
+                <div style="border-bottom:1.5px solid #000; margin-bottom:5px; height:35px;"></div>
+                <strong>${h.director || 'Licda. María Elena Morales'}</strong><br>
+                <span style="color:#475569; font-size:8pt;">Dirección / Vo.Bo.</span>
+            </div>
+        </div>
+    `;
+
+    renderAndShowPrintDocument(`Nómina Oficial - ${gradeName} (${sectionName})`, htmlContent, 'portrait');
 }
+window.printStudentsOfficialList = printStudentsOfficialList;
 
 function printOfficialUsersRoster() {
     const h = STATE.schoolHeader || getInitialData().schoolHeader;
@@ -30066,13 +30104,77 @@ function exportStudentsOfficialCSV() {
 
 function exportStudentsOfficialExcel() {
     try {
-        const students = STATE.students || [];
+        const gradeFilterSel = document.getElementById('gradeFilterSelect');
+        const gradeVal = gradeFilterSel ? gradeFilterSel.value : '';
+        const cycle = STATE.activeCycle || '2026';
+        let students = (STATE.students || []).filter(s => !s.cycle || s.cycle === cycle);
+
+        let reportTitle = "MATRÍCULA GENERAL DE ESTUDIANTES";
+        let fileName = `matricula_estudiantes_encc_${cycle}.xlsx`;
+
+        if (gradeVal && gradeVal !== 'ALL') {
+            const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal || g.name === gradeVal);
+            const rawQ = `${gradeVal || ''} ${targetGradeObj ? (targetGradeObj.name + ' ' + targetGradeObj.section) : ''}`.toUpperCase();
+            let qGradeNum = 0;
+            if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
+            else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
+            else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
+
+            const qSec = typeof getCleanSectionLetter === 'function'
+                ? getCleanSectionLetter(targetGradeObj ? targetGradeObj.section : gradeVal)
+                : (targetGradeObj ? targetGradeObj.section : gradeVal).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+
+            students = students.filter(s => {
+                const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+                let sGradeNum = 0;
+                if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+                else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+                else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+
+                const sSec = typeof getCleanSectionLetter === 'function'
+                    ? getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS)
+                    : (s.section || s.gradeCode || s.gradeLabel || rawS).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+
+                if (qGradeNum > 0 && sGradeNum > 0 && qGradeNum !== sGradeNum) return false;
+                if (qSec && sSec && qSec !== sSec) return false;
+
+                return (qGradeNum === sGradeNum) && (qSec === sSec);
+            });
+
+            const gradeName = targetGradeObj ? `${targetGradeObj.name} (${targetGradeObj.section})` : gradeVal;
+            reportTitle = `NÓMINA OFICIAL - ${gradeName.toUpperCase()}`;
+            const cleanCode = (targetGradeObj ? targetGradeObj.code : gradeVal).replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+            fileName = `nomina_${cleanCode}_${cycle}.xlsx`;
+        }
+
+        // Respetar estado si hay filtro activo
+        const statusFilterSel = document.getElementById('statusFilterSelect');
+        const statusVal = statusFilterSel ? statusFilterSel.value : 'Activo';
+        if (statusVal && statusVal !== 'ALL') {
+            const sValLower = statusVal.toLowerCase();
+            if (sValLower === 'retirado' || sValLower === 'inactivo') {
+                students = students.filter(s => s.status === 'Retirado' || (s.status === 'Inactivo' && s.retireReason));
+            } else if (sValLower === 'ausente') {
+                students = students.filter(s => s.status === 'Ausente');
+            } else if (sValLower === 'activo' || sValLower === 'inscrito') {
+                students = students.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || s.statusSire === 'INSCRITO' || s.active !== false || !s.status);
+            } else {
+                students = students.filter(s => s.status && s.status.toLowerCase() === sValLower);
+            }
+        }
+
         if (!students || students.length === 0) {
-            showToast("No hay estudiantes matriculados para exportar en este ciclo escolar.", "warning");
+            showToast("No hay estudiantes matriculados para exportar con los filtros seleccionados.", "warning");
             return;
         }
 
-        const cycle = STATE.activeCycle || '2026';
+        // Ordenar alfabéticamente
+        students.sort((a, b) => {
+            const lastA = (a.lastName || '').localeCompare(b.lastName || '', 'es', { sensitivity: 'base' });
+            if (lastA !== 0) return lastA;
+            return (a.firstName || '').localeCompare(b.firstName || '', 'es', { sensitivity: 'base' });
+        });
+
         const headers = [
             "No.",
             "Carné",
@@ -30096,13 +30198,13 @@ function exportStudentsOfficialExcel() {
             (s.firstName || '').toUpperCase(),
             s.gender || 'Masculino',
             formatStudentGradeAndSection(s),
-            s.tutorName || '-',
+            s.tutorName || s.tutor || '-',
             s.tutorPhone || s.phone || '-',
             s.status || 'Inscrito Regular'
         ]);
 
         const colWidths = [6, 15, 18, 18, 25, 25, 12, 20, 25, 14, 15];
-        exportDataToExcelFile(`matricula_estudiantes_encc_${cycle}.xlsx`, "MATRÍCULA GENERAL DE ESTUDIANTES", `CICLO ESCOLAR ${cycle}`, headers, dataRows, colWidths);
+        exportDataToExcelFile(fileName, reportTitle, `CICLO ESCOLAR ${cycle}`, headers, dataRows, colWidths);
     } catch (err) {
         console.error("Error al exportar estudiantes:", err);
         showToast("Error al exportar nómina de estudiantes.", "danger");
@@ -30481,65 +30583,6 @@ function printRenglonGenderReport() {
     renderAndShowPrintDocument("Informe Estadístico de Docentes", htmlContent, 'portrait');
 }
 
-function printStudentsOfficialList() {
-    const cycle = STATE.activeCycle || '2026';
-    const students = STATE.students || [];
-
-    if (students.length === 0) {
-        showToast("No hay estudiantes matriculados en la base de datos para imprimir.", "warning");
-        return;
-    }
-
-    const rowsHtml = students.map((s, idx) => `
-        <tr>
-            <td style="text-align:center; font-weight:bold; width:35px;">${idx + 1}</td>
-            <td style="text-align:center;">${s.carne || '-'}</td>
-            <td style="text-align:center;">${s.personalCode || '-'}</td>
-            <td style="font-weight:700; text-transform:uppercase;">${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}</td>
-            <td style="text-align:center;">${s.gender || 'Masculino'}</td>
-            <td style="text-align:center; font-weight:700;">${formatStudentGradeAndSection(s)}</td>
-            <td>${s.tutorName || '-'}</td>
-            <td style="text-align:center;">${s.tutorPhone || s.phone || '-'}</td>
-            <td style="text-align:center; font-weight:bold; color:#15803d;">${s.status || 'Inscrito'}</td>
-        </tr>
-    `).join('');
-
-    const htmlContent = `
-        <div style="border:2px solid #0369a1; border-radius:6px; overflow:hidden; margin-bottom:15px;">
-            <div style="background:#0369a1; color:#ffffff; padding:10px 15px; display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <h2 style="margin:0; font-size:1.15rem; font-weight:800; text-transform:uppercase;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES - ENCCO</h2>
-                    <p style="margin:2px 0 0 0; font-size:0.85rem; opacity:0.9;">NÓMINA OFICIAL GENERAL DE ESTUDIANTES MATRICULADOS</p>
-                </div>
-                <div style="text-align:right; font-size:0.8rem; font-weight:700;">
-                    <div>Ciclo Escolar: ${cycle}</div>
-                    <div>Total Alumnos: ${students.length}</div>
-                </div>
-            </div>
-        </div>
-
-        <table style="width:100%; border-collapse:collapse; font-size:9.5pt;">
-            <thead>
-                <tr style="background:#0284c7; color:#ffffff; font-weight:bold; text-align:center;">
-                    <th style="padding:6px; width:35px;">No.</th>
-                    <th style="padding:6px; width:100px;">Carné</th>
-                    <th style="padding:6px; width:110px;">Código Personal</th>
-                    <th style="padding:6px; text-align:left;">Apellidos y Nombres</th>
-                    <th style="padding:6px; width:80px;">Género</th>
-                    <th style="padding:6px; width:140px;">Grado y Sección</th>
-                    <th style="padding:6px; text-align:left;">Padre / Tutor</th>
-                    <th style="padding:6px; width:90px;">Teléfono</th>
-                    <th style="padding:6px; width:90px;">Estado</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${rowsHtml}
-            </tbody>
-        </table>
-    `;
-
-    renderAndShowPrintDocument("Nómina Oficial de Estudiantes", htmlContent, 'landscape');
-}
 
 
 // ──────────────────────────────────────────────────────────────────────────
