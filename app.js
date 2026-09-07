@@ -3597,19 +3597,83 @@ function getCleanSectionLetter(str) {
 }
 window.getCleanSectionLetter = getCleanSectionLetter;
 
+function getStudentAssignment(s) {
+    if (!s) return { grade: 'Sin asignar', section: 'Sin sección', gradeCode: '', fullLabel: 'Sin grado asignado' };
+    if (typeof s === 'string') {
+        return { grade: s, section: 'Sección A', gradeCode: '', fullLabel: s };
+    }
+    let grade = (s.grade || '').trim();
+    let section = (s.section || '').trim();
+    let gradeCode = (s.gradeCode || '').trim();
+
+    // 1. Si falta grado o sección, buscar correspondencia en los datos oficiales SIRE
+    if ((!grade || !section || section === 'Sin sección') && typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined') {
+        const off = OFFICIAL_SIRE_412_STUDENTS.find(o => 
+            (o.carne && o.carne === s.carne) || 
+            (o.personalCode && o.personalCode === s.personalCode) ||
+            (o.cui && o.cui === s.cui) ||
+            (o.id && o.id === s.id)
+        );
+        if (off) {
+            if (!grade || grade === 'Sin grado') grade = off.grade;
+            if (!section || section === 'Sin sección') section = off.section;
+            if (!gradeCode) gradeCode = off.gradeCode;
+        }
+    }
+
+    // 2. Extraer sección desde gradeCode o gradeLabel si no está definida
+    if (!section && gradeCode) {
+        const letter = getCleanSectionLetter(gradeCode);
+        if (letter) section = `Sección ${letter}`;
+    }
+    if (!section && s.gradeLabel) {
+        const letter = getCleanSectionLetter(s.gradeLabel);
+        if (letter) section = `Sección ${letter}`;
+    }
+    if (!section && grade) {
+        const letter = getCleanSectionLetter(grade);
+        if (letter) section = `Sección ${letter}`;
+    }
+    if (section && !section.startsWith('Sección')) {
+        section = `Sección ${section.toUpperCase()}`;
+    }
+
+    // 3. Limpiar nombre de grado (remover sufijos de sección si venían incrustados)
+    let cleanGrade = grade;
+    if (cleanGrade.includes(' - Sección')) cleanGrade = cleanGrade.split(' - Sección')[0].trim();
+    else if (cleanGrade.includes(' (Sección')) cleanGrade = cleanGrade.split(' (Sección')[0].trim();
+    else if (cleanGrade.includes(' Sección')) cleanGrade = cleanGrade.split(' Sección')[0].trim();
+    
+    if (!cleanGrade) cleanGrade = '4to Perito Contador';
+    if (!section) section = 'Sección A';
+
+    const fullLabel = `${cleanGrade} (${section})`;
+    return { grade: cleanGrade, section, gradeCode, fullLabel };
+}
+window.getStudentAssignment = getStudentAssignment;
+
+function formatStudentGradeAndSection(s) {
+    if (!s) return 'Sin grado asignado';
+    if (typeof s === 'string') return s;
+    const assign = getStudentAssignment(s);
+    return assign.fullLabel;
+}
+window.formatStudentGradeAndSection = formatStudentGradeAndSection;
+
 
 function updateGradeSelects() {
     try {
-        const gradeSelects = document.querySelectorAll('.grade-select, #studentGradeFilter, #studentFormGrade, #pensumSubjectGrade, #gradeFilterSelect, #attendanceGradeSelect, #reportsGradeSelect, #honorRollGradeSelect');
+        const gradeSelects = document.querySelectorAll('.grade-select, #studentGradeFilter, #studentFormGrade, #pensumSubjectGrade, #gradeFilterSelect, #attendanceGradeSelect, #reportsGradeSelect, #honorRollGradeSelect, #profGradeSelect');
         if (gradeSelects && gradeSelects.length > 0) {
             const grades = (STATE.gradesList && STATE.gradesList.length > 0) ? STATE.gradesList : [];
             gradeSelects.forEach(sel => {
                 if (!sel) return;
                 const currentVal = sel.value;
-                let opts = '<option value="">Todos los Grados / Secciones</option>';
+                const isProfileSel = (sel.id === 'profGradeSelect');
+                let opts = isProfileSel ? '<option value="">-- Seleccione Grado y Sección --</option>' : '<option value="">Todos los Grados / Secciones</option>';
                 grades.forEach(g => {
                     const val = g.name + ' - ' + g.section;
-                    opts += `<option value="${val}">${g.name} (${g.section})</option>`;
+                    opts += `<option value="${val}" data-grade="${escapeHtml(g.name)}" data-section="${escapeHtml(g.section)}" data-code="${escapeHtml(g.code)}">${g.name} (${g.section})</option>`;
                 });
                 sel.innerHTML = opts;
                 if (currentVal) sel.value = currentVal;
@@ -3783,7 +3847,13 @@ let _pendingSyncRequest = false;
 
 
 function ensureSireOfficialStudents() {
-    // 🌟 Normalizar estatus 'Inscrito' a 'Activo' preservando provenance de SIRE
+    if (!Array.isArray(STATE.students) || STATE.students.length === 0) {
+        STATE.students = (typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : [];
+    } else {
+        STATE.students = deduplicateStudentsCollection(STATE.students);
+    }
+
+    // 🌟 Normalizar estatus 'Inscrito' a 'Activo' y garantizar Grado y Sección asignados para cada alumno
     (STATE.students || []).forEach(s => {
         if (!s.status || s.status === 'Inscrito' || s.statusSire === 'INSCRITO') {
             if (s.status !== 'Retirado' && s.status !== 'Ausente' && s.status !== 'Inactivo') {
@@ -3792,13 +3862,13 @@ function ensureSireOfficialStudents() {
             }
         }
         if (s.active === undefined) s.active = true;
-    });
 
-    if (!Array.isArray(STATE.students) || STATE.students.length === 0) {
-        STATE.students = (typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : [];
-    } else {
-        STATE.students = deduplicateStudentsCollection(STATE.students);
-    }
+        const assign = getStudentAssignment(s);
+        s.grade = assign.grade;
+        s.section = assign.section;
+        if (assign.gradeCode) s.gradeCode = assign.gradeCode;
+        s.gradeLabel = assign.fullLabel;
+    });
 }
 window.ensureSireOfficialStudents = ensureSireOfficialStudents;
 
@@ -18395,7 +18465,7 @@ function renderDashboard() {
                             <tr>
                                 <td><code>${s.carne}</code></td>
                                 <td><strong>${s.firstName} ${s.lastName}</strong></td>
-                                <td>${s.gradeLabel || s.grade}</td>
+                                <td>${formatStudentGradeAndSection(s)}</td>
                                 <td><span class="badge ${s.status==='Activo'?'badge-success':'badge-danger'}">${s.status}</span></td>
                             </tr>
                         `).join('') : `
@@ -19013,6 +19083,9 @@ function renderStudentsTable() {
             (s.personalCode && s.personalCode.toLowerCase().includes(searchVal)) ||
             (s.cui && s.cui.toLowerCase().includes(searchVal)) ||
             (s.tutor && s.tutor.toLowerCase().includes(searchVal)) ||
+            (s.grade && s.grade.toLowerCase().includes(searchVal)) ||
+            (s.section && s.section.toLowerCase().includes(searchVal)) ||
+            (s.gradeCode && s.gradeCode.toLowerCase().includes(searchVal)) ||
             (s.gradeLabel && s.gradeLabel.toLowerCase().includes(searchVal))
         );
     }
@@ -19085,7 +19158,9 @@ function renderStudentsTable() {
             statusBadge = `<span class="badge badge-success">Activo</span>`;
         }
 
-        const gradeDisplay = s.gradeLabel || s.grade || 'Sin grado';
+        const assign = getStudentAssignment(s);
+        const gradeName = assign.grade;
+        const sectionName = assign.section;
 
         // COLUMNA PROMEDIO: Los docentes ven indicador de que el consolidado es de Dirección/Secretaría
         const avgColumnContent = isDocente ? 
@@ -19104,7 +19179,14 @@ function renderStudentsTable() {
                     <strong>${s.firstName} ${s.lastName}</strong>
                     ${s.retireReason ? `<br><small style="color:#b45309; font-style:italic;" title="Motivo registrado por Secretaría"><i class="fa-solid fa-circle-info"></i> ${escapeHtml(s.retireReason)}</small>` : ''}
                 </td>
-                <td><span class="badge" style="background:#f8fafc; color:#1e293b; border:1px solid #cbd5e1; font-weight:700;">${gradeDisplay}</span></td>
+                <td>
+                    <div style="font-weight:700; color:#0f172a; font-size:0.86rem; line-height:1.25;">
+                        <i class="fa-solid fa-graduation-cap" style="color:#0284c7; font-size:0.8rem; margin-right:3px;"></i>${escapeHtml(gradeName)}
+                    </div>
+                    <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:800; font-size:0.75rem; margin-top:4px; display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:12px;">
+                        <i class="fa-solid fa-users-rectangle"></i> ${escapeHtml(sectionName)}
+                    </span>
+                </td>
                 <td>${s.tutor || 'No registrado'}<br><small style="color:var(--text-muted);"><i class="fa-solid fa-phone"></i> ${s.tutorPhone || s.phone || 'Sin tel.'}</small></td>
                 <td style="text-align:center;">${avgColumnContent}</td>
                 <td>${statusBadge}</td>
@@ -19314,7 +19396,27 @@ function openEditStudentModal(studentId) {
     document.getElementById('studentFormPhone').value = student.phone || '';
     document.getElementById('studentFormEmail').value = student.email || '';
     document.getElementById('studentFormAddress').value = student.address || '';
-    document.getElementById('studentFormGrade').value = student.grade || '';
+    const gradeFormSelect = document.getElementById('studentFormGrade');
+    if (gradeFormSelect) {
+        const assign = getStudentAssignment(student);
+        const targetVal = `${assign.grade} - ${assign.section}`;
+        const matchOpt = Array.from(gradeFormSelect.options).find(o => 
+            o.value === targetVal ||
+            (o.dataset.grade === assign.grade && o.dataset.section === assign.section) ||
+            (assign.gradeCode && o.dataset.code === assign.gradeCode) ||
+            o.value === assign.grade ||
+            (o.text && o.text.includes(assign.grade) && o.text.includes(assign.section))
+        );
+        if (matchOpt) {
+            gradeFormSelect.value = matchOpt.value;
+        } else {
+            const newOpt = document.createElement('option');
+            newOpt.value = targetVal;
+            newOpt.textContent = assign.fullLabel;
+            gradeFormSelect.appendChild(newOpt);
+            gradeFormSelect.value = targetVal;
+        }
+    }
     document.getElementById('studentFormCycle').value = student.cycle || STATE.activeCycle || '';
     document.getElementById('studentFormShift').value = student.shift || 'Matutina';
 
@@ -19535,8 +19637,23 @@ function saveStudentForm(e) {
 
     const photo = document.getElementById('studentFormPhotoPreview').src;
 
-    const gradeObj = (STATE.gradesList || []).find(g => g.code === grade);
-    const gradeLabel = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : grade;
+    const gradeSelectEl = document.getElementById('studentFormGrade');
+    let selGrade = grade;
+    let selSection = 'Sección A';
+    let selCode = '';
+    const selOpt = gradeSelectEl?.selectedOptions?.[0];
+    if (selOpt && selOpt.dataset && selOpt.dataset.grade) {
+        selGrade = selOpt.dataset.grade;
+        selSection = selOpt.dataset.section || 'Sección A';
+        selCode = selOpt.dataset.code || '';
+    } else {
+        const parts = (grade || '').split(' - ');
+        if (parts.length >= 2) {
+            selGrade = parts[0].trim();
+            selSection = parts[1].trim();
+        }
+    }
+    const cleanAssign = getStudentAssignment({ grade: selGrade, section: selSection, gradeCode: selCode });
 
     if (studentId) {
         const student = STATE.students.find(s => s.id === studentId);
@@ -19551,8 +19668,10 @@ function saveStudentForm(e) {
             student.phone = phone;
             student.email = email;
             student.address = address;
-            student.grade = grade;
-            student.gradeLabel = gradeLabel;
+            student.grade = cleanAssign.grade;
+            student.section = cleanAssign.section;
+            student.gradeCode = cleanAssign.gradeCode || selCode;
+            student.gradeLabel = cleanAssign.fullLabel;
             student.cycle = cycle;
             student.shift = shift;
             student.photo = photo;
@@ -19575,12 +19694,13 @@ function saveStudentForm(e) {
             student.tutor = primaryTutor;
             student.tutorPhone = primaryPhone;
 
+            saveStateToLocalStorage();
             showToast('Estudiante guardado exitosamente.', 'success');
-        closeStudentProfileModal();
-        hideModalById('studentProfileModal');
-        if (typeof renderStudentsTable === 'function') renderStudentsTable();
-        if (typeof renderDashboard === 'function') renderDashboard();
-    }
+            closeStudentProfileModal();
+            hideModalById('studentProfileModal');
+            if (typeof renderStudentsTable === 'function') renderStudentsTable();
+            if (typeof renderDashboard === 'function') renderDashboard();
+        }
     } else {
         STATE.students.push({
             id: 'stu-' + Date.now(),
@@ -19594,8 +19714,10 @@ function saveStudentForm(e) {
             phone,
             email,
             address,
-            grade,
-            gradeLabel,
+            grade: cleanAssign.grade,
+            section: cleanAssign.section,
+            gradeCode: cleanAssign.gradeCode || selCode,
+            gradeLabel: cleanAssign.fullLabel,
             cycle,
             shift,
             photo,
@@ -19619,6 +19741,7 @@ function saveStudentForm(e) {
             retireDate: '',
             grades: {}
         });
+        saveStateToLocalStorage();
         showToast('Estudiante guardado exitosamente.', 'success');
         closeStudentProfileModal();
         hideModalById('studentProfileModal');
@@ -19805,7 +19928,7 @@ function openAcademicExonerationModal(studentId) {
     const subjSelect = document.getElementById('exonFormSubject');
 
     if (nameEl) nameEl.textContent = `Estudiante: ${student.firstName} ${student.lastName}`;
-    if (metaEl) metaEl.textContent = `Carné: ${student.carne || '—'} | Cód. Personal: ${student.personalCode || '—'} | Grado: ${student.gradeLabel || student.grade}`;
+    if (metaEl) metaEl.textContent = `Carné: ${student.carne || '—'} | Cód. Personal: ${student.personalCode || '—'} | Grado y Sección: ${formatStudentGradeAndSection(student)}`;
 
     const exceptions = student.academicExceptions || [];
     if (badgeEl) {
@@ -19986,19 +20109,63 @@ function openStudentProfileModal(id) {
     const careerBadge = document.getElementById('profCareerBadge');
     if (careerBadge) careerBadge.textContent = student.career || 'Perito Contador';
 
+    const assign = getStudentAssignment(student);
     const gradeBadge = document.getElementById('profGradeDisplayBadge');
-    if (gradeBadge) gradeBadge.textContent = student.gradeLabel || student.grade || 'Sin grado asignado';
+    if (gradeBadge) {
+        gradeBadge.innerHTML = `<i class="fa-solid fa-graduation-cap"></i> ${escapeHtml(assign.grade)} &nbsp;|&nbsp; <i class="fa-solid fa-users-rectangle"></i> ${escapeHtml(assign.section)}`;
+        gradeBadge.style.background = '#e0f2fe';
+        gradeBadge.style.color = '#0369a1';
+        gradeBadge.style.border = '1px solid #bae6fd';
+        gradeBadge.style.fontWeight = '800';
+        gradeBadge.title = `Estudiante asignado a: ${assign.fullLabel}`;
+    }
+
+    // Actualizar banner de asignación académica oficial en Pestaña 1
+    const titleEl = document.getElementById('profAssignedGradeTitle');
+    if (titleEl) titleEl.textContent = `${assign.grade} — ${assign.section}`;
+    const guideEl = document.getElementById('profAssignedGuideTeacher');
+    if (guideEl) {
+        const grd = (STATE.gradesList || []).find(g => 
+            (g.name === assign.grade && (!assign.section || g.section === assign.section)) ||
+            (assign.gradeCode && g.code === assign.gradeCode)
+        );
+        const teacher = grd && grd.guideTeacher ? grd.guideTeacher : 'Dirección del Plantel / Secretaría';
+        guideEl.innerHTML = `👨‍🏫 <strong>Maestro(a) Guía:</strong> ${escapeHtml(teacher)}`;
+    }
 
     // 2. Llenar campos de Pestaña 1 (Ficha de Datos)
     const statusSel = document.getElementById('profStatusSelect');
     if (statusSel) {
-        statusSel.value = student.status;
+        statusSel.value = student.status || 'Activo';
         statusSel.disabled = !canEdit;
     }
 
     const gradeSel = document.getElementById('profGradeSelect');
     if (gradeSel) {
-        gradeSel.value = student.grade;
+        const grades = (STATE.gradesList && STATE.gradesList.length > 0) ? STATE.gradesList : [];
+        let opts = '<option value="">-- Seleccione Grado y Sección --</option>';
+        grades.forEach(g => {
+            const val = `${g.name} - ${g.section}`;
+            opts += `<option value="${val}" data-grade="${escapeHtml(g.name)}" data-section="${escapeHtml(g.section)}" data-code="${escapeHtml(g.code)}">${g.name} (${g.section})</option>`;
+        });
+        gradeSel.innerHTML = opts;
+
+        const targetVal = `${assign.grade} - ${assign.section}`;
+        const matchOpt = Array.from(gradeSel.options).find(o => 
+            o.value === targetVal || 
+            (o.dataset.grade === assign.grade && o.dataset.section === assign.section) ||
+            (assign.gradeCode && o.dataset.code === assign.gradeCode) ||
+            (o.text && o.text.includes(assign.grade) && o.text.includes(assign.section))
+        );
+        if (matchOpt) {
+            gradeSel.value = matchOpt.value;
+        } else {
+            const newOpt = document.createElement('option');
+            newOpt.value = targetVal;
+            newOpt.textContent = assign.fullLabel;
+            gradeSel.appendChild(newOpt);
+            gradeSel.value = targetVal;
+        }
         gradeSel.disabled = !canEdit;
     }
     
@@ -20117,8 +20284,18 @@ function renderStudentProfileGrades(student) {
     const summaryBox = document.getElementById('profGradesSummaryBox');
     if (!tbody) return;
 
-    const gradeObj = (STATE.gradesList || []).find(g => g.code === student.grade);
-    const pensumCourses = (STATE.pensum || []).filter(p => p.gradeCode === student.grade || (gradeObj && p.grade === gradeObj.name && p.section === gradeObj.section));
+    const gradeObj = (STATE.gradesList || []).find(g => 
+        (g.code && g.code === student.grade) ||
+        (g.name === student.grade && (!student.section || g.section === student.section)) ||
+        (g.code && student.gradeCode && g.code === student.gradeCode) ||
+        ((g.name + ' - ' + g.section) === student.grade)
+    );
+    const pensumCourses = (STATE.pensum || []).filter(p => 
+        p.gradeCode === student.grade || 
+        (student.gradeCode && p.gradeCode === student.gradeCode) ||
+        (gradeObj && p.grade === gradeObj.name && p.section === gradeObj.section) ||
+        (p.grade === student.grade && (!student.section || p.section === student.section))
+    );
     
     // Obtener todas las materias configuradas
     let subjects = pensumCourses.length > 0 ? pensumCourses.map(p => p.subject) : (Object.keys(student.grades || {}));
@@ -20275,7 +20452,32 @@ function saveStudentProfileForm(e) {
 
     student.photo = document.getElementById('profilePhotoImg')?.src || student.photo;
     student.status = newStatus;
-    student.grade = document.getElementById('profGradeSelect')?.value || student.grade;
+
+    const profGradeEl = document.getElementById('profGradeSelect');
+    if (profGradeEl && profGradeEl.value) {
+        const selOpt = profGradeEl.selectedOptions?.[0];
+        let pGrade = '';
+        let pSection = '';
+        let pCode = '';
+        if (selOpt && selOpt.dataset && selOpt.dataset.grade) {
+            pGrade = selOpt.dataset.grade;
+            pSection = selOpt.dataset.section || student.section;
+            pCode = selOpt.dataset.code || student.gradeCode;
+        } else {
+            const parts = profGradeEl.value.split(' - ');
+            if (parts.length >= 2) {
+                pGrade = parts[0].trim();
+                pSection = parts[1].trim();
+            } else {
+                pGrade = profGradeEl.value;
+            }
+        }
+        const cleanAssign = getStudentAssignment({ grade: pGrade, section: pSection, gradeCode: pCode });
+        student.grade = cleanAssign.grade;
+        student.section = cleanAssign.section;
+        student.gradeCode = cleanAssign.gradeCode || pCode;
+        student.gradeLabel = cleanAssign.fullLabel;
+    }
     student.address = document.getElementById('profAddressDisplay')?.value || '';
     student.phone = document.getElementById('profPhone')?.value || '';
     student.email = document.getElementById('profEmail')?.value || '';
@@ -22390,7 +22592,7 @@ function printStudentsOfficialList() {
             <td style="border:1px solid #333; padding:5px; text-align:center; font-weight:bold;">${s.carne || 'N/A'}</td>
             <td style="border:1px solid #333; padding:5px; text-align:center;">${s.cui || 'N/A'}</td>
             <td style="border:1px solid #333; padding:5px; font-weight:bold;">${s.lastName || ''}, ${s.firstName || ''}</td>
-            <td style="border:1px solid #333; padding:5px;">${s.gradeLabel || s.grade || 'N/A'}</td>
+            <td style="border:1px solid #333; padding:5px; font-weight:600;">${formatStudentGradeAndSection(s)}</td>
             <td style="border:1px solid #333; padding:5px;">${s.career || 'N/A'}</td>
             <td style="border:1px solid #333; padding:5px; text-align:center;">${s.age || calculateStudentAge(s.birthDate) || 'N/A'}</td>
             <td style="border:1px solid #333; padding:5px;">${s.tutor || 'No reg.'} (${s.tutorPhone || s.phone || 'Sin tel.'})</td>
@@ -22570,7 +22772,7 @@ function openDisciplineModal() {
     if (!checkEnrolmentPermissions()) return;
     const select = document.getElementById('discStudentSelect');
     if (select && STATE.students) {
-        select.innerHTML = STATE.students.map(s => `<option value="${s.id}">${s.firstName} ${s.lastName} (${s.gradeLabel || s.grade})</option>`).join('');
+        select.innerHTML = STATE.students.map(s => `<option value="${s.id}">${s.firstName} ${s.lastName} (${formatStudentGradeAndSection(s)})</option>`).join('');
     }
     const modal = document.getElementById('disciplineModal');
     if (modal) {
@@ -23886,7 +24088,7 @@ function populateReportStudentSelect() {
     }
 
     select.innerHTML = students.map(s => `
-        <option value="${s.id}">${s.lastName}, ${s.firstName} (${s.carne || s.personalCode}) - ${s.gradeLabel}</option>
+        <option value="${s.id}">${s.lastName}, ${s.firstName} (${s.carne || s.personalCode}) - ${formatStudentGradeAndSection(s)}</option>
     `).join('');
 
     if (students.length > 0) {
@@ -23900,8 +24102,12 @@ function previewStudentReportCard(studentId) {
     const tbody = document.getElementById('officialGradesTableBody');
     if (!s || !dataContainer || !tbody) return;
 
-    const gradeObj = (STATE.gradesList || []).find(g => g.code === s.grade);
-    const gradeName = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : s.gradeLabel;
+    const gradeObj = (STATE.gradesList || []).find(g => 
+        (g.code && g.code === s.grade) ||
+        (g.name === s.grade && (!s.section || g.section === s.section)) ||
+        (g.code && s.gradeCode && g.code === s.gradeCode)
+    );
+    const gradeName = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : formatStudentGradeAndSection(s);
 
     dataContainer.innerHTML = `
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:0.88rem; background:#f8fafc; padding:12px; border-radius:6px; border:1px solid #cbd5e1; margin-bottom:14px;">
@@ -23914,7 +24120,12 @@ function previewStudentReportCard(studentId) {
         </div>
     `;
 
-    const pensumCourses = (STATE.pensum || []).filter(p => p.gradeCode === s.grade || (gradeObj && p.grade === gradeObj.name && p.section === gradeObj.section));
+    const pensumCourses = (STATE.pensum || []).filter(p => 
+        p.gradeCode === s.grade || 
+        (s.gradeCode && p.gradeCode === s.gradeCode) ||
+        (gradeObj && p.grade === gradeObj.name && p.section === gradeObj.section) ||
+        (p.grade === s.grade && (!s.section || p.section === s.section))
+    );
     const subjects = pensumCourses.length > 0 ? pensumCourses.map(p => p.subject) : (Object.keys(s.grades || {}));
 
     let totalAvgSum = 0;
@@ -23974,9 +24185,18 @@ function printStudentReportCardOfficial() {
         return;
     }
 
-    const gradeObj = (STATE.gradesList || []).find(g => g.code === s.grade);
-    const gradeName = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : s.gradeLabel;
-    const pensumCourses = (STATE.pensum || []).filter(p => p.gradeCode === s.grade || (gradeObj && p.grade === gradeObj.name && p.section === gradeObj.section));
+    const gradeObj = (STATE.gradesList || []).find(g => 
+        (g.code && g.code === s.grade) ||
+        (g.name === s.grade && (!s.section || g.section === s.section)) ||
+        (g.code && s.gradeCode && g.code === s.gradeCode)
+    );
+    const gradeName = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : formatStudentGradeAndSection(s);
+    const pensumCourses = (STATE.pensum || []).filter(p => 
+        p.gradeCode === s.grade || 
+        (s.gradeCode && p.gradeCode === s.gradeCode) ||
+        (gradeObj && p.grade === gradeObj.name && p.section === gradeObj.section) ||
+        (p.grade === s.grade && (!s.section || p.section === s.section))
+    );
     const subjects = pensumCourses.length > 0 ? pensumCourses.map(p => p.subject) : (Object.keys(s.grades || {}));
 
     let totalAvgSum = 0;
@@ -24654,7 +24874,7 @@ function exportStudentsOfficialExcel() {
             (s.lastName || '').toUpperCase(),
             (s.firstName || '').toUpperCase(),
             s.gender || 'Masculino',
-            s.gradeLabel || s.grade || '-',
+            formatStudentGradeAndSection(s),
             s.tutorName || '-',
             s.tutorPhone || s.phone || '-',
             s.status || 'Inscrito Regular'
@@ -27395,7 +27615,7 @@ function loadHonorRoll() {
                 <td style="text-align:center;">${posBadge}</td>
                 <td style="text-align:center;"><code>${s.carne || s.personalCode || '—'}</code></td>
                 <td><strong>${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}</strong></td>
-                <td>${s.gradeLabel || s.grade}</td>
+                <td>${formatStudentGradeAndSection(s)}</td>
                 <td style="text-align:center;">${loadBadge}</td>
                 <td style="text-align:center;">
                     <strong style="color:${info.eligibleForHonorRoll ? 'var(--brand-green)' : '#b91c1c'}; font-size:1.15rem;">${info.average.toFixed(2)} pts</strong>
@@ -27465,7 +27685,7 @@ function printHonorRoll() {
                 <td style="text-align:center; font-weight:bold;">#${idx + 1}</td>
                 <td style="text-align:center;">${s.carne || s.personalCode || '—'}</td>
                 <td style="font-weight:bold; padding-left:8px;">${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}</td>
-                <td>${s.gradeLabel || s.grade}</td>
+                <td>${formatStudentGradeAndSection(s)}</td>
                 <td style="text-align:center;">${loadBadge}</td>
                 <td style="text-align:center; font-weight:bold; font-size:11.5px; color:#15803d;">${info.average.toFixed(2)} pts</td>
                 <td style="text-align:center; font-weight:bold;">${dist}</td>
@@ -29006,7 +29226,7 @@ function exportStudentsOfficialCSV() {
                 <td style="text-align:center;">${s.personalCode || '-'}</td>
                 <td style="text-align:left; font-weight:bold;">${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}</td>
                 <td style="text-align:center;">${s.gender || 'Masculino'}</td>
-                <td style="text-align:center;">${s.gradeLabel || s.grade || '-'}</td>
+                <td style="text-align:center; font-weight:bold;">${formatStudentGradeAndSection(s)}</td>
                 <td style="text-align:left;">${s.tutorName || '-'}</td>
                 <td style="text-align:center;">${s.tutorPhone || s.phone || '-'}</td>
                 <td style="text-align:center; font-weight:bold; color:#15803d;">${s.status || 'Inscrito Regular'}</td>
@@ -29740,7 +29960,7 @@ function exportStudentsOfficialExcel() {
             (s.lastName || '').toUpperCase(),
             (s.firstName || '').toUpperCase(),
             s.gender || 'Masculino',
-            s.gradeLabel || s.grade || '-',
+            formatStudentGradeAndSection(s),
             s.tutorName || '-',
             s.tutorPhone || s.phone || '-',
             s.status || 'Inscrito Regular'
@@ -30142,7 +30362,7 @@ function printStudentsOfficialList() {
             <td style="text-align:center;">${s.personalCode || '-'}</td>
             <td style="font-weight:700; text-transform:uppercase;">${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}</td>
             <td style="text-align:center;">${s.gender || 'Masculino'}</td>
-            <td style="text-align:center;">${s.gradeLabel || s.grade || '-'}</td>
+            <td style="text-align:center; font-weight:700;">${formatStudentGradeAndSection(s)}</td>
             <td>${s.tutorName || '-'}</td>
             <td style="text-align:center;">${s.tutorPhone || s.phone || '-'}</td>
             <td style="text-align:center; font-weight:bold; color:#15803d;">${s.status || 'Inscrito'}</td>
