@@ -718,13 +718,27 @@ const EnccoAuthStore = {
             return;
         }
 
-        const isSuper = (role === 'admin' || role === 'super_usuario' || (user && user.email === 'nehemias.salguero1982@gmail.com'));
+        const isSuper = (role === 'admin' || role === 'super_usuario');
 
         // 2. Navegación lateral reactiva
         document.querySelectorAll('.nav-item').forEach(el => {
             const targetView = el.dataset.view;
+            const allowedRoles = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim().toLowerCase()) : [];
+            const permKey = el.dataset.perm || targetView;
+
             if (targetView) {
-                const hasAccess = isSuper || hasRolePermission(targetView, role);
+                let hasAccess = false;
+                if (isSuper) {
+                    hasAccess = true;
+                } else if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
+                    hasAccess = false;
+                } else if (permKey) {
+                    const perms = permKey.split(',').map(p => p.trim());
+                    hasAccess = perms.some(p => hasRolePermission(p, role));
+                } else {
+                    hasAccess = hasRolePermission(targetView, role);
+                }
+
                 if (hasAccess) {
                     el.style.removeProperty('display');
                     el.classList.remove('hidden');
@@ -737,14 +751,19 @@ const EnccoAuthStore = {
 
         // 3. Secciones y elementos restringidos por roles
         document.querySelectorAll('.role-restricted, [data-perm]').forEach(el => {
+            if (el.classList.contains('nav-item')) return; // Ya evaluado en el bloque de nav-items
+
             const allowedRoles = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim().toLowerCase()) : [];
             const permKey = el.dataset.perm || el.dataset.view;
 
             let hasPerm = false;
             if (isSuper) {
                 hasPerm = true;
-            } else if (permKey && hasRolePermission(permKey, role)) {
-                hasPerm = true;
+            } else if (allowedRoles.length > 0 && !allowedRoles.includes(role)) {
+                hasPerm = false;
+            } else if (permKey) {
+                const perms = permKey.split(',').map(p => p.trim());
+                hasPerm = perms.some(p => hasRolePermission(p, role));
             } else if (allowedRoles.length > 0 && allowedRoles.includes(role)) {
                 hasPerm = true;
             }
@@ -1017,9 +1036,14 @@ function hasRolePermission(permKey, role = null) {
     // Si el rol es guest o undefined, denegar terminantemente por defecto
     if (!targetRole || targetRole === 'guest') return false;
     if (targetRole === 'admin' || targetRole === 'super_usuario') return true;
+    
+    // Directorio de Maestros Guías: Vista pública institucional permitida para todo el personal docente
     if (permKey === 'guide-teachers' || permKey === 'guide_teachers') return true;
 
-
+    // Regla estricta: Los catedráticos y estudiantes NO pueden ver el Editor de Grados y Secciones
+    if ((targetRole === 'docente' || targetRole === 'estudiante') && (permKey === 'grades' || permKey === 'grades_edit' || permKey === 'grades_view')) {
+        return false;
+    }
 
     try {
         if (permKey.endsWith('_edit')) {
@@ -1046,7 +1070,11 @@ function canRoleModify(moduleKey, role = null) {
     const targetRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
     if (!targetRole || targetRole === 'guest') return false;
     if (targetRole === 'admin' || targetRole === 'super_usuario') return true;
-    if (moduleKey === 'guide-teachers' || moduleKey === 'guide_teachers') return true;
+
+    // Regla estricta: Docentes y estudiantes NO pueden modificar la estructura escolar ni reasignar maestros guías
+    if ((targetRole === 'docente' || targetRole === 'estudiante') && (moduleKey === 'grades' || moduleKey === 'guide-teachers' || moduleKey === 'guide_teachers')) {
+        return false;
+    }
 
     try {
         const lvl = getModulePermissionLevel(moduleKey, targetRole);
@@ -1746,7 +1774,8 @@ var SYSTEM_MODULES_LIST = [
     { key: 'enrollment', name: 'Inscripción y Matrícula', icon: 'fa-user-plus', category: 'Secretaría y Alumnos', desc: 'Formulario de registro y carga de fotos de estudiantes.' },
     { key: 'students', name: 'Expedientes de Estudiantes', icon: 'fa-id-card', category: 'Secretaría y Alumnos', desc: 'Consulta, edición y fichas médicas de los 412 alumnos.' },
     { key: 'excel-import', name: 'Importación SIRE / Excel', icon: 'fa-file-excel', category: 'Secretaría y Alumnos', desc: 'Carga masiva de nóminas oficiales del MINEDUC.' },
-    { key: 'grades', name: 'Grados, Secciones y Guías', icon: 'fa-school', category: 'Académico', desc: 'Directorio oficial de grados y catedráticos titulares.' },
+    { key: 'grades', name: 'Editor de Grados y Secciones', icon: 'fa-graduation-cap', category: 'Académico', desc: 'Configuración de grados y secciones (Dirección y Secretaría).' },
+    { key: 'guide-teachers', name: 'Directorio de Maestros Guías', icon: 'fa-person-chalkboard', category: 'Académico', desc: 'Directorio oficial y consulta de catedráticos guías por grado y sección.' },
     { key: 'pensum', name: 'Pensum Oficial CNB', icon: 'fa-book-open', category: 'Académico', desc: 'Malla curricular oficial de 28 asignaturas del ciclo.' },
     { key: 'class-assignments', name: 'Asignación de Cátedras', icon: 'fa-chalkboard-user', category: 'Académico', desc: 'Asignar cursos a catedráticos por grado y sección.' },
     { key: 'grade-lock', name: 'Cierre y Bloqueo Bimestral', icon: 'fa-lock', category: 'Calificaciones', desc: 'Bloquear y desbloquear ingreso de notas bimestrales.' },
@@ -1800,7 +1829,7 @@ function initDefaultRolesConfig() {
             description: 'Coordinación disciplinaria escolar, control de asistencia y convivencia',
             color: '#d97706',
             isSystem: true,
-            permissions: ['dashboard', 'students', 'grades', 'attendance', 'discipline', 'honor-roll', 'reports']
+            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports']
         },
         {
             key: 'docente',
@@ -1808,7 +1837,7 @@ function initDefaultRolesConfig() {
             description: 'Ingreso de calificaciones, control de asistencia y seguimiento pedagógico',
             color: '#0891b2',
             isSystem: true,
-            permissions: ['dashboard', 'grades', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports']
+            permissions: ['dashboard', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports']
         },
         {
             key: 'estudiante',
@@ -1816,7 +1845,7 @@ function initDefaultRolesConfig() {
             description: 'Consulta de calificaciones, boleta de notas y asistencia personal',
             color: '#6366f1',
             isSystem: true,
-            permissions: ['dashboard', 'grades', 'honor-roll']
+            permissions: ['dashboard', 'guide-teachers', 'honor-roll']
         }
     ];
 }
@@ -1834,23 +1863,40 @@ function normalizeRolesConfig() {
         if (!found) {
             STATE.rolesConfig.push(def);
         } else {
+            // Regla institucional: Docentes y estudiantes nunca tienen acceso a grades (Editor de Grados y Secciones)
+            if (found.key === 'docente') {
+                found.permissions = (found.permissions || []).filter(p => p !== 'grades' && p !== 'grades_edit' && p !== 'grades_view');
+                if (!found.permissions.includes('guide-teachers')) {
+                    found.permissions.push('guide-teachers');
+                }
+            } else if (found.key === 'estudiante') {
+                found.permissions = (found.permissions || []).filter(p => p !== 'grades' && p !== 'grades_edit' && p !== 'grades_view');
+                if (!found.permissions.includes('guide-teachers')) {
+                    found.permissions.push('guide-teachers');
+                }
+            }
+
             if (!Array.isArray(found.permissions)) {
                 found.permissions = def.permissions;
             }
             if (!found.permissionLevels) {
                 found.permissionLevels = {};
-                SYSTEM_MODULES_LIST.forEach(m => {
-                    if (found.key === 'admin') {
-                        found.permissionLevels[m.key] = 'edit';
-                    } else if (found.permissions.includes(m.key + '_edit') || found.permissions.includes(m.key)) {
-                        found.permissionLevels[m.key] = 'edit';
-                    } else if (found.permissions.includes(m.key + '_view')) {
-                        found.permissionLevels[m.key] = 'view';
-                    } else {
-                        found.permissionLevels[m.key] = 'none';
-                    }
-                });
             }
+            SYSTEM_MODULES_LIST.forEach(m => {
+                if (found.key === 'admin') {
+                    found.permissionLevels[m.key] = 'edit';
+                } else if ((found.key === 'docente' || found.key === 'estudiante') && m.key === 'grades') {
+                    found.permissionLevels['grades'] = 'none';
+                } else if (found.key === 'docente' && m.key === 'guide-teachers') {
+                    found.permissionLevels['guide-teachers'] = 'view';
+                } else if (found.permissions.includes(m.key + '_edit') || found.permissions.includes(m.key)) {
+                    found.permissionLevels[m.key] = 'edit';
+                } else if (found.permissions.includes(m.key + '_view')) {
+                    found.permissionLevels[m.key] = 'view';
+                } else {
+                    found.permissionLevels[m.key] = 'none';
+                }
+            });
         }
     });
 }
@@ -2532,6 +2578,10 @@ function saveCareerForm(e) {
 window.saveCareerForm = saveCareerForm;
 
 function openCareerModal() {
+    if (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante') {
+        showToast('Acceso denegado: El personal docente no tiene acceso a gestionar carreras.', 'warning');
+        return;
+    }
     normalizeCareers();
     resetCareerForm();
     renderCareerList();
@@ -18030,7 +18080,13 @@ function exitImpersonation() {
 function navigateTo(viewName, event = null) {
     if (event) event.preventDefault();
 
-        // Verificación dinámica de autorización según la configuración de permisos del Administrador
+    // Verificación estricta: Docentes no pueden acceder al editor de grados y secciones, pero sí al directorio de maestros guías
+    if (viewName === 'grades' && STATE.currentRole === 'docente') {
+        showToast('Acceso Restringido: El personal docente no tiene acceso al Editor de Grados y Secciones. Se ha mostrado el Directorio de Maestros Guías.', 'info');
+        viewName = 'guide-teachers';
+    }
+
+    // Verificación dinámica de autorización según la configuración de permisos del Administrador
     if (viewName !== 'dashboard' && !hasRolePermission(viewName, STATE.currentRole)) {
         showToast(`Acceso Restringido: Su rol (${STATE.currentRole.toUpperCase()}) no tiene autorización para acceder al módulo "${viewName}".`, "warning");
         viewName = 'dashboard';
@@ -24651,6 +24707,10 @@ function downloadAdminStaffTemplate() {
 
 
 function openCareerModal() {
+    if (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante') {
+        showToast('Acceso denegado: El personal docente no tiene acceso a gestionar carreras.', 'warning');
+        return;
+    }
     if (!checkEnrolmentPermissions()) return;
     normalizeCareers();
     resetCareerForm();
@@ -30350,6 +30410,10 @@ function toggleSectionPill(gradeCode, section, btnEl) {
 }
 
 function openGradeModal() {
+    if (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante') {
+        showToast('Acceso denegado: El personal docente no tiene acceso a crear o modificar grados.', 'warning');
+        return;
+    }
     if (!checkEnrolmentPermissions()) return;
     const form = document.getElementById('gradeForm');
     if (form) form.reset();
@@ -30366,6 +30430,8 @@ function closeGradeModal() {
         modal.style.setProperty('display', 'none', 'important');
     }
 }
+window.openGradeModal = openGradeModal;
+window.closeGradeModal = closeGradeModal;
 
 function saveGradeForm(e) {
     if (e && e.preventDefault) e.preventDefault();
@@ -31987,6 +32053,10 @@ function toggleAllRolePermissions(checkAll = true) {
 // ──────────────────────────────────────────────────────────────────────────
 
 function openGradeModal() {
+    if (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante') {
+        showToast('Acceso denegado: El personal docente no tiene acceso al Editor de Grados y Secciones.', 'warning');
+        return;
+    }
     if (!checkEnrolmentPermissions()) return;
     const form = document.querySelector('#gradeModal form');
     if (form) form.reset();
@@ -32027,6 +32097,10 @@ function openGradeModal() {
 }
 
 function openEditGradeModal(gradeId) {
+    if (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante') {
+        showToast('Acceso denegado: El personal docente no tiene acceso al Editor de Grados y Secciones.', 'warning');
+        return;
+    }
     if (!checkEnrolmentPermissions()) return;
     const g = (STATE.gradesList || []).find(x => x.id === gradeId);
     if (!g) {
@@ -32092,6 +32166,10 @@ function syncCustomSectionsInput(val) {
 
 function saveGradeForm(e) {
     if (e && e.preventDefault) e.preventDefault();
+    if (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante') {
+        showToast('Acceso denegado: No tiene permisos para guardar grados ni secciones.', 'danger');
+        return;
+    }
     if (!checkEnrolmentPermissions()) return;
 
     const idInput = document.getElementById('gradeFormId') || document.getElementById('gradeModalId');
@@ -32179,6 +32257,10 @@ function saveGradeForm(e) {
 }
 
 function deleteGrade(gradeId) {
+    if (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante') {
+        showToast('Acceso denegado: No tiene permisos para eliminar grados.', 'danger');
+        return;
+    }
     if (!checkEnrolmentPermissions()) return;
     const g = (STATE.gradesList || []).find(x => x.id === gradeId);
     if (!g) return;
