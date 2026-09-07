@@ -953,6 +953,9 @@ function enforceViewReadOnlyMode(viewName) {
 
     if (STATE.currentRole === 'admin') return;
 
+    // El módulo de disciplina administra sus propios niveles de seguridad y permisos granulares (Docentes reportan, Auxiliar resuelve, Dirección autoriza)
+    if (viewName === 'discipline') return;
+
     const canModify = canRoleModify(viewName, STATE.currentRole);
 
     if (!canModify) {
@@ -27477,12 +27480,21 @@ function checkDisciplineCreatePermission() {
     // Docentes, auxiliares, directores y administradores pueden ingresar reportes
     return ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente'].includes(role);
 }
+window.checkDisciplineCreatePermission = checkDisciplineCreatePermission;
 
 function checkDisciplineResolvePermission() {
     const role = STATE.currentRole || (STATE.currentUser ? STATE.currentUser.role : 'docente');
     // Auxiliar, director y admin pueden dictaminar y resolver faltas
     return ['admin', 'director', 'profesor_auxiliar'].includes(role);
 }
+window.checkDisciplineResolvePermission = checkDisciplineResolvePermission;
+
+function checkDisciplineDirectorPermission() {
+    const role = STATE.currentRole || (STATE.currentUser ? STATE.currentUser.role : 'docente');
+    // Únicamente la Dirección y el Administrador pueden autorizar cambios a resoluciones emitidas o eliminar reportes
+    return ['admin', 'director'].includes(role);
+}
+window.checkDisciplineDirectorPermission = checkDisciplineDirectorPermission;
 
 // ==========================================================================
 // ⚠️ GESTOR DINÁMICO DE REPORTES DISCIPLINARIOS Y LLAMADAS DE ATENCIÓN (V75)
@@ -27668,9 +27680,21 @@ function openDisciplineModalForStudent(studentId) {
 
 
 
+function closeDisciplineResolutionModal() {
+    const modal = document.getElementById('disciplineResolutionModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+    }
+}
+window.closeDisciplineResolutionModal = closeDisciplineResolutionModal;
+
 function saveDisciplineForm(e) {
     if (e && e.preventDefault) e.preventDefault();
-    if (!checkDisciplineCreatePermission()) return;
+    if (!checkDisciplineCreatePermission()) {
+        showToast('No tiene permisos para registrar reportes disciplinarios.', 'warning');
+        return;
+    }
 
     const stuSelect = document.getElementById('discStudentSelect');
     const stuId = stuSelect ? stuSelect.value : '';
@@ -27711,7 +27735,9 @@ function saveDisciplineForm(e) {
         actionType: 'Pendiente de Resolución por Auxiliatura',
         resolution: '',
         resolvedBy: '',
-        resolvedDate: ''
+        resolvedDate: '',
+        isLocked: false,
+        lockedForTeacher: true
     };
 
     STATE.disciplineReports.unshift(newReport);
@@ -27719,9 +27745,9 @@ function saveDisciplineForm(e) {
     closeDisciplineModal();
     renderDisciplineTable();
     if (typeof renderDashboard === 'function') renderDashboard();
-    showToast(`Reporte disciplinario registrado correctamente. El Profesor Auxiliar ha sido notificado para dictamen.`, 'success');
+    showToast(`Reporte disciplinario registrado correctamente. Ha sido canalizado al Profesor Auxiliar para su resolución y dictamen.`, 'success');
 }
-
+window.saveDisciplineForm = saveDisciplineForm;
 
 function openDisciplineResolutionModal(reportId) {
     const list = STATE.disciplineReports || STATE.discipline || [];
@@ -27731,7 +27757,10 @@ function openDisciplineResolutionModal(reportId) {
         return;
     }
 
-    const canResolve = checkDisciplineResolvePermission(); // Sólo admin, director y profesor_auxiliar
+    const currentRole = STATE.currentRole || (STATE.currentUser ? STATE.currentUser.role : 'docente');
+    const isDirector = checkDisciplineDirectorPermission();
+    const isAuxiliar = currentRole === 'profesor_auxiliar';
+    const isDocente = currentRole === 'docente' || (!isDirector && !isAuxiliar);
 
     const idInput = document.getElementById('discResModalReportId');
     const nameEl = document.getElementById('discResModalStudentName');
@@ -27741,10 +27770,15 @@ function openDisciplineResolutionModal(reportId) {
     const reasonEl = document.getElementById('discResModalReason');
     const severityEl = document.getElementById('discResModalSeverity');
 
+    const metaResolvedInfo = document.getElementById('discResMetaResolvedInfo');
+    const resolvedByEl = document.getElementById('discResModalResolvedBy');
+    const resolvedDateEl = document.getElementById('discResModalResolvedDate');
+
     const actionSelect = document.getElementById('discResActionType');
     const statusSelect = document.getElementById('discResStatusSelect');
     const resTextarea = document.getElementById('discResResolutionText');
-    const submitBtn = document.querySelector('#disciplineResolutionModal button[type="submit"]');
+    const submitBtn = document.getElementById('discResSubmitBtn') || document.querySelector('#disciplineResolutionModal button[type="submit"]');
+    const unlockBtn = document.getElementById('discResDirectorUnlockBtn');
 
     if (idInput) idInput.value = rep.id;
     if (nameEl) nameEl.textContent = rep.studentName || 'Estudiante';
@@ -27760,75 +27794,201 @@ function openDisciplineResolutionModal(reportId) {
         severityEl.innerHTML = `<span class="badge" style="background:${badgeColor}; color:#fff; font-weight:700;">Falta ${rep.severity || 'Leve'}</span>`;
     }
 
-    // Banner informativo de seguridad para docentes
+    // Información de auditoría de resolución
+    if (metaResolvedInfo) {
+        if (rep.resolvedBy || rep.resolution) {
+            metaResolvedInfo.style.display = 'block';
+            if (resolvedByEl) resolvedByEl.textContent = rep.resolvedBy || 'Profesor Auxiliar / Dirección';
+            if (resolvedDateEl) resolvedDateEl.textContent = rep.resolvedDate || rep.date || 'Fecha registrada';
+        } else {
+            metaResolvedInfo.style.display = 'none';
+        }
+    }
+
+    // Valores en el formulario
+    if (actionSelect) {
+        actionSelect.value = rep.actionType || 'Citación de Padres de Familia';
+    }
+    if (statusSelect) {
+        statusSelect.value = rep.status || rep.resolutionStatus || 'Pendiente';
+    }
+    if (resTextarea) {
+        resTextarea.value = rep.resolution || rep.resolutionText || '';
+    }
+
+    // Banner informativo de seguridad según el rol
     let securityBanner = document.getElementById('discResSecurityBanner');
     if (!securityBanner) {
         const bodyEl = document.querySelector('#disciplineResolutionModal .modal-body');
         if (bodyEl) {
             securityBanner = document.createElement('div');
             securityBanner.id = 'discResSecurityBanner';
-            securityBanner.style.cssText = 'padding:8px 12px; border-radius:6px; margin-bottom:12px; font-size:0.8rem; font-weight:700; display:flex; align-items:center; gap:8px;';
+            securityBanner.style.cssText = 'padding:10px 14px; border-radius:8px; margin-bottom:14px; font-size:0.83rem; font-weight:600; display:flex; align-items:center; gap:10px; line-height:1.4;';
             bodyEl.insertBefore(securityBanner, bodyEl.firstChild);
         }
     }
 
-    if (securityBanner) {
-        if (canResolve) {
-            securityBanner.style.background = '#f0fdf4';
-            securityBanner.style.border = '1px solid #86efac';
-            securityBanner.style.color = '#166534';
-            securityBanner.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Modo de Dictamen: Tiene permisos de Auxiliatura para emitir y registrar la resolución oficial.';
-        } else {
+    const isResolvedAndLocked = (rep.status === 'Resuelto' || rep.isLocked === true) && Boolean(rep.resolution);
+
+    // GESTIÓN DE PRIVILEGIOS Y ESTADOS
+    if (isDocente) {
+        // --- 1. DOCENTE: Consulta de solo lectura sin posibilidad de modificar ---
+        if (securityBanner) {
             securityBanner.style.background = '#eff6ff';
             securityBanner.style.border = '1px solid #bfdbfe';
             securityBanner.style.color = '#1e40af';
-            securityBanner.innerHTML = '<i class="fa-solid fa-lock"></i> Dictamen Oficial de Auxiliatura: Consulta exclusiva para el docente (los dictámenes no pueden ser modificados por catedráticos).';
+            securityBanner.innerHTML = '<i class="fa-solid fa-lock" style="font-size:1.1rem; color:#2563eb;"></i> <span><strong>Consulta de Dictamen Oficial:</strong> Como catedrático puede revisar la resolución y medidas disciplinarias aplicadas. Por normativa institucional, los dictámenes no pueden ser modificados por docentes.</span>';
         }
-    }
-
-    // Bloqueo estricto de edición para docentes
-    if (actionSelect) {
-        actionSelect.value = rep.actionType || 'Citación de Padres de Familia';
-        actionSelect.disabled = !canResolve;
-        if (!canResolve) actionSelect.style.backgroundColor = '#f8fafc';
-        else actionSelect.style.backgroundColor = '#ffffff';
-    }
-    if (statusSelect) {
-        statusSelect.value = rep.status || rep.resolutionStatus || 'Pendiente';
-        statusSelect.disabled = !canResolve;
-        if (!canResolve) statusSelect.style.backgroundColor = '#f8fafc';
-        else statusSelect.style.backgroundColor = '#ffffff';
-    }
-    if (resTextarea) {
-        resTextarea.value = rep.resolution || rep.resolutionText || (rep.status === 'Pendiente' ? '' : 'Caso atendido por Auxiliatura.');
-        resTextarea.disabled = !canResolve;
-        resTextarea.readOnly = !canResolve;
-        if (!canResolve) {
+        if (actionSelect) { actionSelect.disabled = true; actionSelect.style.backgroundColor = '#f8fafc'; }
+        if (statusSelect) { statusSelect.disabled = true; statusSelect.style.backgroundColor = '#f8fafc'; }
+        if (resTextarea) {
+            resTextarea.disabled = true;
+            resTextarea.readOnly = true;
             resTextarea.style.backgroundColor = '#f8fafc';
-            resTextarea.style.color = '#1e293b';
-            resTextarea.style.cursor = 'default';
-        } else {
-            resTextarea.style.backgroundColor = '#ffffff';
-            resTextarea.style.color = '#0f172a';
-            resTextarea.style.cursor = 'text';
+            resTextarea.placeholder = 'En espera de dictamen oficial emitido por Auxiliatura.';
         }
-        resTextarea.placeholder = canResolve ? 'Detalle el dictamen y resolución...' : 'En espera de dictamen emitido por el Profesor Auxiliar.';
-    }
+        if (submitBtn) submitBtn.style.display = 'none';
+        if (unlockBtn) unlockBtn.style.display = 'none';
 
-    // Ocultar botón de guardar para docentes
-    if (submitBtn) {
-        submitBtn.style.display = canResolve ? 'inline-block' : 'none';
+    } else if (isAuxiliar) {
+        // --- 2. PROFESOR AUXILIAR ---
+        if (isResolvedAndLocked) {
+            // Caso ya resuelto y cerrado: Bloqueado. Solo Dirección puede modificar
+            if (securityBanner) {
+                securityBanner.style.background = '#fefce8';
+                securityBanner.style.border = '1px solid #fde047';
+                securityBanner.style.color = '#854d0e';
+                securityBanner.innerHTML = '<i class="fa-solid fa-lock" style="font-size:1.1rem; color:#d97706;"></i> <span><strong>Caso Resuelto y Cerrado:</strong> El dictamen de esta falta disciplinaria ha sido emitido. De acuerdo a la normativa institucional, una vez ingresada la resolución, <u>únicamente la Dirección</u> puede autorizar modificaciones o reaperturas.</span>';
+            }
+            if (actionSelect) { actionSelect.disabled = true; actionSelect.style.backgroundColor = '#f8fafc'; }
+            if (statusSelect) { statusSelect.disabled = true; statusSelect.style.backgroundColor = '#f8fafc'; }
+            if (resTextarea) {
+                resTextarea.disabled = true;
+                resTextarea.readOnly = true;
+                resTextarea.style.backgroundColor = '#f8fafc';
+            }
+            if (submitBtn) submitBtn.style.display = 'none';
+            if (unlockBtn) unlockBtn.style.display = 'none';
+        } else {
+            // Caso pendiente o en proceso: Auxiliar puede dictaminar
+            if (securityBanner) {
+                securityBanner.style.background = '#f0fdf4';
+                securityBanner.style.border = '1px solid #86efac';
+                securityBanner.style.color = '#166534';
+                securityBanner.innerHTML = '<i class="fa-solid fa-gavel" style="font-size:1.1rem; color:#16a34a;"></i> <span><strong>Dictamen de Auxiliatura:</strong> Seleccione la medida disciplinaria adoptada y detalle la resolución oficial para el estudiante.</span>';
+            }
+            if (actionSelect) { actionSelect.disabled = false; actionSelect.style.backgroundColor = '#ffffff'; }
+            if (statusSelect) { statusSelect.disabled = false; statusSelect.style.backgroundColor = '#ffffff'; }
+            if (resTextarea) {
+                resTextarea.disabled = false;
+                resTextarea.readOnly = false;
+                resTextarea.style.backgroundColor = '#ffffff';
+                resTextarea.placeholder = 'Detalle el dictamen, compromisos del estudiante y acuerdos con los padres de familia...';
+            }
+            if (submitBtn) {
+                submitBtn.style.display = 'inline-block';
+                submitBtn.innerHTML = '<i class="fa-solid fa-check-double"></i> Guardar Dictamen y Notificar';
+            }
+            if (unlockBtn) unlockBtn.style.display = 'none';
+        }
+
+    } else if (isDirector) {
+        // --- 3. DIRECCIÓN Y ADMINISTRACIÓN: Máxima autoridad ---
+        if (isResolvedAndLocked) {
+            // Caso resuelto: Requiere desbloqueo explícito de Dirección para editar
+            if (securityBanner) {
+                securityBanner.style.background = '#eff6ff';
+                securityBanner.style.border = '1px solid #bfdbfe';
+                securityBanner.style.color = '#1e40af';
+                securityBanner.innerHTML = '<i class="fa-solid fa-user-shield" style="font-size:1.1rem; color:#2563eb;"></i> <span><strong>Control de Dirección:</strong> Este caso se encuentra resuelto. Como Directivo del establecimiento, usted tiene la facultad exclusiva de autorizar modificaciones o reclasificaciones a este dictamen.</span>';
+            }
+            if (actionSelect) { actionSelect.disabled = true; actionSelect.style.backgroundColor = '#f8fafc'; }
+            if (statusSelect) { statusSelect.disabled = true; statusSelect.style.backgroundColor = '#f8fafc'; }
+            if (resTextarea) {
+                resTextarea.disabled = true;
+                resTextarea.readOnly = true;
+                resTextarea.style.backgroundColor = '#f8fafc';
+            }
+            if (submitBtn) submitBtn.style.display = 'none';
+            if (unlockBtn) {
+                unlockBtn.style.display = 'inline-block';
+                unlockBtn.innerHTML = '<i class="fa-solid fa-unlock-keyhole"></i> Permitir Modificación (Dirección)';
+            }
+        } else {
+            // Caso pendiente: Directivo puede resolver directamente
+            if (securityBanner) {
+                securityBanner.style.background = '#f0fdf4';
+                securityBanner.style.border = '1px solid #86efac';
+                securityBanner.style.color = '#166534';
+                securityBanner.innerHTML = '<i class="fa-solid fa-user-shield" style="font-size:1.1rem; color:#16a34a;"></i> <span><strong>Gestión de Dirección:</strong> Puede emitir o registrar el dictamen directamente.</span>';
+            }
+            if (actionSelect) { actionSelect.disabled = false; actionSelect.style.backgroundColor = '#ffffff'; }
+            if (statusSelect) { statusSelect.disabled = false; statusSelect.style.backgroundColor = '#ffffff'; }
+            if (resTextarea) {
+                resTextarea.disabled = false;
+                resTextarea.readOnly = false;
+                resTextarea.style.backgroundColor = '#ffffff';
+            }
+            if (submitBtn) {
+                submitBtn.style.display = 'inline-block';
+                submitBtn.innerHTML = '<i class="fa-solid fa-check-double"></i> Guardar Resolución';
+            }
+            if (unlockBtn) unlockBtn.style.display = 'none';
+        }
     }
 
     showModalById('disciplineResolutionModal');
 }
+window.openDisciplineResolutionModal = openDisciplineResolutionModal;
+
+function enableDisciplineDirectorEdit() {
+    if (!checkDisciplineDirectorPermission()) {
+        showToast('Acceso denegado: Únicamente la Dirección puede autorizar modificaciones a dictámenes emitidos.', 'danger');
+        return;
+    }
+
+    const actionSelect = document.getElementById('discResActionType');
+    const statusSelect = document.getElementById('discResStatusSelect');
+    const resTextarea = document.getElementById('discResResolutionText');
+    const submitBtn = document.getElementById('discResSubmitBtn') || document.querySelector('#disciplineResolutionModal button[type="submit"]');
+    const unlockBtn = document.getElementById('discResDirectorUnlockBtn');
+    const securityBanner = document.getElementById('discResSecurityBanner');
+
+    if (actionSelect) { actionSelect.disabled = false; actionSelect.style.backgroundColor = '#ffffff'; }
+    if (statusSelect) { statusSelect.disabled = false; statusSelect.style.backgroundColor = '#ffffff'; }
+    if (resTextarea) {
+        resTextarea.disabled = false;
+        resTextarea.readOnly = false;
+        resTextarea.style.backgroundColor = '#ffffff';
+        resTextarea.focus();
+    }
+    if (submitBtn) {
+        submitBtn.style.display = 'inline-block';
+        submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios Autorizados';
+    }
+    if (unlockBtn) unlockBtn.style.display = 'none';
+
+    if (securityBanner) {
+        securityBanner.style.background = '#fffbeb';
+        securityBanner.style.border = '1px solid #fde68a';
+        securityBanner.style.color = '#b45309';
+        securityBanner.innerHTML = '<i class="fa-solid fa-unlock-keyhole" style="font-size:1.1rem; color:#d97706;"></i> <span><strong>Edición Autorizada por Dirección:</strong> Modificación habilitada. Puede actualizar las medidas disciplinarias, el dictamen oficial o el estado del expediente.</span>';
+    }
+
+    showToast('Modificación autorizada por Dirección. Campos habilitados para edición.', 'info');
+}
+window.enableDisciplineDirectorEdit = enableDisciplineDirectorEdit;
 
 function saveDisciplineResolutionForm(e) {
     if (e && e.preventDefault) e.preventDefault();
 
-    // Blindaje estricto de seguridad: Los docentes NO pueden modificar resoluciones
-    if (!checkDisciplineResolvePermission()) {
-        showToast('Acceso denegado: Los docentes no tienen permiso para modificar dictámenes emitidos por Auxiliatura.', 'danger');
+    const currentRole = STATE.currentRole || (STATE.currentUser ? STATE.currentUser.role : 'docente');
+    const isDirector = checkDisciplineDirectorPermission();
+    const isAuxiliar = currentRole === 'profesor_auxiliar';
+
+    // 1. Docentes NUNCA pueden guardar ni modificar resoluciones
+    if (!checkDisciplineResolvePermission() || (!isDirector && !isAuxiliar)) {
+        showToast('Acceso denegado: Los docentes no tienen facultades para dictaminar ni modificar resoluciones disciplinarias.', 'danger');
         return;
     }
 
@@ -27843,55 +28003,84 @@ function saveDisciplineResolutionForm(e) {
     const resolutionText = resTextarea ? resTextarea.value.trim() : '';
 
     if (!resolutionText) {
-        showToast('Debe ingresar el dictamen o resolución de la falta disciplinaria.', 'warning');
+        showToast('Debe ingresar el dictamen o resolución oficial de la falta disciplinaria.', 'warning');
         return;
     }
 
     let list = STATE.disciplineReports || STATE.discipline || [];
     const rep = list.find(r => r.id === reportId);
-    if (rep) {
-        rep.status = status;
-        rep.resolutionStatus = status;
-        rep.actionType = actionType;
-        rep.resolution = resolutionText;
-        rep.resolutionText = resolutionText;
-        rep.resolvedBy = STATE.currentUser ? STATE.currentUser.name : 'Profesor Auxiliar Disciplinario';
-        rep.resolvedDate = new Date().toISOString().split('T')[0];
+    if (!rep) {
+        showToast('Reporte disciplinario no encontrado.', 'warning');
+        return;
+    }
 
-        saveStateToLocalStorage();
-        closeDisciplineResolutionModal();
-        renderDisciplineTable();
-        if (typeof renderDashboard === 'function') renderDashboard();
-        showToast(`Dictamen guardado exitosamente por Auxiliatura. Visible para el docente reportante en modo consulta.`, 'success');
+    // 2. Profesor Auxiliar solo puede dictaminar si NO estaba resuelto previamente (a menos que Dirección lo autorice)
+    if (isAuxiliar && rep.status === 'Resuelto' && rep.isLocked === true) {
+        showToast('Este caso ya fue resuelto y cerrado. Solo la Dirección del establecimiento puede autorizar modificaciones.', 'danger');
+        return;
+    }
+
+    const userName = STATE.currentUser ? (STATE.currentUser.name || STATE.currentUser.username) : (isDirector ? 'Dirección' : 'Profesor Auxiliar');
+    const roleLabel = isDirector ? 'Dirección' : 'Profesor Auxiliar';
+
+    rep.status = status;
+    rep.resolutionStatus = status;
+    rep.actionType = actionType;
+    rep.resolution = resolutionText;
+    rep.resolutionText = resolutionText;
+    rep.resolvedBy = `${userName} (${roleLabel})`;
+    rep.resolvedDate = new Date().toISOString().split('T')[0];
+    if (status === 'Resuelto') {
+        rep.isLocked = true;
+    } else {
+        rep.isLocked = false;
+    }
+
+    saveStateToLocalStorage();
+    closeDisciplineResolutionModal();
+    renderDisciplineTable();
+    if (typeof renderDashboard === 'function') renderDashboard();
+    
+    if (isDirector) {
+        showToast(`Resolución actualizada y validada con éxito por la Dirección.`, 'success');
+    } else {
+        showToast(`Dictamen emitido y guardado exitosamente por Auxiliatura. Visible para el docente en modo consulta.`, 'success');
     }
 }
-
+window.saveDisciplineResolutionForm = saveDisciplineResolutionForm;
 
 function deleteDisciplineReport(reportId) {
-    if (!checkDisciplineResolvePermission()) return;
-    if (confirm("¿Está seguro de eliminar este reporte disciplinario del sistema? Esta acción no se puede deshacer.")) {
+    if (!checkDisciplineDirectorPermission()) {
+        showToast("Acceso denegado: Únicamente la Dirección o Administrador del establecimiento pueden eliminar reportes disciplinarios.", "danger");
+        return;
+    }
+    if (confirm("¿Está seguro de eliminar este reporte disciplinario del sistema? Esta acción es irreversible y solo puede ser autorizada por Dirección.")) {
         STATE.disciplineReports = (STATE.disciplineReports || []).filter(d => d.id !== reportId);
         saveStateToLocalStorage();
         renderDisciplineTable();
         if (typeof renderDashboard === 'function') renderDashboard();
-        showToast("Reporte disciplinario eliminado.", "info");
+        showToast("Reporte disciplinario eliminado por Dirección.", "info");
     }
 }
+window.deleteDisciplineReport = deleteDisciplineReport;
 
 function renderDisciplineTable() {
     const tbody = document.getElementById('disciplineTableBody');
     if (!tbody) return;
 
     let list = STATE.disciplineReports || [];
-    const canResolve = checkDisciplineResolvePermission();
+    const currentRole = STATE.currentRole || (STATE.currentUser ? STATE.currentUser.role : 'docente');
+    const isDirector = checkDisciplineDirectorPermission();
+    const isAuxiliar = currentRole === 'profesor_auxiliar';
+    const isDocente = currentRole === 'docente' || (!isDirector && !isAuxiliar);
 
     if (list.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align:center; padding:35px; color:var(--text-muted);">
+                <td colspan="8" style="text-align:center; padding:35px; color:var(--text-muted);">
                     <i class="fa-solid fa-shield-halved" style="font-size:2.2rem; margin-bottom:10px; display:block; color:var(--brand-green);"></i>
                     <strong>No hay reportes disciplinarios registrados.</strong><br>
-                    <span style="font-size:0.85rem;">Los catedráticos y auxiliares pueden registrar incidencias con el botón <strong>"Registrar Incidente / Reporte"</strong>.</span>
+                    <span style="font-size:0.85rem;">Los catedráticos y personal del plantel pueden registrar incidencias con el botón <strong>"Nueva Llamada de Atención"</strong>.</span>
                 </td>
             </tr>
         `;
@@ -27906,7 +28095,7 @@ function renderDisciplineTable() {
         } else if (d.status === 'En Proceso') {
             statusBadge = '<span class="badge" style="background:#0284c7; color:#fff; font-weight:700;"><i class="fa-solid fa-spinner"></i> En Proceso</span>';
         } else {
-            statusBadge = '<span class="badge" style="background:#d97706; color:#fff; font-weight:700;"><i class="fa-solid fa-clock"></i> Pendiente Auxiliatura</span>';
+            statusBadge = '<span class="badge" style="background:#d97706; color:#fff; font-weight:700;"><i class="fa-solid fa-clock"></i> Pendiente Auxiliar</span>';
         }
 
         // Formatear badge de severidad
@@ -27915,16 +28104,60 @@ function renderDisciplineTable() {
         if (d.severity === 'Muy Grave') sevColor = '#dc2626';
         const sevBadge = `<span class="badge" style="background:${sevColor}; color:#fff; font-weight:700;">${d.severity || 'Leve'}</span>`;
 
-        // Vista previa de la resolución del maestro auxiliar
+        // Vista previa de la resolución del maestro auxiliar o dirección
         let resSnippet = '';
         if (d.resolution) {
             resSnippet = `
                 <div style="font-size:0.82rem; color:#15803d; font-weight:600; margin-top:3px;">
-                    <i class="fa-solid fa-gavel"></i> <strong>Dictamen Auxiliar:</strong> ${d.actionType || 'Medida aplicada'}
+                    <i class="fa-solid fa-gavel"></i> <strong>Dictamen:</strong> ${d.actionType || 'Medida aplicada'}
                 </div>
             `;
         } else {
             resSnippet = `<div style="font-size:0.8rem; color:#94a3b8; font-style:italic; margin-top:2px;">En espera de resolución del Profesor Auxiliar</div>`;
+        }
+
+        // Acciones según rol del usuario
+        let actionButtonsHtml = '';
+        if (isDocente) {
+            // Catedrático: Solo puede consultar la resolución sin modificarla
+            if (d.resolution) {
+                actionButtonsHtml = `
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="openDisciplineResolutionModal('${d.id}')" title="Consultar dictamen oficial (Solo Lectura)" style="padding:4px 9px; font-weight:700;">
+                        <i class="fa-solid fa-eye"></i> Ver Dictamen
+                    </button>
+                `;
+            } else {
+                actionButtonsHtml = `
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openDisciplineResolutionModal('${d.id}')" title="Ver reporte disciplinario (Pendiente de dictamen)" style="padding:4px 9px; font-weight:600;">
+                        <i class="fa-solid fa-clock"></i> Pendiente Auxiliar
+                    </button>
+                `;
+            }
+        } else if (isAuxiliar) {
+            // Profesor Auxiliar: Puede resolver reportes pendientes. Una vez resuelto, queda en solo lectura
+            if (d.status === 'Resuelto') {
+                actionButtonsHtml = `
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="openDisciplineResolutionModal('${d.id}')" title="Ver resolución oficial (Caso cerrado)" style="padding:4px 9px; font-weight:600;">
+                        <i class="fa-solid fa-eye"></i> Ver Resolución
+                    </button>
+                `;
+            } else {
+                actionButtonsHtml = `
+                    <button type="button" class="btn btn-sm btn-primary" onclick="openDisciplineResolutionModal('${d.id}')" title="Emitir dictamen disciplinario oficial" style="padding:4px 9px; font-weight:700; background:#0284c7; border-color:#0284c7;">
+                        <i class="fa-solid fa-gavel"></i> Dictaminar
+                    </button>
+                `;
+            }
+        } else if (isDirector) {
+            // Dirección / Admin: Puede dictaminar, permitir modificaciones y eliminar
+            actionButtonsHtml = `
+                <button type="button" class="btn btn-sm btn-outline-info" onclick="openDisciplineResolutionModal('${d.id}')" title="${d.resolution ? 'Gestionar o revisar dictamen' : 'Dictaminar reporte'}" style="padding:4px 9px; margin-right:4px; font-weight:700;">
+                    <i class="fa-solid ${d.resolution ? 'fa-eye' : 'fa-gavel'}"></i> ${d.resolution ? 'Gestionar Dictamen' : 'Dictaminar'}
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteDisciplineReport('${d.id}')" title="Eliminar reporte (Facultad de Dirección)" style="padding:4px 8px;">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            `;
         }
 
         return `
@@ -27944,15 +28177,13 @@ function renderDisciplineTable() {
             </td>
             <td style="text-align:center;">${statusBadge}</td>
             <td style="text-align:center; white-space:nowrap;">
-                <button type="button" class="btn btn-sm btn-outline-info" onclick="openDisciplineResolutionModal('${d.id}')" title="${d.resolution ? 'Ver dictamen y resolución' : (canResolve ? 'Emitir dictamen auxiliar' : 'Ver detalle')}" style="padding:4px 9px; margin-right:4px; font-weight:700;">
-                    <i class="fa-solid ${d.resolution ? 'fa-eye' : (canResolve ? 'fa-gavel' : 'fa-clock')}"></i> ${d.resolution ? 'Ver Resolución' : (canResolve ? 'Dictaminar' : 'Ver Detalle')}
-                </button>
-                ${canResolve ? `<button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteDisciplineReport('${d.id}')" title="Eliminar reporte" style="padding:4px 8px;"><i class="fa-solid fa-trash"></i></button>` : ''}
+                ${actionButtonsHtml}
             </td>
         </tr>
         `;
     }).join('');
 }
+window.renderDisciplineTable = renderDisciplineTable;
 
 
 // ──────────────────────────────────────────────────────────────────────────
