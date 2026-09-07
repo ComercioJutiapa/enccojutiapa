@@ -30862,83 +30862,7 @@ function saveGradeForm(e) {
     showToast('Grado guardado exitosamente.', 'success');
 }
 
-function openPensumSubjectModal() {
-    if (!checkEnrolmentPermissions()) return;
-    const form = document.getElementById('pensumSubjectForm');
-    if (form) form.reset();
-    document.getElementById('pensumSubjectModalId').value = '';
-    document.getElementById('pensumSubjectModalTitle').innerHTML = '<i class="fa-solid fa-book-open-reader"></i> Registrar Asignatura en Pensum';
-    updatePensumCatalogSelects();
-    showModalById('pensumSubjectModal');
-}
-
-function closePensumSubjectModal() {
-    const modal = document.getElementById('pensumSubjectModal');
-    if (modal) {
-        modal.classList.remove('active');
-        modal.style.setProperty('display', 'none', 'important');
-    }
-}
-
-function savePensumSubjectForm(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    if (!checkEnrolmentPermissions()) return;
-
-    const idInput = document.getElementById('pensumSubjectFormId') || document.getElementById('pensumSubjectModalId');
-    const nameInput = document.getElementById('pensumSubjectFormName') || document.getElementById('pensumSubjectName');
-    const careerSelect = document.getElementById('pensumSubjectFormCareer') || document.getElementById('pensumSubjectCareer');
-    const gradeSelect = document.getElementById('pensumSubjectFormGrade') || document.getElementById('pensumSubjectGrade');
-    const orderInput = document.getElementById('pensumSubjectFormSortOrder') || document.getElementById('pensumSubjectOrder');
-    const hoursInput = document.getElementById('pensumSubjectFormHours');
-
-    const id = idInput ? idInput.value : '';
-    const name = nameInput ? nameInput.value.trim() : '';
-    const career = careerSelect ? careerSelect.value : '';
-    const grade = gradeSelect ? gradeSelect.value : '';
-    const order = orderInput ? parseInt(orderInput.value) || 1 : 1;
-    const hours = hoursInput ? parseInt(hoursInput.value) || 4 : 4;
-
-    if (!name || !career || !grade) {
-        showToast('Complete todos los campos obligatorios.', 'warning');
-        return;
-    }
-
-    if (!Array.isArray(STATE.pensumCatalog)) STATE.pensumCatalog = [];
-
-    if (id) {
-        const idx = STATE.pensumCatalog.findIndex(x => x.id === id);
-        if (idx !== -1) {
-            STATE.pensumCatalog[idx].name = name;
-            STATE.pensumCatalog[idx].subject = name;
-            STATE.pensumCatalog[idx].career = career;
-            STATE.pensumCatalog[idx].grade = grade;
-            STATE.pensumCatalog[idx].order = order;
-            STATE.pensumCatalog[idx].sortOrder = order;
-            STATE.pensumCatalog[idx].hours = hours;
-        }
-    } else {
-        const newCode = String(STATE.pensumCatalog.length + 1).padStart(3, '0');
-        STATE.pensumCatalog.push({
-            id: 'pen-' + Date.now() + '-' + Math.floor(Math.random()*1000),
-            code: newCode,
-            name: name,
-            subject: name,
-            career: career,
-            grade: grade,
-            order: order,
-            sortOrder: order,
-            hours: hours
-        });
-    }
-
-    saveStateToLocalStorage();
-    closePensumSubjectModal();
-    renderPensumCatalogTable();
-    if (typeof renderDashboard === 'function') renderDashboard();
-    showToast(`Asignatura "${name}" guardada en el pensum exitosamente.`, 'success');
-}
-
-// Bloque heredado reemplazado por controlador moderno de asignaciones
+// Bloque de pensum gestionado por el controlador moderno (ver seccion 31940)
 
 function openAssignGuideTeacherModal(gradeId) {
     if (!checkEnrolmentPermissions()) return;
@@ -31292,9 +31216,83 @@ function updatePensumCatalogSelects() {
     }
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// 🔖 NORMALIZACIÓN Y GENERACIÓN DE CÓDIGOS DE CURSO EN EL PENSUM
+// ──────────────────────────────────────────────────────────────────────────
+
+function suggestNextPensumCourseCode(career, grade) {
+    const list = Array.isArray(STATE.pensumCatalog) ? STATE.pensumCatalog : [];
+    let prefix = 'PC';
+    const cLower = (career || '').toLowerCase();
+    if (cLower.includes('secretari')) prefix = 'SO';
+    else if (cLower.includes('bachiller')) prefix = 'BA';
+    else if (cLower.includes('perito')) prefix = 'PC';
+    
+    let gradeNum = '4';
+    const gRaw = (grade || '').toUpperCase();
+    if (gRaw.includes('6') || gRaw.includes('SEXTO') || gRaw.includes('6TO')) gradeNum = '6';
+    else if (gRaw.includes('5') || gRaw.includes('QUINTO') || gRaw.includes('5TO')) gradeNum = '5';
+    else if (gRaw.includes('4') || gRaw.includes('CUARTO') || gRaw.includes('4TO')) gradeNum = '4';
+    else if (gRaw.includes('3') || gRaw.includes('TERCERO') || gRaw.includes('3RO')) gradeNum = '3';
+    else if (gRaw.includes('2') || gRaw.includes('SEGUNDO') || gRaw.includes('2DO')) gradeNum = '2';
+    else if (gRaw.includes('1') || gRaw.includes('PRIMERO') || gRaw.includes('1RO')) gradeNum = '1';
+
+    const basePrefix = `${prefix}${gradeNum}`;
+    let maxSeq = 0;
+    list.forEach(p => {
+        const c = String(p.code || '').toUpperCase().trim();
+        if (c.startsWith(basePrefix)) {
+            const numPart = parseInt(c.slice(basePrefix.length), 10);
+            if (!isNaN(numPart) && numPart > maxSeq) {
+                maxSeq = numPart;
+            }
+        }
+    });
+
+    const nextSeq = String(maxSeq + 1).padStart(2, '0');
+    return `${basePrefix}${nextSeq}`;
+}
+
+function normalizePensumCatalogCodes() {
+    if (!Array.isArray(STATE.pensumCatalog)) return;
+    const defaultCatalog = (typeof getInitialData === 'function') ? (getInitialData().pensumCatalog || []) : [];
+    
+    STATE.pensumCatalog.forEach(p => {
+        if (!p.code || !String(p.code).trim()) {
+            const pName = (p.name || p.subject || '').trim().toLowerCase();
+            const pGrade = (p.grade || '').trim().toLowerCase();
+            const match = defaultCatalog.find(d => 
+                (d.name || '').trim().toLowerCase() === pName &&
+                (d.grade || '').trim().toLowerCase() === pGrade
+            );
+            if (match && match.code) {
+                p.code = match.code;
+            } else {
+                p.code = suggestNextPensumCourseCode(p.career, p.grade);
+            }
+        } else {
+            p.code = String(p.code).trim().toUpperCase();
+        }
+    });
+}
+
+function onPensumSubjectCareerOrGradeChange() {
+    const idInput = document.getElementById('pensumSubjectFormId') || document.getElementById('pensumSubjectModalId');
+    if (idInput && idInput.value) return; // Si estamos editando no sobrescribir el código ya existente
+    const career = document.getElementById('pensumSubjectFormCareer')?.value || '';
+    const grade = document.getElementById('pensumSubjectFormGrade')?.value || '';
+    const codeInput = document.getElementById('pensumSubjectFormCode');
+    if (codeInput) {
+        codeInput.value = suggestNextPensumCourseCode(career, grade);
+    }
+}
+
 function renderPensumCatalogTable(searchQuery = '') {
     const tbody = document.getElementById('pensumCatalogTableBody');
     if (!tbody) return;
+
+    // Garantizar que todos los cursos del pensum tengan su código oficial normalizado
+    normalizePensumCatalogCodes();
 
     const careerFilterEl = document.getElementById('pensumCatalogCareerFilter');
     const gradeFilterEl = document.getElementById('pensumCatalogGradeFilter');
@@ -31304,9 +31302,9 @@ function renderPensumCatalogTable(searchQuery = '') {
     const gradeFilter = (gradeFilterEl ? gradeFilterEl.value : 'ALL') || 'ALL';
     const q = (typeof searchQuery === 'string' ? searchQuery : (searchInputEl ? searchInputEl.value : '')).trim().toLowerCase();
 
-    // Garantizar que STATE.pensumCatalog tenga las 28 materias oficiales
+    // Garantizar que STATE.pensumCatalog tenga las materias oficiales si está vacío
     if (!Array.isArray(STATE.pensumCatalog) || STATE.pensumCatalog.length === 0) {
-        STATE.pensumCatalog = JSON.parse(JSON.stringify(OFFICIAL_PENSUM_28_CATALOG));
+        STATE.pensumCatalog = JSON.parse(JSON.stringify((typeof getInitialData === 'function' ? getInitialData().pensumCatalog : []) || []));
     }
 
     let list = STATE.pensumCatalog;
@@ -31358,7 +31356,7 @@ function renderPensumCatalogTable(searchQuery = '') {
     if (list.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" style="text-align:center; padding:30px; color:var(--text-muted);">
+                <td colspan="8" style="text-align:center; padding:30px; color:var(--text-muted);">
                     <i class="fa-solid fa-book-open-reader" style="font-size:2rem; margin-bottom:8px; display:block; color:var(--brand-green);"></i>
                     No se encontraron asignaturas para el filtro seleccionado.
                 </td>
@@ -31371,6 +31369,7 @@ function renderPensumCatalogTable(searchQuery = '') {
         const pSubjectName = p.name || p.subject;
         const orderVal = p.sortOrder || p.order || (idx + 1);
         const periodsVal = p.periods || p.hours || 4;
+        const courseCode = (p.code || '').trim().toUpperCase() || 'S/C';
         const areaBadge = p.area ? `<div style="font-size:0.75rem; color:#64748b; margin-top:2px;"><i class="fa-solid fa-tag"></i> ${p.area}</div>` : '';
 
         return `
@@ -31384,6 +31383,11 @@ function renderPensumCatalogTable(searchQuery = '') {
                     </div>
                 </div>
             </td>
+            <td style="text-align:center;">
+                <span class="badge" style="font-family:'Courier New',Courier,monospace; font-weight:800; font-size:0.84rem; background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; padding:4px 8px; letter-spacing:0.5px; border-radius:6px; display:inline-block;" title="Código oficial del curso: ${courseCode}">
+                    <i class="fa-solid fa-barcode" style="font-size:0.75rem; margin-right:4px; opacity:0.75;"></i>${courseCode}
+                </span>
+            </td>
             <td><span class="badge badge-info" style="font-size:0.8rem;">${p.career || 'Perito Contador'}</span></td>
             <td><span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700; border:1px solid #cbd5e1; font-size:0.82rem;">${p.grade}</span></td>
             <td>
@@ -31394,45 +31398,13 @@ function renderPensumCatalogTable(searchQuery = '') {
             <td style="text-align:center;">
                 <span class="badge badge-success" style="font-size:0.75rem;"><i class="fa-solid fa-check-double"></i> Grado General (Sec. A, B, C, D)</span>
             </td>
-            <td style="text-align:center;">
-                <button class="btn btn-sm btn-outline-primary" onclick="openEditPensumSubjectModal('${p.id}')" title="Editar materia"><i class="fa-solid fa-pen-to-square"></i></button>
-                <button class="btn btn-sm btn-outline-danger" onclick="deletePensumSubject('${p.id}')" title="Eliminar materia"><i class="fa-solid fa-trash"></i></button>
+            <td style="text-align:center; white-space:nowrap;">
+                <button class="btn btn-sm btn-outline-primary" onclick="openEditPensumSubjectModal('${p.id}')" title="Editar materia" style="padding:3px 8px; margin-right:4px;"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="deletePensumSubject('${p.id}')" title="Eliminar materia" style="padding:3px 8px;"><i class="fa-solid fa-trash"></i></button>
             </td>
         </tr>
         `;
     }).join('');
-}
-
-function openEditPensumSubjectModal(subjectId) {
-    if (!checkEnrolmentPermissions()) return;
-    const s = (STATE.pensumCatalog || []).find(x => x.id === subjectId);
-    if (!s) {
-        showToast('Asignatura no encontrada.', 'warning');
-        return;
-    }
-
-    updatePensumCatalogSelects();
-
-    const idInput = document.getElementById('pensumSubjectFormId') || document.getElementById('pensumSubjectModalId');
-    const nameInput = document.getElementById('pensumSubjectFormName') || document.getElementById('pensumSubjectName');
-    const careerSelect = document.getElementById('pensumSubjectFormCareer') || document.getElementById('pensumSubjectCareer');
-    const gradeSelect = document.getElementById('pensumSubjectFormGrade') || document.getElementById('pensumSubjectGrade');
-    const orderInput = document.getElementById('pensumSubjectFormSortOrder') || document.getElementById('pensumSubjectOrder');
-    const hoursInput = document.getElementById('pensumSubjectFormHours');
-
-    const subjectName = s.name || s.subject || '';
-
-    if (idInput) idInput.value = s.id;
-    if (nameInput) nameInput.value = subjectName;
-    if (careerSelect && s.career) careerSelect.value = s.career;
-    if (gradeSelect && s.grade) gradeSelect.value = s.grade;
-    if (orderInput) orderInput.value = s.order || s.sortOrder || 1;
-    if (hoursInput) hoursInput.value = s.hours || 4;
-
-    const titleEl = document.getElementById('pensumSubjectModalTitle');
-    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Editar Asignatura "${subjectName}"`;
-
-    showModalById('pensumSubjectModal');
 }
 
 function deletePensumSubject(subjectId) {
@@ -31440,7 +31412,7 @@ function deletePensumSubject(subjectId) {
     const s = (STATE.pensumCatalog || []).find(x => x.id === subjectId);
     if (!s) return;
 
-    if (!confirm(`¿Está seguro de eliminar la asignatura "${s.name}" del pensum?`)) return;
+    if (!confirm(`¿Está seguro de eliminar la asignatura "${s.name || s.subject}" del pensum?`)) return;
 
     STATE.pensumCatalog = (STATE.pensumCatalog || []).filter(x => x.id !== subjectId);
     saveStateToLocalStorage();
@@ -31945,8 +31917,8 @@ function filterPensumCatalogTable(query = '') {
 
 function openPensumSubjectModal() {
     if (!checkEnrolmentPermissions()) return;
-    const form = document.querySelector('#pensumSubjectModal form');
-    if (form) form.reset();
+    const form = document.querySelector('#pensumSubjectModal form') || document.getElementById('pensumSubjectForm');
+    if (form && typeof form.reset === 'function') form.reset();
 
     const idInput = document.getElementById('pensumSubjectFormId') || document.getElementById('pensumSubjectModalId');
     if (idInput) idInput.value = '';
@@ -31955,6 +31927,14 @@ function openPensumSubjectModal() {
     if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-book-open-reader"></i> Registrar Asignatura en Pensum';
 
     updatePensumCatalogSelects();
+
+    const career = document.getElementById('pensumSubjectFormCareer')?.value || 'Perito Contador';
+    const grade = document.getElementById('pensumSubjectFormGrade')?.value || '4to Perito Contador';
+    const codeInput = document.getElementById('pensumSubjectFormCode');
+    if (codeInput) {
+        codeInput.value = suggestNextPensumCourseCode(career, grade);
+    }
+
     showModalById('pensumSubjectModal');
 }
 
@@ -31969,6 +31949,7 @@ function openEditPensumSubjectModal(subjectId) {
     updatePensumCatalogSelects();
 
     const idInput = document.getElementById('pensumSubjectFormId') || document.getElementById('pensumSubjectModalId');
+    const codeInput = document.getElementById('pensumSubjectFormCode');
     const nameInput = document.getElementById('pensumSubjectFormName') || document.getElementById('pensumSubjectName');
     const careerSelect = document.getElementById('pensumSubjectFormCareer') || document.getElementById('pensumSubjectCareer');
     const gradeSelect = document.getElementById('pensumSubjectFormGrade') || document.getElementById('pensumSubjectGrade');
@@ -31978,11 +31959,12 @@ function openEditPensumSubjectModal(subjectId) {
     const subjectName = s.name || s.subject || '';
 
     if (idInput) idInput.value = s.id;
+    if (codeInput) codeInput.value = (s.code || '').trim().toUpperCase() || suggestNextPensumCourseCode(s.career, s.grade);
     if (nameInput) nameInput.value = subjectName;
     if (careerSelect && s.career) careerSelect.value = s.career;
     if (gradeSelect && s.grade) gradeSelect.value = s.grade;
     if (orderInput) orderInput.value = s.order || s.sortOrder || 1;
-    if (hoursInput) hoursInput.value = s.hours || 4;
+    if (hoursInput) hoursInput.value = s.hours || s.periods || 4;
 
     const titleEl = document.getElementById('pensumSubjectModalTitle');
     if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Editar Asignatura "${subjectName}"`;
@@ -32003,6 +31985,7 @@ function savePensumSubjectForm(e) {
     if (!checkEnrolmentPermissions()) return;
 
     const idInput = document.getElementById('pensumSubjectFormId') || document.getElementById('pensumSubjectModalId');
+    const codeInput = document.getElementById('pensumSubjectFormCode');
     const nameInput = document.getElementById('pensumSubjectFormName') || document.getElementById('pensumSubjectName');
     const careerSelect = document.getElementById('pensumSubjectFormCareer') || document.getElementById('pensumSubjectCareer');
     const gradeSelect = document.getElementById('pensumSubjectFormGrade') || document.getElementById('pensumSubjectGrade');
@@ -32010,6 +31993,7 @@ function savePensumSubjectForm(e) {
     const hoursInput = document.getElementById('pensumSubjectFormHours');
 
     const id = idInput ? idInput.value : '';
+    let code = codeInput ? codeInput.value.trim().toUpperCase() : '';
     const name = nameInput ? nameInput.value.trim() : '';
     const career = careerSelect ? careerSelect.value : '';
     const grade = gradeSelect ? gradeSelect.value : '';
@@ -32021,11 +32005,16 @@ function savePensumSubjectForm(e) {
         return;
     }
 
+    if (!code) {
+        code = suggestNextPensumCourseCode(career, grade);
+    }
+
     if (!Array.isArray(STATE.pensumCatalog)) STATE.pensumCatalog = [];
 
     if (id) {
         const idx = STATE.pensumCatalog.findIndex(x => x.id === id);
         if (idx !== -1) {
+            STATE.pensumCatalog[idx].code = code;
             STATE.pensumCatalog[idx].name = name;
             STATE.pensumCatalog[idx].subject = name;
             STATE.pensumCatalog[idx].career = career;
@@ -32033,27 +32022,40 @@ function savePensumSubjectForm(e) {
             STATE.pensumCatalog[idx].order = order;
             STATE.pensumCatalog[idx].sortOrder = order;
             STATE.pensumCatalog[idx].hours = hours;
+            STATE.pensumCatalog[idx].periods = hours;
+            STATE.pensumCatalog[idx].weeklyHours = hours;
         }
     } else {
-        const newCode = String(STATE.pensumCatalog.length + 1).padStart(3, '0');
         STATE.pensumCatalog.push({
             id: 'pen-' + Date.now() + '-' + Math.floor(Math.random()*1000),
-            code: newCode,
+            code: code,
             name: name,
             subject: name,
             career: career,
             grade: grade,
             order: order,
             sortOrder: order,
-            hours: hours
+            hours: hours,
+            periods: hours,
+            weeklyHours: hours
         });
     }
+
+    // Sincronizar en STATE.pensum (clases asignadas a docentes)
+    (STATE.pensum || []).forEach(asg => {
+        if ((asg.subject === name || asg.name === name) && (asg.grade === grade || asg.gradeCode === grade)) {
+            asg.code = code;
+            asg.hours = hours;
+            asg.periodsPerWeek = hours;
+        }
+    });
 
     saveStateToLocalStorage();
     closePensumSubjectModal();
     renderPensumCatalogTable();
+    if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
     if (typeof renderDashboard === 'function') renderDashboard();
-    showToast(`Asignatura "${name}" guardada en el pensum exitosamente.`, 'success');
+    showToast(`Asignatura "${name}" [${code}] guardada en el pensum exitosamente.`, 'success');
 }
 
 function updatePensumCatalogSelects() {
@@ -32871,7 +32873,10 @@ function renderAssignmentsTable(searchQuery = '') {
         <tr>
             <td><span class="badge badge-info" style="font-weight:700;">${a.career || 'Perito Contador'}</span></td>
             <td><strong>${a.grade || a.gradeCode} (${a.section || 'A'})</strong></td>
-            <td><strong style="color:var(--brand-green-dark); font-size:0.95rem;">${subName}</strong></td>
+            <td>
+                ${a.code ? `<span class="badge" style="font-family:'Courier New',Courier,monospace; font-size:0.75rem; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; margin-right:5px; font-weight:800;"><i class="fa-solid fa-barcode" style="font-size:0.7rem; margin-right:3px;"></i>${a.code}</span>` : ''}
+                <strong style="color:var(--brand-green-dark); font-size:0.95rem;">${subName}</strong>
+            </td>
             <td><strong style="color:var(--text-primary);"><i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${a.teacher}</strong></td>
             <td style="text-align:center; font-weight:700;">${a.periodsPerWeek || a.hours || 4} períodos/sem</td>
             <td style="text-align:center; white-space:nowrap;">
@@ -33021,7 +33026,8 @@ function onClassAssignmentGradeChange(gradeName) {
             subjectSelect.innerHTML = '<option value="">-- Seleccione Asignatura del Pensum --</option>' + subjectsToDisplay.map(s => {
                 const sName = s.name || s.subject;
                 const hours = s.periods || s.hours || 4;
-                return `<option value="${sName}" data-hours="${hours}">${sName} • (${hours} períodos/sem)</option>`;
+                const codeBadge = s.code ? `[${s.code}] ` : '';
+                return `<option value="${sName}" data-code="${s.code || ''}" data-hours="${hours}">${codeBadge}${sName} • (${hours} períodos/sem)</option>`;
             }).join('');
         }
     }
@@ -33105,6 +33111,13 @@ function saveClassAssignmentForm(e) {
 
     const fullSubjectName = getFullOfficialSubjectName(rawSub, gGradeNum);
 
+    const targetCatalogMatch = (STATE.pensumCatalog || []).find(p => 
+        (p.name?.toLowerCase() === fullSubjectName.toLowerCase() || p.subject?.toLowerCase() === fullSubjectName.toLowerCase() ||
+         fullSubjectName.toLowerCase().includes(p.name?.toLowerCase() || '---') || (p.name && p.name.toLowerCase().includes(rawSub.toLowerCase()))) &&
+        (p.grade?.toLowerCase().includes(String(gGradeNum)) || p.gradeCode?.toLowerCase().includes(String(gGradeNum)))
+    );
+    const assignedCourseCode = targetCatalogMatch?.code || '';
+
     if (!Array.isArray(STATE.pensum)) STATE.pensum = [];
 
     if (id) {
@@ -33119,6 +33132,7 @@ function saveClassAssignmentForm(e) {
             a.name = fullSubjectName;
             a.periodsPerWeek = periods;
             a.hours = periods;
+            if (assignedCourseCode) a.code = assignedCourseCode;
         }
     } else {
         selectedSections.forEach(sec => {
@@ -33135,9 +33149,11 @@ function saveClassAssignmentForm(e) {
                 STATE.pensum[existingIdx].hours = periods;
                 STATE.pensum[existingIdx].subject = fullSubjectName;
                 STATE.pensum[existingIdx].name = fullSubjectName;
+                if (assignedCourseCode) STATE.pensum[existingIdx].code = assignedCourseCode;
             } else {
                 STATE.pensum.push({
                     id: 'asg-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+                    code: assignedCourseCode,
                     teacherId: teacherId,
                     teacher: teacherName,
                     grade: gradeName,
@@ -33378,3 +33394,14 @@ window.detectAndApplyBestDatabaseEndpoint = detectAndApplyBestDatabaseEndpoint;
 window.exportGradebookOfficialExcel = exportGradebookOfficialExcel;
 window.triggerGradebookExcelImport = triggerGradebookExcelImport;
 window.handleGradebookExcelImport = handleGradebookExcelImport;
+
+window.openPensumSubjectModal = openPensumSubjectModal;
+window.openEditPensumSubjectModal = openEditPensumSubjectModal;
+window.closePensumSubjectModal = closePensumSubjectModal;
+window.savePensumSubjectForm = savePensumSubjectForm;
+window.deletePensumSubject = deletePensumSubject;
+window.renderPensumCatalogTable = renderPensumCatalogTable;
+window.filterPensumCatalogTable = filterPensumCatalogTable;
+window.suggestNextPensumCourseCode = suggestNextPensumCourseCode;
+window.normalizePensumCatalogCodes = normalizePensumCatalogCodes;
+window.onPensumSubjectCareerOrGradeChange = onPensumSubjectCareerOrGradeChange;
