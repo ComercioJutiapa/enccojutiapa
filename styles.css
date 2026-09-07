@@ -1179,8 +1179,8 @@ body.theme-dark .attendance-excel-table thead tr.day-header-row th.weekend-heade
 }
 
 .attendance-excel-table .col-carne {
-    width: 85px;
-    min-width: 85px;
+    width: 95px;
+    min-width: 95px;
     font-family: monospace;
     font-size: 0.8rem;
 }
@@ -1197,6 +1197,7 @@ body.theme-dark .attendance-excel-table thead tr.day-header-row th.weekend-heade
 }
 
 /* Celdas de día interactivas */
+.att-cell,
 .att-day-cell {
     width: 28px;
     min-width: 28px;
@@ -1206,40 +1207,87 @@ body.theme-dark .attendance-excel-table thead tr.day-header-row th.weekend-heade
     font-size: 0.76rem;
     user-select: none;
     transition: background 0.15s, transform 0.1s;
+    text-align: center;
+    vertical-align: middle;
 }
 
+.att-cell:hover,
 .att-day-cell:hover {
     background: #e2e8f0 !important;
     transform: scale(1.08);
 }
 
-.att-val-P {
+.att-val-P,
+.att-val-p {
     background: #dcfce7 !important;
     color: #15803d !important;
+    font-weight: 800 !important;
 }
 
-.att-val-A {
+.att-val-A,
+.att-val-a {
     background: #fee2e2 !important;
     color: #b91c1c !important;
+    font-weight: 800 !important;
 }
 
-.att-val-J {
+.att-val-J,
+.att-val-j {
     background: #ffedd5 !important;
     color: #c2410c !important;
+    font-weight: 800 !important;
 }
 
-.att-val-T {
+.att-val-T,
+.att-val-t {
     background: #e0f2fe !important;
     color: #0369a1 !important;
+    font-weight: 800 !important;
 }
 
-.att-weekend-cell {
+.att-val-empty {
+    background: #ffffff !important;
+    color: transparent !important;
+}
+
+body.theme-dark .att-val-P,
+body.theme-dark .att-val-p {
+    background: #14532d !important;
+    color: #86efac !important;
+}
+
+body.theme-dark .att-val-A,
+body.theme-dark .att-val-a {
+    background: #7f1d1d !important;
+    color: #fca5a5 !important;
+}
+
+body.theme-dark .att-val-J,
+body.theme-dark .att-val-j {
+    background: #7c2d12 !important;
+    color: #fdba74 !important;
+}
+
+body.theme-dark .att-val-T,
+body.theme-dark .att-val-t {
+    background: #075985 !important;
+    color: #7dd3fc !important;
+}
+
+body.theme-dark .att-val-empty {
+    background: #0f172a !important;
+    color: transparent !important;
+}
+
+.att-weekend-cell,
+.col-day-weekend {
     background: #f1f5f9;
     color: #94a3b8;
     cursor: not-allowed;
 }
 
-body.theme-dark .att-weekend-cell {
+body.theme-dark .att-weekend-cell,
+body.theme-dark .col-day-weekend {
     background: #091e12;
     color: #334155;
 }

@@ -27493,7 +27493,7 @@ function loadAttendanceList() {
     head.innerHTML = `
         <tr>
             <th class="col-num" rowspan="2">No.</th>
-            <th class="col-carne" rowspan="2">Carné</th>
+            <th class="col-carne" rowspan="2">Código Personal</th>
             <th class="col-name" rowspan="2">Apellidos y Nombres</th>
             <th colspan="${daysInMonth}" class="col-month-header" style="background:#15803d; color:#fff; text-align:center; font-weight:800; font-size:0.85rem; padding:4px;">
                 <i class="fa-regular fa-calendar-days"></i> DÍAS DEL MES DE ${((document.getElementById('attendanceMonthSelect')?.options[document.getElementById('attendanceMonthSelect')?.selectedIndex]?.text) || 'Agosto').toUpperCase()} (CICLO ${year})
@@ -27569,23 +27569,23 @@ function loadAttendanceList() {
                 cellsHtml += `<td class="att-cell ${weekendClass}" data-weekend="true">-</td>`;
             } else {
                 let rawVal = sRecords[day];
-                // REGLA: Si el maestro no toma asistencia, el espacio en blanco se toma como PRESENTE (P)
-                let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : 'P';
+                // Las casillas de asistencia aparecen en blanco inicialmente; al marcarse muestran su letra y color asignado
+                let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : '';
 
                 let cellClass = 'att-val-empty';
                 if (val === 'P') {
-                    cellClass = 'att-val-p';
+                    cellClass = 'att-val-p att-val-P';
                     pCount++;
                     dayPresentTotals[day]++;
                 } else if (val === 'A') {
-                    cellClass = 'att-val-a';
+                    cellClass = 'att-val-a att-val-A';
                     aCount++;
                     dayAbsentTotals[day]++;
                 } else if (val === 'J') {
-                    cellClass = 'att-val-j';
+                    cellClass = 'att-val-j att-val-J';
                     jCount++;
                 } else if (val === 'T') {
-                    cellClass = 'att-val-t';
+                    cellClass = 'att-val-t att-val-T';
                     tCount++;
                 }
 
@@ -27594,7 +27594,7 @@ function loadAttendanceList() {
                         data-student-id="${s.id}" 
                         data-day="${day}" 
                         onclick="toggleAttendanceCell('${s.id}', ${day})"
-                        title="${studentFullName} — Día ${day}: ${val === 'P' ? 'PRESENTE' : (val === 'A' ? 'AUSENTE / FALTA' : (val === 'J' ? 'JUSTIFICADO' : 'TARDANZA'))} (Haga clic para alternar P/A/J/T)">
+                        title="${studentFullName} — Día ${day}: ${val ? (val === 'P' ? 'PRESENTE' : (val === 'A' ? 'AUSENTE / FALTA' : (val === 'J' ? 'JUSTIFICADO' : 'TARDANZA'))) : 'Sin registrar (Haga clic para marcar P)'}">
                         ${val}
                     </td>
                 `;
@@ -27629,7 +27629,7 @@ function loadAttendanceList() {
         tbodyHtml += `
             <tr data-student-id="${s.id}">
                 <td class="col-num">${idx + 1}</td>
-                <td class="col-carne"><code>${s.carne || s.personalCode || 'S/C'}</code></td>
+                <td class="col-carne"><code>${s.personalCode || s.cui || s.carne || 'S/C'}</code></td>
                 <td class="col-name" title="${studentFullName}">
                     <strong>${studentFullName}</strong>${statusTag}
                 </td>
@@ -27761,24 +27761,202 @@ function toggleAttendanceCell(studentId, day) {
     if (!STATE.attendanceRecords[recordKey]) STATE.attendanceRecords[recordKey] = {};
     if (!STATE.attendanceRecords[recordKey][studentId]) STATE.attendanceRecords[recordKey][studentId] = {};
 
-    const cur = STATE.attendanceRecords[recordKey][studentId][day] || 'P';
-    let next = 'A';
-    if (cur === 'P') next = 'A';
+    const cur = STATE.attendanceRecords[recordKey][studentId][day] || '';
+    let next = 'P';
+    if (!cur || cur === '') next = 'P';
+    else if (cur === 'P') next = 'A';
     else if (cur === 'A') next = 'J';
     else if (cur === 'J') next = 'T';
-    else if (cur === 'T') next = 'P';
+    else if (cur === 'T') next = '';
+    else next = 'P';
 
-    STATE.attendanceRecords[recordKey][studentId][day] = next;
+    if (next) {
+        STATE.attendanceRecords[recordKey][studentId][day] = next;
+    } else {
+        delete STATE.attendanceRecords[recordKey][studentId][day];
+    }
 
-    // Actualizar visualmente la celda de inmediato
+    // Actualizar visualmente la celda de inmediato con su letra y color asignado
     const td = document.querySelector(`td[data-student-id="${studentId}"][data-day="${day}"]`);
     if (td) {
-        td.className = `att-cell att-val-${next.toLowerCase()}`;
+        td.className = next ? `att-cell att-val-${next.toLowerCase()} att-val-${next.toUpperCase()}` : 'att-cell att-val-empty';
         td.textContent = next;
-        td.title = `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? 'JUSTIFICADO' : 'TARDANZA'))}`;
+        td.title = next ? `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? 'JUSTIFICADO' : 'TARDANZA'))} (Haga clic para alternar P/A/J/T)` : `Día ${day}: Sin registrar (Haga clic para marcar P)`;
     }
 
     saveAttendanceRecords(false);
+    updateAttendanceLiveStats();
+}
+
+function updateAttendanceLiveStats() {
+    const gradeSelect = document.getElementById('attendanceGradeSelect');
+    const monthSelect = document.getElementById('attendanceMonthSelect');
+    const foot = document.getElementById('attendanceExcelGridFoot');
+    const statsSummary = document.getElementById('attendanceStatsSummary');
+    if (!gradeSelect || !monthSelect) return;
+
+    const month = parseInt(monthSelect.value) || 8;
+    const year = 2026;
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    const rows = document.querySelectorAll('#attendanceExcelGridBody tr[data-student-id]');
+    let dayPresentTotals = new Array(daysInMonth + 1).fill(0);
+    let dayAbsentTotals = new Array(daysInMonth + 1).fill(0);
+    let dayJustTotals = new Array(daysInMonth + 1).fill(0);
+    let dayTardyTotals = new Array(daysInMonth + 1).fill(0);
+    let totalClassLogs = 0;
+    let totalClassPresent = 0;
+
+    rows.forEach(tr => {
+        const studentId = tr.getAttribute('data-student-id');
+        const cells = tr.querySelectorAll('td.att-cell:not([data-weekend="true"])');
+        let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
+
+        cells.forEach(td => {
+            const day = parseInt(td.getAttribute('data-day')) || 0;
+            const text = (td.textContent || '').trim();
+            if (text === 'P') {
+                pCount++;
+                if (day > 0) dayPresentTotals[day]++;
+            } else if (text === 'A') {
+                aCount++;
+                if (day > 0) dayAbsentTotals[day]++;
+            } else if (text === 'J') {
+                jCount++;
+                if (day > 0) dayJustTotals[day]++;
+            } else if (text === 'T') {
+                tCount++;
+                if (day > 0) dayTardyTotals[day]++;
+            }
+        });
+
+        const totalLogged = pCount + aCount + jCount + tCount;
+        totalClassPresent += (pCount + jCount + (tCount * 0.5));
+        totalClassLogs += (totalLogged > 0 ? totalLogged : 0);
+
+        let pct = 100;
+        if (totalLogged > 0) {
+            pct = Math.round(((pCount + jCount + (tCount * 0.5)) / totalLogged) * 100);
+        }
+
+        let barColor = '#16a34a';
+        let badgeStyle = 'background:#dcfce7; color:#15803d; border:1px solid #86efac;';
+        if (pct < 85 && pct >= 70) {
+            barColor = '#ca8a04';
+            badgeStyle = 'background:#fef9c3; color:#ca8a04; border:1px solid #fde047;';
+        } else if (pct < 70) {
+            barColor = '#dc2626';
+            badgeStyle = 'background:#fee2e2; color:#dc2626; border:1px solid #fca5a5;';
+        }
+
+        const pEl = document.getElementById(`statP_${studentId}`);
+        if (pEl) pEl.textContent = pCount;
+        const aEl = document.getElementById(`statA_${studentId}`);
+        if (aEl) aEl.textContent = aCount;
+        const jEl = document.getElementById(`statJ_${studentId}`);
+        if (jEl) jEl.textContent = jCount;
+        const tEl = document.getElementById(`statT_${studentId}`);
+        if (tEl) tEl.textContent = tCount;
+        const totEl = document.getElementById(`statTot_${studentId}`);
+        if (totEl) totEl.textContent = totalLogged;
+
+        const pctEl = document.getElementById(`pctCol_${studentId}`);
+        if (pctEl) {
+            pctEl.innerHTML = `
+                <div class="att-pct-container" title="Asistencia Horizontal: ${pct}% (${pCount} Presentes / ${totalLogged} Días)">
+                    <div class="att-pct-bar-bg">
+                        <div class="att-pct-bar-fill" style="width:${pct}%; background:${barColor};"></div>
+                    </div>
+                    <span class="att-pct-badge" style="${badgeStyle}">
+                        ${pct}%
+                    </span>
+                </div>
+            `;
+        }
+    });
+
+    const globalSumP = dayPresentTotals.reduce((a, b) => a + b, 0);
+    const globalSumA = dayAbsentTotals.reduce((a, b) => a + b, 0);
+    const globalSumJ = dayJustTotals.reduce((a, b) => a + b, 0);
+    const globalSumT = dayTardyTotals.reduce((a, b) => a + b, 0);
+    const globalTotalLogged = globalSumP + globalSumA + globalSumJ + globalSumT;
+
+    let totalPresentRow = `
+        <tr class="summary-row">
+            <td colspan="3" style="text-align:right; padding-right:12px; font-weight:800;">
+                <i class="fa-solid fa-check"></i> TOTAL ASISTENCIAS DIARIAS (P):
+            </td>
+    `;
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dObj = new Date(year, month - 1, day);
+        const isWeekend = (dObj.getDay() === 0 || dObj.getDay() === 6);
+        totalPresentRow += `<td style="${isWeekend ? 'background:#091e12;' : ''}">${isWeekend ? '-' : dayPresentTotals[day]}</td>`;
+    }
+    totalPresentRow += `
+        <td class="col-stat-p" style="background:#15803d !important; color:#fff !important;">${globalSumP}</td>
+        <td class="col-stat-a" style="background:#b91c1c !important; color:#fff !important;">${globalSumA}</td>
+        <td class="col-stat-j" style="background:#ea580c !important; color:#fff !important;">${globalSumJ}</td>
+        <td class="col-stat-t" style="background:#0284c7 !important; color:#fff !important;">${globalSumT}</td>
+        <td style="background:#0f172a !important; color:#ffffff !important; font-weight:800;">${globalTotalLogged}</td>
+        <td style="background:#0f172a !important; color:#38bdf8 !important; font-size:0.82rem; font-weight:800; text-align:center;">
+            TOTALES
+        </td>
+    </tr>`;
+
+    const overallPct = totalClassLogs > 0 ? Math.round((totalClassPresent / totalClassLogs) * 100) : 100;
+    const overallBarColor = overallPct >= 85 ? '#4ade80' : (overallPct >= 70 ? '#facc15' : '#f87171');
+
+    let overallRow = `
+        <tr class="summary-row-pct">
+            <td colspan="${daysInMonth + 3}" style="text-align:right; padding-right:12px; font-weight:800;">
+                <i class="fa-solid fa-chart-pie"></i> PROMEDIO HORIZONTAL DE ASISTENCIA DEL GRADO:
+            </td>
+            <td colspan="4" style="text-align:center; font-weight:800; font-size:0.8rem; background:#1e293b !important; color:#94a3b8 !important;">
+                ${rows.length} Alumnos
+            </td>
+            <td style="text-align:center; font-weight:800; background:#1e293b !important; color:#ffffff !important;">
+                ${globalTotalLogged} Regs
+            </td>
+            <td style="background:#0284c7 !important; color:#ffffff !important; font-size:0.88rem; font-weight:900; letter-spacing:0.5px; white-space:nowrap; text-align:center;">
+                <div style="display:flex; flex-direction:row; align-items:center; justify-content:center; gap:6px;">
+                    <div style="width:36px; height:7px; background:rgba(255,255,255,0.25); border-radius:999px; overflow:hidden;">
+                        <div style="width:${overallPct}%; height:100%; background:${overallBarColor}; border-radius:999px;"></div>
+                    </div>
+                    <span>${overallPct}%</span>
+                </div>
+            </td>
+        </tr>`;
+
+    if (foot) {
+        foot.innerHTML = totalPresentRow + overallRow;
+    }
+
+    if (statsSummary) {
+        statsSummary.innerHTML = `
+            <div class="attendance-stats-horizontal">
+                <span class="att-stat-card-horizontal">
+                    <i class="fa-solid fa-users" style="color:var(--brand-green);"></i>
+                    <span><strong>${rows.length}</strong> Alumnos</span>
+                </span>
+                <span class="att-stat-card-horizontal">
+                    <i class="fa-solid fa-check" style="color:#16a34a;"></i>
+                    <span>Total P: <strong>${globalSumP}</strong></span>
+                </span>
+                <span class="att-stat-card-horizontal">
+                    <i class="fa-solid fa-xmark" style="color:#dc2626;"></i>
+                    <span>Total A: <strong>${globalSumA}</strong></span>
+                </span>
+                <span class="att-stat-card-horizontal" style="background:#f0fdf4; border-color:#86efac;">
+                    <i class="fa-solid fa-chart-line" style="color:#15803d;"></i>
+                    <span>% Asistencia Promedio:</span>
+                    <div class="att-global-pct-bar">
+                        <div style="width:${overallPct}%; height:100%; background:${overallPct >= 85 ? '#16a34a' : (overallPct >= 70 ? '#ca8a04' : '#dc2626')}; border-radius:999px;"></div>
+                    </div>
+                    <strong style="color:#15803d; font-size:0.92rem;">${overallPct}%</strong>
+                </span>
+            </div>
+        `;
+    }
 }
 
 function markAllPresentToday() {
@@ -27946,8 +28124,7 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
                 dayCells += `<td style="background:#e2e8f0; text-align:center; color:#94a3b8; font-size:8pt; border:1px solid #64748b;">-</td>`;
             } else {
                 let rawVal = sRecords[day];
-                // Regla: si el maestro no tomó asistencia, el espacio en blanco se toma como PRESENTE (P)
-                let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : 'P';
+                let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : '';
 
                 let bg = '#ffffff';
                 let fg = '#000000';
@@ -27966,7 +28143,7 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
         tbodyRows += `
             <tr style="${idx % 2 === 1 ? 'background-color:#f8fafc;' : ''}">
                 <td style="text-align:center; font-weight:bold; border:1px solid #64748b; padding:4px 2px;">${idx + 1}</td>
-                <td style="font-family:monospace; font-weight:bold; border:1px solid #64748b; padding:4px 4px; font-size:7.8pt;">${s.personalCode || s.carne || 'S/C'}</td>
+                <td style="font-family:monospace; font-weight:bold; border:1px solid #64748b; padding:4px 4px; font-size:7.8pt;">${s.personalCode || s.cui || s.carne || 'S/C'}</td>
                 <td style="font-weight:bold; border:1px solid #64748b; padding:4px 6px; white-space:nowrap; font-size:8.2pt;">${studentFullName}</td>
                 ${dayCells}
                 <td style="text-align:center; font-weight:bold; color:#15803d; border:1px solid #64748b; font-size:8pt;">${pCount}</td>
@@ -28126,14 +28303,14 @@ function exportAttendanceOfficialExcel() {
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
     const monthData = (STATE.attendanceRecords && STATE.attendanceRecords[recordKey]) || {};
 
-    let csv = `\uFEFFNo,Carne,Apellidos y Nombres,`;
+    let csv = `\uFEFFNo,Codigo_Personal,Apellidos y Nombres,`;
     for (let d = 1; d <= daysInMonth; d++) csv += `Dia_${d},`;
     csv += `Total_P,Total_A,Total_J,Total_T,Porcentaje_Asistencia\n`;
 
     students.forEach((s, idx) => {
         const sRecords = monthData[s.id] || {};
         let p = 0, a = 0, j = 0, t = 0;
-        let line = `${idx + 1},"${s.personalCode || s.carne || ''}","${s.fullName || (s.lastName + ', ' + s.firstName)}",`;
+        let line = `${idx + 1},"${s.personalCode || s.cui || s.carne || ''}","${s.fullName || (s.lastName + ', ' + s.firstName)}",`;
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dObj = new Date(year, month - 1, d);
@@ -28141,7 +28318,7 @@ function exportAttendanceOfficialExcel() {
             if (isWeekend) {
                 line += `-,`;
             } else {
-                let val = sRecords[d] || 'P';
+                let val = sRecords[d] || '';
                 if (val === 'P') p++;
                 else if (val === 'A') a++;
                 else if (val === 'J') j++;
