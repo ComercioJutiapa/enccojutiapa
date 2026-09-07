@@ -19356,35 +19356,85 @@ function openStudentModal() {
     resetStudentEnrollmentForm(false);
     navigateTo('enrollment');
 }
+window.openStudentModal = openStudentModal;
+
+function formatDateForInput(dateStr) {
+    if (!dateStr) return '';
+    const s = String(dateStr).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (dmy) {
+        return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
+    }
+    const ymd = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (ymd) {
+        return `${ymd[1]}-${ymd[2].padStart(2, '0')}-${ymd[3].padStart(2, '0')}`;
+    }
+    try {
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+    } catch (e) {}
+    return '';
+}
+window.formatDateForInput = formatDateForInput;
 
 function openEditStudentModal(studentId) {
     if (!checkEnrolmentPermissions()) return;
 
-    stopWebcam();
-    updateGradeSelects();
-    updateCycleSelects();
-    const student = STATE.students.find(s => s.id === studentId);
-    if (!student) return;
+    try {
+        if (typeof stopWebcam === 'function') stopWebcam();
+        if (typeof updateGradeSelects === 'function') updateGradeSelects();
+        if (typeof updateCycleSelects === 'function') updateCycleSelects();
+    } catch (e) {
+        console.warn("Pre-edit setup:", e);
+    }
 
-    document.getElementById('studentFormId').value = student.id;
+    const student = (STATE.students || []).find(s => 
+        String(s.id) === String(studentId) || 
+        (s.carne && s.carne === studentId) ||
+        (s.personalCode && s.personalCode === studentId) ||
+        (s.cui && s.cui === studentId)
+    );
+
+    if (!student) {
+        showToast("No se encontró el registro del estudiante solicitado.", "warning");
+        return;
+    }
+
+    const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = (val !== undefined && val !== null) ? val : '';
+    };
+
+    setVal('studentFormId', student.id);
     
     const titleEl = document.getElementById('enrollmentViewTitle');
-    if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-user-pen"></i> Editar Datos de Inscripción (${student.carne} - ${student.firstName} ${student.lastName})`;
+    if (titleEl) {
+        titleEl.innerHTML = `<i class="fa-solid fa-user-pen"></i> Editar Datos de Inscripción (${student.carne || ''} - ${student.firstName || ''} ${student.lastName || ''})`;
+    }
     
     const topBtn = document.getElementById('enrollmentSubmitTopBtn');
     if (topBtn) topBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios';
     const btmBtn = document.getElementById('enrollmentSubmitBottomBtn');
     if (btmBtn) btmBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios';
 
-    document.getElementById('studentFormCarne').value = student.carne || '';
-    document.getElementById('studentFormPersonalCode').value = student.personalCode || '';
-    document.getElementById('studentFormCui').value = student.cui || '';
-    document.getElementById('studentFormFirstName').value = student.firstName || '';
-    document.getElementById('studentFormLastName').value = student.lastName || '';
+    setVal('studentFormCarne', student.carne);
+    setVal('studentFormPersonalCode', student.personalCode);
+    setVal('studentFormCui', student.cui);
+    setVal('studentFormFirstName', student.firstName);
+    setVal('studentFormLastName', student.lastName);
+
     const formattedBirthDate = formatDateForInput(student.birthDate);
     const birthInput = document.getElementById('studentFormBirthDate');
     if (birthInput) birthInput.value = formattedBirthDate || '';
-    calculateStudentAge(formattedBirthDate || student.birthDate);
+    if (typeof calculateStudentAge === 'function') {
+        calculateStudentAge(formattedBirthDate || student.birthDate);
+    }
 
     const genderSelect = document.getElementById('studentFormGender');
     if (genderSelect) {
@@ -19393,9 +19443,11 @@ function openEditStudentModal(studentId) {
         else if (g.startsWith('f') || g === 'femenino') genderSelect.value = 'Femenino';
         else genderSelect.value = student.gender || 'Masculino';
     }
-    document.getElementById('studentFormPhone').value = student.phone || '';
-    document.getElementById('studentFormEmail').value = student.email || '';
-    document.getElementById('studentFormAddress').value = student.address || '';
+
+    setVal('studentFormPhone', student.phone);
+    setVal('studentFormEmail', student.email);
+    setVal('studentFormAddress', student.address);
+
     const gradeFormSelect = document.getElementById('studentFormGrade');
     if (gradeFormSelect) {
         const assign = getStudentAssignment(student);
@@ -19417,34 +19469,40 @@ function openEditStudentModal(studentId) {
             gradeFormSelect.value = targetVal;
         }
     }
-    document.getElementById('studentFormCycle').value = student.cycle || STATE.activeCycle || '';
-    document.getElementById('studentFormShift').value = student.shift || 'Matutina';
+
+    setVal('studentFormCycle', student.cycle || STATE.activeCycle || '2026');
+    setVal('studentFormShift', student.shift || 'Matutina');
 
     // Datos de la mamá
-    document.getElementById('studentFormMotherName').value = student.motherName || '';
-    document.getElementById('studentFormMotherDpi').value = student.motherDpi || '';
-    document.getElementById('studentFormMotherPhone1').value = student.motherPhone1 || '';
-    document.getElementById('studentFormMotherPhone2').value = student.motherPhone2 || '';
+    setVal('studentFormMotherName', student.motherName);
+    setVal('studentFormMotherDpi', student.motherDpi);
+    setVal('studentFormMotherPhone1', student.motherPhone1);
+    setVal('studentFormMotherPhone2', student.motherPhone2);
 
     // Datos del padre
-    document.getElementById('studentFormFatherName').value = student.fatherName || '';
-    document.getElementById('studentFormFatherDpi').value = student.fatherDpi || '';
-    document.getElementById('studentFormFatherPhone1').value = student.fatherPhone1 || '';
-    document.getElementById('studentFormFatherPhone2').value = student.fatherPhone2 || '';
+    setVal('studentFormFatherName', student.fatherName);
+    setVal('studentFormFatherDpi', student.fatherDpi);
+    setVal('studentFormFatherPhone1', student.fatherPhone1);
+    setVal('studentFormFatherPhone2', student.fatherPhone2);
 
     // Datos del encargado
-    document.getElementById('studentFormGuardianName').value = student.guardianName || student.tutor || '';
-    document.getElementById('studentFormGuardianDpi').value = student.guardianDpi || '';
-    document.getElementById('studentFormGuardianPhone1').value = student.guardianPhone1 || '';
-    document.getElementById('studentFormGuardianPhone2').value = student.guardianPhone2 || '';
+    setVal('studentFormGuardianName', student.guardianName || student.tutor);
+    setVal('studentFormGuardianDpi', student.guardianDpi);
+    setVal('studentFormGuardianPhone1', student.guardianPhone1);
+    setVal('studentFormGuardianPhone2', student.guardianPhone2);
 
-    document.getElementById('studentFormPhotoPreview').src = student.photo || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(student.firstName || 'Alumno') + '&background=15803d&color=fff');
+    const photoPreview = document.getElementById('studentFormPhotoPreview');
+    if (photoPreview) {
+        photoPreview.src = student.photo || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(student.firstName || 'Alumno') + '&background=15803d&color=fff');
+    }
 
     const warn = document.getElementById('studentDuplicateWarning');
     if (warn) warn.style.display = 'none';
 
     navigateTo('enrollment');
+    showToast(`Editando datos de ${student.firstName} ${student.lastName} (${student.carne || ''})`, 'info');
 }
+window.openEditStudentModal = openEditStudentModal;
 
 function closeStudentModal() {
     stopWebcam();
@@ -19656,7 +19714,12 @@ function saveStudentForm(e) {
     const cleanAssign = getStudentAssignment({ grade: selGrade, section: selSection, gradeCode: selCode });
 
     if (studentId) {
-        const student = STATE.students.find(s => s.id === studentId);
+        const student = (STATE.students || []).find(s => 
+            String(s.id) === String(studentId) || 
+            (s.carne && carne && s.carne === carne) ||
+            (s.personalCode && personalCode && s.personalCode === personalCode) ||
+            (s.cui && cui && s.cui === cui)
+        );
         if (student) {
             student.carne = carne;
             student.personalCode = personalCode;
@@ -20435,7 +20498,10 @@ function saveStudentProfileForm(e) {
     if (e && e.preventDefault) e.preventDefault();
     if (!checkEnrolmentPermissions()) return;
 
-    const student = STATE.students.find(s => s.id === STATE.selectedStudentId);
+    const student = (STATE.students || []).find(s => 
+        String(s.id) === String(STATE.selectedStudentId) || 
+        (s.carne && s.carne === STATE.selectedStudentId)
+    );
     if (!student) return;
 
     const newStatus = document.getElementById('profStatusSelect')?.value || 'Activo';
