@@ -1333,73 +1333,6 @@
                             </button>
                         </div>
                     </div>
-
-                    <!-- SELECTOR OBLIGATORIO DE CARRERA, GRADO Y SECCIÓN PARA MOSTRAR ESTUDIANTES E IMPRIMIR NÓMINAS EN BLANCO -->
-                    <div class="card" style="margin-bottom:20px; border-radius:10px; border:1px solid #cbd5e1; box-shadow:0 3px 12px rgba(0,0,0,0.06); padding:20px; background:#ffffff;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-                            <div>
-                                <h3 style="margin:0; font-size:1.05rem; font-weight:800; color:var(--brand-green-dark); display:flex; align-items:center; gap:8px;">
-                                    <i class="fa-solid fa-person-chalkboard"></i> Selección de Grado y Sección de Maestro Guía
-                                </h3>
-                                <p style="margin:3px 0 0 0; font-size:0.83rem; color:var(--text-secondary);">
-                                    Seleccione Carrera, Grado y Sección para visualizar los estudiantes matriculados e imprimir las nóminas de control.
-                                </p>
-                            </div>
-                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                                <button type="button" class="btn btn-success" onclick="printGuideTeacherBlankRoster10Casillas()" title="Imprimir nómina en blanco con 10 casillas para control de tareas y notas a mano (sin firmas, hoja oficio 8.5x13 in)" style="font-weight:800; display:flex; align-items:center; gap:6px;">
-                                    <i class="fa-solid fa-table-cells"></i> Imprimir Nómina en Blanco (10 Casillas)
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary" onclick="printGuideTeacherOfficialList()" title="Imprimir nómina oficial de la sección con membrete institucional">
-                                    <i class="fa-solid fa-print"></i> Imprimir Nómina Oficial
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- 4 SELECTORES (CARRERA, GRADO, SECCIÓN Y MATERIA OPCIONAL) -->
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:14px; margin-bottom:16px;">
-                            <div>
-                                <label style="font-size:0.75rem; font-weight:800; color:var(--brand-green-dark); display:block; margin-bottom:4px;">
-                                    <i class="fa-solid fa-graduation-cap"></i> 1. Carrera:
-                                </label>
-                                <select class="form-control" id="guideTeacherCareerSelect" onchange="onGuideTeacherCareerChange(this.value)">
-                                    <option value="">-- Seleccione Carrera --</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style="font-size:0.75rem; font-weight:800; color:var(--brand-green-dark); display:block; margin-bottom:4px;">
-                                    <i class="fa-solid fa-school"></i> 2. Grado:
-                                </label>
-                                <select class="form-control" id="guideTeacherGradeSelect" onchange="onGuideTeacherGradeChange(this.value)">
-                                    <option value="">-- Primero elija carrera --</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style="font-size:0.75rem; font-weight:800; color:var(--brand-green-dark); display:block; margin-bottom:4px;">
-                                    <i class="fa-solid fa-chalkboard-user"></i> 3. Sección:
-                                </label>
-                                <select class="form-control" id="guideTeacherSectionSelect" onchange="onGuideTeacherSectionChange(this.value)">
-                                    <option value="">-- Elija grado --</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label style="font-size:0.75rem; font-weight:800; color:var(--brand-green-dark); display:block; margin-bottom:4px;">
-                                    <i class="fa-solid fa-book"></i> 4. Materia (Opcional):
-                                </label>
-                                <select class="form-control" id="guideTeacherSubjectSelect">
-                                    <option value="">-- En blanco (a mano) --</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- CONTENEDOR DINÁMICO DE ESTUDIANTES DEL MAESTRO GUÍA -->
-                        <div id="guideTeacherStudentsContainer">
-                            <!-- Se renderiza vía JS con renderGuideTeacherStudentsContent() -->
-                        </div>
-                    </div>
-
                     <div class="info-alert" style="margin-bottom:16px; background:rgba(34,197,94,0.08); border-left:4px solid #16a34a; border-radius:6px; padding:12px 16px; display:flex; align-items:center; gap:12px;">
                         <i class="fa-solid fa-person-chalkboard" style="font-size:1.4rem; color:#16a34a;"></i>
                         <div style="flex:1; font-size:0.88rem; color:#1f2937;">
@@ -2624,18 +2557,15 @@
                     </table>
                 </div>
             </div>
-            <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-success btn-sm" onclick="printStudentsBlankRoster10Casillas(STATE.activeSectionModalGrade || window.currentSectionGradeCode)" style="font-weight:800;" title="Imprimir nómina en blanco con 10 casillas para control de tareas y notas a mano (sin firmas, hoja oficio 8.5x13 in)">
-                        <i class="fa-solid fa-table-cells"></i> Imprimir Nómina en Blanco (10 Casillas)
-                    </button>
-                    <button type="button" class="btn btn-accent btn-sm" onclick="printSectionStudentsList()">
-                        <i class="fa-solid fa-print"></i> Imprimir Lista Oficial
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="printCurrentSectionSireReport()" style="font-weight:700;">
-                        <i class="fa-solid fa-file-pdf"></i> Imprimir Nómina SIRE
-                    </button>
-                </div>
+            <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+                <button type="button" class="btn btn-accent btn-sm" onclick="printSectionStudentsList()">
+                    <i class="fa-solid fa-print"></i> Imprimir Lista de Esta Sección
+                </button>
+                
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="printCurrentSectionSireReport()" style="font-weight:700;">
+                    <i class="fa-solid fa-file-pdf"></i> Imprimir Nómina SIRE
+                </button>
+
                 <button type="button" class="btn btn-secondary" onclick="closeSectionStudentsModal()">Cerrar</button>
             </div>
         </div>

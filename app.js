@@ -3109,9 +3109,6 @@ function renderGuideTeachersView(searchQuery = '') {
                     </button>
                 </td>
                 <td style="text-align:center; white-space:nowrap;">
-                    <button type="button" class="btn btn-xs btn-outline-success" onclick="printStudentsBlankRoster10Casillas('${escapeHtml(g.code)}')" title="Imprimir nómina en blanco (10 casillas, hoja oficio 8.5x13 in, sin firmas)" style="margin-right:4px; padding:5px 8px; font-weight:700;">
-                        <i class="fa-solid fa-table-cells"></i> 10 Casillas
-                    </button>
                     <button type="button" class="btn btn-xs btn-primary" onclick="openSectionStudentsModal('${escapeHtml(g.code)}')" title="Ver nómina de alumnos" style="margin-right:4px; padding:5px 9px;">
                         <i class="fa-solid fa-eye"></i> Alumnos
                     </button>
@@ -3122,10 +3119,6 @@ function renderGuideTeachersView(searchQuery = '') {
             </tr>
         `;
     }).join('');
-
-    if (typeof initGuideTeacherSelectors === 'function') {
-        initGuideTeacherSelectors();
-    }
 }
 window.renderGuideTeachersView = renderGuideTeachersView;
 
@@ -3133,255 +3126,6 @@ function filterGuideTeachersView(query = '') {
     renderGuideTeachersView(query);
 }
 window.filterGuideTeachersView = filterGuideTeachersView;
-
-function initGuideTeacherSelectors() {
-    const careerSel = document.getElementById('guideTeacherCareerSelect');
-    if (!careerSel) return;
-    
-    if (careerSel.options.length <= 1) {
-        const careers = (STATE.careers && STATE.careers.length > 0) ? STATE.careers : [{ id: 'car-1', name: 'Perito Contador' }];
-        careerSel.innerHTML = '<option value="">-- Seleccione Carrera --</option>' + 
-            careers.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
-    }
-    
-    const currentSection = document.getElementById('guideTeacherSectionSelect')?.value;
-    if (!currentSection) {
-        renderGuideTeacherStudentsContent('');
-    }
-}
-window.initGuideTeacherSelectors = initGuideTeacherSelectors;
-
-function onGuideTeacherCareerChange(careerName) {
-    const gradeSel = document.getElementById('guideTeacherGradeSelect');
-    const secSel = document.getElementById('guideTeacherSectionSelect');
-    const subjSel = document.getElementById('guideTeacherSubjectSelect');
-    if (!gradeSel || !secSel) return;
-
-    if (subjSel) subjSel.innerHTML = '<option value="">-- En blanco (a mano) --</option>';
-
-    if (!careerName) {
-        gradeSel.innerHTML = '<option value="">-- Primero elija carrera --</option>';
-        secSel.innerHTML = '<option value="">-- Elija grado --</option>';
-        renderGuideTeacherStudentsContent('');
-        return;
-    }
-
-    const grades = (STATE.gradesList || []).filter(g => (g.career || '').toLowerCase() === careerName.toLowerCase());
-    const distinctGradeNames = Array.from(new Set(grades.map(g => g.name)));
-
-    if (distinctGradeNames.length === 0) {
-        gradeSel.innerHTML = '<option value="">-- Sin grados registrados para esta carrera --</option>';
-        secSel.innerHTML = '<option value="">-- Elija grado --</option>';
-    } else {
-        gradeSel.innerHTML = '<option value="">-- Seleccione Grado --</option>' + 
-            distinctGradeNames.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
-        secSel.innerHTML = '<option value="">-- Primero elija grado --</option>';
-    }
-
-    renderGuideTeacherStudentsContent('');
-}
-window.onGuideTeacherCareerChange = onGuideTeacherCareerChange;
-
-function onGuideTeacherGradeChange(gradeName) {
-    const careerSel = document.getElementById('guideTeacherCareerSelect');
-    const secSel = document.getElementById('guideTeacherSectionSelect');
-    const subjSel = document.getElementById('guideTeacherSubjectSelect');
-    if (!secSel) return;
-
-    const careerName = careerSel ? careerSel.value : '';
-
-    if (subjSel) {
-        if (typeof populateSubjectSelect === 'function') {
-            populateSubjectSelect(subjSel, gradeName, careerName);
-        } else {
-            subjSel.innerHTML = '<option value="">-- En blanco (a mano) --</option>';
-        }
-    }
-
-    if (!gradeName) {
-        secSel.innerHTML = '<option value="">-- Primero elija grado --</option>';
-        renderGuideTeacherStudentsContent('');
-        return;
-    }
-
-    const matchingSections = (STATE.gradesList || []).filter(g => {
-        const matchesCareer = !careerName || (g.career || '').toLowerCase() === careerName.toLowerCase();
-        const matchesGrade = (g.name || '').toLowerCase() === gradeName.toLowerCase();
-        return matchesCareer && matchesGrade;
-    });
-
-    if (matchingSections.length === 0) {
-        secSel.innerHTML = '<option value="">-- Sin secciones registradas --</option>';
-    } else {
-        secSel.innerHTML = '<option value="">-- Seleccione Sección --</option>' + 
-            matchingSections.map(g => {
-                const count = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
-                return `<option value="${escapeHtml(g.code)}">${escapeHtml(g.section)} (${count} alumnos)</option>`;
-            }).join('');
-    }
-
-    renderGuideTeacherStudentsContent('');
-}
-window.onGuideTeacherGradeChange = onGuideTeacherGradeChange;
-
-function onGuideTeacherSectionChange(gradeCode) {
-    renderGuideTeacherStudentsContent(gradeCode);
-}
-window.onGuideTeacherSectionChange = onGuideTeacherSectionChange;
-
-function getGuideTeacherSelectedGradeCode() {
-    const secSel = document.getElementById('guideTeacherSectionSelect');
-    return secSel ? secSel.value : '';
-}
-window.getGuideTeacherSelectedGradeCode = getGuideTeacherSelectedGradeCode;
-
-function renderGuideTeacherStudentsContent(gradeCode = '') {
-    const container = document.getElementById('guideTeacherStudentsContainer');
-    if (!container) return;
-
-    if (!gradeCode) {
-        container.innerHTML = `
-            <div style="background:#f8fafc; border:2px dashed #cbd5e1; border-radius:8px; padding:32px 20px; text-align:center;">
-                <div style="width:52px; height:52px; border-radius:50%; background:#dbeafe; color:#1e40af; display:flex; align-items:center; justify-content:center; font-size:1.5rem; margin:0 auto 12px auto;">
-                    <i class="fa-solid fa-chalkboard-user"></i>
-                </div>
-                <h4 style="font-size:1.02rem; font-weight:800; color:#1e293b; margin:0 0 6px 0;">
-                    Seleccione Carrera, Grado y Sección
-                </h4>
-                <p style="font-size:0.88rem; color:#64748b; max-width:500px; margin:0 auto 14px auto;">
-                    Elija los filtros superiores para visualizar el catedrático titular asignado, los alumnos matriculados y poder generar la <strong>Nómina en Blanco de 10 Casillas (Hoja Oficio 8.5" x 13", sin firmas)</strong>.
-                </p>
-                <div style="display:flex; justify-content:center; gap:10px; font-size:0.8rem; font-weight:700;">
-                    <span class="badge" style="background:#e2e8f0; color:#334155; padding:5px 10px;"><i class="fa-solid fa-graduation-cap"></i> 1. Carrera</span>
-                    <span class="badge" style="background:#e2e8f0; color:#334155; padding:5px 10px;"><i class="fa-solid fa-school"></i> 2. Grado</span>
-                    <span class="badge" style="background:#e2e8f0; color:#334155; padding:5px 10px;"><i class="fa-solid fa-users-rectangle"></i> 3. Sección</span>
-                    <span class="badge" style="background:#e2e8f0; color:#334155; padding:5px 10px;"><i class="fa-solid fa-book"></i> 4. Materia</span>
-                </div>
-            </div>
-        `;
-        return;
-    }
-
-    const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
-    const guideTeacherObj = (STATE.users || []).find(u => u.id === gradeObj?.guideTeacherId || u.name === gradeObj?.guideTeacher);
-    const guideName = guideTeacherObj ? guideTeacherObj.name : (gradeObj?.guideTeacher || 'Sin asignar');
-    const guideEmail = guideTeacherObj ? (guideTeacherObj.email || 'Sin correo') : '---';
-    const guidePhone = guideTeacherObj ? (guideTeacherObj.phone || 'Sin teléfono') : '---';
-    const guideRenglon = guideTeacherObj?.renglon || '011';
-
-    let students = (typeof getSortedGradebookStudents === 'function') ? 
-        getSortedGradebookStudents(gradeCode, gradeObj) : [];
-    
-    if (!students || students.length === 0) {
-        students = (STATE.students || []).filter(s => {
-            if (gradeObj) {
-                const sGrade = (s.grade || '').toUpperCase();
-                const sSec = typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(s.section || s.gradeCode || '') : '';
-                const qSec = typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(gradeObj.section) : '';
-                return sGrade.includes(gradeObj.name.toUpperCase().split(' ')[0]) && (!qSec || sSec === qSec);
-            }
-            return s.grade === gradeCode || s.gradeCode === gradeCode;
-        });
-    }
-
-    const activeStudents = students.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || !s.status);
-    let countMale = 0, countFemale = 0;
-    activeStudents.forEach(s => {
-        const g = (s.gender || '').toLowerCase();
-        if (g.startsWith('f') || g === 'mujer') countFemale++;
-        else countMale++;
-    });
-
-    const rowsHtml = activeStudents.map((s, idx) => `
-        <tr>
-            <td style="text-align:center; font-weight:700; width:35px;">${idx + 1}</td>
-            <td style="text-align:center; font-weight:700; width:100px;"><code>${escapeHtml(s.personalCode || s.cui || s.carne || '-')}</code></td>
-            <td><strong>${escapeHtml(s.lastName || '')}, ${escapeHtml(s.firstName || s.name || '')}</strong></td>
-            <td style="text-align:center; width:60px;">${(s.gender || '').toLowerCase().startsWith('f') ? '<span class="badge" style="background:#fce7f3; color:#be185d;">F</span>' : '<span class="badge" style="background:#e0f2fe; color:#0369a1;">M</span>'}</td>
-            <td style="font-size:0.82rem; color:var(--text-secondary);">${escapeHtml(s.tutor || s.tutorName || 'No reg.')} (${escapeHtml(s.tutorPhone || s.phone || 'Sin tel.')})</td>
-            <td style="text-align:center; width:80px;"><span class="badge badge-success">${escapeHtml(s.status || 'Activo')}</span></td>
-        </tr>
-    `).join('') || `<tr><td colspan="6" style="text-align:center; padding:25px; color:#64748b;">No hay estudiantes matriculados en esta sección.</td></tr>`;
-
-    container.innerHTML = `
-        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:14px 18px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-            <div style="display:flex; align-items:center; gap:12px;">
-                <div style="width:44px; height:44px; border-radius:50%; background:#16a34a; color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:1.3rem;">
-                    <i class="fa-solid fa-user-tie"></i>
-                </div>
-                <div>
-                    <div style="font-size:0.75rem; font-weight:800; color:#166534; text-transform:uppercase;">
-                        Maestro(a) Guía Titular — ${escapeHtml(gradeObj?.name || gradeCode)} (${escapeHtml(gradeObj?.section || 'Sección')})
-                    </div>
-                    <h4 style="margin:0; font-size:1.05rem; font-weight:800; color:#14532d;">
-                        ${escapeHtml(guideName)} 
-                        <span class="badge" style="background:#dcfce7; color:#15803d; font-size:0.72rem; margin-left:6px; border:1px solid #86efac;">Renglón ${escapeHtml(guideRenglon)}</span>
-                    </h4>
-                    <div style="font-size:0.78rem; color:#4b5563; margin-top:2px;">
-                        <i class="fa-regular fa-envelope"></i> ${escapeHtml(guideEmail)} &nbsp;|&nbsp; <i class="fa-solid fa-phone"></i> ${escapeHtml(guidePhone)}
-                    </div>
-                </div>
-            </div>
-            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                <div style="text-align:right; margin-right:6px;">
-                    <div style="font-size:0.78rem; color:#166534; font-weight:700;">Estudiantes Inscritos</div>
-                    <div style="font-size:1.15rem; font-weight:900; color:#15803d;">${activeStudents.length} <span style="font-size:0.8rem; font-weight:600; color:#4b5563;">(H: ${countMale} | M: ${countFemale})</span></div>
-                </div>
-                <button type="button" class="btn btn-success btn-sm" onclick="printGuideTeacherBlankRoster10Casillas('${escapeHtml(gradeCode)}')" style="font-weight:800; display:flex; align-items:center; gap:6px;">
-                    <i class="fa-solid fa-table-cells"></i> Imprimir Nómina 10 Casillas
-                </button>
-                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="printStudentsOfficialList('${escapeHtml(gradeCode)}')" style="font-weight:700;">
-                    <i class="fa-solid fa-print"></i> Nómina Oficial
-                </button>
-            </div>
-        </div>
-
-        <div class="table-responsive" style="max-height:360px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:6px;">
-            <table class="custom-table" style="margin-bottom:0; font-size:0.86rem;">
-                <thead style="background:#f8fafc; position:sticky; top:0; z-index:2;">
-                    <tr>
-                        <th style="width:35px; text-align:center;">#</th>
-                        <th style="width:100px; text-align:center;">Cód. Personal</th>
-                        <th>Apellidos y Nombres</th>
-                        <th style="width:60px; text-align:center;">Género</th>
-                        <th>Encargado / Contacto</th>
-                        <th style="width:80px; text-align:center;">Estado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rowsHtml}
-                </tbody>
-            </table>
-        </div>
-    `;
-}
-window.renderGuideTeacherStudentsContent = renderGuideTeacherStudentsContent;
-
-function printGuideTeacherBlankRoster10Casillas(targetGradeCode = null) {
-    const gradeCode = targetGradeCode || getGuideTeacherSelectedGradeCode();
-    if (!gradeCode) {
-        showToast("Por favor seleccione Carrera, Grado y Sección para imprimir la nómina en blanco de 10 casillas.", "warning");
-        const secSel = document.getElementById('guideTeacherSectionSelect') || document.getElementById('guideTeacherCareerSelect');
-        if (secSel) secSel.focus();
-        return;
-    }
-    const subject = document.getElementById('guideTeacherSubjectSelect')?.value || '';
-    printStudentsBlankRoster10Casillas(gradeCode, subject);
-}
-window.printGuideTeacherBlankRoster10Casillas = printGuideTeacherBlankRoster10Casillas;
-window.printGuideTeacherBlankRoster8Casillas = printGuideTeacherBlankRoster10Casillas;
-
-function printGuideTeacherOfficialList() {
-    const gradeCode = getGuideTeacherSelectedGradeCode();
-    if (!gradeCode) {
-        showToast("Por favor seleccione Carrera, Grado y Sección para imprimir la nómina oficial.", "warning");
-        const secSel = document.getElementById('guideTeacherSectionSelect') || document.getElementById('guideTeacherCareerSelect');
-        if (secSel) secSel.focus();
-        return;
-    }
-    printStudentsOfficialList(gradeCode);
-}
-window.printGuideTeacherOfficialList = printGuideTeacherOfficialList;
 
 function handleDirectGuideTeacherChange(gradeId, newTeacherId) {
     if (typeof canRoleModify === 'function' && !canRoleModify('guide-teachers', STATE.currentRole)) {
@@ -4033,12 +3777,12 @@ window.updateGradeSelects = updateGradeSelects;
 function updateCareerSelects() {
     try {
         const careers = (STATE.careers && STATE.careers.length > 0) ? STATE.careers : [{ id: 'car-1', name: 'Perito Contador' }];
-        const careerSelects = document.querySelectorAll('.career-select, #studentCareerFilterSelect, #studentCareerFilter, #guideTeachersCareerFilter, #guideTeacherCareerSelect, #studentFormCareer, #pensumSubjectCareer, #gradeFormCareer, #gradesCareerFilter, #pensumCareerFilterSelect, #careerFilterSelect');
+        const careerSelects = document.querySelectorAll('.career-select, #studentCareerFilterSelect, #studentCareerFilter, #guideTeachersCareerFilter, #studentFormCareer, #pensumSubjectCareer, #gradeFormCareer, #gradesCareerFilter, #pensumCareerFilterSelect, #careerFilterSelect');
         if (careerSelects && careerSelects.length > 0) {
             careerSelects.forEach(sel => {
                 if (!sel) return;
                 const currentVal = sel.value;
-                const isCascadingFilter = (sel.id === 'studentCareerFilterSelect' || sel.id === 'guideTeacherCareerSelect');
+                const isCascadingFilter = (sel.id === 'studentCareerFilterSelect');
                 const hasAllOption = sel.id && (sel.id.toLowerCase().includes('filter') || sel.id.toLowerCase().includes('search')) && !isCascadingFilter;
                 
                 let html = '';
@@ -23372,13 +23116,12 @@ window.printStudentsOfficialList = printStudentsOfficialList;
 
 function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = null) {
     const hiddenGradeSel = document.getElementById('gradeFilterSelect');
-    const guideTeacherSecSel = document.getElementById('guideTeacherSectionSelect');
-    const gradeVal = targetGrade || (hiddenGradeSel ? hiddenGradeSel.value : '') || (guideTeacherSecSel ? guideTeacherSecSel.value : '') || (STATE.activeSectionModalGrade || '');
+    const gradeVal = targetGrade || (hiddenGradeSel ? hiddenGradeSel.value : '') || (STATE.activeSectionModalGrade || '');
 
     // 1. Validación estricta: debe seleccionarse un grado/sección específico
     if (!gradeVal || gradeVal === 'ALL') {
         showToast("Por favor seleccione Carrera, Grado y Sección para imprimir la nómina en blanco de 10 casillas.", "warning");
-        const focusEl = document.getElementById('studentSectionFilterSelect') || document.getElementById('guideTeacherSectionSelect') || document.getElementById('studentCareerFilterSelect');
+        const focusEl = document.getElementById('studentSectionFilterSelect') || document.getElementById('studentCareerFilterSelect');
         if (focusEl) {
             focusEl.focus();
             focusEl.style.outline = '2px solid #16a34a';
@@ -23454,8 +23197,7 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
 
     // Asignatura / Materia (seleccionada o en blanco)
     const studentSubjSel = document.getElementById('studentSubjectFilterSelect');
-    const guideTeacherSubjSel = document.getElementById('guideTeacherSubjectSelect');
-    const selectedSubject = targetSubject || (studentSubjSel ? studentSubjSel.value : '') || (guideTeacherSubjSel ? guideTeacherSubjSel.value : '') || '';
+    const selectedSubject = targetSubject || (studentSubjSel ? studentSubjSel.value : '') || '';
 
     // Catedrático que imprime (automáticamente del usuario logueado)
     const loggedTeacherName = (STATE.currentUser && STATE.currentUser.name) ? STATE.currentUser.name : '';
