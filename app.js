@@ -4155,296 +4155,294 @@ function getInitialData() {
     "theme": "light",
     "users": [
         {
-            "id": "usr-admin-01",
-            "name": "PEM. Nehemias Yalil Salguero",
-            "username": "nehemias",
-            "email": "22-01-0014-14@mineduc.edu.gt",
-            "secondaryEmail": "nehemias.salguero1982@gmail.com",
-            "password": "C@rolina1",
-            "role": "admin",
-            "title": "Super Administrador del Sistema / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Masculino",
-            "active": true
+                "id": "usr-aux-01",
+                "name": "PEM. Nehemias Yalil Salguero",
+                "username": "nehemias",
+                "email": "nehemias.salguero1982@gmail.com",
+                "password": "C@rolina1",
+                "role": "admin",
+                "title": "Super Administrador del Sistema / Catedrático Titular",
+                "classes": "",
+                "renglon": "011",
+                "gender": "Masculino",
+                "active": true
         },
         {
-            "id": "usr-dir-01",
-            "name": "Licda. Mirza Elizabeth Aragón Polanco de Hernández",
-            "username": "mirza.aragon",
-            "email": "mirzaaragon6@gmail.com",
-            "password": "Mirza1",
-            "role": "director",
-            "title": "Director ENCCO",
-            "renglon": "011",
-            "gender": "Femenino",
-            "active": true
+                "id": "usr-dir-01",
+                "name": "Licda. Mirza Elizabeth Aragón Polanco de Hernández",
+                "username": "director",
+                "email": "mirzaaragon6@gmail.com",
+                "password": "Mirza1",
+                "role": "director",
+                "active": true,
+                "renglon": "011",
+                "gender": "Femenino",
+                "title": "Director"
         },
         {
-            "id": "usr-sec-01",
-            "name": "Licda. Jhoana Jarro",
-            "username": "secretaria",
-            "email": "jhoanajarro@gmail.com",
-            "password": "Jhoana1",
-            "role": "secretaria",
-            "title": "Secretaria Académica Oficial",
-            "renglon": "021",
-            "gender": "Femenino",
-            "active": true
+                "id": "usr-sec-01",
+                "name": "Secretaría Académica",
+                "username": "secretaria",
+                "email": "secretaria@comercio.edu.gt",
+                "password": "admin",
+                "role": "secretaria",
+                "active": true,
+                "renglon": "011",
+                "gender": "Masculino"
         },
         {
-            "id": "usr-aux-01",
-            "name": "Licda. Francisca Alcira González Zepeda",
-            "username": "francisca.gonzalez",
-            "email": "licdafrancisgonzalez@gmail.com",
-            "password": "Francisca1",
-            "role": "profesor_auxiliar",
-            "title": "Profesor Auxiliar / Coordinador de Disciplina",
-            "renglon": "011",
-            "gender": "Femenino",
-            "active": true
+                "id": "usr-doc-01",
+                "name": "PEM. Nehemias Yalil Salguero",
+                "username": "nehemias",
+                "email": "yalilsag@gmail.com",
+                "password": "Nehemias1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "classes": "",
+                "renglon": "021",
+                "gender": "Masculino",
+                "active": true
         },
         {
-            "id": "usr-doc-01",
-            "name": "PEM. Nehemias Yalil Salguero",
-            "username": "nehemias.doc",
-            "email": "yalilsag@gmail.com",
-            "secondaryEmail": "nehemias.salguero1982@gmail.com",
-            "password": "Nehemias1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "021",
-            "gender": "Masculino",
-            "active": true
+                "id": "usr-doc-01",
+                "name": "Lic.MA. Carlos Augusto Juarez Alvarez",
+                "email": "carlos.augusto@comercio.edu.gt",
+                "password": "Carlos1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "011",
+                "gender": "Masculino",
+                "active": true,
+                "username": "carlos.augusto"
         },
         {
-            "id": "usr-doc-02",
-            "name": "Lic.MA. Carlos Augusto Juarez Alvarez",
-            "username": "carlos.augusto",
-            "email": "carlos.augusto@comercio.edu.gt",
-            "password": "Carlos1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Masculino",
-            "active": true
+                "id": "usr-doc-02",
+                "name": "PEM. Aleida Maribel Escobar de Palma",
+                "email": "aleida@comercio.edu.gt",
+                "password": "Aleida1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "021",
+                "gender": "Femenino",
+                "active": true,
+                "username": "aleida"
         },
         {
-            "id": "usr-doc-03",
-            "name": "PEM. Aleida Maribel Escobar de Palma",
-            "username": "aleida",
-            "email": "anguiescobar0510@gmail.com",
-            "secondaryEmail": "aleida@comercio.edu.gt",
-            "password": "Aleida1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Femenino",
-            "active": true
+                "id": "usr-doc-03",
+                "name": "Lic. Roberto Alex Tobar Cermeño",
+                "email": "roberto@comercio.edu.gt",
+                "password": "Roberto1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "011",
+                "gender": "Masculino",
+                "active": true,
+                "username": "roberto"
         },
         {
-            "id": "usr-doc-04",
-            "name": "Lic. Roberto Alex Tobar Cermeño",
-            "username": "roberto",
-            "email": "roberto@comercio.edu.gt",
-            "password": "Roberto1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Masculino",
-            "active": true
+                "id": "usr-doc-04",
+                "name": "Lic. Williams Esmely Gudiel Paredes",
+                "email": "williams@comercio.edu.gt",
+                "password": "Williams1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "011",
+                "gender": "Masculino",
+                "active": true,
+                "username": "williams"
         },
         {
-            "id": "usr-doc-05",
-            "name": "Lic. Williams Esmely Gudiel Paredes",
-            "username": "williams",
-            "email": "williams@comercio.edu.gt",
-            "password": "Williams1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "021",
-            "gender": "Masculino",
-            "active": true
+                "id": "usr-doc-06",
+                "name": "PEM. Lilian Alas Grijalva",
+                "email": "lilian@comercio.edu.gt",
+                "password": "Lilian1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "011",
+                "gender": "Femenino",
+                "active": true,
+                "username": "lilian"
         },
         {
-            "id": "usr-doc-06",
-            "name": "PEM. Lilian Alas Grijalva",
-            "username": "lilian",
-            "email": "lilian@comercio.edu.gt",
-            "password": "Lilian1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Femenino",
-            "active": true
+                "id": "usr-doc-07",
+                "name": "Lic. Nery Benjamín Galvez Ramos",
+                "email": "nery@comercio.edu.gt",
+                "password": "Nery1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "011",
+                "gender": "Masculino",
+                "active": true,
+                "username": "nery"
         },
         {
-            "id": "usr-doc-07",
-            "name": "Lic. Nery Benjamin Galvez Ramos",
-            "username": "nery",
-            "email": "nery@comercio.edu.gt",
-            "password": "Nery1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "021",
-            "gender": "Masculino",
-            "active": true
+                "id": "usr-doc-08",
+                "name": "Lic. Edwin Osvaldo López Recinos",
+                "email": "edwin@comercio.edu.gt",
+                "password": "Edwin1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "011",
+                "gender": "Masculino",
+                "active": true,
+                "username": "edwin"
         },
         {
-            "id": "usr-doc-08",
-            "name": "Lic. Edwin Osvaldo López Recinos",
-            "username": "edwin",
-            "email": "edwin@comercio.edu.gt",
-            "password": "Edwin1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Masculino",
-            "active": true
+                "id": "usr-doc-09",
+                "name": "Lic. Gamaliel Uzias Medrano",
+                "email": "gamaliel@comercio.edu.gt",
+                "password": "Gamaliel1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "011",
+                "gender": "Masculino",
+                "active": true,
+                "username": "gamaliel"
         },
         {
-            "id": "usr-doc-09",
-            "name": "Lic. Gamaliel Uzias Medrano",
-            "username": "gamaliel",
-            "email": "gamaliel@comercio.edu.gt",
-            "password": "Gamaliel1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "021",
-            "gender": "Masculino",
-            "active": true
+                "id": "usr-doc-10",
+                "name": "Lic. Héctor Noé Linares",
+                "email": "hector@comercio.edu.gt",
+                "password": "Héctor1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "011",
+                "gender": "Masculino",
+                "active": true,
+                "username": "hector"
         },
         {
-            "id": "usr-doc-10",
-            "name": "Lic. Héctor Noé Linares",
-            "username": "hector",
-            "email": "hector@comercio.edu.gt",
-            "password": "Héctor1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Masculino",
-            "active": true
+                "id": "usr-doc-11",
+                "name": "Lic.MA. Wilder Porfirio Pérez López",
+                "email": "wilder@comercio.edu.gt",
+                "password": "Wilder1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "011",
+                "gender": "Masculino",
+                "active": true,
+                "username": "wilder"
         },
         {
-            "id": "usr-doc-11",
-            "name": "Lic.MA. Wilder Porfirio Pérez López",
-            "username": "wilder",
-            "email": "wilder.porfirio@gmail.com",
-            "secondaryEmail": "wilder@comercio.edu.gt",
-            "password": "Wilder1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "021",
-            "gender": "Masculino",
-            "active": true
+                "id": "usr-doc-12",
+                "name": "Licda. Sandra Julissa Arana Lucero",
+                "email": "sandra@comercio.edu.gt",
+                "password": "Sandra1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "021",
+                "gender": "Femenino",
+                "active": true,
+                "username": "sandra"
         },
         {
-            "id": "usr-doc-12",
-            "name": "Licda. Sandra Julissa Arana Lucero",
-            "username": "sandra",
-            "email": "sandra@comercio.edu.gt",
-            "password": "Sandra1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Femenino",
-            "active": true
+                "id": "usr-doc-13",
+                "name": "Lic. Damaris Violeta Escobar de Salguero Damaris",
+                "email": "damaris@comercio.edu.gt",
+                "password": "Damaris1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "011",
+                "gender": "Femenino",
+                "active": true,
+                "username": "damaris"
         },
         {
-            "id": "usr-doc-13",
-            "name": "Lic. Damaris Violeta Escobar de Salguero",
-            "username": "damaris",
-            "email": "damaris@comercio.edu.gt",
-            "password": "Damaris1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Femenino",
-            "active": true
+                "id": "usr-doc-14",
+                "name": "PEM. Elda Argentina López de Valdez",
+                "email": "elda@comercio.edu.gt",
+                "password": "Elda1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "011",
+                "gender": "Femenino",
+                "active": true,
+                "username": "elda"
         },
         {
-            "id": "usr-doc-14",
-            "name": "PEM. Elda Argentina López de Valdez",
-            "username": "elda",
-            "email": "elda@comercio.edu.gt",
-            "password": "Elda1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Femenino",
-            "active": true
+                "id": "usr-doc-15",
+                "name": "Licda. Enma Leticia Macario Xum de Ruano",
+                "email": "enma@comercio.edu.gt",
+                "password": "Enma1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "021",
+                "gender": "Femenino",
+                "active": true,
+                "username": "enma"
         },
         {
-            "id": "usr-doc-15",
-            "name": "Licda. Enma Leticia Macario Xum de Ruano",
-            "username": "enma",
-            "email": "enma@comercio.edu.gt",
-            "password": "Enma1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Femenino",
-            "active": true
+                "id": "usr-doc-16",
+                "name": "Licda. Maria Jannette Salguero Mellado",
+                "email": "maria@comercio.edu.gt",
+                "password": "Maria1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "021",
+                "gender": "Femenino",
+                "active": true,
+                "username": "maria"
         },
         {
-            "id": "usr-doc-16",
-            "name": "Licda. Maria Jannette Salguero Mellado",
-            "username": "maria",
-            "email": "maria@comercio.edu.gt",
-            "password": "Maria1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Femenino",
-            "active": true
+                "id": "usr-doc-17",
+                "name": "Licda. Sandra Paola Bernal Yanes de Argueta",
+                "email": "sandra.paola@comercio.edu.gt",
+                "password": "Sandra1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "011",
+                "gender": "Femenino",
+                "active": true,
+                "username": "sandra.paola"
         },
         {
-            "id": "usr-doc-17",
-            "name": "Licda. Sandra Paola Bernal Yanes de Argueta",
-            "username": "sandra.paola",
-            "email": "sandra.paola@comercio.edu.gt",
-            "password": "Sandra1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "021",
-            "gender": "Femenino",
-            "active": true
+                "id": "usr-doc-18",
+                "name": "PEM. Milvia Aracely Jacobo Escobar",
+                "email": "milvia@comercio.edu.gt",
+                "password": "Milvia1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "021",
+                "gender": "Femenino",
+                "active": true,
+                "username": "milvia"
         },
         {
-            "id": "usr-doc-18",
-            "name": "PEM. Milvia Aracely Jacobo Escobar",
-            "username": "milvia",
-            "email": "milvia@comercio.edu.gt",
-            "password": "Milvia1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Femenino",
-            "active": true
+                "id": "usr-doc-19",
+                "name": "Prof. Carlos Vinicio Grijalva Cardona",
+                "email": "carlos@comercio.edu.gt",
+                "password": "Carlos1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "021",
+                "gender": "Masculino",
+                "active": true,
+                "username": "carlos"
         },
         {
-            "id": "usr-doc-19",
-            "name": "Prof. Carlos Vinicio Grijalva Cardona",
-            "username": "carlos",
-            "email": "carlos@comercio.edu.gt",
-            "password": "Carlos1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "011",
-            "gender": "Masculino",
-            "active": true
+                "id": "usr-doc-20",
+                "name": "Lic. Juan Carlos Pereira",
+                "email": "juan@comercio.edu.gt",
+                "password": "Juan1",
+                "role": "docente",
+                "title": "PEM / Catedrático Titular",
+                "renglon": "011",
+                "gender": "Masculino",
+                "active": true,
+                "username": "juan"
         },
         {
-            "id": "usr-doc-20",
-            "name": "Lic. Juan Carlos Pereira",
-            "username": "juan",
-            "email": "juan@comercio.edu.gt",
-            "password": "Juan1",
-            "role": "docente",
-            "title": "PEM / Catedrático Titular",
-            "renglon": "021",
-            "gender": "Masculino",
-            "active": true
+                "id": "usr-1788133386028-672",
+                "name": "Licda. Francisca Alcira Ramos",
+                "username": "licdafrancis",
+                "email": "a.aaa@gmail.com",
+                "password": "Francis1",
+                "role": "profesor_auxiliar",
+                "title": "Auxiliar",
+                "renglon": "011",
+                "gender": "Femenino",
+                "active": true,
+                "classes": ""
         }
     ],
     "rolesConfig": [{"key": "admin", "name": "Super Administrador", "description": "Acceso total y configuración del sistema"}, {"key": "director", "name": "Director(a)", "description": "Supervisión institucional y aprobación"}, {"key": "secretaria", "name": "Secretaría Académica", "description": "Control de matrículas, actas y expedientes"}, {"key": "profesor_auxiliar", "name": "Profesor Auxiliar / Disciplina", "description": "Coordinación disciplinaria y asistencia"}, {"key": "docente", "name": "Catedrático Titular", "description": "Ingreso de calificaciones y control de clases"}],
@@ -16700,9 +16698,9 @@ var STATE = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {
     cycles: getInitialData().cycles,
     activeCycle: '2026',
     gradesList: getInitialData().gradesList,
-    pensumCatalog: [],
+    pensumCatalog: (typeof getInitialData === 'function' && getInitialData().pensumCatalog) ? getInitialData().pensumCatalog : [],
     students: (typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : [],
-        pensum: [],
+    pensum: (typeof getInitialData === 'function' && getInitialData().pensum) ? getInitialData().pensum : [],
         announcements: [],
     disciplineReports: [],
         attendanceRecords: {},
@@ -17721,6 +17719,7 @@ function loadDefaults(autoSave = false) {
     let preservedCycles = null;
     let preservedRoles = null;
     let preservedConfig = null;
+    let preservedPensumCatalog = null;
 
     const existing = (typeof localStorage !== 'undefined') ? (localStorage.getItem(DB_STORAGE_KEY) || localStorage.getItem('ENCCO_DATABASE_BACKUP')) : null;
     if (existing) {
@@ -17736,6 +17735,7 @@ function loadDefaults(autoSave = false) {
                 if (Array.isArray(p.cycles) && p.cycles.length > 0) preservedCycles = p.cycles;
                 if (Array.isArray(p.rolesConfig) && p.rolesConfig.length > 0) preservedRoles = p.rolesConfig;
                 if (p.config) preservedConfig = p.config;
+                if (Array.isArray(p.pensumCatalog) && p.pensumCatalog.length > 0) preservedPensumCatalog = p.pensumCatalog;
             }
         } catch(e) {}
     }
@@ -17745,7 +17745,7 @@ function loadDefaults(autoSave = false) {
     STATE.careers = preservedCareers || (Array.isArray(STATE.careers) && STATE.careers.length > 0 ? STATE.careers : (d.careers || []));
     STATE.cycles = preservedCycles || (Array.isArray(STATE.cycles) && STATE.cycles.length > 0 ? STATE.cycles : (d.cycles || []));
     STATE.gradesList = preservedGrades || (Array.isArray(STATE.gradesList) && STATE.gradesList.length > 0 ? STATE.gradesList : ((typeof sortGrades === 'function') ? sortGrades(d.gradesList || []) : (d.gradesList || [])));
-    STATE.pensumCatalog = d.pensumCatalog || [];
+    STATE.pensumCatalog = preservedPensumCatalog || (Array.isArray(STATE.pensumCatalog) && STATE.pensumCatalog.length > 0 ? STATE.pensumCatalog : (d.pensumCatalog || []));
     STATE.pensum = preservedPensum || (Array.isArray(STATE.pensum) && STATE.pensum.length > 0 ? STATE.pensum : (d.pensum || []));
     STATE.students = preservedStudents || (Array.isArray(STATE.students) && STATE.students.length > 0 ? STATE.students : ((typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : (d.students || [])));
     STATE.announcements = d.announcements || [];
@@ -17863,8 +17863,8 @@ function applyIncomingCloudState(incomingState, force = false) {
     }
 
     // 4. Asignaci?n de C?tedras y Pensum
-    if (Array.isArray(incomingState.pensum)) STATE.pensum = incomingState.pensum;
-    if (Array.isArray(incomingState.pensumCatalog)) STATE.pensumCatalog = incomingState.pensumCatalog;
+    if (Array.isArray(incomingState.pensum) && (incomingState.pensum.length > 0 || !STATE.pensum || STATE.pensum.length === 0)) STATE.pensum = incomingState.pensum;
+    if (Array.isArray(incomingState.pensumCatalog) && (incomingState.pensumCatalog.length > 0 || !STATE.pensumCatalog || STATE.pensumCatalog.length === 0)) STATE.pensumCatalog = incomingState.pensumCatalog;
     if (Array.isArray(incomingState.gradesList)) STATE.gradesList = incomingState.gradesList;
     if (Array.isArray(incomingState.careers)) STATE.careers = incomingState.careers;
 
@@ -25981,6 +25981,28 @@ function deleteCycle(cycleId) {
 }
 
 // ==========================================================================
+function isCourseAssignedToTeacher(p, user) {
+    if (!p || !user) return false;
+    if (p.teacherId && p.teacherId === user.id) return true;
+    if (!p.teacher || !user.name) return false;
+    const cleanStr = s => s.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/^(licda\.|lic\.|pem\.|prof\.|profesor|profesora|ma\.|ing\.|dr\.|dra\.)\s*/gi, "")
+        .replace(/[\.,]/g, "")
+        .trim();
+    const cleanCourseTeacher = cleanStr(p.teacher);
+    const cleanUserName = cleanStr(user.name);
+    if (!cleanCourseTeacher || !cleanUserName) return false;
+    if (cleanCourseTeacher === cleanUserName) return true;
+    if (cleanCourseTeacher.includes(cleanUserName) || cleanUserName.includes(cleanCourseTeacher)) return true;
+    
+    const wordsCourse = cleanCourseTeacher.split(/\s+/).filter(w => w.length > 2);
+    const wordsUser = cleanUserName.split(/\s+/).filter(w => w.length > 2);
+    const matched = wordsCourse.filter(w => wordsUser.includes(w));
+    return matched.length >= 2;
+}
+window.isCourseAssignedToTeacher = isCourseAssignedToTeacher;
+
 // 8. LIBRO DE CALIFICACIONES SEGÚN LA CLASE DEL DOCENTE O ADMINISTRADOR
 // ==========================================================================
 function populateTeacherCourseSelect() {
@@ -25994,10 +26016,7 @@ function populateTeacherCourseSelect() {
 
     if (isDocente && currentUser) {
         // Los maestros SOLO pueden ver las clases a las que están asignados
-        const myClasses = (STATE.pensum || []).filter(p => 
-            p.teacherId === currentUser.id || 
-            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())
-        );
+        const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
 
         if (myClasses.length > 0) {
             html += `<optgroup label="⭐ Mis Clases y Secciones Asignadas (${currentUser.name})">`;
@@ -26073,11 +26092,7 @@ function populateGradebookBimestreSelect() {
 
 function getTeacherAssignedCourses(teacherObj) {
     if (!teacherObj) return [];
-    return (STATE.pensum || []).filter(p => 
-        p.teacherId === teacherObj.id || 
-        (p.teacher && p.teacher.toLowerCase() === teacherObj.name.toLowerCase()) ||
-        (teacherObj.name && p.teacher && p.teacher.toLowerCase().includes(teacherObj.name.toLowerCase()))
-    );
+    return (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, teacherObj));
 }
 
 function calculateClassBimesterMetrics(c, bimester) {
