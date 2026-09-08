@@ -63664,10 +63664,49 @@ function populateReportStudentSelect() {
         return;
     }
 
-    const select = document.getElementById('reportStudentSelect');
-    if (!select) return;
+    const gradeFilter = document.getElementById('reportGradeFilter');
+    const sectionFilter = document.getElementById('reportSectionFilter');
 
+    // Cargar opciones de Grado disponibles
+    const allStudents = STATE.students || [];
+    let distinctGrades = Array.from(new Set(allStudents.map(s => s.grade).filter(Boolean))).sort();
+    if (distinctGrades.length === 0) {
+        distinctGrades = ['4to Perito Contador', '5to Perito Contador', '6to Perito Contador'];
+    }
+
+    if (gradeFilter) {
+        const curGrade = gradeFilter.value;
+        gradeFilter.innerHTML = '<option value="">-- Todos los Grados --</option>' + 
+            distinctGrades.map(g => `<option value="${g}" ${g === curGrade ? 'selected' : ''}>${g}</option>`).join('');
+    }
+
+    // Cargar opciones de Sección disponibles
+    const distinctSections = ['Sección A', 'Sección B', 'Sección C', 'Sección D'];
+    if (sectionFilter) {
+        const curSection = sectionFilter.value;
+        sectionFilter.innerHTML = '<option value="">-- Todas las Secciones --</option>' + 
+            distinctSections.map(sec => `<option value="${sec}" ${sec === curSection ? 'selected' : ''}>${sec}</option>`).join('');
+    }
+
+    filterAndPopulateReportStudents();
+}
+window.populateReportStudentSelect = populateReportStudentSelect;
+
+function onReportGradeFilterChange() {
+    filterAndPopulateReportStudents();
+}
+window.onReportGradeFilterChange = onReportGradeFilterChange;
+
+function onReportSectionFilterChange() {
+    filterAndPopulateReportStudents();
+}
+window.onReportSectionFilterChange = onReportSectionFilterChange;
+
+function getFilteredReportStudents() {
     let students = STATE.students || [];
+    const gradeVal = document.getElementById('reportGradeFilter')?.value || '';
+    const sectionVal = document.getElementById('reportSectionFilter')?.value || '';
+
     if (STATE.currentRole === 'estudiante') {
         const currentUserId = STATE.currentUser?.id;
         const currentCarne = STATE.currentUser?.username || STATE.currentUser?.carne;
@@ -63686,270 +63725,394 @@ function populateReportStudentSelect() {
         }
     }
 
+    if (gradeVal) {
+        students = students.filter(s => s.grade === gradeVal || (s.gradeLabel && s.gradeLabel.includes(gradeVal)));
+    }
+    if (sectionVal) {
+        students = students.filter(s => s.section === sectionVal || (s.gradeLabel && s.gradeLabel.includes(sectionVal)));
+    }
+
+    return students.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+}
+window.getFilteredReportStudents = getFilteredReportStudents;
+
+function filterAndPopulateReportStudents() {
+    const select = document.getElementById('reportStudentSelect');
+    const students = getFilteredReportStudents();
+
+    if (!select) return;
+
+    if (students.length === 0) {
+        select.innerHTML = '<option value="">-- No hay estudiantes para este filtro --</option>';
+        const area = document.getElementById('reportCardPrintArea');
+        if (area) {
+            area.innerHTML = '<div style="text-align:center; padding:40px 20px; color:#64748b;"><i class="fa-solid fa-circle-exclamation" style="font-size:2.2rem; margin-bottom:12px; color:#94a3b8; display:block;"></i>No se encontraron estudiantes para el grado y sección seleccionados.</div>';
+        }
+        return;
+    }
+
     select.innerHTML = students.map(s => `
-        <option value="${s.id}">${s.lastName}, ${s.firstName} (${s.carne || s.personalCode}) - ${formatStudentGradeAndSection(s)}</option>
+        <option value="${s.id}">${s.lastName}, ${s.firstName} (${s.carne || s.personalCode || '—'}) - ${formatStudentGradeAndSection(s)}</option>
     `).join('');
 
-    if (students.length > 0) {
-        previewStudentReportCard(students[0].id);
+    previewStudentReportCard(students[0].id);
+}
+window.filterAndPopulateReportStudents = filterAndPopulateReportStudents;
+
+function getReportCardSubjects(student) {
+    if (!student) return [];
+    const gradeObj = (STATE.gradesList || []).find(g => 
+        (g.code && g.code === student.grade) ||
+        (g.name === student.grade && (!student.section || g.section === student.section)) ||
+        (g.code && student.gradeCode && g.code === student.gradeCode)
+    );
+    const pensumCourses = (STATE.pensum || []).filter(p => 
+        p.gradeCode === student.grade || 
+        (student.gradeCode && p.gradeCode === student.gradeCode) ||
+        (gradeObj && p.grade === gradeObj.name && p.section === gradeObj.section) ||
+        (p.grade === student.grade && (!student.section || p.section === student.section))
+    );
+    let subjects = pensumCourses.length > 0 ? pensumCourses.map(p => p.subject) : [];
+    
+    if (student.grades) {
+        Object.keys(student.grades).forEach(sub => {
+            if (!subjects.includes(sub)) subjects.push(sub);
+        });
     }
+
+    if (subjects.length === 0 && typeof CANONICAL_CNB_28_DICTIONARY !== 'undefined') {
+        const gradeText = (student.grade || '').toLowerCase();
+        let gNum = 5;
+        if (gradeText.includes('4') || gradeText.includes('cuarto')) gNum = 4;
+        else if (gradeText.includes('6') || gradeText.includes('sexto')) gNum = 6;
+        subjects = CANONICAL_CNB_28_DICTIONARY.filter(c => c.grade === gNum).map(c => c.full);
+    }
+
+    return subjects;
 }
 
-function previewStudentReportCard(studentId) {
-    const s = (STATE.students || []).find(x => x.id === studentId);
-    const dataContainer = document.getElementById('officialStudentData');
-    const tbody = document.getElementById('officialGradesTableBody');
-    if (!s || !dataContainer || !tbody) return;
-
-    const gradeObj = (STATE.gradesList || []).find(g => 
-        (g.code && g.code === s.grade) ||
-        (g.name === s.grade && (!s.section || g.section === s.section)) ||
-        (g.code && s.gradeCode && g.code === s.gradeCode)
-    );
-    const gradeName = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : formatStudentGradeAndSection(s);
-
-    dataContainer.innerHTML = `
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:0.88rem; background:#f8fafc; padding:12px; border-radius:6px; border:1px solid #cbd5e1; margin-bottom:14px;">
-            <div><strong>Estudiante:</strong> <span style="text-transform:uppercase; font-weight:700;">${s.lastName}, ${s.firstName}</span></div>
-            <div><strong>Carné Oficial:</strong> <code>${s.carne || 'ENCCO-2026'}</code></div>
-            <div><strong>Código Personal:</strong> <span>${s.personalCode || '—'}</span></div>
-            <div><strong>Grado y Sección:</strong> <span>${gradeName}</span></div>
-            <div><strong>Carrera:</strong> <span>${s.career || 'Perito Contador'}</span></div>
-            <div><strong>Ciclo Lectivo:</strong> <span>${STATE.activeCycle || '2026'} - Jornada Matutina</span></div>
-        </div>
-    `;
-
-    const pensumCourses = (STATE.pensum || []).filter(p => 
-        p.gradeCode === s.grade || 
-        (s.gradeCode && p.gradeCode === s.gradeCode) ||
-        (gradeObj && p.grade === gradeObj.name && p.section === gradeObj.section) ||
-        (p.grade === s.grade && (!s.section || p.section === s.section))
-    );
-    const subjects = pensumCourses.length > 0 ? pensumCourses.map(p => p.subject) : (Object.keys(s.grades || {}));
-
-    let totalAvgSum = 0;
-    let subjectCount = 0;
-
-    tbody.innerHTML = subjects.map(sub => {
-        const grades = (s.grades && s.grades[sub]) ? s.grades[sub] : [0, 0, 0, 0];
-        const g1 = grades[0] || 0;
-        const g2 = grades[1] || 0;
-        const g3 = grades[2] || 0;
-        const g4 = grades[3] || 0;
-        const activeVals = [g1, g2, g3, g4].filter(v => v > 0);
-        const finalAvg = activeVals.length > 0 ? Math.round(activeVals.reduce((a, b) => a + b, 0) / activeVals.length) : 0;
-
-        if (finalAvg > 0) {
-            totalAvgSum += finalAvg;
-            subjectCount++;
+function getReportCardSubjectGrades(student, subject) {
+    let b1 = 0, b2 = 0, b3 = 0, b4 = 0;
+    if (student.grades && student.grades[subject]) {
+        b1 = student.grades[subject][0] || 0;
+        b2 = student.grades[subject][1] || 0;
+        b3 = student.grades[subject][2] || 0;
+        b4 = student.grades[subject][3] || 0;
+    }
+    // Si b1 es 0, consultar el mapa oficial del 1er Bimestre
+    if (b1 === 0 && typeof getOfficialBim1Details === 'function') {
+        const off = getOfficialBim1Details(student, subject);
+        if (off && off.total > 0) {
+            b1 = off.total;
+            if (!student.grades) student.grades = {};
+            if (!student.grades[subject]) student.grades[subject] = [b1, 0, 0, 0];
+            else student.grades[subject][0] = b1;
         }
-
-        const isFail = (finalAvg > 0 && finalAvg < 60);
-
-        return `
-            <tr>
-                <td style="font-weight:700; text-align:left; padding:6px 10px;">${sub}</td>
-                <td style="text-align:center;">${g1 > 0 ? g1 : '—'}</td>
-                <td style="text-align:center;">${g2 > 0 ? g2 : '—'}</td>
-                <td style="text-align:center;">${g3 > 0 ? g3 : '—'}</td>
-                <td style="text-align:center;">${g4 > 0 ? g4 : '—'}</td>
-                <td style="text-align:center; font-weight:800; font-size:0.95rem; ${isFail ? 'color:#b91c1c; background:#fee2e2;' : 'color:#0369a1;'}">${finalAvg > 0 ? finalAvg : '—'}</td>
-                <td style="text-align:center;">
-                    <span class="badge ${isFail ? 'badge-danger' : 'badge-success'}" style="font-size:0.8rem;">
-                        ${finalAvg >= 60 ? 'Aprobado' : (finalAvg > 0 ? 'Reprobado' : 'Pendiente')}
-                    </span>
-                </td>
-            </tr>
-        `;
-    }).join('') || `<tr><td colspan="7" style="text-align:center; padding:20px; color:#64748b;">No hay asignaturas configuradas para este grado.</td></tr>`;
+    }
+    const activeVals = [b1, b2, b3, b4].filter(v => v > 0);
+    const avg = activeVals.length > 0 ? Math.round(activeVals.reduce((a, b) => a + b, 0) / activeVals.length) : 0;
+    return { b1, b2, b3, b4, avg };
 }
 
-function printStudentReportCardOfficial() {
-    if (!hasRolePermission('reports', STATE.currentRole)) {
-        showToast("Acceso Restringido: Su rol actual no tiene autorización para acceder o emitir boletines de calificaciones.", "warning");
-        return;
-    }
-
-    if (!canRoleModify('reports', STATE.currentRole)) {
-        showToast("Acceso Restringido: Su rol tiene permiso de solo consulta para el Boletín de Calificaciones. La impresión oficial requiere nivel de modificación asignado por el Administrador.", "info");
-        return;
-    }
-
-    const studentId = document.getElementById('reportStudentSelect')?.value;
-    const s = (STATE.students || []).find(x => x.id === studentId);
-    if (!s) {
-        showToast("Seleccione un estudiante para imprimir su boletín.", "warning");
-        return;
-    }
-
-    const h = STATE.schoolHeader || getInitialData().schoolHeader;
-    const printWin = window.open('', '_blank');
-    if (!printWin) {
-        showToast("Permita las ventanas emergentes para visualizar e imprimir el boletín.", "warning");
-        return;
-    }
-
+function buildStudentReportCardInnerHtml(s) {
+    if (!s) return '';
     const gradeObj = (STATE.gradesList || []).find(g => 
         (g.code && g.code === s.grade) ||
         (g.name === s.grade && (!s.section || g.section === s.section)) ||
         (g.code && s.gradeCode && g.code === s.gradeCode)
     );
     const gradeName = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : formatStudentGradeAndSection(s);
-    const pensumCourses = (STATE.pensum || []).filter(p => 
-        p.gradeCode === s.grade || 
-        (s.gradeCode && p.gradeCode === s.gradeCode) ||
-        (gradeObj && p.grade === gradeObj.name && p.section === gradeObj.section) ||
-        (p.grade === s.grade && (!s.section || p.section === s.section))
-    );
-    const subjects = pensumCourses.length > 0 ? pensumCourses.map(p => p.subject) : (Object.keys(s.grades || {}));
+    const subjects = getReportCardSubjects(s);
 
     let totalAvgSum = 0;
     let subjectCount = 0;
 
     const rowsHtml = subjects.map((sub, idx) => {
-        const grades = (s.grades && s.grades[sub]) ? s.grades[sub] : [0, 0, 0, 0];
-        const g1 = grades[0] || 0;
-        const g2 = grades[1] || 0;
-        const g3 = grades[2] || 0;
-        const g4 = grades[3] || 0;
-        const activeVals = [g1, g2, g3, g4].filter(v => v > 0);
-        const finalAvg = activeVals.length > 0 ? Math.round(activeVals.reduce((a, b) => a + b, 0) / activeVals.length) : 0;
-
-        if (finalAvg > 0) {
-            totalAvgSum += finalAvg;
+        const g = getReportCardSubjectGrades(s, sub);
+        if (g.avg > 0) {
+            totalAvgSum += g.avg;
             subjectCount++;
         }
-
-        const isFail = (finalAvg > 0 && finalAvg < 60);
+        const isB1Fail = (g.b1 > 0 && g.b1 < 60);
+        const isAvgFail = (g.avg > 0 && g.avg < 60);
 
         return `
             <tr>
-                <td style="text-align:center; font-weight:bold; background:#f8fafc;">${idx + 1}</td>
-                <td style="font-weight:700; padding:4px 8px; text-align:left;">${sub}</td>
-                <td style="text-align:center; font-size:10.5px;">${g1 > 0 ? g1 : '—'}</td>
-                <td style="text-align:center; font-size:10.5px;">${g2 > 0 ? g2 : '—'}</td>
-                <td style="text-align:center; font-size:10.5px;">${g3 > 0 ? g3 : '—'}</td>
-                <td style="text-align:center; font-size:10.5px;">${g4 > 0 ? g4 : '—'}</td>
-                <td style="text-align:center; font-weight:800; font-size:11px; ${isFail ? 'background:#fee2e2; color:#b91c1c; border:1.5px solid #ef4444 !important;' : 'background:#f0f9ff; color:#0369a1;'}">${finalAvg > 0 ? finalAvg : '—'}</td>
-                <td style="text-align:center; font-weight:700; font-size:10px; color:${isFail ? '#b91c1c' : '#15803d'};">${finalAvg >= 60 ? 'APROBADO' : (finalAvg > 0 ? 'REPROBADO' : 'PENDIENTE')}</td>
+                <td style="text-align:center; font-weight:700; width:28px; border:1px solid #000000; padding:4px 2px; font-size:9px;">${idx + 1}</td>
+                <td style="font-weight:700; padding:4px 6px; text-align:left; border:1px solid #000000; font-size:9.5px; color:#0f172a;">${sub}</td>
+                <td style="text-align:center; font-size:10px; font-weight:${isB1Fail ? '800' : '700'}; color:${isB1Fail ? '#dc2626' : '#000000'}; border:1px solid #000000; width:40px;">${g.b1 > 0 ? g.b1 : '—'}</td>
+                <td style="text-align:center; font-size:9.5px; color:#64748b; border:1px solid #000000; width:40px;">${g.b2 > 0 ? g.b2 : '—'}</td>
+                <td style="text-align:center; font-size:9.5px; color:#64748b; border:1px solid #000000; width:40px;">${g.b3 > 0 ? g.b3 : '—'}</td>
+                <td style="text-align:center; font-size:9.5px; color:#64748b; border:1px solid #000000; width:40px;">${g.b4 > 0 ? g.b4 : '—'}</td>
+                <td style="text-align:center; font-weight:800; font-size:10.5px; border:1px solid #000000; width:50px; ${isAvgFail ? 'color:#dc2626; background:#fee2e2;' : 'color:#0369a1; background:#f0f9ff;'}">${g.avg > 0 ? g.avg : '—'}</td>
+                <td style="text-align:center; font-weight:800; font-size:9px; border:1px solid #000000; width:72px; color:${g.b1 >= 60 ? '#15803d' : (g.b1 > 0 ? '#dc2626' : '#64748b')};">${g.b1 >= 60 ? 'APROBADO' : (g.b1 > 0 ? 'REPROBADO' : 'PENDIENTE')}</td>
             </tr>
         `;
     }).join('');
 
     const overallAvg = subjectCount > 0 ? Math.round(totalAvgSum / subjectCount) : 0;
+    const isOverallFail = (overallAvg > 0 && overallAvg < 60);
 
-    printWin.document.write(`
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <title>Boletín de Calificaciones - ${s.lastName}, ${s.firstName}</title>
-            <style>
-                @page { size: 8.5in 13in portrait; margin: 6mm 8mm; }
-                body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; margin: 0; padding: 0; background: #fff; font-size: 10px; width: 100%; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                
-                .encc-official-header { border: 2px solid #0369a1; margin-bottom: 8px; background: #ffffff; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
-                .encc-top-banner { background: linear-gradient(135deg, #0f172a 0%, #0369a1 60%, #0284c7 100%) !important; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 6px 14px; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                .encc-top-banner .logo-box { display: flex; align-items: center; gap: 10px; }
-                .encc-top-banner img { height: 46px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3)); }
-                .encc-top-banner h1 { margin: 0; font-size: 16px; font-weight: 900; color: #ffffff; letter-spacing: 0.3px; text-transform: uppercase; }
-                .encc-top-banner .bimestre-badge { font-size: 10.5px; font-weight: 900; color: #ffffff; background: #0284c7; padding: 4px 12px; border-radius: 12px; border: 1px solid #7dd3fc; text-transform: uppercase; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                
-                .encc-meta-row { display: flex; justify-content: space-between; align-items: stretch; background: #f0f9ff !important; border-bottom: 1px solid #0284c7; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                .encc-meta-left { padding: 6px 12px; flex: 1; font-size: 10px; line-height: 1.6; display: grid; grid-template-columns: 110px 1fr; row-gap: 2px; }
-                .encc-meta-left strong { color: #0369a1; font-weight: 800; }
-                
-                .encc-boxes-right { display: flex; border-left: 2px solid #0284c7; text-align: center; background: #ffffff; }
-                .encc-box { width: 85px; border-right: 1px solid #cbd5e1; display: flex; flex-direction: column; justify-content: space-between; }
-                .encc-box:last-child { border-right: none; }
-                .encc-box-num { font-size: 18px; font-weight: 900; color: #0f172a; padding: 4px 0 0 0; }
-                .encc-box-label { font-size: 8.5px; font-weight: 800; color: #0369a1; background: #e0f2fe !important; border-top: 1px solid #0284c7; padding: 2px 0; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; text-transform: uppercase; }
-                
-                table.grades-table { width: 100%; border-collapse: collapse; font-size: 10px; border: 1.5px solid #0f172a; }
-                table.grades-table th, table.grades-table td { border: 1px solid #64748b; padding: 5px 6px; }
-                table.grades-table th { font-weight: 800; background-color: #0369a1 !important; color: #ffffff !important; text-align: center; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                .footer-stamp { margin-top: 14px; display: flex; justify-content: space-between; font-size: 8.5px; color: #475569; }
-                @media print { .no-print { display: none; } body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
-            </style>
-        </head>
-        <body>
-            <div class="encc-official-header">
-                <div class="encc-top-banner">
-                    <div class="logo-box">
-                        <img src="logo.png" alt="Logo ENCCO" onerror="this.src='portada-comercio-principal.webp'">
-                        <div>
-                            <h1>${h.schoolName || 'Escuela Nacional de Ciencias Comerciales'}</h1>
-                            <div style="font-size:9.5px; font-weight:700; color:#bae6fd;">JUTIAPA — FUNDADA EN 1970 | CICLO LECTIVO ${STATE.activeCycle || '2026'}</div>
-                        </div>
-                    </div>
-                    <div class="bimestre-badge">${STATE.config?.activeBimestre || 1}º BIMESTRE ACTIVO</div>
+    return `
+        <div class="report-half-letter-sheet" style="background:#ffffff; color:#000000; width:100%; box-sizing:border-box; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+            <!-- ENCABEZADO INSTITUCIONAL -->
+            <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2.5px solid #0369a1; padding-bottom:8px; margin-bottom:8px; gap:10px;">
+                <div style="width:58px; height:58px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <img src="logo.png" alt="Escudo Oficial ENCCO" onerror="this.src='portada-comercio-principal.webp'" style="max-width:100%; max-height:100%; object-fit:contain;">
                 </div>
-                <div class="encc-meta-row">
-                    <div class="encc-meta-left">
-                        <strong>Alumno(a):</strong>
-                        <span style="font-weight:700; text-transform:uppercase;">${s.lastName}, ${s.firstName}</span>
-                        <strong>Carné / Código:</strong>
-                        <span>${s.carne || 'ENCCO-2026'} &nbsp;|&nbsp; Cód: ${s.personalCode || '—'}</span>
-                        <strong>Grado / Carrera:</strong>
-                        <span>${gradeName} &nbsp;|&nbsp; ${s.career || 'Perito Contador'}</span>
-                        <strong>Ciclo Lectivo:</strong>
-                        <span>${STATE.activeCycle || '2026'} - Sede Oficial Jutiapa</span>
-                    </div>
-                    <div class="encc-boxes-right">
-                        <div class="encc-box">
-                            <div class="encc-box-num" style="color:${overallAvg < 60 ? '#b91c1c' : '#0369a1'};">${overallAvg}</div>
-                            <div class="encc-box-label">Promedio</div>
-                        </div>
-                        <div class="encc-box">
-                            <div class="encc-box-num">${s.gradeLabel?.substring(0, 3) || '6to'}</div>
-                            <div class="encc-box-label">Grado</div>
-                        </div>
-                        <div class="encc-box">
-                            <div class="encc-box-num">${overallAvg >= 60 ? 'PROM' : 'PEND'}</div>
-                            <div class="encc-box-label">Resultado</div>
-                        </div>
+                <div style="flex:1; text-align:center;">
+                    <div style="font-size:8px; font-weight:800; letter-spacing:0.5px; color:#1e293b; text-transform:uppercase;">MINISTERIO DE EDUCACIÓN — GUATEMALA</div>
+                    <div style="font-size:11.5px; font-weight:900; color:#0369a1; margin:1px 0; text-transform:uppercase; line-height:1.15;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</div>
+                    <div style="font-size:7.5px; font-weight:700; color:#475569; letter-spacing:0.3px;">JUTIAPA | FUNDADA EN 1970 — NIVEL MEDIO Y BÁSICO</div>
+                    <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:8px; font-weight:800; padding:2px 10px; border-radius:10px; margin-top:3px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">TARJETA OFICIAL DE CALIFICACIONES — CICLO LECTIVO 2026</div>
+                </div>
+                <div style="width:52px; text-align:center; flex-shrink:0;">
+                    <div style="background:#f0f9ff; border:1.5px solid #0284c7; border-radius:6px; padding:3px 2px; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+                        <span style="display:block; font-size:13px; font-weight:900; color:#0284c7; line-height:1;">1.º</span>
+                        <span style="display:block; font-size:6.5px; font-weight:800; color:#0f172a; line-height:1.1; text-transform:uppercase;">BIMESTRE<br>ACTIVO</span>
                     </div>
                 </div>
             </div>
 
-            <table class="grades-table">
+            <!-- DATOS DEL ESTUDIANTE -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:3px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-left:3.5px solid #0369a1; padding:5px 8px; font-size:8.5px; line-height:1.35; margin-bottom:8px; border-radius:3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+                <div><strong style="color:#0369a1; font-weight:800;">Estudiante:</strong> <span style="font-weight:900; color:#0f172a; text-transform:uppercase;">${s.lastName}, ${s.firstName}</span></div>
+                <div><strong style="color:#0369a1; font-weight:800;">Carné Oficial:</strong> <span>${s.carne || 'ENCCO-2026'}</span></div>
+                <div><strong style="color:#0369a1; font-weight:800;">Código Personal:</strong> <span>${s.personalCode || '—'}</span></div>
+                <div><strong style="color:#0369a1; font-weight:800;">Grado y Sección:</strong> <span>${gradeName}</span></div>
+                <div><strong style="color:#0369a1; font-weight:800;">Carrera:</strong> <span>${s.career || 'Perito Contador'}</span></div>
+                <div><strong style="color:#0369a1; font-weight:800;">Ciclo / Sede:</strong> <span>${STATE.activeCycle || '2026'} — Jornada Matutina</span></div>
+            </div>
+
+            <!-- TABLA DE CALIFICACIONES (BLANCO, AZUL, ROJO, BORDES NEGROS) -->
+            <table style="width:100%; border-collapse:collapse; font-size:9.5px; border:1.5px solid #000000; margin-bottom:8px;">
                 <thead>
                     <tr>
-                        <th style="width:30px;">No.</th>
-                        <th style="text-align:left; padding-left:8px;">Asignatura / Área Curricular</th>
-                        <th style="width:45px;">I Bim</th>
-                        <th style="width:45px;">II Bim</th>
-                        <th style="width:45px;">III Bim</th>
-                        <th style="width:45px;">IV Bim</th>
-                        <th style="width:60px;">Promedio</th>
-                        <th style="width:85px;">Resultado</th>
+                        <th style="width:28px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; padding:4px 2px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">No.</th>
+                        <th style="text-align:left; padding-left:8px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Asignatura / Área Curricular</th>
+                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">I Bim</th>
+                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">II Bim</th>
+                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">III Bim</th>
+                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">IV Bim</th>
+                        <th style="width:50px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Prom.</th>
+                        <th style="width:72px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Resultado</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${rowsHtml}
                 </tbody>
                 <tfoot>
-                    <tr style="background:#d9e9f9; font-weight:bold;">
-                        <td colspan="6" style="text-align:right; padding-right:10px; font-size:10.5px;">PROMEDIO GENERAL ACUMULADO:</td>
-                        <td style="text-align:center; font-size:11.5px; background:#335e8a; color:#ffffff; font-weight:900;">${overallAvg} pts</td>
-                        <td style="text-align:center; font-size:10px; color:${overallAvg >= 60 ? '#15803d' : '#b91c1c'}; font-weight:800;">${overallAvg >= 60 ? 'PROMOVIDO' : 'PENDIENTE'}</td>
+                    <tr style="background:#f1f5f9; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">
+                        <td colspan="6" style="text-align:right; font-weight:800; padding:4px 8px; border:1px solid #000000; font-size:9.5px;">PROMEDIO GENERAL ACUMULADO:</td>
+                        <td style="text-align:center; font-weight:900; font-size:11px; border:1px solid #000000; color:${isOverallFail ? '#dc2626' : '#0369a1'}; background:${isOverallFail ? '#fee2e2' : '#e0f2fe'}; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">${overallAvg > 0 ? overallAvg : '—'}</td>
+                        <td style="text-align:center; font-weight:800; font-size:9px; border:1px solid #000000; color:${overallAvg >= 60 ? '#15803d' : (overallAvg > 0 ? '#dc2626' : '#64748b')};">${overallAvg >= 60 ? 'PROMOVIDO' : (overallAvg > 0 ? 'EN RIESGO' : 'EN CURSO')}</td>
                     </tr>
                 </tfoot>
             </table>
 
-            <div class="footer-stamp">
-                <span>Boletín Oficial de Calificaciones - Escuela Nacional de Ciencias Comerciales Jutiapa</span>
-                <span>Generado el: ${new Date().toLocaleDateString('es-GT')}</span>
+            <!-- BLOQUE DE FIRMAS CON SELLO OFICIAL DE DIRECCIÓN -->
+            <div style="display:flex; justify-content:space-around; align-items:flex-end; margin-top:28px; padding-bottom:6px;">
+                <div style="width:200px; text-align:center;">
+                    <div style="border-top:1.5px solid #000000; margin-bottom:4px;"></div>
+                    <div style="font-size:8.5px; font-weight:800; color:#0f172a;">Catedrático(a) Guía</div>
+                    <div style="font-size:7.5px; font-weight:600; color:#475569;">Comisión de Evaluación</div>
+                </div>
+
+                <div style="width:210px; text-align:center; position:relative;">
+                    <img src="firma_director_sello.png" alt="Sello y Firma del Director" style="position:absolute; bottom:6px; left:50%; transform:translateX(-50%); width:135px; height:auto; pointer-events:none; opacity:0.96; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.12));">
+                    <div style="border-top:1.5px solid #000000; margin-top:55px; padding-top:4px;">
+                        <div style="font-size:9px; font-weight:800; color:#0f172a;">PEM. Nehemias Yalil Salguero</div>
+                        <div style="font-size:8px; font-weight:600; color:#475569;">Director Técnico Administrativo</div>
+                    </div>
+                </div>
             </div>
+
+            <!-- PIE DE PÁGINA INSTITUCIONAL -->
+            <div style="display:flex; justify-content:space-between; border-top:1px dotted #94a3b8; padding-top:4px; font-size:7.5px; color:#64748b; font-weight:600; margin-top:6px;">
+                <span>ENCCO JUTIAPA • Sistema de Control Académico Oficial</span>
+                <span>Fecha de emisión: ${new Date().toLocaleDateString('es-GT')}</span>
+            </div>
+        </div>
+    `;
+}
+window.buildStudentReportCardInnerHtml = buildStudentReportCardInnerHtml;
+
+function previewStudentReportCard(studentId) {
+    const s = (STATE.students || []).find(x => x.id === studentId);
+    const container = document.getElementById('reportCardPrintArea');
+    if (!container) return;
+
+    if (!s) {
+        container.innerHTML = '<div style="text-align:center; padding:30px; color:#64748b;">Seleccione un estudiante para previsualizar su boletín oficial.</div>';
+        return;
+    }
+
+    container.innerHTML = buildStudentReportCardInnerHtml(s);
+}
+window.previewStudentReportCard = previewStudentReportCard;
+
+function printStudentReportCardOfficial(targetStudentId) {
+    if (!hasRolePermission('reports', STATE.currentRole)) {
+        showToast("Acceso Restringido: Su rol actual no tiene autorización para emitir boletines de calificaciones.", "warning");
+        return;
+    }
+
+    if (!canRoleModify('reports', STATE.currentRole)) {
+        showToast("Acceso Restringido: Su rol tiene permiso de solo consulta para el Boletín de Calificaciones. La impresión oficial requiere autorización administrativa.", "info");
+        return;
+    }
+
+    const studentId = targetStudentId || document.getElementById('reportStudentSelect')?.value;
+    const s = (STATE.students || []).find(x => x.id === studentId);
+    if (!s) {
+        showToast("Seleccione un estudiante para imprimir su boletín.", "warning");
+        return;
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast("Permita las ventanas emergentes en su navegador para emitir el boletín en PDF.", "warning");
+        return;
+    }
+
+    const cardHtml = buildStudentReportCardInnerHtml(s);
+
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <base href="${window.location.href}">
+            <title>Boletín Oficial - ${s.lastName}, ${s.firstName} (Media Hoja Carta)</title>
+            <style>
+                @page {
+                    size: 5.5in 8.5in portrait;
+                    margin: 4mm 6mm;
+                }
+                * { box-sizing: border-box; }
+                body {
+                    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    color: #000000;
+                    margin: 0;
+                    padding: 0;
+                    background: #ffffff;
+                    width: 100%;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                .report-half-letter-sheet {
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 4px 6px;
+                }
+                @media print {
+                    .no-print { display: none !important; }
+                    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                }
+            </style>
+        </head>
+        <body>
+            ${cardHtml}
         </body>
         </html>
     `);
+
     printWin.document.close();
     setTimeout(() => {
         printWin.focus();
         printWin.print();
     }, 300);
 }
+window.printStudentReportCardOfficial = printStudentReportCardOfficial;
+
+function printBatchReportCardsOfficial() {
+    if (!hasRolePermission('reports', STATE.currentRole)) {
+        showToast("Acceso Restringido: Su rol actual no tiene autorización para emitir boletines de calificaciones.", "warning");
+        return;
+    }
+
+    if (!canRoleModify('reports', STATE.currentRole)) {
+        showToast("Acceso Restringido: Su rol tiene permiso de solo consulta para el Boletín de Calificaciones. La impresión oficial requiere autorización administrativa.", "info");
+        return;
+    }
+
+    const students = getFilteredReportStudents();
+    if (!students || students.length === 0) {
+        showToast("No hay estudiantes para imprimir con el filtro seleccionado.", "warning");
+        return;
+    }
+
+    const gradeVal = document.getElementById('reportGradeFilter')?.value || 'Todos los Grados';
+    const sectionVal = document.getElementById('reportSectionFilter')?.value || 'Todas las Secciones';
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast("Permita las ventanas emergentes en su navegador para emitir los boletines en PDF.", "warning");
+        return;
+    }
+
+    const cardsHtml = students.map((s, idx) => `
+        <div class="student-page-break">
+            ${buildStudentReportCardInnerHtml(s)}
+        </div>
+    `).join('');
+
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <base href="${window.location.href}">
+            <title>Lote de Boletines Oficiales - ${gradeVal} ${sectionVal} (${students.length} Estudiantes)</title>
+            <style>
+                @page {
+                    size: 5.5in 8.5in portrait;
+                    margin: 4mm 6mm;
+                }
+                * { box-sizing: border-box; }
+                body {
+                    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    color: #000000;
+                    margin: 0;
+                    padding: 0;
+                    background: #ffffff;
+                    width: 100%;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                .student-page-break {
+                    page-break-after: always;
+                    break-after: page;
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 4px 6px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                }
+                .student-page-break:last-child {
+                    page-break-after: avoid;
+                    break-after: avoid;
+                }
+                @media print {
+                    .no-print { display: none !important; }
+                    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                }
+            </style>
+        </head>
+        <body>
+            ${cardsHtml}
+        </body>
+        </html>
+    `);
+
+    printWin.document.close();
+    setTimeout(() => {
+        printWin.focus();
+        printWin.print();
+    }, 450);
+}
+window.printBatchReportCardsOfficial = printBatchReportCardsOfficial;
 
 function openSectionStudentsModal(gradeCode) {
     STATE.activeSectionModalGrade = gradeCode;

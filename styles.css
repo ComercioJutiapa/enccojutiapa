@@ -548,22 +548,24 @@ body {
 .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 3000; display: flex; flex-direction: column; gap: 10px; }
 .toast { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-left: 5px solid var(--brand-green); padding: 14px 20px; border-radius: var(--radius-md); box-shadow: var(--shadow-md); display: flex; align-items: center; gap: 12px; font-size: 0.88rem; font-weight: 700; }
 
-/* Boletines & Impresión */
+/* Boletines & Impresión Oficial (Media Hoja Carta: Blanco, Azul, Rojo, Bordes Negros) */
 .report-controls-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-.report-card-preview { background: #ffffff; color: #000000; border: 3px solid #15803d; border-radius: var(--radius-md); padding: 40px; max-width: 900px; margin: 0 auto; box-shadow: var(--shadow-lg); }
-.official-header { display: flex; align-items: center; gap: 24px; border-bottom: 3px solid #15803d; padding-bottom: 16px; margin-bottom: 20px; }
-.official-logo-box { width: 90px; height: 90px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.report-card-preview { background: #ffffff; color: #000000; border: 2px solid #0369a1; border-radius: var(--radius-md); padding: 24px 28px; max-width: 650px; width: 100%; margin: 0 auto; box-shadow: 0 8px 24px rgba(0,0,0,0.12); font-family: 'Segoe UI', Roboto, Arial, sans-serif; }
+.official-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0369a1; padding-bottom: 10px; margin-bottom: 12px; gap: 12px; }
+.official-logo-box { width: 70px; height: 70px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .official-logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.official-title-box h2 { font-size: 0.9rem; font-weight: 800; letter-spacing: 1px; color: #1e293b; }
-.official-title-box h3 { font-size: 1.35rem; font-weight: 900; color: #15803d; }
-.official-title-box p { font-size: 0.82rem; font-weight: 700; color: #ea580c; }
-.official-title-box h4 { font-size: 0.95rem; font-weight: 800; margin-top: 4px; color: #000000; }
-.student-official-data { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f0fdf4; border: 1px solid #86efac; padding: 12px 16px; font-size: 0.88rem; margin-bottom: 20px; border-left: 4px solid #15803d; }
-.official-grades-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-bottom: 40px; }
-.official-grades-table th, .official-grades-table td { border: 1px solid #15803d; padding: 8px 10px; text-align: center; }
-.official-grades-table th { background: #dcfce7; font-weight: 800; color: #0f5127; text-transform: uppercase; font-size: 0.78rem; }
-.official-signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 30px; margin-top: 50px; text-align: center; }
-.sig-line { border-top: 1.5px solid #000000; margin-bottom: 8px; }
+.official-title-box { flex: 1; text-align: center; }
+.official-title-box h2 { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.6px; color: #1e293b; margin: 0; text-transform: uppercase; }
+.official-title-box h3 { font-size: 1.08rem; font-weight: 900; color: #0369a1; margin: 2px 0; text-transform: uppercase; line-height: 1.15; }
+.official-title-box p { font-size: 0.75rem; font-weight: 700; color: #475569; margin: 0; }
+.official-title-box h4 { font-size: 0.8rem; font-weight: 800; margin-top: 4px; color: #ffffff; background: #0369a1; display: inline-block; padding: 2px 12px; border-radius: 12px; }
+.student-official-data { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 0.82rem; margin-bottom: 12px; border-left: 4px solid #0369a1; border-radius: 4px; }
+.official-grades-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-bottom: 16px; border: 1.5px solid #000000; }
+.official-grades-table th, .official-grades-table td { border: 1px solid #000000; padding: 4px 6px; text-align: center; }
+.official-grades-table th { background: #0369a1 !important; font-weight: 800; color: #ffffff !important; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.3px; }
+.official-signatures { display: flex; justify-content: space-around; align-items: flex-end; margin-top: 25px; padding-bottom: 4px; }
+.sig-box { width: 210px; text-align: center; position: relative; }
+.sig-line { border-top: 1.5px solid #000000; margin-bottom: 4px; }
 
 /* Estilos del contenedor de reporte oficial */
 #reportCardPrintArea, #honorRollPrintArea, #printOfficialTeacherStudentListArea {
