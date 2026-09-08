@@ -3976,6 +3976,39 @@ function getOfficialBim1Details(student, subjectName) {
 }
 window.getOfficialBim1Details = getOfficialBim1Details;
 
+// ======================================================================
+// 🎓 BASE MAESTRA INQUEBRANTABLE DE CALIFICACIONES OFICIALES - 2DO BIMESTRE 2026
+// ======================================================================
+const OFFICIAL_BIM2_PATCH_MAP = {"stu-sire-G790ASN":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G790ASN":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QA-001":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"alvarezcambarajeniferestefania":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"jeniferestefaniaalvarezcambara":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-G180WLI":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"G180WLI":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QA-002":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"barahonacontrerasmadissonalejandra":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"madissonalejandrabarahonacontreras":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-E363FWP":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64},"Computación II":{"activities":[10,0,20,4,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"E363FWP":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64},"Computación II":{"activities":[10,0,20,4,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QA-003":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64},"Computación II":{"activities":[10,0,20,4,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"cabrerasarcenomariadelosangeles":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64},"Computación II":{"activities":[10,0,20,4,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"mariadelosangelescabrerasarceno":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64},"Computación II":{"activities":[10,0,20,4,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-F896QTF":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[0,10,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"F896QTF":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[0,10,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QA-004":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[0,10,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"cardonamateojorgealberto":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[0,10,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"jorgealbertocardonamateo":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[0,10,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F448PYJ":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,0,1,0,0,20,0,0,0],"zona":21,"exam":30,"total":51}},"F448PYJ":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,0,1,0,0,20,0,0,0],"zona":21,"exam":30,"total":51}},"2026-QA-005":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,0,1,0,0,20,0,0,0],"zona":21,"exam":30,"total":51}},"carrillolopeztyranayerli":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,0,1,0,0,20,0,0,0],"zona":21,"exam":30,"total":51}},"tyranayerlicarrillolopez":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,0,1,0,0,20,0,0,0],"zona":21,"exam":30,"total":51}},"stu-sire-G945BUT":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"G945BUT":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QA-006":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"castanedavalenzuelaalondrajahayra":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"alondrajahayracastanedavalenzuela":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-G484CHE":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,0,20,4,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"G484CHE":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,0,20,4,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QA-007":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,0,20,4,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"castillocaalhectoralberto":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,0,20,4,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"hectoralbertocastillocaal":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,0,20,4,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-F373XHG":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":12,"total":62},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"F373XHG":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":12,"total":62},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"2026-QA-008":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":12,"total":62},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"chacajlopezemersonadolfo":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":12,"total":62},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"emersonadolfochacajlopez":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":12,"total":62},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"stu-sire-G770NKB":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G770NKB":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QA-009":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"cruzalaydulcemariajose":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"dulcemariajosecruzalay":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F194UTJ":{"Cálculo Mercantil y Financiero":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0},"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"F194UTJ":{"Cálculo Mercantil y Financiero":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0},"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"2026-QA-010":{"Cálculo Mercantil y Financiero":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0},"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"cruzgonzalezyoselindelcarmen":{"Cálculo Mercantil y Financiero":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0},"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"yoselindelcarmencruzgonzalez":{"Cálculo Mercantil y Financiero":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0},"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"stu-sire-F354ZFQ":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,20,2,0,0,20,0,0,0],"zona":42,"exam":30,"total":72}},"F354ZFQ":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,20,2,0,0,20,0,0,0],"zona":42,"exam":30,"total":72}},"2026-QA-011":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,20,2,0,0,20,0,0,0],"zona":42,"exam":30,"total":72}},"cruzramirezgleidyceleste":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,20,2,0,0,20,0,0,0],"zona":42,"exam":30,"total":72}},"gleidycelestecruzramirez":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,20,2,0,0,20,0,0,0],"zona":42,"exam":30,"total":72}},"stu-sire-D494YEU":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"D494YEU":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QA-012":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"estradavasquezdayannamarysabel":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"dayannamarysabelestradavasquez":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-H952ALQ":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"H952ALQ":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QA-013":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"florescruzmelodydayana":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"melodydayanaflorescruz":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-H070SHJ":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"H070SHJ":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QA-014":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"floreshernandezoswindanilo":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"oswindanilofloreshernandez":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-G935XNA":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":27,"total":77},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"G935XNA":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":27,"total":77},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QA-015":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":27,"total":77},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"gironarteagadonovanjose":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":27,"total":77},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"donovanjosegironarteaga":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":27,"total":77},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-F582DAT":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,15,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"F582DAT":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,15,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"2026-QA-016":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,15,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"gonzalezsamayoamelvinoswaldo":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,15,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"melvinoswaldogonzalezsamayoa":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,15,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"stu-sire-C824YUK":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,20,5,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"C824YUK":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,20,5,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"2026-QA-017":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,20,5,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"grijalvacariasluisafernanda":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,20,5,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"luisafernandagrijalvacarias":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,0,20,5,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"stu-sire-F885JYW":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"F885JYW":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QA-018":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"gomezgarcianatalytatiana":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"natalytatianagomezgarcia":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F230UBI":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"F230UBI":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QA-019":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"hernandezgudielsucelmariela":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"sucelmarielahernandezgudiel":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F785CZI":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":50,"total":100},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"F785CZI":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":50,"total":100},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"2026-QA-020":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":50,"total":100},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"jimenezlopezsofiaalejandra":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":50,"total":100},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"sofiaalejandrajimenezlopez":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":50,"total":100},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"stu-sire-G541YRS":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":28,"total":78},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G541YRS":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":28,"total":78},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QA-021":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":28,"total":78},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"limaprivadoborisemanuel":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":28,"total":78},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"borisemanuellimaprivado":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":28,"total":78},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F534RXN":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":41,"total":91},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"F534RXN":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":41,"total":91},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QA-022":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":41,"total":91},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"lopezcruzjeniferbeatriz":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":41,"total":91},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"jeniferbeatrizlopezcruz":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":41,"total":91},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F773QEY":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[0,0,20,5,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"F773QEY":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[0,0,20,5,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"2026-QA-023":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[0,0,20,5,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"lopezgarciamayleendayana":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[0,0,20,5,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"mayleendayanalopezgarcia":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":15,"total":65},"Computación II":{"activities":[0,0,20,5,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"stu-sire-G487FPH":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"G487FPH":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"2026-QA-024":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"lopezgrijalvafatimalourdes":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"fatimalourdeslopezgrijalva":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"stu-sire-F188KVN":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,0,2,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"F188KVN":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,0,2,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"2026-QA-025":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,0,2,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"marroquinolivaresmynorantonio":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,0,2,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"mynorantoniomarroquinolivares":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,0,2,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"stu-sire-E599UIC":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,5,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"E599UIC":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,5,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"2026-QA-026":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,5,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"moranrodriguezanalucia":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,5,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"analuciamoranrodriguez":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":20,"total":70},"Computación II":{"activities":[10,5,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"stu-sire-F338GKI":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":25,"total":75},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"F338GKI":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":25,"total":75},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QA-027":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":25,"total":75},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"munguiamedalindziyessenia":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":25,"total":75},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"lindziyesseniamunguiameda":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":25,"total":75},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-I633LMY":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":16,"total":66},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"I633LMY":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":16,"total":66},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QA-028":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":16,"total":66},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"munozfloriankarenherlinda":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":16,"total":66},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"karenherlindamunozflorian":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":16,"total":66},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-G794NBD":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G794NBD":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QA-029":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"munozixtosjennifermichelle":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"jennifermichellemunozixtos":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-G044NIX":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"G044NIX":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QA-030":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"munozordonezyoelaaron":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"yoelaaronmunozordonez":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":11,"total":61},"Computación II":{"activities":[10,15,20,5,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-H652EZI":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":18,"total":68},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"H652EZI":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":18,"total":68},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"2026-QA-031":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":18,"total":68},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"mendezmendezjostinenilson":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":18,"total":68},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"jostinenilsonmendezmendez":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":18,"total":68},"Computación II":{"activities":[10,10,20,5,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"stu-sire-G648XFV":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":37,"total":87},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G648XFV":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":37,"total":87},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QA-032":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":37,"total":87},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"palmaprivadoashleypatricia":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":37,"total":87},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"ashleypatriciapalmaprivado":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":37,"total":87},"Computación II":{"activities":[10,0,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-G247TVW":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,10,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G247TVW":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,10,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QA-033":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,10,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"pirirramirezmariaalejandra":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,10,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"mariaalejandrapirirramirez":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[0,10,20,5,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-G593PDM":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":18,"total":68},"Computación II":{"activities":[10,5,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"G593PDM":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":18,"total":68},"Computación II":{"activities":[10,5,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"2026-QA-034":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":18,"total":68},"Computación II":{"activities":[10,5,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"perezsarcenoyaretzygalilea":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":18,"total":68},"Computación II":{"activities":[10,5,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"yaretzygalileaperezsarceno":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":18,"total":68},"Computación II":{"activities":[10,5,20,5,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"stu-sire-G482XGW":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":12,"total":62},"Computación II":{"activities":[10,5,20,3,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"G482XGW":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":12,"total":62},"Computación II":{"activities":[10,5,20,3,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"2026-QA-035":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":12,"total":62},"Computación II":{"activities":[10,5,20,3,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"ramosflorianaliciacarolina":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":12,"total":62},"Computación II":{"activities":[10,5,20,3,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"aliciacarolinaramosflorian":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":12,"total":62},"Computación II":{"activities":[10,5,20,3,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"stu-sire-G142LYW":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,3,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"G142LYW":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,3,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"2026-QA-036":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,3,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"tenascoradooscarandre":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,3,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"oscarandretenascorado":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":10,"total":60},"Computación II":{"activities":[10,0,20,3,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"stu-sire-F365JYC":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":16,"total":66},"Computación II":{"activities":[0,5,20,5,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"F365JYC":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":16,"total":66},"Computación II":{"activities":[0,5,20,5,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"2026-QA-037":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":16,"total":66},"Computación II":{"activities":[0,5,20,5,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"villanuevaruanocristafabiola":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":16,"total":66},"Computación II":{"activities":[0,5,20,5,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"cristafabiolavillanuevaruano":{"Cálculo Mercantil y Financiero":{"activities":[10,10,10,0,0,0,20,0,0,0],"zona":50,"exam":16,"total":66},"Computación II":{"activities":[0,5,20,5,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"stu-sire-F268JVN":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"F268JVN":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"2026-QB-001":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"antoniofloresangelgabriel":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"angelgabrielantonioflores":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"stu-sire-H186AIS":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"H186AIS":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QB-002":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"camposramirezyulissaalejandra":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"yulissaalejandracamposramirez":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F952RKZ":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"F952RKZ":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QB-003":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"cardonaperezmaylinjasmin":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"maylinjasmincardonaperez":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-G076DRS":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"G076DRS":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"2026-QB-004":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"castilloromerojakelynandrea":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"jakelynandreacastilloromero":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"stu-sire-F733HXY":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"F733HXY":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QB-005":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"chiquinfloreslondridianamareli":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"londridianamarelichiquinflores":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-F346JCQ":{"Computación II":{"activities":[10,0,5,5,0,0,20,0,0,0],"zona":40,"exam":30,"total":70}},"F346JCQ":{"Computación II":{"activities":[10,0,5,5,0,0,20,0,0,0],"zona":40,"exam":30,"total":70}},"2026-QB-006":{"Computación II":{"activities":[10,0,5,5,0,0,20,0,0,0],"zona":40,"exam":30,"total":70}},"cruzhernandezsherlinmayte":{"Computación II":{"activities":[10,0,5,5,0,0,20,0,0,0],"zona":40,"exam":30,"total":70}},"sherlinmaytecruzhernandez":{"Computación II":{"activities":[10,0,5,5,0,0,20,0,0,0],"zona":40,"exam":30,"total":70}},"cruzhernandezsherlynmayte":{"Computación II":{"activities":[10,0,5,5,0,0,20,0,0,0],"zona":40,"exam":30,"total":70}},"stu-sire-G358DQU":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G358DQU":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QB-007":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"cruzriverajaquelinejazmin":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"jaquelinejazmincruzrivera":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F592MZZ":{"Computación II":{"activities":[0,0,5,0,0,0,20,0,0,0],"zona":25,"exam":30,"total":55}},"F592MZZ":{"Computación II":{"activities":[0,0,5,0,0,0,20,0,0,0],"zona":25,"exam":30,"total":55}},"2026-QB-008":{"Computación II":{"activities":[0,0,5,0,0,0,20,0,0,0],"zona":25,"exam":30,"total":55}},"cuyuchguevaracelesteesperanza":{"Computación II":{"activities":[0,0,5,0,0,0,20,0,0,0],"zona":25,"exam":30,"total":55}},"celesteesperanzacuyuchguevara":{"Computación II":{"activities":[0,0,5,0,0,0,20,0,0,0],"zona":25,"exam":30,"total":55}},"stu-sire-F679DJD":{"Computación II":{"activities":[0,0,5,20,0,0,15,0,0,0],"zona":40,"exam":30,"total":70}},"F679DJD":{"Computación II":{"activities":[0,0,5,20,0,0,15,0,0,0],"zona":40,"exam":30,"total":70}},"2026-QB-009":{"Computación II":{"activities":[0,0,5,20,0,0,15,0,0,0],"zona":40,"exam":30,"total":70}},"gasparicosarcenoangelandre":{"Computación II":{"activities":[0,0,5,20,0,0,15,0,0,0],"zona":40,"exam":30,"total":70}},"angelandregasparicosarceno":{"Computación II":{"activities":[0,0,5,20,0,0,15,0,0,0],"zona":40,"exam":30,"total":70}},"stu-sire-G736GCK":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G736GCK":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QB-010":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"godoymoralesemilyjahara":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"emilyjaharagodoymorales":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-E245YFJ":{"Computación II":{"activities":[0,0,5,5,0,0,20,0,0,0],"zona":30,"exam":30,"total":60}},"E245YFJ":{"Computación II":{"activities":[0,0,5,5,0,0,20,0,0,0],"zona":30,"exam":30,"total":60}},"2026-QB-011":{"Computación II":{"activities":[0,0,5,5,0,0,20,0,0,0],"zona":30,"exam":30,"total":60}},"gonzalezvirulamanueldejesus":{"Computación II":{"activities":[0,0,5,5,0,0,20,0,0,0],"zona":30,"exam":30,"total":60}},"manueldejesusgonzalezvirula":{"Computación II":{"activities":[0,0,5,5,0,0,20,0,0,0],"zona":30,"exam":30,"total":60}},"stu-sire-G827YJS":{"Computación II":{"activities":[10,5,3,20,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"G827YJS":{"Computación II":{"activities":[10,5,3,20,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"2026-QB-012":{"Computación II":{"activities":[10,5,3,20,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"gregoriopalmakevingeovany":{"Computación II":{"activities":[10,5,3,20,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"kevingeovanygregoriopalma":{"Computación II":{"activities":[10,5,3,20,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"stu-sire-H056EQJ":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"H056EQJ":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QB-013":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"grijalvacarrillojuanjose":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"juanjosegrijalvacarrillo":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F582KSR":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"F582KSR":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"2026-QB-014":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"gudielgarciajuliojose":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"juliojosegudielgarcia":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"stu-sire-D593DUK":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"D593DUK":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QB-015":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"hernandezcruzvalerindayana":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"valerindayanahernandezcruz":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-E428ZTW":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"E428ZTW":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QB-016":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"hernandezhernandezjeysonalexis":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"jeysonalexishernandezhernandez":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-E266JLH":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"E266JLH":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"2026-QB-017":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"hernandezmedranoaxelanibal":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"axelanibalhernandezmedrano":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"stu-sire-D829ULW":{"Computación II":{"activities":[10,0,4,0,0,0,20,0,0,0],"zona":34,"exam":30,"total":64}},"D829ULW":{"Computación II":{"activities":[10,0,4,0,0,0,20,0,0,0],"zona":34,"exam":30,"total":64}},"2026-QB-018":{"Computación II":{"activities":[10,0,4,0,0,0,20,0,0,0],"zona":34,"exam":30,"total":64}},"lopezperezcristianeduardo":{"Computación II":{"activities":[10,0,4,0,0,0,20,0,0,0],"zona":34,"exam":30,"total":64}},"cristianeduardolopezperez":{"Computación II":{"activities":[10,0,4,0,0,0,20,0,0,0],"zona":34,"exam":30,"total":64}},"stu-sire-E796MCQ":{"Computación II":{"activities":[0,0,3,5,0,0,20,0,0,0],"zona":28,"exam":30,"total":58}},"E796MCQ":{"Computación II":{"activities":[0,0,3,5,0,0,20,0,0,0],"zona":28,"exam":30,"total":58}},"2026-QB-019":{"Computación II":{"activities":[0,0,3,5,0,0,20,0,0,0],"zona":28,"exam":30,"total":58}},"lopezvasquezjosedaniel":{"Computación II":{"activities":[0,0,3,5,0,0,20,0,0,0],"zona":28,"exam":30,"total":58}},"josedaniellopezvasquez":{"Computación II":{"activities":[0,0,3,5,0,0,20,0,0,0],"zona":28,"exam":30,"total":58}},"stu-sire-H544FWA":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"H544FWA":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"2026-QB-020":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"mansillahernandezjunioralexander":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"junioralexandermansillahernandez":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"stu-sire-G247LXP":{"Computación II":{"activities":[0,0,4,0,0,0,20,0,0,0],"zona":24,"exam":30,"total":54}},"G247LXP":{"Computación II":{"activities":[0,0,4,0,0,0,20,0,0,0],"zona":24,"exam":30,"total":54}},"2026-QB-021":{"Computación II":{"activities":[0,0,4,0,0,0,20,0,0,0],"zona":24,"exam":30,"total":54}},"marroquinramirezsebastianeduardo":{"Computación II":{"activities":[0,0,4,0,0,0,20,0,0,0],"zona":24,"exam":30,"total":54}},"sebastianeduardomarroquinramirez":{"Computación II":{"activities":[0,0,4,0,0,0,20,0,0,0],"zona":24,"exam":30,"total":54}},"stu-sire-G579PFD":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"G579PFD":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QB-022":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"martinezmendezronalmanuel":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"ronalmanuelmartinezmendez":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-F935ABD":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"F935ABD":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"2026-QB-023":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"monzonmateofatimafernanda":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"fatimafernandamonzonmateo":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"stu-sire-C321EUI":{"Computación II":{"activities":[10,0,0,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"C321EUI":{"Computación II":{"activities":[10,0,0,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"2026-QB-024":{"Computación II":{"activities":[10,0,0,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"monzonramosdarlynmelina":{"Computación II":{"activities":[10,0,0,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"darlynmelinamonzonramos":{"Computación II":{"activities":[10,0,0,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"stu-sire-D167RWG":{"Computación II":{"activities":[10,15,5,5,0,0,15,0,0,0],"zona":50,"exam":30,"total":80}},"D167RWG":{"Computación II":{"activities":[10,15,5,5,0,0,15,0,0,0],"zona":50,"exam":30,"total":80}},"2026-QB-025":{"Computación II":{"activities":[10,15,5,5,0,0,15,0,0,0],"zona":50,"exam":30,"total":80}},"mendezramirezneibyclarita":{"Computación II":{"activities":[10,15,5,5,0,0,15,0,0,0],"zona":50,"exam":30,"total":80}},"neibyclaritamendezramirez":{"Computación II":{"activities":[10,15,5,5,0,0,15,0,0,0],"zona":50,"exam":30,"total":80}},"stu-sire-G890VCN":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G890VCN":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QB-026":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"orellanalopezleslinyorlingabriela":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"leslinyorlingabrielaorellanalopez":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-G134LLH":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G134LLH":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QB-027":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"palmavanegaspedropablo":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"pedropablopalmavanegas":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-I249MDL":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"I249MDL":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"2026-QB-028":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"polancoramirezkristopererick":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"kristopererickpolancoramirez":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"stu-sire-C320NKM":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"C320NKM":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QB-029":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"ramosgarciamariafernanda":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"mariafernandaramosgarcia":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-F392SNV":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"F392SNV":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QB-030":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"ramirezramirezgersonalexander":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"gersonalexanderramirezramirez":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-G354LJB":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"G354LJB":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"2026-QB-031":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"raymundohernandezyostinyarell":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"yostinyarellraymundohernandez":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"stu-sire-G236SYC":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"G236SYC":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QB-032":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"salazarlimaangelottoniel":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"angelottonielsalazarlima":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-E063QVT":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"E063QVT":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"2026-QB-033":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"salazarpoougenesisgalilea":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"genesisgalileasalazarpoou":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"stu-sire-I626FVY":{"Computación II":{"activities":[0,5,5,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"I626FVY":{"Computación II":{"activities":[0,5,5,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"2026-QB-034":{"Computación II":{"activities":[0,5,5,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"sarcenovirulaedwingeovanny":{"Computación II":{"activities":[0,5,5,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"edwingeovannysarcenovirula":{"Computación II":{"activities":[0,5,5,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"stu-sire-H670PSE":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"H670PSE":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QB-035":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"sicamartinezcarlosdaniel":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"carlosdanielsicamartinez":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-I226MJS":{"Computación II":{"activities":[0,5,5,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"I226MJS":{"Computación II":{"activities":[0,5,5,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"2026-QB-036":{"Computación II":{"activities":[0,5,5,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"zunigagarciaedvinagustin":{"Computación II":{"activities":[0,5,5,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"edvinagustinzunigagarcia":{"Computación II":{"activities":[0,5,5,20,0,0,20,0,0,0],"zona":50,"exam":30,"total":80}},"stu-sire-E467UBL":{"Computación II":{"activities":[10,0,1,20,0,0,20,0,0,0],"zona":51,"exam":30,"total":81}},"E467UBL":{"Computación II":{"activities":[10,0,1,20,0,0,20,0,0,0],"zona":51,"exam":30,"total":81}},"2026-QC-001":{"Computación II":{"activities":[10,0,1,20,0,0,20,0,0,0],"zona":51,"exam":30,"total":81}},"arterodiazrubygabriela":{"Computación II":{"activities":[10,0,1,20,0,0,20,0,0,0],"zona":51,"exam":30,"total":81}},"rubygabrielaarterodiaz":{"Computación II":{"activities":[10,0,1,20,0,0,20,0,0,0],"zona":51,"exam":30,"total":81}},"stu-sire-F195SJU":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"F195SJU":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"2026-QC-002":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"cortezcortezmarianoenrique":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"marianoenriquecortezcortez":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"stu-sire-E548PQD":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"E548PQD":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QC-003":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"cruzlopezbelentrinidad":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"belentrinidadcruzlopez":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-C020RAP":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"C020RAP":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"2026-QC-004":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"cruzlopezkevineduardo":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"kevineduardocruzlopez":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"stu-sire-G898KJA":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G898KJA":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QC-005":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"estradaaranaalysonemilysofia":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"alysonemilysofiaestradaarana":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-H528EGU":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"H528EGU":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QC-006":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"florianchavezcintiafabiola":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"cintiafabiolaflorianchavez":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F349DQP":{"Computación II":{"activities":[10,0,2,20,0,0,20,0,0,0],"zona":52,"exam":30,"total":82}},"F349DQP":{"Computación II":{"activities":[10,0,2,20,0,0,20,0,0,0],"zona":52,"exam":30,"total":82}},"2026-QC-007":{"Computación II":{"activities":[10,0,2,20,0,0,20,0,0,0],"zona":52,"exam":30,"total":82}},"garciacontrerasyeniferdalila":{"Computación II":{"activities":[10,0,2,20,0,0,20,0,0,0],"zona":52,"exam":30,"total":82}},"yeniferdalilagarciacontreras":{"Computación II":{"activities":[10,0,2,20,0,0,20,0,0,0],"zona":52,"exam":30,"total":82}},"stu-sire-G594IND":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"G594IND":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QC-008":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"girongarciakervinalexander":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"kervinalexandergirongarcia":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-H463BFT":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"H463BFT":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"2026-QC-009":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"godoymendezleslyrotsely":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"leslyrotselygodoymendez":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"stu-sire-D891SGJ":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"D891SGJ":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QC-010":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"hernandezyumanjuanmanuel":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"juanmanuelhernandezyuman":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-F745RVH":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"F745RVH":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"2026-QC-011":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"limafloresluisalonzo":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"luisalonzolimaflores":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"stu-sire-F266JWF":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"F266JWF":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"2026-QC-012":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"lemusgodoyyonathanjeremias":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"yonathanjeremiaslemusgodoy":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"stu-sire-H244GJM":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"H244GJM":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QC-013":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"lopezlemusmatildesarai":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"matildesarailopezlemus":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-H326HWU":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"H326HWU":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QC-014":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"lopezsilvayuvisamarisol":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"yuvisamarisollopezsilva":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-F691UZJ":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"F691UZJ":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"2026-QC-015":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"mateoramirezdarwinenrique":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"darwinenriquemateoramirez":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"stu-sire-G553IYL":{"Computación II":{"activities":[0,15,3,20,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"G553IYL":{"Computación II":{"activities":[0,15,3,20,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"2026-QC-016":{"Computación II":{"activities":[0,15,3,20,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"monteroslimamoisesestuardojosue":{"Computación II":{"activities":[0,15,3,20,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"moisesestuardojosuemonteroslima":{"Computación II":{"activities":[0,15,3,20,0,0,20,0,0,0],"zona":58,"exam":30,"total":88}},"stu-sire-G988YIU":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"G988YIU":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QC-017":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"montoyagonzalezanyeliyasmin":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"anyeliyasminmontoyagonzalez":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-G096DJQ":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G096DJQ":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QC-018":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"munozlimazailynyuliana":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"zailynyulianamunozlima":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-E367CXJ":{"Computación II":{"activities":[10,5,4,20,0,0,20,0,0,0],"zona":59,"exam":30,"total":89}},"E367CXJ":{"Computación II":{"activities":[10,5,4,20,0,0,20,0,0,0],"zona":59,"exam":30,"total":89}},"2026-QC-019":{"Computación II":{"activities":[10,5,4,20,0,0,20,0,0,0],"zona":59,"exam":30,"total":89}},"mendezaranaderwindario":{"Computación II":{"activities":[10,5,4,20,0,0,20,0,0,0],"zona":59,"exam":30,"total":89}},"derwindariomendezarana":{"Computación II":{"activities":[10,5,4,20,0,0,20,0,0,0],"zona":59,"exam":30,"total":89}},"stu-sire-G926WXQ":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"G926WXQ":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"2026-QC-020":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"mendeznoriegadulceidiana":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"dulceidianamendeznoriega":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"stu-sire-F066VTP":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"F066VTP":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"2026-QC-021":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"mendezsiquinashleyyadira":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"ashleyyadiramendezsiquin":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"stu-sire-G138ANX":{"Computación II":{"activities":[0,0,3,0,0,0,20,0,0,0],"zona":23,"exam":30,"total":53}},"G138ANX":{"Computación II":{"activities":[0,0,3,0,0,0,20,0,0,0],"zona":23,"exam":30,"total":53}},"2026-QC-022":{"Computación II":{"activities":[0,0,3,0,0,0,20,0,0,0],"zona":23,"exam":30,"total":53}},"ordonezmonzonjostinjose":{"Computación II":{"activities":[0,0,3,0,0,0,20,0,0,0],"zona":23,"exam":30,"total":53}},"jostinjoseordonezmonzon":{"Computación II":{"activities":[0,0,3,0,0,0,20,0,0,0],"zona":23,"exam":30,"total":53}},"stu-sire-E427AQC":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"E427AQC":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"2026-QC-023":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"ordonezvelasquezanyilonjocet":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"anyilonjocetordonezvelasquez":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"stu-sire-H858PEN":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"H858PEN":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QC-024":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"osorioretanamariaestelita":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"mariaestelitaosorioretana":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-C022QPR":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"C022QPR":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QC-025":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"ramosquevedorosmeryyuleydi":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"rosmeryyuleydiramosquevedo":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-F777LAJ":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"F777LAJ":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"2026-QC-026":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"ramirezalejandronatalyrubi":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"natalyrubiramirezalejandro":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"stu-sire-E177LUU":{"Computación II":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":30,"total":99}},"E177LUU":{"Computación II":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":30,"total":99}},"2026-QC-027":{"Computación II":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":30,"total":99}},"ramirezcruzyoniovando":{"Computación II":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":30,"total":99}},"yoniovandoramirezcruz":{"Computación II":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":30,"total":99}},"stu-sire-G695KMF":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"G695KMF":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"2026-QC-028":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"ramirezhernandezleyderariel":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"leyderarielramirezhernandez":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"stu-sire-E962HFP":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"E962HFP":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QC-029":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"ramirezmendezbriseydamishel":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"briseydamishelramirezmendez":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-E078YXI":{"Computación II":{"activities":[0,15,0,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"E078YXI":{"Computación II":{"activities":[0,15,0,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QC-030":{"Computación II":{"activities":[0,15,0,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"ramirezramirezyeysonbladimir":{"Computación II":{"activities":[0,15,0,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"yeysonbladimirramirezramirez":{"Computación II":{"activities":[0,15,0,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F037KZE":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"F037KZE":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QC-031":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"reynosolopezashlynberenice":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"ashlynberenicereynosolopez":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-G640JEN":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"G640JEN":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QC-032":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"samayoalopezkatiafabiola":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"katiafabiolasamayoalopez":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-I237SAK":{"Computación II":{"activities":[10,0,3,0,0,0,20,0,0,0],"zona":33,"exam":30,"total":63}},"I237SAK":{"Computación II":{"activities":[10,0,3,0,0,0,20,0,0,0],"zona":33,"exam":30,"total":63}},"2026-QC-033":{"Computación II":{"activities":[10,0,3,0,0,0,20,0,0,0],"zona":33,"exam":30,"total":63}},"sarcenoalasscarlethsughei":{"Computación II":{"activities":[10,0,3,0,0,0,20,0,0,0],"zona":33,"exam":30,"total":63}},"scarlethsugheisarcenoalas":{"Computación II":{"activities":[10,0,3,0,0,0,20,0,0,0],"zona":33,"exam":30,"total":63}},"stu-sire-C321HYT":{"Computación II":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":30,"total":99}},"C321HYT":{"Computación II":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":30,"total":99}},"2026-QC-034":{"Computación II":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":30,"total":99}},"sarcenomunozandersoneduardo":{"Computación II":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":30,"total":99}},"andersoneduardosarcenomunoz":{"Computación II":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":30,"total":99}},"stu-sire-E189PNB":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"E189PNB":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"2026-QC-035":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"tzunuxreyesjanselladonain":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"janselladonaintzunuxreyes":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"stu-sire-E358UMP":{"Computación II":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":30,"total":98}},"E358UMP":{"Computación II":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":30,"total":98}},"2026-QC-036":{"Computación II":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":30,"total":98}},"yanescordovakimberlymichel":{"Computación II":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":30,"total":98}},"kimberlymichelyanescordova":{"Computación II":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":30,"total":98}},"stu-sire-F430CRN":{"Computación II":{"activities":[0,0,1,20,0,0,20,0,0,0],"zona":41,"exam":30,"total":71}},"F430CRN":{"Computación II":{"activities":[0,0,1,20,0,0,20,0,0,0],"zona":41,"exam":30,"total":71}},"2026-QC-037":{"Computación II":{"activities":[0,0,1,20,0,0,20,0,0,0],"zona":41,"exam":30,"total":71}},"zunigagaliciajosefernando":{"Computación II":{"activities":[0,0,1,20,0,0,20,0,0,0],"zona":41,"exam":30,"total":71}},"josefernandozunigagalicia":{"Computación II":{"activities":[0,0,1,20,0,0,20,0,0,0],"zona":41,"exam":30,"total":71}},"stu-sire-F492BCR":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"F492BCR":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QD-001":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"arguetaperezsilmaalejandra":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"silmaalejandraarguetaperez":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-G536TUF":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"G536TUF":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"2026-QD-002":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"arteagasarcenoaugustinandre":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"augustinandrearteagasarceno":{"Computación II":{"activities":[0,0,5,20,0,0,20,0,0,0],"zona":45,"exam":30,"total":75}},"stu-sire-G842GKI":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"G842GKI":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"2026-QD-003":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"batresrecinosluisaalexandra":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"luisaalexandrabatresrecinos":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"stu-sire-F749CDX":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"F749CDX":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"2026-QD-004":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"chaconcardonayoselynpaola":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"yoselynpaolachaconcardona":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"stu-sire-H958BIJ":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"H958BIJ":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QD-005":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"coradoleivamarvindaniel":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"marvindanielcoradoleiva":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-C522QSR":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"C522QSR":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"2026-QD-006":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"cofloriancarlosenrique":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"carlosenriquecoflorian":{"Computación II":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":30,"total":95}},"stu-sire-G977LLK":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G977LLK":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QD-007":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"dimasramosmeredithangeli":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"meredithangelidimasramos":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F385YWK":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"F385YWK":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"2026-QD-008":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"florescambarabrendajannet":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"brendajannetflorescambara":{"Computación II":{"activities":[0,0,4,20,0,0,20,0,0,0],"zona":44,"exam":30,"total":74}},"stu-sire-F699YPQ":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"F699YPQ":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QD-009":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"gonzalezmoralesandreatrinidad":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"andreatrinidadgonzalezmorales":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-I627TXS":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"I627TXS":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"2026-QD-010":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"gregorioperezyasminyulisa":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"yasminyulisagregorioperez":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"stu-sire-G537CPX":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"G537CPX":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QD-011":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"gomezgarciabeberlysofia":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"beberlysofiagomezgarcia":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F057WQZ":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"F057WQZ":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"2026-QD-012":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"hernandezbarrerailianavanesa":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"ilianavanesahernandezbarrera":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"stu-sire-G770AAL":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"G770AAL":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QD-013":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"jimenezperezbeberlinsuleima":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"beberlinsuleimajimenezperez":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-H677YDD":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"H677YDD":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"2026-QD-014":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"limagutierrezstevenflorencio":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"stevenflorenciolimagutierrez":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"stu-sire-F066UUR":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"F066UUR":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"2026-QD-015":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"luchamedranokateringuadalupe":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"kateringuadalupeluchamedrano":{"Computación II":{"activities":[10,0,3,20,0,0,20,0,0,0],"zona":53,"exam":30,"total":83}},"stu-sire-F872NRP":{"Computación II":{"activities":[0,10,3,0,0,0,20,0,0,0],"zona":33,"exam":30,"total":63}},"F872NRP":{"Computación II":{"activities":[0,10,3,0,0,0,20,0,0,0],"zona":33,"exam":30,"total":63}},"2026-QD-016":{"Computación II":{"activities":[0,10,3,0,0,0,20,0,0,0],"zona":33,"exam":30,"total":63}},"lopezalaysaydalissette":{"Computación II":{"activities":[0,10,3,0,0,0,20,0,0,0],"zona":33,"exam":30,"total":63}},"saydalissettelopezalay":{"Computación II":{"activities":[0,10,3,0,0,0,20,0,0,0],"zona":33,"exam":30,"total":63}},"stu-sire-H469SDF":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"H469SDF":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"2026-QD-017":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"lopezarchilaruthemiliani":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"ruthemilianilopezarchila":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"stu-sire-D557INV":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"D557INV":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"2026-QD-018":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"lopezlopezkaterinnelucero":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"katerinnelucerolopezlopez":{"Computación II":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":30,"total":100}},"stu-sire-F796SYL":{"Computación II":{"activities":[5,10,3,0,0,0,20,0,0,0],"zona":38,"exam":30,"total":68}},"F796SYL":{"Computación II":{"activities":[5,10,3,0,0,0,20,0,0,0],"zona":38,"exam":30,"total":68}},"2026-QD-019":{"Computación II":{"activities":[5,10,3,0,0,0,20,0,0,0],"zona":38,"exam":30,"total":68}},"lopezsalguerojeysonernesto":{"Computación II":{"activities":[5,10,3,0,0,0,20,0,0,0],"zona":38,"exam":30,"total":68}},"jeysonernestolopezsalguero":{"Computación II":{"activities":[5,10,3,0,0,0,20,0,0,0],"zona":38,"exam":30,"total":68}},"stu-sire-F272YPR":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"F272YPR":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"2026-QD-020":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"medranovasquezjanneredicson":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"janneredicsonmedranovasquez":{"Computación II":{"activities":[10,5,5,20,0,0,20,0,0,0],"zona":60,"exam":30,"total":90}},"stu-sire-C821CKU":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"C821CKU":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QD-021":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"munozgrijalvacarlosduvan":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"carlosduvanmunozgrijalva":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-F083CUU":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"F083CUU":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QD-022":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"mendezcariaselizabeth":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"cariaselizabethmendez":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F350ISD":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"F350ISD":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"2026-QD-023":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"mendezescobarmadelindaniela":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"madelindanielamendezescobar":{"Computación II":{"activities":[10,0,5,0,0,0,20,0,0,0],"zona":35,"exam":30,"total":65}},"stu-sire-F697KNL":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"F697KNL":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QD-024":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"perezalvenojulianalexander":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"julianalexanderperezalveno":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-E195FVT":{"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"E195FVT":{"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"2026-QD-025":{"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"ramosfloriandulcemaria":{"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"dulcemariaramosflorian":{"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"stu-sire-F161UDZ":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"F161UDZ":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"2026-QD-026":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"ramoslemusnancymadai":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"nancymadairamoslemus":{"Computación II":{"activities":[10,10,4,20,0,0,20,0,0,0],"zona":64,"exam":30,"total":94}},"stu-sire-F360RTB":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"F360RTB":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QD-027":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"ramosramosdannyaverali":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"dannyaveraliramosramos":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-H637JVJ":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"H637JVJ":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"2026-QD-028":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"ramirezhernandezyaquelinfernanda":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"yaquelinfernandaramirezhernandez":{"Computación II":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":30,"total":85}},"stu-sire-F986VPZ":{"Computación II":{"activities":[0,0,0,0,0,0,20,0,0,0],"zona":20,"exam":30,"total":50}},"F986VPZ":{"Computación II":{"activities":[0,0,0,0,0,0,20,0,0,0],"zona":20,"exam":30,"total":50}},"2026-QD-029":{"Computación II":{"activities":[0,0,0,0,0,0,20,0,0,0],"zona":20,"exam":30,"total":50}},"ruanoramirezkatterinjulisa":{"Computación II":{"activities":[0,0,0,0,0,0,20,0,0,0],"zona":20,"exam":30,"total":50}},"katterinjulisaruanoramirez":{"Computación II":{"activities":[0,0,0,0,0,0,20,0,0,0],"zona":20,"exam":30,"total":50}},"stu-sire-G162AXB":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"G162AXB":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"2026-QD-030":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"salgueroalayerickottoniel":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"erickottonielsalgueroalay":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"stu-sire-E047HLX":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"E047HLX":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"2026-QD-031":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"santiagogonzalezdulcemariadelosangeles":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"dulcemariadelosangelessantiagogonzalez":{"Computación II":{"activities":[0,0,2,0,0,0,20,0,0,0],"zona":22,"exam":30,"total":52}},"stu-sire-F732FBI":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"F732FBI":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"2026-QD-032":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"sicacoradoanyelodavidfernando":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"anyelodavidfernandosicacorado":{"Computación II":{"activities":[0,0,3,20,0,0,20,0,0,0],"zona":43,"exam":30,"total":73}},"stu-sire-D155FPJ":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"D155FPJ":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"2026-QD-033":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"vegaramirezrosaelena":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"rosaelenavegaramirez":{"Computación II":{"activities":[10,0,2,0,0,0,20,0,0,0],"zona":32,"exam":30,"total":62}},"stu-sire-H433XER":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"H433XER":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"2026-QD-034":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"vivasmartinezrosamariadejesus":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"rosamariadejesusvivasmartinez":{"Computación II":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":30,"total":84}},"stu-sire-G983HCS":{"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"G983HCS":{"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"2026-QD-035":{"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"vasquezvasquezyefersondaniel":{"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"yefersondanielvasquezvasquez":{"Computación II":{"activities":[0,0,0,0,0,0,0,0,0,0],"zona":0,"exam":0,"total":0}},"stu-sire-F459CYC":{"Computación II":{"activities":[10,5,1,20,0,0,20,0,0,0],"zona":56,"exam":30,"total":86}},"F459CYC":{"Computación II":{"activities":[10,5,1,20,0,0,20,0,0,0],"zona":56,"exam":30,"total":86}},"2026-QD-036":{"Computación II":{"activities":[10,5,1,20,0,0,20,0,0,0],"zona":56,"exam":30,"total":86}},"zepedagudielaslygabriela":{"Computación II":{"activities":[10,5,1,20,0,0,20,0,0,0],"zona":56,"exam":30,"total":86}},"aslygabrielazepedagudiel":{"Computación II":{"activities":[10,5,1,20,0,0,20,0,0,0],"zona":56,"exam":30,"total":86}},"stu-sire-F130CUN":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"F130CUN":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"2026-SA-001":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"alaymarincelestecristinadelosangeles":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"celestecristinadelosangelesalaymarin":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"stu-sire-F365BLD":{"Computación III":{"activities":[10,11,3,20,0,0,20,0,0,0],"zona":64,"exam":16,"total":80}},"F365BLD":{"Computación III":{"activities":[10,11,3,20,0,0,20,0,0,0],"zona":64,"exam":16,"total":80}},"2026-SA-002":{"Computación III":{"activities":[10,11,3,20,0,0,20,0,0,0],"zona":64,"exam":16,"total":80}},"ardongonzalezdiegoalejandro":{"Computación III":{"activities":[10,11,3,20,0,0,20,0,0,0],"zona":64,"exam":16,"total":80}},"diegoalejandroardongonzalez":{"Computación III":{"activities":[10,11,3,20,0,0,20,0,0,0],"zona":64,"exam":16,"total":80}},"stu-sire-F155XLV":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":11,"total":81}},"F155XLV":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":11,"total":81}},"2026-SA-003":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":11,"total":81}},"arguetabatenheidyelizabeth":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":11,"total":81}},"heidyelizabetharguetabaten":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":11,"total":81}},"stu-sire-E353RUC":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"E353RUC":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"2026-SA-004":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"ayalaarevalojefersonjavier":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"jefersonjavierayalaarevalo":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"stu-sire-E359JKX":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"E359JKX":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"2026-SA-005":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"centenolopezgabrielarocio":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"gabrielarociocentenolopez":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"stu-sire-F198ZHK":{"Computación III":{"activities":[10,12,4,20,0,0,20,0,0,0],"zona":66,"exam":9,"total":75}},"F198ZHK":{"Computación III":{"activities":[10,12,4,20,0,0,20,0,0,0],"zona":66,"exam":9,"total":75}},"2026-SA-006":{"Computación III":{"activities":[10,12,4,20,0,0,20,0,0,0],"zona":66,"exam":9,"total":75}},"cruzperezyazminmarisela":{"Computación III":{"activities":[10,12,4,20,0,0,20,0,0,0],"zona":66,"exam":9,"total":75}},"yazminmariselacruzperez":{"Computación III":{"activities":[10,12,4,20,0,0,20,0,0,0],"zona":66,"exam":9,"total":75}},"stu-sire-C917ZVB":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"C917ZVB":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"2026-SA-007":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"cruzramirezallanfabricio":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"allanfabriciocruzramirez":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"stu-sire-E955SSQ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"E955SSQ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"2026-SA-008":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"cambarasurianokarlalucia":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"karlaluciacambarasuriano":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"stu-sire-F893MNS":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":19,"total":89}},"F893MNS":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":19,"total":89}},"2026-SA-009":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":19,"total":89}},"espinavanegasmadelinyisel":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":19,"total":89}},"madelinyiselespinavanegas":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":19,"total":89}},"stu-sire-F933EJX":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"F933EJX":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"2026-SA-010":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"esquivelguerreronatalymelissa":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"natalymelissaesquivelguerrero":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"stu-sire-F082WQF":{"Computación III":{"activities":[10,4,3,20,0,0,20,0,0,0],"zona":57,"exam":6,"total":63}},"F082WQF":{"Computación III":{"activities":[10,4,3,20,0,0,20,0,0,0],"zona":57,"exam":6,"total":63}},"2026-SA-011":{"Computación III":{"activities":[10,4,3,20,0,0,20,0,0,0],"zona":57,"exam":6,"total":63}},"fernandezgarciabraylinerali":{"Computación III":{"activities":[10,4,3,20,0,0,20,0,0,0],"zona":57,"exam":6,"total":63}},"braylineralifernandezgarcia":{"Computación III":{"activities":[10,4,3,20,0,0,20,0,0,0],"zona":57,"exam":6,"total":63}},"stu-sire-E445KKR":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"E445KKR":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"2026-SA-012":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"floriansalguerorudymariofernando":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"rudymariofernandofloriansalguero":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"stu-sire-E265CMG":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":6,"total":76}},"E265CMG":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":6,"total":76}},"2026-SA-013":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":6,"total":76}},"gonzalezgarciayulissanohemy":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":6,"total":76}},"yulissanohemygonzalezgarcia":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":6,"total":76}},"stu-sire-D936IUV":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":8,"total":77}},"D936IUV":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":8,"total":77}},"2026-SA-014":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":8,"total":77}},"guzmanmonzondianaelizabeth":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":8,"total":77}},"dianaelizabethguzmanmonzon":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":8,"total":77}},"stu-sire-F737WSW":{"Computación III":{"activities":[10,11,5,20,0,0,20,0,0,0],"zona":66,"exam":11,"total":77}},"F737WSW":{"Computación III":{"activities":[10,11,5,20,0,0,20,0,0,0],"zona":66,"exam":11,"total":77}},"2026-SA-015":{"Computación III":{"activities":[10,11,5,20,0,0,20,0,0,0],"zona":66,"exam":11,"total":77}},"gomezalejandrojulisajamilet":{"Computación III":{"activities":[10,11,5,20,0,0,20,0,0,0],"zona":66,"exam":11,"total":77}},"julisajamiletgomezalejandro":{"Computación III":{"activities":[10,11,5,20,0,0,20,0,0,0],"zona":66,"exam":11,"total":77}},"stu-sire-E965PPF":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"E965PPF":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"2026-SA-016":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"jimenezcaaldulcemaria":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"dulcemariajimenezcaal":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"stu-sire-D477YYD":{"Computación III":{"activities":[20,4,4,20,0,0,20,0,0,0],"zona":68,"exam":10,"total":78}},"D477YYD":{"Computación III":{"activities":[20,4,4,20,0,0,20,0,0,0],"zona":68,"exam":10,"total":78}},"2026-SA-017":{"Computación III":{"activities":[20,4,4,20,0,0,20,0,0,0],"zona":68,"exam":10,"total":78}},"jumiquecatalanjustinpaul":{"Computación III":{"activities":[20,4,4,20,0,0,20,0,0,0],"zona":68,"exam":10,"total":78}},"justinpauljumiquecatalan":{"Computación III":{"activities":[20,4,4,20,0,0,20,0,0,0],"zona":68,"exam":10,"total":78}},"stu-sire-E096ZKW":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":14,"total":63}},"E096ZKW":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":14,"total":63}},"2026-SA-018":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":14,"total":63}},"lorenzanalemusashleydayanna":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":14,"total":63}},"ashleydayannalorenzanalemus":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":14,"total":63}},"stu-sire-E749SHG":{"Computación III":{"activities":[10,15,3,0,0,0,20,0,0,0],"zona":48,"exam":16,"total":64}},"E749SHG":{"Computación III":{"activities":[10,15,3,0,0,0,20,0,0,0],"zona":48,"exam":16,"total":64}},"2026-SA-019":{"Computación III":{"activities":[10,15,3,0,0,0,20,0,0,0],"zona":48,"exam":16,"total":64}},"lopezcampohazlyalejandra":{"Computación III":{"activities":[10,15,3,0,0,0,20,0,0,0],"zona":48,"exam":16,"total":64}},"hazlyalejandralopezcampo":{"Computación III":{"activities":[10,15,3,0,0,0,20,0,0,0],"zona":48,"exam":16,"total":64}},"stu-sire-F070NJZ":{"Computación III":{"activities":[10,15,2,20,0,0,20,0,0,0],"zona":67,"exam":10,"total":77}},"F070NJZ":{"Computación III":{"activities":[10,15,2,20,0,0,20,0,0,0],"zona":67,"exam":10,"total":77}},"2026-SA-020":{"Computación III":{"activities":[10,15,2,20,0,0,20,0,0,0],"zona":67,"exam":10,"total":77}},"lopezescarateandersonemanuel":{"Computación III":{"activities":[10,15,2,20,0,0,20,0,0,0],"zona":67,"exam":10,"total":77}},"andersonemanuellopezescarate":{"Computación III":{"activities":[10,15,2,20,0,0,20,0,0,0],"zona":67,"exam":10,"total":77}},"stu-sire-F274SMG":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":12,"total":80}},"F274SMG":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":12,"total":80}},"2026-SA-021":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":12,"total":80}},"lopezsalguerodynamaricela":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":12,"total":80}},"dynamaricelalopezsalguero":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":12,"total":80}},"stu-sire-F839DEN":{"Computación III":{"activities":[10,6,3,20,0,0,20,0,0,0],"zona":59,"exam":12,"total":71}},"F839DEN":{"Computación III":{"activities":[10,6,3,20,0,0,20,0,0,0],"zona":59,"exam":12,"total":71}},"2026-SA-022":{"Computación III":{"activities":[10,6,3,20,0,0,20,0,0,0],"zona":59,"exam":12,"total":71}},"lopezvaldeznatalyvanesa":{"Computación III":{"activities":[10,6,3,20,0,0,20,0,0,0],"zona":59,"exam":12,"total":71}},"natalyvanesalopezvaldez":{"Computación III":{"activities":[10,6,3,20,0,0,20,0,0,0],"zona":59,"exam":12,"total":71}},"stu-sire-F887CBI":{"Computación III":{"activities":[10,12,4,20,0,0,20,0,0,0],"zona":66,"exam":17,"total":83}},"F887CBI":{"Computación III":{"activities":[10,12,4,20,0,0,20,0,0,0],"zona":66,"exam":17,"total":83}},"2026-SA-023":{"Computación III":{"activities":[10,12,4,20,0,0,20,0,0,0],"zona":66,"exam":17,"total":83}},"madridgarcialuisfernando":{"Computación III":{"activities":[10,12,4,20,0,0,20,0,0,0],"zona":66,"exam":17,"total":83}},"luisfernandomadridgarcia":{"Computación III":{"activities":[10,12,4,20,0,0,20,0,0,0],"zona":66,"exam":17,"total":83}},"stu-sire-E447EGP":{"Computación III":{"activities":[10,9,5,20,0,0,20,0,0,0],"zona":64,"exam":9,"total":73}},"E447EGP":{"Computación III":{"activities":[10,9,5,20,0,0,20,0,0,0],"zona":64,"exam":9,"total":73}},"2026-SA-024":{"Computación III":{"activities":[10,9,5,20,0,0,20,0,0,0],"zona":64,"exam":9,"total":73}},"mateovalenzuelakaterinvanessa":{"Computación III":{"activities":[10,9,5,20,0,0,20,0,0,0],"zona":64,"exam":9,"total":73}},"katerinvanessamateovalenzuela":{"Computación III":{"activities":[10,9,5,20,0,0,20,0,0,0],"zona":64,"exam":9,"total":73}},"stu-sire-F232BMX":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"F232BMX":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"2026-SA-025":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"ordonezlopezmadelinegisela":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"madelinegiselaordonezlopez":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"stu-sire-G991BSP":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":18,"total":88}},"G991BSP":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":18,"total":88}},"2026-SA-026":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":18,"total":88}},"puacjumiquegustavoadolfo":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":18,"total":88}},"gustavoadolfopuacjumique":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":18,"total":88}},"stu-sire-G442PDA":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"G442PDA":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"2026-SA-027":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"pereztimalkevinarmando":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"kevinarmandopereztimal":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"stu-sire-D926TLR":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"D926TLR":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"2026-SA-028":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"perezhernandezalbagrisleny":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"albagrislenyperezhernandez":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":16,"total":86}},"stu-sire-E133CAB":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":13,"total":83}},"E133CAB":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":13,"total":83}},"2026-SA-029":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":13,"total":83}},"retanaortegaelizamaelizabeth":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":13,"total":83}},"elizamaelizabethretanaortega":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":13,"total":83}},"stu-sire-F466EBN":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":7,"total":77}},"F466EBN":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":7,"total":77}},"2026-SA-030":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":7,"total":77}},"sicasalazarcristelmishel":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":7,"total":77}},"cristelmishelsicasalazar":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":7,"total":77}},"stu-sire-E370EIA":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"E370EIA":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"2026-SA-031":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"sotodubonkeylaelena":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"keylaelenasotodubon":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"stu-sire-G135ZFR":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"G135ZFR":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"2026-SA-032":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"sanchezgarciadenisjosegabriel":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"denisjosegabrielsanchezgarcia":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"stu-sire-F496EYN":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":15,"total":64}},"F496EYN":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":15,"total":64}},"2026-SB-001":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":15,"total":64}},"albenogarciafernandoesteban":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":15,"total":64}},"fernandoestebanalbenogarcia":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":15,"total":64}},"stu-sire-E874BYP":{"Computación III":{"activities":[10,0,1,0,0,0,20,0,0,0],"zona":31,"exam":8,"total":39}},"E874BYP":{"Computación III":{"activities":[10,0,1,0,0,0,20,0,0,0],"zona":31,"exam":8,"total":39}},"2026-SB-002":{"Computación III":{"activities":[10,0,1,0,0,0,20,0,0,0],"zona":31,"exam":8,"total":39}},"barreracruznurianbanesa":{"Computación III":{"activities":[10,0,1,0,0,0,20,0,0,0],"zona":31,"exam":8,"total":39}},"nurianbanesabarreracruz":{"Computación III":{"activities":[10,0,1,0,0,0,20,0,0,0],"zona":31,"exam":8,"total":39}},"stu-sire-G034KGI":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":10,"total":79}},"G034KGI":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":10,"total":79}},"2026-SB-003":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":10,"total":79}},"barreravelasquezerickmarcomiguel":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":10,"total":79}},"erickmarcomiguelbarreravelasquez":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":10,"total":79}},"stu-sire-E292HWM":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"E292HWM":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"2026-SB-004":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"castilloalayemilymariaregina":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"emilymariareginacastilloalay":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"stu-sire-G466CUR":{"Computación III":{"activities":[10,15,3,0,0,0,20,0,0,0],"zona":48,"exam":0,"total":48}},"G466CUR":{"Computación III":{"activities":[10,15,3,0,0,0,20,0,0,0],"zona":48,"exam":0,"total":48}},"2026-SB-005":{"Computación III":{"activities":[10,15,3,0,0,0,20,0,0,0],"zona":48,"exam":0,"total":48}},"cruzmateoevelynjohana":{"Computación III":{"activities":[10,15,3,0,0,0,20,0,0,0],"zona":48,"exam":0,"total":48}},"evelynjohanacruzmateo":{"Computación III":{"activities":[10,15,3,0,0,0,20,0,0,0],"zona":48,"exam":0,"total":48}},"stu-sire-H378EHY":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"H378EHY":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"2026-SB-006":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"fallaguerrerojuanfrancisco":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"juanfranciscofallaguerrero":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"stu-sire-F832WQH":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":0,"total":70}},"F832WQH":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":0,"total":70}},"2026-SB-007":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":0,"total":70}},"floresmendezaaronoswaldo":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":0,"total":70}},"aaronoswaldofloresmendez":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":0,"total":70}},"stu-sire-E361SPE":{"Computación III":{"activities":[10,14,1,20,0,0,20,0,0,0],"zona":65,"exam":14,"total":79}},"E361SPE":{"Computación III":{"activities":[10,14,1,20,0,0,20,0,0,0],"zona":65,"exam":14,"total":79}},"2026-SB-008":{"Computación III":{"activities":[10,14,1,20,0,0,20,0,0,0],"zona":65,"exam":14,"total":79}},"florianvalenzuelaestefanynohemi":{"Computación III":{"activities":[10,14,1,20,0,0,20,0,0,0],"zona":65,"exam":14,"total":79}},"estefanynohemiflorianvalenzuela":{"Computación III":{"activities":[10,14,1,20,0,0,20,0,0,0],"zona":65,"exam":14,"total":79}},"stu-sire-C871TIJ":{"Computación III":{"activities":[10,4,4,0,0,0,20,0,0,0],"zona":38,"exam":11,"total":49}},"C871TIJ":{"Computación III":{"activities":[10,4,4,0,0,0,20,0,0,0],"zona":38,"exam":11,"total":49}},"2026-SB-009":{"Computación III":{"activities":[10,4,4,0,0,0,20,0,0,0],"zona":38,"exam":11,"total":49}},"garridocruzanalucia":{"Computación III":{"activities":[10,4,4,0,0,0,20,0,0,0],"zona":38,"exam":11,"total":49}},"analuciagarridocruz":{"Computación III":{"activities":[10,4,4,0,0,0,20,0,0,0],"zona":38,"exam":11,"total":49}},"stu-sire-F772UWE":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":16,"total":65}},"F772UWE":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":16,"total":65}},"2026-SB-010":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":16,"total":65}},"gironperezedwinfernando":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":16,"total":65}},"edwinfernandogironperez":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":16,"total":65}},"stu-sire-F245GKZ":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":14,"total":69}},"F245GKZ":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":14,"total":69}},"2026-SB-011":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":14,"total":69}},"godoymoralesemelyyamileth":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":14,"total":69}},"emelyyamilethgodoymorales":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":14,"total":69}},"stu-sire-E192HTH":{"Computación III":{"activities":[10,2,5,20,0,0,20,0,0,0],"zona":57,"exam":10,"total":67}},"E192HTH":{"Computación III":{"activities":[10,2,5,20,0,0,20,0,0,0],"zona":57,"exam":10,"total":67}},"2026-SB-012":{"Computación III":{"activities":[10,2,5,20,0,0,20,0,0,0],"zona":57,"exam":10,"total":67}},"gonzalezlazarorocionoemy":{"Computación III":{"activities":[10,2,5,20,0,0,20,0,0,0],"zona":57,"exam":10,"total":67}},"rocionoemygonzalezlazaro":{"Computación III":{"activities":[10,2,5,20,0,0,20,0,0,0],"zona":57,"exam":10,"total":67}},"stu-sire-E839SKG":{"Computación III":{"activities":[10,2,5,20,0,0,20,0,0,0],"zona":57,"exam":14,"total":71}},"E839SKG":{"Computación III":{"activities":[10,2,5,20,0,0,20,0,0,0],"zona":57,"exam":14,"total":71}},"2026-SB-013":{"Computación III":{"activities":[10,2,5,20,0,0,20,0,0,0],"zona":57,"exam":14,"total":71}},"grijalvagarciakarendayana":{"Computación III":{"activities":[10,2,5,20,0,0,20,0,0,0],"zona":57,"exam":14,"total":71}},"karendayanagrijalvagarcia":{"Computación III":{"activities":[10,2,5,20,0,0,20,0,0,0],"zona":57,"exam":14,"total":71}},"stu-sire-D373PGJ":{"Computación III":{"activities":[10,3,0,20,0,0,20,0,0,0],"zona":53,"exam":12,"total":65}},"D373PGJ":{"Computación III":{"activities":[10,3,0,20,0,0,20,0,0,0],"zona":53,"exam":12,"total":65}},"2026-SB-014":{"Computación III":{"activities":[10,3,0,20,0,0,20,0,0,0],"zona":53,"exam":12,"total":65}},"hernandezcruzandersonfernando":{"Computación III":{"activities":[10,3,0,20,0,0,20,0,0,0],"zona":53,"exam":12,"total":65}},"andersonfernandohernandezcruz":{"Computación III":{"activities":[10,3,0,20,0,0,20,0,0,0],"zona":53,"exam":12,"total":65}},"stu-sire-D983ZSD":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"D983ZSD":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"2026-SB-015":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"hernandezyhernandezligiaesmeralda":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"hernandezligiaesmeraldahernandezy":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"stu-sire-E856FHT":{"Computación III":{"activities":[10,0,1,0,0,0,20,0,0,0],"zona":31,"exam":11,"total":42}},"E856FHT":{"Computación III":{"activities":[10,0,1,0,0,0,20,0,0,0],"zona":31,"exam":11,"total":42}},"2026-SB-016":{"Computación III":{"activities":[10,0,1,0,0,0,20,0,0,0],"zona":31,"exam":11,"total":42}},"limagodoyleslylucia":{"Computación III":{"activities":[10,0,1,0,0,0,20,0,0,0],"zona":31,"exam":11,"total":42}},"leslylucialimagodoy":{"Computación III":{"activities":[10,0,1,0,0,0,20,0,0,0],"zona":31,"exam":11,"total":42}},"stu-sire-E867TQA":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"E867TQA":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"2026-SB-017":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"lopezcruzevelynidania":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"evelynidanialopezcruz":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"stu-sire-C221IRP":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":9,"total":77}},"C221IRP":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":9,"total":77}},"2026-SB-018":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":9,"total":77}},"lopezgarciakarennayeli":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":9,"total":77}},"karennayelilopezgarcia":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":9,"total":77}},"stu-sire-E276CAL":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":7,"total":75}},"E276CAL":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":7,"total":75}},"2026-SB-019":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":7,"total":75}},"lopezolivarestaniaelizabeth":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":7,"total":75}},"taniaelizabethlopezolivares":{"Computación III":{"activities":[10,15,3,20,0,0,20,0,0,0],"zona":68,"exam":7,"total":75}},"stu-sire-G755XHZ":{"Computación III":{"activities":[10,7,5,20,0,0,20,0,0,0],"zona":62,"exam":10,"total":72}},"G755XHZ":{"Computación III":{"activities":[10,7,5,20,0,0,20,0,0,0],"zona":62,"exam":10,"total":72}},"2026-SB-020":{"Computación III":{"activities":[10,7,5,20,0,0,20,0,0,0],"zona":62,"exam":10,"total":72}},"lopezortiznataligabriela":{"Computación III":{"activities":[10,7,5,20,0,0,20,0,0,0],"zona":62,"exam":10,"total":72}},"nataligabrielalopezortiz":{"Computación III":{"activities":[10,7,5,20,0,0,20,0,0,0],"zona":62,"exam":10,"total":72}},"stu-sire-E673DZJ":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":9,"total":78}},"E673DZJ":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":9,"total":78}},"2026-SB-021":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":9,"total":78}},"monzonordonezashlygabriela":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":9,"total":78}},"ashlygabrielamonzonordonez":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":9,"total":78}},"stu-sire-H273SQI":{"Computación III":{"activities":[10,0,1,20,0,0,20,0,0,0],"zona":51,"exam":9,"total":60}},"H273SQI":{"Computación III":{"activities":[10,0,1,20,0,0,20,0,0,0],"zona":51,"exam":9,"total":60}},"2026-SB-022":{"Computación III":{"activities":[10,0,1,20,0,0,20,0,0,0],"zona":51,"exam":9,"total":60}},"morancardonaluisangel":{"Computación III":{"activities":[10,0,1,20,0,0,20,0,0,0],"zona":51,"exam":9,"total":60}},"luisangelmorancardona":{"Computación III":{"activities":[10,0,1,20,0,0,20,0,0,0],"zona":51,"exam":9,"total":60}},"stu-sire-E840MSM":{"Computación III":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":9,"total":63}},"E840MSM":{"Computación III":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":9,"total":63}},"2026-SB-023":{"Computación III":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":9,"total":63}},"morancardonarociodelosangeles":{"Computación III":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":9,"total":63}},"rociodelosangelesmorancardona":{"Computación III":{"activities":[10,0,4,20,0,0,20,0,0,0],"zona":54,"exam":9,"total":63}},"stu-sire-F852CJK":{"Computación III":{"activities":[10,11,4,20,0,0,20,0,0,0],"zona":65,"exam":11,"total":77}},"F852CJK":{"Computación III":{"activities":[10,11,4,20,0,0,20,0,0,0],"zona":65,"exam":11,"total":77}},"2026-SB-024":{"Computación III":{"activities":[10,11,4,20,0,0,20,0,0,0],"zona":65,"exam":11,"total":77}},"mendezalejandrojosepablo":{"Computación III":{"activities":[10,11,4,20,0,0,20,0,0,0],"zona":65,"exam":11,"total":77}},"josepablomendezalejandro":{"Computación III":{"activities":[10,11,4,20,0,0,20,0,0,0],"zona":65,"exam":11,"total":77}},"stu-sire-F168MHN":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"F168MHN":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"2026-SB-025":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"olivareslopezsilvia":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"lopezsilviaolivares":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":13,"total":82}},"stu-sire-E869FLF":{"Computación III":{"activities":[10,14,2,20,0,0,20,0,0,0],"zona":66,"exam":12,"total":78}},"E869FLF":{"Computación III":{"activities":[10,14,2,20,0,0,20,0,0,0],"zona":66,"exam":12,"total":78}},"2026-SB-026":{"Computación III":{"activities":[10,14,2,20,0,0,20,0,0,0],"zona":66,"exam":12,"total":78}},"perezordonezcristobalfernando":{"Computación III":{"activities":[10,14,2,20,0,0,20,0,0,0],"zona":66,"exam":12,"total":78}},"cristobalfernandoperezordonez":{"Computación III":{"activities":[10,14,2,20,0,0,20,0,0,0],"zona":66,"exam":12,"total":78}},"stu-sire-D337SXS":{"Computación III":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":15,"total":80}},"D337SXS":{"Computación III":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":15,"total":80}},"2026-SB-027":{"Computación III":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":15,"total":80}},"perezramirezedgarivan":{"Computación III":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":15,"total":80}},"edgarivanperezramirez":{"Computación III":{"activities":[10,10,5,20,0,0,20,0,0,0],"zona":65,"exam":15,"total":80}},"stu-sire-E958FLB":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":17,"total":86}},"E958FLB":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":17,"total":86}},"2026-SB-028":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":17,"total":86}},"quiejperezchelseaadanelly":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":17,"total":86}},"chelseaadanellyquiejperez":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":17,"total":86}},"stu-sire-E370JQN":{"Computación III":{"activities":[10,9,4,20,0,0,20,0,0,0],"zona":63,"exam":9,"total":72}},"E370JQN":{"Computación III":{"activities":[10,9,4,20,0,0,20,0,0,0],"zona":63,"exam":9,"total":72}},"2026-SB-029":{"Computación III":{"activities":[10,9,4,20,0,0,20,0,0,0],"zona":63,"exam":9,"total":72}},"ramosperezlibnyiveth":{"Computación III":{"activities":[10,9,4,20,0,0,20,0,0,0],"zona":63,"exam":9,"total":72}},"libnyivethramosperez":{"Computación III":{"activities":[10,9,4,20,0,0,20,0,0,0],"zona":63,"exam":9,"total":72}},"stu-sire-E842TST":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":12,"total":67}},"E842TST":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":12,"total":67}},"2026-SB-030":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":12,"total":67}},"rojasgamboacarlosemmanuel":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":12,"total":67}},"carlosemmanuelrojasgamboa":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":12,"total":67}},"stu-sire-F838LPP":{"Computación III":{"activities":[10,0,2,20,0,0,20,0,0,0],"zona":52,"exam":10,"total":62}},"F838LPP":{"Computación III":{"activities":[10,0,2,20,0,0,20,0,0,0],"zona":52,"exam":10,"total":62}},"2026-SB-031":{"Computación III":{"activities":[10,0,2,20,0,0,20,0,0,0],"zona":52,"exam":10,"total":62}},"santoscortezcesaralexander":{"Computación III":{"activities":[10,0,2,20,0,0,20,0,0,0],"zona":52,"exam":10,"total":62}},"cesaralexandersantoscortez":{"Computación III":{"activities":[10,0,2,20,0,0,20,0,0,0],"zona":52,"exam":10,"total":62}},"stu-sire-E128BYU":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":14,"total":83}},"E128BYU":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":14,"total":83}},"2026-SB-032":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":14,"total":83}},"sanchezmenjivareliasabraham":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":14,"total":83}},"eliasabrahamsanchezmenjivar":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":14,"total":83}},"stu-sire-F993BRU":{"Computación III":{"activities":[10,8,5,20,0,0,20,0,0,0],"zona":63,"exam":9,"total":72}},"F993BRU":{"Computación III":{"activities":[10,8,5,20,0,0,20,0,0,0],"zona":63,"exam":9,"total":72}},"2026-SB-033":{"Computación III":{"activities":[10,8,5,20,0,0,20,0,0,0],"zona":63,"exam":9,"total":72}},"tepequelopezalissonscarleth":{"Computación III":{"activities":[10,8,5,20,0,0,20,0,0,0],"zona":63,"exam":9,"total":72}},"alissonscarlethtepequelopez":{"Computación III":{"activities":[10,8,5,20,0,0,20,0,0,0],"zona":63,"exam":9,"total":72}},"stu-sire-F189YIJ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":23,"total":93}},"F189YIJ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":23,"total":93}},"2026-SB-034":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":23,"total":93}},"tobarperezadonisesau":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":23,"total":93}},"adonisesautobarperez":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":23,"total":93}},"stu-sire-D658CKG":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":7,"total":77}},"D658CKG":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":7,"total":77}},"2026-SB-035":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":7,"total":77}},"venturacortezfernandoamadeo":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":7,"total":77}},"fernandoamadeoventuracortez":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":7,"total":77}},"stu-sire-F863UHG":{"Computación III":{"activities":[5,15,5,20,0,0,20,0,0,0],"zona":65,"exam":9,"total":74}},"F863UHG":{"Computación III":{"activities":[5,15,5,20,0,0,20,0,0,0],"zona":65,"exam":9,"total":74}},"2026-SC-001":{"Computación III":{"activities":[5,15,5,20,0,0,20,0,0,0],"zona":65,"exam":9,"total":74}},"alayrodasdarlynanabel":{"Computación III":{"activities":[5,15,5,20,0,0,20,0,0,0],"zona":65,"exam":9,"total":74}},"darlynanabelalayrodas":{"Computación III":{"activities":[5,15,5,20,0,0,20,0,0,0],"zona":65,"exam":9,"total":74}},"stu-sire-D266ZPV":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":5,"total":75}},"D266ZPV":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":5,"total":75}},"2026-SC-002":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":5,"total":75}},"batenfloressueysilorena":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":5,"total":75}},"sueysilorenabatenflores":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":5,"total":75}},"stu-sire-C118HCH":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"C118HCH":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"2026-SC-003":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"castanedadouglaslizandro":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"douglaslizandrocastaneda":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"stu-sire-E490GDZ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":21,"total":91}},"E490GDZ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":21,"total":91}},"2026-SC-004":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":21,"total":91}},"castanonsanchezcarlosamilcar":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":21,"total":91}},"carlosamilcarcastanonsanchez":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":21,"total":91}},"stu-sire-G165QRN":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"G165QRN":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"2026-SC-005":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"cruzaragonemilyestefania":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"emilyestefaniacruzaragon":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"stu-sire-D229AYP":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"D229AYP":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"2026-SC-006":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"eliasolivaresjohanaliseth":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"johanalisetheliasolivares":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"stu-sire-F429ZQL":{"Computación III":{"activities":[0,15,4,0,0,0,20,0,0,0],"zona":39,"exam":10,"total":49}},"F429ZQL":{"Computación III":{"activities":[0,15,4,0,0,0,20,0,0,0],"zona":39,"exam":10,"total":49}},"2026-SC-007":{"Computación III":{"activities":[0,15,4,0,0,0,20,0,0,0],"zona":39,"exam":10,"total":49}},"floreschinchillajuniorjosedaniel":{"Computación III":{"activities":[0,15,4,0,0,0,20,0,0,0],"zona":39,"exam":10,"total":49}},"juniorjosedanielfloreschinchilla":{"Computación III":{"activities":[0,15,4,0,0,0,20,0,0,0],"zona":39,"exam":10,"total":49}},"stu-sire-E063MMA":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":14,"total":63}},"E063MMA":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":14,"total":63}},"2026-SC-008":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":14,"total":63}},"fuettererarrecisbrendajazmin":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":14,"total":63}},"brendajazminfuettererarrecis":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":14,"total":63}},"stu-sire-F282BVK":{"Computación III":{"activities":[10,5,3,0,0,0,20,0,0,0],"zona":38,"exam":18,"total":56}},"F282BVK":{"Computación III":{"activities":[10,5,3,0,0,0,20,0,0,0],"zona":38,"exam":18,"total":56}},"2026-SC-009":{"Computación III":{"activities":[10,5,3,0,0,0,20,0,0,0],"zona":38,"exam":18,"total":56}},"gomezaranakaterineabigail":{"Computación III":{"activities":[10,5,3,0,0,0,20,0,0,0],"zona":38,"exam":18,"total":56}},"katerineabigailgomezarana":{"Computación III":{"activities":[10,5,3,0,0,0,20,0,0,0],"zona":38,"exam":18,"total":56}},"stu-sire-G341CEU":{"Computación III":{"activities":[10,8,4,20,0,0,20,0,0,0],"zona":62,"exam":12,"total":74}},"G341CEU":{"Computación III":{"activities":[10,8,4,20,0,0,20,0,0,0],"zona":62,"exam":12,"total":74}},"2026-SC-010":{"Computación III":{"activities":[10,8,4,20,0,0,20,0,0,0],"zona":62,"exam":12,"total":74}},"hernandezgrijalvajuanadelosangeles":{"Computación III":{"activities":[10,8,4,20,0,0,20,0,0,0],"zona":62,"exam":12,"total":74}},"juanadelosangeleshernandezgrijalva":{"Computación III":{"activities":[10,8,4,20,0,0,20,0,0,0],"zona":62,"exam":12,"total":74}},"stu-sire-C318SQK":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":11,"total":66}},"C318SQK":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":11,"total":66}},"2026-SC-011":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":11,"total":66}},"lopezgrijalvafiorellacarolangs":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":11,"total":66}},"fiorellacarolangslopezgrijalva":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":11,"total":66}},"stu-sire-F990ZJF":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":13,"total":68}},"F990ZJF":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":13,"total":68}},"2026-SC-012":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":13,"total":68}},"lopezhernandezyensimadai":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":13,"total":68}},"yensimadailopezhernandez":{"Computación III":{"activities":[10,0,5,20,0,0,20,0,0,0],"zona":55,"exam":13,"total":68}},"stu-sire-G942GWU":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"G942GWU":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"2026-SC-013":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"martinezcortezalberarnoldo":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"alberarnoldomartinezcortez":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"stu-sire-E339GBF":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"E339GBF":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"2026-SC-014":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"mazariegosmoralesmargaretharacely":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"margaretharacelymazariegosmorales":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"stu-sire-C120GRZ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"C120GRZ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"2026-SC-015":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"mejiagodoyfatimaclaribel":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"fatimaclaribelmejiagodoy":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"stu-sire-E672PGQ":{"Computación III":{"activities":[0,9,2,0,0,0,20,0,0,0],"zona":31,"exam":11,"total":42}},"E672PGQ":{"Computación III":{"activities":[0,9,2,0,0,0,20,0,0,0],"zona":31,"exam":11,"total":42}},"2026-SC-016":{"Computación III":{"activities":[0,9,2,0,0,0,20,0,0,0],"zona":31,"exam":11,"total":42}},"monzonolivaresfranzirvin":{"Computación III":{"activities":[0,9,2,0,0,0,20,0,0,0],"zona":31,"exam":11,"total":42}},"franzirvinmonzonolivares":{"Computación III":{"activities":[0,9,2,0,0,0,20,0,0,0],"zona":31,"exam":11,"total":42}},"stu-sire-F561VTN":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"F561VTN":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"2026-SC-017":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"mendezcruzadrianacarolina":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"adrianacarolinamendezcruz":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":17,"total":87}},"stu-sire-E945DZQ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"E945DZQ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"2026-SC-018":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"najarrocontrerasjosearmando":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"josearmandonajarrocontreras":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"stu-sire-E586PRK":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"E586PRK":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"2026-SC-019":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"navassosajimmyisaac":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"jimmyisaacnavassosa":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"stu-sire-F487JBR":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"F487JBR":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"2026-SC-020":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"ordonezcoradomarlenfabiola":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"marlenfabiolaordonezcorado":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"stu-sire-E685KLX":{"Computación III":{"activities":[10,9,5,20,0,0,20,0,0,0],"zona":64,"exam":9,"total":73}},"E685KLX":{"Computación III":{"activities":[10,9,5,20,0,0,20,0,0,0],"zona":64,"exam":9,"total":73}},"2026-SC-021":{"Computación III":{"activities":[10,9,5,20,0,0,20,0,0,0],"zona":64,"exam":9,"total":73}},"perezgironjancarlos":{"Computación III":{"activities":[10,9,5,20,0,0,20,0,0,0],"zona":64,"exam":9,"total":73}},"jancarlosperezgiron":{"Computación III":{"activities":[10,9,5,20,0,0,20,0,0,0],"zona":64,"exam":9,"total":73}},"stu-sire-D884WXT":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":18,"total":78}},"D884WXT":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":18,"total":78}},"2026-SC-022":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":18,"total":78}},"perezzepedaadrianamelissa":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":18,"total":78}},"adrianamelissaperezzepeda":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":18,"total":78}},"stu-sire-F661RYI":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":23,"total":93}},"F661RYI":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":23,"total":93}},"2026-SC-023":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":23,"total":93}},"quinonezruanofatimarosmery":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":23,"total":93}},"fatimarosmeryquinonezruano":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":23,"total":93}},"stu-sire-F269NUN":{"Computación III":{"activities":[10,15,2,20,0,0,20,0,0,0],"zona":67,"exam":7,"total":74}},"F269NUN":{"Computación III":{"activities":[10,15,2,20,0,0,20,0,0,0],"zona":67,"exam":7,"total":74}},"2026-SC-024":{"Computación III":{"activities":[10,15,2,20,0,0,20,0,0,0],"zona":67,"exam":7,"total":74}},"ramosgregoriokeilygislena":{"Computación III":{"activities":[10,15,2,20,0,0,20,0,0,0],"zona":67,"exam":7,"total":74}},"keilygislenaramosgregorio":{"Computación III":{"activities":[10,15,2,20,0,0,20,0,0,0],"zona":67,"exam":7,"total":74}},"stu-sire-C021SLF":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"C021SLF":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"2026-SC-025":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"rodriguezarauzgabiestefani":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"gabiestefanirodriguezarauz":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"stu-sire-G856EMM":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":13,"total":83}},"G856EMM":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":13,"total":83}},"2026-SC-026":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":13,"total":83}},"trinidadordonezanibalandres":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":13,"total":83}},"anibalandrestrinidadordonez":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":13,"total":83}},"stu-sire-G355HJQ":{"Computación III":{"activities":[10,2,4,20,0,0,20,0,0,0],"zona":56,"exam":14,"total":70}},"G355HJQ":{"Computación III":{"activities":[10,2,4,20,0,0,20,0,0,0],"zona":56,"exam":14,"total":70}},"2026-SC-027":{"Computación III":{"activities":[10,2,4,20,0,0,20,0,0,0],"zona":56,"exam":14,"total":70}},"usconcuayuridiajimena":{"Computación III":{"activities":[10,2,4,20,0,0,20,0,0,0],"zona":56,"exam":14,"total":70}},"yuridiajimenausconcua":{"Computación III":{"activities":[10,2,4,20,0,0,20,0,0,0],"zona":56,"exam":14,"total":70}},"stu-sire-F168INP":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"F168INP":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"2026-SC-028":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"vegazepedajoselinekarina":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"joselinekarinavegazepeda":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"stu-sire-C822DFD":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"C822DFD":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"2026-SC-029":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"vivasdiazheifilizaldi":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"heifilizaldivivasdiaz":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"stu-sire-D028KQS":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":16,"total":65}},"D028KQS":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":16,"total":65}},"2026-SC-030":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":16,"total":65}},"vasquezbarrerajudithalexandra":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":16,"total":65}},"judithalexandravasquezbarrera":{"Computación III":{"activities":[10,15,4,0,0,0,20,0,0,0],"zona":49,"exam":16,"total":65}},"stu-sire-F249QGP":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":18,"total":87}},"F249QGP":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":18,"total":87}},"2026-SC-031":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":18,"total":87}},"vasquezvasquezallisontatiana":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":18,"total":87}},"allisontatianavasquezvasquez":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":18,"total":87}},"stu-sire-G742KAQ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"G742KAQ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"2026-SC-032":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"zapetarosalesmelaniealyssa":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"melaniealyssazapetarosales":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"stu-sire-F551WFK":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":18,"total":88}},"F551WFK":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":18,"total":88}},"2026-SC-033":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":18,"total":88}},"zepedaramirezstefanyjulissa":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":18,"total":88}},"stefanyjulissazepedaramirez":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":18,"total":88}},"stu-sire-E461GND":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"E461GND":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"2026-SD-001":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"chaconlemusastridyamileth":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"astridyamilethchaconlemus":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"stu-sire-E559BKU":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":9,"total":79}},"E559BKU":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":9,"total":79}},"2026-SD-002":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":9,"total":79}},"chaconlemusjackelineyamileth":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":9,"total":79}},"jackelineyamilethchaconlemus":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":9,"total":79}},"stu-sire-E079JCB":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"E079JCB":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"2026-SD-003":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"cintomonzonroselindaniela":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"roselindanielacintomonzon":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"stu-sire-G561UGV":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"G561UGV":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"2026-SD-004":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"cruzmartinezileanajireh":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"ileanajirehcruzmartinez":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":14,"total":84}},"stu-sire-D326DMZ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":5,"total":75}},"D326DMZ":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":5,"total":75}},"2026-SD-005":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":5,"total":75}},"cuyuchbarreraluisfernando":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":5,"total":75}},"luisfernandocuyuchbarrera":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":5,"total":75}},"stu-sire-E860THN":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"E860THN":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"2026-SD-006":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"floresordonezwildersamuel":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"wildersamuelfloresordonez":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"stu-sire-G163ALZ":{"Computación III":{"activities":[10,15,5,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64}},"G163ALZ":{"Computación III":{"activities":[10,15,5,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64}},"2026-SD-007":{"Computación III":{"activities":[10,15,5,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64}},"garciagregoriokimberlyyesenia":{"Computación III":{"activities":[10,15,5,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64}},"kimberlyyeseniagarciagregorio":{"Computación III":{"activities":[10,15,5,0,0,0,20,0,0,0],"zona":50,"exam":14,"total":64}},"stu-sire-D351TRM":{"Computación III":{"activities":[10,11,5,20,0,0,17,0,0,0],"zona":63,"exam":11,"total":74}},"D351TRM":{"Computación III":{"activities":[10,11,5,20,0,0,17,0,0,0],"zona":63,"exam":11,"total":74}},"2026-SD-008":{"Computación III":{"activities":[10,11,5,20,0,0,17,0,0,0],"zona":63,"exam":11,"total":74}},"garciamendezvivianadriana":{"Computación III":{"activities":[10,11,5,20,0,0,17,0,0,0],"zona":63,"exam":11,"total":74}},"vivianadrianagarciamendez":{"Computación III":{"activities":[10,11,5,20,0,0,17,0,0,0],"zona":63,"exam":11,"total":74}},"stu-sire-F085GHR":{"Computación III":{"activities":[0,4,5,20,0,0,20,0,0,0],"zona":49,"exam":18,"total":67}},"F085GHR":{"Computación III":{"activities":[0,4,5,20,0,0,20,0,0,0],"zona":49,"exam":18,"total":67}},"2026-SD-009":{"Computación III":{"activities":[0,4,5,20,0,0,20,0,0,0],"zona":49,"exam":18,"total":67}},"garciamurgaangelarmando":{"Computación III":{"activities":[0,4,5,20,0,0,20,0,0,0],"zona":49,"exam":18,"total":67}},"angelarmandogarciamurga":{"Computación III":{"activities":[0,4,5,20,0,0,20,0,0,0],"zona":49,"exam":18,"total":67}},"stu-sire-F242ULH":{"Computación III":{"activities":[0,5,3,20,0,0,20,0,0,0],"zona":48,"exam":15,"total":63}},"F242ULH":{"Computación III":{"activities":[0,5,3,20,0,0,20,0,0,0],"zona":48,"exam":15,"total":63}},"2026-SD-010":{"Computación III":{"activities":[0,5,3,20,0,0,20,0,0,0],"zona":48,"exam":15,"total":63}},"garridocruzjuliocesar":{"Computación III":{"activities":[0,5,3,20,0,0,20,0,0,0],"zona":48,"exam":15,"total":63}},"juliocesargarridocruz":{"Computación III":{"activities":[0,5,3,20,0,0,20,0,0,0],"zona":48,"exam":15,"total":63}},"stu-sire-F682YFQ":{"Computación III":{"activities":[10,9,5,20,0,0,17,0,0,0],"zona":61,"exam":17,"total":78}},"F682YFQ":{"Computación III":{"activities":[10,9,5,20,0,0,17,0,0,0],"zona":61,"exam":17,"total":78}},"2026-SD-011":{"Computación III":{"activities":[10,9,5,20,0,0,17,0,0,0],"zona":61,"exam":17,"total":78}},"garridogironfrancisalexander":{"Computación III":{"activities":[10,9,5,20,0,0,17,0,0,0],"zona":61,"exam":17,"total":78}},"francisalexandergarridogiron":{"Computación III":{"activities":[10,9,5,20,0,0,17,0,0,0],"zona":61,"exam":17,"total":78}},"stu-sire-G553EVA":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"G553EVA":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"2026-SD-012":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"gironarteagaastridjemima":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"astridjemimagironarteaga":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":20,"total":90}},"stu-sire-F348TUD":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"F348TUD":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"2026-SD-013":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"gonzalezmendezyeimiguadalupe":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"yeimiguadalupegonzalezmendez":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":16,"total":85}},"stu-sire-E032YEF":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":13,"total":73}},"E032YEF":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":13,"total":73}},"2026-SD-014":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":13,"total":73}},"gomezramirezeivijeshuaithuriel":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":13,"total":73}},"eivijeshuaithurielgomezramirez":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":13,"total":73}},"stu-sire-D538BIA":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"D538BIA":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"2026-SD-015":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"jimenezlopezallaneduardo":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"allaneduardojimenezlopez":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":15,"total":85}},"stu-sire-E385PSG":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"E385PSG":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"2026-SD-016":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"lopezramosleslilorena":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"leslilorenalopezramos":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":12,"total":82}},"stu-sire-F755PSN":{"Computación III":{"activities":[10,11,5,20,0,0,20,0,0,0],"zona":66,"exam":12,"total":78}},"F755PSN":{"Computación III":{"activities":[10,11,5,20,0,0,20,0,0,0],"zona":66,"exam":12,"total":78}},"2026-SD-017":{"Computación III":{"activities":[10,11,5,20,0,0,20,0,0,0],"zona":66,"exam":12,"total":78}},"martinezcorderowilman":{"Computación III":{"activities":[10,11,5,20,0,0,20,0,0,0],"zona":66,"exam":12,"total":78}},"corderowilmanmartinez":{"Computación III":{"activities":[10,11,5,20,0,0,20,0,0,0],"zona":66,"exam":12,"total":78}},"stu-sire-F361JGB":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"F361JGB":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"2026-SD-018":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"monzongregoriorobinsonosvaldo":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"robinsonosvaldomonzongregorio":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":11,"total":80}},"stu-sire-F693HKS":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":2,"total":62}},"F693HKS":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":2,"total":62}},"2026-SD-019":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":2,"total":62}},"mendezalejandrodayanamishel":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":2,"total":62}},"dayanamishelmendezalejandro":{"Computación III":{"activities":[0,15,5,20,0,0,20,0,0,0],"zona":60,"exam":2,"total":62}},"stu-sire-F496KGK":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"F496KGK":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"2026-SD-020":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"mendezrecinosgrasielajeaneth":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"grasielajeanethmendezrecinos":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":8,"total":78}},"stu-sire-G527TFX":{"Computación III":{"activities":[10,15,5,20,0,0,12,0,0,0],"zona":62,"exam":15,"total":77}},"G527TFX":{"Computación III":{"activities":[10,15,5,20,0,0,12,0,0,0],"zona":62,"exam":15,"total":77}},"2026-SD-021":{"Computación III":{"activities":[10,15,5,20,0,0,12,0,0,0],"zona":62,"exam":15,"total":77}},"perezlopezalisondayana":{"Computación III":{"activities":[10,15,5,20,0,0,12,0,0,0],"zona":62,"exam":15,"total":77}},"alisondayanaperezlopez":{"Computación III":{"activities":[10,15,5,20,0,0,12,0,0,0],"zona":62,"exam":15,"total":77}},"stu-sire-C421JEX":{"Computación III":{"activities":[0,6,5,20,0,0,20,0,0,0],"zona":51,"exam":12,"total":63}},"C421JEX":{"Computación III":{"activities":[0,6,5,20,0,0,20,0,0,0],"zona":51,"exam":12,"total":63}},"2026-SD-022":{"Computación III":{"activities":[0,6,5,20,0,0,20,0,0,0],"zona":51,"exam":12,"total":63}},"perezmartinezsaolyjirel":{"Computación III":{"activities":[0,6,5,20,0,0,20,0,0,0],"zona":51,"exam":12,"total":63}},"saolyjirelperezmartinez":{"Computación III":{"activities":[0,6,5,20,0,0,20,0,0,0],"zona":51,"exam":12,"total":63}},"stu-sire-C517ZHX":{"Computación III":{"activities":[10,6,4,20,0,0,20,0,0,0],"zona":60,"exam":10,"total":70}},"C517ZHX":{"Computación III":{"activities":[10,6,4,20,0,0,20,0,0,0],"zona":60,"exam":10,"total":70}},"2026-SD-023":{"Computación III":{"activities":[10,6,4,20,0,0,20,0,0,0],"zona":60,"exam":10,"total":70}},"ramirezramirezangelarebeca":{"Computación III":{"activities":[10,6,4,20,0,0,20,0,0,0],"zona":60,"exam":10,"total":70}},"angelarebecaramirezramirez":{"Computación III":{"activities":[10,6,4,20,0,0,20,0,0,0],"zona":60,"exam":10,"total":70}},"stu-sire-E397QUC":{"Computación III":{"activities":[0,1,5,20,0,0,20,0,0,0],"zona":46,"exam":12,"total":58}},"E397QUC":{"Computación III":{"activities":[0,1,5,20,0,0,20,0,0,0],"zona":46,"exam":12,"total":58}},"2026-SD-024":{"Computación III":{"activities":[0,1,5,20,0,0,20,0,0,0],"zona":46,"exam":12,"total":58}},"reyesramirezelmerenrique":{"Computación III":{"activities":[0,1,5,20,0,0,20,0,0,0],"zona":46,"exam":12,"total":58}},"elmerenriquereyesramirez":{"Computación III":{"activities":[0,1,5,20,0,0,20,0,0,0],"zona":46,"exam":12,"total":58}},"stu-sire-C822YJN":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"C822YJN":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"2026-SD-025":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"salvatierracalderasnatalygabriela":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"natalygabrielasalvatierracalderas":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":10,"total":80}},"stu-sire-E175FTL":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":9,"total":78}},"E175FTL":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":9,"total":78}},"2026-SD-026":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":9,"total":78}},"urbinanajeraluzangela":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":9,"total":78}},"luzangelaurbinanajera":{"Computación III":{"activities":[10,15,4,20,0,0,20,0,0,0],"zona":69,"exam":9,"total":78}},"stu-sire-F693KBT":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":11,"total":81}},"F693KBT":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":11,"total":81}},"2026-SD-027":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":11,"total":81}},"virulayanesbeverlynyanet":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":11,"total":81}},"beverlynyanetvirulayanes":{"Computación III":{"activities":[10,15,5,20,0,0,20,0,0,0],"zona":70,"exam":11,"total":81}},"stu-sire-F231NDZ":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":0,"total":69}},"F231NDZ":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":0,"total":69}},"2026-SD-028":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":0,"total":69}},"zunigagarciastefanyjimena":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":0,"total":69}},"stefanyjimenazunigagarcia":{"Computación III":{"activities":[10,14,5,20,0,0,20,0,0,0],"zona":69,"exam":0,"total":69}}};
+
+function getOfficialBim2Details(student, subjectName) {
+    if (!student || typeof OFFICIAL_BIM2_PATCH_MAP === 'undefined') return null;
+    const cleanStr = s => (s || '').toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, '');
+
+    let record = null;
+    if (student.id && OFFICIAL_BIM2_PATCH_MAP[student.id]) {
+        record = OFFICIAL_BIM2_PATCH_MAP[student.id];
+    } else if (student.personalCode && OFFICIAL_BIM2_PATCH_MAP[student.personalCode]) {
+        record = OFFICIAL_BIM2_PATCH_MAP[student.personalCode];
+    } else if (student.carne && OFFICIAL_BIM2_PATCH_MAP[student.carne]) {
+        record = OFFICIAL_BIM2_PATCH_MAP[student.carne];
+    } else {
+        const c1 = cleanStr(student.name);
+        const c2 = cleanStr(`${student.lastName || ''} ${student.firstName || ''}`);
+        const c3 = cleanStr(`${student.firstName || ''} ${student.lastName || ''}`);
+        record = OFFICIAL_BIM2_PATCH_MAP[c1] || OFFICIAL_BIM2_PATCH_MAP[c2] || OFFICIAL_BIM2_PATCH_MAP[c3];
+    }
+
+    if (record && record[subjectName]) {
+        return record[subjectName];
+    }
+    return null;
+}
+window.getOfficialBim2Details = getOfficialBim2Details;
+
+
 function ensureSireOfficialStudents() {
     if (!Array.isArray(STATE.students) || STATE.students.length === 0) {
         STATE.students = (typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : [];
@@ -4018,7 +4051,22 @@ function ensureSireOfficialStudents() {
                                 anyStudentUpdated = true;
                             }
                         }
-                        target.grades[subj][1] = 0;
+                        if (off.grades[subj] && off.grades[subj][1] !== undefined) {
+                            if (target.grades[subj][1] !== off.grades[subj][1]) {
+                                target.grades[subj][1] = off.grades[subj][1];
+                                anyStudentUpdated = true;
+                            }
+                        } else {
+                            const bim2Off = (typeof getOfficialBim2Details === 'function') ? getOfficialBim2Details(target, subj) : null;
+                            if (bim2Off && bim2Off.total !== undefined) {
+                                if (target.grades[subj][1] !== bim2Off.total) {
+                                    target.grades[subj][1] = bim2Off.total;
+                                    anyStudentUpdated = true;
+                                }
+                            } else if (target.grades[subj][1] === undefined) {
+                                target.grades[subj][1] = 0;
+                            }
+                        }
                         target.grades[subj][2] = 0;
                         target.grades[subj][3] = 0;
                     });
@@ -4034,6 +4082,28 @@ function ensureSireOfficialStudents() {
                                     anyStudentUpdated = true;
                                 }
                             }
+                            if (off.gradebookDetails[subj] && off.gradebookDetails[subj]["2"]) {
+                                const offDet2 = off.gradebookDetails[subj]["2"];
+                                const curDet2 = target.gradebookDetails[subj]["2"];
+                                if (!curDet2 || JSON.stringify(curDet2.activities) !== JSON.stringify(offDet2.activities) || curDet2.zona !== offDet2.zona || curDet2.exam !== offDet2.exam || curDet2.total !== offDet2.total) {
+                                    target.gradebookDetails[subj]["2"] = JSON.parse(JSON.stringify(offDet2));
+                                    anyStudentUpdated = true;
+                                }
+                            } else {
+                                const bim2Det = (typeof getOfficialBim2Details === 'function') ? getOfficialBim2Details(target, subj) : null;
+                                if (bim2Det) {
+                                    const curDet2 = target.gradebookDetails[subj]["2"];
+                                    if (!curDet2 || JSON.stringify(curDet2.activities) !== JSON.stringify(bim2Det.activities) || curDet2.zona !== bim2Det.zona || curDet2.exam !== bim2Det.exam || curDet2.total !== bim2Det.total) {
+                                        target.gradebookDetails[subj]["2"] = {
+                                            activities: Array.isArray(bim2Det.activities) ? [...bim2Det.activities] : [0,0,0,0,0,0,0,0,0,0],
+                                            zona: bim2Det.zona,
+                                            exam: bim2Det.exam,
+                                            total: bim2Det.total
+                                        };
+                                        anyStudentUpdated = true;
+                                    }
+                                }
+                            }
                             for (let u = 2; u <= 4; u++) {
                                 if (!target.gradebookDetails[subj][String(u)]) {
                                     target.gradebookDetails[subj][String(u)] = { activities: [0,0,0,0,0,0,0,0,0,0], zona: 0, exam: 0, total: 0 };
@@ -4044,6 +4114,34 @@ function ensureSireOfficialStudents() {
                 }
             }
         });
+        // 🎓 Sincronización incondicional de calificaciones oficiales del 2do Bimestre 2026
+        if (typeof OFFICIAL_BIM2_PATCH_MAP !== 'undefined') {
+            (STATE.students || []).forEach(target => {
+                ['Cálculo Mercantil y Financiero', 'Computación II', 'Computación III'].forEach(subj => {
+                    const bim2Off = (typeof getOfficialBim2Details === 'function') ? getOfficialBim2Details(target, subj) : null;
+                    if (bim2Off) {
+                        if (!target.grades) target.grades = {};
+                        if (!target.grades[subj]) target.grades[subj] = [0, 0, 0, 0];
+                        if (target.grades[subj][1] !== bim2Off.total) {
+                            target.grades[subj][1] = bim2Off.total;
+                            anyStudentUpdated = true;
+                        }
+                        if (!target.gradebookDetails) target.gradebookDetails = {};
+                        if (!target.gradebookDetails[subj]) target.gradebookDetails[subj] = {};
+                        const curDet2 = target.gradebookDetails[subj]["2"];
+                        if (!curDet2 || JSON.stringify(curDet2.activities) !== JSON.stringify(bim2Off.activities) || curDet2.zona !== bim2Off.zona || curDet2.exam !== bim2Off.exam || curDet2.total !== bim2Off.total) {
+                            target.gradebookDetails[subj]["2"] = {
+                                activities: Array.isArray(bim2Off.activities) ? [...bim2Off.activities] : [0,0,0,0,0,0,0,0,0,0],
+                                zona: bim2Off.zona,
+                                exam: bim2Off.exam,
+                                total: bim2Off.total
+                            };
+                            anyStudentUpdated = true;
+                        }
+                    }
+                });
+            });
+        }
         if (anyStudentUpdated && typeof saveStateToLocalStorage === 'function') {
             STATE.lastModified = Math.max(STATE.lastModified || 0, Date.now());
             try {
@@ -8874,13 +8972,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 63,
-                0,
+                60,
                 0,
                 0
             ],
             "Computación II": [
                 83,
-                0,
+                85,
                 0,
                 0
             ]
@@ -8906,20 +9004,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 10,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -8976,20 +9074,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -9064,13 +9162,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 78,
-                0,
+                64,
                 0,
                 0
             ],
             "Computación II": [
                 92,
-                0,
+                100,
                 0,
                 0
             ]
@@ -9096,20 +9194,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 14,
+                    "total": 64
                 },
                 "3": {
                     "activities": [
@@ -9166,20 +9264,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -9254,13 +9352,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 55,
-                0,
+                64,
                 0,
                 0
             ],
             "Computación II": [
                 72,
-                0,
+                84,
                 0,
                 0
             ]
@@ -9286,20 +9384,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 14,
+                    "total": 64
                 },
                 "3": {
                     "activities": [
@@ -9356,20 +9454,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        4,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -9444,13 +9542,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 95,
-                0,
+                70,
                 0,
                 0
             ],
             "Computación II": [
                 100,
-                0,
+                85,
                 0,
                 0
             ]
@@ -9476,20 +9574,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 20,
+                    "total": 70
                 },
                 "3": {
                     "activities": [
@@ -9547,19 +9645,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        10,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -9634,13 +9732,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 56,
-                0,
+                60,
                 0,
                 0
             ],
             "Computación II": [
                 73,
-                0,
+                51,
                 0,
                 0
             ]
@@ -9666,20 +9764,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 10,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -9739,17 +9837,17 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0,
                         0,
+                        1,
                         0,
                         0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 21,
+                    "exam": 30,
+                    "total": 51
                 },
                 "3": {
                     "activities": [
@@ -9824,13 +9922,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 63,
-                0,
+                65,
                 0,
                 0
             ],
             "Computación II": [
                 90,
-                0,
+                100,
                 0,
                 0
             ]
@@ -9856,20 +9954,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 15,
+                    "total": 65
                 },
                 "3": {
                     "activities": [
@@ -9926,20 +10024,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -10014,13 +10112,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 55,
-                0,
+                61,
                 0,
                 0
             ],
             "Computación II": [
                 75,
-                0,
+                84,
                 0,
                 0
             ]
@@ -10046,20 +10144,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 11,
+                    "total": 61
                 },
                 "3": {
                     "activities": [
@@ -10116,20 +10214,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        4,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -10204,13 +10302,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 73,
-                0,
+                62,
                 0,
                 0
             ],
             "Computación II": [
                 91,
-                0,
+                95,
                 0,
                 0
             ]
@@ -10236,20 +10334,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 12,
+                    "total": 62
                 },
                 "3": {
                     "activities": [
@@ -10306,20 +10404,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 65,
+                    "exam": 30,
+                    "total": 95
                 },
                 "3": {
                     "activities": [
@@ -10394,13 +10492,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 82,
-                0,
+                65,
                 0,
                 0
             ],
             "Computación II": [
                 90,
-                0,
+                85,
                 0,
                 0
             ]
@@ -10426,20 +10524,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 15,
+                    "total": 65
                 },
                 "3": {
                     "activities": [
@@ -10496,20 +10594,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -10774,13 +10872,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 64,
-                0,
+                60,
                 0,
                 0
             ],
             "Computación II": [
                 76,
-                0,
+                72,
                 0,
                 0
             ]
@@ -10806,20 +10904,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 10,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -10878,18 +10976,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        20,
+                        2,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 42,
+                    "exam": 30,
+                    "total": 72
                 },
                 "3": {
                     "activities": [
@@ -10964,13 +11062,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 93,
-                0,
+                70,
                 0,
                 0
             ],
             "Computación II": [
                 100,
-                0,
+                100,
                 0,
                 0
             ]
@@ -10996,20 +11094,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 20,
+                    "total": 70
                 },
                 "3": {
                     "activities": [
@@ -11066,20 +11164,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -11154,13 +11252,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 57,
-                0,
+                60,
                 0,
                 0
             ],
             "Computación II": [
                 91,
-                0,
+                85,
                 0,
                 0
             ]
@@ -11186,20 +11284,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 10,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -11256,20 +11354,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -11344,13 +11442,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 67,
-                0,
+                60,
                 0,
                 0
             ],
             "Computación II": [
                 79,
-                0,
+                85,
                 0,
                 0
             ]
@@ -11376,20 +11474,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 10,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -11446,20 +11544,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -11534,13 +11632,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 88,
-                0,
+                77,
                 0,
                 0
             ],
             "Computación II": [
                 89,
-                0,
+                100,
                 0,
                 0
             ]
@@ -11566,20 +11664,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 27,
+                    "total": 77
                 },
                 "3": {
                     "activities": [
@@ -11636,20 +11734,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -11724,13 +11822,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 47,
-                0,
+                60,
                 0,
                 0
             ],
             "Computación II": [
                 72,
-                0,
+                90,
                 0,
                 0
             ]
@@ -11756,20 +11854,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 10,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -11827,19 +11925,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        15,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 30,
+                    "total": 90
                 },
                 "3": {
                     "activities": [
@@ -11914,13 +12012,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 76,
-                0,
+                60,
                 0,
                 0
             ],
             "Computación II": [
                 76,
-                0,
+                75,
                 0,
                 0
             ]
@@ -11946,20 +12044,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 10,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -12018,18 +12116,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 45,
+                    "exam": 30,
+                    "total": 75
                 },
                 "3": {
                     "activities": [
@@ -12104,13 +12202,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 63,
-                0,
+                70,
                 0,
                 0
             ],
             "Computación II": [
                 91,
-                0,
+                85,
                 0,
                 0
             ]
@@ -12136,20 +12234,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 20,
+                    "total": 70
                 },
                 "3": {
                     "activities": [
@@ -12206,20 +12304,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -12294,13 +12392,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 67,
-                0,
+                60,
                 0,
                 0
             ],
             "Computación II": [
                 73,
-                0,
+                85,
                 0,
                 0
             ]
@@ -12326,20 +12424,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 10,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -12396,20 +12494,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -12484,13 +12582,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 55,
-                0,
+                100,
                 0,
                 0
             ],
             "Computación II": [
                 76,
-                0,
+                95,
                 0,
                 0
             ]
@@ -12516,20 +12614,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 50,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -12586,20 +12684,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 65,
+                    "exam": 30,
+                    "total": 95
                 },
                 "3": {
                     "activities": [
@@ -12674,13 +12772,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 55,
-                0,
+                78,
                 0,
                 0
             ],
             "Computación II": [
                 81,
-                0,
+                85,
                 0,
                 0
             ]
@@ -12706,20 +12804,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 28,
+                    "total": 78
                 },
                 "3": {
                     "activities": [
@@ -12776,20 +12874,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -12864,13 +12962,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 50,
-                0,
+                91,
                 0,
                 0
             ],
             "Computación II": [
                 86,
-                0,
+                85,
                 0,
                 0
             ]
@@ -12896,20 +12994,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 41,
+                    "total": 91
                 },
                 "3": {
                     "activities": [
@@ -12966,20 +13064,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -13054,13 +13152,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 69,
-                0,
+                65,
                 0,
                 0
             ],
             "Computación II": [
                 85,
-                0,
+                75,
                 0,
                 0
             ]
@@ -13086,20 +13184,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 15,
+                    "total": 65
                 },
                 "3": {
                     "activities": [
@@ -13158,18 +13256,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 45,
+                    "exam": 30,
+                    "total": 75
                 },
                 "3": {
                     "activities": [
@@ -13244,13 +13342,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 71,
-                0,
+                61,
                 0,
                 0
             ],
             "Computación II": [
                 100,
-                0,
+                95,
                 0,
                 0
             ]
@@ -13276,20 +13374,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 11,
+                    "total": 61
                 },
                 "3": {
                     "activities": [
@@ -13346,20 +13444,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 65,
+                    "exam": 30,
+                    "total": 95
                 },
                 "3": {
                     "activities": [
@@ -13434,13 +13532,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 72,
-                0,
+                60,
                 0,
                 0
             ],
             "Computación II": [
                 94,
-                0,
+                62,
                 0,
                 0
             ]
@@ -13466,20 +13564,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 10,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -13536,20 +13634,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
                         0,
                         0,
+                        2,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 32,
+                    "exam": 30,
+                    "total": 62
                 },
                 "3": {
                     "activities": [
@@ -13624,13 +13722,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 70,
-                0,
+                70,
                 0,
                 0
             ],
             "Computación II": [
                 82,
-                0,
+                90,
                 0,
                 0
             ]
@@ -13656,20 +13754,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 20,
+                    "total": 70
                 },
                 "3": {
                     "activities": [
@@ -13726,20 +13824,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 30,
+                    "total": 90
                 },
                 "3": {
                     "activities": [
@@ -13814,13 +13912,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 92,
-                0,
+                75,
                 0,
                 0
             ],
             "Computación II": [
                 100,
-                0,
+                100,
                 0,
                 0
             ]
@@ -13846,20 +13944,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 25,
+                    "total": 75
                 },
                 "3": {
                     "activities": [
@@ -13916,20 +14014,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -14004,13 +14102,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 57,
-                0,
+                66,
                 0,
                 0
             ],
             "Computación II": [
                 94,
-                0,
+                85,
                 0,
                 0
             ]
@@ -14036,20 +14134,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 16,
+                    "total": 66
                 },
                 "3": {
                     "activities": [
@@ -14106,20 +14204,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -14194,13 +14292,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 43,
-                0,
+                60,
                 0,
                 0
             ],
             "Computación II": [
                 74,
-                0,
+                85,
                 0,
                 0
             ]
@@ -14226,20 +14324,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 10,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -14296,20 +14394,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -14384,13 +14482,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 81,
-                0,
+                61,
                 0,
                 0
             ],
             "Computación II": [
                 97,
-                0,
+                100,
                 0,
                 0
             ]
@@ -14416,20 +14514,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 11,
+                    "total": 61
                 },
                 "3": {
                     "activities": [
@@ -14486,20 +14584,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -14574,13 +14672,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 71,
-                0,
+                68,
                 0,
                 0
             ],
             "Computación II": [
                 90,
-                0,
+                95,
                 0,
                 0
             ]
@@ -14606,20 +14704,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 18,
+                    "total": 68
                 },
                 "3": {
                     "activities": [
@@ -14676,20 +14774,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 65,
+                    "exam": 30,
+                    "total": 95
                 },
                 "3": {
                     "activities": [
@@ -14764,13 +14862,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 84,
-                0,
+                87,
                 0,
                 0
             ],
             "Computación II": [
                 87,
-                0,
+                85,
                 0,
                 0
             ]
@@ -14796,20 +14894,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 37,
+                    "total": 87
                 },
                 "3": {
                     "activities": [
@@ -14866,20 +14964,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -14954,13 +15052,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 91,
-                0,
+                60,
                 0,
                 0
             ],
             "Computación II": [
                 100,
-                0,
+                85,
                 0,
                 0
             ]
@@ -14986,20 +15084,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 10,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -15057,19 +15155,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        10,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -15144,13 +15242,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 80,
-                0,
+                68,
                 0,
                 0
             ],
             "Computación II": [
                 92,
-                0,
+                90,
                 0,
                 0
             ]
@@ -15176,20 +15274,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 18,
+                    "total": 68
                 },
                 "3": {
                     "activities": [
@@ -15246,20 +15344,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 30,
+                    "total": 90
                 },
                 "3": {
                     "activities": [
@@ -15334,13 +15432,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 82,
-                0,
+                62,
                 0,
                 0
             ],
             "Computación II": [
                 92,
-                0,
+                88,
                 0,
                 0
             ]
@@ -15366,20 +15464,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 12,
+                    "total": 62
                 },
                 "3": {
                     "activities": [
@@ -15436,20 +15534,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        20,
+                        3,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 58,
+                    "exam": 30,
+                    "total": 88
                 },
                 "3": {
                     "activities": [
@@ -15524,13 +15622,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 46,
-                0,
+                60,
                 0,
                 0
             ],
             "Computación II": [
                 74,
-                0,
+                83,
                 0,
                 0
             ]
@@ -15556,20 +15654,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 10,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -15626,20 +15724,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        20,
+                        3,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 53,
+                    "exam": 30,
+                    "total": 83
                 },
                 "3": {
                     "activities": [
@@ -15714,13 +15812,13 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Cálculo Mercantil y Financiero": [
                 77,
-                0,
+                66,
                 0,
                 0
             ],
             "Computación II": [
                 91,
-                0,
+                80,
                 0,
                 0
             ]
@@ -15746,20 +15844,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        10,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 16,
+                    "total": 66
                 },
                 "3": {
                     "activities": [
@@ -15817,19 +15915,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        5,
+                        20,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 30,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -15904,7 +16002,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 92,
-                0,
+                74,
                 0,
                 0
             ]
@@ -15932,18 +16030,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 44,
+                    "exam": 30,
+                    "total": 74
                 },
                 "3": {
                     "activities": [
@@ -16018,7 +16116,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 70,
-                0,
+                85,
                 0,
                 0
             ]
@@ -16044,20 +16142,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -16132,7 +16230,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 86,
-                0,
+                100,
                 0,
                 0
             ]
@@ -16158,20 +16256,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -16246,7 +16344,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 93,
-                0,
+                95,
                 0,
                 0
             ]
@@ -16272,20 +16370,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 65,
+                    "exam": 30,
+                    "total": 95
                 },
                 "3": {
                     "activities": [
@@ -16360,7 +16458,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 96,
-                0,
+                100,
                 0,
                 0
             ]
@@ -16386,20 +16484,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -16474,7 +16572,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 66,
-                0,
+                70,
                 0,
                 0
             ]
@@ -16500,20 +16598,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 40,
+                    "exam": 30,
+                    "total": 70
                 },
                 "3": {
                     "activities": [
@@ -16588,7 +16686,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 69,
-                0,
+                85,
                 0,
                 0
             ]
@@ -16614,20 +16712,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -16702,7 +16800,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 81,
-                0,
+                55,
                 0,
                 0
             ]
@@ -16730,18 +16828,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        5,
                         0,
                         0,
                         0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 25,
+                    "exam": 30,
+                    "total": 55
                 },
                 "3": {
                     "activities": [
@@ -16816,7 +16914,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 84,
-                0,
+                70,
                 0,
                 0
             ]
@@ -16844,18 +16942,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        15,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 40,
+                    "exam": 30,
+                    "total": 70
                 },
                 "3": {
                     "activities": [
@@ -16930,7 +17028,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 77,
-                0,
+                85,
                 0,
                 0
             ]
@@ -16956,20 +17054,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -17044,7 +17142,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 85,
-                0,
+                60,
                 0,
                 0
             ]
@@ -17072,18 +17170,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        5,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 30,
+                    "exam": 30,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -17158,7 +17256,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 54,
-                0,
+                88,
                 0,
                 0
             ]
@@ -17184,20 +17282,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 58,
+                    "exam": 30,
+                    "total": 88
                 },
                 "3": {
                     "activities": [
@@ -17272,7 +17370,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 70,
-                0,
+                85,
                 0,
                 0
             ]
@@ -17298,20 +17396,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -17386,7 +17484,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 90,
-                0,
+                90,
                 0,
                 0
             ]
@@ -17412,20 +17510,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 30,
+                    "total": 90
                 },
                 "3": {
                     "activities": [
@@ -17500,7 +17598,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 82,
-                0,
+                85,
                 0,
                 0
             ]
@@ -17526,20 +17624,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -17614,7 +17712,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 72,
-                0,
+                85,
                 0,
                 0
             ]
@@ -17640,20 +17738,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -17728,7 +17826,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 72,
-                0,
+                83,
                 0,
                 0
             ]
@@ -17754,20 +17852,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 53,
+                    "exam": 30,
+                    "total": 83
                 },
                 "3": {
                     "activities": [
@@ -17842,7 +17940,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 87,
-                0,
+                64,
                 0,
                 0
             ]
@@ -17868,20 +17966,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 34,
+                    "exam": 30,
+                    "total": 64
                 },
                 "3": {
                     "activities": [
@@ -17956,7 +18054,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 85,
-                0,
+                58,
                 0,
                 0
             ]
@@ -17984,18 +18082,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        3,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 28,
+                    "exam": 30,
+                    "total": 58
                 },
                 "3": {
                     "activities": [
@@ -18070,7 +18168,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 77,
-                0,
+                83,
                 0,
                 0
             ]
@@ -18096,20 +18194,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 53,
+                    "exam": 30,
+                    "total": 83
                 },
                 "3": {
                     "activities": [
@@ -18184,7 +18282,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 78,
-                0,
+                54,
                 0,
                 0
             ]
@@ -18212,18 +18310,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        4,
                         0,
                         0,
                         0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 24,
+                    "exam": 30,
+                    "total": 54
                 },
                 "3": {
                     "activities": [
@@ -18298,7 +18396,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 86,
-                0,
+                84,
                 0,
                 0
             ]
@@ -18324,20 +18422,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -18412,7 +18510,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 82,
-                0,
+                95,
                 0,
                 0
             ]
@@ -18438,20 +18536,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 65,
+                    "exam": 30,
+                    "total": 95
                 },
                 "3": {
                     "activities": [
@@ -18526,7 +18624,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 80,
-                0,
+                80,
                 0,
                 0
             ]
@@ -18552,20 +18650,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
                         0,
                         0,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 30,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -18640,7 +18738,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 82,
-                0,
+                80,
                 0,
                 0
             ]
@@ -18666,20 +18764,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        5,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        15,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 30,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -18754,7 +18852,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 70,
-                0,
+                85,
                 0,
                 0
             ]
@@ -18780,20 +18878,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -18868,7 +18966,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 86,
-                0,
+                85,
                 0,
                 0
             ]
@@ -18894,20 +18992,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -18982,7 +19080,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 89,
-                0,
+                90,
                 0,
                 0
             ]
@@ -19008,20 +19106,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 30,
+                    "total": 90
                 },
                 "3": {
                     "activities": [
@@ -19096,7 +19194,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 89,
-                0,
+                100,
                 0,
                 0
             ]
@@ -19122,20 +19220,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -19210,7 +19308,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 88,
-                0,
+                100,
                 0,
                 0
             ]
@@ -19236,20 +19334,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -19324,7 +19422,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 86,
-                0,
+                75,
                 0,
                 0
             ]
@@ -19352,18 +19450,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 45,
+                    "exam": 30,
+                    "total": 75
                 },
                 "3": {
                     "activities": [
@@ -19438,7 +19536,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 76,
-                0,
+                100,
                 0,
                 0
             ]
@@ -19464,20 +19562,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -19552,7 +19650,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 95,
-                0,
+                94,
                 0,
                 0
             ]
@@ -19578,20 +19676,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 64,
+                    "exam": 30,
+                    "total": 94
                 },
                 "3": {
                     "activities": [
@@ -19666,7 +19764,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 86,
-                0,
+                80,
                 0,
                 0
             ]
@@ -19693,19 +19791,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        5,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 30,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -19780,7 +19878,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 86,
-                0,
+                84,
                 0,
                 0
             ]
@@ -19806,20 +19904,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -19894,7 +19992,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 68,
-                0,
+                80,
                 0,
                 0
             ]
@@ -19921,19 +20019,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        5,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 30,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -20008,7 +20106,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 83,
-                0,
+                81,
                 0,
                 0
             ]
@@ -20034,20 +20132,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        1,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 51,
+                    "exam": 30,
+                    "total": 81
                 },
                 "3": {
                     "activities": [
@@ -20122,7 +20220,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 70,
-                0,
+                73,
                 0,
                 0
             ]
@@ -20150,18 +20248,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 43,
+                    "exam": 30,
+                    "total": 73
                 },
                 "3": {
                     "activities": [
@@ -20236,7 +20334,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 63,
-                0,
+                85,
                 0,
                 0
             ]
@@ -20262,20 +20360,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -20350,7 +20448,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 67,
-                0,
+                52,
                 0,
                 0
             ]
@@ -20378,18 +20476,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        2,
                         0,
                         0,
                         0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 22,
+                    "exam": 30,
+                    "total": 52
                 },
                 "3": {
                     "activities": [
@@ -20464,7 +20562,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 74,
-                0,
+                85,
                 0,
                 0
             ]
@@ -20490,20 +20588,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -20578,7 +20676,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 76,
-                0,
+                85,
                 0,
                 0
             ]
@@ -20604,20 +20702,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -20692,7 +20790,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 71,
-                0,
+                82,
                 0,
                 0
             ]
@@ -20718,20 +20816,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        2,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 52,
+                    "exam": 30,
+                    "total": 82
                 },
                 "3": {
                     "activities": [
@@ -20806,7 +20904,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 82,
-                0,
+                84,
                 0,
                 0
             ]
@@ -20832,20 +20930,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -20920,7 +21018,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 99,
-                0,
+                90,
                 0,
                 0
             ]
@@ -20946,20 +21044,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 30,
+                    "total": 90
                 },
                 "3": {
                     "activities": [
@@ -21034,7 +21132,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 100,
-                0,
+                100,
                 0,
                 0
             ]
@@ -21060,20 +21158,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -21148,7 +21246,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 87,
-                0,
+                75,
                 0,
                 0
             ]
@@ -21176,18 +21274,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 45,
+                    "exam": 30,
+                    "total": 75
                 },
                 "3": {
                     "activities": [
@@ -21262,7 +21360,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 87,
-                0,
+                90,
                 0,
                 0
             ]
@@ -21288,20 +21386,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 30,
+                    "total": 90
                 },
                 "3": {
                     "activities": [
@@ -21376,7 +21474,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 92,
-                0,
+                100,
                 0,
                 0
             ]
@@ -21402,20 +21500,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -21490,7 +21588,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 87,
-                0,
+                100,
                 0,
                 0
             ]
@@ -21516,20 +21614,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -21604,7 +21702,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 86,
-                0,
+                83,
                 0,
                 0
             ]
@@ -21630,20 +21728,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 53,
+                    "exam": 30,
+                    "total": 83
                 },
                 "3": {
                     "activities": [
@@ -21718,7 +21816,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 65,
-                0,
+                88,
                 0,
                 0
             ]
@@ -21745,19 +21843,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        15,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 58,
+                    "exam": 30,
+                    "total": 88
                 },
                 "3": {
                     "activities": [
@@ -21832,7 +21930,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 78,
-                0,
+                100,
                 0,
                 0
             ]
@@ -21858,20 +21956,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -21946,7 +22044,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 78,
-                0,
+                85,
                 0,
                 0
             ]
@@ -21972,20 +22070,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -22060,7 +22158,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 99,
-                0,
+                89,
                 0,
                 0
             ]
@@ -22086,20 +22184,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 59,
+                    "exam": 30,
+                    "total": 89
                 },
                 "3": {
                     "activities": [
@@ -22174,7 +22272,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 99,
-                0,
+                90,
                 0,
                 0
             ]
@@ -22200,20 +22298,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 30,
+                    "total": 90
                 },
                 "3": {
                     "activities": [
@@ -22288,7 +22386,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 83,
-                0,
+                90,
                 0,
                 0
             ]
@@ -22314,20 +22412,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 30,
+                    "total": 90
                 },
                 "3": {
                     "activities": [
@@ -22402,7 +22500,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 78,
-                0,
+                53,
                 0,
                 0
             ]
@@ -22430,18 +22528,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        3,
                         0,
                         0,
                         0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 23,
+                    "exam": 30,
+                    "total": 53
                 },
                 "3": {
                     "activities": [
@@ -22516,7 +22614,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 92,
-                0,
+                74,
                 0,
                 0
             ]
@@ -22544,18 +22642,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 44,
+                    "exam": 30,
+                    "total": 74
                 },
                 "3": {
                     "activities": [
@@ -22630,7 +22728,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 75,
-                0,
+                100,
                 0,
                 0
             ]
@@ -22656,20 +22754,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -22744,7 +22842,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 79,
-                0,
+                84,
                 0,
                 0
             ]
@@ -22770,20 +22868,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -22858,7 +22956,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 81,
-                0,
+                62,
                 0,
                 0
             ]
@@ -22884,20 +22982,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        2,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 32,
+                    "exam": 30,
+                    "total": 62
                 },
                 "3": {
                     "activities": [
@@ -22972,7 +23070,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 69,
-                0,
+                99,
                 0,
                 0
             ]
@@ -22998,20 +23096,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 30,
+                    "total": 99
                 },
                 "3": {
                     "activities": [
@@ -23086,7 +23184,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 73,
-                0,
+                95,
                 0,
                 0
             ]
@@ -23112,20 +23210,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 65,
+                    "exam": 30,
+                    "total": 95
                 },
                 "3": {
                     "activities": [
@@ -23200,7 +23298,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 60,
-                0,
+                85,
                 0,
                 0
             ]
@@ -23226,20 +23324,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -23314,7 +23412,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 63,
-                0,
+                85,
                 0,
                 0
             ]
@@ -23341,19 +23439,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        15,
+                        0,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -23428,7 +23526,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 83,
-                0,
+                84,
                 0,
                 0
             ]
@@ -23454,20 +23552,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -23542,7 +23640,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 67,
-                0,
+                84,
                 0,
                 0
             ]
@@ -23568,20 +23666,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -23656,7 +23754,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 60,
-                0,
+                63,
                 0,
                 0
             ]
@@ -23682,20 +23780,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        3,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 33,
+                    "exam": 30,
+                    "total": 63
                 },
                 "3": {
                     "activities": [
@@ -23770,7 +23868,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 64,
-                0,
+                99,
                 0,
                 0
             ]
@@ -23796,20 +23894,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 30,
+                    "total": 99
                 },
                 "3": {
                     "activities": [
@@ -23884,7 +23982,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 67,
-                0,
+                65,
                 0,
                 0
             ]
@@ -23910,20 +24008,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 35,
+                    "exam": 30,
+                    "total": 65
                 },
                 "3": {
                     "activities": [
@@ -23998,7 +24096,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 63,
-                0,
+                98,
                 0,
                 0
             ]
@@ -24024,20 +24122,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 68,
+                    "exam": 30,
+                    "total": 98
                 },
                 "3": {
                     "activities": [
@@ -24112,7 +24210,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 62,
-                0,
+                71,
                 0,
                 0
             ]
@@ -24140,18 +24238,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        1,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 41,
+                    "exam": 30,
+                    "total": 71
                 },
                 "3": {
                     "activities": [
@@ -24226,7 +24324,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 71,
-                0,
+                84,
                 0,
                 0
             ]
@@ -24252,20 +24350,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -24340,7 +24438,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 73,
-                0,
+                75,
                 0,
                 0
             ]
@@ -24368,18 +24466,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 45,
+                    "exam": 30,
+                    "total": 75
                 },
                 "3": {
                     "activities": [
@@ -24454,7 +24552,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 80,
-                0,
+                65,
                 0,
                 0
             ]
@@ -24480,20 +24578,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 35,
+                    "exam": 30,
+                    "total": 65
                 },
                 "3": {
                     "activities": [
@@ -24568,7 +24666,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 49,
-                0,
+                83,
                 0,
                 0
             ]
@@ -24594,20 +24692,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 53,
+                    "exam": 30,
+                    "total": 83
                 },
                 "3": {
                     "activities": [
@@ -24682,7 +24780,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 78,
-                0,
+                84,
                 0,
                 0
             ]
@@ -24708,20 +24806,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -24796,7 +24894,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 78,
-                0,
+                95,
                 0,
                 0
             ]
@@ -24822,20 +24920,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 65,
+                    "exam": 30,
+                    "total": 95
                 },
                 "3": {
                     "activities": [
@@ -24910,7 +25008,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 80,
-                0,
+                85,
                 0,
                 0
             ]
@@ -24936,20 +25034,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -25024,7 +25122,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 71,
-                0,
+                74,
                 0,
                 0
             ]
@@ -25052,18 +25150,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 44,
+                    "exam": 30,
+                    "total": 74
                 },
                 "3": {
                     "activities": [
@@ -25138,7 +25236,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 76,
-                0,
+                85,
                 0,
                 0
             ]
@@ -25164,20 +25262,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -25252,7 +25350,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 78,
-                0,
+                62,
                 0,
                 0
             ]
@@ -25278,20 +25376,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        2,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 32,
+                    "exam": 30,
+                    "total": 62
                 },
                 "3": {
                     "activities": [
@@ -25366,7 +25464,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 60,
-                0,
+                85,
                 0,
                 0
             ]
@@ -25392,20 +25490,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -25480,7 +25578,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 85,
-                0,
+                62,
                 0,
                 0
             ]
@@ -25506,20 +25604,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        2,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 32,
+                    "exam": 30,
+                    "total": 62
                 },
                 "3": {
                     "activities": [
@@ -25594,7 +25692,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 86,
-                0,
+                84,
                 0,
                 0
             ]
@@ -25620,20 +25718,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -25708,7 +25806,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 60,
-                0,
+                52,
                 0,
                 0
             ]
@@ -25736,18 +25834,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        2,
                         0,
                         0,
                         0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 22,
+                    "exam": 30,
+                    "total": 52
                 },
                 "3": {
                     "activities": [
@@ -25822,7 +25920,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 75,
-                0,
+                83,
                 0,
                 0
             ]
@@ -25848,20 +25946,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 53,
+                    "exam": 30,
+                    "total": 83
                 },
                 "3": {
                     "activities": [
@@ -25936,7 +26034,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 78,
-                0,
+                63,
                 0,
                 0
             ]
@@ -25963,19 +26061,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        10,
+                        3,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 33,
+                    "exam": 30,
+                    "total": 63
                 },
                 "3": {
                     "activities": [
@@ -26050,7 +26148,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 92,
-                0,
+                94,
                 0,
                 0
             ]
@@ -26076,20 +26174,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 64,
+                    "exam": 30,
+                    "total": 94
                 },
                 "3": {
                     "activities": [
@@ -26164,7 +26262,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 92,
-                0,
+                100,
                 0,
                 0
             ]
@@ -26190,20 +26288,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 30,
+                    "total": 100
                 },
                 "3": {
                     "activities": [
@@ -26278,7 +26376,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 75,
-                0,
+                68,
                 0,
                 0
             ]
@@ -26304,20 +26402,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        5,
+                        10,
+                        3,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 38,
+                    "exam": 30,
+                    "total": 68
                 },
                 "3": {
                     "activities": [
@@ -26392,7 +26490,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 88,
-                0,
+                90,
                 0,
                 0
             ]
@@ -26418,20 +26516,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 30,
+                    "total": 90
                 },
                 "3": {
                     "activities": [
@@ -26506,7 +26604,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 81,
-                0,
+                84,
                 0,
                 0
             ]
@@ -26532,20 +26630,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -26620,7 +26718,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 75,
-                0,
+                85,
                 0,
                 0
             ]
@@ -26646,20 +26744,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -26734,7 +26832,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 78,
-                0,
+                65,
                 0,
                 0
             ]
@@ -26760,20 +26858,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 35,
+                    "exam": 30,
+                    "total": 65
                 },
                 "3": {
                     "activities": [
@@ -26848,7 +26946,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 69,
-                0,
+                84,
                 0,
                 0
             ]
@@ -26874,20 +26972,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -27076,7 +27174,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 76,
-                0,
+                94,
                 0,
                 0
             ]
@@ -27102,20 +27200,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 64,
+                    "exam": 30,
+                    "total": 94
                 },
                 "3": {
                     "activities": [
@@ -27190,7 +27288,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 78,
-                0,
+                85,
                 0,
                 0
             ]
@@ -27216,20 +27314,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -27304,7 +27402,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 77,
-                0,
+                85,
                 0,
                 0
             ]
@@ -27330,20 +27428,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 30,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -27418,7 +27516,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 56,
-                0,
+                50,
                 0,
                 0
             ]
@@ -27450,14 +27548,14 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0,
                         0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 20,
+                    "exam": 30,
+                    "total": 50
                 },
                 "3": {
                     "activities": [
@@ -27532,7 +27630,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 57,
-                0,
+                73,
                 0,
                 0
             ]
@@ -27560,18 +27658,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 43,
+                    "exam": 30,
+                    "total": 73
                 },
                 "3": {
                     "activities": [
@@ -27646,7 +27744,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 70,
-                0,
+                52,
                 0,
                 0
             ]
@@ -27674,18 +27772,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        2,
                         0,
                         0,
                         0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 22,
+                    "exam": 30,
+                    "total": 52
                 },
                 "3": {
                     "activities": [
@@ -27760,7 +27858,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 53,
-                0,
+                73,
                 0,
                 0
             ]
@@ -27788,18 +27886,18 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                     "activities": [
                         0,
                         0,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 43,
+                    "exam": 30,
+                    "total": 73
                 },
                 "3": {
                     "activities": [
@@ -27874,7 +27972,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 70,
-                0,
+                62,
                 0,
                 0
             ]
@@ -27900,20 +27998,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        2,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 32,
+                    "exam": 30,
+                    "total": 62
                 },
                 "3": {
                     "activities": [
@@ -27988,7 +28086,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 83,
-                0,
+                84,
                 0,
                 0
             ]
@@ -28014,20 +28112,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 30,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -28216,7 +28314,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación II": [
                 84,
-                0,
+                86,
                 0,
                 0
             ]
@@ -28242,20 +28340,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        1,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 56,
+                    "exam": 30,
+                    "total": 86
                 },
                 "3": {
                     "activities": [
@@ -28330,7 +28428,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 83,
-                0,
+                86,
                 0,
                 0
             ]
@@ -28356,20 +28454,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 16,
+                    "total": 86
                 },
                 "3": {
                     "activities": [
@@ -28444,7 +28542,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 77,
-                0,
+                80,
                 0,
                 0
             ]
@@ -28470,20 +28568,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        11,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 64,
+                    "exam": 16,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -28558,7 +28656,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 84,
-                0,
+                81,
                 0,
                 0
             ]
@@ -28584,20 +28682,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 11,
+                    "total": 81
                 },
                 "3": {
                     "activities": [
@@ -28672,7 +28770,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 69,
-                0,
+                84,
                 0,
                 0
             ]
@@ -28698,20 +28796,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 14,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -28786,7 +28884,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 85,
-                0,
+                80,
                 0,
                 0
             ]
@@ -28812,20 +28910,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 10,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -28900,7 +28998,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 85,
-                0,
+                75,
                 0,
                 0
             ]
@@ -28926,20 +29024,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        12,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 66,
+                    "exam": 9,
+                    "total": 75
                 },
                 "3": {
                     "activities": [
@@ -29014,7 +29112,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 93,
-                0,
+                86,
                 0,
                 0
             ]
@@ -29040,20 +29138,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 16,
+                    "total": 86
                 },
                 "3": {
                     "activities": [
@@ -29128,7 +29226,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 94,
-                0,
+                90,
                 0,
                 0
             ]
@@ -29154,20 +29252,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 20,
+                    "total": 90
                 },
                 "3": {
                     "activities": [
@@ -29242,7 +29340,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 93,
-                0,
+                89,
                 0,
                 0
             ]
@@ -29268,20 +29366,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 19,
+                    "total": 89
                 },
                 "3": {
                     "activities": [
@@ -29356,7 +29454,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 91,
-                0,
+                80,
                 0,
                 0
             ]
@@ -29382,20 +29480,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 10,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -29470,7 +29568,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 55,
-                0,
+                63,
                 0,
                 0
             ]
@@ -29496,20 +29594,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        4,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 57,
+                    "exam": 6,
+                    "total": 63
                 },
                 "3": {
                     "activities": [
@@ -29584,7 +29682,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 78,
-                0,
+                80,
                 0,
                 0
             ]
@@ -29610,20 +29708,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 11,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -29698,7 +29796,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 77,
-                0,
+                76,
                 0,
                 0
             ]
@@ -29724,20 +29822,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 6,
+                    "total": 76
                 },
                 "3": {
                     "activities": [
@@ -29812,7 +29910,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 68,
-                0,
+                77,
                 0,
                 0
             ]
@@ -29838,20 +29936,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 8,
+                    "total": 77
                 },
                 "3": {
                     "activities": [
@@ -29926,7 +30024,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 81,
-                0,
+                77,
                 0,
                 0
             ]
@@ -29952,20 +30050,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        11,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 66,
+                    "exam": 11,
+                    "total": 77
                 },
                 "3": {
                     "activities": [
@@ -30040,7 +30138,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 90,
-                0,
+                87,
                 0,
                 0
             ]
@@ -30066,20 +30164,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 17,
+                    "total": 87
                 },
                 "3": {
                     "activities": [
@@ -30154,7 +30252,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 89,
-                0,
+                78,
                 0,
                 0
             ]
@@ -30180,20 +30278,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        20,
+                        4,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 68,
+                    "exam": 10,
+                    "total": 78
                 },
                 "3": {
                     "activities": [
@@ -30268,7 +30366,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 81,
-                0,
+                63,
                 0,
                 0
             ]
@@ -30294,20 +30392,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 49,
+                    "exam": 14,
+                    "total": 63
                 },
                 "3": {
                     "activities": [
@@ -30382,7 +30480,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 78,
-                0,
+                64,
                 0,
                 0
             ]
@@ -30408,20 +30506,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        3,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 48,
+                    "exam": 16,
+                    "total": 64
                 },
                 "3": {
                     "activities": [
@@ -30496,7 +30594,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 72,
-                0,
+                77,
                 0,
                 0
             ]
@@ -30522,20 +30620,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        2,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 67,
+                    "exam": 10,
+                    "total": 77
                 },
                 "3": {
                     "activities": [
@@ -30610,7 +30708,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 93,
-                0,
+                80,
                 0,
                 0
             ]
@@ -30636,20 +30734,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 68,
+                    "exam": 12,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -30724,7 +30822,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 81,
-                0,
+                71,
                 0,
                 0
             ]
@@ -30750,20 +30848,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        6,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 59,
+                    "exam": 12,
+                    "total": 71
                 },
                 "3": {
                     "activities": [
@@ -30838,7 +30936,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 75,
-                0,
+                83,
                 0,
                 0
             ]
@@ -30864,20 +30962,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        12,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 66,
+                    "exam": 17,
+                    "total": 83
                 },
                 "3": {
                     "activities": [
@@ -30952,7 +31050,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 88,
-                0,
+                73,
                 0,
                 0
             ]
@@ -30978,20 +31076,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        9,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 64,
+                    "exam": 9,
+                    "total": 73
                 },
                 "3": {
                     "activities": [
@@ -31066,7 +31164,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 89,
-                0,
+                82,
                 0,
                 0
             ]
@@ -31092,20 +31190,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 12,
+                    "total": 82
                 },
                 "3": {
                     "activities": [
@@ -31180,7 +31278,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 88,
-                0,
+                88,
                 0,
                 0
             ]
@@ -31206,20 +31304,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 18,
+                    "total": 88
                 },
                 "3": {
                     "activities": [
@@ -31294,7 +31392,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 83,
-                0,
+                90,
                 0,
                 0
             ]
@@ -31320,20 +31418,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 20,
+                    "total": 90
                 },
                 "3": {
                     "activities": [
@@ -31408,7 +31506,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 83,
-                0,
+                86,
                 0,
                 0
             ]
@@ -31434,20 +31532,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 16,
+                    "total": 86
                 },
                 "3": {
                     "activities": [
@@ -31522,7 +31620,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 96,
-                0,
+                83,
                 0,
                 0
             ]
@@ -31548,20 +31646,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 13,
+                    "total": 83
                 },
                 "3": {
                     "activities": [
@@ -31636,7 +31734,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 83,
-                0,
+                77,
                 0,
                 0
             ]
@@ -31662,20 +31760,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 7,
+                    "total": 77
                 },
                 "3": {
                     "activities": [
@@ -31750,7 +31848,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 89,
-                0,
+                82,
                 0,
                 0
             ]
@@ -31776,20 +31874,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 12,
+                    "total": 82
                 },
                 "3": {
                     "activities": [
@@ -31864,7 +31962,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 80,
-                0,
+                85,
                 0,
                 0
             ]
@@ -31890,20 +31988,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        14,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 16,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -31978,7 +32076,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 85,
-                0,
+                64,
                 0,
                 0
             ]
@@ -32004,20 +32102,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 49,
+                    "exam": 15,
+                    "total": 64
                 },
                 "3": {
                     "activities": [
@@ -32092,7 +32190,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 68,
-                0,
+                39,
                 0,
                 0
             ]
@@ -32118,20 +32216,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        1,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 31,
+                    "exam": 8,
+                    "total": 39
                 },
                 "3": {
                     "activities": [
@@ -32206,7 +32304,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 78,
-                0,
+                79,
                 0,
                 0
             ]
@@ -32232,20 +32330,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        14,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 10,
+                    "total": 79
                 },
                 "3": {
                     "activities": [
@@ -32320,7 +32418,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 81,
-                0,
+                85,
                 0,
                 0
             ]
@@ -32346,20 +32444,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 16,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -32434,7 +32532,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 79,
-                0,
+                48,
                 0,
                 0
             ]
@@ -32460,20 +32558,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        3,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
+                    "zona": 48,
                     "exam": 0,
-                    "total": 0
+                    "total": 48
                 },
                 "3": {
                     "activities": [
@@ -32548,7 +32646,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 83,
-                0,
+                85,
                 0,
                 0
             ]
@@ -32574,20 +32672,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 16,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -32662,7 +32760,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 90,
-                0,
+                70,
                 0,
                 0
             ]
@@ -32688,20 +32786,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
+                    "zona": 70,
                     "exam": 0,
-                    "total": 0
+                    "total": 70
                 },
                 "3": {
                     "activities": [
@@ -32776,7 +32874,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 77,
-                0,
+                79,
                 0,
                 0
             ]
@@ -32802,20 +32900,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        14,
+                        1,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 65,
+                    "exam": 14,
+                    "total": 79
                 },
                 "3": {
                     "activities": [
@@ -32890,7 +32988,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 75,
-                0,
+                49,
                 0,
                 0
             ]
@@ -32916,20 +33014,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        4,
+                        4,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 38,
+                    "exam": 11,
+                    "total": 49
                 },
                 "3": {
                     "activities": [
@@ -33004,7 +33102,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 75,
-                0,
+                65,
                 0,
                 0
             ]
@@ -33030,20 +33128,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 49,
+                    "exam": 16,
+                    "total": 65
                 },
                 "3": {
                     "activities": [
@@ -33118,7 +33216,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 74,
-                0,
+                69,
                 0,
                 0
             ]
@@ -33144,20 +33242,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 14,
+                    "total": 69
                 },
                 "3": {
                     "activities": [
@@ -33232,7 +33330,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 89,
-                0,
+                67,
                 0,
                 0
             ]
@@ -33258,20 +33356,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        2,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 57,
+                    "exam": 10,
+                    "total": 67
                 },
                 "3": {
                     "activities": [
@@ -33346,7 +33444,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 76,
-                0,
+                71,
                 0,
                 0
             ]
@@ -33372,20 +33470,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        2,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 57,
+                    "exam": 14,
+                    "total": 71
                 },
                 "3": {
                     "activities": [
@@ -33460,7 +33558,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 65,
-                0,
+                65,
                 0,
                 0
             ]
@@ -33486,20 +33584,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        3,
+                        0,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 53,
+                    "exam": 12,
+                    "total": 65
                 },
                 "3": {
                     "activities": [
@@ -33574,7 +33672,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 79,
-                0,
+                82,
                 0,
                 0
             ]
@@ -33600,20 +33698,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 13,
+                    "total": 82
                 },
                 "3": {
                     "activities": [
@@ -33688,7 +33786,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 69,
-                0,
+                42,
                 0,
                 0
             ]
@@ -33714,20 +33812,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        1,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 31,
+                    "exam": 11,
+                    "total": 42
                 },
                 "3": {
                     "activities": [
@@ -33802,7 +33900,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 77,
-                0,
+                82,
                 0,
                 0
             ]
@@ -33828,20 +33926,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 13,
+                    "total": 82
                 },
                 "3": {
                     "activities": [
@@ -33916,7 +34014,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 89,
-                0,
+                77,
                 0,
                 0
             ]
@@ -33942,20 +34040,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 68,
+                    "exam": 9,
+                    "total": 77
                 },
                 "3": {
                     "activities": [
@@ -34030,7 +34128,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 80,
-                0,
+                75,
                 0,
                 0
             ]
@@ -34056,20 +34154,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 68,
+                    "exam": 7,
+                    "total": 75
                 },
                 "3": {
                     "activities": [
@@ -34144,7 +34242,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 58,
-                0,
+                72,
                 0,
                 0
             ]
@@ -34170,20 +34268,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        7,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 62,
+                    "exam": 10,
+                    "total": 72
                 },
                 "3": {
                     "activities": [
@@ -34258,7 +34356,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 92,
-                0,
+                78,
                 0,
                 0
             ]
@@ -34284,20 +34382,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        14,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 9,
+                    "total": 78
                 },
                 "3": {
                     "activities": [
@@ -34372,7 +34470,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 69,
-                0,
+                60,
                 0,
                 0
             ]
@@ -34398,20 +34496,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        1,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 51,
+                    "exam": 9,
+                    "total": 60
                 },
                 "3": {
                     "activities": [
@@ -34486,7 +34584,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 74,
-                0,
+                63,
                 0,
                 0
             ]
@@ -34512,20 +34610,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 54,
+                    "exam": 9,
+                    "total": 63
                 },
                 "3": {
                     "activities": [
@@ -34600,7 +34698,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 82,
-                0,
+                77,
                 0,
                 0
             ]
@@ -34626,20 +34724,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        11,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 65,
+                    "exam": 11,
+                    "total": 77
                 },
                 "3": {
                     "activities": [
@@ -34714,7 +34812,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 77,
-                0,
+                82,
                 0,
                 0
             ]
@@ -34740,20 +34838,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 13,
+                    "total": 82
                 },
                 "3": {
                     "activities": [
@@ -34828,7 +34926,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 69,
-                0,
+                78,
                 0,
                 0
             ]
@@ -34854,20 +34952,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        14,
+                        2,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 66,
+                    "exam": 12,
+                    "total": 78
                 },
                 "3": {
                     "activities": [
@@ -34942,7 +35040,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 80,
-                0,
+                80,
                 0,
                 0
             ]
@@ -34968,20 +35066,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        10,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 65,
+                    "exam": 15,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -35056,7 +35154,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 80,
-                0,
+                86,
                 0,
                 0
             ]
@@ -35082,20 +35180,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 17,
+                    "total": 86
                 },
                 "3": {
                     "activities": [
@@ -35170,7 +35268,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 66,
-                0,
+                72,
                 0,
                 0
             ]
@@ -35196,20 +35294,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        9,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 63,
+                    "exam": 9,
+                    "total": 72
                 },
                 "3": {
                     "activities": [
@@ -35284,7 +35382,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 81,
-                0,
+                67,
                 0,
                 0
             ]
@@ -35310,20 +35408,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 12,
+                    "total": 67
                 },
                 "3": {
                     "activities": [
@@ -35398,7 +35496,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 75,
-                0,
+                62,
                 0,
                 0
             ]
@@ -35424,20 +35522,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        2,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 52,
+                    "exam": 10,
+                    "total": 62
                 },
                 "3": {
                     "activities": [
@@ -35512,7 +35610,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 71,
-                0,
+                83,
                 0,
                 0
             ]
@@ -35538,20 +35636,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 14,
+                    "total": 83
                 },
                 "3": {
                     "activities": [
@@ -35626,7 +35724,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 64,
-                0,
+                72,
                 0,
                 0
             ]
@@ -35652,20 +35750,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        8,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 63,
+                    "exam": 9,
+                    "total": 72
                 },
                 "3": {
                     "activities": [
@@ -35740,7 +35838,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 81,
-                0,
+                93,
                 0,
                 0
             ]
@@ -35766,20 +35864,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 23,
+                    "total": 93
                 },
                 "3": {
                     "activities": [
@@ -35854,7 +35952,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 75,
-                0,
+                77,
                 0,
                 0
             ]
@@ -35880,20 +35978,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 7,
+                    "total": 77
                 },
                 "3": {
                     "activities": [
@@ -35968,7 +36066,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 73,
-                0,
+                74,
                 0,
                 0
             ]
@@ -35994,20 +36092,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        5,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 65,
+                    "exam": 9,
+                    "total": 74
                 },
                 "3": {
                     "activities": [
@@ -36082,7 +36180,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 73,
-                0,
+                75,
                 0,
                 0
             ]
@@ -36108,20 +36206,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 5,
+                    "total": 75
                 },
                 "3": {
                     "activities": [
@@ -36196,7 +36294,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 87,
-                0,
+                87,
                 0,
                 0
             ]
@@ -36222,20 +36320,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 17,
+                    "total": 87
                 },
                 "3": {
                     "activities": [
@@ -36310,7 +36408,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 89,
-                0,
+                91,
                 0,
                 0
             ]
@@ -36336,20 +36434,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 21,
+                    "total": 91
                 },
                 "3": {
                     "activities": [
@@ -36424,7 +36522,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 77,
-                0,
+                85,
                 0,
                 0
             ]
@@ -36450,20 +36548,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 15,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -36538,7 +36636,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 68,
-                0,
+                82,
                 0,
                 0
             ]
@@ -36564,20 +36662,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 12,
+                    "total": 82
                 },
                 "3": {
                     "activities": [
@@ -36652,7 +36750,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 91,
-                0,
+                49,
                 0,
                 0
             ]
@@ -36679,19 +36777,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        15,
+                        4,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 39,
+                    "exam": 10,
+                    "total": 49
                 },
                 "3": {
                     "activities": [
@@ -36766,7 +36864,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 87,
-                0,
+                63,
                 0,
                 0
             ]
@@ -36792,20 +36890,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 49,
+                    "exam": 14,
+                    "total": 63
                 },
                 "3": {
                     "activities": [
@@ -36880,7 +36978,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 88,
-                0,
+                56,
                 0,
                 0
             ]
@@ -36906,20 +37004,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        5,
+                        3,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 38,
+                    "exam": 18,
+                    "total": 56
                 },
                 "3": {
                     "activities": [
@@ -36994,7 +37092,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 86,
-                0,
+                74,
                 0,
                 0
             ]
@@ -37020,20 +37118,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        8,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 62,
+                    "exam": 12,
+                    "total": 74
                 },
                 "3": {
                     "activities": [
@@ -37108,7 +37206,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 84,
-                0,
+                66,
                 0,
                 0
             ]
@@ -37134,20 +37232,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 11,
+                    "total": 66
                 },
                 "3": {
                     "activities": [
@@ -37222,7 +37320,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 88,
-                0,
+                68,
                 0,
                 0
             ]
@@ -37248,20 +37346,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 55,
+                    "exam": 13,
+                    "total": 68
                 },
                 "3": {
                     "activities": [
@@ -37336,7 +37434,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 77,
-                0,
+                80,
                 0,
                 0
             ]
@@ -37362,20 +37460,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 11,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -37450,7 +37548,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 80,
-                0,
+                80,
                 0,
                 0
             ]
@@ -37476,20 +37574,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 11,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -37564,7 +37662,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 78,
-                0,
+                82,
                 0,
                 0
             ]
@@ -37590,20 +37688,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 12,
+                    "total": 82
                 },
                 "3": {
                     "activities": [
@@ -37678,7 +37776,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 83,
-                0,
+                42,
                 0,
                 0
             ]
@@ -37705,19 +37803,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        9,
+                        2,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 31,
+                    "exam": 11,
+                    "total": 42
                 },
                 "3": {
                     "activities": [
@@ -37792,7 +37890,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 84,
-                0,
+                87,
                 0,
                 0
             ]
@@ -37818,20 +37916,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 17,
+                    "total": 87
                 },
                 "3": {
                     "activities": [
@@ -37906,7 +38004,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 73,
-                0,
+                85,
                 0,
                 0
             ]
@@ -37932,20 +38030,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 15,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -38020,7 +38118,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 80,
-                0,
+                85,
                 0,
                 0
             ]
@@ -38046,20 +38144,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 15,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -38134,7 +38232,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 93,
-                0,
+                84,
                 0,
                 0
             ]
@@ -38160,20 +38258,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 14,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -38248,7 +38346,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 72,
-                0,
+                73,
                 0,
                 0
             ]
@@ -38274,20 +38372,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        9,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 64,
+                    "exam": 9,
+                    "total": 73
                 },
                 "3": {
                     "activities": [
@@ -38362,7 +38460,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 86,
-                0,
+                78,
                 0,
                 0
             ]
@@ -38389,19 +38487,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 18,
+                    "total": 78
                 },
                 "3": {
                     "activities": [
@@ -38476,7 +38574,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 76,
-                0,
+                93,
                 0,
                 0
             ]
@@ -38502,20 +38600,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 23,
+                    "total": 93
                 },
                 "3": {
                     "activities": [
@@ -38590,7 +38688,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 80,
-                0,
+                74,
                 0,
                 0
             ]
@@ -38616,20 +38714,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        2,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 67,
+                    "exam": 7,
+                    "total": 74
                 },
                 "3": {
                     "activities": [
@@ -38704,7 +38802,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 77,
-                0,
+                80,
                 0,
                 0
             ]
@@ -38730,20 +38828,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 10,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -38818,7 +38916,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 76,
-                0,
+                83,
                 0,
                 0
             ]
@@ -38844,20 +38942,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 13,
+                    "total": 83
                 },
                 "3": {
                     "activities": [
@@ -38932,7 +39030,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 81,
-                0,
+                70,
                 0,
                 0
             ]
@@ -38958,20 +39056,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        2,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 56,
+                    "exam": 14,
+                    "total": 70
                 },
                 "3": {
                     "activities": [
@@ -39046,7 +39144,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 74,
-                0,
+                78,
                 0,
                 0
             ]
@@ -39072,20 +39170,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 8,
+                    "total": 78
                 },
                 "3": {
                     "activities": [
@@ -39160,7 +39258,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 69,
-                0,
+                82,
                 0,
                 0
             ]
@@ -39186,20 +39284,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 12,
+                    "total": 82
                 },
                 "3": {
                     "activities": [
@@ -39274,7 +39372,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 63,
-                0,
+                65,
                 0,
                 0
             ]
@@ -39300,20 +39398,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 49,
+                    "exam": 16,
+                    "total": 65
                 },
                 "3": {
                     "activities": [
@@ -39388,7 +39486,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 78,
-                0,
+                87,
                 0,
                 0
             ]
@@ -39414,20 +39512,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 18,
+                    "total": 87
                 },
                 "3": {
                     "activities": [
@@ -39502,7 +39600,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 80,
-                0,
+                85,
                 0,
                 0
             ]
@@ -39528,20 +39626,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 15,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -39616,7 +39714,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 84,
-                0,
+                88,
                 0,
                 0
             ]
@@ -39642,20 +39740,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 18,
+                    "total": 88
                 },
                 "3": {
                     "activities": [
@@ -39730,7 +39828,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 82,
-                0,
+                78,
                 0,
                 0
             ]
@@ -39756,20 +39854,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 8,
+                    "total": 78
                 },
                 "3": {
                     "activities": [
@@ -39844,7 +39942,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 83,
-                0,
+                79,
                 0,
                 0
             ]
@@ -39870,20 +39968,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 9,
+                    "total": 79
                 },
                 "3": {
                     "activities": [
@@ -39958,7 +40056,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 77,
-                0,
+                80,
                 0,
                 0
             ]
@@ -39984,20 +40082,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 10,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -40072,7 +40170,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 78,
-                0,
+                84,
                 0,
                 0
             ]
@@ -40098,20 +40196,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 14,
+                    "total": 84
                 },
                 "3": {
                     "activities": [
@@ -40186,7 +40284,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 82,
-                0,
+                75,
                 0,
                 0
             ]
@@ -40212,20 +40310,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 5,
+                    "total": 75
                 },
                 "3": {
                     "activities": [
@@ -40300,7 +40398,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 83,
-                0,
+                80,
                 0,
                 0
             ]
@@ -40326,20 +40424,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 10,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -40414,7 +40512,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 79,
-                0,
+                64,
                 0,
                 0
             ]
@@ -40440,20 +40538,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
                         0,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 50,
+                    "exam": 14,
+                    "total": 64
                 },
                 "3": {
                     "activities": [
@@ -40528,7 +40626,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 72,
-                0,
+                74,
                 0,
                 0
             ]
@@ -40554,20 +40652,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        11,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        17,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 63,
+                    "exam": 11,
+                    "total": 74
                 },
                 "3": {
                     "activities": [
@@ -40642,7 +40740,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 61,
-                0,
+                67,
                 0,
                 0
             ]
@@ -40669,19 +40767,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        4,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 49,
+                    "exam": 18,
+                    "total": 67
                 },
                 "3": {
                     "activities": [
@@ -40756,7 +40854,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 81,
-                0,
+                63,
                 0,
                 0
             ]
@@ -40783,19 +40881,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        5,
+                        3,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 48,
+                    "exam": 15,
+                    "total": 63
                 },
                 "3": {
                     "activities": [
@@ -40870,7 +40968,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 78,
-                0,
+                78,
                 0,
                 0
             ]
@@ -40896,20 +40994,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        9,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        17,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 61,
+                    "exam": 17,
+                    "total": 78
                 },
                 "3": {
                     "activities": [
@@ -40984,7 +41082,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 99,
-                0,
+                90,
                 0,
                 0
             ]
@@ -41010,20 +41108,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 20,
+                    "total": 90
                 },
                 "3": {
                     "activities": [
@@ -41098,7 +41196,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 80,
-                0,
+                85,
                 0,
                 0
             ]
@@ -41124,20 +41222,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        14,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 16,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -41212,7 +41310,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 81,
-                0,
+                73,
                 0,
                 0
             ]
@@ -41239,19 +41337,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 13,
+                    "total": 73
                 },
                 "3": {
                     "activities": [
@@ -41326,7 +41424,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 82,
-                0,
+                85,
                 0,
                 0
             ]
@@ -41352,20 +41450,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 15,
+                    "total": 85
                 },
                 "3": {
                     "activities": [
@@ -41440,7 +41538,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 79,
-                0,
+                82,
                 0,
                 0
             ]
@@ -41466,20 +41564,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 12,
+                    "total": 82
                 },
                 "3": {
                     "activities": [
@@ -41554,7 +41652,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 93,
-                0,
+                78,
                 0,
                 0
             ]
@@ -41580,20 +41678,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        11,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 66,
+                    "exam": 12,
+                    "total": 78
                 },
                 "3": {
                     "activities": [
@@ -41668,7 +41766,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 94,
-                0,
+                80,
                 0,
                 0
             ]
@@ -41694,20 +41792,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 11,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -41782,7 +41880,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 70,
-                0,
+                62,
                 0,
                 0
             ]
@@ -41809,19 +41907,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 2,
+                    "total": 62
                 },
                 "3": {
                     "activities": [
@@ -41896,7 +41994,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 76,
-                0,
+                78,
                 0,
                 0
             ]
@@ -41922,20 +42020,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 8,
+                    "total": 78
                 },
                 "3": {
                     "activities": [
@@ -42010,7 +42108,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 80,
-                0,
+                77,
                 0,
                 0
             ]
@@ -42036,20 +42134,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        12,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 62,
+                    "exam": 15,
+                    "total": 77
                 },
                 "3": {
                     "activities": [
@@ -42124,7 +42222,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 78,
-                0,
+                63,
                 0,
                 0
             ]
@@ -42151,19 +42249,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        6,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 51,
+                    "exam": 12,
+                    "total": 63
                 },
                 "3": {
                     "activities": [
@@ -42238,7 +42336,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 83,
-                0,
+                70,
                 0,
                 0
             ]
@@ -42264,20 +42362,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        6,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 60,
+                    "exam": 10,
+                    "total": 70
                 },
                 "3": {
                     "activities": [
@@ -42352,7 +42450,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 86,
-                0,
+                58,
                 0,
                 0
             ]
@@ -42379,19 +42477,19 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 "2": {
                     "activities": [
                         0,
+                        1,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 46,
+                    "exam": 12,
+                    "total": 58
                 },
                 "3": {
                     "activities": [
@@ -42466,7 +42564,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 82,
-                0,
+                80,
                 0,
                 0
             ]
@@ -42492,20 +42590,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 10,
+                    "total": 80
                 },
                 "3": {
                     "activities": [
@@ -42580,7 +42678,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 84,
-                0,
+                78,
                 0,
                 0
             ]
@@ -42606,20 +42704,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        4,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 69,
+                    "exam": 9,
+                    "total": 78
                 },
                 "3": {
                     "activities": [
@@ -42694,7 +42792,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 76,
-                0,
+                81,
                 0,
                 0
             ]
@@ -42720,20 +42818,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
-                    "exam": 0,
-                    "total": 0
+                    "zona": 70,
+                    "exam": 11,
+                    "total": 81
                 },
                 "3": {
                     "activities": [
@@ -42808,7 +42906,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
         "grades": {
             "Computación III": [
                 79,
-                0,
+                69,
                 0,
                 0
             ]
@@ -42834,20 +42932,20 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                 },
                 "2": {
                     "activities": [
+                        10,
+                        14,
+                        5,
+                        20,
                         0,
                         0,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0,
+                        20,
                         0,
                         0,
                         0
                     ],
-                    "zona": 0,
+                    "zona": 69,
                     "exam": 0,
-                    "total": 0
+                    "total": 69
                 },
                 "3": {
                     "activities": [
@@ -55769,6 +55867,60 @@ function initApp() {
                 ]
             };
         }
+
+        const pKey2 = `${p.id}_B2`;
+        if (subj === 'Computación II') {
+            STATE.gradingConfigs[pKey2] = {
+                zonaMax: 70,
+                examMax: 30,
+                activities: [
+                    { name: 'Folder capacitate', max: 10 },
+                    { name: 'Data king', max: 15 },
+                    { name: 'Proyecto', max: 20 },
+                    { name: 'Ejercicios de Clase', max: 5 },
+                    { name: 'Act. 5', max: 0 },
+                    { name: 'Act. 6', max: 0 },
+                    { name: 'Aniversario', max: 20 },
+                    { name: 'Act. 8', max: 0 },
+                    { name: 'Act. 9', max: 0 },
+                    { name: 'Act. 10', max: 0 }
+                ]
+            };
+        } else if (subj === 'Computación III') {
+            STATE.gradingConfigs[pKey2] = {
+                zonaMax: 70,
+                examMax: 30,
+                activities: [
+                    { name: 'Folder', max: 10 },
+                    { name: 'Pruebat', max: 15 },
+                    { name: 'Clases', max: 5 },
+                    { name: 'Proyecto', max: 20 },
+                    { name: 'Act. 5', max: 0 },
+                    { name: 'Act. 6', max: 0 },
+                    { name: 'Aniversario', max: 20 },
+                    { name: 'Act. 8', max: 0 },
+                    { name: 'Act. 9', max: 0 },
+                    { name: 'Act. 10', max: 0 }
+                ]
+            };
+        } else if (subj === 'Cálculo Mercantil y Financiero') {
+            STATE.gradingConfigs[pKey2] = {
+                zonaMax: 50,
+                examMax: 50,
+                activities: [
+                    { name: 'Tarea 1', max: 10 },
+                    { name: 'Tarea 2', max: 10 },
+                    { name: 'Tarea 3', max: 10 },
+                    { name: 'Act. 4', max: 0 },
+                    { name: 'Act. 5', max: 0 },
+                    { name: 'Act. 6', max: 0 },
+                    { name: 'Aniversario', max: 20 },
+                    { name: 'Act. 8', max: 0 },
+                    { name: 'Act. 9', max: 0 },
+                    { name: 'Act. 10', max: 0 }
+                ]
+            };
+        }
     });
     ensureOfficialCycles();
 
@@ -63917,6 +64069,32 @@ function getReportCardSubjectGrades(student, subject) {
         }
     }
 
+    // Si b2 es 0, consultar el mapa maestro oficial del 2do Bimestre
+    if (b2 === 0 && typeof getOfficialBim2Details === 'function') {
+        let off2 = getOfficialBim2Details(student, subject);
+        if (!off2) {
+            // Intentar con variantes canónicas
+            if (typeof CANONICAL_CNB_28_DICTIONARY !== 'undefined') {
+                const cItem = CANONICAL_CNB_28_DICTIONARY.find(c => cleanStr(c.full) === cleanTarget || c.aliases.some(a => cleanStr(a) === cleanTarget));
+                if (cItem) {
+                    off2 = getOfficialBim2Details(student, cItem.full);
+                    if (!off2) {
+                        for (const al of cItem.aliases) {
+                            off2 = getOfficialBim2Details(student, al);
+                            if (off2) break;
+                        }
+                    }
+                }
+            }
+        }
+        if (off2 && off2.total > 0) {
+            b2 = off2.total;
+            if (!student.grades) student.grades = {};
+            if (!student.grades[subject]) student.grades[subject] = [b1, b2, 0, 0];
+            else student.grades[subject][1] = b2;
+        }
+    }
+
     const activeVals = [b1, b2, b3, b4].filter(v => v > 0);
     const avg = activeVals.length > 0 ? Math.round(activeVals.reduce((a, b) => a + b, 0) / activeVals.length) : 0;
     return { b1, b2, b3, b4, avg };
@@ -65793,8 +65971,33 @@ function ensureStudentGradebookStructure(student, subjectName) {
         };
     }
 
-    // Bimestres 2, 3 y 4 siempre en 0
-    for (let u = 2; u <= 4; u++) {
+    // 🌟 Sincronización incondicional de actividades y notas oficiales para el 2do Bimestre
+    const off2 = (typeof getOfficialBim2Details === 'function') ? getOfficialBim2Details(student, subjectName) : null;
+    if (off2) {
+        student.grades[subjectName][1] = off2.total;
+        student.gradebookDetails[subjectName]["2"] = {
+            activities: Array.isArray(off2.activities) ? [...off2.activities] : [0,0,0,0,0,0,0,0,0,0],
+            zona: off2.zona,
+            exam: off2.exam,
+            total: off2.total
+        };
+    } else if (!student.gradebookDetails[subjectName]["2"]) {
+        const existingTotal2 = student.grades[subjectName][1] || 0;
+        const initZona2 = existingTotal2 > 0 ? Math.min(60, Math.round(existingTotal2 * 0.6)) : 0;
+        const initExam2 = existingTotal2 > 0 ? (existingTotal2 - initZona2) : 0;
+        const act1 = initZona2 > 0 ? Math.round(initZona2 / 2) : 0;
+        const act2 = initZona2 > 0 ? (initZona2 - act1) : 0;
+
+        student.gradebookDetails[subjectName]["2"] = {
+            activities: [act1, act2, 0, 0, 0, 0, 0, 0, 0, 0],
+            zona: initZona2,
+            exam: initExam2,
+            total: existingTotal2
+        };
+    }
+
+    // Bimestres 3 y 4 siempre en 0
+    for (let u = 3; u <= 4; u++) {
         student.grades[subjectName][u - 1] = 0;
         if (!student.gradebookDetails[subjectName][String(u)]) {
             student.gradebookDetails[subjectName][String(u)] = {
