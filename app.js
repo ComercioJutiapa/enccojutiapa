@@ -63688,6 +63688,21 @@ function populateReportStudentSelect() {
             distinctSections.map(sec => `<option value="${sec}" ${sec === curSection ? 'selected' : ''}>${sec}</option>`).join('');
     }
 
+    // Sincronizar etiqueta del Bimestre Activo en el selector
+    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
+    const bimFilter = document.getElementById('reportBimestreFilter');
+    if (bimFilter) {
+        const curBim = bimFilter.value || 'active';
+        bimFilter.innerHTML = `
+            <option value="active" ${curBim === 'active' ? 'selected' : ''}>Bimestre Activo (${activeBim}.º Bimestre)</option>
+            <option value="1" ${curBim === '1' ? 'selected' : ''}>1.º Bimestre</option>
+            <option value="2" ${curBim === '2' ? 'selected' : ''}>2.º Bimestre</option>
+            <option value="3" ${curBim === '3' ? 'selected' : ''}>3.º Bimestre</option>
+            <option value="4" ${curBim === '4' ? 'selected' : ''}>4.º Bimestre</option>
+            <option value="all" ${curBim === 'all' ? 'selected' : ''}>Consolidado Completo (I, II, III, IV)</option>
+        `;
+    }
+
     filterAndPopulateReportStudents();
 }
 window.populateReportStudentSelect = populateReportStudentSelect;
@@ -63701,6 +63716,14 @@ function onReportSectionFilterChange() {
     filterAndPopulateReportStudents();
 }
 window.onReportSectionFilterChange = onReportSectionFilterChange;
+
+function onReportBimestreFilterChange() {
+    const studentSelect = document.getElementById('reportStudentSelect');
+    if (studentSelect && studentSelect.value) {
+        previewStudentReportCard(studentSelect.value);
+    }
+}
+window.onReportBimestreFilterChange = onReportBimestreFilterChange;
 
 function getFilteredReportStudents() {
     let students = STATE.students || [];
@@ -63924,7 +63947,7 @@ function getReportCardSubjectGrades(student, subject) {
 }
 window.getReportCardSubjectGrades = getReportCardSubjectGrades;
 
-function buildStudentReportCardInnerHtml(s) {
+function buildStudentReportCardInnerHtml(s, bimesterMode) {
     if (!s) return '';
     const gradeObj = (STATE.gradesList || []).find(g => 
         (g.code && g.code === s.grade) ||
@@ -63934,38 +63957,152 @@ function buildStudentReportCardInnerHtml(s) {
     const gradeName = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : formatStudentGradeAndSection(s);
     const subjects = getReportCardSubjects(s);
 
-    let totalAvgSum = 0;
-    let subjectCount = 0;
+    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
+    let selectedMode = bimesterMode;
+    if (!selectedMode && typeof document !== 'undefined') {
+        selectedMode = document.getElementById('reportBimestreFilter')?.value || 'active';
+    }
+    if (!selectedMode) selectedMode = 'active';
 
-    const rowsHtml = subjects.map((sub, idx) => {
-        const g = getReportCardSubjectGrades(s, sub);
-        if (g.avg > 0) {
-            totalAvgSum += g.avg;
-            subjectCount++;
-        }
-        const isB1Fail = (g.b1 > 0 && g.b1 < 60);
-        const isAvgFail = (g.avg > 0 && g.avg < 60);
+    const isConsolidated = (selectedMode === 'all');
+    const targetBim = (selectedMode === 'active') ? activeBim : (isConsolidated ? 'all' : (parseInt(selectedMode) || activeBim));
 
-        return `
-            <tr>
-                <td style="text-align:center; font-weight:700; width:28px; border:1px solid #000000; padding:4px 2px; font-size:9px;">${idx + 1}</td>
-                <td style="font-weight:700; padding:4px 6px; text-align:left; border:1px solid #000000; font-size:9.5px; color:#0f172a;">${sub}</td>
-                <td style="text-align:center; font-size:10px; font-weight:${isB1Fail ? '800' : '700'}; color:${isB1Fail ? '#dc2626' : '#000000'}; border:1px solid #000000; width:40px;">${g.b1 > 0 ? g.b1 : '—'}</td>
-                <td style="text-align:center; font-size:9.5px; color:#64748b; border:1px solid #000000; width:40px;">${g.b2 > 0 ? g.b2 : '—'}</td>
-                <td style="text-align:center; font-size:9.5px; color:#64748b; border:1px solid #000000; width:40px;">${g.b3 > 0 ? g.b3 : '—'}</td>
-                <td style="text-align:center; font-size:9.5px; color:#64748b; border:1px solid #000000; width:40px;">${g.b4 > 0 ? g.b4 : '—'}</td>
-                <td style="text-align:center; font-weight:800; font-size:10.5px; border:1px solid #000000; width:50px; ${isAvgFail ? 'color:#dc2626; background:#fee2e2;' : 'color:#0369a1; background:#f0f9ff;'}">${g.avg > 0 ? g.avg : '—'}</td>
-                <td style="text-align:center; font-weight:800; font-size:9px; border:1px solid #000000; width:72px; color:${g.b1 >= 60 ? '#15803d' : (g.b1 > 0 ? '#dc2626' : '#64748b')};">${g.b1 >= 60 ? 'APROBADO' : (g.b1 > 0 ? 'REPROBADO' : 'PENDIENTE')}</td>
-            </tr>
+    const BIMESTRE_INFO = {
+        1: { roman: 'I', text: '1.er Bimestre', label: '1.º', title: '1.ER BIMESTRE' },
+        2: { roman: 'II', text: '2.º Bimestre', label: '2.º', title: '2.º BIMESTRE' },
+        3: { roman: 'III', text: '3.er Bimestre', label: '3.º', title: '3.ER BIMESTRE' },
+        4: { roman: 'IV', text: '4.º Bimestre', label: '4.º', title: '4.º BIMESTRE' }
+    };
+    const bimInfo = BIMESTRE_INFO[targetBim] || BIMESTRE_INFO[activeBim] || BIMESTRE_INFO[1];
+
+    let tableHeaderHtml = '';
+    let rowsHtml = '';
+    let tableFooterHtml = '';
+
+    if (!isConsolidated) {
+        // VISTA OFICIAL DEL BIMESTRE ACTIVO / SELECCIONADO (ESTRUCTURA Y DISEÑO PROFESIONAL MEDIA HOJA CARTA)
+        let totalScoreSum = 0;
+        let scoredCount = 0;
+
+        tableHeaderHtml = `
+            <thead>
+                <tr>
+                    <th style="width:34px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8.5px; text-align:center; padding:5px 2px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">No.</th>
+                    <th style="text-align:left; padding-left:10px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8.5px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Asignatura / Área Curricular</th>
+                    <th style="width:110px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8.5px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Calificación (${bimInfo.roman} Bim)</th>
+                    <th style="width:95px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8.5px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Resultado</th>
+                </tr>
+            </thead>
         `;
-    }).join('');
 
-    const overallAvg = subjectCount > 0 ? Math.round(totalAvgSum / subjectCount) : 0;
-    const isOverallFail = (overallAvg > 0 && overallAvg < 60);
+        rowsHtml = subjects.map((sub, idx) => {
+            const g = getReportCardSubjectGrades(s, sub);
+            let score = 0;
+            if (targetBim === 1) score = g.b1;
+            else if (targetBim === 2) score = g.b2;
+            else if (targetBim === 3) score = g.b3;
+            else if (targetBim === 4) score = g.b4;
+
+            if (score > 0) {
+                totalScoreSum += score;
+                scoredCount++;
+            }
+
+            const isFail = (score > 0 && score < 60);
+            const resultText = score >= 60 ? 'APROBADO' : (score > 0 ? 'REPROBADO' : 'PENDIENTE');
+            const resultColor = score >= 60 ? '#15803d' : (score > 0 ? '#dc2626' : '#64748b');
+
+            return `
+                <tr>
+                    <td style="text-align:center; font-weight:700; width:34px; border:1px solid #000000; padding:5px 2px; font-size:9.5px;">${idx + 1}</td>
+                    <td style="font-weight:700; padding:5px 8px; text-align:left; border:1px solid #000000; font-size:9.5px; color:#0f172a;">${sub}</td>
+                    <td style="text-align:center; font-size:11px; font-weight:${isFail ? '800' : '700'}; color:${isFail ? '#dc2626' : '#000000'}; border:1px solid #000000; width:110px;">${score > 0 ? score : '—'}</td>
+                    <td style="text-align:center; font-weight:800; font-size:9px; border:1px solid #000000; width:95px; color:${resultColor};">${resultText}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const bimAvg = scoredCount > 0 ? Math.round(totalScoreSum / scoredCount) : 0;
+        const isBimFail = (bimAvg > 0 && bimAvg < 60);
+        const avgStatus = bimAvg >= 60 ? 'SATISFACTORIO' : (bimAvg > 0 ? 'EN RIESGO' : 'EN CURSO');
+        const avgStatusColor = bimAvg >= 60 ? '#15803d' : (bimAvg > 0 ? '#dc2626' : '#64748b');
+
+        tableFooterHtml = `
+            <tfoot>
+                <tr style="background:#f1f5f9; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">
+                    <td colspan="2" style="text-align:right; font-weight:800; padding:5px 8px; border:1px solid #000000; font-size:9.5px;">PROMEDIO GENERAL (${bimInfo.roman} BIMESTRE):</td>
+                    <td style="text-align:center; font-weight:900; font-size:12px; border:1px solid #000000; color:${isBimFail ? '#dc2626' : '#0369a1'}; background:${isBimFail ? '#fee2e2' : '#e0f2fe'}; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">${bimAvg > 0 ? bimAvg : '—'}</td>
+                    <td style="text-align:center; font-weight:800; font-size:9px; border:1px solid #000000; color:${avgStatusColor};">${avgStatus}</td>
+                </tr>
+            </tfoot>
+        `;
+    } else {
+        // VISTA CONSOLIDADA COMPLETA (I, II, III, IV BIMESTRE Y PROMEDIO)
+        let totalAvgSum = 0;
+        let subjectCount = 0;
+
+        tableHeaderHtml = `
+            <thead>
+                <tr>
+                    <th style="width:28px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; padding:4px 2px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">No.</th>
+                    <th style="text-align:left; padding-left:8px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Asignatura / Área Curricular</th>
+                    <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">I Bim${activeBim === 1 ? ' *' : ''}</th>
+                    <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">II Bim${activeBim === 2 ? ' *' : ''}</th>
+                    <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">III Bim${activeBim === 3 ? ' *' : ''}</th>
+                    <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">IV Bim${activeBim === 4 ? ' *' : ''}</th>
+                    <th style="width:50px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Prom.</th>
+                    <th style="width:72px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Resultado</th>
+                </tr>
+            </thead>
+        `;
+
+        rowsHtml = subjects.map((sub, idx) => {
+            const g = getReportCardSubjectGrades(s, sub);
+            if (g.avg > 0) {
+                totalAvgSum += g.avg;
+                subjectCount++;
+            }
+            const isB1Fail = (g.b1 > 0 && g.b1 < 60);
+            const isB2Fail = (g.b2 > 0 && g.b2 < 60);
+            const isB3Fail = (g.b3 > 0 && g.b3 < 60);
+            const isB4Fail = (g.b4 > 0 && g.b4 < 60);
+            const isAvgFail = (g.avg > 0 && g.avg < 60);
+
+            return `
+                <tr>
+                    <td style="text-align:center; font-weight:700; width:28px; border:1px solid #000000; padding:4px 2px; font-size:9px;">${idx + 1}</td>
+                    <td style="font-weight:700; padding:4px 6px; text-align:left; border:1px solid #000000; font-size:9.5px; color:#0f172a;">${sub}</td>
+                    <td style="text-align:center; font-size:10px; font-weight:${isB1Fail ? '800' : '700'}; color:${isB1Fail ? '#dc2626' : '#000000'}; border:1px solid #000000; width:40px; ${activeBim === 1 ? 'background:#f0f9ff;' : ''}">${g.b1 > 0 ? g.b1 : '—'}</td>
+                    <td style="text-align:center; font-size:10px; font-weight:${isB2Fail ? '800' : '700'}; color:${isB2Fail ? '#dc2626' : '#000000'}; border:1px solid #000000; width:40px; ${activeBim === 2 ? 'background:#f0f9ff;' : ''}">${g.b2 > 0 ? g.b2 : '—'}</td>
+                    <td style="text-align:center; font-size:10px; font-weight:${isB3Fail ? '800' : '700'}; color:${isB3Fail ? '#dc2626' : '#000000'}; border:1px solid #000000; width:40px; ${activeBim === 3 ? 'background:#f0f9ff;' : ''}">${g.b3 > 0 ? g.b3 : '—'}</td>
+                    <td style="text-align:center; font-size:10px; font-weight:${isB4Fail ? '800' : '700'}; color:${isB4Fail ? '#dc2626' : '#000000'}; border:1px solid #000000; width:40px; ${activeBim === 4 ? 'background:#f0f9ff;' : ''}">${g.b4 > 0 ? g.b4 : '—'}</td>
+                    <td style="text-align:center; font-weight:800; font-size:10.5px; border:1px solid #000000; width:50px; ${isAvgFail ? 'color:#dc2626; background:#fee2e2;' : 'color:#0369a1; background:#f0f9ff;'}">${g.avg > 0 ? g.avg : '—'}</td>
+                    <td style="text-align:center; font-weight:800; font-size:9px; border:1px solid #000000; width:72px; color:${g.avg >= 60 ? '#15803d' : (g.avg > 0 ? '#dc2626' : '#64748b')};">${g.avg >= 60 ? 'APROBADO' : (g.avg > 0 ? 'REPROBADO' : 'PENDIENTE')}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const overallAvg = subjectCount > 0 ? Math.round(totalAvgSum / subjectCount) : 0;
+        const isOverallFail = (overallAvg > 0 && overallAvg < 60);
+
+        tableFooterHtml = `
+            <tfoot>
+                <tr style="background:#f1f5f9; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">
+                    <td colspan="6" style="text-align:right; font-weight:800; padding:4px 8px; border:1px solid #000000; font-size:9.5px;">PROMEDIO GENERAL ACUMULADO:</td>
+                    <td style="text-align:center; font-weight:900; font-size:11px; border:1px solid #000000; color:${isOverallFail ? '#dc2626' : '#0369a1'}; background:${isOverallFail ? '#fee2e2' : '#e0f2fe'}; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">${overallAvg > 0 ? overallAvg : '—'}</td>
+                    <td style="text-align:center; font-weight:800; font-size:9px; border:1px solid #000000; color:${overallAvg >= 60 ? '#15803d' : (overallAvg > 0 ? '#dc2626' : '#64748b')};">${overallAvg >= 60 ? 'PROMOVIDO' : (overallAvg > 0 ? 'EN RIESGO' : 'EN CURSO')}</td>
+                </tr>
+            </tfoot>
+        `;
+    }
 
     const directorUser = (STATE.users || []).find(u => u.role === 'director');
     const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || 'Licda. Mirza Elizabeth Aragón Polanco de Hernández');
     const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes('licda') ? 'Directora del Plantel' : 'Director del Plantel');
+
+    const badgeNum = isConsolidated ? 'I - IV' : bimInfo.label;
+    const badgeText = isConsolidated ? 'CONSOLIDADO<br>ANUAL' : ('BIMESTRE<br>' + (targetBim === activeBim ? 'ACTIVO' : 'OFICIAL'));
+    const bannerTitle = 'TARJETA OFICIAL DE CALIFICACIONES — ' + (isConsolidated ? 'CONSOLIDADO ANUAL' : (bimInfo.title + (targetBim === activeBim ? ' (ACTIVO)' : ''))) + ' — CICLO LECTIVO ' + (STATE.activeCycle || '2026');
 
     return `
         <div class="report-half-letter-sheet" style="background:#ffffff; color:#000000; width:100%; box-sizing:border-box; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
@@ -63978,12 +64115,12 @@ function buildStudentReportCardInnerHtml(s) {
                     <div style="font-size:8px; font-weight:800; letter-spacing:0.5px; color:#1e293b; text-transform:uppercase;">MINISTERIO DE EDUCACIÓN — GUATEMALA</div>
                     <div style="font-size:11.5px; font-weight:900; color:#0369a1; margin:1px 0; text-transform:uppercase; line-height:1.15;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</div>
                     <div style="font-size:7.5px; font-weight:700; color:#475569; letter-spacing:0.3px;">JUTIAPA | FUNDADA EN 1970 — NIVEL MEDIO Y BÁSICO</div>
-                    <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:8px; font-weight:800; padding:2px 10px; border-radius:10px; margin-top:3px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">TARJETA OFICIAL DE CALIFICACIONES — CICLO LECTIVO 2026</div>
+                    <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:8px; font-weight:800; padding:2px 10px; border-radius:10px; margin-top:3px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">${bannerTitle}</div>
                 </div>
-                <div style="width:52px; text-align:center; flex-shrink:0;">
+                <div style="width:58px; text-align:center; flex-shrink:0;">
                     <div style="background:#f0f9ff; border:1.5px solid #0284c7; border-radius:6px; padding:3px 2px; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
-                        <span style="display:block; font-size:13px; font-weight:900; color:#0284c7; line-height:1;">1.º</span>
-                        <span style="display:block; font-size:6.5px; font-weight:800; color:#0f172a; line-height:1.1; text-transform:uppercase;">BIMESTRE<br>ACTIVO</span>
+                        <span style="display:block; font-size:${isConsolidated ? '11px' : '14px'}; font-weight:900; color:#0284c7; line-height:1.1;">${badgeNum}</span>
+                        <span style="display:block; font-size:6.5px; font-weight:800; color:#0f172a; line-height:1.1; text-transform:uppercase;">${badgeText}</span>
                     </div>
                 </div>
             </div>
@@ -64000,28 +64137,11 @@ function buildStudentReportCardInnerHtml(s) {
 
             <!-- TABLA DE CALIFICACIONES (BLANCO, AZUL, ROJO, BORDES NEGROS) -->
             <table style="width:100%; border-collapse:collapse; font-size:9.5px; border:1.5px solid #000000; margin-bottom:8px;">
-                <thead>
-                    <tr>
-                        <th style="width:28px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; padding:4px 2px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">No.</th>
-                        <th style="text-align:left; padding-left:8px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Asignatura / Área Curricular</th>
-                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">I Bim</th>
-                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">II Bim</th>
-                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">III Bim</th>
-                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">IV Bim</th>
-                        <th style="width:50px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Prom.</th>
-                        <th style="width:72px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Resultado</th>
-                    </tr>
-                </thead>
+                ${tableHeaderHtml}
                 <tbody>
                     ${rowsHtml}
                 </tbody>
-                <tfoot>
-                    <tr style="background:#f1f5f9; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">
-                        <td colspan="6" style="text-align:right; font-weight:800; padding:4px 8px; border:1px solid #000000; font-size:9.5px;">PROMEDIO GENERAL ACUMULADO:</td>
-                        <td style="text-align:center; font-weight:900; font-size:11px; border:1px solid #000000; color:${isOverallFail ? '#dc2626' : '#0369a1'}; background:${isOverallFail ? '#fee2e2' : '#e0f2fe'}; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">${overallAvg > 0 ? overallAvg : '—'}</td>
-                        <td style="text-align:center; font-weight:800; font-size:9px; border:1px solid #000000; color:${overallAvg >= 60 ? '#15803d' : (overallAvg > 0 ? '#dc2626' : '#64748b')};">${overallAvg >= 60 ? 'PROMOVIDO' : (overallAvg > 0 ? 'EN RIESGO' : 'EN CURSO')}</td>
-                    </tr>
-                </tfoot>
+                ${tableFooterHtml}
             </table>
 
             <!-- BLOQUE DE FIRMA ÚNICA EXCLUSIVA DE LA DIRECCIÓN -->
@@ -64056,7 +64176,8 @@ function previewStudentReportCard(studentId) {
         return;
     }
 
-    container.innerHTML = buildStudentReportCardInnerHtml(s);
+    const bimMode = document.getElementById('reportBimestreFilter')?.value || 'active';
+    container.innerHTML = buildStudentReportCardInnerHtml(s, bimMode);
 }
 window.previewStudentReportCard = previewStudentReportCard;
 
@@ -64084,7 +64205,8 @@ function printStudentReportCardOfficial(targetStudentId) {
         return;
     }
 
-    const cardHtml = buildStudentReportCardInnerHtml(s);
+    const bimMode = document.getElementById('reportBimestreFilter')?.value || 'active';
+    const cardHtml = buildStudentReportCardInnerHtml(s, bimMode);
 
     printWin.document.write(`
         <!DOCTYPE html>
@@ -64160,9 +64282,10 @@ function printBatchReportCardsOfficial() {
         return;
     }
 
+    const bimMode = document.getElementById('reportBimestreFilter')?.value || 'active';
     const cardsHtml = students.map((s, idx) => `
         <div class="student-page-break">
-            ${buildStudentReportCardInnerHtml(s)}
+            ${buildStudentReportCardInnerHtml(s, bimMode)}
         </div>
     `).join('');
 

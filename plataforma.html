@@ -2032,6 +2032,19 @@
                                     <option value="">-- Todas las Secciones --</option>
                                 </select>
                             </div>
+                            <div class="form-group" style="margin:0; min-width:180px;">
+                                <label style="font-weight:700; font-size:0.82rem; color:#1e293b; margin-bottom:4px; display:block;">
+                                    <i class="fa-solid fa-calendar-check" style="color:#0284c7;"></i> Bimestre a Emitir:
+                                </label>
+                                <select id="reportBimestreFilter" class="form-control" onchange="onReportBimestreFilterChange()" style="font-size:0.86rem; font-weight:600;">
+                                    <option value="active" selected>Bimestre Activo (1.º Bimestre)</option>
+                                    <option value="1">1.º Bimestre</option>
+                                    <option value="2">2.º Bimestre</option>
+                                    <option value="3">3.º Bimestre</option>
+                                    <option value="4">4.º Bimestre</option>
+                                    <option value="all">Consolidado Completo (I - IV)</option>
+                                </select>
+                            </div>
                             <div class="form-group" style="margin:0; flex:1; min-width:240px;">
                                 <label style="font-weight:700; font-size:0.82rem; color:#1e293b; margin-bottom:4px; display:block;">
                                     <i class="fa-solid fa-user" style="color:#0284c7;"></i> Seleccionar Estudiante:
