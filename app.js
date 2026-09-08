@@ -8874,10 +8874,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
-                        0,
+                        2,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -9064,10 +9064,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -9254,10 +9254,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
+                        1,
+                        15,
+                        4,
                         20,
-                        10,
-                        10,
-                        0,
                         0,
                         0,
                         0,
@@ -9444,10 +9444,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -9634,10 +9634,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        21,
-                        10,
-                        10,
-                        0,
+                        1,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
                         0,
@@ -9824,10 +9824,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        25,
-                        13,
-                        13,
-                        0,
+                        5,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -10014,10 +10014,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        18,
-                        9,
-                        9,
                         0,
+                        15,
+                        0,
+                        20,
                         0,
                         0,
                         0,
@@ -10204,10 +10204,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        28,
-                        14,
-                        14,
-                        0,
+                        11,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -10394,10 +10394,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        25,
-                        13,
-                        13,
-                        0,
+                        5,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -10584,10 +10584,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
-                        0,
+                        4,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
                         0,
@@ -10774,10 +10774,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
-                        0,
+                        6,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -10964,10 +10964,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -11154,10 +11154,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
-                        0,
+                        6,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -11344,10 +11344,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
-                        0,
+                        7,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -11534,10 +11534,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
+                        14,
                         15,
-                        15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -11724,10 +11724,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
                         0,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -11914,10 +11914,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
-                        0,
+                        3,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -12104,10 +12104,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
+                        14,
                         15,
-                        15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -12294,10 +12294,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        19,
-                        9,
-                        9,
                         0,
+                        15,
+                        2,
+                        20,
                         0,
                         0,
                         0,
@@ -12484,10 +12484,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
                         0,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -12674,10 +12674,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        25,
-                        12,
-                        12,
-                        0,
+                        5,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -12864,10 +12864,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        25,
-                        13,
-                        13,
-                        0,
+                        5,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -13054,10 +13054,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
                         0,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -13244,10 +13244,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -13434,10 +13434,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        27,
                         14,
-                        14,
-                        0,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
                         0,
@@ -13624,10 +13624,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        27,
-                        14,
-                        14,
-                        0,
+                        9,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -13814,10 +13814,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -14004,10 +14004,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        27,
-                        14,
-                        14,
-                        0,
+                        9,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -14194,10 +14194,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        21,
-                        11,
-                        11,
                         0,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -14384,10 +14384,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        29,
-                        14,
-                        14,
-                        0,
+                        12,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -14574,10 +14574,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        27,
-                        14,
-                        14,
-                        0,
+                        9,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -14764,10 +14764,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
-                        0,
+                        5,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -14954,10 +14954,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -15144,10 +15144,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -15334,10 +15334,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -15524,10 +15524,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        2,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -15714,10 +15714,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        28,
-                        14,
-                        14,
-                        0,
+                        13,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -15828,10 +15828,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -15942,10 +15942,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        1,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -16056,10 +16056,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        25,
-                        13,
-                        13,
-                        0,
+                        5,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -16170,10 +16170,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        27,
-                        13,
-                        13,
-                        0,
+                        9,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -16284,10 +16284,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -16398,10 +16398,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        1,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -16512,10 +16512,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
                         0,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -16626,10 +16626,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
-                        0,
+                        1,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -16740,10 +16740,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
-                        0,
+                        2,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -16854,10 +16854,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
                         0,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -16968,10 +16968,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
                         0,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -17082,10 +17082,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        19,
-                        10,
-                        10,
-                        0,
+                        1,
+                        15,
+                        2,
+                        20,
                         0,
                         0,
                         0,
@@ -17196,10 +17196,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        2,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -17310,10 +17310,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        25,
-                        13,
-                        13,
-                        0,
+                        5,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -17424,10 +17424,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        1,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -17538,10 +17538,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
-                        0,
+                        2,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -17652,10 +17652,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
                         0,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -17766,10 +17766,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
-                        0,
+                        7,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -17880,10 +17880,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        25,
-                        12,
-                        12,
-                        0,
+                        5,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -17994,10 +17994,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
                         0,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -18108,10 +18108,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        2,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -18222,10 +18222,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        25,
-                        13,
-                        13,
-                        0,
+                        5,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -18336,10 +18336,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        1,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -18450,10 +18450,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
                         0,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -18564,10 +18564,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        1,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -18678,10 +18678,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        1,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -18792,10 +18792,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        2,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -18906,10 +18906,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        27,
-                        13,
-                        13,
-                        0,
+                        8,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -19020,10 +19020,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        27,
-                        13,
-                        13,
-                        0,
+                        8,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -19134,10 +19134,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
-                        0,
+                        4,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -19248,10 +19248,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        27,
                         14,
-                        14,
-                        0,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
                         0,
@@ -19362,10 +19362,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
-                        0,
+                        3,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -19476,10 +19476,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        28,
-                        14,
-                        14,
-                        0,
+                        10,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -19590,10 +19590,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        25,
-                        13,
-                        13,
-                        0,
+                        6,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -19704,10 +19704,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        27,
-                        14,
-                        14,
-                        0,
+                        10,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -19818,10 +19818,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
                         0,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -19932,10 +19932,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        28,
-                        14,
-                        14,
-                        0,
+                        11,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -20046,10 +20046,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        19,
-                        10,
-                        10,
+                        11,
                         0,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -20160,10 +20160,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
-                        0,
+                        7,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -20274,10 +20274,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        28,
-                        14,
-                        14,
-                        0,
+                        11,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -20388,10 +20388,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        25,
-                        13,
-                        13,
-                        0,
+                        6,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -20502,10 +20502,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
-                        0,
+                        8,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -20616,10 +20616,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
-                        0,
+                        1,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -20730,10 +20730,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        2,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -20844,10 +20844,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -20958,10 +20958,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -21072,10 +21072,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -21186,10 +21186,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -21300,10 +21300,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -21414,10 +21414,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -21528,10 +21528,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        29,
+                        14,
                         15,
-                        15,
-                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -21642,10 +21642,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
-                        0,
+                        3,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -21756,10 +21756,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        29,
+                        14,
                         15,
-                        15,
-                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -21870,10 +21870,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        21,
-                        11,
-                        11,
                         0,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -21984,10 +21984,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -22098,10 +22098,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -22212,10 +22212,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -22326,10 +22326,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        19,
-                        10,
-                        10,
+                        9,
                         0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -22440,10 +22440,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        28,
-                        14,
-                        14,
-                        0,
+                        12,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -22554,10 +22554,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        28,
-                        14,
-                        14,
-                        0,
+                        11,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -22668,10 +22668,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -22782,10 +22782,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        29,
-                        14,
-                        14,
-                        0,
+                        15,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -22896,10 +22896,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
-                        0,
+                        3,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -23010,10 +23010,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        25,
-                        12,
-                        12,
-                        0,
+                        5,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -23124,10 +23124,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
-                        0,
+                        3,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
                         0,
@@ -23238,10 +23238,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
-                        0,
+                        3,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
                         0,
@@ -23352,10 +23352,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -23466,10 +23466,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
-                        0,
+                        3,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -23580,10 +23580,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        16,
-                        8,
-                        8,
+                        3,
                         0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -23694,10 +23694,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        4,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -23808,10 +23808,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -23922,10 +23922,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
-                        0,
+                        1,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -24036,10 +24036,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        21,
-                        11,
-                        11,
-                        0,
+                        2,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
                         0,
@@ -24150,10 +24150,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
+                        2,
+                        15,
+                        2,
                         20,
-                        10,
-                        10,
-                        0,
                         0,
                         0,
                         0,
@@ -24264,10 +24264,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
                         0,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -24378,10 +24378,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
                         0,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -24492,10 +24492,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        13,
-                        6,
-                        6,
                         0,
+                        0,
+                        5,
+                        20,
                         0,
                         0,
                         0,
@@ -24606,10 +24606,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        1,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -24720,10 +24720,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        1,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -24834,10 +24834,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
-                        0,
+                        3,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -24948,10 +24948,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
-                        0,
+                        1,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -25062,10 +25062,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
-                        0,
+                        3,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -25176,10 +25176,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        21,
-                        11,
-                        11,
                         0,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -25290,10 +25290,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
                         0,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -25404,10 +25404,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        25,
-                        12,
-                        12,
-                        0,
+                        4,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -25518,10 +25518,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        2,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -25632,10 +25632,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        20,
-                        10,
-                        10,
+                        15,
                         0,
+                        4,
+                        20,
                         0,
                         0,
                         0,
@@ -25746,10 +25746,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
-                        0,
+                        3,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -25860,10 +25860,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        2,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -25974,10 +25974,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -26088,10 +26088,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
-                        0,
+                        7,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -26202,10 +26202,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
-                        0,
+                        1,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -26316,10 +26316,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
-                        0,
+                        3,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -26430,10 +26430,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
-                        0,
+                        3,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -26544,10 +26544,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
-                        0,
+                        2,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -26658,10 +26658,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        2,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -26772,10 +26772,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
-                        0,
+                        1,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -26886,10 +26886,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        25,
-                        12,
-                        12,
-                        0,
+                        5,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -27000,10 +27000,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
-                        0,
+                        2,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -27114,10 +27114,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
-                        0,
+                        1,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -27228,10 +27228,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
-                        0,
+                        1,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -27342,10 +27342,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        18,
-                        9,
-                        9,
+                        1,
+                        15,
                         0,
+                        20,
                         0,
                         0,
                         0,
@@ -27456,10 +27456,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        15,
-                        7,
-                        7,
                         0,
+                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -27570,10 +27570,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        21,
-                        11,
-                        11,
                         0,
+                        15,
+                        7,
+                        20,
                         0,
                         0,
                         0,
@@ -27684,10 +27684,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        15,
-                        7,
-                        7,
                         0,
+                        0,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -27798,10 +27798,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        21,
-                        11,
-                        11,
-                        0,
+                        2,
+                        15,
+                        5,
+                        20,
                         0,
                         0,
                         0,
@@ -27912,10 +27912,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        28,
-                        14,
-                        14,
-                        0,
+                        10,
+                        15,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -28140,10 +28140,10 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación II": {
                 "1": {
                     "activities": [
-                        30,
                         15,
                         15,
-                        0,
+                        10,
+                        20,
                         0,
                         0,
                         0,
@@ -28254,8 +28254,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        13,
+                        15,
+                        25,
                         13,
                         0,
                         0,
@@ -28368,9 +28368,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
+                        15,
+                        18,
+                        14,
                         0,
                         0,
                         0,
@@ -28379,7 +28379,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 46.85714285714286,
+                    "zona": 47,
                     "exam": 30,
                     "total": 77
                 },
@@ -28482,8 +28482,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        14,
+                        15,
+                        25,
                         14,
                         0,
                         0,
@@ -28596,9 +28596,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        19,
-                        10,
-                        10,
+                        15,
+                        11,
+                        13,
                         0,
                         0,
                         0,
@@ -28607,7 +28607,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 38.714285714285715,
+                    "zona": 39,
                     "exam": 30,
                     "total": 69
                 },
@@ -28710,9 +28710,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        28,
-                        14,
-                        14,
+                        15,
+                        21,
+                        19,
                         0,
                         0,
                         0,
@@ -28721,7 +28721,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 55.42857142857143,
+                    "zona": 55,
                     "exam": 30,
                     "total": 85
                 },
@@ -28824,9 +28824,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        14,
-                        14,
+                        15,
+                        18,
+                        22,
                         0,
                         0,
                         0,
@@ -28835,7 +28835,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 54.85714285714286,
+                    "zona": 55,
                     "exam": 30,
                     "total": 85
                 },
@@ -28938,9 +28938,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        32,
-                        16,
-                        16,
+                        15,
+                        25,
+                        23,
                         0,
                         0,
                         0,
@@ -29052,9 +29052,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        32,
-                        16,
-                        16,
+                        15,
+                        25,
+                        24,
                         0,
                         0,
                         0,
@@ -29166,9 +29166,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        32,
-                        16,
-                        16,
+                        15,
+                        25,
+                        23,
                         0,
                         0,
                         0,
@@ -29280,9 +29280,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        31,
                         15,
-                        15,
+                        25,
+                        21,
                         0,
                         0,
                         0,
@@ -29394,8 +29394,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        13,
-                        6,
+                        15,
+                        4,
                         6,
                         0,
                         0,
@@ -29508,8 +29508,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
+                        15,
+                        21,
                         12,
                         0,
                         0,
@@ -29519,7 +29519,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 48.42857142857143,
+                    "zona": 48,
                     "exam": 30,
                     "total": 78
                 },
@@ -29622,9 +29622,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
+                        15,
+                        14,
+                        18,
                         0,
                         0,
                         0,
@@ -29633,7 +29633,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 47.285714285714285,
+                    "zona": 47,
                     "exam": 30,
                     "total": 77
                 },
@@ -29736,9 +29736,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        19,
-                        10,
-                        10,
+                        15,
+                        14,
+                        9,
                         0,
                         0,
                         0,
@@ -29747,7 +29747,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 38.285714285714285,
+                    "zona": 38,
                     "exam": 30,
                     "total": 68
                 },
@@ -29850,9 +29850,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
+                        15,
+                        25,
+                        11,
                         0,
                         0,
                         0,
@@ -29964,9 +29964,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        30,
                         15,
-                        15,
+                        25,
+                        20,
                         0,
                         0,
                         0,
@@ -30078,9 +30078,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        30,
                         15,
-                        15,
+                        21,
+                        23,
                         0,
                         0,
                         0,
@@ -30089,7 +30089,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 59.42857142857143,
+                    "zona": 59,
                     "exam": 30,
                     "total": 89
                 },
@@ -30192,9 +30192,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        25,
-                        13,
-                        13,
+                        15,
+                        18,
+                        18,
                         0,
                         0,
                         0,
@@ -30203,7 +30203,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 50.85714285714286,
+                    "zona": 51,
                     "exam": 30,
                     "total": 81
                 },
@@ -30306,9 +30306,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
+                        15,
+                        25,
+                        8,
                         0,
                         0,
                         0,
@@ -30420,9 +30420,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        21,
-                        11,
-                        11,
+                        15,
+                        14,
+                        13,
                         0,
                         0,
                         0,
@@ -30431,7 +30431,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 42.285714285714285,
+                    "zona": 42,
                     "exam": 30,
                     "total": 72
                 },
@@ -30534,9 +30534,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        32,
-                        16,
-                        16,
+                        15,
+                        25,
+                        23,
                         0,
                         0,
                         0,
@@ -30648,9 +30648,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
+                        15,
+                        21,
+                        15,
                         0,
                         0,
                         0,
@@ -30659,7 +30659,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 51.42857142857143,
+                    "zona": 51,
                     "exam": 30,
                     "total": 81
                 },
@@ -30762,9 +30762,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        22,
+                        15,
                         11,
-                        11,
+                        19,
                         0,
                         0,
                         0,
@@ -30773,7 +30773,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 44.714285714285715,
+                    "zona": 45,
                     "exam": 30,
                     "total": 75
                 },
@@ -30876,9 +30876,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        29,
                         15,
-                        15,
+                        21,
+                        22,
                         0,
                         0,
                         0,
@@ -30887,7 +30887,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 58.42857142857143,
+                    "zona": 58,
                     "exam": 30,
                     "total": 88
                 },
@@ -30990,9 +30990,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        30,
                         15,
-                        15,
+                        25,
+                        19,
                         0,
                         0,
                         0,
@@ -31104,9 +31104,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        29,
                         15,
-                        15,
+                        25,
+                        18,
                         0,
                         0,
                         0,
@@ -31218,8 +31218,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        13,
+                        15,
+                        25,
                         13,
                         0,
                         0,
@@ -31332,8 +31332,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        13,
+                        15,
+                        25,
                         13,
                         0,
                         0,
@@ -31446,9 +31446,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        33,
-                        17,
-                        17,
+                        15,
+                        25,
+                        26,
                         0,
                         0,
                         0,
@@ -31560,8 +31560,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        13,
+                        15,
+                        25,
                         13,
                         0,
                         0,
@@ -31674,9 +31674,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        30,
                         15,
-                        15,
+                        21,
+                        23,
                         0,
                         0,
                         0,
@@ -31685,7 +31685,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 59.42857142857143,
+                    "zona": 59,
                     "exam": 30,
                     "total": 89
                 },
@@ -31788,9 +31788,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        25,
-                        13,
-                        13,
+                        15,
+                        21,
+                        14,
                         0,
                         0,
                         0,
@@ -31799,7 +31799,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 50.42857142857143,
+                    "zona": 50,
                     "exam": 30,
                     "total": 80
                 },
@@ -31902,9 +31902,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        28,
-                        14,
-                        14,
+                        15,
+                        25,
+                        15,
                         0,
                         0,
                         0,
@@ -32016,9 +32016,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        19,
-                        9,
-                        9,
+                        15,
+                        13,
+                        10,
                         0,
                         0,
                         0,
@@ -32027,7 +32027,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 37.5,
+                    "zona": 38,
                     "exam": 30,
                     "total": 68
                 },
@@ -32130,9 +32130,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
+                        15,
+                        25,
+                        8,
                         0,
                         0,
                         0,
@@ -32244,9 +32244,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
+                        15,
+                        25,
+                        11,
                         0,
                         0,
                         0,
@@ -32358,9 +32358,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
+                        15,
                         25,
-                        12,
-                        12,
+                        9,
                         0,
                         0,
                         0,
@@ -32472,8 +32472,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        13,
+                        15,
+                        25,
                         13,
                         0,
                         0,
@@ -32586,9 +32586,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        30,
                         15,
-                        15,
+                        25,
+                        20,
                         0,
                         0,
                         0,
@@ -32700,9 +32700,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
+                        15,
+                        13,
+                        19,
                         0,
                         0,
                         0,
@@ -32711,7 +32711,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 46.5,
+                    "zona": 47,
                     "exam": 30,
                     "total": 77
                 },
@@ -32814,9 +32814,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
+                        0,
+                        25,
+                        20,
                         0,
                         0,
                         0,
@@ -32928,9 +32928,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        23,
-                        11,
-                        11,
+                        15,
+                        25,
+                        5,
                         0,
                         0,
                         0,
@@ -33042,9 +33042,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
+                        15,
+                        13,
+                        16,
                         0,
                         0,
                         0,
@@ -33053,7 +33053,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 43.5,
+                    "zona": 44,
                     "exam": 30,
                     "total": 74
                 },
@@ -33156,9 +33156,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        30,
                         15,
-                        15,
+                        25,
+                        19,
                         0,
                         0,
                         0,
@@ -33270,9 +33270,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
+                        15,
+                        25,
+                        6,
                         0,
                         0,
                         0,
@@ -33384,9 +33384,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        17,
-                        9,
-                        9,
+                        15,
+                        13,
+                        7,
                         0,
                         0,
                         0,
@@ -33395,7 +33395,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 34.5,
+                    "zona": 35,
                     "exam": 30,
                     "total": 65
                 },
@@ -33498,9 +33498,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
+                        15,
+                        17,
+                        17,
                         0,
                         0,
                         0,
@@ -33509,7 +33509,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 48.66666666666667,
+                    "zona": 49,
                     "exam": 30,
                     "total": 79
                 },
@@ -33612,9 +33612,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        20,
-                        10,
-                        10,
+                        15,
+                        5,
+                        19,
                         0,
                         0,
                         0,
@@ -33726,9 +33726,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
+                        15,
+                        17,
+                        15,
                         0,
                         0,
                         0,
@@ -33737,7 +33737,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 46.66666666666667,
+                    "zona": 47,
                     "exam": 30,
                     "total": 77
                 },
@@ -33840,9 +33840,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        30,
                         15,
-                        15,
+                        25,
+                        19,
                         0,
                         0,
                         0,
@@ -33954,9 +33954,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
+                        15,
                         25,
-                        13,
-                        13,
+                        10,
                         0,
                         0,
                         0,
@@ -34068,9 +34068,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        14,
-                        7,
-                        7,
+                        15,
+                        13,
+                        0,
                         0,
                         0,
                         0,
@@ -34079,7 +34079,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 27.5,
+                    "zona": 28,
                     "exam": 30,
                     "total": 58
                 },
@@ -34182,9 +34182,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        31,
-                        16,
-                        16,
+                        15,
+                        25,
+                        22,
                         0,
                         0,
                         0,
@@ -34296,9 +34296,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        20,
-                        10,
-                        10,
+                        15,
+                        5,
+                        19,
                         0,
                         0,
                         0,
@@ -34410,9 +34410,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
+                        15,
+                        9,
+                        20,
                         0,
                         0,
                         0,
@@ -34524,9 +34524,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
+                        15,
+                        17,
+                        20,
                         0,
                         0,
                         0,
@@ -34535,7 +34535,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 51.66666666666667,
+                    "zona": 52,
                     "exam": 30,
                     "total": 82
                 },
@@ -34638,9 +34638,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
+                        15,
+                        25,
+                        7,
                         0,
                         0,
                         0,
@@ -34752,9 +34752,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        20,
-                        10,
-                        10,
+                        15,
+                        5,
+                        19,
                         0,
                         0,
                         0,
@@ -34866,9 +34866,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
+                        15,
                         25,
-                        13,
-                        13,
+                        10,
                         0,
                         0,
                         0,
@@ -34980,9 +34980,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
+                        15,
                         25,
-                        13,
-                        13,
+                        10,
                         0,
                         0,
                         0,
@@ -35094,9 +35094,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        18,
+                        15,
                         9,
-                        9,
+                        12,
                         0,
                         0,
                         0,
@@ -35208,9 +35208,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
+                        15,
+                        25,
+                        11,
                         0,
                         0,
                         0,
@@ -35322,9 +35322,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
+                        15,
+                        21,
+                        9,
                         0,
                         0,
                         0,
@@ -35333,7 +35333,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 44.83333333333333,
+                    "zona": 45,
                     "exam": 30,
                     "total": 75
                 },
@@ -35436,9 +35436,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        20,
-                        10,
-                        10,
+                        15,
+                        17,
+                        9,
                         0,
                         0,
                         0,
@@ -35447,7 +35447,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 40.66666666666667,
+                    "zona": 41,
                     "exam": 30,
                     "total": 71
                 },
@@ -35550,9 +35550,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        17,
-                        8,
-                        8,
+                        15,
+                        13,
+                        6,
                         0,
                         0,
                         0,
@@ -35561,7 +35561,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 33.5,
+                    "zona": 34,
                     "exam": 30,
                     "total": 64
                 },
@@ -35664,9 +35664,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
+                        15,
+                        25,
+                        11,
                         0,
                         0,
                         0,
@@ -35778,9 +35778,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
+                        15,
+                        13,
+                        17,
                         0,
                         0,
                         0,
@@ -35789,7 +35789,7 @@ const OFFICIAL_SIRE_412_STUDENTS = [
                         0,
                         0
                     ],
-                    "zona": 44.5,
+                    "zona": 45,
                     "exam": 30,
                     "total": 75
                 },
@@ -35892,9 +35892,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
+                        15,
+                        15,
+                        13,
                         0,
                         0,
                         0,
@@ -36006,9 +36006,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
+                        15,
+                        20,
+                        8,
                         0,
                         0,
                         0,
@@ -36120,9 +36120,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        29,
-                        14,
-                        14,
+                        15,
+                        25,
+                        17,
                         0,
                         0,
                         0,
@@ -36234,9 +36234,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        30,
                         15,
-                        15,
+                        25,
+                        19,
                         0,
                         0,
                         0,
@@ -36348,8 +36348,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
+                        15,
+                        20,
                         12,
                         0,
                         0,
@@ -36462,9 +36462,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        19,
-                        10,
-                        10,
+                        15,
+                        15,
+                        8,
                         0,
                         0,
                         0,
@@ -36576,9 +36576,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        31,
                         15,
-                        15,
+                        20,
+                        26,
                         0,
                         0,
                         0,
@@ -36690,9 +36690,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        29,
-                        14,
-                        14,
+                        15,
+                        20,
+                        22,
                         0,
                         0,
                         0,
@@ -36804,9 +36804,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        29,
                         15,
-                        15,
+                        20,
+                        23,
                         0,
                         0,
                         0,
@@ -36918,9 +36918,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        28,
-                        14,
-                        14,
+                        15,
+                        20,
+                        21,
                         0,
                         0,
                         0,
@@ -37032,9 +37032,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        14,
-                        14,
+                        15,
+                        20,
+                        19,
                         0,
                         0,
                         0,
@@ -37146,9 +37146,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        29,
                         15,
-                        15,
+                        25,
+                        18,
                         0,
                         0,
                         0,
@@ -37260,9 +37260,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
+                        15,
+                        25,
+                        7,
                         0,
                         0,
                         0,
@@ -37374,9 +37374,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
+                        15,
                         25,
-                        13,
-                        13,
+                        10,
                         0,
                         0,
                         0,
@@ -37488,9 +37488,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
+                        15,
+                        10,
+                        23,
                         0,
                         0,
                         0,
@@ -37602,8 +37602,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        13,
+                        15,
+                        25,
                         13,
                         0,
                         0,
@@ -37716,8 +37716,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        14,
+                        15,
+                        25,
                         14,
                         0,
                         0,
@@ -37830,9 +37830,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
+                        15,
+                        20,
+                        8,
                         0,
                         0,
                         0,
@@ -37944,9 +37944,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
+                        15,
                         25,
-                        13,
-                        13,
+                        10,
                         0,
                         0,
                         0,
@@ -38058,9 +38058,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        32,
-                        16,
-                        16,
+                        15,
+                        25,
+                        23,
                         0,
                         0,
                         0,
@@ -38172,9 +38172,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        21,
-                        11,
-                        11,
+                        15,
+                        10,
+                        17,
                         0,
                         0,
                         0,
@@ -38286,9 +38286,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        28,
-                        14,
-                        14,
+                        15,
+                        25,
+                        16,
                         0,
                         0,
                         0,
@@ -38400,9 +38400,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
+                        15,
+                        15,
+                        16,
                         0,
                         0,
                         0,
@@ -38514,9 +38514,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
+                        15,
                         25,
-                        13,
-                        13,
+                        10,
                         0,
                         0,
                         0,
@@ -38628,9 +38628,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
+                        15,
+                        25,
+                        7,
                         0,
                         0,
                         0,
@@ -38742,9 +38742,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
+                        15,
+                        15,
+                        16,
                         0,
                         0,
                         0,
@@ -38856,9 +38856,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
+                        15,
+                        25,
+                        11,
                         0,
                         0,
                         0,
@@ -38970,9 +38970,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        22,
-                        11,
-                        11,
+                        15,
+                        15,
+                        14,
                         0,
                         0,
                         0,
@@ -39084,9 +39084,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        20,
-                        10,
-                        10,
+                        15,
+                        15,
+                        9,
                         0,
                         0,
                         0,
@@ -39198,9 +39198,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        17,
-                        8,
-                        8,
+                        15,
+                        15,
+                        3,
                         0,
                         0,
                         0,
@@ -39312,9 +39312,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
+                        15,
+                        25,
+                        8,
                         0,
                         0,
                         0,
@@ -39426,9 +39426,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
+                        15,
                         25,
-                        13,
-                        13,
+                        10,
                         0,
                         0,
                         0,
@@ -39540,9 +39540,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        14,
-                        14,
+                        15,
+                        20,
+                        19,
                         0,
                         0,
                         0,
@@ -39654,9 +39654,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
+                        15,
+                        25,
+                        12,
                         0,
                         0,
                         0,
@@ -39768,8 +39768,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        13,
+                        15,
+                        25,
                         13,
                         0,
                         0,
@@ -39882,9 +39882,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
+                        15,
+                        25,
+                        7,
                         0,
                         0,
                         0,
@@ -39996,9 +39996,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
+                        15,
+                        20,
+                        13,
                         0,
                         0,
                         0,
@@ -40110,9 +40110,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
+                        15,
+                        25,
+                        12,
                         0,
                         0,
                         0,
@@ -40224,8 +40224,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        13,
+                        15,
+                        25,
                         13,
                         0,
                         0,
@@ -40338,9 +40338,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
+                        15,
                         25,
-                        12,
-                        12,
+                        9,
                         0,
                         0,
                         0,
@@ -40452,9 +40452,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        21,
-                        11,
-                        11,
+                        15,
+                        20,
+                        7,
                         0,
                         0,
                         0,
@@ -40566,9 +40566,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        16,
-                        8,
-                        8,
+                        0,
+                        20,
+                        11,
                         0,
                         0,
                         0,
@@ -40680,9 +40680,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
+                        15,
+                        15,
+                        21,
                         0,
                         0,
                         0,
@@ -40794,9 +40794,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
+                        15,
+                        15,
+                        18,
                         0,
                         0,
                         0,
@@ -40908,9 +40908,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        35,
-                        17,
-                        17,
+                        15,
+                        25,
+                        29,
                         0,
                         0,
                         0,
@@ -41022,9 +41022,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
+                        15,
                         25,
-                        13,
-                        13,
+                        10,
                         0,
                         0,
                         0,
@@ -41136,9 +41136,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
+                        15,
+                        25,
+                        11,
                         0,
                         0,
                         0,
@@ -41250,9 +41250,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
+                        15,
+                        25,
+                        12,
                         0,
                         0,
                         0,
@@ -41364,9 +41364,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
+                        15,
                         25,
-                        12,
-                        12,
+                        9,
                         0,
                         0,
                         0,
@@ -41478,9 +41478,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        32,
-                        16,
-                        16,
+                        15,
+                        25,
+                        23,
                         0,
                         0,
                         0,
@@ -41592,9 +41592,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        32,
-                        16,
-                        16,
+                        15,
+                        25,
+                        24,
                         0,
                         0,
                         0,
@@ -41706,9 +41706,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
+                        15,
+                        5,
                         20,
-                        10,
-                        10,
                         0,
                         0,
                         0,
@@ -41820,9 +41820,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
+                        15,
+                        15,
+                        16,
                         0,
                         0,
                         0,
@@ -41934,9 +41934,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
+                        15,
                         25,
-                        13,
-                        13,
+                        10,
                         0,
                         0,
                         0,
@@ -42048,9 +42048,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        24,
-                        12,
-                        12,
+                        15,
+                        25,
+                        8,
                         0,
                         0,
                         0,
@@ -42162,8 +42162,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        13,
+                        15,
+                        25,
                         13,
                         0,
                         0,
@@ -42276,9 +42276,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        28,
-                        14,
-                        14,
+                        15,
+                        25,
+                        16,
                         0,
                         0,
                         0,
@@ -42390,9 +42390,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        26,
-                        13,
-                        13,
+                        15,
+                        25,
+                        12,
                         0,
                         0,
                         0,
@@ -42504,8 +42504,8 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        27,
-                        14,
+                        15,
+                        25,
                         14,
                         0,
                         0,
@@ -42618,9 +42618,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        23,
-                        12,
-                        12,
+                        15,
+                        10,
+                        21,
                         0,
                         0,
                         0,
@@ -42732,9 +42732,9 @@ const OFFICIAL_SIRE_412_STUDENTS = [
             "Computación III": {
                 "1": {
                     "activities": [
-                        25,
-                        12,
-                        12,
+                        15,
+                        10,
+                        24,
                         0,
                         0,
                         0,
@@ -56508,14 +56508,12 @@ function loadDefaults(autoSave = false) {
                     if (!target.gradebookDetails) target.gradebookDetails = {};
                     Object.keys(off.grades).forEach(subj => {
                         if (!target.grades[subj]) target.grades[subj] = [0, 0, 0, 0];
-                        if (target.grades[subj][0] === 0 && off.grades[subj][0] > 0) {
-                            target.grades[subj][0] = off.grades[subj][0];
-                        }
+                        target.grades[subj][0] = off.grades[subj][0];
                     });
                     if (off.gradebookDetails) {
                         Object.keys(off.gradebookDetails).forEach(subj => {
                             if (!target.gradebookDetails[subj]) target.gradebookDetails[subj] = {};
-                            if (off.gradebookDetails[subj]["1"] && (!target.gradebookDetails[subj]["1"] || target.gradebookDetails[subj]["1"].total === 0)) {
+                            if (off.gradebookDetails[subj]["1"]) {
                                 target.gradebookDetails[subj]["1"] = off.gradebookDetails[subj]["1"];
                             }
                         });
