@@ -63853,6 +63853,10 @@ function buildStudentReportCardInnerHtml(s) {
     const overallAvg = subjectCount > 0 ? Math.round(totalAvgSum / subjectCount) : 0;
     const isOverallFail = (overallAvg > 0 && overallAvg < 60);
 
+    const directorUser = (STATE.users || []).find(u => u.role === 'director');
+    const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || 'Licda. Mirza Elizabeth Aragón Polanco de Hernández');
+    const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes('licda') ? 'Directora del Plantel' : 'Director del Plantel');
+
     return `
         <div class="report-half-letter-sheet" style="background:#ffffff; color:#000000; width:100%; box-sizing:border-box; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
             <!-- ENCABEZADO INSTITUCIONAL -->
@@ -63910,19 +63914,14 @@ function buildStudentReportCardInnerHtml(s) {
                 </tfoot>
             </table>
 
-            <!-- BLOQUE DE FIRMAS CON SELLO OFICIAL DE DIRECCIÓN -->
-            <div style="display:flex; justify-content:space-around; align-items:flex-end; margin-top:28px; padding-bottom:6px;">
-                <div style="width:200px; text-align:center;">
-                    <div style="border-top:1.5px solid #000000; margin-bottom:4px;"></div>
-                    <div style="font-size:8.5px; font-weight:800; color:#0f172a;">Catedrático(a) Guía</div>
-                    <div style="font-size:7.5px; font-weight:600; color:#475569;">Comisión de Evaluación</div>
-                </div>
-
-                <div style="width:210px; text-align:center; position:relative;">
-                    <img src="firma_director_sello.png" alt="Sello y Firma del Director" style="position:absolute; bottom:6px; left:50%; transform:translateX(-50%); width:135px; height:auto; pointer-events:none; opacity:0.96; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.12));">
+            <!-- BLOQUE DE FIRMA ÚNICA EXCLUSIVA DE LA DIRECCIÓN -->
+            <div style="display:flex; justify-content:center; align-items:flex-end; margin-top:30px; padding-bottom:6px;">
+                <div style="width:280px; text-align:center; position:relative;">
+                    <img src="firma_director_sello.png" alt="Sello y Firma de Dirección" style="position:absolute; bottom:6px; left:50%; transform:translateX(-50%); width:140px; height:auto; pointer-events:none; opacity:0.96; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.12));">
                     <div style="border-top:1.5px solid #000000; margin-top:55px; padding-top:4px;">
-                        <div style="font-size:9px; font-weight:800; color:#0f172a;">PEM. Nehemias Yalil Salguero</div>
-                        <div style="font-size:8px; font-weight:600; color:#475569;">Director Técnico Administrativo</div>
+                        <div style="font-size:9.5px; font-weight:800; color:#0f172a;">${dirName}</div>
+                        <div style="font-size:8.5px; font-weight:700; color:#475569;">${dirTitle}</div>
+                        <div style="font-size:7.5px; font-weight:600; color:#64748b;">Escuela Nacional de Ciencias Comerciales — Jutiapa</div>
                     </div>
                 </div>
             </div>
