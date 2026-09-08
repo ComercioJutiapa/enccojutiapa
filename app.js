@@ -227002,6 +227002,7 @@ function getInitialData() {
     ],
     "theme": "light",
     "users": [
+
         {
                 "id": "usr-aux-01",
                 "name": "PEM. Nehemias Yalil Salguero",
@@ -227013,7 +227014,8 @@ function getInitialData() {
                 "classes": "",
                 "renglon": "011",
                 "gender": "Masculino",
-                "active": true
+                "active": true,
+                "telefono": ""
         },
         {
                 "id": "usr-dir-01",
@@ -227025,7 +227027,8 @@ function getInitialData() {
                 "active": true,
                 "renglon": "011",
                 "gender": "Femenino",
-                "title": "Director"
+                "title": "Director",
+                "telefono": ""
         },
         {
                 "id": "usr-sec-01",
@@ -227036,7 +227039,8 @@ function getInitialData() {
                 "role": "secretaria",
                 "active": true,
                 "renglon": "011",
-                "gender": "Masculino"
+                "gender": "Masculino",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-01",
@@ -227049,7 +227053,8 @@ function getInitialData() {
                 "classes": "",
                 "renglon": "021",
                 "gender": "Masculino",
-                "active": true
+                "active": true,
+                "telefono": ""
         },
         {
                 "id": "usr-doc-05",
@@ -227061,7 +227066,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Masculino",
                 "active": true,
-                "username": "carlos.augusto"
+                "username": "carlos.augusto",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-02",
@@ -227073,7 +227079,8 @@ function getInitialData() {
                 "renglon": "021",
                 "gender": "Femenino",
                 "active": true,
-                "username": "aleida"
+                "username": "aleida",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-03",
@@ -227085,7 +227092,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Masculino",
                 "active": true,
-                "username": "roberto"
+                "username": "roberto",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-04",
@@ -227097,7 +227105,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Masculino",
                 "active": true,
-                "username": "williams"
+                "username": "williams",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-06",
@@ -227109,7 +227118,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Femenino",
                 "active": true,
-                "username": "lilian"
+                "username": "lilian",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-07",
@@ -227121,7 +227131,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Masculino",
                 "active": true,
-                "username": "nery"
+                "username": "nery",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-08",
@@ -227133,7 +227144,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Masculino",
                 "active": true,
-                "username": "edwin"
+                "username": "edwin",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-09",
@@ -227145,7 +227157,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Masculino",
                 "active": true,
-                "username": "gamaliel"
+                "username": "gamaliel",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-10",
@@ -227157,7 +227170,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Masculino",
                 "active": true,
-                "username": "hector"
+                "username": "hector",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-11",
@@ -227169,7 +227183,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Masculino",
                 "active": true,
-                "username": "wilder"
+                "username": "wilder",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-12",
@@ -227181,7 +227196,8 @@ function getInitialData() {
                 "renglon": "021",
                 "gender": "Femenino",
                 "active": true,
-                "username": "sandra"
+                "username": "sandra",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-13",
@@ -227193,7 +227209,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Femenino",
                 "active": true,
-                "username": "damaris"
+                "username": "damaris",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-14",
@@ -227205,7 +227222,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Femenino",
                 "active": true,
-                "username": "elda"
+                "username": "elda",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-15",
@@ -227217,7 +227235,8 @@ function getInitialData() {
                 "renglon": "021",
                 "gender": "Femenino",
                 "active": true,
-                "username": "enma"
+                "username": "enma",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-16",
@@ -227229,7 +227248,8 @@ function getInitialData() {
                 "renglon": "021",
                 "gender": "Femenino",
                 "active": true,
-                "username": "maria"
+                "username": "maria",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-17",
@@ -227241,7 +227261,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Femenino",
                 "active": true,
-                "username": "sandra.paola"
+                "username": "sandra.paola",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-18",
@@ -227253,7 +227274,8 @@ function getInitialData() {
                 "renglon": "021",
                 "gender": "Femenino",
                 "active": true,
-                "username": "milvia"
+                "username": "milvia",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-19",
@@ -227265,7 +227287,8 @@ function getInitialData() {
                 "renglon": "021",
                 "gender": "Masculino",
                 "active": true,
-                "username": "carlos"
+                "username": "carlos",
+                "telefono": ""
         },
         {
                 "id": "usr-doc-20",
@@ -227277,7 +227300,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Masculino",
                 "active": true,
-                "username": "juan"
+                "username": "juan",
+                "telefono": ""
         },
         {
                 "id": "usr-1788133386028-672",
@@ -227290,7 +227314,8 @@ function getInitialData() {
                 "renglon": "011",
                 "gender": "Femenino",
                 "active": true,
-                "classes": ""
+                "classes": "",
+                "telefono": ""
         }
     ],
     "rolesConfig": [{"key": "admin", "name": "Super Administrador", "description": "Acceso total y configuración del sistema"}, {"key": "director", "name": "Director(a)", "description": "Supervisión institucional y aprobación"}, {"key": "secretaria", "name": "Secretaría Académica", "description": "Control de matrículas, actas y expedientes"}, {"key": "profesor_auxiliar", "name": "Profesor Auxiliar / Disciplina", "description": "Coordinación disciplinaria y asistencia"}, {"key": "docente", "name": "Catedrático Titular", "description": "Ingreso de calificaciones y control de clases"}],
@@ -239772,6 +239797,7 @@ function initApp() {
             const nLower = (u.name || '').toLowerCase();
             u.gender = (nLower.includes('licda.') || nLower.includes('profa.') || nLower.includes('maría') || nLower.includes('maria') || nLower.includes('sandra') || nLower.includes('enma') || nLower.includes('lilian') || nLower.includes('elda') || nLower.includes('milvia') || nLower.includes('aleida') || nLower.includes('damaris')) ? 'Femenino' : 'Masculino';
         }
+        if (u.telefono === undefined) u.telefono = "";
         if (!u.password) {
             u.password = (typeof generateTeacherPassword === 'function') ? generateTeacherPassword(u.name) : 'Docente1';
         }
