@@ -3551,7 +3551,18 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260907_v156_sync_exact_notas"></script>
+    <script src="app.js?v=20260907_v157_force_grades"></script>
+    <script>
+        // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                try {
+                    if (typeof ensureSireOfficialStudents === 'function') ensureSireOfficialStudents();
+                    if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
+                } catch(e) {}
+            }, 100);
+        });
+    </script>
     <script>
         // CÁLCULO DINÁMICO DE PROMOCIONES Y AÑOS DE FUNDACIÓN (BASE 1970)
         (function updateDynamicStats() {
