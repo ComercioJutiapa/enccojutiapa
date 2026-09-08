@@ -63759,49 +63759,157 @@ function filterAndPopulateReportStudents() {
 }
 window.filterAndPopulateReportStudents = filterAndPopulateReportStudents;
 
-function getReportCardSubjects(student) {
-    if (!student) return [];
-    const gradeObj = (STATE.gradesList || []).find(g => 
-        (g.code && g.code === student.grade) ||
-        (g.name === student.grade && (!student.section || g.section === student.section)) ||
-        (g.code && student.gradeCode && g.code === student.gradeCode)
-    );
-    const pensumCourses = (STATE.pensum || []).filter(p => 
-        p.gradeCode === student.grade || 
-        (student.gradeCode && p.gradeCode === student.gradeCode) ||
-        (gradeObj && p.grade === gradeObj.name && p.section === gradeObj.section) ||
-        (p.grade === student.grade && (!student.section || p.section === student.section))
-    );
-    let subjects = pensumCourses.length > 0 ? pensumCourses.map(p => p.subject) : [];
-    
-    if (student.grades) {
-        Object.keys(student.grades).forEach(sub => {
-            if (!subjects.includes(sub)) subjects.push(sub);
+function getPensumCatalogOrder(subjectName, studentGrade = '') {
+    const catalog = STATE.pensumCatalog || [];
+    const cleanStr = s => (s || '').toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/[^a-z0-9]/g, '');
+
+    const cleanSub = cleanStr(subjectName);
+    const cleanGrade = cleanStr(studentGrade);
+
+    // 1. Coincidencia prioritaria en catálogo dentro del mismo grado
+    const inGrade = catalog.filter(p => {
+        const pGrade = cleanStr(p.grade || p.gradeCode);
+        return pGrade && (pGrade.includes(cleanGrade) || cleanGrade.includes(pGrade));
+    });
+
+    let match = inGrade.find(p => {
+        const pClean = cleanStr(p.name || p.subject);
+        return pClean === cleanSub || pClean.includes(cleanSub) || cleanSub.includes(pClean);
+    });
+
+    // 2. Coincidencia global en catálogo
+    if (!match) {
+        match = catalog.find(p => {
+            const pClean = cleanStr(p.name || p.subject);
+            return pClean === cleanSub || pClean.includes(cleanSub) || cleanSub.includes(pClean);
         });
     }
 
+    if (match) {
+        const orderNum = parseInt(match.sortOrder || match.order);
+        if (!isNaN(orderNum)) return orderNum;
+        if (match.code) {
+            const codeNum = parseInt(match.code.replace(/[^0-9]/g, ''));
+            if (!isNaN(codeNum)) return codeNum;
+        }
+        const catIdx = catalog.indexOf(match);
+        if (catIdx !== -1) return catIdx + 1;
+    }
+
+    // 3. Diccionario canónico de respaldo
+    if (typeof CANONICAL_CNB_28_DICTIONARY !== 'undefined') {
+        const cMatch = CANONICAL_CNB_28_DICTIONARY.find(c => {
+            const cClean = cleanStr(c.full);
+            return cClean === cleanSub || c.aliases.some(a => cleanStr(a) === cleanSub);
+        });
+        if (cMatch) {
+            return CANONICAL_CNB_28_DICTIONARY.indexOf(cMatch) + 1;
+        }
+    }
+
+    return 999;
+}
+window.getPensumCatalogOrder = getPensumCatalogOrder;
+
+function getReportCardSubjects(student) {
+    if (!student) return [];
+    const cleanStr = s => (s || '').toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/[^a-z0-9]/g, '');
+
+    const sGradeClean = cleanStr(student.grade || student.gradeLabel || student.gradeCode || '');
+
+    // 1. Obtener las materias oficiales del Editor de Pensum para este grado
+    let subjects = [];
+    const catalogCourses = (STATE.pensumCatalog || []).filter(p => {
+        const pGradeClean = cleanStr(p.grade || p.gradeCode || '');
+        return pGradeClean && (pGradeClean.includes(sGradeClean) || sGradeClean.includes(pGradeClean));
+    });
+
+    catalogCourses.forEach(c => {
+        const cName = (c.name || c.subject || '').trim();
+        if (cName && !subjects.includes(cName)) {
+            subjects.push(cName);
+        }
+    });
+
+    // 2. Si no hubiera en pensumCatalog, buscar en STATE.pensum (asignaciones)
+    if (subjects.length === 0) {
+        const pensumCourses = (STATE.pensum || []).filter(p => {
+            const pGradeClean = cleanStr(p.grade || p.gradeCode || '');
+            return pGradeClean && (pGradeClean.includes(sGradeClean) || sGradeClean.includes(pGradeClean));
+        });
+        pensumCourses.forEach(p => {
+            const pName = (p.subject || '').trim();
+            if (pName && !subjects.includes(pName)) {
+                subjects.push(pName);
+            }
+        });
+    }
+
+    // 3. Fallback canónico si estuviese vacío
     if (subjects.length === 0 && typeof CANONICAL_CNB_28_DICTIONARY !== 'undefined') {
-        const gradeText = (student.grade || '').toLowerCase();
         let gNum = 5;
-        if (gradeText.includes('4') || gradeText.includes('cuarto')) gNum = 4;
-        else if (gradeText.includes('6') || gradeText.includes('sexto')) gNum = 6;
+        if (sGradeClean.includes('4') || sGradeClean.includes('cuarto')) gNum = 4;
+        else if (sGradeClean.includes('6') || sGradeClean.includes('sexto')) gNum = 6;
         subjects = CANONICAL_CNB_28_DICTIONARY.filter(c => c.grade === gNum).map(c => c.full);
     }
 
+    // 4. ORDENAMIENTO ESTRICTO: Según el # Orden oficial del Editor de Pensum
+    subjects.sort((a, b) => getPensumCatalogOrder(a, student.grade) - getPensumCatalogOrder(b, student.grade));
+
     return subjects;
 }
+window.getReportCardSubjects = getReportCardSubjects;
 
 function getReportCardSubjectGrades(student, subject) {
     let b1 = 0, b2 = 0, b3 = 0, b4 = 0;
-    if (student.grades && student.grades[subject]) {
-        b1 = student.grades[subject][0] || 0;
-        b2 = student.grades[subject][1] || 0;
-        b3 = student.grades[subject][2] || 0;
-        b4 = student.grades[subject][3] || 0;
+    const cleanStr = s => (s || '').toLowerCase()
+        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .replace(/[^a-z0-9]/g, '');
+    const cleanTarget = cleanStr(subject);
+
+    if (student.grades) {
+        if (student.grades[subject]) {
+            b1 = student.grades[subject][0] || 0;
+            b2 = student.grades[subject][1] || 0;
+            b3 = student.grades[subject][2] || 0;
+            b4 = student.grades[subject][3] || 0;
+        } else {
+            // Búsqueda flexible por nombre normalizado
+            for (const k of Object.keys(student.grades)) {
+                const cK = cleanStr(k);
+                if (cK === cleanTarget || (cK.length > 5 && (cK.includes(cleanTarget) || cleanTarget.includes(cK)))) {
+                    b1 = student.grades[k][0] || 0;
+                    b2 = student.grades[k][1] || 0;
+                    b3 = student.grades[k][2] || 0;
+                    b4 = student.grades[k][3] || 0;
+                    break;
+                }
+            }
+        }
     }
-    // Si b1 es 0, consultar el mapa oficial del 1er Bimestre
+
+    // Si b1 es 0, consultar el mapa maestro oficial del 1er Bimestre
     if (b1 === 0 && typeof getOfficialBim1Details === 'function') {
-        const off = getOfficialBim1Details(student, subject);
+        let off = getOfficialBim1Details(student, subject);
+        if (!off) {
+            // Intentar con variantes canónicas
+            if (typeof CANONICAL_CNB_28_DICTIONARY !== 'undefined') {
+                const cItem = CANONICAL_CNB_28_DICTIONARY.find(c => cleanStr(c.full) === cleanTarget || c.aliases.some(a => cleanStr(a) === cleanTarget));
+                if (cItem) {
+                    off = getOfficialBim1Details(student, cItem.full);
+                    if (!off) {
+                        for (const al of cItem.aliases) {
+                            off = getOfficialBim1Details(student, al);
+                            if (off) break;
+                        }
+                    }
+                }
+            }
+        }
         if (off && off.total > 0) {
             b1 = off.total;
             if (!student.grades) student.grades = {};
@@ -63809,10 +63917,12 @@ function getReportCardSubjectGrades(student, subject) {
             else student.grades[subject][0] = b1;
         }
     }
+
     const activeVals = [b1, b2, b3, b4].filter(v => v > 0);
     const avg = activeVals.length > 0 ? Math.round(activeVals.reduce((a, b) => a + b, 0) / activeVals.length) : 0;
     return { b1, b2, b3, b4, avg };
 }
+window.getReportCardSubjectGrades = getReportCardSubjectGrades;
 
 function buildStudentReportCardInnerHtml(s) {
     if (!s) return '';
