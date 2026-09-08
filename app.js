@@ -105,6 +105,46 @@ EnccoSecurityShield.showConsoleDefenseBanner();
 EnccoSecurityShield.preventFrameHijacking();
 
 // ======================================================================
+// 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
+// ======================================================================
+const ENCCO_BUILD_VERSION = '2026.09.08.v170_multisync';
+window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
+window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
+
+const EnccoCacheManager = {
+    version: ENCCO_BUILD_VERSION,
+    init() {
+        try {
+            const savedVer = localStorage.getItem('ENCCO_BUILD_VERSION');
+            if (savedVer !== this.version) {
+                console.log("🧹 [EnccoCacheManager] Nueva versión detectada (" + (savedVer || 'inicial') + " -> " + this.version + "). Ejecutando depuración preventiva...");
+                // 1. Purgar URL obsoleta que generaba 404
+                const curUrl = localStorage.getItem('ENCCO_FIREBASE_URL');
+                if (curUrl && (curUrl.includes('enccojutiapa-db-default') || curUrl.includes('tu-proyecto') || curUrl.includes('mi-colegio'))) {
+                    localStorage.removeItem('ENCCO_FIREBASE_URL');
+                }
+                // 2. Liberar espacio duplicado en localStorage para evitar QuotaExceededError
+                localStorage.removeItem('ENCCO_DATABASE_BACKUP');
+                localStorage.removeItem('ENCCO_LAST_LOCAL_MODIFIED');
+                // 3. Limpiar CacheStorage del navegador si existe
+                if (typeof caches !== 'undefined') {
+                    caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
+                }
+                localStorage.setItem('ENCCO_BUILD_VERSION', this.version);
+            }
+        } catch(e) {
+            console.warn('Aviso en EnccoCacheManager.init:', e);
+        }
+    },
+    cleanCacheAndResync() {
+        return cleanCacheAndResyncNow();
+    }
+};
+window.EnccoCacheManager = EnccoCacheManager;
+try { EnccoCacheManager.init(); } catch(e) {}
+
+
+// ======================================================================
 // 🛡️ MOTOR INSTITUCIONAL ANTI-DDOS & TRAFFIC SHAPING ENCCO (V2026)
 // ======================================================================
 const EnccoDDoSProtection = {
@@ -1454,7 +1494,7 @@ window.forcePushToFirebaseNow = forcePushToFirebaseNow;
 
 async function forcePullFromFirebaseNow() {
     showToast("Descargando información actualizada desde Firebase...", "info");
-    const ok = await pullStateFromFirebaseCloud(false);
+    const ok = await pullStateFromFirebaseCloud(true);
     if (ok) {
         showToast("¡Información actualizada descargada desde Firebase!", "success");
         updateDbSyncStatus('synced');
@@ -1596,6 +1636,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
             if (typeof EnccoDDoSProtection !== 'undefined' && EnccoDDoSProtection.recordSuccess) {
                 EnccoDDoSProtection.recordSuccess();
             }
+            if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.clear();
             updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
             if (showToastNotification && typeof showToast === 'function') {
                 showToast("Sincronizado con Google Firebase exitosamente.", "success");
@@ -2805,7 +2846,7 @@ window.closeGradesDirectoryModal = closeGradesDirectoryModal;
 // ======================================================================
 
 const FIREBASE_CONFIG = {
-    defaultUrl: "https://enccojutiapa-db-default-rtdb.firebaseio.com",
+    defaultUrl: "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com",
     storageKey: "ENCCO_FIREBASE_URL"
 };
 
@@ -2945,9 +2986,12 @@ function initFirebaseRealtimeConnection() {
         } catch(e) {}
     }
 
-    // 2. Consulta inicial silenciosa de la nube
+    // 2. Consulta inicial silenciosa de la nube con Jitter antirráfaga para múltiples usuarios
     if (typeof pullStateFromFirebaseCloud === 'function') {
-        pullStateFromFirebaseCloud(false);
+        const jitterMs = Math.floor(Math.random() * 350);
+        setTimeout(() => {
+            pullStateFromFirebaseCloud(false);
+        }, jitterMs);
     }
 }
 window.initFirebaseRealtimeConnection = initFirebaseRealtimeConnection;
@@ -3936,7 +3980,7 @@ function loadMasterDatabaseState() {
 window.loadMasterDatabaseState = loadMasterDatabaseState;
 
 // var ENCCO_OFFICIAL_FIREBASE_URL ya declarado arriba
-if (typeof ENCCO_OFFICIAL_FIREBASE_URL === "undefined") { var ENCCO_OFFICIAL_FIREBASE_URL = "https://enccojutiapa-db-default-rtdb.firebaseio.com"; }
+if (typeof ENCCO_OFFICIAL_FIREBASE_URL === "undefined") { var ENCCO_OFFICIAL_FIREBASE_URL = "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com"; }
 var ENCCO_OFFICIAL_FIREBASE_KEY = "firebase_realtime_active_key";
 let _autoCloudSyncTimer = null;
 let _isSyncInProgress = false;
@@ -240798,9 +240842,30 @@ function applyIncomingCloudState(incomingState, force = false) {
         if (STATE.activeView === 'roles' && typeof renderRoleSelectorTabs === 'function') renderRoleSelectorTabs();
     }
 
-    // 3. Ingreso de Notas y Calificaciones
+    // 3. Ingreso de Notas y Calificaciones (Fusión inteligente multiusuario)
     if (Array.isArray(incomingState.students) && incomingState.students.length > 0) {
-        STATE.students = incomingState.students;
+        if (typeof isMultiUserMerge !== 'undefined' && isMultiUserMerge && Array.isArray(STATE.students) && STATE.students.length > 0) {
+            const localDirty = window._locallyDirtyStudentIds || new Set();
+            const studentMap = new Map();
+            STATE.students.forEach(st => studentMap.set(st.id || st.personalCode, st));
+
+            incomingState.students.forEach(incSt => {
+                const key = incSt.id || incSt.personalCode;
+                const localSt = studentMap.get(key);
+                if (!localSt) {
+                    studentMap.set(key, incSt);
+                } else if (!localDirty.has(key)) {
+                    studentMap.set(key, incSt);
+                } else {
+                    localSt.grades = Object.assign({}, incSt.grades || {}, localSt.grades || {});
+                    localSt.gradebookDetails = Object.assign({}, incSt.gradebookDetails || {}, localSt.gradebookDetails || {});
+                }
+            });
+            STATE.students = Array.from(studentMap.values());
+            console.log("⚡ [Multiusuario] Fusión inteligente de calificaciones completada sin colisiones entre docentes.");
+        } else {
+            STATE.students = incomingState.students;
+        }
     }
 
     // 4. Asignaci?n de C?tedras y Pensum
@@ -240965,12 +241030,23 @@ function saveStateRecursively(options = { syncCloud: true, isAutoSave: false }) 
         const jsonString = JSON.stringify(fullPayload);
         const checksum = computeStateChecksum(jsonString);
 
-        // 2. Persistencia Dual Atómica con Checksum
+        // 2. Persistencia Segura y Eficiente (Protección de Cuota 5MB)
         if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('ENCCO_DATABASE', jsonString);
-            localStorage.setItem('ENCCO_DATABASE_BACKUP', jsonString);
-            localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now));
-            localStorage.setItem('ENCCO_DB_CHECKSUM', checksum);
+            try {
+                localStorage.setItem('ENCCO_DATABASE', jsonString);
+                localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now));
+                localStorage.setItem('ENCCO_DB_CHECKSUM', checksum);
+            } catch(quotaErr) {
+                console.warn("⚠️ [LocalStorage] Cuota saturada. Depurando respaldos redundantes...", quotaErr);
+                try {
+                    localStorage.removeItem('ENCCO_DATABASE_BACKUP');
+                    localStorage.removeItem('ENCCO_PREV_STATE');
+                    localStorage.setItem('ENCCO_DATABASE', jsonString);
+                    localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now));
+                } catch(e) {
+                    console.error("Error crítico de persistencia en localStorage:", e);
+                }
+            }
             try { window.dispatchEvent(new Event('storage')); } catch(e) {}
         }
 
