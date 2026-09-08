@@ -1864,8 +1864,8 @@ body.theme-dark .att-global-pct-bar {
 }
 
 .users-view-scroll-container {
-    max-height: calc(100vh - 195px);
-    overflow-y: auto;
+    max-height: none !important;
+    overflow-y: visible !important;
     overflow-x: auto;
     border: 1px solid #cbd5e1;
     border-radius: 0 0 6px 6px;
