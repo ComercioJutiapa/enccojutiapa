@@ -54,8 +54,8 @@
   },
   {
     "id": "usr-doc-05",
-    "name": "Carlos Augusto Juarez Alvarez",
-    "email": "carlos.augusto@comercio.edu.gt",
+    "name": "Carlos Augusto Juárez Alvarez",
+    "email": "cajuarez2004@hotmail.com",
     "password": "Carlos1",
     "role": "docente",
     "title": "PEM / Catedrático Titular",
@@ -63,7 +63,7 @@
     "gender": "Masculino",
     "active": true,
     "username": "carlos.augusto",
-    "telefono": ""
+    "telefono": "53112482"
   },
   {
     "id": "usr-doc-02",
@@ -81,7 +81,7 @@
   {
     "id": "usr-doc-03",
     "name": "Roberto Alex Tobar Cermeño",
-    "email": "roberto@comercio.edu.gt",
+    "email": "trobertoac1@gmail.com",
     "password": "Roberto1",
     "role": "docente",
     "title": "PEM / Catedrático Titular",
@@ -89,7 +89,7 @@
     "gender": "Masculino",
     "active": true,
     "username": "roberto",
-    "telefono": ""
+    "telefono": "48355209"
   },
   {
     "id": "usr-doc-04",
@@ -107,7 +107,7 @@
   {
     "id": "usr-doc-06",
     "name": "Lilian Alas Grijalva",
-    "email": "lilian@comercio.edu.gt",
+    "email": "lilyalas917@gmail.com",
     "password": "Lilian1",
     "role": "docente",
     "title": "PEM / Catedrático Titular",
@@ -115,7 +115,7 @@
     "gender": "Femenino",
     "active": true,
     "username": "lilian",
-    "telefono": ""
+    "telefono": "41169921"
   },
   {
     "id": "usr-doc-07",
@@ -197,8 +197,8 @@
   },
   {
     "id": "usr-doc-13",
-    "name": "Damaris Violeta Escobar de Salguero",
-    "email": "damaris@comercio.edu.gt",
+    "name": "Damaris Violeta Escobar Contreras de Salguero",
+    "email": "dalessandra2014@gmail.com",
     "password": "Damaris1",
     "role": "docente",
     "title": "PEM / Catedrático Titular",
@@ -206,7 +206,7 @@
     "gender": "Femenino",
     "active": true,
     "username": "damaris",
-    "telefono": ""
+    "telefono": "32847200"
   },
   {
     "id": "usr-doc-14",
@@ -223,8 +223,8 @@
   },
   {
     "id": "usr-doc-15",
-    "name": "Enma Leticia Macario Xum de Ruano",
-    "email": "enma@comercio.edu.gt",
+    "name": "Enma Leticia Macario Xúm de Ruano",
+    "email": "enlemagt@gmail.com",
     "password": "Enma1",
     "role": "docente",
     "title": "PEM / Catedrático Titular",
@@ -232,12 +232,12 @@
     "gender": "Femenino",
     "active": true,
     "username": "enma",
-    "telefono": ""
+    "telefono": "42114100"
   },
   {
     "id": "usr-doc-16",
-    "name": "Maria Jannette Salguero Mellado",
-    "email": "maria@comercio.edu.gt",
+    "name": "María Jannete Salguero Mellado",
+    "email": "salguerocomercio@gmail.com",
     "password": "Maria1",
     "role": "docente",
     "title": "PEM / Catedrático Titular",
@@ -245,12 +245,12 @@
     "gender": "Femenino",
     "active": true,
     "username": "maria",
-    "telefono": ""
+    "telefono": "30339359"
   },
   {
     "id": "usr-doc-17",
     "name": "Sandra Paola Bernal Yanes de Argueta",
-    "email": "sandra.paola@comercio.edu.gt",
+    "email": "paolabernal0310@gmail.com",
     "password": "Sandra1",
     "role": "docente",
     "title": "PEM / Catedrático Titular",
@@ -258,12 +258,12 @@
     "gender": "Femenino",
     "active": true,
     "username": "sandra.paola",
-    "telefono": ""
+    "telefono": "42985214"
   },
   {
     "id": "usr-doc-18",
     "name": "Milvia Aracely Jacobo Escobar",
-    "email": "milvia@comercio.edu.gt",
+    "email": "milvia_jacobo2010@hotmail.com",
     "password": "Milvia1",
     "role": "docente",
     "title": "PEM / Catedrático Titular",
@@ -271,7 +271,7 @@
     "gender": "Femenino",
     "active": true,
     "username": "milvia",
-    "telefono": ""
+    "telefono": "41732859"
   },
   {
     "id": "usr-doc-19",
@@ -288,8 +288,8 @@
   },
   {
     "id": "usr-doc-20",
-    "name": "Juan Carlos Pereira",
-    "email": "juan@comercio.edu.gt",
+    "name": "Juan Carlos Pereira Quan",
+    "email": "juancarlospereiraquan@gmail.com",
     "password": "Juan1",
     "role": "docente",
     "title": "PEM / Catedrático Titular",
@@ -297,7 +297,7 @@
     "gender": "Masculino",
     "active": true,
     "username": "juan",
-    "telefono": ""
+    "telefono": "47403302"
   },
   {
     "id": "usr-1788133386028-672",

@@ -2328,6 +2328,7 @@ function openUserModal() {
     const idInput = document.getElementById('userFormId');
     const nameInput = document.getElementById('userFormName');
     const emailInput = document.getElementById('userFormEmail');
+    const phoneInput = document.getElementById('userFormPhone');
     const passwordInput = document.getElementById('userFormPassword');
     const roleSelect = document.getElementById('userFormRole');
     const titleInput = document.getElementById('userFormTitle');
@@ -2338,6 +2339,7 @@ function openUserModal() {
     if (idInput) idInput.value = '';
     if (nameInput) nameInput.value = '';
     if (emailInput) emailInput.value = '';
+    if (phoneInput) phoneInput.value = '';
     if (passwordInput) passwordInput.value = 'C@rolina1';
     if (roleSelect) roleSelect.value = 'docente';
     if (titleInput) titleInput.value = 'PEM / Catedrático Titular';
@@ -2368,6 +2370,7 @@ function openEditUserModal(userId) {
     const idInput = document.getElementById('userFormId');
     const nameInput = document.getElementById('userFormName');
     const emailInput = document.getElementById('userFormEmail');
+    const phoneInput = document.getElementById('userFormPhone');
     const passwordInput = document.getElementById('userFormPassword');
     const roleSelect = document.getElementById('userFormRole');
     const titleInput = document.getElementById('userFormTitle');
@@ -2378,6 +2381,7 @@ function openEditUserModal(userId) {
     if (idInput) idInput.value = user.id;
     if (nameInput) nameInput.value = user.name || '';
     if (emailInput) emailInput.value = user.email || '';
+    if (phoneInput) phoneInput.value = user.telefono || '';
     if (passwordInput) passwordInput.value = user.password || 'C@rolina1';
     if (roleSelect) roleSelect.value = user.role || 'docente';
     if (titleInput) titleInput.value = user.title || 'PEM / Catedrático Titular';
@@ -2416,6 +2420,7 @@ function saveUserForm(e) {
         const idInput = document.getElementById('userFormId');
         const nameInput = document.getElementById('userFormName');
         const emailInput = document.getElementById('userFormEmail');
+        const phoneInput = document.getElementById('userFormPhone');
         const passwordInput = document.getElementById('userFormPassword');
         const roleSelect = document.getElementById('userFormRole');
         const titleInput = document.getElementById('userFormTitle');
@@ -2425,6 +2430,7 @@ function saveUserForm(e) {
         const userId = idInput ? idInput.value.trim() : '';
         const name = nameInput ? nameInput.value.trim() : '';
         const email = emailInput ? emailInput.value.trim() : '';
+        const telefono = phoneInput ? phoneInput.value.trim() : '';
         const password = passwordInput ? passwordInput.value.trim() : 'C@rolina1';
         const role = roleSelect ? roleSelect.value : 'docente';
         const title = titleInput ? titleInput.value.trim() : 'PEM / Catedrático Titular';
@@ -2447,6 +2453,7 @@ function saveUserForm(e) {
                 const oldName = STATE.users[idx].name;
                 STATE.users[idx].name = name;
                 STATE.users[idx].email = email;
+                STATE.users[idx].telefono = telefono;
                 STATE.users[idx].password = password;
                 STATE.users[idx].role = role;
                 STATE.users[idx].title = title;
@@ -2475,6 +2482,7 @@ function saveUserForm(e) {
                     name: name,
                     username: name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'user' + Date.now(),
                     email: email || `${name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12)}@comercio.edu.gt`,
+                    telefono: telefono,
                     password: password,
                     role: role,
                     title: title,
@@ -2506,6 +2514,7 @@ function saveUserForm(e) {
                 name: name,
                 username: usernameBase,
                 email: email || `${usernameBase}@comercio.edu.gt`,
+                telefono: telefono,
                 password: password,
                 role: role,
                 title: title,
@@ -227058,8 +227067,8 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-05",
-                "name": "Carlos Augusto Juarez Alvarez",
-                "email": "carlos.augusto@comercio.edu.gt",
+                "name": "Carlos Augusto Juárez Alvarez",
+                "email": "cajuarez2004@hotmail.com",
                 "password": "Carlos1",
                 "role": "docente",
                 "title": "PEM / Catedrático Titular",
@@ -227067,7 +227076,7 @@ function getInitialData() {
                 "gender": "Masculino",
                 "active": true,
                 "username": "carlos.augusto",
-                "telefono": ""
+                "telefono": "53112482"
         },
         {
                 "id": "usr-doc-02",
@@ -227085,7 +227094,7 @@ function getInitialData() {
         {
                 "id": "usr-doc-03",
                 "name": "Roberto Alex Tobar Cermeño",
-                "email": "roberto@comercio.edu.gt",
+                "email": "trobertoac1@gmail.com",
                 "password": "Roberto1",
                 "role": "docente",
                 "title": "PEM / Catedrático Titular",
@@ -227093,7 +227102,7 @@ function getInitialData() {
                 "gender": "Masculino",
                 "active": true,
                 "username": "roberto",
-                "telefono": ""
+                "telefono": "48355209"
         },
         {
                 "id": "usr-doc-04",
@@ -227111,7 +227120,7 @@ function getInitialData() {
         {
                 "id": "usr-doc-06",
                 "name": "Lilian Alas Grijalva",
-                "email": "lilian@comercio.edu.gt",
+                "email": "lilyalas917@gmail.com",
                 "password": "Lilian1",
                 "role": "docente",
                 "title": "PEM / Catedrático Titular",
@@ -227119,7 +227128,7 @@ function getInitialData() {
                 "gender": "Femenino",
                 "active": true,
                 "username": "lilian",
-                "telefono": ""
+                "telefono": "41169921"
         },
         {
                 "id": "usr-doc-07",
@@ -227201,8 +227210,8 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-13",
-                "name": "Damaris Violeta Escobar de Salguero",
-                "email": "damaris@comercio.edu.gt",
+                "name": "Damaris Violeta Escobar Contreras de Salguero",
+                "email": "dalessandra2014@gmail.com",
                 "password": "Damaris1",
                 "role": "docente",
                 "title": "PEM / Catedrático Titular",
@@ -227210,7 +227219,7 @@ function getInitialData() {
                 "gender": "Femenino",
                 "active": true,
                 "username": "damaris",
-                "telefono": ""
+                "telefono": "32847200"
         },
         {
                 "id": "usr-doc-14",
@@ -227227,8 +227236,8 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-15",
-                "name": "Enma Leticia Macario Xum de Ruano",
-                "email": "enma@comercio.edu.gt",
+                "name": "Enma Leticia Macario Xúm de Ruano",
+                "email": "enlemagt@gmail.com",
                 "password": "Enma1",
                 "role": "docente",
                 "title": "PEM / Catedrático Titular",
@@ -227236,12 +227245,12 @@ function getInitialData() {
                 "gender": "Femenino",
                 "active": true,
                 "username": "enma",
-                "telefono": ""
+                "telefono": "42114100"
         },
         {
                 "id": "usr-doc-16",
-                "name": "Maria Jannette Salguero Mellado",
-                "email": "maria@comercio.edu.gt",
+                "name": "María Jannete Salguero Mellado",
+                "email": "salguerocomercio@gmail.com",
                 "password": "Maria1",
                 "role": "docente",
                 "title": "PEM / Catedrático Titular",
@@ -227249,12 +227258,12 @@ function getInitialData() {
                 "gender": "Femenino",
                 "active": true,
                 "username": "maria",
-                "telefono": ""
+                "telefono": "30339359"
         },
         {
                 "id": "usr-doc-17",
                 "name": "Sandra Paola Bernal Yanes de Argueta",
-                "email": "sandra.paola@comercio.edu.gt",
+                "email": "paolabernal0310@gmail.com",
                 "password": "Sandra1",
                 "role": "docente",
                 "title": "PEM / Catedrático Titular",
@@ -227262,12 +227271,12 @@ function getInitialData() {
                 "gender": "Femenino",
                 "active": true,
                 "username": "sandra.paola",
-                "telefono": ""
+                "telefono": "42985214"
         },
         {
                 "id": "usr-doc-18",
                 "name": "Milvia Aracely Jacobo Escobar",
-                "email": "milvia@comercio.edu.gt",
+                "email": "milvia_jacobo2010@hotmail.com",
                 "password": "Milvia1",
                 "role": "docente",
                 "title": "PEM / Catedrático Titular",
@@ -227275,7 +227284,7 @@ function getInitialData() {
                 "gender": "Femenino",
                 "active": true,
                 "username": "milvia",
-                "telefono": ""
+                "telefono": "41732859"
         },
         {
                 "id": "usr-doc-19",
@@ -227292,8 +227301,8 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-20",
-                "name": "Juan Carlos Pereira",
-                "email": "juan@comercio.edu.gt",
+                "name": "Juan Carlos Pereira Quan",
+                "email": "juancarlospereiraquan@gmail.com",
                 "password": "Juan1",
                 "role": "docente",
                 "title": "PEM / Catedrático Titular",
@@ -227301,7 +227310,7 @@ function getInitialData() {
                 "gender": "Masculino",
                 "active": true,
                 "username": "juan",
-                "telefono": ""
+                "telefono": "47403302"
         },
         {
                 "id": "usr-1788133386028-672",
@@ -239788,6 +239797,20 @@ function initApp() {
     ensureSireOfficialStudents();
     ensureOfficialPensumAssignments();
 
+    // 📇 Sincronización de correos y teléfonos oficiales de usuarios y maestros
+    const OFFICIAL_USER_CONTACTS = [{"id":"usr-doc-15","name":"Enma Leticia Macario Xúm de Ruano","email":"enlemagt@gmail.com","telefono":"42114100"},{"id":"usr-doc-03","name":"Roberto Alex Tobar Cermeño","email":"trobertoac1@gmail.com","telefono":"48355209"},{"id":"usr-doc-13","name":"Damaris Violeta Escobar Contreras de Salguero","email":"dalessandra2014@gmail.com","telefono":"32847200"},{"id":"usr-doc-16","name":"María Jannete Salguero Mellado","email":"salguerocomercio@gmail.com","telefono":"30339359"},{"id":"usr-doc-06","name":"Lilian Alas Grijalva","email":"lilyalas917@gmail.com","telefono":"41169921"},{"id":"usr-doc-17","name":"Sandra Paola Bernal Yanes de Argueta","email":"paolabernal0310@gmail.com","telefono":"42985214"},{"id":"usr-doc-05","name":"Carlos Augusto Juárez Alvarez","email":"cajuarez2004@hotmail.com","telefono":"53112482"},{"id":"usr-doc-20","name":"Juan Carlos Pereira Quan","email":"juancarlospereiraquan@gmail.com","telefono":"47403302"},{"id":"usr-doc-18","name":"Milvia Aracely Jacobo Escobar","email":"milvia_jacobo2010@hotmail.com","telefono":"41732859"}];
+    if (Array.isArray(STATE.users)) {
+        OFFICIAL_USER_CONTACTS.forEach(contact => {
+            const target = STATE.users.find(u => u.id === contact.id);
+            if (target) {
+                target.name = contact.name;
+                target.email = contact.email;
+                target.telefono = contact.telefono;
+            }
+        });
+    }
+
+
     ensureMasterAccount();
 
     // 3. Asegurar campos renglon y gender sin sobreescribir claves ni asignaciones
@@ -246794,7 +246817,10 @@ function renderUsersTable(filterVal = '') {
 
         return `
             <tr>
-                <td style="font-weight:700; color:#0f172a;">${u.name}</td>
+                <td style="font-weight:700; color:#0f172a;">
+                    ${u.name}
+                    ${u.telefono ? `<div style="font-size:0.72rem; font-weight:600; color:#047857; display:flex; align-items:center; gap:4px; margin-top:2px;" title="Teléfono: ${u.telefono}"><i class="fa-solid fa-phone" style="font-size:0.65rem;"></i> ${u.telefono}</div>` : ''}
+                </td>
                 <td style="text-align:center;">${renglonBadge}</td>
                 <td style="text-align:center;">${genderBadge}</td>
                 <td style="font-size:0.75rem; color:#475569; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;" title="${u.email || ''}">
