@@ -107,9 +107,137 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.08.v170_multisync';
+const ENCCO_BUILD_VERSION = '2026.09.08.v177_official_contacts';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
+
+
+// ======================================================================
+// 📇 CATÁLOGO OFICIAL DE CONTACTOS Y TELÉFONOS INSTITUCIONALES (2026)
+// ======================================================================
+const OFFICIAL_USER_CONTACTS = [
+    {
+        "id": "usr-doc-15",
+        "keywords": [
+            "enma",
+            "macario"
+        ],
+        "name": "Enma Leticia Macario Xúm de Ruano",
+        "email": "enlemagt@gmail.com",
+        "telefono": "42114100"
+    },
+    {
+        "id": "usr-doc-03",
+        "keywords": [
+            "alex tobar",
+            "tobar",
+            "roberto alex"
+        ],
+        "name": "Roberto Alex Tobar Cermeño",
+        "email": "trobertoac1@gmail.com",
+        "telefono": "48355209"
+    },
+    {
+        "id": "usr-doc-13",
+        "keywords": [
+            "damaris",
+            "salguero"
+        ],
+        "name": "Damaris Violeta Escobar Contreras de Salguero",
+        "email": "dalessandra2014@gmail.com",
+        "telefono": "32847200"
+    },
+    {
+        "id": "usr-doc-16",
+        "keywords": [
+            "jannete",
+            "jannette",
+            "salguero mellado"
+        ],
+        "name": "María Jannete Salguero Mellado",
+        "email": "salguerocomercio@gmail.com",
+        "telefono": "30339359"
+    },
+    {
+        "id": "usr-doc-06",
+        "keywords": [
+            "lilian",
+            "alas"
+        ],
+        "name": "Lilian Alas Grijalva",
+        "email": "lilyalas917@gmail.com",
+        "telefono": "41169921"
+    },
+    {
+        "id": "usr-doc-17",
+        "keywords": [
+            "bernal",
+            "yanes",
+            "sandra paola"
+        ],
+        "name": "Sandra Paola Bernal Yanes de Argueta",
+        "email": "paolabernal0310@gmail.com",
+        "telefono": "42985214"
+    },
+    {
+        "id": "usr-doc-05",
+        "keywords": [
+            "carlos augusto",
+            "juarez",
+            "juárez"
+        ],
+        "name": "Carlos Augusto Juárez Alvarez",
+        "email": "cajuarez2004@hotmail.com",
+        "telefono": "53112482"
+    },
+    {
+        "id": "usr-doc-20",
+        "keywords": [
+            "juan carlos",
+            "pereira"
+        ],
+        "name": "Juan Carlos Pereira Quan",
+        "email": "juancarlospereiraquan@gmail.com",
+        "telefono": "47403302"
+    },
+    {
+        "id": "usr-doc-18",
+        "keywords": [
+            "milvia",
+            "jacobo"
+        ],
+        "name": "Milvia Aracely Jacobo Escobar",
+        "email": "milvia_jacobo2010@hotmail.com",
+        "telefono": "41732859"
+    }
+];
+window.OFFICIAL_USER_CONTACTS = OFFICIAL_USER_CONTACTS;
+
+function reconcileOfficialUserContacts(users) {
+    if (!Array.isArray(users)) return 0;
+    const norm = str => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    let updatedCount = 0;
+    
+    OFFICIAL_USER_CONTACTS.forEach(contact => {
+        let target = users.find(u => u && u.id === contact.id);
+        if (!target) {
+            target = users.find(u => {
+                if (!u) return false;
+                if (u.email && u.email.toLowerCase() === contact.email.toLowerCase()) return true;
+                const uNameNorm = norm(u.name);
+                return contact.keywords && contact.keywords.every(kw => uNameNorm.includes(norm(kw)));
+            });
+        }
+        if (target) {
+            target.name = contact.name;
+            target.email = contact.email;
+            target.telefono = contact.telefono;
+            updatedCount++;
+        }
+    });
+    return updatedCount;
+}
+window.reconcileOfficialUserContacts = reconcileOfficialUserContacts;
 
 const EnccoCacheManager = {
     version: ENCCO_BUILD_VERSION,
@@ -129,6 +257,37 @@ const EnccoCacheManager = {
                 // 3. Limpiar CacheStorage del navegador si existe
                 if (typeof caches !== 'undefined') {
                     caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
+                }
+                // 4. Parchear directamente los contactos oficiales en la base de datos de localStorage
+                try {
+                    const storageKeys = ['ENCCO_DATABASE', 'ENCCO_DATABASE_BACKUP'];
+                    storageKeys.forEach(k => {
+                        const rawDb = localStorage.getItem(k);
+                        if (rawDb) {
+                            const parsedDb = JSON.parse(rawDb);
+                            if (parsedDb && Array.isArray(parsedDb.users)) {
+                                reconcileOfficialUserContacts(parsedDb.users);
+                                localStorage.setItem(k, JSON.stringify(parsedDb));
+                                console.log("📇 [EnccoCacheManager] Contactos oficiales aplicados directamente en " + k);
+                            }
+                        }
+                    });
+                    const rawAuth = localStorage.getItem('ENCCO_AUTH_USER');
+                    if (rawAuth) {
+                        const parsedAuth = JSON.parse(rawAuth);
+                        if (parsedAuth && parsedAuth.id) {
+                            const contactMatch = OFFICIAL_USER_CONTACTS.find(c => c.id === parsedAuth.id);
+                            if (contactMatch) {
+                                parsedAuth.name = contactMatch.name;
+                                parsedAuth.email = contactMatch.email;
+                                parsedAuth.telefono = contactMatch.telefono;
+                                localStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(parsedAuth));
+                                sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(parsedAuth));
+                            }
+                        }
+                    }
+                } catch(errPatch) {
+                    console.warn("Aviso al parchear contactos en cache manager:", errPatch);
                 }
                 localStorage.setItem('ENCCO_BUILD_VERSION', this.version);
             }
@@ -949,6 +1108,12 @@ window.ensureOfficialCycles = ensureOfficialCycles;
 
 function updateCycleSelects() {
     ensureOfficialCycles();
+    if (typeof reconcileOfficialUserContacts === 'function') {
+        reconcileOfficialUserContacts(STATE.users);
+    }
+    STATE.lastModified = Date.now();
+    if (typeof saveStateToLocalStorage === 'function') saveStateToLocalStorage();
+    if (typeof syncStateToFirebaseImmediate === 'function') syncStateToFirebaseImmediate(false);
 
     const sidebarSelect = document.getElementById('sidebarCycleSelect');
     const studentFormCycle = document.getElementById('studentFormCycle');
@@ -239797,17 +239962,9 @@ function initApp() {
     ensureSireOfficialStudents();
     ensureOfficialPensumAssignments();
 
-    // 📇 Sincronización de correos y teléfonos oficiales de usuarios y maestros
-    const OFFICIAL_USER_CONTACTS = [{"id":"usr-doc-15","name":"Enma Leticia Macario Xúm de Ruano","email":"enlemagt@gmail.com","telefono":"42114100"},{"id":"usr-doc-03","name":"Roberto Alex Tobar Cermeño","email":"trobertoac1@gmail.com","telefono":"48355209"},{"id":"usr-doc-13","name":"Damaris Violeta Escobar Contreras de Salguero","email":"dalessandra2014@gmail.com","telefono":"32847200"},{"id":"usr-doc-16","name":"María Jannete Salguero Mellado","email":"salguerocomercio@gmail.com","telefono":"30339359"},{"id":"usr-doc-06","name":"Lilian Alas Grijalva","email":"lilyalas917@gmail.com","telefono":"41169921"},{"id":"usr-doc-17","name":"Sandra Paola Bernal Yanes de Argueta","email":"paolabernal0310@gmail.com","telefono":"42985214"},{"id":"usr-doc-05","name":"Carlos Augusto Juárez Alvarez","email":"cajuarez2004@hotmail.com","telefono":"53112482"},{"id":"usr-doc-20","name":"Juan Carlos Pereira Quan","email":"juancarlospereiraquan@gmail.com","telefono":"47403302"},{"id":"usr-doc-18","name":"Milvia Aracely Jacobo Escobar","email":"milvia_jacobo2010@hotmail.com","telefono":"41732859"}];
-    if (Array.isArray(STATE.users)) {
-        OFFICIAL_USER_CONTACTS.forEach(contact => {
-            const target = STATE.users.find(u => u.id === contact.id);
-            if (target) {
-                target.name = contact.name;
-                target.email = contact.email;
-                target.telefono = contact.telefono;
-            }
-        });
+    // 📇 Sincronización garantizada de contactos y teléfonos oficiales de usuarios y maestros
+    if (typeof reconcileOfficialUserContacts === 'function') {
+        reconcileOfficialUserContacts(STATE.users);
     }
 
 
