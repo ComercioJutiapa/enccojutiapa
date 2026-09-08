@@ -248178,7 +248178,7 @@ function printStudentReportCardOfficial(targetStudentId) {
             <title>Boletín Oficial - ${s.lastName}, ${s.firstName} (Media Hoja Carta)</title>
             <style>
                 @page {
-                    size: 5.5in 8.5in portrait;
+                    size: 8.5in 5.5in;
                     margin: 4mm 6mm;
                 }
                 * { box-sizing: border-box; }
@@ -248258,7 +248258,7 @@ function printBatchReportCardsOfficial() {
             <title>Lote de Boletines Oficiales - ${gradeVal} ${sectionVal} (${students.length} Estudiantes)</title>
             <style>
                 @page {
-                    size: 5.5in 8.5in portrait;
+                    size: 8.5in 5.5in;
                     margin: 4mm 6mm;
                 }
                 * { box-sizing: border-box; }
