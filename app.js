@@ -3967,6 +3967,59 @@ function ensureSireOfficialStudents() {
         if (assign.gradeCode) s.gradeCode = assign.gradeCode;
         s.gradeLabel = assign.fullLabel;
     });
+
+    // 🎓 Sincronización incondicional de calificaciones oficiales y casillas de actividades (1er Bimestre 2026)
+    if (Array.isArray(STATE.students) && typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined' && Array.isArray(OFFICIAL_SIRE_412_STUDENTS)) {
+        let anyStudentUpdated = false;
+        OFFICIAL_SIRE_412_STUDENTS.forEach(off => {
+            if (off.grades && Object.keys(off.grades).length > 0) {
+                const target = STATE.students.find(s => s.id === off.id || (s.personalCode && s.personalCode === off.personalCode) || (s.carne && s.carne === off.carne));
+                if (target) {
+                    if (!target.grades) target.grades = {};
+                    if (!target.gradebookDetails) target.gradebookDetails = {};
+
+                    Object.keys(off.grades).forEach(subj => {
+                        if (!target.grades[subj]) target.grades[subj] = [0, 0, 0, 0];
+                        if (off.grades[subj] && off.grades[subj][0] !== undefined) {
+                            if (target.grades[subj][0] !== off.grades[subj][0]) {
+                                target.grades[subj][0] = off.grades[subj][0];
+                                anyStudentUpdated = true;
+                            }
+                        }
+                        target.grades[subj][1] = 0;
+                        target.grades[subj][2] = 0;
+                        target.grades[subj][3] = 0;
+                    });
+
+                    if (off.gradebookDetails) {
+                        Object.keys(off.gradebookDetails).forEach(subj => {
+                            if (!target.gradebookDetails[subj]) target.gradebookDetails[subj] = {};
+                            if (off.gradebookDetails[subj] && off.gradebookDetails[subj]["1"]) {
+                                const offDet = off.gradebookDetails[subj]["1"];
+                                const curDet = target.gradebookDetails[subj]["1"];
+                                if (!curDet || JSON.stringify(curDet.activities) !== JSON.stringify(offDet.activities) || curDet.zona !== offDet.zona || curDet.exam !== offDet.exam || curDet.total !== offDet.total) {
+                                    target.gradebookDetails[subj]["1"] = JSON.parse(JSON.stringify(offDet));
+                                    anyStudentUpdated = true;
+                                }
+                            }
+                            for (let u = 2; u <= 4; u++) {
+                                if (!target.gradebookDetails[subj][String(u)]) {
+                                    target.gradebookDetails[subj][String(u)] = { activities: [0,0,0,0,0,0,0,0,0,0], zona: 0, exam: 0, total: 0 };
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        });
+        if (anyStudentUpdated && typeof saveStateToLocalStorage === 'function') {
+            STATE.lastModified = Math.max(STATE.lastModified || 0, Date.now());
+            try {
+                localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(STATE));
+                localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(STATE.lastModified));
+            } catch(e) {}
+        }
+    }
 }
 window.ensureSireOfficialStudents = ensureSireOfficialStudents;
 
@@ -55608,9 +55661,8 @@ function initApp() {
     if (!STATE.careers || STATE.careers.length === 0 || !STATE.gradesList || STATE.gradesList.length === 0) {
         if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
     }
-    if (!STATE.students || STATE.students.length === 0) {
-        ensureSireOfficialStudents();
-    }
+    // Sincronizar e hidratar siempre la lista oficial de estudiantes y notas del 1er Bimestre
+    ensureSireOfficialStudents();
 
     ensureMasterAccount();
 
@@ -55627,6 +55679,65 @@ function initApp() {
     });
 
     // 4. Normalizar Ciclos lectivos
+    // 4. Configurar ponderaciones oficiales y nombres de actividades para el 1er Bimestre
+    if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
+    (STATE.pensum || []).forEach(p => {
+        if (!p) return;
+        const subj = (p.subject || '').trim();
+        const pKey1 = `${p.id}_B1`;
+        if (subj === 'Computación II') {
+            STATE.gradingConfigs[pKey1] = {
+                zonaMax: 60,
+                examMax: 40,
+                activities: [
+                    { name: 'DTK', max: 10 },
+                    { name: 'Folder', max: 15 },
+                    { name: 'Classroom', max: 15 },
+                    { name: 'Examen Zona', max: 20 },
+                    { name: 'Act. 5', max: 0 },
+                    { name: 'Act. 6', max: 0 },
+                    { name: 'Act. 7', max: 0 },
+                    { name: 'Act. 8', max: 0 },
+                    { name: 'Act. 9', max: 0 },
+                    { name: 'Act. 10', max: 0 }
+                ]
+            };
+        } else if (subj === 'Computación III') {
+            STATE.gradingConfigs[pKey1] = {
+                zonaMax: 60,
+                examMax: 40,
+                activities: [
+                    { name: 'Trabajo PruébaT', max: 20 },
+                    { name: 'Classroom', max: 25 },
+                    { name: 'Examen PruébaT', max: 15 },
+                    { name: 'Act. 4', max: 0 },
+                    { name: 'Act. 5', max: 0 },
+                    { name: 'Act. 6', max: 0 },
+                    { name: 'Act. 7', max: 0 },
+                    { name: 'Act. 8', max: 0 },
+                    { name: 'Act. 9', max: 0 },
+                    { name: 'Act. 10', max: 0 }
+                ]
+            };
+        } else if (subj === 'Cálculo Mercantil y Financiero') {
+            STATE.gradingConfigs[pKey1] = {
+                zonaMax: 40,
+                examMax: 60,
+                activities: [
+                    { name: 'Tareas', max: 20 },
+                    { name: 'Laboratorio', max: 10 },
+                    { name: 'Hoja de Trabajo', max: 10 },
+                    { name: 'Act. 4', max: 0 },
+                    { name: 'Act. 5', max: 0 },
+                    { name: 'Act. 6', max: 0 },
+                    { name: 'Act. 7', max: 0 },
+                    { name: 'Act. 8', max: 0 },
+                    { name: 'Act. 9', max: 0 },
+                    { name: 'Act. 10', max: 0 }
+                ]
+            };
+        }
+    });
     ensureOfficialCycles();
 
     // 5. Guardias de guardado al recargar o cerrar pestaña (SOLO en plataforma.html, NUNCA en login.html ni durante logout)
