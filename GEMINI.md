@@ -14,3 +14,9 @@ El usuario ha establecido de forma permanente la política de **"Modo Silencioso
 
 3. **Criterio de Preservación**:
    - Proteger los datos y configuraciones esenciales contra eliminaciones destructivas accidentales no solicitadas explícitamente.
+
+4. **Protocolo Obligatorio de Respaldo y GitHub**:
+   - En cada modificación, generar un ZIP con marca de tiempo en `respaldos/`.
+   - Limitar a un máximo estricto de 3 respaldos históricos para economizar almacenamiento (rotación automática).
+   - Mantener actualizado el archivo ZIP raíz `plataforma_escuela_comercio_completa.zip`.
+   - Realizar commit y sincronización obligatoria a GitHub (`git push origin main`).
