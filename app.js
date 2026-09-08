@@ -227005,7 +227005,7 @@ function getInitialData() {
 
         {
                 "id": "usr-aux-01",
-                "name": "PEM. Nehemias Yalil Salguero",
+                "name": "Nehemias Yalil Salguero",
                 "username": "nehemias",
                 "email": "nehemias.salguero1982@gmail.com",
                 "password": "C@rolina1",
@@ -227019,7 +227019,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-dir-01",
-                "name": "Licda. Mirza Elizabeth Aragón Polanco de Hernández",
+                "name": "Mirza Elizabeth Aragón Polanco de Hernández",
                 "username": "director",
                 "email": "mirzaaragon6@gmail.com",
                 "password": "Mirza1",
@@ -227044,7 +227044,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-01",
-                "name": "PEM. Nehemias Yalil Salguero",
+                "name": "Nehemias Yalil Salguero",
                 "username": "nehemias",
                 "email": "yalilsag@gmail.com",
                 "password": "Nehemias1",
@@ -227058,7 +227058,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-05",
-                "name": "Lic.MA. Carlos Augusto Juarez Alvarez",
+                "name": "Carlos Augusto Juarez Alvarez",
                 "email": "carlos.augusto@comercio.edu.gt",
                 "password": "Carlos1",
                 "role": "docente",
@@ -227071,7 +227071,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-02",
-                "name": "PEM. Aleida Maribel Escobar de Palma",
+                "name": "Aleida Maribel Escobar de Palma",
                 "email": "aleida@comercio.edu.gt",
                 "password": "Aleida1",
                 "role": "docente",
@@ -227084,7 +227084,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-03",
-                "name": "Lic. Roberto Alex Tobar Cermeño",
+                "name": "Roberto Alex Tobar Cermeño",
                 "email": "roberto@comercio.edu.gt",
                 "password": "Roberto1",
                 "role": "docente",
@@ -227097,7 +227097,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-04",
-                "name": "Lic. Williams Esmely Gudiel Paredes",
+                "name": "Williams Esmely Gudiel Paredes",
                 "email": "williams@comercio.edu.gt",
                 "password": "Williams1",
                 "role": "docente",
@@ -227110,7 +227110,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-06",
-                "name": "PEM. Lilian Alas Grijalva",
+                "name": "Lilian Alas Grijalva",
                 "email": "lilian@comercio.edu.gt",
                 "password": "Lilian1",
                 "role": "docente",
@@ -227123,7 +227123,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-07",
-                "name": "Lic. Nery Benjamín Galvez Ramos",
+                "name": "Nery Benjamín Galvez Ramos",
                 "email": "nery@comercio.edu.gt",
                 "password": "Nery1",
                 "role": "docente",
@@ -227136,7 +227136,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-08",
-                "name": "Lic. Edwin Osvaldo López Recinos",
+                "name": "Edwin Osvaldo López Recinos",
                 "email": "edwin@comercio.edu.gt",
                 "password": "Edwin1",
                 "role": "docente",
@@ -227149,7 +227149,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-09",
-                "name": "Lic. Gamaliel Uzias Medrano",
+                "name": "Gamaliel Uzias Medrano",
                 "email": "gamaliel@comercio.edu.gt",
                 "password": "Gamaliel1",
                 "role": "docente",
@@ -227162,7 +227162,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-10",
-                "name": "Lic. Héctor Noé Linares",
+                "name": "Héctor Noé Linares",
                 "email": "hector@comercio.edu.gt",
                 "password": "Héctor1",
                 "role": "docente",
@@ -227175,7 +227175,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-11",
-                "name": "Lic.MA. Wilder Porfirio Pérez López",
+                "name": "Wilder Porfirio Pérez López",
                 "email": "wilder@comercio.edu.gt",
                 "password": "Wilder1",
                 "role": "docente",
@@ -227188,7 +227188,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-12",
-                "name": "Licda. Sandra Julissa Arana Lucero",
+                "name": "Sandra Julissa Arana Lucero",
                 "email": "sandra@comercio.edu.gt",
                 "password": "Sandra1",
                 "role": "docente",
@@ -227201,7 +227201,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-13",
-                "name": "Lic. Damaris Violeta Escobar de Salguero Damaris",
+                "name": "Damaris Violeta Escobar de Salguero",
                 "email": "damaris@comercio.edu.gt",
                 "password": "Damaris1",
                 "role": "docente",
@@ -227214,7 +227214,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-14",
-                "name": "PEM. Elda Argentina López de Valdez",
+                "name": "Elda Argentina López de Valdez",
                 "email": "elda@comercio.edu.gt",
                 "password": "Elda1",
                 "role": "docente",
@@ -227227,7 +227227,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-15",
-                "name": "Licda. Enma Leticia Macario Xum de Ruano",
+                "name": "Enma Leticia Macario Xum de Ruano",
                 "email": "enma@comercio.edu.gt",
                 "password": "Enma1",
                 "role": "docente",
@@ -227240,7 +227240,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-16",
-                "name": "Licda. Maria Jannette Salguero Mellado",
+                "name": "Maria Jannette Salguero Mellado",
                 "email": "maria@comercio.edu.gt",
                 "password": "Maria1",
                 "role": "docente",
@@ -227253,7 +227253,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-17",
-                "name": "Licda. Sandra Paola Bernal Yanes de Argueta",
+                "name": "Sandra Paola Bernal Yanes de Argueta",
                 "email": "sandra.paola@comercio.edu.gt",
                 "password": "Sandra1",
                 "role": "docente",
@@ -227266,7 +227266,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-18",
-                "name": "PEM. Milvia Aracely Jacobo Escobar",
+                "name": "Milvia Aracely Jacobo Escobar",
                 "email": "milvia@comercio.edu.gt",
                 "password": "Milvia1",
                 "role": "docente",
@@ -227279,7 +227279,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-19",
-                "name": "Prof. Carlos Vinicio Grijalva Cardona",
+                "name": "Carlos Vinicio Grijalva Cardona",
                 "email": "carlos@comercio.edu.gt",
                 "password": "Carlos1",
                 "role": "docente",
@@ -227292,7 +227292,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-doc-20",
-                "name": "Lic. Juan Carlos Pereira",
+                "name": "Juan Carlos Pereira",
                 "email": "juan@comercio.edu.gt",
                 "password": "Juan1",
                 "role": "docente",
@@ -227305,7 +227305,7 @@ function getInitialData() {
         },
         {
                 "id": "usr-1788133386028-672",
-                "name": "Licda. Francisca Alcira Ramos",
+                "name": "Francisca Alcira Ramos",
                 "username": "licdafrancis",
                 "email": "a.aaa@gmail.com",
                 "password": "Francis1",
@@ -239792,6 +239792,9 @@ function initApp() {
 
     // 3. Asegurar campos renglon y gender sin sobreescribir claves ni asignaciones
     (STATE.users || []).forEach(u => {
+        if (u && u.name) {
+            u.name = u.name.replace(/^(Licda\.|Lic\.MA\.|Lic\.|PEM\.|Profa\.|Prof\.)\s*/i, '').replace(/\s+Damaris$/i, '').trim();
+        }
         if (!u.renglon) u.renglon = (u.id === 'usr-sec-01' || (u.name && (u.name.includes('Jhoana') || u.name.includes('Jarro') || u.name.includes('Williams') || u.name.includes('Nery') || u.name.includes('Gamaliel') || u.name.includes('Wilder') || u.name.includes('Bernal') || u.name.includes('Pereira')))) ? '021' : '011';
         if (!u.gender) {
             const nLower = (u.name || '').toLowerCase();
