@@ -13,3 +13,6 @@ desktop.ini
 # Archives
 *.zip
 *.tar.gz
+
+# Scratch files
+scratch*
