@@ -67706,7 +67706,7 @@ function loadHonorRoll() {
         return `
             <tr style="${!info.eligibleForHonorRoll ? 'background:#fff1f2; opacity:0.92;' : ''}">
                 <td style="text-align:center;">${posBadge}</td>
-                <td style="text-align:center;"><code>${s.carne || s.personalCode || '—'}</code></td>
+                <td style="text-align:center;"><code>${s.personalCode || '—'}</code></td>
                 <td><strong>${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}</strong></td>
                 <td>${formatStudentGradeAndSection(s)}</td>
                 <td style="text-align:center;">${loadBadge}</td>
@@ -67776,7 +67776,7 @@ function printHonorRoll() {
         return `
             <tr>
                 <td style="text-align:center; font-weight:bold;">#${idx + 1}</td>
-                <td style="text-align:center;">${s.carne || s.personalCode || '—'}</td>
+                <td style="text-align:center;">${s.personalCode || '—'}</td>
                 <td style="font-weight:bold; padding-left:8px;">${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}</td>
                 <td>${formatStudentGradeAndSection(s)}</td>
                 <td style="text-align:center;">${loadBadge}</td>
@@ -67846,7 +67846,7 @@ function printHonorRoll() {
                 <thead>
                     <tr>
                         <th style="width:45px;">Pos.</th>
-                        <th style="width:85px;">Carné</th>
+                        <th style="width:105px;">Código Personal</th>
                         <th style="text-align:left; padding-left:8px;">Nombre del Estudiante</th>
                         <th style="width:170px;">Grado y Carrera</th>
                         <th style="width:95px;">Carga Curricular</th>
