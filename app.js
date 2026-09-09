@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.09.v183_direct_user_persistence';
+const ENCCO_BUILD_VERSION = '2026.09.09.v184_authoritative_firebase_users';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -2663,18 +2663,18 @@ async function syncUsersToDatabaseImmediate(showToastNotification = true) {
                 try { _enccBroadcastChannel.postMessage({ type: 'USERS_UPDATED', users: cleanUsers, timestamp: now }); } catch(bcErr) {}
             }
             // Lanzar sincronización global en segundo plano para respaldar estado íntegro
-            setTimeout(() => {
-                if (typeof pushStateToFirebaseCloud === 'function') pushStateToFirebaseCloud(false);
-            }, 200);
+            // [v184] Push global eliminado — solo se sincronizan usuarios granularmente
+            // [v184] (push eliminado)
+            // [v184] (fin setTimeout eliminado)
             return true;
         } else {
             console.warn("⚠️ [Firebase] Aviso en PUT de usuarios status:", userRes.status);
-            if (typeof pushStateToFirebaseCloud === 'function') pushStateToFirebaseCloud(false);
+            // [v184] if (typeof pushStateToFirebaseCloud === 'function') pushStateToFirebaseCloud(false); // — desactivado, solo se sincronizan usuarios
             return false;
         }
     } catch(err) {
         console.warn("⚠️ [Firebase] Excepción al sincronizar usuarios con la nube:", err);
-        if (typeof pushStateToFirebaseCloud === 'function') pushStateToFirebaseCloud(false);
+        // [v184] if (typeof pushStateToFirebaseCloud === 'function') pushStateToFirebaseCloud(false); // — desactivado, solo se sincronizan usuarios
         return false;
     }
 }
@@ -239999,7 +239999,7 @@ function ensureOfficialPensumAssignments() {
     }
 }
 
-function initApp() {
+async function initApp() {
     // Si estamos en login.html o index.html, no ejecutar la inicialización de la plataforma
     if (typeof window !== 'undefined') {
         const path = (window.location.pathname || '') + (window.location.href || '');
@@ -240081,6 +240081,37 @@ function initApp() {
         if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
     }
     // Sincronizar e hidratar siempre la lista oficial de estudiantes y notas del 1er Bimestre
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ⚡ [v184] PULL AUTORITATIVO DE USUARIOS DESDE FIREBASE
+    // Firebase es la ÚNICA fuente de verdad para usuarios editados.
+    // Si Firebase tiene usuarios, SIEMPRE se usan. getInitialData() NUNCA
+    // debe sobreescribir ediciones del usuario almacenadas en Firebase.
+    // ═══════════════════════════════════════════════════════════════════
+    try {
+        const _fbUrlForUsers = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : null;
+        if (_fbUrlForUsers && (typeof navigator === "undefined" || navigator.onLine !== false)) {
+            console.log("⚡ [v184] Descargando usuarios autoritativos desde Firebase...");
+            const _cloudUsersRes = await fetch(_fbUrlForUsers + "/encc_school_state/users.json", { method: "GET", headers: { "Accept": "application/json" } });
+            if (_cloudUsersRes.ok) {
+                const _cloudUsersData = await _cloudUsersRes.json();
+                if (Array.isArray(_cloudUsersData) && _cloudUsersData.length > 0) {
+                    STATE.users = _cloudUsersData;
+                    hasLoadedExistingUsers = true;
+                    console.log("✅ [v184] " + _cloudUsersData.length + " usuarios cargados desde Firebase (fuente autoritativa).");
+                    // Guardar en localStorage para offline
+                    if (typeof saveStateToLocalStorage === "function") saveStateToLocalStorage();
+                } else {
+                    console.log("ℹ️ [v184] Firebase no tiene usuarios, usando datos locales/iniciales.");
+                }
+            } else {
+                console.warn("⚠️ [v184] Firebase respondió con status " + _cloudUsersRes.status + ", usando datos locales.");
+            }
+        }
+    } catch(_fbPullErr) {
+        console.warn("⚠️ [v184] No se pudo conectar con Firebase para usuarios, usando datos locales:", _fbPullErr);
+    }
+
     ensureSireOfficialStudents();
     ensureOfficialPensumAssignments();
 
@@ -241182,12 +241213,9 @@ function applyIncomingCloudState(incomingState, force = false) {
 
     // ⚡ [v181] Proteger contra sobreescritura — prioridad ABSOLUTA a cambios locales más recientes
     // Margen de 2s para tolerancia de relojes desincronizados entre clientes
-    const LOCAL_WINS_MARGIN_MS = 2000;
-    if (!force && incomingTime < (localTime + LOCAL_WINS_MARGIN_MS) && Array.isArray(STATE.users) && STATE.users.length > 0) {
-        console.log(`⚡ [v181 Guard] Cambios locales protegidos (local: ${localTime}, nube: ${incomingTime}). No se sobrescribe.`);
-        return false;
-    }
-    if (!force && incomingTime <= localTime) {
+    // ⚡ [v184] Guard LOCAL_WINS desactivado — Firebase es autoritativo para usuarios
+    // Los cambios de la nube siempre se aceptan (la versión local se sincroniza de inmediato)
+    if (!force && incomingTime <= 0) {
         return false;
     }
 
@@ -253401,7 +253429,7 @@ function handleGlobalTeachersPensumExcelUpload(e) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', () => { initApp(); });
+document.addEventListener('DOMContentLoaded', async () => { await initApp(); });
 
 
 
