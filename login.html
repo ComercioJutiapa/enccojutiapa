@@ -409,7 +409,7 @@
     </div>
 
         <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=2026.09.08.v181_sync_integrity"></script>
+    <script src="app.js?v=2026.09.08.v182_preserve_user_edits"></script>
     <script>
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');
@@ -450,9 +450,9 @@
             if (window.STATE && Array.isArray(window.STATE.users)) {
                 const docN = window.STATE.users.find(u => u.id === 'usr-doc-01' || u.username === 'nehemias.doc');
                 if (docN) {
-                    docN.email = atob('eWFsaWxzYWdAZ21haWwuY29t');
-                    docN.password = atob('TmVoZW1pYXMx');
-                    docN.secondaryEmail = atob('bmVoZW1pYXMuc2FsZ3Vlcm8xOTgyQGdtYWlsLmNvbQ==');
+                    if (!docN.email) docN.email = atob('eWFsaWxzYWdAZ21haWwuY29t');
+                    if (!docN.password) docN.password = atob('TmVoZW1pYXMx');
+                    if (!docN.secondaryEmail) docN.secondaryEmail = atob('bmVoZW1pYXMuc2FsZ3Vlcm8xOTgyQGdtYWlsLmNvbQ==');
                 }
             }
 
@@ -534,9 +534,9 @@
             if (window.STATE && Array.isArray(window.STATE.users)) {
                 const docN = window.STATE.users.find(u => u.id === 'usr-doc-01' || u.username === 'nehemias.doc');
                 if (docN) {
-                    docN.email = atob('eWFsaWxzYWdAZ21haWwuY29t');
-                    docN.password = atob('TmVoZW1pYXMx');
-                    docN.secondaryEmail = atob('bmVoZW1pYXMuc2FsZ3Vlcm8xOTgyQGdtYWlsLmNvbQ==');
+                    if (!docN.email) docN.email = atob('eWFsaWxzYWdAZ21haWwuY29t');
+                    if (!docN.password) docN.password = atob('TmVoZW1pYXMx');
+                    if (!docN.secondaryEmail) docN.secondaryEmail = atob('bmVoZW1pYXMuc2FsZ3Vlcm8xOTgyQGdtYWlsLmNvbQ==');
                 }
             }
 

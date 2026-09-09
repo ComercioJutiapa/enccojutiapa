@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.08.v181_sync_integrity';
+const ENCCO_BUILD_VERSION = '2026.09.08.v182_preserve_user_edits';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -229,10 +229,20 @@ function reconcileOfficialUserContacts(users) {
             });
         }
         if (target) {
-            target.name = contact.name;
-            target.email = contact.email;
-            target.telefono = contact.telefono;
-            updatedCount++;
+            // 🛡️ REGLA ESTRICTA DE INTEGRIDAD: NUNCA SOBREESCRIBIR DATOS MODIFICADOS POR EL USUARIO
+            // Solo asignar valor por defecto si el campo está totalmente vacío o inexistente en la BD
+            if ((target.telefono === undefined || target.telefono === null || String(target.telefono).trim() === '') && contact.telefono) {
+                target.telefono = contact.telefono;
+                updatedCount++;
+            }
+            if ((target.email === undefined || target.email === null || String(target.email).trim() === '') && contact.email) {
+                target.email = contact.email;
+                updatedCount++;
+            }
+            if ((target.name === undefined || target.name === null || String(target.name).trim() === '') && contact.name) {
+                target.name = contact.name;
+                updatedCount++;
+            }
         }
     });
     return updatedCount;
@@ -305,56 +315,37 @@ const EnccoCacheManager = {
                 if (curUrl && (curUrl.includes('enccojutiapa-db-default') || curUrl.includes('tu-proyecto') || curUrl.includes('mi-colegio'))) {
                     localStorage.removeItem('ENCCO_FIREBASE_URL');
                 }
-                // 2. Liberar espacio duplicado en localStorage para evitar QuotaExceededError
+                // 2. Liberar espacio duplicado en localStorage (PRESERVANDO ENCCO_LAST_LOCAL_MODIFIED)
                 localStorage.removeItem('ENCCO_DATABASE_BACKUP');
-                localStorage.removeItem('ENCCO_LAST_LOCAL_MODIFIED');
                 // 3. Limpiar CacheStorage del navegador si existe
                 if (typeof caches !== 'undefined') {
                     caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
                 }
-                // 4. Parchear directamente los contactos oficiales en la base de datos de localStorage
+                // 4. Asegurar maestros guías sin sobreescribir usuarios existentes
                 try {
-                    const storageKeys = ['ENCCO_DATABASE', 'ENCCO_DATABASE_BACKUP'];
+                    const storageKeys = ['ENCCO_DATABASE'];
                     storageKeys.forEach(k => {
                         const rawDb = localStorage.getItem(k);
                         if (rawDb) {
                             const parsedDb = JSON.parse(rawDb);
-                            if (parsedDb && Array.isArray(parsedDb.users)) {
-                                reconcileOfficialUserContacts(parsedDb.users);
-                                if (Array.isArray(parsedDb.gradesList)) {
-                                    parsedDb.gradesList.forEach(g => {
-                                        if (!g) return;
-                                        if (g.guideTeacher && typeof g.guideTeacher === 'string') {
-                                            g.guideTeacher = g.guideTeacher.replace(/^(Licda\.|Lic\.MA\.|Lic\.|PEM\.|Profa\.|Prof\.)\s*/i, '').trim();
-                                        }
-                                        const u = (parsedDb.users || []).find(usr => usr && ((g.guideTeacherId && usr.id === g.guideTeacherId) || (g.guideTeacher && usr.name === g.guideTeacher)));
-                                        if (u) {
-                                            g.guideTeacher = u.name;
-                                            g.guideTeacherId = u.id;
-                                        }
-                                    });
-                                }
+                            if (parsedDb && Array.isArray(parsedDb.gradesList) && Array.isArray(parsedDb.users)) {
+                                parsedDb.gradesList.forEach(g => {
+                                    if (!g) return;
+                                    if (g.guideTeacher && typeof g.guideTeacher === 'string') {
+                                        g.guideTeacher = g.guideTeacher.replace(/^(Licda\.|Lic\.MA\.|Lic\.|PEM\.|Profa\.|Prof\.)\s*/i, '').trim();
+                                    }
+                                    const u = (parsedDb.users || []).find(usr => usr && ((g.guideTeacherId && usr.id === g.guideTeacherId) || (g.guideTeacher && usr.name === g.guideTeacher)));
+                                    if (u) {
+                                        g.guideTeacher = u.name;
+                                        g.guideTeacherId = u.id;
+                                    }
+                                });
                                 localStorage.setItem(k, JSON.stringify(parsedDb));
-                                console.log("📇 [EnccoCacheManager] Contactos y maestros guías oficiales aplicados directamente en " + k);
                             }
                         }
                     });
-                    const rawAuth = localStorage.getItem('ENCCO_AUTH_USER');
-                    if (rawAuth) {
-                        const parsedAuth = JSON.parse(rawAuth);
-                        if (parsedAuth && parsedAuth.id) {
-                            const contactMatch = OFFICIAL_USER_CONTACTS.find(c => c.id === parsedAuth.id);
-                            if (contactMatch) {
-                                parsedAuth.name = contactMatch.name;
-                                parsedAuth.email = contactMatch.email;
-                                parsedAuth.telefono = contactMatch.telefono;
-                                localStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(parsedAuth));
-                                sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(parsedAuth));
-                            }
-                        }
-                    }
                 } catch(errPatch) {
-                    console.warn("Aviso al parchear contactos en cache manager:", errPatch);
+                    console.warn("Aviso en cache manager:", errPatch);
                 }
                 localStorage.setItem('ENCCO_BUILD_VERSION', this.version);
             }
@@ -1176,13 +1167,7 @@ window.ensureOfficialCycles = ensureOfficialCycles;
 function updateCycleSelects() {
     ensureOfficialCycles();
     if (typeof syncAllGradesGuideTeachers === 'function') syncAllGradesGuideTeachers();
-    if (typeof reconcileOfficialUserContacts === 'function') {
-        reconcileOfficialUserContacts(STATE.users);
-    }
-    STATE.lastModified = Date.now();
-    if (typeof saveStateToLocalStorage === 'function') saveStateToLocalStorage();
-    if (typeof syncStateToFirebaseImmediate === 'function') syncStateToFirebaseImmediate(false);
-
+    // 🛡️ [v182] Eliminada sobreescritura de usuarios y llamadas a sync/save desde selector
     const sidebarSelect = document.getElementById('sidebarCycleSelect');
     const studentFormCycle = document.getElementById('studentFormCycle');
 
@@ -240280,10 +240265,10 @@ function ensureMasterAccount() {
     // 2. Garantizar cuenta Docente oficial de PEM. Nehemias Yalil Salguero (yalilsag@gmail.com)
     let docUser = STATE.users.find(u => u.id === 'usr-doc-01' || u.username === 'nehemias.doc');
     if (docUser) {
-        docUser.email = 'yalilsag@gmail.com';
-        docUser.secondaryEmail = 'nehemias.salguero1982@gmail.com';
-        docUser.password = 'Nehemias1';
-        docUser.role = 'docente';
+        if (!docUser.email) docUser.email = 'yalilsag@gmail.com';
+        if (!docUser.secondaryEmail) docUser.secondaryEmail = 'nehemias.salguero1982@gmail.com';
+        if (!docUser.password) docUser.password = 'Nehemias1';
+        if (!docUser.role) docUser.role = 'docente';
     }
 }
 
