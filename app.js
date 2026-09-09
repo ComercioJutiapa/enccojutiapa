@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.08.v177_official_contacts';
+const ENCCO_BUILD_VERSION = '2026.09.08.v181_sync_integrity';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -239,6 +239,60 @@ function reconcileOfficialUserContacts(users) {
 }
 window.reconcileOfficialUserContacts = reconcileOfficialUserContacts;
 
+
+// ======================================================================
+// 👨‍🏫 RESOLUTOR DINÁMICO DE MAESTROS GUÍAS (VINCULACIÓN 100% DINÁMICA)
+// ======================================================================
+function getGradeGuideTeacher(grade) {
+    if (!grade) return { name: 'Sin asignar', id: null, user: null };
+    
+    // 1. Búsqueda por ID institucional único (máxima fidelidad)
+    let user = null;
+    if (grade.guideTeacherId) {
+        user = (STATE.users || []).find(u => u && u.id === grade.guideTeacherId);
+    }
+    
+    // 2. Búsqueda inteligente por nombre si no coincide el ID
+    if (!user && grade.guideTeacher && grade.guideTeacher !== 'Sin asignar') {
+        const cleanName = grade.guideTeacher.replace(/^(Licda\.|Lic\.MA\.|Lic\.|PEM\.|Profa\.|Prof\.)\s*/i, '').trim();
+        const norm = str => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+        const targetNorm = norm(cleanName);
+        user = (STATE.users || []).find(u => {
+            if (!u || !u.name) return false;
+            const uNorm = norm(u.name);
+            return uNorm === targetNorm || uNorm.includes(targetNorm) || targetNorm.includes(uNorm);
+        });
+    }
+    
+    // 3. Mantener grado sincronizado dinámicamente
+    if (user) {
+        grade.guideTeacher = user.name;
+        grade.guideTeacherId = user.id;
+        return { name: user.name, id: user.id, user: user };
+    }
+    
+    const fallbackName = (grade.guideTeacher && grade.guideTeacher !== 'Sin asignar')
+        ? grade.guideTeacher.replace(/^(Licda\.|Lic\.MA\.|Lic\.|PEM\.|Profa\.|Prof\.)\s*/i, '').trim()
+        : 'Sin asignar';
+    return { name: fallbackName, id: grade.guideTeacherId || null, user: null };
+}
+window.getGradeGuideTeacher = getGradeGuideTeacher;
+
+// ======================================================================
+// 🔄 SINCRONIZADOR GLOBAL DE MAESTROS GUÍAS
+// ======================================================================
+function syncAllGradesGuideTeachers() {
+    if (!Array.isArray(STATE.gradesList) || STATE.gradesList.length === 0) return;
+    STATE.gradesList.forEach(g => {
+        if (!g) return;
+        if (typeof getGradeGuideTeacher === 'function') {
+            getGradeGuideTeacher(g);
+        }
+    });
+}
+window.syncAllGradesGuideTeachers = syncAllGradesGuideTeachers;
+
+
 const EnccoCacheManager = {
     version: ENCCO_BUILD_VERSION,
     init() {
@@ -267,8 +321,21 @@ const EnccoCacheManager = {
                             const parsedDb = JSON.parse(rawDb);
                             if (parsedDb && Array.isArray(parsedDb.users)) {
                                 reconcileOfficialUserContacts(parsedDb.users);
+                                if (Array.isArray(parsedDb.gradesList)) {
+                                    parsedDb.gradesList.forEach(g => {
+                                        if (!g) return;
+                                        if (g.guideTeacher && typeof g.guideTeacher === 'string') {
+                                            g.guideTeacher = g.guideTeacher.replace(/^(Licda\.|Lic\.MA\.|Lic\.|PEM\.|Profa\.|Prof\.)\s*/i, '').trim();
+                                        }
+                                        const u = (parsedDb.users || []).find(usr => usr && ((g.guideTeacherId && usr.id === g.guideTeacherId) || (g.guideTeacher && usr.name === g.guideTeacher)));
+                                        if (u) {
+                                            g.guideTeacher = u.name;
+                                            g.guideTeacherId = u.id;
+                                        }
+                                    });
+                                }
                                 localStorage.setItem(k, JSON.stringify(parsedDb));
-                                console.log("📇 [EnccoCacheManager] Contactos oficiales aplicados directamente en " + k);
+                                console.log("📇 [EnccoCacheManager] Contactos y maestros guías oficiales aplicados directamente en " + k);
                             }
                         }
                     });
@@ -1108,6 +1175,7 @@ window.ensureOfficialCycles = ensureOfficialCycles;
 
 function updateCycleSelects() {
     ensureOfficialCycles();
+    if (typeof syncAllGradesGuideTeachers === 'function') syncAllGradesGuideTeachers();
     if (typeof reconcileOfficialUserContacts === 'function') {
         reconcileOfficialUserContacts(STATE.users);
     }
@@ -2926,8 +2994,8 @@ function renderGradesDirectory(filter = '') {
 
     const filtered = list.filter(g => {
         if (!q) return true;
-        const guideTeacherObj = (STATE.users || []).find(u => u.id === g.guideTeacherId || u.name === g.guideTeacher);
-        const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || '');
+        const guideInfo = typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(g) : { name: g.guideTeacher || '', user: null };
+        const guideName = guideInfo.name || '';
         const raw = `${g.name || ''} ${g.section || ''} ${g.code || ''} ${guideName}`.toLowerCase();
         return raw.includes(q);
     });
@@ -2944,9 +3012,11 @@ function renderGradesDirectory(filter = '') {
 
     container.innerHTML = filtered.map((g, idx) => {
         const count = getStudentCountByGradeAndSection(g.code, g.name, g.section);
-        const guideTeacherObj = (STATE.users || []).find(u => u.id === g.guideTeacherId || u.name === g.guideTeacher);
-        const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || 'Sin asignar');
+        const guideInfo = typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(g) : { name: g.guideTeacher || 'Sin asignar', user: null };
+        const guideTeacherObj = guideInfo.user;
+        const guideName = guideInfo.name || 'Sin asignar';
         const guideEmail = guideTeacherObj ? (guideTeacherObj.email || 'Docente Titular') : '---';
+        const guidePhone = guideTeacherObj ? (guideTeacherObj.phone || guideTeacherObj.telefono || '') : '';
         const guideTitle = guideTeacherObj ? (guideTeacherObj.title || 'Catedrático') : 'PEM / Lic.';
 
         return `
@@ -2971,7 +3041,7 @@ function renderGradesDirectory(filter = '') {
                         </div>
                         <strong style="display:block; color:var(--text-primary); font-size:0.92rem; line-height:1.3;">${guideName}</strong>
                         <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">
-                            <span>${guideTitle}</span> &bull; <span>${guideEmail}</span>
+                            <span>${guideTitle}</span> &bull; <span>${guideEmail}</span>${guidePhone ? ` &bull; <span style="color:#059669; font-weight:700;"><i class="fa-solid fa-phone"></i> ${guidePhone}</span>` : ''}
                         </div>
                     </div>
                 </div>
@@ -3266,9 +3336,11 @@ function renderGuideTeachersView(searchQuery = '') {
 
     tbody.innerHTML = list.map((g, idx) => {
         const count = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
-        const guideTeacherObj = (STATE.users || []).find(u => u.id === g.guideTeacherId || u.name === g.guideTeacher);
-        const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || 'Sin asignar');
+        const guideInfo = typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(g) : { name: g.guideTeacher || 'Sin asignar', user: null, id: g.guideTeacherId };
+        const guideTeacherObj = guideInfo.user;
+        const guideName = guideInfo.name || 'Sin asignar';
         const guideEmail = guideTeacherObj ? (guideTeacherObj.email || 'Sin correo registrado') : '---';
+        const guidePhone = guideTeacherObj ? (guideTeacherObj.phone || guideTeacherObj.telefono || '') : '';
         const guideTitle = guideTeacherObj ? (guideTeacherObj.title || 'Catedrático Titular') : 'PEM / Lic.';
         const guideRenglon = guideTeacherObj?.renglon ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.7rem; margin-left:6px;">${guideTeacherObj.renglon}</span>` : '';
         const isAssigned = (guideName && guideName !== 'Sin asignar');
@@ -3283,7 +3355,7 @@ function renderGuideTeachersView(searchQuery = '') {
                         onchange="handleDirectGuideTeacherChange('${g.id}', this.value)">
                         <option value="">-- Sin Maestro Guía --</option>
                         ${teachers.map(t => {
-                            const isSel = (t.id === g.guideTeacherId || t.name === g.guideTeacher) ? 'selected' : '';
+                            const isSel = (t.id === g.guideTeacherId || t.name === g.guideTeacher || (guideInfo && (t.id === guideInfo.id || t.name === guideInfo.name))) ? 'selected' : '';
                             return `<option value="${t.id}" ${isSel}>${escapeHtml(t.name)} (${t.renglon || '011'})</option>`;
                         }).join('')}
                     </select>
@@ -3318,8 +3390,9 @@ function renderGuideTeachersView(searchQuery = '') {
                 </td>
                 <td>${guideDisplayHtml}</td>
                 <td>
-                    <div style="font-size:0.82rem; color:var(--text-primary);"><i class="fa-solid fa-id-badge" style="color:#0284c7; margin-right:4px;"></i>${escapeHtml(guideTitle)}</div>
+                    <div style="font-size:0.82rem; color:var(--text-primary); font-weight:600;"><i class="fa-solid fa-id-badge" style="color:#0284c7; margin-right:4px;"></i>${escapeHtml(guideTitle)}</div>
                     <div style="font-size:0.75rem; color:var(--text-muted);"><i class="fa-regular fa-envelope" style="margin-right:4px;"></i>${escapeHtml(guideEmail)}</div>
+                    ${guidePhone ? `<div style="font-size:0.75rem; color:#059669; font-weight:700; margin-top:2px;"><i class="fa-solid fa-phone" style="margin-right:4px;"></i>${escapeHtml(guidePhone)}</div>` : ''}
                 </td>
                 <td style="text-align:center;">
                     <button type="button" class="btn btn-xs btn-outline-success" onclick="openSectionStudentsModal('${escapeHtml(g.code)}')" style="font-weight:800; padding:4px 8px; border-radius:6px;" title="Ver los ${count} alumnos matriculados">
@@ -3351,10 +3424,10 @@ function handleDirectGuideTeacherChange(gradeId, newTeacherId) {
         return;
     }
 
-    const grade = (STATE.gradesList || []).find(g => g.id === gradeId);
+    const grade = (STATE.gradesList || []).find(g => g && (g.id === gradeId || g.code === gradeId));
     if (!grade) return;
-    const teacherObj = (STATE.users || []).find(u => u.id === newTeacherId);
-    grade.guideTeacherId = newTeacherId || null;
+    const teacherObj = (STATE.users || []).find(u => u.id === newTeacherId || u.name === newTeacherId);
+    grade.guideTeacherId = teacherObj ? teacherObj.id : (newTeacherId || null);
     grade.guideTeacher = teacherObj ? teacherObj.name : (newTeacherId ? newTeacherId : 'Sin asignar');
 
     STATE.lastModified = Date.now();
@@ -3417,18 +3490,23 @@ function printGuideTeachersOfficialDirectory() {
     const rowsHtml = filteredList.map((g, idx) => {
         const count = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
         totalStudentsCount += count;
-        const guideTeacherObj = (STATE.users || []).find(u => u.id === g.guideTeacherId || u.name === g.guideTeacher);
-        const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || 'Pendiente de asignación');
+        const guideInfo = typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(g) : { name: g.guideTeacher || 'Pendiente de asignación', user: null };
+        const guideTeacherObj = guideInfo.user;
+        const guideName = guideInfo.name || 'Pendiente de asignación';
         const guideEmail = guideTeacherObj ? (guideTeacherObj.email || '---') : '---';
+        const guidePhone = guideTeacherObj ? (guideTeacherObj.phone || guideTeacherObj.telefono || '') : '';
         const sectionClean = (g.section || '').replace(/Secci[oó]n\s*/i, '').trim() || g.section;
 
         return `
             <tr>
                 <td style="text-align:center; font-weight:bold; padding:7px 5px; border:1px solid #000;">${idx + 1}</td>
-                <td style="padding:7px 10px; border:1px solid #000; font-weight:bold;">${escapeHtml(g.name)}</td>
+                <td style="padding:7px 10px; border:1px solid #000; font-weight:bold;">${escapeHtml(g.name)}<div style="font-size:9.5px; font-weight:normal; color:#444;">${escapeHtml(g.career || '')}</div></td>
                 <td style="text-align:center; padding:7px 5px; border:1px solid #000; font-weight:bold; font-size:11px;">${escapeHtml(sectionClean)}</td>
                 <td style="padding:7px 10px; border:1px solid #000; font-weight:bold;">${escapeHtml(guideName)}</td>
-                <td style="padding:7px 10px; border:1px solid #000; font-size:10px;">${escapeHtml(guideEmail)}</td>
+                <td style="padding:7px 10px; border:1px solid #000; font-size:10px;">
+                    <div>${escapeHtml(guideEmail)}</div>
+                    ${guidePhone ? `<div style="font-weight:bold; color:#0f766e; margin-top:2px;">Tel: ${escapeHtml(guidePhone)}</div>` : ''}
+                </td>
                 <td style="text-align:center; padding:7px 5px; border:1px solid #000; font-weight:bold; font-size:11px;">${count}</td>
             </tr>
         `;
@@ -227503,125 +227581,126 @@ function getInitialData() {
         }
     ],
     "gradesList": [
+
         {
-            "id": "grd-4a",
-            "code": "4to A",
-            "name": "4to Perito Contador",
-            "section": "Sección A",
-            "career": "Perito Contador",
-            "shift": "Matutina",
-            "guideTeacher": "PEM. Nehemias Yalil Salguero",
-            "guideTeacherId": "usr-admin-01"
+                "id": "grd-4a",
+                "code": "4to A",
+                "name": "4to Perito Contador",
+                "section": "Sección A",
+                "career": "Perito Contador",
+                "shift": "Matutina",
+                "guideTeacher": "Nehemias Yalil Salguero",
+                "guideTeacherId": "usr-doc-01"
         },
         {
-            "id": "grd-4b",
-            "code": "4to B",
-            "name": "4to Perito Contador",
-            "section": "Sección B",
-            "career": "Perito Contador",
-            "shift": "Matutina",
-            "guideTeacher": "PEM. Aleida Maribel Escobar de Palma",
-            "guideTeacherId": "usr-doc-03"
+                "id": "grd-4b",
+                "code": "4to B",
+                "name": "4to Perito Contador",
+                "section": "Sección B",
+                "career": "Perito Contador",
+                "shift": "Matutina",
+                "guideTeacher": "Aleida Maribel Escobar de Palma",
+                "guideTeacherId": "usr-doc-02"
         },
         {
-            "id": "grd-4c",
-            "code": "4to C",
-            "name": "4to Perito Contador",
-            "section": "Sección C",
-            "career": "Perito Contador",
-            "shift": "Matutina",
-            "guideTeacher": "Lic. Roberto Alex Tobar Cermeño",
-            "guideTeacherId": "usr-doc-04"
+                "id": "grd-4c",
+                "code": "4to C",
+                "name": "4to Perito Contador",
+                "section": "Sección C",
+                "career": "Perito Contador",
+                "shift": "Matutina",
+                "guideTeacher": "Roberto Alex Tobar Cermeño",
+                "guideTeacherId": "usr-doc-03"
         },
         {
-            "id": "grd-4d",
-            "code": "4to D",
-            "name": "4to Perito Contador",
-            "section": "Sección D",
-            "career": "Perito Contador",
-            "shift": "Matutina",
-            "guideTeacher": "PEM. Lilian Alas Grijalva",
-            "guideTeacherId": "usr-doc-06"
+                "id": "grd-4d",
+                "code": "4to D",
+                "name": "4to Perito Contador",
+                "section": "Sección D",
+                "career": "Perito Contador",
+                "shift": "Matutina",
+                "guideTeacher": "Lilian Alas Grijalva",
+                "guideTeacherId": "usr-doc-06"
         },
         {
-            "id": "grd-5a",
-            "code": "5to A",
-            "name": "5to Perito Contador",
-            "section": "Sección A",
-            "career": "Perito Contador",
-            "shift": "Matutina",
-            "guideTeacher": "Lic.MA. Carlos Augusto Juarez Alvarez",
-            "guideTeacherId": "usr-doc-02"
+                "id": "grd-5a",
+                "code": "5to A",
+                "name": "5to Perito Contador",
+                "section": "Sección A",
+                "career": "Perito Contador",
+                "shift": "Matutina",
+                "guideTeacher": "Carlos Augusto Juárez Alvarez",
+                "guideTeacherId": "usr-doc-05"
         },
         {
-            "id": "grd-5b",
-            "code": "5to B",
-            "name": "5to Perito Contador",
-            "section": "Sección B",
-            "career": "Perito Contador",
-            "shift": "Matutina",
-            "guideTeacher": "Lic. Williams Esmely Gudiel Paredes",
-            "guideTeacherId": "usr-doc-05"
+                "id": "grd-5b",
+                "code": "5to B",
+                "name": "5to Perito Contador",
+                "section": "Sección B",
+                "career": "Perito Contador",
+                "shift": "Matutina",
+                "guideTeacher": "Williams Esmely Gudiel Paredes",
+                "guideTeacherId": "usr-doc-04"
         },
         {
-            "id": "grd-5c",
-            "code": "5to C",
-            "name": "5to Perito Contador",
-            "section": "Sección C",
-            "career": "Perito Contador",
-            "shift": "Matutina",
-            "guideTeacher": "Lic. Edwin Osvaldo López Recinos",
-            "guideTeacherId": "usr-doc-08"
+                "id": "grd-5c",
+                "code": "5to C",
+                "name": "5to Perito Contador",
+                "section": "Sección C",
+                "career": "Perito Contador",
+                "shift": "Matutina",
+                "guideTeacher": "Edwin Osvaldo López Recinos",
+                "guideTeacherId": "usr-doc-08"
         },
         {
-            "id": "grd-5d",
-            "code": "5to D",
-            "name": "5to Perito Contador",
-            "section": "Sección D",
-            "career": "Perito Contador",
-            "shift": "Matutina",
-            "guideTeacher": "Lic. Gamaliel Uzias Medrano",
-            "guideTeacherId": "usr-doc-09"
+                "id": "grd-5d",
+                "code": "5to D",
+                "name": "5to Perito Contador",
+                "section": "Sección D",
+                "career": "Perito Contador",
+                "shift": "Matutina",
+                "guideTeacher": "Gamaliel Uzias Medrano",
+                "guideTeacherId": "usr-doc-09"
         },
         {
-            "id": "grd-6a",
-            "code": "6to A",
-            "name": "6to Perito Contador",
-            "section": "Sección A",
-            "career": "Perito Contador",
-            "shift": "Matutina",
-            "guideTeacher": "Lic. Héctor Noé Linares",
-            "guideTeacherId": "usr-doc-10"
+                "id": "grd-6a",
+                "code": "6to A",
+                "name": "6to Perito Contador",
+                "section": "Sección A",
+                "career": "Perito Contador",
+                "shift": "Matutina",
+                "guideTeacher": "Héctor Noé Linares",
+                "guideTeacherId": "usr-doc-10"
         },
         {
-            "id": "grd-6b",
-            "code": "6to B",
-            "name": "6to Perito Contador",
-            "section": "Sección B",
-            "career": "Perito Contador",
-            "shift": "Matutina",
-            "guideTeacher": "Licda. Sandra Julissa Arana Lucero",
-            "guideTeacherId": "usr-doc-12"
+                "id": "grd-6b",
+                "code": "6to B",
+                "name": "6to Perito Contador",
+                "section": "Sección B",
+                "career": "Perito Contador",
+                "shift": "Matutina",
+                "guideTeacher": "Sandra Julissa Arana Lucero",
+                "guideTeacherId": "usr-doc-12"
         },
         {
-            "id": "grd-6c",
-            "code": "6to C",
-            "name": "6to Perito Contador",
-            "section": "Sección C",
-            "career": "Perito Contador",
-            "shift": "Matutina",
-            "guideTeacher": "Lic. Damaris Violeta Escobar de Salguero",
-            "guideTeacherId": "usr-doc-13"
+                "id": "grd-6c",
+                "code": "6to C",
+                "name": "6to Perito Contador",
+                "section": "Sección C",
+                "career": "Perito Contador",
+                "shift": "Matutina",
+                "guideTeacher": "Damaris Violeta Escobar Contreras de Salguero",
+                "guideTeacherId": "usr-doc-13"
         },
         {
-            "id": "grd-6d",
-            "code": "6to D",
-            "name": "6to Perito Contador",
-            "section": "Sección D",
-            "career": "Perito Contador",
-            "shift": "Matutina",
-            "guideTeacher": "Lic.MA. Wilder Porfirio Pérez López",
-            "guideTeacherId": "usr-doc-11"
+                "id": "grd-6d",
+                "code": "6to D",
+                "name": "6to Perito Contador",
+                "section": "Sección D",
+                "career": "Perito Contador",
+                "shift": "Matutina",
+                "guideTeacher": "Wilder Porfirio Pérez López",
+                "guideTeacherId": "usr-doc-11"
         }
     ],
     "pensumCatalog": [
@@ -241058,9 +241137,11 @@ function applyIncomingCloudState(incomingState, force = false) {
     const localLastModified = (typeof localStorage !== 'undefined') ? Number(localStorage.getItem('ENCCO_LAST_LOCAL_MODIFIED') || 0) : 0;
     const localTime = Math.max(STATE.lastModified || 0, localLastModified);
 
-    // Proteger contra sobreescritura de datos locales ms recientes (prioridad absoluta a cambios locales)
-    if (incomingTime < localTime && Array.isArray(STATE.users) && STATE.users.length > 0) {
-        console.log(`?? [Tiempo Real] Se conservan cambios locales ms recientes (${localTime} vs nube ${incomingTime}).`);
+    // ⚡ [v181] Proteger contra sobreescritura — prioridad ABSOLUTA a cambios locales más recientes
+    // Margen de 2s para tolerancia de relojes desincronizados entre clientes
+    const LOCAL_WINS_MARGIN_MS = 2000;
+    if (!force && incomingTime < (localTime + LOCAL_WINS_MARGIN_MS) && Array.isArray(STATE.users) && STATE.users.length > 0) {
+        console.log(`⚡ [v181 Guard] Cambios locales protegidos (local: ${localTime}, nube: ${incomingTime}). No se sobrescribe.`);
         return false;
     }
     if (!force && incomingTime <= localTime) {
@@ -241190,6 +241271,27 @@ function triggerInstantCloudPush() {
 }
 window.triggerInstantCloudPush = triggerInstantCloudPush;
 
+// ⚡ [v181] Flush de datos al cerrar/recargar la página — evita pérdida de cambios no sincronizados
+if (typeof window !== 'undefined' && !window._enccoBeforeUnloadRegistered) {
+    window._enccoBeforeUnloadRegistered = true;
+    window.addEventListener('beforeunload', function() {
+        try {
+            if (window.STATE && !window.STATE.isLocalReadOnlyMode) {
+                // Flush local inmediato
+                const now = Date.now();
+                window.STATE.lastModified = now;
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now));
+                    try { localStorage.setItem('ENCCO_DATABASE', JSON.stringify(window.STATE)); } catch(e) {}
+                }
+                // Intento de push sync a Firebase (best-effort antes de cerrar)
+                if (typeof pushStateToFirebaseCloud === 'function') {
+                    pushStateToFirebaseCloud(false);
+                }
+            }
+        } catch(e) {}
+    });
+}
 
 
 function isAuthOrLandingPage() {
@@ -241354,7 +241456,7 @@ function initRecursiveAutoSaveDaemon() {
         if (lastMod > lastSaved) {
             saveStateRecursively({ syncCloud: true, isAutoSave: true });
         }
-    }, 12000);
+    }, 3000); // ⚡ [v181] Reducido de 12s → 3s para captura inmediata de cambios
 }
 window.initRecursiveAutoSaveDaemon = initRecursiveAutoSaveDaemon;
 
@@ -242691,7 +242793,8 @@ function renderStudentsTable() {
         let guideInfo = '';
         if (gradeVal && targetGradeObj) {
             headerDesc = `Nómina Oficial: <strong>${targetGradeObj.name} (${targetGradeObj.section})</strong>`;
-            guideInfo = `&nbsp;|&nbsp; 👨‍🏫 Maestro(a) Guía: <strong style="color:#166534;">${targetGradeObj.guideTeacher || 'Sin asignar'}</strong>`;
+            const targetGuide = typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(targetGradeObj).name : (targetGradeObj.guideTeacher || 'Sin asignar');
+        guideInfo = `&nbsp;|&nbsp; 👨‍🏫 Maestro(a) Guía: <strong style="color:#166534;">${targetGuide}</strong>`;
         } else if (searchVal) {
             headerDesc = `Resultados de búsqueda para: "<strong>${searchVal}</strong>"`;
         } else {
@@ -243787,7 +243890,7 @@ function openStudentProfileModal(id) {
             (g.name === assign.grade && (!assign.section || g.section === assign.section)) ||
             (assign.gradeCode && g.code === assign.gradeCode)
         );
-        const teacher = grd && grd.guideTeacher ? grd.guideTeacher : 'Dirección del Plantel / Secretaría';
+        const teacher = grd ? (typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(grd).name : (grd.guideTeacher || 'Dirección del Plantel / Secretaría')) : 'Dirección del Plantel / Secretaría';
         guideEl.innerHTML = `👨‍🏫 <strong>Maestro(a) Guía:</strong> ${escapeHtml(teacher)}`;
     }
 
@@ -243896,15 +243999,20 @@ function openStudentProfileModal(id) {
                 </div>
             `;
         } else {
+            const canDeleteDiscipline = typeof checkDisciplineDirectorPermission === 'function' ? checkDisciplineDirectorPermission() : false;
             discBox.innerHTML = discList.map((d, index) => {
                 const isGrav = d.severity === 'Grave' || d.severity === 'Muy Grave';
+                const deleteBtnHtml = canDeleteDiscipline ? '<button type="button" class="btn btn-xs btn-outline-danger" onclick="deleteDisciplineReport(\'' + d.id + '\')" title="Eliminar reporte (Dirección)" style="padding:2px 7px; font-weight:700; font-size:0.75rem;"><i class="fa-solid fa-trash"></i> Eliminar</button>' : '';
                 return `
                     <div style="margin-bottom:8px; border:1px solid #e2e8f0; background:#ffffff; border-radius:6px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                             <span class="badge ${isGrav ? 'badge-danger' : 'badge-warning'}" style="font-weight:700;">
                                 <i class="fa-solid fa-triangle-exclamation"></i> ${d.severity || 'Falta Leve'}
                             </span>
-                            <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;"><i class="fa-regular fa-clock"></i> ${d.date}</span>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;"><i class="fa-regular fa-clock"></i> ${d.date}</span>
+                                ${deleteBtnHtml}
+                            </div>
                         </div>
                         <div style="font-weight:700; color:#1e293b; font-size:0.88rem; margin-bottom:2px;">${d.reason}</div>
                         ${d.notes ? `<div style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:4px; font-style:italic;">"${d.notes}"</div>` : ''}
@@ -246293,7 +246401,7 @@ function printStudentsOfficialList(targetGrade = null) {
 
     const gradeName = targetGradeObj ? targetGradeObj.name : (gradeVal || 'Grado');
     const sectionName = targetGradeObj ? (targetGradeObj.section || (qSec ? `Sección ${qSec}` : '')) : (qSec ? `Sección ${qSec}` : '');
-    const guideTeacher = (targetGradeObj && targetGradeObj.guideTeacher) ? targetGradeObj.guideTeacher : 'Por Asignar';
+    const guideTeacher = targetGradeObj ? (typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(targetGradeObj).name : (targetGradeObj.guideTeacher || 'Por Asignar')) : 'Por Asignar';
     const careerName = (targetGradeObj && targetGradeObj.career) ? targetGradeObj.career : (list[0]?.career || 'Ciclo Diversificado');
 
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : null) || {};
@@ -246464,7 +246572,7 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
 
     const gradeName = targetGradeObj ? targetGradeObj.name : (gradeVal || 'Grado');
     const sectionName = targetGradeObj ? (targetGradeObj.section || (qSec ? `Sección ${qSec}` : '')) : (qSec ? `Sección ${qSec}` : '');
-    const guideTeacher = (targetGradeObj && targetGradeObj.guideTeacher) ? targetGradeObj.guideTeacher : 'Por Asignar';
+    const guideTeacher = targetGradeObj ? (typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(targetGradeObj).name : (targetGradeObj.guideTeacher || 'Por Asignar')) : 'Por Asignar';
     const careerName = (targetGradeObj && targetGradeObj.career) ? targetGradeObj.career : (list[0]?.career || 'Perito Contador');
 
     // Asignatura / Materia (seleccionada o en blanco)
@@ -246707,13 +246815,17 @@ const isResolved = rep.resolutionStatus === 'Resuelto';
 }
 
 function deleteDisciplineReport(reportId) {
-    if (STATE.currentRole !== 'admin' && STATE.currentRole !== 'director' && STATE.currentUser?.role !== 'admin') return;
-    if (confirm("¿Está seguro de eliminar esta llamada de atención disciplinaria del sistema?")) {
-        STATE.disciplineReports = STATE.disciplineReports.filter(d => d.id !== reportId);
-        saveStateToLocalStorage();
-        renderDisciplineTable();
-        showToast("Llamada de atención disciplinaria eliminada.", "info");
+    if (typeof window.deleteDisciplineReport === 'function' && window.deleteDisciplineReport !== deleteDisciplineReport) {
+        return window.deleteDisciplineReport(reportId);
     }
+    if (!checkDisciplineDirectorPermission()) {
+        showToast("Acceso denegado: Únicamente la Dirección o Administrador del establecimiento pueden eliminar reportes disciplinarios.", "danger");
+        return;
+    }
+    STATE.disciplineReports = (STATE.disciplineReports || []).filter(d => d.id !== reportId);
+    saveStateToLocalStorage();
+    renderDisciplineTable();
+    showToast("Reporte disciplinario eliminado por Dirección.", "info");
 }
 
 function openDisciplineModal() {
@@ -252363,10 +252475,44 @@ function checkDisciplineResolvePermission() {
 }
 window.checkDisciplineResolvePermission = checkDisciplineResolvePermission;
 
-function checkDisciplineDirectorPermission() {
-    const role = STATE.currentRole || (STATE.currentUser ? STATE.currentUser.role : 'docente');
-    // Únicamente la Dirección y el Administrador pueden autorizar cambios a resoluciones emitidas o eliminar reportes
-    return ['admin', 'director'].includes(role);
+function checkDisciplineDirectorPermission(targetRole = null) {
+    const rawRole = targetRole || 
+                    (window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function' ? window.EnccoAuthStore.getRole() : null) ||
+                    (window.STATE ? STATE.currentRole : null) || 
+                    (window.STATE && STATE.currentUser ? STATE.currentUser.role : null) ||
+                    (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ENCCO_AUTH_ROLE') : null) ||
+                    (typeof localStorage !== 'undefined' ? localStorage.getItem('ENCCO_AUTH_ROLE') : null) ||
+                    'docente';
+    const role = String(rawRole).trim().toLowerCase();
+
+    // 1. Roles institucionales con facultad ejecutiva de Dirección y Administración
+    if (['admin', 'super_usuario', 'director', 'directora', 'direccion'].includes(role)) {
+        return true;
+    }
+
+    // 2. Verificar rol en el usuario autenticado actual
+    if (window.STATE && STATE.currentUser && STATE.currentUser.role) {
+        const uRole = String(STATE.currentUser.role).trim().toLowerCase();
+        if (['admin', 'super_usuario', 'director', 'directora', 'direccion'].includes(uRole)) {
+            return true;
+        }
+    }
+
+    // 3. Verificación mediante el sistema de Roles y Permisos (RBAC)
+    if (typeof hasRolePermission === 'function') {
+        if (hasRolePermission('discipline_delete', role) || hasRolePermission('discipline_admin', role)) {
+            return true;
+        }
+    }
+
+    if (typeof canRoleModify === 'function' && canRoleModify('discipline', role)) {
+        // Excluir específicamente auxiliares y docentes de la facultad de eliminar registros disciplinarios
+        if (role !== 'profesor_auxiliar' && role !== 'docente' && role !== 'estudiante') {
+            return true;
+        }
+    }
+
+    return false;
 }
 window.checkDisciplineDirectorPermission = checkDisciplineDirectorPermission;
 
@@ -252653,6 +252799,10 @@ function openDisciplineResolutionModal(reportId) {
     const resTextarea = document.getElementById('discResResolutionText');
     const submitBtn = document.getElementById('discResSubmitBtn') || document.querySelector('#disciplineResolutionModal button[type="submit"]');
     const unlockBtn = document.getElementById('discResDirectorUnlockBtn');
+    const modalDeleteBtn = document.getElementById('discResDirectorDeleteBtn');
+    if (modalDeleteBtn) {
+        modalDeleteBtn.style.display = isDirector ? 'inline-block' : 'none';
+    }
 
     if (idInput) idInput.value = rep.id;
     if (nameEl) nameEl.textContent = rep.studentName || 'Estudiante';
@@ -252925,17 +253075,54 @@ window.saveDisciplineResolutionForm = saveDisciplineResolutionForm;
 
 function deleteDisciplineReport(reportId) {
     if (!checkDisciplineDirectorPermission()) {
-        showToast("Acceso denegado: Únicamente la Dirección o Administrador del establecimiento pueden eliminar reportes disciplinarios.", "danger");
+        showToast("Acceso denegado: Únicamente la Dirección o Administrador del establecimiento tienen autorización de rol y permiso para eliminar reportes disciplinarios.", "danger");
         return;
     }
-    if (confirm("¿Está seguro de eliminar este reporte disciplinario del sistema? Esta acción es irreversible y solo puede ser autorizada por Dirección.")) {
+
+    const list = STATE.disciplineReports || STATE.discipline || [];
+    const rep = list.find(d => d.id === reportId);
+    const studentName = rep ? (rep.studentName || 'del estudiante') : '';
+
+    const confirmMsg = studentName
+        ? '¿Está seguro de eliminar este reporte disciplinario de "' + studentName + '" del sistema? Esta acción es irreversible y facultad exclusiva de Dirección.'
+        : '¿Está seguro de eliminar este reporte disciplinario del sistema? Esta acción es irreversible y solo puede ser autorizada por Dirección.';
+
+    if (confirm(confirmMsg)) {
         STATE.disciplineReports = (STATE.disciplineReports || []).filter(d => d.id !== reportId);
+        if (STATE.discipline) {
+            STATE.discipline = (STATE.discipline || []).filter(d => d.id !== reportId);
+        }
+
         saveStateToLocalStorage();
         renderDisciplineTable();
+
+        if (typeof closeDisciplineResolutionModal === 'function') {
+            closeDisciplineResolutionModal();
+        }
+
+        // Si el modal de perfil de estudiante está abierto, refrescar su historial disciplinario
+        const profModal = document.getElementById('studentProfileModal');
+        if (profModal && (profModal.classList.contains('active') || profModal.style.display !== 'none')) {
+            if (STATE.selectedStudentId && typeof renderStudentProfile === 'function') {
+                const stu = (STATE.students || []).find(s => s.id === STATE.selectedStudentId);
+                if (stu) renderStudentProfile(stu);
+            }
+        }
+
         if (typeof renderDashboard === 'function') renderDashboard();
-        showToast("Reporte disciplinario eliminado por Dirección.", "info");
+        if (typeof updateDashboardKPIs === 'function') updateDashboardKPIs();
+        if (typeof renderCurrentDashboardAlerts === 'function') renderCurrentDashboardAlerts();
+
+        showToast("Reporte disciplinario eliminado exitosamente por Dirección.", "success");
     }
 }
+
+function deleteCurrentDisciplineReportFromModal() {
+    const idInput = document.getElementById('discResModalReportId');
+    if (!idInput || !idInput.value) return;
+    deleteDisciplineReport(idInput.value);
+}
+window.deleteCurrentDisciplineReportFromModal = deleteCurrentDisciplineReportFromModal;
 window.deleteDisciplineReport = deleteDisciplineReport;
 
 function renderDisciplineTable() {
@@ -253459,7 +253646,7 @@ function printStudentDemographicsReport() {
             name: g.name,
             section: g.section,
             career: g.career,
-            guideTeacher: g.guideTeacher || 'Sin asignar',
+            guideTeacher: (typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(g).name : (g.guideTeacher || 'Sin asignar')),
             male: mCount,
             female: fCount,
             total: totalSec
@@ -255377,9 +255564,11 @@ function renderGradesDirectoryTable() {
 
     tbody.innerHTML = list.map((g, idx) => {
         const count = getStudentCountByGradeAndSection(g.code, g.name, g.section);
-        const guideTeacherObj = (STATE.users || []).find(u => u.id === g.guideTeacherId || u.name === g.guideTeacher);
-        const guideName = guideTeacherObj ? guideTeacherObj.name : (g.guideTeacher || 'Sin asignar');
+        const guideInfo = typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(g) : { name: g.guideTeacher || 'Sin asignar', user: null };
+        const guideTeacherObj = guideInfo.user;
+        const guideName = guideInfo.name || 'Sin asignar';
         const guideEmail = guideTeacherObj ? (guideTeacherObj.email || 'Sin correo') : '---';
+        const guidePhone = guideTeacherObj ? (guideTeacherObj.phone || guideTeacherObj.telefono || '') : '';
 
         return `
             <tr>
@@ -255390,7 +255579,7 @@ function renderGradesDirectoryTable() {
                 <td>
                     <div style="display:flex; flex-direction:column;">
                         <strong style="color:var(--text-primary); font-size:0.92rem;"><i class="fa-solid fa-chalkboard-user" style="color:var(--brand-green); margin-right:6px;"></i>${guideName}</strong>
-                        <span style="font-size:0.75rem; color:var(--text-muted);">${guideEmail}</span>
+                        <span style="font-size:0.75rem; color:var(--text-muted);">${guideEmail}${guidePhone ? ' &bull; <i class="fa-solid fa-phone" style="color:#059669;"></i> ' + guidePhone : ''}</span>
                     </div>
                 </td>
                 <td style="text-align:center;">
@@ -255488,7 +255677,7 @@ function printSectionStudentsList(gradeCode, section) {
                 <h3 style="margin:0; color:#0369a1; text-transform:uppercase;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</h3>
                 <h4 style="margin:2px 0; color:#475569;">ENCCO JUTIAPA - JORNADA MATUTINA</h4>
                 <p style="margin:0; font-size:0.85rem; font-weight:700;">NÓMINA OFICIAL DE ESTUDIANTES - CICLO 2026</p>
-                <p style="margin:2px 0 0; font-size:0.82rem; color:#64748b;"><strong>Grado y Sección:</strong> ${gradeObj.name} Sección "${gradeObj.section || section}" | <strong>Carrera:</strong> ${gradeObj.career}</p>
+                <p style="margin:2px 0 0; font-size:0.82rem; color:#64748b;"><strong>Grado y Sección:</strong> ${gradeObj.name} Sección "${gradeObj.section || section}" | <strong>Carrera:</strong> ${gradeObj.career} | <strong>Docente Guía:</strong> ${(typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(gradeObj).name : (gradeObj.guideTeacher || 'Sin asignar'))}</p>
             </div>
             <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
                 <thead>
@@ -255577,9 +255766,21 @@ function renderGradesTable(searchQuery = '') {
         return;
     }
 
-    tbody.innerHTML = list.map(g => {
+        tbody.innerHTML = list.map(g => {
         const count = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
-        const guide = g.guideTeacher || '<span style="color:var(--text-muted); font-style:italic;">Sin asignar</span>';
+        const guideInfo = typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(g) : { name: (g.guideTeacher || 'Sin asignar') };
+        const guideUser = guideInfo.user;
+        const isAssigned = (guideInfo.name && guideInfo.name !== 'Sin asignar');
+
+        const guideDisplay = isAssigned
+            ? `<div style="display:flex; flex-direction:column; gap:2px;">
+                 <strong style="color:#0f172a; font-size:0.88rem; display:flex; align-items:center; gap:5px;">
+                   <i class="fa-solid fa-chalkboard-user" style="color:#15803d; font-size:0.85rem;"></i>
+                   ${escapeHtml(guideInfo.name)}
+                 </strong>
+                 ${guideUser?.telefono ? `<div style="font-size:0.72rem; font-weight:600; color:#047857; display:flex; align-items:center; gap:4px; margin-left:18px;" title="Teléfono: ${guideUser.telefono}"><i class="fa-solid fa-phone" style="font-size:0.65rem;"></i> ${guideUser.telefono}</div>` : ''}
+               </div>`
+            : `<span style="color:var(--text-muted); font-style:italic;">Sin asignar</span>`;
 
         return `
         <tr>
@@ -255588,7 +255789,7 @@ function renderGradesTable(searchQuery = '') {
             <td><code style="font-weight:800; color:var(--brand-green-dark);">${g.code}</code></td>
             <td><span class="badge badge-success" style="font-weight:700;">${g.section}</span></td>
             <td><span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700;">${g.shift || 'Matutina'}</span></td>
-            <td><strong style="color:var(--text-primary); font-size:0.88rem;">${guide}</strong></td>
+            <td>${guideDisplay}</td>
             <td style="text-align:center;">
                 <span class="badge badge-primary" style="font-weight:800; cursor:pointer;" onclick="openSectionStudentsModal('${g.code}')" title="Ver estudiantes de esta sección">
                     <i class="fa-solid fa-users"></i> ${count} alumnos
@@ -256928,7 +257129,9 @@ function saveGradeForm(e) {
             STATE.gradesList[idx].shift = shift;
             STATE.gradesList[idx].section = secVal;
             STATE.gradesList[idx].code = codeVal || `${name} ${secVal}`;
-            STATE.gradesList[idx].guideTeacher = guideTeacher;
+            const guideUserObj = (STATE.users || []).find(u => u.id === guideTeacher || u.name === guideTeacher);
+            STATE.gradesList[idx].guideTeacherId = guideUserObj ? guideUserObj.id : (guideTeacher || null);
+            STATE.gradesList[idx].guideTeacher = guideUserObj ? guideUserObj.name : (guideTeacher || 'Sin asignar');
         }
     } else {
         // Modo creación: recopilar secciones seleccionadas
@@ -256950,32 +257153,31 @@ function saveGradeForm(e) {
         // Crear cada grado/sección
         selectedSections.forEach(sec => {
             const shortSec = sec.replace('Sección', '').trim();
-            const prefix = name.replace(/[^0-9]/g, '') || 'G';
-            const autoCode = `${prefix}° ${shortSec}`;
-            const newId = 'grd-' + Date.now() + '-' + Math.floor(Math.random()*1000);
-
-            // Verificar si ya existe este grado y sección
-            const exists = STATE.gradesList.some(g => g.name.toLowerCase() === name.toLowerCase() && g.section.toLowerCase() === sec.toLowerCase() && g.career.toLowerCase() === career.toLowerCase());
-            if (!exists) {
-                STATE.gradesList.push({
-                    id: newId,
-                    name: name,
-                    career: career,
-                    shift: shift,
-                    section: sec,
-                    code: autoCode,
-                    guideTeacher: guideTeacher
-                });
-            }
+            const code = `${name.replace('Perito Contador', 'PC').trim()} ${shortSec}`;
+            const guideUserObj = (STATE.users || []).find(u => u.id === guideTeacher || u.name === guideTeacher);
+            STATE.gradesList.push({
+                id: 'grd-' + Date.now() + '-' + Math.floor(Math.random()*1000),
+                name: name,
+                career: career,
+                shift: shift,
+                section: sec,
+                code: code,
+                guideTeacherId: guideUserObj ? guideUserObj.id : (guideTeacher || null),
+                guideTeacher: guideUserObj ? guideUserObj.name : (guideTeacher || 'Sin asignar')
+            });
         });
     }
 
     STATE.gradesList = sortGrades(STATE.gradesList);
+    STATE.lastModified = Date.now();
     saveStateToLocalStorage();
     closeGradeModal();
     updateGradeSelects();
     renderGradesTable();
+    if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
     if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof autoSyncToCloud === 'function') autoSyncToCloud(true, false);
+    else if (typeof syncStateToFirebaseImmediate === 'function') syncStateToFirebaseImmediate(false);
     showToast(`Grado y secciones guardados correctamente.`, 'success');
 }
 

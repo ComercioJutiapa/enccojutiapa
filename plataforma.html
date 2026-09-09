@@ -3563,7 +3563,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=20260908_v177_official_contacts"></script>
+    <script src="app.js?v=2026.09.08.v181_sync_integrity"></script>
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre
         window.addEventListener('load', function() {
@@ -3699,6 +3699,9 @@
                     <div>
                         <button type="button" id="discResDirectorUnlockBtn" class="btn btn-sm btn-outline-warning" onclick="enableDisciplineDirectorEdit()" style="display:none; font-weight:700;">
                             <i class="fa-solid fa-unlock-keyhole"></i> Permitir Modificación (Dirección)
+                        </button>
+                        <button type="button" id="discResDirectorDeleteBtn" class="btn btn-sm btn-outline-danger" onclick="deleteCurrentDisciplineReportFromModal()" style="display:none; font-weight:700; margin-left:6px;">
+                            <i class="fa-solid fa-trash"></i> Eliminar Reporte (Dirección)
                         </button>
                     </div>
                     <div style="display:flex; gap:8px;">
