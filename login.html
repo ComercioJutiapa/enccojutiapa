@@ -409,7 +409,7 @@
     </div>
 
         <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=2026.09.08.v182_preserve_user_edits"></script>
+    <script src="app.js?v=2026.09.09.v183_direct_user_persistence"></script>
     <script>
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');
@@ -530,15 +530,7 @@
             if (typeof ensureMasterAccount === 'function') {
                 try { ensureMasterAccount(); } catch(e) {}
             }
-            // Asegurar cuenta docente oficial de PEM. Nehemias Yalil Salguero
-            if (window.STATE && Array.isArray(window.STATE.users)) {
-                const docN = window.STATE.users.find(u => u.id === 'usr-doc-01' || u.username === 'nehemias.doc');
-                if (docN) {
-                    if (!docN.email) docN.email = atob('eWFsaWxzYWdAZ21haWwuY29t');
-                    if (!docN.password) docN.password = atob('TmVoZW1pYXMx');
-                    if (!docN.secondaryEmail) docN.secondaryEmail = atob('bmVoZW1pYXMuc2FsZ3Vlcm8xOTgyQGdtYWlsLmNvbQ==');
-                }
-            }
+            // Autenticación directa contra los datos de la Base de Datos
 
             const usersList = (window.STATE && Array.isArray(window.STATE.users) && window.STATE.users.length > 0)
                 ? window.STATE.users

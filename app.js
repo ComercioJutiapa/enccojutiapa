@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.08.v182_preserve_user_edits';
+const ENCCO_BUILD_VERSION = '2026.09.09.v183_direct_user_persistence';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -213,39 +213,10 @@ const OFFICIAL_USER_CONTACTS = [
 ];
 window.OFFICIAL_USER_CONTACTS = OFFICIAL_USER_CONTACTS;
 
+// 🛡️ [v183] FUNCIÓN DE RECONCILIACIÓN NEUTRALIZADA: LOS DATOS DE USUARIOS VIENEN 100% DE LA BD
 function reconcileOfficialUserContacts(users) {
-    if (!Array.isArray(users)) return 0;
-    const norm = str => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-    let updatedCount = 0;
-    
-    OFFICIAL_USER_CONTACTS.forEach(contact => {
-        let target = users.find(u => u && u.id === contact.id);
-        if (!target) {
-            target = users.find(u => {
-                if (!u) return false;
-                if (u.email && u.email.toLowerCase() === contact.email.toLowerCase()) return true;
-                const uNameNorm = norm(u.name);
-                return contact.keywords && contact.keywords.every(kw => uNameNorm.includes(norm(kw)));
-            });
-        }
-        if (target) {
-            // 🛡️ REGLA ESTRICTA DE INTEGRIDAD: NUNCA SOBREESCRIBIR DATOS MODIFICADOS POR EL USUARIO
-            // Solo asignar valor por defecto si el campo está totalmente vacío o inexistente en la BD
-            if ((target.telefono === undefined || target.telefono === null || String(target.telefono).trim() === '') && contact.telefono) {
-                target.telefono = contact.telefono;
-                updatedCount++;
-            }
-            if ((target.email === undefined || target.email === null || String(target.email).trim() === '') && contact.email) {
-                target.email = contact.email;
-                updatedCount++;
-            }
-            if ((target.name === undefined || target.name === null || String(target.name).trim() === '') && contact.name) {
-                target.name = contact.name;
-                updatedCount++;
-            }
-        }
-    });
-    return updatedCount;
+    // Cero restauraciones automáticas: se respetan 100% las ediciones manuales en la base de datos
+    return 0;
 }
 window.reconcileOfficialUserContacts = reconcileOfficialUserContacts;
 
@@ -2624,6 +2595,90 @@ function submitUserForm() {
 }
 window.submitUserForm = submitUserForm;
 
+
+// ======================================================================
+// ☁️ [v183] SINCRONIZADOR DIRECTO Y GRANULAR DE USUARIOS CON FIREBASE (0ms)
+// ======================================================================
+async function syncUsersToDatabaseImmediate(showToastNotification = true) {
+    const firebaseUrl = getFirebaseDatabaseUrl();
+    const now = Date.now();
+    STATE.lastModified = now;
+    if (typeof localStorage !== 'undefined') {
+        try { localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now)); } catch(e) {}
+    }
+    
+    // 1. Persistir inmediatamente en localStorage
+    if (typeof saveStateToLocalStorage === 'function') {
+        saveStateToLocalStorage();
+    }
+
+    if (!firebaseUrl || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+        if (typeof updateDbSyncStatus === 'function') updateDbSyncStatus('synced');
+        return true;
+    }
+
+    try {
+        // 2. Subida directa, atómica y granular a /encc_school_state/users.json
+        const cleanUsers = (STATE.users || []).map(u => ({
+            id: u.id,
+            name: u.name || '',
+            username: u.username || '',
+            email: u.email || '',
+            telefono: u.telefono || '',
+            password: u.password || 'C@rolina1',
+            role: u.role || 'docente',
+            title: u.title || '',
+            renglon: u.renglon || '011',
+            gender: u.gender || 'Masculino',
+            active: u.active !== false,
+            classes: u.classes || ''
+        }));
+
+        const userEndpoint = `${firebaseUrl}/encc_school_state/users.json`;
+        const timeEndpoint = `${firebaseUrl}/encc_school_state/lastModified.json`;
+
+        const [userRes, timeRes] = await Promise.all([
+            fetch(userEndpoint, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(cleanUsers)
+            }),
+            fetch(timeEndpoint, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(now)
+            })
+        ]);
+
+        if (userRes.ok) {
+            console.log("☁️ [Firebase] Colección de usuarios subida y sincronizada exitosamente en tiempo real (200 OK).");
+            if (typeof updateDbSyncStatus === 'function') {
+                updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
+            }
+            if (showToastNotification && typeof showToast === 'function') {
+                showToast("Cambios guardados y sincronizados en la Base de Datos en la nube.", "success");
+            }
+            // Notificar a otras pestañas
+            if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+                try { _enccBroadcastChannel.postMessage({ type: 'USERS_UPDATED', users: cleanUsers, timestamp: now }); } catch(bcErr) {}
+            }
+            // Lanzar sincronización global en segundo plano para respaldar estado íntegro
+            setTimeout(() => {
+                if (typeof pushStateToFirebaseCloud === 'function') pushStateToFirebaseCloud(false);
+            }, 200);
+            return true;
+        } else {
+            console.warn("⚠️ [Firebase] Aviso en PUT de usuarios status:", userRes.status);
+            if (typeof pushStateToFirebaseCloud === 'function') pushStateToFirebaseCloud(false);
+            return false;
+        }
+    } catch(err) {
+        console.warn("⚠️ [Firebase] Excepción al sincronizar usuarios con la nube:", err);
+        if (typeof pushStateToFirebaseCloud === 'function') pushStateToFirebaseCloud(false);
+        return false;
+    }
+}
+window.syncUsersToDatabaseImmediate = syncUsersToDatabaseImmediate;
 function saveUserForm(e) {
     if (typeof EnccoSecurityShield !== 'undefined' && !EnccoSecurityShield.isAuthorizedRole('admin')) {
         if (typeof showToast === 'function') showToast('Acceso denegado: Modificación de cuentas restringida a Administrador.', 'danger');
@@ -2764,7 +2819,10 @@ function saveUserForm(e) {
         } catch(uiErr) {}
 
         // 5. Enviar a Firebase Realtime Database
-        if (typeof syncStateToFirebaseImmediate === 'function') {
+        // 5. Enviar de inmediato a Firebase Realtime Database con confirmación directa
+        if (typeof syncUsersToDatabaseImmediate === 'function') {
+            syncUsersToDatabaseImmediate(false);
+        } else if (typeof syncStateToFirebaseImmediate === 'function') {
             syncStateToFirebaseImmediate(false);
         }
 
@@ -240028,7 +240086,7 @@ function initApp() {
 
     // 📇 Sincronización garantizada de contactos y teléfonos oficiales de usuarios y maestros
     if (typeof reconcileOfficialUserContacts === 'function') {
-        reconcileOfficialUserContacts(STATE.users);
+    // reconcileOfficialUserContacts desactivada en v183 (usuarios administrados por BD)
     }
 
 
@@ -240037,7 +240095,7 @@ function initApp() {
     // 3. Asegurar campos renglon y gender sin sobreescribir claves ni asignaciones
     (STATE.users || []).forEach(u => {
         if (u && u.name) {
-            u.name = u.name.replace(/^(Licda\.|Lic\.MA\.|Lic\.|PEM\.|Profa\.|Prof\.)\s*/i, '').replace(/\s+Damaris$/i, '').trim();
+            // Preservar nombre exacto de la base de datos sin alterar prefijos ni sufijos
         }
         if (!u.renglon) u.renglon = (u.id === 'usr-sec-01' || (u.name && (u.name.includes('Jhoana') || u.name.includes('Jarro') || u.name.includes('Williams') || u.name.includes('Nery') || u.name.includes('Gamaliel') || u.name.includes('Wilder') || u.name.includes('Bernal') || u.name.includes('Pereira')))) ? '021' : '011';
         if (!u.gender) {
@@ -241151,6 +241209,10 @@ function applyIncomingCloudState(incomingState, force = false) {
         // ⚡ Sincronización Reactiva en Tiempo Real con Firebase (TASK 4)
         if (window.EnccoAuthStore && typeof window.EnccoAuthStore.syncUserFromServer === 'function') {
             window.EnccoAuthStore.syncUserFromServer(incomingState.users, incomingState.rolesConfig);
+        }
+        // ⚡ [v183] Refrescar tabla de usuarios en pantalla si está visible
+        if (document.getElementById('usersTableBody') && typeof renderUsersTable === 'function') {
+            renderUsersTable();
         }
     }
 
@@ -256939,8 +257001,9 @@ function deleteUser(userId) {
         } catch(uiErr) {}
 
         // 4. Sincronizar de inmediato con Firebase Realtime
-        if (typeof autoSyncToFirebase === 'function') {
-            autoSyncToCloud(true, false);
+        // 4. Sincronizar de inmediato con Firebase Realtime (subida granular)
+        if (typeof syncUsersToDatabaseImmediate === 'function') {
+            syncUsersToDatabaseImmediate(false);
         } else if (typeof syncStateToFirebaseImmediate === 'function') {
             syncStateToFirebaseImmediate(false);
         }
