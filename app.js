@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.09.v185_fix_all_saves';
+const ENCCO_BUILD_VERSION = '2026.09.09.v186_mobile_lifecycle';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -3206,6 +3206,10 @@ let _firebaseEventSource = null;
 let _isSavingLocally = false;
 let _isSavingLocallyTimeout = null;
 
+// ⚡ [v186] Control de reconexión SSE automática para móvil
+let _sseReconnectTimeout = null;
+let _visibilityReconnecting = false;
+
 function initFirebaseRealtimeConnection() {
     const firebaseUrl = getFirebaseDatabaseUrl();
 
@@ -3290,10 +3294,23 @@ function initFirebaseRealtimeConnection() {
                 } catch(err) {}
             });
             _firebaseEventSource.onerror = () => {
-                // Si el navegador se quedó sin red física:
+                // ⚡ [v186] Reconexión automática SSE para móvil
                 if (typeof navigator !== 'undefined' && navigator.onLine === false) {
                     updateDbSyncStatus('disconnected');
+                    return;
                 }
+                // Si estamos online pero SSE falló, intentar reconexión automática
+                updateDbSyncStatus('disconnected');
+                if (_sseReconnectTimeout) clearTimeout(_sseReconnectTimeout);
+                _sseReconnectTimeout = setTimeout(() => {
+                    _sseReconnectTimeout = null;
+                    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+                        console.log("📱 [v186] Reconexión automática SSE...");
+                        if (typeof initFirebaseRealtimeConnection === 'function') {
+                            initFirebaseRealtimeConnection();
+                        }
+                    }
+                }, 5000);
             };
         } catch(e) {}
     }
@@ -240297,6 +240314,67 @@ async function initApp() {
         window.addEventListener('pagehide', () => {
             if (!window._isLoggingOut && typeof saveStateToLocalStorage === 'function') {
                 saveStateToLocalStorage();
+                // ⚡ [v186] En móvil, beforeunload no es confiable. Usar sendBeacon para push final.
+                try {
+                    if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function' && typeof getFirebaseDatabaseUrl === 'function') {
+                        const fbUrl = getFirebaseDatabaseUrl();
+                        if (fbUrl && typeof STATE !== 'undefined' && STATE) {
+                            const beaconData = JSON.stringify(STATE);
+                            // sendBeacon envía datos incluso cuando la página se está cerrando
+                            navigator.sendBeacon(
+                                fbUrl + '/encc_school_state.json?x-http-method-override=PUT',
+                                new Blob([beaconData], { type: 'application/json' })
+                            );
+                            console.log('📱 [v186] sendBeacon disparado en pagehide');
+                        }
+                    }
+                } catch(e) { console.warn('⚠️ [v186] sendBeacon falló:', e); }
+            }
+        });
+
+        // ⚡ [v186] Handler de visibilitychange para ciclo de vida móvil
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                // Página oculta (usuario cambió de app / bloqueó teléfono)
+                if (!window._isLoggingOut && typeof saveStateToLocalStorage === 'function') {
+                    saveStateToLocalStorage();
+                }
+            } else {
+                // Página visible de nuevo — reconectar SSE y obtener datos frescos
+                if (_visibilityReconnecting) return; // Evitar doble reconexión
+                _visibilityReconnecting = true;
+                console.log('📱 [v186] Página visible de nuevo, reconectando SSE...');
+                try {
+                    // Cancelar cualquier reconexión pendiente del onerror
+                    if (_sseReconnectTimeout) {
+                        clearTimeout(_sseReconnectTimeout);
+                        _sseReconnectTimeout = null;
+                    }
+                    if (typeof initFirebaseRealtimeConnection === 'function') {
+                        initFirebaseRealtimeConnection();
+                    }
+                    if (typeof pullStateFromFirebaseCloud === 'function') {
+                        setTimeout(() => pullStateFromFirebaseCloud(true), 500);
+                    }
+                } catch(e) {
+                    console.warn('⚠️ [v186] Error en reconexión por visibilitychange:', e);
+                }
+                // Permitir nueva reconexión después de 3 segundos
+                setTimeout(() => { _visibilityReconnecting = false; }, 3000);
+            }
+        });
+
+        // ⚡ [v186] Handler de pageshow para iOS Safari bfcache
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                // Página restaurada desde bfcache — todas las conexiones están muertas
+                console.log('📱 [v186] Página restaurada desde bfcache, reconectando...');
+                if (typeof initFirebaseRealtimeConnection === 'function') {
+                    initFirebaseRealtimeConnection();
+                }
+                if (typeof pullStateFromFirebaseCloud === 'function') {
+                    setTimeout(() => pullStateFromFirebaseCloud(true), 500);
+                }
             }
         });
     }
