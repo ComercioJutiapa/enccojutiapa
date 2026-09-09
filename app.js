@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.09.v184_authoritative_firebase_users';
+const ENCCO_BUILD_VERSION = '2026.09.09.v185_fix_all_saves';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -2600,6 +2600,12 @@ window.submitUserForm = submitUserForm;
 // ☁️ [v183] SINCRONIZADOR DIRECTO Y GRANULAR DE USUARIOS CON FIREBASE (0ms)
 // ======================================================================
 async function syncUsersToDatabaseImmediate(showToastNotification = true) {
+    // ⚡ [v185] Bloquear SSE durante guardado de usuarios
+    if (typeof _isSavingLocally !== "undefined") {
+        _isSavingLocally = true;
+        if (_isSavingLocallyTimeout) clearTimeout(_isSavingLocallyTimeout);
+        _isSavingLocallyTimeout = setTimeout(() => { _isSavingLocally = false; }, 5000);
+    }
     const firebaseUrl = getFirebaseDatabaseUrl();
     const now = Date.now();
     STATE.lastModified = now;
@@ -2663,18 +2669,26 @@ async function syncUsersToDatabaseImmediate(showToastNotification = true) {
                 try { _enccBroadcastChannel.postMessage({ type: 'USERS_UPDATED', users: cleanUsers, timestamp: now }); } catch(bcErr) {}
             }
             // Lanzar sincronización global en segundo plano para respaldar estado íntegro
-            // [v184] Push global eliminado — solo se sincronizan usuarios granularmente
-            // [v184] (push eliminado)
-            // [v184] (fin setTimeout eliminado)
+            // ⚡ [v185] Push global RE-HABILITADO con delay para que el PUT granular termine primero
+            setTimeout(() => {
+                if (typeof pushStateToFirebaseCloud === "function") pushStateToFirebaseCloud(false);
+                // Desactivar bandera después del push
+                if (typeof _isSavingLocally !== "undefined") {
+                    if (_isSavingLocallyTimeout) clearTimeout(_isSavingLocallyTimeout);
+                    _isSavingLocallyTimeout = setTimeout(() => { _isSavingLocally = false; }, 3000);
+                }
+            }, 500);
             return true;
         } else {
             console.warn("⚠️ [Firebase] Aviso en PUT de usuarios status:", userRes.status);
-            // [v184] if (typeof pushStateToFirebaseCloud === 'function') pushStateToFirebaseCloud(false); // — desactivado, solo se sincronizan usuarios
+            // ⚡ [v185] Re-habilitado push en caso de error para no perder datos
+            if (typeof pushStateToFirebaseCloud === 'function') pushStateToFirebaseCloud(false);
             return false;
         }
     } catch(err) {
         console.warn("⚠️ [Firebase] Excepción al sincronizar usuarios con la nube:", err);
-        // [v184] if (typeof pushStateToFirebaseCloud === 'function') pushStateToFirebaseCloud(false); // — desactivado, solo se sincronizan usuarios
+        // ⚡ [v185] Re-habilitado push en caso de error para no perder datos
+            if (typeof pushStateToFirebaseCloud === 'function') pushStateToFirebaseCloud(false);
         return false;
     }
 }
@@ -3188,6 +3202,10 @@ window.syncStateToFirebaseImmediate = syncStateToFirebaseImmediate;
 
 let _firebaseEventSource = null;
 
+// ⚡ [v185] Bandera global que bloquea applyIncomingCloudState durante operaciones de guardado
+let _isSavingLocally = false;
+let _isSavingLocallyTimeout = null;
+
 function initFirebaseRealtimeConnection() {
     const firebaseUrl = getFirebaseDatabaseUrl();
 
@@ -3245,7 +3263,14 @@ function initFirebaseRealtimeConnection() {
                     const data = JSON.parse(e.data);
                     if (data && data.data && typeof data.data === 'object') {
                         if (data.data.users || data.data.students || data.data.rolesConfig || data.path === '/') {
-                            applyIncomingCloudState(data.data, false);
+                            // ⚡ [v185] Verificar que no sea eco propio del push que acabamos de hacer
+                            const sseTime = (data.data && data.data.lastModified) || 0;
+                            const myLastSave = STATE._lastSavedLocally || STATE.lastModified || 0;
+                            if (sseTime > 0 && sseTime <= myLastSave) {
+                                // Es nuestro propio eco — ignorar
+                            } else {
+                                applyIncomingCloudState(data.data, false);
+                            }
                         }
                     }
                     updateDbSyncStatus('synced');
@@ -241213,9 +241238,16 @@ function applyIncomingCloudState(incomingState, force = false) {
 
     // ⚡ [v181] Proteger contra sobreescritura — prioridad ABSOLUTA a cambios locales más recientes
     // Margen de 2s para tolerancia de relojes desincronizados entre clientes
-    // ⚡ [v184] Guard LOCAL_WINS desactivado — Firebase es autoritativo para usuarios
-    // Los cambios de la nube siempre se aceptan (la versión local se sincroniza de inmediato)
-    if (!force && incomingTime <= 0) {
+    // ⚡ [v185] Guard LOCAL_WINS RESTAURADO — protege TODOS los módulos de sobreescritura SSE
+    // Bandera _isSavingLocally bloquea TODA entrada cloud durante guardados activos
+    if (!force && typeof _isSavingLocally !== "undefined" && _isSavingLocally) {
+        console.log("🛡️ [v185] Guardado local en progreso — estado de la nube ignorado temporalmente.");
+        return false;
+    }
+
+    const LOCAL_WINS_MARGIN_MS = 3000;
+    if (!force && incomingTime < (localTime + LOCAL_WINS_MARGIN_MS) && incomingTime <= localTime) {
+        console.log("🛡️ [v185] Estado local más reciente que la nube — cambios locales preservados.");
         return false;
     }
 
@@ -241435,6 +241467,12 @@ function saveStateRecursively(options = { syncCloud: true, isAutoSave: false }) 
     }
 
     try {
+        // ⚡ [v185] Activar bandera para bloquear applyIncomingCloudState durante el guardado
+        if (typeof _isSavingLocally !== "undefined") {
+            _isSavingLocally = true;
+            if (_isSavingLocallyTimeout) clearTimeout(_isSavingLocallyTimeout);
+            _isSavingLocallyTimeout = setTimeout(() => { _isSavingLocally = false; }, 5000);
+        }
         const now = Date.now();
         STATE.lastModified = now;
 
@@ -241483,6 +241521,12 @@ function saveStateRecursively(options = { syncCloud: true, isAutoSave: false }) 
         }
 
         STATE._lastSavedLocally = now;
+
+        // ⚡ [v185] Desactivar bandera de guardado — permitir SSE después de 3s
+        if (typeof _isSavingLocally !== "undefined") {
+            if (_isSavingLocallyTimeout) clearTimeout(_isSavingLocallyTimeout);
+            _isSavingLocallyTimeout = setTimeout(() => { _isSavingLocally = false; }, 3000);
+        }
 
         // 3. Transmisión Instantánea entre Pestañas (BroadcastChannel)
         if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
