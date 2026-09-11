@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.11.v188_instant_atomic_granular_sync';
+const ENCCO_BUILD_VERSION = '2026.09.11.v189_exclusive_firebase_live_db';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -278,48 +278,40 @@ const EnccoCacheManager = {
     version: ENCCO_BUILD_VERSION,
     init() {
         try {
-            const savedVer = localStorage.getItem('ENCCO_BUILD_VERSION');
-            if (savedVer !== this.version) {
-                console.log("🧹 [EnccoCacheManager] Nueva versión detectada (" + (savedVer || 'inicial') + " -> " + this.version + "). Ejecutando depuración preventiva...");
-                // 1. Purgar URL obsoleta que generaba 404
-                const curUrl = localStorage.getItem('ENCCO_FIREBASE_URL');
-                if (curUrl && (curUrl.includes('enccojutiapa-db-default') || curUrl.includes('tu-proyecto') || curUrl.includes('mi-colegio'))) {
-                    localStorage.removeItem('ENCCO_FIREBASE_URL');
-                }
-                // 2. Liberar espacio duplicado en localStorage (PRESERVANDO ENCCO_LAST_LOCAL_MODIFIED)
-                localStorage.removeItem('ENCCO_DATABASE_BACKUP');
-                // 3. Limpiar CacheStorage del navegador si existe
-                if (typeof caches !== 'undefined') {
-                    caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
-                }
-                // 4. Asegurar maestros guías sin sobreescribir usuarios existentes
-                try {
-                    const storageKeys = ['ENCCO_DATABASE'];
-                    storageKeys.forEach(k => {
-                        const rawDb = localStorage.getItem(k);
-                        if (rawDb) {
-                            const parsedDb = JSON.parse(rawDb);
-                            if (parsedDb && Array.isArray(parsedDb.gradesList) && Array.isArray(parsedDb.users)) {
-                                parsedDb.gradesList.forEach(g => {
-                                    if (!g) return;
-                                    if (g.guideTeacher && typeof g.guideTeacher === 'string') {
-                                        g.guideTeacher = g.guideTeacher.replace(/^(Licda\.|Lic\.MA\.|Lic\.|PEM\.|Profa\.|Prof\.)\s*/i, '').trim();
-                                    }
-                                    const u = (parsedDb.users || []).find(usr => usr && ((g.guideTeacherId && usr.id === g.guideTeacherId) || (g.guideTeacher && usr.name === g.guideTeacher)));
-                                    if (u) {
-                                        g.guideTeacher = u.name;
-                                        g.guideTeacherId = u.id;
-                                    }
-                                });
-                                localStorage.setItem(k, JSON.stringify(parsedDb));
-                            }
-                        }
-                    });
-                } catch(errPatch) {
-                    console.warn("Aviso en cache manager:", errPatch);
-                }
-                localStorage.setItem('ENCCO_BUILD_VERSION', this.version);
+            // [v189] Purgar URL obsoleta si existiera
+            const curUrl = localStorage.getItem('ENCCO_FIREBASE_URL');
+            if (curUrl && (curUrl.includes('enccojutiapa-db-default') || curUrl.includes('tu-proyecto') || curUrl.includes('mi-colegio'))) {
+                localStorage.removeItem('ENCCO_FIREBASE_URL');
             }
+            // [v189] Eliminación terminante de toda base de datos local secundaria y respaldos locales
+            const secondaryKeys = [
+                'ENCCO_DATABASE',
+                'ENCCO_DATABASE_BACKUP',
+                'ENCCO_PREV_STATE',
+                'ENCCO_DB_CHECKSUM',
+                'ENCCO_DATABASE_BLANK',
+                'ENCCO_DATABASE_PROD',
+                'ENCCO_BACKUP_BLANK',
+                'ENCCO_MASTER_DATABASE'
+            ];
+            secondaryKeys.forEach(k => {
+                try { localStorage.removeItem(k); } catch(e) {}
+            });
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const k = localStorage.key(i);
+                if (k && (k.startsWith('ENCCO_DATABASE') || k.startsWith('ENCCO_BACKUP') || k.startsWith('ENCCO_SNAPSHOT') || k.startsWith('ENCCO_SYSTEM_DATA'))) {
+                    try { localStorage.removeItem(k); } catch(e) {}
+                }
+            }
+            // [v189] Eliminar base de datos IndexedDB ENCCO_SUPERUSER_BACKUP_DB
+            if (typeof indexedDB !== 'undefined') {
+                try { indexedDB.deleteDatabase('ENCCO_SUPERUSER_BACKUP_DB'); } catch(e) {}
+            }
+            // [v189] Limpiar CacheStorage del navegador
+            if (typeof caches !== 'undefined') {
+                caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
+            }
+            localStorage.setItem('ENCCO_BUILD_VERSION', this.version);
         } catch(e) {
             console.warn('Aviso en EnccoCacheManager.init:', e);
         }
@@ -548,164 +540,37 @@ const EnccoIndexedDBCacheService = {
     _db: null,
 
     async openDB() {
-        if (this._db) return this._db;
-        return new Promise((resolve, reject) => {
-            if (typeof indexedDB === 'undefined') {
-                return reject(new Error("IndexedDB no disponible en este navegador"));
-            }
-            const request = indexedDB.open(this.DB_NAME, this.DB_VERSION);
-            request.onupgradeneeded = (e) => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(this.STORE_NAME)) {
-                    const store = db.createObjectStore(this.STORE_NAME, { keyPath: 'id' });
-                    store.createIndex('timestamp', 'timestamp', { unique: false });
-                }
-            };
-            request.onsuccess = (e) => {
-                this._db = e.target.result;
-                resolve(this._db);
-            };
-            request.onerror = (e) => {
-                reject(e.target.error);
-            };
-        });
+        if (typeof indexedDB !== 'undefined') {
+            try { indexedDB.deleteDatabase(this.DB_NAME); } catch(e) {}
+        }
+        return null;
     },
 
     async saveSnapshot(stateData, source = 'Servidor Google Firebase') {
-        const db = await this.openDB();
-        const timestamp = Date.now();
-        const dateObj = new Date();
-        const dateStr = dateObj.toLocaleDateString('es-GT', { 
-            year: 'numeric', month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit', second: '2-digit'
-        });
-
-        // Limpiar y clonar payload íntegro de colecciones críticas
-        const cleanState = {
-            config: stateData.config || {},
-            activeCycle: stateData.activeCycle || '2026',
-            cycles: stateData.cycles || [],
-            theme: stateData.theme || 'light',
-            users: stateData.users || [],
-            careers: stateData.careers || [],
-            gradesList: stateData.gradesList || [],
-            pensumCatalog: stateData.pensumCatalog || [],
-            students: stateData.students || [],
-            pensum: stateData.pensum || [],
-            announcements: stateData.announcements || [],
-            disciplineReports: stateData.disciplineReports || [],
-            attendanceRecords: stateData.attendanceRecords || {},
-            dismissedAlerts: stateData.dismissedAlerts || {},
-            rolesConfig: stateData.rolesConfig || [],
-            schoolHeader: stateData.schoolHeader || {},
-            lastModified: stateData.lastModified || timestamp
-        };
-
-        const stateJson = JSON.stringify(cleanState);
-        const sizeBytes = (typeof Blob !== 'undefined') ? new Blob([stateJson]).size : stateJson.length;
-        const teachers = (cleanState.users || []).filter(u => u.role === 'docente');
-        
-        let gradesCount = 0;
-        if (Array.isArray(cleanState.students)) {
-            cleanState.students.forEach(s => {
-                if (s.grades && typeof s.grades === 'object') {
-                    gradesCount += Object.keys(s.grades).length;
-                }
-            });
+        // [v189] Desactivado: No se crean bases de datos secundarias locales. Firebase es la única fuente.
+        if (typeof indexedDB !== 'undefined') {
+            try { indexedDB.deleteDatabase(this.DB_NAME); } catch(e) {}
         }
-
-        const snapshot = {
-            id: 'snap_' + timestamp,
-            timestamp: timestamp,
-            dateStr: dateStr,
-            source: source,
-            author: (window.STATE && STATE.currentUser) ? `${STATE.currentUser.name} (${STATE.currentUser.email || 'Super Admin'})` : 'Super Administrador',
-            metrics: {
-                studentsCount: cleanState.students.length,
-                teachersCount: teachers.length,
-                usersCount: cleanState.users.length,
-                gradesRecordsCount: gradesCount,
-                pensumCount: cleanState.pensum.length,
-                careersCount: cleanState.careers.length,
-                sizeBytes: sizeBytes,
-                sizeKB: (sizeBytes / 1024).toFixed(1)
-            },
-            data: cleanState
-        };
-
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(this.STORE_NAME, 'readwrite');
-            const store = tx.objectStore(this.STORE_NAME);
-            const req = store.put(snapshot);
-            req.onsuccess = () => {
-                try {
-                    localStorage.setItem('ENCCO_LATEST_SUPERUSER_SNAPSHOT', JSON.stringify({
-                        id: snapshot.id,
-                        timestamp: snapshot.timestamp,
-                        dateStr: snapshot.dateStr,
-                        metrics: snapshot.metrics
-                    }));
-                } catch(e) {}
-                resolve(snapshot);
-            };
-            req.onerror = (e) => reject(e.target.error);
-        });
+        return Promise.resolve(null);
     },
 
-    async getAllSnapshots() {
-        try {
-            const db = await this.openDB();
-            return new Promise((resolve, reject) => {
-                const tx = db.transaction(this.STORE_NAME, 'readonly');
-                const store = tx.objectStore(this.STORE_NAME);
-                const req = store.getAll();
-                req.onsuccess = () => {
-                    const list = req.result || [];
-                    list.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-                    resolve(list);
-                };
-                req.onerror = (e) => reject(e.target.error);
-            });
-        } catch(e) {
-            console.warn("Aviso al listar snapshots de IndexedDB:", e);
-            return [];
+    async listSnapshots() {
+        return [];
+    },
+
+    async getLatestSnapshot() {
+        return null;
+    },
+
+    async restoreSnapshot(id) {
+        throw new Error("Restauración local deshabilitada. Conectando a Firebase.");
+    },
+
+    async exportBackupJSON() {
+        if (typeof STATE !== 'undefined' && STATE) {
+            return JSON.stringify(STATE, null, 2);
         }
-    },
-
-    async getSnapshot(id) {
-        const db = await this.openDB();
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(this.STORE_NAME, 'readonly');
-            const store = tx.objectStore(this.STORE_NAME);
-            const req = store.get(id);
-            req.onsuccess = () => resolve(req.result || null);
-            req.onerror = (e) => reject(e.target.error);
-        });
-    },
-
-    async deleteSnapshot(id) {
-        const db = await this.openDB();
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(this.STORE_NAME, 'readwrite');
-            const store = tx.objectStore(this.STORE_NAME);
-            const req = store.delete(id);
-            req.onsuccess = () => resolve(true);
-            req.onerror = (e) => reject(e.target.error);
-        });
-    },
-
-    downloadSnapshotJSON(snapshot) {
-        if (!snapshot || !snapshot.data) return;
-        const blob = new Blob([JSON.stringify(snapshot.data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const tsFormatted = new Date(snapshot.timestamp || Date.now()).toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        a.href = url;
-        a.download = `ENCCO_RESPALDO_LOCAL_SUPERUSUARIO_${tsFormatted}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        return '{}';
     }
 };
 window.EnccoIndexedDBCacheService = EnccoIndexedDBCacheService;
@@ -4415,109 +4280,39 @@ window.DB_STORAGE_KEY = DB_STORAGE_KEY;
 function purgeOldDatabaseVersions() {
     try {
         if (typeof localStorage === 'undefined') return;
-
-        let currentMaster = localStorage.getItem(DB_STORAGE_KEY);
-        let bestCandidate = null;
-        let bestTime = 0;
-
-        if (currentMaster) {
-            try {
-                const parsed = JSON.parse(currentMaster);
-                if (parsed && typeof parsed === 'object' && (parsed.students || parsed.users)) {
-                    bestCandidate = currentMaster;
-                    bestTime = parsed.lastModified || 1;
-                }
-            } catch(e) {}
-        }
-
-        const legacyKeysToDelete = [];
-
-        for (let i = 0; i < localStorage.length; i++) {
+        const keysToPurge = [
+            DB_STORAGE_KEY,
+            'ENCCO_DATABASE_BACKUP',
+            'ENCCO_PREV_STATE',
+            'ENCCO_DB_CHECKSUM'
+        ];
+        keysToPurge.forEach(k => {
+            try { localStorage.removeItem(k); } catch(e) {}
+        });
+        for (let i = localStorage.length - 1; i >= 0; i--) {
             const k = localStorage.key(i);
-            if (!k) continue;
-
-            const isLegacy = (
-                k !== DB_STORAGE_KEY &&
-                k !== 'ENCCO_DATABASE_BACKUP' &&
-                k !== 'ENCCO_LAST_LOCAL_MODIFIED' &&
-                k !== 'ENCCO_AUTH_USER' &&
-                k !== 'ENCCO_AUTH_ROLE' &&
-                k !== 'ENCCO_AUTH_REMEMBER' &&
-                k !== 'ENCCO_FIREBASE_URL' &&
-                k !== 'ENCCO_FIREBASE_KEY' &&
-                (
-                    k.startsWith('ENCCO_SYSTEM_DATABASE_') ||
-                    k.startsWith('ENCCO_STATE_BACKUP_') ||
-                    k.startsWith('ENCCO_SYSTEM_DATA_') ||
-                    k.startsWith('ENCCO_DATABASE_PROD_') ||
-                    k.startsWith('ENCCO_DATABASE_BLANK_') ||
-                    k.startsWith('ENCCO_DATABASE_SNAPSHOT') ||
-                    k.startsWith('ENCCO_DB_') ||
-                    k.includes('_BACKUP') ||
-                    k.includes('_V')
-                )
-            );
-
-            if (isLegacy) {
-                legacyKeysToDelete.push(k);
-                if (!currentMaster) {
-                    try {
-                        const raw = localStorage.getItem(k);
-                        if (raw) {
-                            const p = JSON.parse(raw);
-                            if (p && typeof p === 'object' && (p.students || p.users)) {
-                                const t = p.lastModified || 0;
-                                if (t >= bestTime) {
-                                    bestTime = t;
-                                    bestCandidate = raw;
-                                }
-                            }
-                        }
-    } catch(e) {}
-                }
+            if (k && (k.startsWith('ENCCO_DATABASE') || k.startsWith('ENCCO_BACKUP') || k.startsWith('ENCCO_SNAPSHOT') || k.startsWith('ENCCO_SYSTEM_DATA'))) {
+                try { localStorage.removeItem(k); } catch(e) {}
             }
         }
-
-        // Si no teníamos ENCCO_DATABASE y encontramos datos en alguna versión antigua, migrarlos
-        if (!currentMaster && bestCandidate) {
-            localStorage.setItem(DB_STORAGE_KEY, bestCandidate);
-            currentMaster = bestCandidate;
+        if (typeof indexedDB !== 'undefined') {
+            try { indexedDB.deleteDatabase('ENCCO_SUPERUSER_BACKUP_DB'); } catch(e) {}
         }
-
-        // Eliminar definitivamente todas las versiones antiguas
-        legacyKeysToDelete.forEach(k => {
-            try {
-                localStorage.removeItem(k);
-            } catch(e) {}
-        });
-
-        if (legacyKeysToDelete.length > 0) {
-            console.log(`🧹 [Base de Datos Única] Se purgaron ${legacyKeysToDelete.length} versiones anteriores obsoletas. Única base activa: ENCCO_DATABASE.`);
+        if (typeof caches !== 'undefined') {
+            caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
         }
     } catch(err) {
-        console.warn("Aviso durante purga de versiones antiguas:", err);
+        console.warn("Aviso durante purga:", err);
     }
 }
 window.purgeOldDatabaseVersions = purgeOldDatabaseVersions;
 
 function loadMasterDatabaseState() {
-    // 1. Purgar versiones antiguas y consolidar todo en la base única ENCCO_DATABASE
+    // 1. Purgar copias locales secundarias
     purgeOldDatabaseVersions();
-
-    // 2. Recuperar el estado maestro permanente de la institución
-    let saved = (typeof localStorage !== 'undefined') ? localStorage.getItem(DB_STORAGE_KEY) : null;
-
-    // Respaldo redundante si DB_STORAGE_KEY no está disponible
-    if (!saved && typeof localStorage !== 'undefined') {
-        saved = localStorage.getItem('ENCCO_DATABASE_BACKUP');
-        if (saved) {
-            try {
-                localStorage.setItem(DB_STORAGE_KEY, saved);
-                console.log("🔄 [Recuperación Automática] Base restaurada desde ENCCO_DATABASE_BACKUP.");
-            } catch(e) {}
-        }
-    }
-    return saved;
+    // 2. [v189] La base institucional se lee EXCLUSIVAMENTE desde Firebase Realtime Database.
+    // Retornar null para que jamás se carguen estados locales obsoletos.
+    return null;
 }
 window.loadMasterDatabaseState = loadMasterDatabaseState;
 
@@ -240319,19 +240114,33 @@ async function bootstrapCleanSchoolStateIfEmpty() {
 window.bootstrapCleanSchoolStateIfEmpty = bootstrapCleanSchoolStateIfEmpty;
 
 async function initApp() {
-    // Si estamos en login.html o index.html, no ejecutar la inicialización de la plataforma
+    // Si estamos en login.html o index.html, consultar usuarios directamente desde Firebase en tiempo real
     if (typeof window !== 'undefined') {
         const path = (window.location.pathname || '') + (window.location.href || '');
         if ((path.includes('login.html') || path.includes('index.html')) && !path.includes('plataforma.html')) {
-            const saved = loadMasterDatabaseState();
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    if (parsed && Array.isArray(parsed.users) && parsed.users.length > 0) {
-                        STATE.users = parsed.users;
-                        if (parsed.rolesConfig) STATE.rolesConfig = parsed.rolesConfig;
+            try {
+                const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== "undefined" ? ENCCO_OFFICIAL_FIREBASE_URL : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com");
+                if (_fbUrl && (typeof navigator === "undefined" || navigator.onLine !== false)) {
+                    console.log("⚡ [v189] Descargando usuarios y roles en tiempo real desde Firebase...");
+                    const [uRes, rRes] = await Promise.all([
+                        fetch(_fbUrl + "/encc_school_state/users.json?t=" + Date.now()),
+                        fetch(_fbUrl + "/encc_school_state/rolesConfig.json?t=" + Date.now())
+                    ]);
+                    if (uRes.ok) {
+                        const uData = await uRes.json();
+                        if (Array.isArray(uData) && uData.length > 0) {
+                            STATE.users = uData;
+                        }
                     }
-                } catch(e) {}
+                    if (rRes.ok) {
+                        const rData = await rRes.json();
+                        if (Array.isArray(rData) && rData.length > 0) {
+                            STATE.rolesConfig = rData;
+                        }
+                    }
+                }
+            } catch(e) {
+                console.warn("Aviso en consulta de usuarios desde Firebase en login:", e);
             }
             return;
         }
@@ -240344,93 +240153,41 @@ async function initApp() {
 
     if (window.SecurityEngine) window.SecurityEngine.initInactivityGuard();
 
-    // 1. Cargar el estado maestro permanente de la Base de Datos con aislamiento total
-    const saved = loadMasterDatabaseState();
+    // ⚡ [v189] PULL AUTORITATIVO EXCLUSIVO DESDE FIREBASE REALTIME DB
+    // Firebase es la ÚNICA fuente de verdad autoritativa. Cero lectura de bases locales.
     let hasLoadedExistingUsers = false;
-    if (saved) {
-        try {
-            const parsed = JSON.parse(saved);
-            if (parsed && typeof parsed === 'object') {
-                if (Array.isArray(parsed.users) && parsed.users.length > 0) {
-                    STATE.users = parsed.users;
-                    hasLoadedExistingUsers = true;
-                } else if (!Array.isArray(STATE.users) || STATE.users.length === 0) {
-                    STATE.users = getInitialData().users;
-                }
-
-                if (Array.isArray(parsed.careers) && parsed.careers.length > 0) STATE.careers = parsed.careers;
-                else if (!STATE.careers || STATE.careers.length === 0) STATE.careers = getInitialData().careers;
-
-                if (Array.isArray(parsed.cycles) && parsed.cycles.length > 0) STATE.cycles = parsed.cycles;
-                else if (!STATE.cycles || STATE.cycles.length === 0) STATE.cycles = getInitialData().cycles;
-
-                if (Array.isArray(parsed.gradesList) && parsed.gradesList.length > 0) {
-                    try { STATE.gradesList = sortGrades(parsed.gradesList); } catch(ge) { STATE.gradesList = parsed.gradesList; }
-                } else if (!STATE.gradesList || STATE.gradesList.length === 0) {
-                    STATE.gradesList = getInitialData().gradesList || [];
-                }
-
-                STATE.pensumCatalog = Array.isArray(parsed.pensumCatalog) ? parsed.pensumCatalog : (STATE.pensumCatalog || []);
-                STATE.students = Array.isArray(parsed.students) ? parsed.students : (STATE.students || []);
-                STATE.pensum = Array.isArray(parsed.pensum) ? parsed.pensum : (STATE.pensum || getInitialData().pensum || []);
-                STATE.announcements = Array.isArray(parsed.announcements) ? parsed.announcements : (STATE.announcements || []);
-                STATE.disciplineReports = Array.isArray(parsed.disciplineReports) ? parsed.disciplineReports : (STATE.disciplineReports || []);
-                STATE.attendanceRecords = (parsed.attendanceRecords && typeof parsed.attendanceRecords === 'object') ? parsed.attendanceRecords : (STATE.attendanceRecords || {});
-                STATE.dismissedAlerts = (parsed.dismissedAlerts && typeof parsed.dismissedAlerts === 'object') ? parsed.dismissedAlerts : (STATE.dismissedAlerts || {});
-                STATE.rolesConfig = (Array.isArray(parsed.rolesConfig) && parsed.rolesConfig.length > 0) ? parsed.rolesConfig : (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : []);
-                STATE.schoolHeader = (parsed.schoolHeader && typeof parsed.schoolHeader === 'object') ? parsed.schoolHeader : (STATE.schoolHeader || getInitialData().schoolHeader);
-                STATE.config = parsed.config || STATE.config || { activeBimestre: 1, globalLocked: false, minPassingScore: 60, teacherBypass: {} };
-                STATE.config.activeBimestre = parseInt(STATE.config.activeBimestre) || 1;
-                STATE.activeCycle = parsed.activeCycle || STATE.activeCycle || (STATE.cycles?.find(c => c.status === 'Activo')?.name || '2026');
-                if (parsed.theme) STATE.theme = parsed.theme;
-                if (parsed.lastModified) STATE.lastModified = parsed.lastModified;
-            }
-        } catch (e) {
-            console.warn("Aviso al parsear snapshot de base de datos:", e);
-        }
-    }
-
-    // Inicializar sólo si está totalmente vacío, sin sobreescribir nunca si ya hay datos
-    if (!hasLoadedExistingUsers && (!Array.isArray(STATE.users) || STATE.users.length === 0)) {
-        loadDefaults(false);
-    }
-
-    // 2. Inicializar estructura solo si está totalmente vacía
-    if (!STATE.careers || STATE.careers.length === 0 || !STATE.gradesList || STATE.gradesList.length === 0) {
-        if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
-    }
-    // Sincronizar e hidratar siempre la lista oficial de estudiantes y notas del 1er Bimestre
-
-    // ═══════════════════════════════════════════════════════════════════
-    // ═══════════════════════════════════════════════════════════════════
-    // ⚡ [v187] PULL AUTORITATIVO COMPLETO DESDE FIREBASE REALTIME DB
-    // Firebase es la ÚNICA fuente de verdad autoritativa para toda la plataforma.
-    // Descargar estado íntegro (usuarios, pensum, notas, asistencia, etc.)
-    // ═══════════════════════════════════════════════════════════════════
     try {
-        const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : null;
+        const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== "undefined" ? ENCCO_OFFICIAL_FIREBASE_URL : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com");
         if (_fbUrl && (typeof navigator === "undefined" || navigator.onLine !== false)) {
-            console.log("⚡ [v187] Descargando estado autoritativo completo desde Firebase Realtime DB...");
-            const _cloudRes = await fetch(_fbUrl + "/encc_school_state.json", { method: "GET", headers: { "Accept": "application/json" } });
+            console.log("⚡ [v189] Descargando estado autoritativo completo directamente desde Firebase Realtime DB...");
+            const _cloudRes = await fetch(_fbUrl + "/encc_school_state.json?t=" + Date.now(), { method: "GET", headers: { "Accept": "application/json" } });
             if (_cloudRes.ok) {
                 const _cloudData = await _cloudRes.json();
                 if (_cloudData && typeof _cloudData === "object" && (_cloudData.users || _cloudData.students || _cloudData.pensum)) {
                     applyIncomingCloudState(_cloudData, true);
                     hasLoadedExistingUsers = true;
-                    console.log("✅ [v187] Estado institucional cargado íntegramente desde Firebase (fuente autoritativa).");
+                    console.log("✅ [v189] Estado institucional cargado íntegramente desde Firebase (fuente autoritativa única).");
                 } else if (!_cloudData) {
-                    console.warn("⚠️ [v187] Base de datos vacía en Firebase. Inicializando estructura limpia institucional...");
+                    console.warn("⚠️ [v189] Base de datos vacía en Firebase. Inicializando estructura limpia institucional...");
                     if (typeof bootstrapCleanSchoolStateIfEmpty === "function") {
                         await bootstrapCleanSchoolStateIfEmpty();
                     }
                 }
             } else {
-                console.warn("⚠️ [v187] Firebase respondió con status " + _cloudRes.status + ", usando respaldo local.");
+                console.error("❌ [v189] Firebase respondió con status: " + _cloudRes.status);
             }
         }
     } catch(_fbPullErr) {
-        console.warn("⚠️ [v187] No se pudo conectar con Firebase en arranque, usando respaldo local:", _fbPullErr);
+        console.error("❌ [v189] Error al descargar de Firebase en arranque:", _fbPullErr);
     }
+
+    if (!hasLoadedExistingUsers && (!Array.isArray(STATE.users) || STATE.users.length === 0)) {
+        loadDefaults(false);
+    }
+    if (!STATE.careers || STATE.careers.length === 0 || !STATE.gradesList || STATE.gradesList.length === 0) {
+        if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
+    }
+
     ensureSireOfficialStudents();
     ensureOfficialPensumAssignments();
 
@@ -241468,7 +241225,7 @@ function loadDefaults(autoSave = false) {
     let preservedConfig = null;
     let preservedPensumCatalog = null;
 
-    const existing = (typeof localStorage !== 'undefined') ? (localStorage.getItem(DB_STORAGE_KEY) || localStorage.getItem('ENCCO_DATABASE_BACKUP')) : null;
+    const existing = null; // [v189] Estado proviene exclusivamente de Firebase Realtime DB
     if (existing) {
         try {
             const p = JSON.parse(existing);
@@ -241557,17 +241314,8 @@ try {
 // 2. Escucha de Eventos de Almacenamiento Local (Storage Event)
 if (typeof window !== 'undefined') {
     window.addEventListener('storage', (e) => {
-        if (e.key === DB_STORAGE_KEY || e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
-            try {
-                const raw = localStorage.getItem(DB_STORAGE_KEY);
-                if (raw) {
-                    const parsed = JSON.parse(raw);
-                    if (parsed && parsed.lastModified && parsed.lastModified > (STATE.lastModified || 0)) {
-                        console.log("⚡ [Storage Event] Actualización detectada en disco local.");
-                        applyIncomingCloudState(parsed, false);
-                    }
-                }
-            } catch(err) {}
+        if (e.key === 'ENCCO_LAST_LOCAL_MODIFIED') {
+            // [v189] Las actualizaciones entre pestañas se manejan por BroadcastChannel y SSE de Firebase
         }
     });
 
@@ -241749,7 +241497,7 @@ if (typeof window !== 'undefined' && !window._enccoBeforeUnloadRegistered) {
                 window.STATE.lastModified = now;
                 if (typeof localStorage !== 'undefined') {
                     localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now));
-                    try { localStorage.setItem('ENCCO_DATABASE', JSON.stringify(window.STATE)); } catch(e) {}
+                    // [v189] No local database snapshot written
                 }
                 // Intento de push sync a Firebase (best-effort antes de cerrar)
                 if (typeof pushStateToFirebaseCloud === 'function') {
@@ -241860,23 +241608,16 @@ function saveStateRecursively(options = { syncCloud: true, isAutoSave: false }) 
         const jsonString = JSON.stringify(fullPayload);
         const checksum = computeStateChecksum(jsonString);
 
-        // 2. Persistencia Segura y Eficiente (Protección de Cuota 5MB)
+        // 2. [v189] Registro de tiempo de modificación (Sin bases secundarias en localStorage)
         if (typeof localStorage !== 'undefined') {
             try {
-                localStorage.setItem('ENCCO_DATABASE', jsonString);
                 localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now));
-                localStorage.setItem('ENCCO_DB_CHECKSUM', checksum);
-            } catch(quotaErr) {
-                console.warn("⚠️ [LocalStorage] Cuota saturada. Depurando respaldos redundantes...", quotaErr);
-                try {
-                    localStorage.removeItem('ENCCO_DATABASE_BACKUP');
-                    localStorage.removeItem('ENCCO_PREV_STATE');
-                    localStorage.setItem('ENCCO_DATABASE', jsonString);
-                    localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now));
-                } catch(e) {
-                    console.error("Error crítico de persistencia en localStorage:", e);
-                }
-            }
+                // Asegurar que no existan bases secundarias
+                localStorage.removeItem('ENCCO_DATABASE');
+                localStorage.removeItem('ENCCO_DATABASE_BACKUP');
+                localStorage.removeItem('ENCCO_PREV_STATE');
+                localStorage.removeItem('ENCCO_DB_CHECKSUM');
+            } catch(e) {}
             try { window.dispatchEvent(new Event('storage')); } catch(e) {}
         }
 
@@ -241899,10 +241640,7 @@ function saveStateRecursively(options = { syncCloud: true, isAutoSave: false }) 
             } catch(bcErr) {}
         }
 
-        // 4. Copia en IndexedDB si está disponible
-        if (typeof EnccoIndexedDBCacheService !== 'undefined' && EnccoIndexedDBCacheService.saveSnapshot) {
-            EnccoIndexedDBCacheService.saveSnapshot(fullPayload, 'Guardado Recursivo Local').catch(() => {});
-        }
+        // 4. [v189] Copia en IndexedDB DESACTIVADA (Sin bases de datos secundarias)
 
         // 5. Envío reactivo a la nube con protección Anti-DDoS y transmisión 0ms
         if (options && options.syncCloud) {
@@ -255896,19 +255634,7 @@ function handleLoginPageSubmit(e) {
         return;
     }
 
-    // Cargar obligatoriamente los datos más recientes desde ENCCO_DATABASE
-    if (typeof loadMasterDatabaseState === 'function') {
-        try {
-            const saved = loadMasterDatabaseState();
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (parsed && typeof parsed === 'object') {
-                    if (Array.isArray(parsed.users) && parsed.users.length > 0) STATE.users = parsed.users;
-                    if (Array.isArray(parsed.students) && parsed.students.length > 0) STATE.students = parsed.students;
-                }
-            }
-        } catch(e) {}
-    }
+    // [v189] Autenticación directa contra usuarios de Firebase (sin leer ENCCO_DATABASE local)
 
     if (!STATE.users || STATE.users.length === 0) {
         const initD = (typeof getInitialData === 'function') ? getInitialData() : {};
