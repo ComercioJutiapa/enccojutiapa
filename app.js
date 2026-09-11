@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.10.v187_firebase_realtime_truth';
+const ENCCO_BUILD_VERSION = '2026.09.11.v188_instant_atomic_granular_sync';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -1506,6 +1506,9 @@ function setAllPermissionsLevel(targetLevel = 'edit') {
 
     if (roleObj) {
         saveStateToLocalStorage();
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
+        }
         if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
         showToast(`Todos los módulos actualizados a: ${targetLevel === 'edit' ? 'Ver y Modificar' : (targetLevel === 'view' ? 'Solo Ver' : 'Bloqueado')}`, 'info');
     }
@@ -1852,6 +1855,107 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     }
 }
 window.pushStateToFirebaseCloud = pushStateToFirebaseCloud;
+
+// ======================================================================
+// ⚡ MOTOR DE PERSISTENCIA GRANULAR DIRECTA A FIREBASE RTDB (0ms)
+// Sincronización atómica inmediata por nodo institucional
+// ======================================================================
+const EnccoCloudSync = {
+    getUrl() {
+        return (typeof getFirebaseDatabaseUrl === 'function') 
+            ? getFirebaseDatabaseUrl() 
+            : ENCCO_DATABASE_POOLS[0];
+    },
+
+    async syncNode(nodeName, data) {
+        if (!nodeName) return false;
+        const firebaseUrl = this.getUrl();
+        const now = Date.now();
+        if (typeof STATE !== 'undefined' && STATE) {
+            STATE.lastModified = now;
+            STATE._lastSavedLocally = now;
+        }
+
+        // Proteger contra ecos SSE inmediatos
+        if (typeof _isSavingLocally !== 'undefined') {
+            _isSavingLocally = true;
+            if (_isSavingLocallyTimeout) clearTimeout(_isSavingLocallyTimeout);
+            _isSavingLocallyTimeout = setTimeout(() => { _isSavingLocally = false; }, 3500);
+        }
+
+        // Persistir en local de forma segura
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now));
+            }
+        } catch(e) {}
+
+        // Broadcast a otras pestañas locales en 0ms
+        if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+            try {
+                _enccBroadcastChannel.postMessage({
+                    type: 'NODE_UPDATED',
+                    node: nodeName,
+                    data: data,
+                    timestamp: now
+                });
+            } catch(bcErr) {}
+        }
+
+        if (!firebaseUrl || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+            if (typeof updateDbSyncStatus === 'function') updateDbSyncStatus('synced');
+            return true;
+        }
+
+        try {
+            const nodeEndpoint = `${firebaseUrl}/encc_school_state/${nodeName}.json`;
+            const timeEndpoint = `${firebaseUrl}/encc_school_state/lastModified.json`;
+
+            const [resNode, resTime] = await Promise.all([
+                fetch(nodeEndpoint, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                }),
+                fetch(timeEndpoint, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(now)
+                })
+            ]);
+
+            if (resNode.ok) {
+                console.log(`☁️ [EnccoCloudSync] Nodo /${nodeName} sincronizado en Firebase Realtime DB (${resNode.status} OK).`);
+                if (typeof updateDbSyncStatus === 'function') {
+                    updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
+                }
+                return true;
+            } else {
+                console.warn(`⚠️ [EnccoCloudSync] Falló sincronización de /${nodeName}. Status: ${resNode.status}`);
+                return false;
+            }
+        } catch(err) {
+            console.error(`❌ [EnccoCloudSync] Error de red al sincronizar /${nodeName}:`, err);
+            return false;
+        }
+    }
+};
+window.EnccoCloudSync = EnccoCloudSync;
+
+function saveStateToLocalStorageQuick() {
+    try {
+        const now = Date.now();
+        if (typeof STATE !== 'undefined' && STATE) {
+            STATE.lastModified = now;
+            STATE._lastSavedLocally = now;
+        }
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now));
+        }
+    } catch(e) {}
+}
+window.saveStateToLocalStorageQuick = saveStateToLocalStorageQuick;
+
 
 // ======================================================================
 //   PANEL INTERACTIVO COMPLETO DE CONTROL DE ROLES Y PERMISOS (V120)
@@ -2348,7 +2452,9 @@ function saveRoleForm(e) {
     } catch(bcErr) {}
 
     // 3. Enviar actualización atómica a Google Firebase Realtime Database
-    if (typeof syncStateToFirebaseImmediate === 'function') {
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
+    } else if (typeof syncStateToFirebaseImmediate === 'function') {
         syncStateToFirebaseImmediate(false);
     }
 
@@ -2836,12 +2942,13 @@ function saveUserForm(e) {
             if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
         } catch(uiErr) {}
 
-        // 5. Enviar a Firebase Realtime Database
-        // 5. Enviar de inmediato a Firebase Realtime Database con confirmación directa
-        if (typeof syncUsersToDatabaseImmediate === 'function') {
+        // 5. Enviar de inmediato a Firebase Realtime Database con EnccoCloudSync granular
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('users', STATE.users);
+            EnccoCloudSync.syncNode('pensum', STATE.pensum);
+            EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
+        } else if (typeof syncUsersToDatabaseImmediate === 'function') {
             syncUsersToDatabaseImmediate(false);
-        } else if (typeof syncStateToFirebaseImmediate === 'function') {
-            syncStateToFirebaseImmediate(false);
         }
 
         showToast(`Usuario "${name}" guardado exitosamente.`, "success");
@@ -3268,21 +3375,115 @@ function initFirebaseRealtimeConnection() {
             }
             _firebaseEventSource.addEventListener('put', (e) => {
                 try {
-                    const data = JSON.parse(e.data);
-                    if (data && data.data && typeof data.data === 'object') {
-                        if (data.data.users || data.data.students || data.data.rolesConfig || data.path === '/') {
-                            // ⚡ [v185] Verificar que no sea eco propio del push que acabamos de hacer
-                            const sseTime = (data.data && data.data.lastModified) || 0;
+                    const parsed = JSON.parse(e.data);
+                    if (!parsed) return;
+                    const rawPath = parsed.path || '/';
+                    const nodeData = parsed.data;
+                    const cleanPath = rawPath.replace(/^\/+/, '');
+
+                    // Protección contra eco propio durante guardado local activo
+                    if (typeof _isSavingLocally !== "undefined" && _isSavingLocally) {
+                        return;
+                    }
+
+                    if (cleanPath === '' || cleanPath === '/') {
+                        if (nodeData && typeof nodeData === 'object') {
+                            const sseTime = nodeData.lastModified || 0;
                             const myLastSave = STATE._lastSavedLocally || STATE.lastModified || 0;
                             if (sseTime > 0 && sseTime <= myLastSave) {
-                                // Es nuestro propio eco — ignorar
+                                // Eco propio
                             } else {
-                                applyIncomingCloudState(data.data, false);
+                                applyIncomingCloudState(nodeData, false);
                             }
+                        }
+                    } else if (cleanPath === 'pensum') {
+                        if (Array.isArray(nodeData)) {
+                            STATE.pensum = nodeData;
+                            if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+                            if (typeof updateAssignmentSelects === 'function') updateAssignmentSelects();
+                            if (typeof populatePensumTeacherSelect === 'function') populatePensumTeacherSelect();
+                            if (typeof renderCurrentView === 'function' && STATE.activeView === 'class-assignments') renderCurrentView();
+                        }
+                    } else if (cleanPath === 'pensumCatalog') {
+                        if (Array.isArray(nodeData)) {
+                            STATE.pensumCatalog = nodeData;
+                            if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+                            if (typeof updatePensumCatalogSelects === 'function') updatePensumCatalogSelects();
+                            if (typeof renderCurrentView === 'function' && STATE.activeView === 'pensum') renderCurrentView();
+                        }
+                    } else if (cleanPath === 'users') {
+                        if (Array.isArray(nodeData)) {
+                            STATE.users = nodeData;
+                            if (typeof renderUsersTable === 'function') renderUsersTable();
+                            if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
+                            if (typeof updateLoginAccountSelect === 'function') updateLoginAccountSelect();
+                            if (typeof renderCurrentView === 'function' && STATE.activeView === 'users') renderCurrentView();
+                        }
+                    } else if (cleanPath === 'gradesList') {
+                        if (Array.isArray(nodeData)) {
+                            STATE.gradesList = nodeData;
+                            if (typeof renderGradesTable === 'function') renderGradesTable();
+                            if (typeof updateGradeSelects === 'function') updateGradeSelects();
+                            if (typeof renderCurrentView === 'function' && STATE.activeView === 'grades') renderCurrentView();
+                        }
+                    } else if (cleanPath === 'students') {
+                        if (Array.isArray(nodeData)) {
+                            STATE.students = nodeData;
+                            if (typeof renderGradebookTable === 'function') renderGradebookTable();
+                            if (typeof renderStudentsTable === 'function') renderStudentsTable();
+                            if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+                        }
+                    } else if (cleanPath.startsWith('students/')) {
+                        const subParts = cleanPath.split('/');
+                        const studentIdx = parseInt(subParts[1]);
+                        if (!isNaN(studentIdx) && Array.isArray(STATE.students) && STATE.students[studentIdx]) {
+                            if (subParts.length === 2) {
+                                STATE.students[studentIdx] = nodeData;
+                            } else if (subParts[2] === 'grades') {
+                                STATE.students[studentIdx].grades = nodeData;
+                            } else if (subParts[2] === 'gradebookDetails') {
+                                STATE.students[studentIdx].gradebookDetails = nodeData;
+                            }
+                            if (typeof renderGradebookTable === 'function') renderGradebookTable();
+                        }
+                    } else if (cleanPath === 'attendanceRecords') {
+                        if (nodeData && typeof nodeData === 'object') {
+                            STATE.attendanceRecords = nodeData;
+                            if (typeof renderAttendanceTable === 'function') renderAttendanceTable();
+                        }
+                    } else if (cleanPath === 'disciplineReports') {
+                        if (Array.isArray(nodeData)) {
+                            STATE.disciplineReports = nodeData;
+                            if (typeof renderDisciplineTable === 'function') renderDisciplineTable();
+                        }
+                    } else if (cleanPath === 'rolesConfig') {
+                        if (Array.isArray(nodeData)) {
+                            STATE.rolesConfig = nodeData;
+                            if (typeof renderRolesTable === 'function') renderRolesTable();
+                            if (typeof renderRoleSelectorTabs === 'function') renderRoleSelectorTabs();
+                        }
+                    } else if (cleanPath === 'cycles') {
+                        if (Array.isArray(nodeData)) {
+                            STATE.cycles = nodeData;
+                            if (typeof updateCycleSelects === 'function') updateCycleSelects();
+                        }
+                    } else if (cleanPath === 'careers') {
+                        if (Array.isArray(nodeData)) {
+                            STATE.careers = nodeData;
+                            if (typeof updateCareerSelects === 'function') updateCareerSelects();
+                        }
+                    } else if (cleanPath === 'activeCycle') {
+                        STATE.activeCycle = nodeData;
+                        if (typeof updateCycleSelects === 'function') updateCycleSelects();
+                    } else if (cleanPath === 'config') {
+                        if (nodeData && typeof nodeData === 'object') {
+                            STATE.config = nodeData;
                         }
                     }
                     updateDbSyncStatus('synced');
-                } catch(err) {}
+                } catch(err) {
+                    console.warn("Aviso en SSE put listener:", err);
+                }
             });
             _firebaseEventSource.addEventListener('patch', (e) => {
                 try {
@@ -4466,8 +4667,9 @@ function ensureSireOfficialStudents() {
         s.gradeLabel = assign.fullLabel;
     });
 
-    // 🎓 Sincronización incondicional de calificaciones oficiales y casillas de actividades (1er Bimestre 2026)
-    if (Array.isArray(STATE.students) && typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined' && Array.isArray(OFFICIAL_SIRE_412_STUDENTS)) {
+    // 🎓 Preservación absoluta de calificaciones existentes en Firebase: SÓLO inicializar si la base está totalmente vacía
+    const _hasExistingGradesInState = (STATE.students || []).some(s => s.grades && Object.keys(s.grades).length > 0);
+    if (!_hasExistingGradesInState && Array.isArray(STATE.students) && typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined' && Array.isArray(OFFICIAL_SIRE_412_STUDENTS)) {
         let anyStudentUpdated = false;
         OFFICIAL_SIRE_412_STUDENTS.forEach(off => {
             if (off.grades && Object.keys(off.grades).length > 0) {
@@ -4640,23 +4842,8 @@ function ensureSireOfficialStudents() {
             });
         }
                 // 🌟 Sincronización oficial de asignaciones docentes según nóminas recibidas 2026
-        const OFFICIAL_TEACHER_ASSIGNMENTS_2026 = [
-            { grade: '5to Perito Contador', section: 'Sección C', subject: 'Geografía Económica', teacher: 'Licda. Sandra Julissa Arana Lucero' },
-            { grade: '4to Perito Contador', section: 'Sección A', subject: 'Administración y Organización de Empresas', teacher: 'Licda. Enma Leticia Macario Xum de Ruano' },
-            { grade: '6to Perito Contador', section: 'Sección D', subject: 'Organización', teacher: 'Licda. Enma Leticia Macario Xum de Ruano' },
-            { grade: '4to Perito Contador', section: 'Sección C', subject: 'Economía', teacher: 'Licda. Enma Leticia Macario Xum de Ruano' },
-            { grade: '5to Perito Contador', section: 'Sección C', subject: 'Catalogación y Archivo', teacher: 'PEM. Milvia Aracely Jacobo Escobar' },
-            { grade: '5to Perito Contador', section: 'Sección D', subject: 'Catalogación y Archivo', teacher: 'PEM. Milvia Aracely Jacobo Escobar' }
-        ];
-        if (typeof STATE !== 'undefined' && STATE && Array.isArray(STATE.pensum)) {
-            OFFICIAL_TEACHER_ASSIGNMENTS_2026.forEach(ta => {
-                const p = STATE.pensum.find(item => item.grade === ta.grade && item.section === ta.section && item.subject === ta.subject);
-                if (p) {
-                    p.teacher = ta.teacher;
-                    p.teacherName = ta.teacher;
-                }
-            });
-        }
+        // 🌟 Asignaciones docentes gobernadas al 100% por Firebase y el usuario (no sobreescribir)
+        /* OFFICIAL_TEACHER_ASSIGNMENTS_2026 desactivado para permitir guardado libre */
 
         if (anyStudentUpdated && typeof saveStateToLocalStorage === 'function') {
             STATE.lastModified = Math.max(STATE.lastModified || 0, Date.now());
@@ -241760,10 +241947,13 @@ window.saveStateToLocalStorage = saveStateToLocalStorage;
 function changeAcademicCycle(cycle) {
     STATE.activeCycle = cycle;
     saveStateToLocalStorage();
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('activeCycle', STATE.activeCycle);
+    }
     showToast(`Ciclo lectivo activo cambiado a: ${cycle}`, "info");
     updateCycleSelects();
     renderCurrentView();
-    if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(viewName);
+    if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(typeof viewName !== 'undefined' ? viewName : STATE.activeView);
 }
 
 // ==========================================================================
@@ -243244,6 +243434,9 @@ function deleteStudent(studentId) {
         }
 
         saveStateToLocalStorage();
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('students', STATE.students);
+        }
         renderStudentsTable();
         updateDashboardKPIs();
         updateUserAlertsUI();
@@ -243803,6 +243996,9 @@ function saveStudentForm(e) {
     }
 
     saveStateToLocalStorage();
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('students', STATE.students);
+    }
     resetStudentEnrollmentForm(false);
     navigateTo('students');
 }
@@ -247193,6 +247389,9 @@ function saveDisciplineForm(e) {
     saveStateToLocalStorage();
     closeDisciplineModal();
     renderDisciplineTable();
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports);
+    }
 
     // 🚨 Alerta instantánea para el Profesor Auxiliar
     const alertMsg = `⚠️ Nuevo Reporte Disciplinario: ${stuName} (${stuGrade}) reportado por ${reporterName}. Motivo: ${reason.substring(0, 45)}...`;
@@ -249826,6 +250025,9 @@ function saveCareerForm(e) {
     renderGradesTable();
     renderPensumCatalogTable();
     renderAssignmentsTable();
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('careers', STATE.careers);
+    }
 }
 
 function deleteCareer(careerId) {
@@ -249837,6 +250039,9 @@ function deleteCareer(careerId) {
     if (confirm(`¿Está seguro de eliminar la carrera "${career.name}"? Tenga en cuenta que afectará las asignaturas y grados asociados.`)) {
         STATE.careers = STATE.careers.filter(c => c.id !== careerId);
         saveStateToLocalStorage();
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('careers', STATE.careers);
+        }
         resetCareerForm();
         renderCareerList();
         updateCareerSelects();
@@ -251321,7 +251526,10 @@ function saveGradebookChanges() {
     }
 
     saveStateToLocalStorage();
-    showToast("¡Calificaciones y actividades guardadas exitosamente en el sistema!", "success");
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('students', STATE.students);
+    }
+    showToast("¡Calificaciones y actividades guardadas y sincronizadas exitosamente en el sistema!", "success");
 }
 window.saveGradebookChanges = saveGradebookChanges;
 
@@ -252140,8 +252348,11 @@ function markAllPresentToday() {
 
 function saveAttendanceRecords(showToastMsg = true) {
     saveStateToLocalStorage();
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('attendanceRecords', STATE.attendanceRecords);
+    }
     if (showToastMsg) {
-        showToast('Planilla de asistencia guardada exitosamente en la base de datos.', 'success');
+        showToast('Planilla de asistencia guardada y sincronizada exitosamente en tiempo real.', 'success');
     }
 }
 
@@ -253421,6 +253632,9 @@ function deleteDisciplineReport(reportId) {
         }
 
         saveStateToLocalStorage();
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports);
+        }
         renderDisciplineTable();
 
         if (typeof closeDisciplineResolutionModal === 'function') {
@@ -256381,6 +256595,9 @@ function deletePensumSubject(subjectId) {
 
     STATE.pensumCatalog = (STATE.pensumCatalog || []).filter(x => x.id !== subjectId);
     saveStateToLocalStorage();
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog);
+    }
     renderPensumCatalogTable();
     if (typeof renderDashboard === 'function') renderDashboard();
     showToast('Asignatura eliminada del pensum exitosamente.', 'success');
@@ -257020,6 +257237,10 @@ function savePensumSubjectForm(e) {
     renderPensumCatalogTable();
     if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
     if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog);
+        EnccoCloudSync.syncNode('pensum', STATE.pensum);
+    }
     showToast(`Asignatura "${name}" [${code}] guardada en el pensum exitosamente.`, 'success');
 }
 
@@ -257280,12 +257501,13 @@ function deleteUser(userId) {
             if (typeof renderDashboard === 'function') renderDashboard();
         } catch(uiErr) {}
 
-        // 4. Sincronizar de inmediato con Firebase Realtime
-        // 4. Sincronizar de inmediato con Firebase Realtime (subida granular)
-        if (typeof syncUsersToDatabaseImmediate === 'function') {
+        // 4. Sincronizar de inmediato con Firebase Realtime con EnccoCloudSync granular
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('users', STATE.users);
+            EnccoCloudSync.syncNode('pensum', STATE.pensum);
+            EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
+        } else if (typeof syncUsersToDatabaseImmediate === 'function') {
             syncUsersToDatabaseImmediate(false);
-        } else if (typeof syncStateToFirebaseImmediate === 'function') {
-            syncStateToFirebaseImmediate(false);
         }
 
         showToast(`Usuario "${oldName}" eliminado exitosamente.`, "success");
@@ -257504,8 +257726,9 @@ function saveGradeForm(e) {
     renderGradesTable();
     if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
     if (typeof renderDashboard === 'function') renderDashboard();
-    if (typeof autoSyncToCloud === 'function') autoSyncToCloud(true, false);
-    else if (typeof syncStateToFirebaseImmediate === 'function') syncStateToFirebaseImmediate(false);
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
+    }
     showToast(`Grado y secciones guardados correctamente.`, 'success');
 }
 
@@ -258143,8 +258366,10 @@ function saveClassAssignmentForm(e) {
         saveStateToLocalStorage();
         renderAssignmentsTable();
     }
-
-    showToast(`Asignación de "${fullSubjectName}" a ${teacherName} guardada exitosamente.`, 'success');
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('pensum', STATE.pensum);
+    }
+    showToast(`Asignación de "${fullSubjectName}" a ${teacherName} guardada y sincronizada en tiempo real.`, 'success');
 }
 
 function openEditClassAssignmentModal(asgId) {
@@ -258163,6 +258388,31 @@ function openEditClassAssignmentModal(asgId) {
     if (gradeSelect) {
         gradeSelect.value = a.grade;
         onClassAssignmentGradeChange(a.grade);
+        // Activar la píldora exacta de la sección de la cátedra a editar
+        if (a.section || a.gradeCode) {
+            const secTarget = (a.section || a.gradeCode).trim();
+            const pills = document.querySelectorAll('#classAssignmentSectionsPillsContainer .asg-section-pill');
+            let matchedPill = false;
+            pills.forEach(p => {
+                const pSec = (p.dataset.section || p.textContent || '').trim();
+                const pCode = (p.dataset.code || '').trim();
+                if (pSec === secTarget || pCode === secTarget || pSec.includes(secTarget) || secTarget.includes(pSec)) {
+                    p.classList.add('active');
+                    const icon = p.querySelector('i');
+                    if (icon) icon.className = 'fa-solid fa-circle-check';
+                    matchedPill = true;
+                } else {
+                    p.classList.remove('active');
+                    const icon = p.querySelector('i');
+                    if (icon) icon.className = 'fa-regular fa-circle';
+                }
+            });
+            if (!matchedPill && pills.length > 0) {
+                pills[0].classList.add('active');
+                const icon = pills[0].querySelector('i');
+                if (icon) icon.className = 'fa-solid fa-circle-check';
+            }
+        }
     }
 
     const teacherSelect = document.getElementById('classAssignmentFormTeacher');
@@ -258194,6 +258444,9 @@ function deleteClassAssignment(asgId) {
     } else {
         saveStateToLocalStorage();
         renderAssignmentsTable();
+    }
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('pensum', STATE.pensum);
     }
     showToast('Asignación de cátedra eliminada exitosamente.', 'success');
 }
