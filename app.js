@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.11.v190_report_card_85x5in';
+const ENCCO_BUILD_VERSION = '2026.09.11.v191_honor_roll_equitable_3dec';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -243849,28 +243849,39 @@ function getStudentAcademicInfo(student) {
         });
     }
 
-    // REGLAS ESTRICTAS DE CUADRO DE HONOR:
+    // REGLAS ESTRICTAS DE CUADRO DE HONOR Y PROMEDIO EQUITATIVO:
     // 1. Debe tener al menos una clase calificada (gradedCount > 0)
     // 2. NO debe tener ninguna clase perdida (hasFailedGrade === false)
     // 3. NO debe ser un alumno exonerado (isStudentExonerated === false)
     const isEligible = (gradedCount > 0) && (!hasFailedGrade) && (!isStudentExonerated);
 
     if (gradedCount > 0) {
-        // Nivelación matemática exacta Base 100
-        const balancedAvg = parseFloat((sumCourseAverages / gradedCount).toFixed(2));
-        const totalPointsCalc = Math.round(sumCourseAverages);
+        // Divisor dinámico equitativo:
+        // 4to y 5to: divisor fijo de 9 materias en B1, B2 y B3
+        // 6to: divisor dinámico de 8 materias en B1 y B2 (excluyendo 2 materias no impartidas); 10 en B3
+        let dynamicDivisor = 9;
+        if (is6to) {
+            dynamicDivisor = (activeBimestre >= 3) ? 10 : 8;
+        } else {
+            dynamicDivisor = 9;
+        }
+
+        // Fórmula: Promedio = ROUND( SUMA(Notas_Bimestre) / DIVISOR_DINAMICO , 3 )
+        const equitableAvg = Math.round((totalAccumulatedPoints / dynamicDivisor) * 1000) / 1000;
+        const totalPointsCalc = Math.round(totalAccumulatedPoints);
 
         return {
-            average: balancedAvg,
+            average: equitableAvg,
+            averageFormatted: equitableAvg.toFixed(3),
             totalPoints: totalPointsCalc,
-            classCount: officialClassLoad,
+            classCount: dynamicDivisor,
             gradedClasses: gradedCount,
             gradeGroup: is6to ? '6to' : (is5to ? '5to' : '4to'),
             is6to: is6to,
             is5to: is5to,
             is4to: is4to,
-            officialClassLoad: officialClassLoad,
-            classLoadLabel: classLoadLabel,
+            officialClassLoad: dynamicDivisor,
+            classLoadLabel: is6to ? (activeBimestre >= 3 ? '10 Clases (6to)' : '8 Clases Activas (6to)') : '9 Clases (4to/5to)',
             hasFailedGrade: hasFailedGrade,
             isExonerated: isStudentExonerated,
             eligibleForHonorRoll: isEligible,
@@ -252608,7 +252619,7 @@ function loadHonorRoll() {
                 <td>${formatStudentGradeAndSection(s)}</td>
                 <td style="text-align:center;">${loadBadge}</td>
                 <td style="text-align:center;">
-                    <strong style="color:${info.eligibleForHonorRoll ? 'var(--brand-green)' : '#b91c1c'}; font-size:1.15rem;">${info.average.toFixed(2)} pts</strong>
+                    <strong style="color:${info.eligibleForHonorRoll ? 'var(--brand-green)' : '#b91c1c'}; font-size:1.15rem; font-variant-numeric:tabular-nums;">${info.average.toFixed(3)} pts</strong>
                     <div style="font-size:0.72rem; color:var(--text-muted);">Total: ${info.totalPoints}/${info.officialClassLoad * 100} pts</div>
                 </td>
                 <td style="text-align:center;">${badgeHtml}</td>
@@ -252623,7 +252634,7 @@ function loadHonorRoll() {
 
 
 function printHonorRoll() {
-    const h = STATE.schoolHeader || getInitialData().schoolHeader;
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
     const select = document.getElementById('honorRollTypeSelect');
     const titleText = document.getElementById('honorRollTitleText')?.textContent || 'CUADRO DE HONOR OFICIAL';
     if (!select) return;
@@ -252660,25 +252671,25 @@ function printHonorRoll() {
         return;
     }
 
-    const printRowsHtml = list.map((s, idx) => {
-        const info = getStudentAcademicInfo(s);
-        let dist = 'Cuadro de Honor';
-        if (idx === 0) dist = '1er Lugar - Medalla de Oro 🥇';
-        else if (idx === 1) dist = '2do Lugar - Medalla de Plata 🥈';
-        else if (idx === 2) dist = '3er Lugar - Medalla de Bronce 🥉';
-        else if (idx >= 10) dist = 'Alto Rendimiento Académico';
+    // Top 30 estudiantes oficiales
+    const top30 = list.slice(0, 30);
+    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
 
-        const loadBadge = info.is6to ? '10 Clases (6to)' : '9 Clases (4to/5to)';
+    const directorUser = (STATE.users || []).find(u => u.role === "director");
+    const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || "Licda. Mirza Elizabeth Aragón Polanco");
+    const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes("licda") ? "Directora del Plantel" : "Director del Plantel");
+
+    const printRowsHtml = top30.map((s, idx) => {
+        const info = getStudentAcademicInfo(s);
+        const fullName = `${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}`;
+        const gradeSection = formatStudentGradeAndSection(s);
 
         return `
             <tr>
-                <td style="text-align:center; font-weight:bold;">#${idx + 1}</td>
-                <td style="text-align:center;">${s.personalCode || '—'}</td>
-                <td style="font-weight:bold; padding-left:8px;">${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}</td>
-                <td>${formatStudentGradeAndSection(s)}</td>
-                <td style="text-align:center;">${loadBadge}</td>
-                <td style="text-align:center; font-weight:bold; font-size:11.5px; color:#15803d;">${info.average.toFixed(2)} pts</td>
-                <td style="text-align:center; font-weight:bold;">${dist}</td>
+                <td class="col-pos">#${idx + 1}</td>
+                <td class="col-name" title="${fullName}">${fullName}</td>
+                <td class="col-grade">${gradeSection}</td>
+                <td class="col-avg">${info.average.toFixed(3)} pts</td>
             </tr>
         `;
     }).join('');
@@ -252694,71 +252705,214 @@ function printHonorRoll() {
         <html lang="es">
         <head>
             <meta charset="UTF-8">
-            <title>${titleText} - ENCCO 1970</title>
+            <base href="${window.location.href}">
+            <title>${titleText} - Top 30 ENCCO Jutiapa</title>
             <style>
-                @page { size: 8.5in 13in portrait; margin: 6mm 6mm; }
-                body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; margin: 0; padding: 0; background: #fff; font-size: 11px; width: 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .encc-official-header { border: 1.5px solid #000; margin-bottom: 0px; background: #ffffff; }
-                .encc-top-banner { background-color: #99b958 !important; border-bottom: 1.5px solid #000; display: flex; justify-content: space-between; align-items: center; padding: 4px 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .encc-top-banner .logo-box { display: flex; align-items: center; gap: 12px; }
-                .encc-top-banner img { height: 48px; width: auto; object-fit: contain; }
-                .encc-top-banner h1 { margin: 0; font-size: 20px; font-weight: 800; color: #142d14; letter-spacing: 0.3px; }
-                .encc-top-banner .bimestre-badge { font-size: 11px; font-weight: 800; color: #142d14; background: #ffffff; padding: 2px 8px; border-radius: 4px; border: 1px solid #142d14; text-transform: uppercase; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .encc-meta-row { display: flex; justify-content: space-between; align-items: stretch; background: #ffffff; padding: 8px 12px; border-bottom: 1.5px solid #000; }
-                .balance-notice-box { background: #f8fafc; border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 9.5px; color: #334155; margin-bottom: 6px; border-radius: 3px; }
-                table.honor-table { width: 100%; border-collapse: collapse; font-size: 10.5px; border: 1.5px solid #000; }
-                table.honor-table th, table.honor-table td { border: 1px solid #000; padding: 5px 6px; }
-                table.honor-table th { font-weight: 800; background-color: #d9e9f9; color: #0f172a; text-align: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                .signatures-box { display: flex; justify-content: space-around; margin-top: 35px; text-align: center; }
-                .sig-line { width: 220px; border-top: 1.5px solid #000; padding-top: 4px; font-size: 10.5px; }
-                .footer-stamp { margin-top: 15px; display: flex; justify-content: space-between; font-size: 9px; color: #475569; }
-                @media print { .no-print { display: none; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+                @page {
+                    size: letter portrait;
+                    margin: 1cm;
+                }
+                * { box-sizing: border-box; }
+                body {
+                    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                    color: #0f172a;
+                    margin: 0;
+                    padding: 0;
+                    background: #ffffff;
+                    font-size: 9pt;
+                    width: 100%;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                .report-container { width: 100%; }
+                
+                .report-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    border-bottom: 2px solid #0369a1;
+                    padding-bottom: 6px;
+                    margin-bottom: 8px;
+                    gap: 12px;
+                }
+                .report-header .logo-box { width: 50px; height: 50px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+                .report-header .logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+                .report-header .header-info { flex: 1; text-align: center; }
+                .report-header .header-info h1 { font-size: 11pt; font-weight: 900; color: #0369a1; text-transform: uppercase; margin: 0 0 1px 0; }
+                .report-header .header-info h2 { font-size: 7.5pt; font-weight: 800; color: #475569; text-transform: uppercase; margin: 0 0 1px 0; }
+                .report-header .header-info .report-title {
+                    display: inline-block;
+                    background: #0369a1;
+                    color: #ffffff;
+                    font-size: 8pt;
+                    font-weight: 800;
+                    padding: 1.5px 12px;
+                    border-radius: 10px;
+                    letter-spacing: 0.4px;
+                    margin-top: 2px;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                .report-header .header-meta { text-align: right; font-size: 7.5pt; color: #475569; flex-shrink: 0; line-height: 1.35; }
+
+                .balance-notice {
+                    background-color: #f0f9ff;
+                    border: 1px solid #bae6fd;
+                    border-left: 3.5px solid #0284c7;
+                    padding: 4px 8px;
+                    font-size: 7.5pt;
+                    color: #0369a1;
+                    margin-bottom: 8px;
+                    border-radius: 3px;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+
+                table.honor-roll-table {
+                    width: 100% !important;
+                    border-collapse: collapse;
+                    table-layout: fixed;
+                    margin-bottom: 12px;
+                }
+                table.honor-roll-table thead {
+                    display: table-header-group !important; /* Repite automáticamente en cada página */
+                }
+                table.honor-roll-table tr {
+                    break-inside: avoid !important;
+                    page-break-inside: avoid !important; /* Previene cortes erróneos a mitad de fila */
+                }
+                table.honor-roll-table th {
+                    background-color: #0369a1 !important;
+                    color: #ffffff !important;
+                    font-weight: 800;
+                    font-size: 8.5pt;
+                    padding: 5px 6px;
+                    border: 1px solid #0f172a;
+                    text-transform: uppercase;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                table.honor-roll-table td {
+                    border: 1px solid #cbd5e1;
+                    padding: 5px 6px; /* Altura compacta */
+                    font-size: 8.5pt;
+                    vertical-align: middle;
+                }
+                table.honor-roll-table tbody tr:nth-child(even) {
+                    background-color: #f8fafc;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+
+                .col-pos { width: 65px; text-align: center; font-weight: 800; }
+                .col-name {
+                    width: auto;
+                    text-align: left;
+                    font-weight: 700;
+                    padding-left: 8px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    max-width: 250px; /* Truncado de nombres largos con ellipsis */
+                }
+                .col-grade { width: 180px; text-align: center; font-size: 8pt; }
+                .col-avg {
+                    width: 110px;
+                    text-align: center;
+                    font-weight: 800;
+                    font-size: 9pt;
+                    color: #15803d;
+                    font-variant-numeric: tabular-nums;
+                }
+
+                .signatures-container {
+                    display: flex;
+                    justify-content: space-around;
+                    align-items: flex-end;
+                    margin-top: 30px;
+                    padding-top: 10px;
+                    break-inside: avoid !important;
+                    page-break-inside: avoid !important; /* Bloque permanece unido sin quiebres huérfanos */
+                }
+                .signature-block { width: 200px; text-align: center; font-size: 10pt; }
+                .signature-line { border-top: 1.5px solid #000000; margin-bottom: 4px; padding-top: 3px; }
+                .signature-title { font-weight: 800; color: #0f172a; font-size: 8.5pt; }
+                .signature-subtitle { font-size: 7.5pt; color: #64748b; }
+
+                .footer-stamp {
+                    margin-top: 12px;
+                    display: flex;
+                    justify-content: space-between;
+                    font-size: 7.5pt;
+                    color: #64748b;
+                    border-top: 1px dotted #cbd5e1;
+                    padding-top: 3px;
+                }
+
+                @media print {
+                    body { background: #ffffff !important; }
+                    .no-print { display: none !important; }
+                    table.honor-roll-table { width: 100% !important; }
+                    table.honor-roll-table thead { display: table-header-group !important; }
+                    table.honor-roll-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+                    .signatures-container { break-inside: avoid !important; page-break-inside: avoid !important; }
+                }
             </style>
         </head>
         <body>
-            <div class="encc-official-header">
-                <div class="encc-top-banner">
+            <div class="report-container">
+                <div class="report-header">
                     <div class="logo-box">
-                        <img src="logo.png" alt="Escudo Oficial" onerror="this.src='https://ui-avatars.com/api/?name=ENCCO&background=15803d&color=fff'">
+                        <img src="logo.png" alt="Escudo Oficial" onerror="this.src='portada-comercio-principal.webp'">
+                    </div>
+                    <div class="header-info">
+                        <h2>Ministerio de Educación — Guatemala</h2>
                         <h1>${h.schoolName || 'Escuela Nacional de Ciencias Comerciales'}</h1>
+                        <h2>Jutiapa | Ciclo Lectivo ${STATE.activeCycle || '2026'}</h2>
+                        <div class="report-title">${titleText} — TOP 30</div>
                     </div>
-                    <div class="bimestre-badge">${STATE.config?.activeBimestre || 2}º Bimestre Activo</div>
-                </div>
-                <div class="encc-meta-row">
-                    <div>
-                        <strong style="font-size:13px; color:#15803d;">${titleText}</strong><br>
-                        <span style="font-size:11px; color:#475569;">Ciclo Lectivo: ${STATE.activeCycle || '2026'} - Sede Central Jutiapa 1970</span>
-                    </div>
-                    <div style="text-align:right; font-size:10.5px;">
-                        <strong>Fecha de Certificación:</strong> ${new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    <div class="header-meta">
+                        <strong>Bimestre:</strong> ${activeBim}.º Bimestre<br>
+                        <strong>Emisión:</strong> ${new Date().toLocaleDateString('es-GT')}<br>
+                        <strong>Jornada:</strong> Matutina
                     </div>
                 </div>
-            </div>
 
-            <div class="balance-notice-box">
-                ⚖️ <strong>Criterio Oficial de Elegibilidad y Equiparación:</strong> Promedios calculados sobre <strong>Base 100 puntos</strong> para equilibrar la diferencia de carga curricular (4to/5to con 9 asignaturas y 6to con 10 asignaturas). Los estudiantes seleccionados no poseen calificaciones menores a 60 puntos en ningún bimestre evaluado (o cuentan con exoneración académica oficial).
-            </div>
+                <div class="balance-notice">
+                    ⚖️ <strong>Criterio Oficial de Promedio Equitativo:</strong> Divisor dinámico ajustado a la carga de materias activas del bimestre (4.º y 5.º Grado: divisor fijo de 9 materias en B1, B2 y B3; 6.º Grado: divisor de 8 materias en B1 y B2 excluyendo materias no impartidas, y 10 materias en B3). Todos los promedios están calculados y formateados estrictamente a <strong>3 decimales</strong> sobre Base 100 puntos.
+                </div>
 
-            <table class="honor-table">
-                <thead>
-                    <tr>
-                        <th style="width:45px;">Pos.</th>
-                        <th style="width:105px;">Código Personal</th>
-                        <th style="text-align:left; padding-left:8px;">Nombre del Estudiante</th>
-                        <th style="width:170px;">Grado y Carrera</th>
-                        <th style="width:95px;">Carga Curricular</th>
-                        <th style="width:95px;">Promedio (Base 100)</th>
-                        <th style="width:130px;">Distinción Otorgada</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${printRowsHtml}
-                </tbody>
-            </table>
+                <table class="honor-roll-table">
+                    <thead>
+                        <tr>
+                            <th class="col-pos">Posición</th>
+                            <th class="col-name">Nombre Completo del Estudiante</th>
+                            <th class="col-grade">Grado y Sección</th>
+                            <th class="col-avg">Promedio</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${printRowsHtml}
+                    </tbody>
+                </table>
 
-            <div class="footer-stamp">
-                <span>Excelencia Académica ENCCO Jutiapa - Fundada en 1970</span>
-                <span>Generado el: ${new Date().toLocaleDateString('es-GT')}</span>
+                <div class="signatures-container">
+                    <div class="signature-block">
+                        <div class="signature-line"></div>
+                        <div class="signature-title">Comisión de Evaluación / Maestro Guía</div>
+                        <div class="signature-subtitle">Registro y Control Académico</div>
+                    </div>
+                    <div class="signature-block">
+                        <div class="signature-line"></div>
+                        <div class="signature-title">${dirName}</div>
+                        <div class="signature-subtitle">${dirTitle} — ENCCO Jutiapa</div>
+                    </div>
+                </div>
+
+                <div class="footer-stamp">
+                    <span>Excelencia Académica ENCCO Jutiapa - Fundada en 1970</span>
+                    <span>Generado el: ${new Date().toLocaleDateString('es-GT')}</span>
+                </div>
             </div>
         </body>
         </html>
