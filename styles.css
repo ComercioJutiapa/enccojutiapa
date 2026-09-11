@@ -571,11 +571,12 @@ body {
 #reportCardPrintArea, #honorRollPrintArea, #printOfficialTeacherStudentListArea {
     background: #f1f5f9;
     border-radius: var(--radius);
-    padding: 20px;
+    padding: 24px;
     display: flex;
     justify-content: center;
     align-items: center;
     overflow-x: auto;
+    width: 100%;
 }
 #reportCardPrintArea .report-half-letter-sheet {
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);

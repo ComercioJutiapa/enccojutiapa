@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.11.v189_exclusive_firebase_live_db';
+const ENCCO_BUILD_VERSION = '2026.09.11.v190_report_card_85x5in';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -248761,78 +248761,80 @@ function buildStudentReportCardInnerHtml(s) {
     const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes("licda") ? "Directora del Plantel" : "Director del Plantel");
 
     return `
-        <div class="report-half-letter-sheet" style="background:#ffffff; color:#000000; width:8.5in; max-width:8.5in; height:5.5in; max-height:5.5in; min-height:5.5in; box-sizing:border-box; padding:4mm 7mm 3mm 7mm; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display:flex; flex-direction:column; justify-content:space-between; border:2px solid #0369a1; border-radius:6px; margin:0 auto; overflow:hidden;">
-            <!-- ENCABEZADO INSTITUCIONAL -->
-            <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #0369a1; padding-bottom:3px; margin-bottom:3px; gap:8px;">
-                <div style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                    <img src="logo.png" alt="Escudo Oficial ENCCO" onerror="this.src='portada-comercio-principal.webp'" style="max-width:100%; max-height:100%; object-fit:contain;">
-                </div>
-                <div style="flex:1; text-align:center;">
-                    <div style="font-size:7.5px; font-weight:800; letter-spacing:0.5px; color:#1e293b; text-transform:uppercase;">MINISTERIO DE EDUCACIÓN — GUATEMALA</div>
-                    <div style="font-size:10.5px; font-weight:900; color:#0369a1; margin:1px 0; text-transform:uppercase; line-height:1.15;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</div>
-                    <div style="font-size:6.8px; font-weight:700; color:#475569; letter-spacing:0.2px;">JUTIAPA | FUNDADA EN 1970 — NIVEL MEDIO Y BÁSICO</div>
-                    <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:7px; font-weight:800; padding:1px 8px; border-radius:8px; margin-top:2px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">TARJETA OFICIAL DE CALIFICACIONES — CICLO LECTIVO ${STATE.activeCycle || "2026"}</div>
-                </div>
-                <div style="width:46px; text-align:center; flex-shrink:0;">
-                    <div style="background:#f0f9ff; border:1.2px solid #0284c7; border-radius:5px; padding:2px 1px; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
-                        <span style="display:block; font-size:11.5px; font-weight:900; color:#0284c7; line-height:1;">${activeBim}.º</span>
-                        <span style="display:block; font-size:5.5px; font-weight:800; color:#0f172a; line-height:1; text-transform:uppercase;">BIMESTRE<br>ACTIVO</span>
+        <div class="report-half-letter-sheet" style="background:#ffffff; color:#000000; width:8.5in; min-width:8.5in; max-width:8.5in; height:5in; min-height:5in; max-height:5in; box-sizing:border-box; padding:0.5in; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display:flex; flex-direction:column; justify-content:space-between; margin:0 auto; overflow:hidden;">
+            <div class="report-card-inner-frame" style="width:100%; height:100%; box-sizing:border-box; border:1.8px solid #0369a1; border-radius:6px; padding:5px 8px 3px 8px; display:flex; flex-direction:column; justify-content:space-between; background:#ffffff; overflow:hidden;">
+                <!-- ENCABEZADO INSTITUCIONAL -->
+                <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1.8px solid #0369a1; padding-bottom:2px; margin-bottom:2px; gap:8px;">
+                    <div style="width:42px; height:42px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <img src="logo.png" alt="Escudo Oficial ENCCO" onerror="this.src='portada-comercio-principal.webp'" style="max-width:100%; max-height:100%; object-fit:contain;">
+                    </div>
+                    <div style="flex:1; text-align:center;">
+                        <div style="font-size:7.5px; font-weight:800; letter-spacing:0.5px; color:#1e293b; text-transform:uppercase;">MINISTERIO DE EDUCACIÓN — GUATEMALA</div>
+                        <div style="font-size:10px; font-weight:900; color:#0369a1; margin:0.5px 0; text-transform:uppercase; line-height:1.15;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</div>
+                        <div style="font-size:6.8px; font-weight:700; color:#475569; letter-spacing:0.2px;">JUTIAPA | FUNDADA EN 1970 — NIVEL MEDIO Y BÁSICO</div>
+                        <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:7px; font-weight:800; padding:1px 8px; border-radius:8px; margin-top:1px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">TARJETA OFICIAL DE CALIFICACIONES — CICLO LECTIVO ${STATE.activeCycle || "2026"}</div>
+                    </div>
+                    <div style="width:44px; text-align:center; flex-shrink:0;">
+                        <div style="background:#f0f9ff; border:1.2px solid #0284c7; border-radius:5px; padding:1px; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+                            <span style="display:block; font-size:11px; font-weight:900; color:#0284c7; line-height:1;">${activeBim}.º</span>
+                            <span style="display:block; font-size:5.5px; font-weight:800; color:#0f172a; line-height:1; text-transform:uppercase;">BIMESTRE<br>ACTIVO</span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- DATOS DEL ESTUDIANTE -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:2px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-left:3.5px solid #0369a1; padding:2.5px 6px; font-size:7.5px; line-height:1.25; margin-bottom:3px; border-radius:3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
-                <div><strong style="color:#0369a1; font-weight:800;">Estudiante:</strong> <span style="font-weight:900; color:#0f172a; text-transform:uppercase;">${s.lastName}, ${s.firstName}</span></div>
-                <div><strong style="color:#0369a1; font-weight:800;">Carné Oficial:</strong> <span>${s.carne || "ENCCO-2026"}</span></div>
-                <div><strong style="color:#0369a1; font-weight:800;">Código Personal:</strong> <span>${s.personalCode || "—"}</span></div>
-                <div><strong style="color:#0369a1; font-weight:800;">Grado y Sección:</strong> <span>${gradeName}</span></div>
-                <div><strong style="color:#0369a1; font-weight:800;">Carrera:</strong> <span>${s.career || "Perito Contador"}</span></div>
-                <div><strong style="color:#0369a1; font-weight:800;">Ciclo / Sede:</strong> <span>${STATE.activeCycle || "2026"} — Jornada Matutina</span></div>
-            </div>
+                <!-- DATOS DEL ESTUDIANTE -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-left:3.5px solid #0369a1; padding:2px 6px; font-size:7.5px; line-height:1.2; margin-bottom:2px; border-radius:3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+                    <div><strong style="color:#0369a1; font-weight:800;">Estudiante:</strong> <span style="font-weight:900; color:#0f172a; text-transform:uppercase;">${s.lastName}, ${s.firstName}</span></div>
+                    <div><strong style="color:#0369a1; font-weight:800;">Carné Oficial:</strong> <span>${s.carne || "ENCCO-2026"}</span></div>
+                    <div><strong style="color:#0369a1; font-weight:800;">Código Personal:</strong> <span>${s.personalCode || "—"}</span></div>
+                    <div><strong style="color:#0369a1; font-weight:800;">Grado y Sección:</strong> <span>${gradeName}</span></div>
+                    <div><strong style="color:#0369a1; font-weight:800;">Carrera:</strong> <span>${s.career || "Perito Contador"}</span></div>
+                    <div><strong style="color:#0369a1; font-weight:800;">Ciclo / Sede:</strong> <span>${STATE.activeCycle || "2026"} — Jornada Matutina</span></div>
+                </div>
 
-            <!-- TABLA DE CALIFICACIONES (4 BIMESTRES, PROMEDIO Y RESULTADO) -->
-            <table style="width:100%; border-collapse:collapse; font-size:8px; border:1.2px solid #000000; margin-bottom:2px;">
-                <thead>
-                    <tr>
-                        <th style="width:22px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; padding:2px 2px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">No.</th>
-                        <th style="text-align:left; padding:2px 5px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Asignatura / Área Curricular</th>
-                        <th style="width:34px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">I Bim</th>
-                        <th style="width:34px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">II Bim</th>
-                        <th style="width:34px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">III Bim</th>
-                        <th style="width:34px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">IV Bim</th>
-                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Prom.</th>
-                        <th style="width:64px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Resultado</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${rowsHtml}
-                </tbody>
-                <tfoot>
-                    <tr style="background:#f1f5f9; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">
-                        <td colspan="6" style="text-align:right; font-weight:800; padding:2px 6px; border:1px solid #000000; font-size:8px;">PROMEDIO GENERAL ACUMULADO:</td>
-                        <td style="text-align:center; font-weight:900; font-size:9px; border:1px solid #000000; color:${isOverallFail ? "#dc2626" : "#0369a1"}; background:${isOverallFail ? "#fee2e2" : "#e0f2fe"}; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">${overallAvg > 0 ? overallAvg : "—"}</td>
-                        <td style="text-align:center; font-weight:800; font-size:7.5px; border:1px solid #000000; color:${overallAvg >= 60 ? "#15803d" : (overallAvg > 0 ? "#dc2626" : "#64748b")};">${overallAvg >= 60 ? "PROMOVIDO" : (overallAvg > 0 ? "EN RIESGO" : "EN CURSO")}</td>
-                    </tr>
-                </tfoot>
-            </table>
+                <!-- TABLA DE CALIFICACIONES (4 BIMESTRES, PROMEDIO Y RESULTADO) -->
+                <table style="width:100%; border-collapse:collapse; font-size:8px; border:1.2px solid #000000; margin-bottom:2px;">
+                    <thead>
+                        <tr>
+                            <th style="width:22px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; padding:1.5px 2px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">No.</th>
+                            <th style="text-align:left; padding:1.5px 5px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Asignatura / Área Curricular</th>
+                            <th style="width:36px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">I Bim</th>
+                            <th style="width:36px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">II Bim</th>
+                            <th style="width:36px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">III Bim</th>
+                            <th style="width:36px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">IV Bim</th>
+                            <th style="width:42px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Prom.</th>
+                            <th style="width:68px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background:#f1f5f9; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">
+                            <td colspan="6" style="text-align:right; font-weight:800; padding:1.5px 6px; border:1px solid #000000; font-size:7.8px;">PROMEDIO GENERAL ACUMULADO:</td>
+                            <td style="text-align:center; font-weight:900; font-size:8.5px; border:1px solid #000000; color:${isOverallFail ? "#dc2626" : "#0369a1"}; background:${isOverallFail ? "#fee2e2" : "#e0f2fe"}; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">${overallAvg > 0 ? overallAvg : "—"}</td>
+                            <td style="text-align:center; font-weight:800; font-size:7.5px; border:1px solid #000000; color:${overallAvg >= 60 ? "#15803d" : (overallAvg > 0 ? "#dc2626" : "#64748b")};">${overallAvg >= 60 ? "PROMOVIDO" : (overallAvg > 0 ? "EN RIESGO" : "EN CURSO")}</td>
+                        </tr>
+                    </tfoot>
+                </table>
 
-            <!-- BLOQUE DE FIRMA ÚNICA EXCLUSIVA DE LA DIRECCIÓN -->
-            <div style="display:flex; justify-content:center; align-items:flex-end; margin-top:8px; padding-bottom:1px;">
-                <div style="width:220px; text-align:center; position:relative;">
-                    <img src="firma_director_sello.png" alt="Sello y Firma de Dirección" style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); width:110px; height:auto; pointer-events:none; opacity:0.96; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.12));">
-                    <div style="border-top:1.2px solid #000000; margin-top:24px; padding-top:2px;">
-                        <div style="font-size:8px; font-weight:800; color:#0f172a;">${dirName}</div>
-                        <div style="font-size:7px; font-weight:700; color:#475569;">${dirTitle}</div>
-                        <div style="font-size:6.5px; font-weight:600; color:#64748b;">Escuela Nacional de Ciencias Comerciales — Jutiapa</div>
+                <!-- BLOQUE DE FIRMA ÚNICA EXCLUSIVA DE LA DIRECCIÓN -->
+                <div style="display:flex; justify-content:center; align-items:flex-end; margin-top:3px; padding-bottom:1px;">
+                    <div style="width:210px; text-align:center; position:relative;">
+                        <img src="firma_director_sello.png" alt="Sello y Firma de Dirección" style="position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:95px; height:auto; pointer-events:none; opacity:0.96; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.12));">
+                        <div style="border-top:1.2px solid #000000; margin-top:20px; padding-top:1.5px;">
+                            <div style="font-size:7.8px; font-weight:800; color:#0f172a;">${dirName}</div>
+                            <div style="font-size:6.8px; font-weight:700; color:#475569;">${dirTitle}</div>
+                            <div style="font-size:6.2px; font-weight:600; color:#64748b;">Escuela Nacional de Ciencias Comerciales — Jutiapa</div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- PIE DE PÁGINA INSTITUCIONAL -->
-            <div style="display:flex; justify-content:space-between; border-top:1px dotted #94a3b8; padding-top:2px; font-size:6.8px; color:#64748b; font-weight:600; margin-top:2px;">
-                <span>ENCCO JUTIAPA • Sistema de Control Académico Oficial</span>
-                <span>Fecha de emisión: ${new Date().toLocaleDateString("es-GT")}</span>
+                <!-- PIE DE PÁGINA INSTITUCIONAL -->
+                <div style="display:flex; justify-content:space-between; border-top:1px dotted #94a3b8; padding-top:1.5px; font-size:6.5px; color:#64748b; font-weight:600; margin-top:1px;">
+                    <span>ENCCO JUTIAPA • Sistema de Control Académico Oficial</span>
+                    <span>Fecha de emisión: ${new Date().toLocaleDateString("es-GT")}</span>
+                </div>
             </div>
         </div>
     `;
@@ -248885,27 +248887,43 @@ function printStudentReportCardOfficial(targetStudentId) {
         <head>
             <meta charset="UTF-8">
             <base href="${window.location.href}">
-            <title>Boletín Oficial - ${s.lastName}, ${s.firstName} (Media Hoja Carta)</title>
+            <title>Boletín Oficial - ${s.lastName}, ${s.firstName} (8.5in x 5in)</title>
             <style>
                 @page {
-                    size: 8.5in 5.5in;
-                    margin: 4mm 6mm;
+                    size: 8.5in 5in;
+                    margin: 0.5in;
                 }
                 * { box-sizing: border-box; }
-                body {
+                html, body {
                     font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                     color: #000000;
-                    margin: 0;
-                    padding: 0;
-                    background: #ffffff;
-                    width: 100%;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: #ffffff !important;
+                    width: 100% !important;
+                    height: 100% !important;
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
                 }
                 .report-half-letter-sheet {
-                    width: 100%;
-                    box-sizing: border-box;
-                    padding: 4px 6px;
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    min-width: 100% !important;
+                    height: 100% !important;
+                    max-height: 100% !important;
+                    min-height: 100% !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    box-sizing: border-box !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                }
+                .report-card-inner-frame {
+                    width: 100% !important;
+                    height: 100% !important;
+                    max-height: 100% !important;
+                    min-height: 100% !important;
+                    box-sizing: border-box !important;
                 }
                 @media print {
                     .no-print { display: none !important; }
@@ -248965,20 +248983,21 @@ function printBatchReportCardsOfficial() {
         <head>
             <meta charset="UTF-8">
             <base href="${window.location.href}">
-            <title>Lote de Boletines Oficiales - ${gradeVal} ${sectionVal} (${students.length} Estudiantes)</title>
+            <title>Lote de Boletines Oficiales - ${gradeVal} ${sectionVal} (${students.length} Estudiantes - 8.5in x 5in)</title>
             <style>
                 @page {
-                    size: 8.5in 5.5in;
-                    margin: 4mm 6mm;
+                    size: 8.5in 5in;
+                    margin: 0.5in;
                 }
                 * { box-sizing: border-box; }
-                body {
+                html, body {
                     font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                     color: #000000;
-                    margin: 0;
-                    padding: 0;
-                    background: #ffffff;
-                    width: 100%;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: #ffffff !important;
+                    width: 100% !important;
+                    height: 100% !important;
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
                 }
@@ -248986,8 +249005,10 @@ function printBatchReportCardsOfficial() {
                     page-break-after: always;
                     break-after: page;
                     width: 100%;
+                    height: 100%;
                     box-sizing: border-box;
-                    padding: 4px 6px;
+                    padding: 0 !important;
+                    margin: 0 !important;
                     display: flex;
                     flex-direction: column;
                     justify-content: space-between;
@@ -248995,6 +249016,26 @@ function printBatchReportCardsOfficial() {
                 .student-page-break:last-child {
                     page-break-after: avoid;
                     break-after: avoid;
+                }
+                .report-half-letter-sheet {
+                    width: 100% !important;
+                    max-width: 100% !important;
+                    min-width: 100% !important;
+                    height: 100% !important;
+                    max-height: 100% !important;
+                    min-height: 100% !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    box-sizing: border-box !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                }
+                .report-card-inner-frame {
+                    width: 100% !important;
+                    height: 100% !important;
+                    max-height: 100% !important;
+                    min-height: 100% !important;
+                    box-sizing: border-box !important;
                 }
                 @media print {
                     .no-print { display: none !important; }
