@@ -1,12 +1,38 @@
 {
   "rules": {
-    ".read": true,
-    ".write": true,
+    ".read": "auth != null",
+    ".write": "auth != null",
     "encc_school_state": {
+      ".read": true,
+      ".write": true,
       ".indexOn": [
         "lastModified",
         "activeCycle"
-      ]
+      ],
+      "rolesConfig": {
+        ".read": true,
+        ".write": true
+      },
+      "users": {
+        ".read": true,
+        ".write": true
+      },
+      "pensum": {
+        ".read": true,
+        ".write": true
+      },
+      "pensumCatalog": {
+        ".read": true,
+        ".write": true
+      },
+      "students": {
+        ".read": true,
+        ".write": true
+      },
+      "gradesList": {
+        ".read": true,
+        ".write": true
+      }
     }
   }
 }

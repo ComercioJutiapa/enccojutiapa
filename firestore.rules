@@ -1,8 +1,73 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Verificación de usuario autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Reglas para Roles y Permisos
+    match /roles/{roleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    match /rolesConfig/{roleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Reglas para Docentes, Usuarios y Datos Personales
+    match /docentes/{docenteId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    match /datos_personales/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Reglas para Clases, Pensum y Asignaciones
+    match /clases/{claseId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    match /pensum/{asgId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    match /pensumCatalog/{subjectId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Reglas para Estudiantes y Notas / Calificaciones
+    match /estudiantes/{studentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    match /students/{studentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    match /notas/{notaId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Estado escolar institucional unificado
+    match /encc_school_state/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Acceso general para desarrollo y usuarios autenticados
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isAuthenticated();
     }
   }
 }

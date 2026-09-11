@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.11.v193_restaurar_datos_honor_roll';
+const ENCCO_BUILD_VERSION = '2026.09.11.v194_firebase_architecture_memory_cache';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -593,19 +593,24 @@ const EnccoFirebaseCacheEngine = {
     applyCachePolicy(user = null, role = null) {
         const activeRole = role || (user ? user.role : 'admin');
 
-        // ============================================================
-        // POLÍTICA INSTITUCIONAL: PERSISTENCIA PERMANENTE Y PROTEGIDA
-        // ============================================================
-        console.log(`🛡️ [Almacenamiento Institucional ENCCO] Usuario (${activeRole}). Persistencia activa en disco y sincronización en tiempo real.`);
+        // REGLA ESTRICTA 1: Exclusivamente memoria RAM ('memoryLocalCache')
+        // Desactivada cualquier persistencia offline local (IndexedDB)
+        console.log(`🛡️ [Firebase Cache Policy] Usuario (${activeRole}). Modo 100% Online en memoria RAM ('memoryLocalCache'). Sin persistencia local IndexedDB.`);
 
         if (window.FirebaseModular && typeof window.FirebaseModular.initFirestoreWithCache === 'function') {
-            window.FirebaseModular.initFirestoreWithCache('persistent');
+            window.FirebaseModular.initFirestoreWithCache('memory');
         }
 
         if (window.STATE) {
-            window.STATE.isExclusivelyOnlineMode = false;
-            window.STATE.cachePolicy = 'persistentLocalCache';
+            window.STATE.isExclusivelyOnlineMode = true;
+            window.STATE.cachePolicy = 'memoryLocalCache';
             window.STATE.isLocalReadOnlyMode = false;
+        }
+
+        // Eliminar activamente bases de datos IndexedDB si estuvieran creadas
+        if (typeof indexedDB !== 'undefined') {
+            try { indexedDB.deleteDatabase('ENCCO_SUPERUSER_BACKUP_DB'); } catch(e) {}
+            try { indexedDB.deleteDatabase('ENCCO_OFFLINE_CACHE_V1'); } catch(e) {}
         }
     }
 };
@@ -1916,7 +1921,7 @@ window.loadRoleIntoPermissionsPanel = loadRoleIntoPermissionsPanel;
 
 
 
-function saveActiveRolePermissions() {
+async function saveActiveRolePermissions() {
     if (STATE.currentRole !== 'admin' && STATE.currentUser?.role !== 'admin') {
         showToast('Solo el Super Administrador del Sistema puede guardar roles y permisos.', 'warning');
         return;
@@ -1959,53 +1964,47 @@ function saveActiveRolePermissions() {
 
     normalizeRolesConfig();
 
-    const existingIdx = STATE.rolesConfig.findIndex(r => r.key === key);
-    if (existingIdx !== -1) {
-        STATE.rolesConfig[existingIdx].name = name;
-        STATE.rolesConfig[existingIdx].description = desc;
-        STATE.rolesConfig[existingIdx].color = color;
-        STATE.rolesConfig[existingIdx].permissions = permissions;
-        STATE.rolesConfig[existingIdx].permissionLevels = permissionLevels;
-        _selectedRoleKeyForEditing = key;
-        showToast(`Permisos del rol "${name}" guardados (Modificar, Solo Ver o Bloqueado).`, 'success');
-    } else {
-        STATE.rolesConfig.push({
-            key: key,
-            name: name,
-            description: desc,
-            color: color,
-            isSystem: false,
-            permissions: permissions,
-            permissionLevels: permissionLevels
-        });
-        _selectedRoleKeyForEditing = key;
-        showToast(`Nuevo rol "${name}" creado con sus niveles de acceso.`, 'success');
-    }
-
-    // 1. Guardar localmente
-    saveStateToLocalStorage();
-
-    // 2. Notificar vía BroadcastChannel
     try {
-        if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
-            _enccBroadcastChannel.postMessage({
-                type: 'SYNC_STATE_UPDATE',
-                state: STATE,
-                timestamp: Date.now()
+        const existingIdx = STATE.rolesConfig.findIndex(r => r.key === key);
+        if (existingIdx !== -1) {
+            STATE.rolesConfig[existingIdx].name = name;
+            STATE.rolesConfig[existingIdx].description = desc;
+            STATE.rolesConfig[existingIdx].color = color;
+            STATE.rolesConfig[existingIdx].permissions = permissions;
+            STATE.rolesConfig[existingIdx].permissionLevels = permissionLevels;
+        } else {
+            STATE.rolesConfig.push({
+                key: key,
+                name: name,
+                description: desc,
+                color: color,
+                isSystem: false,
+                permissions: permissions,
+                permissionLevels: permissionLevels
             });
         }
-    } catch(e) {}
+        _selectedRoleKeyForEditing = key;
 
-    // 3. Sincronizar en Google Firebase Realtime Database inmediatamente
-    if (typeof pushStateToFirebaseCloud === 'function') {
-        pushStateToFirebaseCloud(false);
+        // CONFIRMACIÓN DE ESCRITURA EN FIREBASE CON ASYNC/AWAIT
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            ok = await EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
+        } else if (typeof pushStateToFirebaseCloud === 'function') {
+            ok = await pushStateToFirebaseCloud(false);
+        } else {
+            ok = true;
+        }
+
+        if (!ok) throw new Error("Firebase no confirmó la actualización de roles y permisos.");
+
+        saveStateToLocalStorage();
+        applyUserRole(STATE.currentRole);
+        renderRolesManagementView();
+        showToast(`Permisos del rol "${name}" confirmados en Firebase.`, 'success');
+    } catch(err) {
+        console.error("❌ Error al guardar roles en Firebase:", err);
+        showToast(`Error al guardar roles en Firebase: ${err.message || err}`, 'danger');
     }
-
-    // 4. Aplicar permisos en tiempo real a la interfaz activa
-    applyUserRole(STATE.currentRole);
-
-    // 5. Refrescar interfaz de roles
-    renderRolesManagementView();
 }
 window.saveActiveRolePermissions = saveActiveRolePermissions;
 
@@ -2668,7 +2667,7 @@ async function syncUsersToDatabaseImmediate(showToastNotification = true) {
     }
 }
 window.syncUsersToDatabaseImmediate = syncUsersToDatabaseImmediate;
-function saveUserForm(e) {
+async function saveUserForm(e) {
     if (typeof EnccoSecurityShield !== 'undefined' && !EnccoSecurityShield.isAuthorizedRole('admin')) {
         if (typeof showToast === 'function') showToast('Acceso denegado: Modificación de cuentas restringida a Administrador.', 'danger');
         return;
@@ -2678,34 +2677,41 @@ function saveUserForm(e) {
         if (typeof e.stopPropagation === 'function') e.stopPropagation();
     }
 
+    const idInput = document.getElementById('userFormId');
+    const nameInput = document.getElementById('userFormName');
+    const emailInput = document.getElementById('userFormEmail');
+    const phoneInput = document.getElementById('userFormPhone');
+    const passwordInput = document.getElementById('userFormPassword');
+    const roleSelect = document.getElementById('userFormRole');
+    const titleInput = document.getElementById('userFormTitle');
+    const renglonSelect = document.getElementById('userFormRenglon');
+    const genderSelect = document.getElementById('userFormGender');
+
+    const userId = idInput ? idInput.value.trim() : '';
+    const name = nameInput ? nameInput.value.trim() : '';
+    const email = emailInput ? emailInput.value.trim() : '';
+    const telefono = phoneInput ? phoneInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value.trim() : 'C@rolina1';
+    const role = roleSelect ? roleSelect.value : 'docente';
+    const title = titleInput ? titleInput.value.trim() : 'PEM / Catedrático Titular';
+    const renglon = renglonSelect ? renglonSelect.value : '011';
+    const gender = genderSelect ? genderSelect.value : 'Masculino';
+
+    if (!name) {
+        showToast('El nombre del usuario o docente es obligatorio.', 'warning');
+        return;
+    }
+
+    if (!Array.isArray(STATE.users)) STATE.users = [];
+
+    const submitBtn = document.querySelector('#userModal form button[type="submit"]') || document.querySelector('button[onclick*="saveUserForm"]');
+    const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Guardar';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    }
+
     try {
-        const idInput = document.getElementById('userFormId');
-        const nameInput = document.getElementById('userFormName');
-        const emailInput = document.getElementById('userFormEmail');
-        const phoneInput = document.getElementById('userFormPhone');
-        const passwordInput = document.getElementById('userFormPassword');
-        const roleSelect = document.getElementById('userFormRole');
-        const titleInput = document.getElementById('userFormTitle');
-        const renglonSelect = document.getElementById('userFormRenglon');
-        const genderSelect = document.getElementById('userFormGender');
-
-        const userId = idInput ? idInput.value.trim() : '';
-        const name = nameInput ? nameInput.value.trim() : '';
-        const email = emailInput ? emailInput.value.trim() : '';
-        const telefono = phoneInput ? phoneInput.value.trim() : '';
-        const password = passwordInput ? passwordInput.value.trim() : 'C@rolina1';
-        const role = roleSelect ? roleSelect.value : 'docente';
-        const title = titleInput ? titleInput.value.trim() : 'PEM / Catedrático Titular';
-        const renglon = renglonSelect ? renglonSelect.value : '011';
-        const gender = genderSelect ? genderSelect.value : 'Masculino';
-
-        if (!name) {
-            showToast('El nombre del usuario o docente es obligatorio.', 'warning');
-            return;
-        }
-
-        if (!Array.isArray(STATE.users)) STATE.users = [];
-
         let savedUserObj = null;
 
         if (userId) {
@@ -2756,7 +2762,6 @@ function saveUserForm(e) {
                 STATE.users.push(savedUserObj);
             }
 
-            // Si se editó el usuario activo de la sesión
             if (STATE.currentUser && (STATE.currentUser.id === userId || STATE.currentUser.id === savedUserObj.id)) {
                 STATE.currentUser = { ...savedUserObj };
                 STATE.currentRole = role;
@@ -2792,35 +2797,49 @@ function saveUserForm(e) {
             STATE.users = deduplicateUsersCollection(STATE.users);
         }
 
-        // 1. Guardar estado local
+        // CONFIRMACIÓN DE ESCRITURA EN FIREBASE CON ASYNC/AWAIT
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            const [resUsers, resPen, resG] = await Promise.all([
+                EnccoCloudSync.syncNode('users', STATE.users),
+                EnccoCloudSync.syncNode('pensum', STATE.pensum),
+                EnccoCloudSync.syncNode('gradesList', STATE.gradesList)
+            ]);
+            ok = resUsers && resPen && resG;
+        } else if (typeof pushStateToFirebaseCloud === 'function') {
+            ok = await pushStateToFirebaseCloud(false);
+        } else {
+            ok = true;
+        }
+
+        if (!ok) {
+            throw new Error("El servidor de Firebase no confirmó la actualización del usuario/docente.");
+        }
+
         STATE.lastModified = Date.now();
         saveStateToLocalStorage();
 
-        // 2. CERRAR MODAL INMEDIATAMENTE (100% GARANTIZADO)
+        // La interfaz solo confirma tras recibir la respuesta exitosa del servidor
         closeUserModal();
-
-        // 3. Refrescar tabla en pantalla
         if (typeof renderUsersTable === 'function') renderUsersTable();
+        if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+        if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+        if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+        if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
 
-        // 4. Sincronizar selectores dinámicos
         try {
             if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
         } catch(uiErr) {}
 
-        // 5. Enviar de inmediato a Firebase Realtime Database con EnccoCloudSync granular
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            EnccoCloudSync.syncNode('users', STATE.users);
-            EnccoCloudSync.syncNode('pensum', STATE.pensum);
-            EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
-        } else if (typeof syncUsersToDatabaseImmediate === 'function') {
-            syncUsersToDatabaseImmediate(false);
-        }
-
-        showToast(`Usuario "${name}" guardado exitosamente.`, "success");
+        showToast(`Usuario "${name}" guardado y confirmado en Firebase exitosamente.`, "success");
     } catch(err) {
-        console.error("Error al guardar usuario:", err);
-        closeUserModal();
-        showToast("Usuario guardado en sistema.", "info");
+        console.error("❌ Error al guardar usuario en Firebase:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origBtnHtml;
+        }
     }
 }
 window.saveUserForm = saveUserForm;
@@ -3264,24 +3283,36 @@ function initFirebaseRealtimeConnection() {
                     } else if (cleanPath === 'pensum') {
                         if (Array.isArray(nodeData)) {
                             STATE.pensum = nodeData;
+                            // SINCRONIZACIÓN BIDIRECCIONAL EN TIEMPO REAL:
+                            // Si se asigna o quita un docente en clases, actualizar editor de pensum inmediatamente sin recargar
                             if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+                            if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+                            if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
                             if (typeof updateAssignmentSelects === 'function') updateAssignmentSelects();
                             if (typeof populatePensumTeacherSelect === 'function') populatePensumTeacherSelect();
-                            if (typeof renderCurrentView === 'function' && STATE.activeView === 'class-assignments') renderCurrentView();
+                            if (typeof renderCurrentView === 'function' && (STATE.activeView === 'class-assignments' || STATE.activeView === 'pensum')) renderCurrentView();
                         }
                     } else if (cleanPath === 'pensumCatalog') {
                         if (Array.isArray(nodeData)) {
                             STATE.pensumCatalog = nodeData;
+                            // Si se modifica el pensum, reflejar en asignación de docentes y selects en tiempo real
                             if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
                             if (typeof updatePensumCatalogSelects === 'function') updatePensumCatalogSelects();
-                            if (typeof renderCurrentView === 'function' && STATE.activeView === 'pensum') renderCurrentView();
+                            if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+                            if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+                            if (typeof renderCurrentView === 'function' && (STATE.activeView === 'pensum' || STATE.activeView === 'class-assignments')) renderCurrentView();
                         }
                     } else if (cleanPath === 'users') {
                         if (Array.isArray(nodeData)) {
                             STATE.users = nodeData;
+                            // Si se edita un docente, reflejar inmediatamente en pensum y asignaciones
                             if (typeof renderUsersTable === 'function') renderUsersTable();
                             if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
                             if (typeof updateLoginAccountSelect === 'function') updateLoginAccountSelect();
+                            if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+                            if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+                            if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+                            if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
                             if (typeof renderCurrentView === 'function' && STATE.activeView === 'users') renderCurrentView();
                         }
                     } else if (cleanPath === 'gradesList') {
@@ -244443,7 +244474,7 @@ function handlePhotoUpload(e) {
     }
 }
 
-function saveStudentProfileForm(e) {
+async function saveStudentProfileForm(e) {
     if (e && e.preventDefault) e.preventDefault();
     if (!checkEnrolmentPermissions()) return;
 
@@ -244456,7 +244487,6 @@ function saveStudentProfileForm(e) {
     const newStatus = document.getElementById('profStatusSelect')?.value || 'Activo';
     const reason = (document.getElementById('profRetireReason')?.value || '').trim();
 
-    // REQUISITO ESTRICTO: Secretaría y Dirección deben colocar obligatoriamente el motivo al retirar o colocar como ausente
     if (newStatus === 'Retirado' || newStatus === 'Ausente' || newStatus === 'Inactivo') {
         if (!reason) {
             showToast("Secretaría debe ingresar obligatoriamente el motivo del retiro o ausencia del estudiante.", "warning");
@@ -244507,10 +244537,26 @@ function saveStudentProfileForm(e) {
         student.retireDate = '';
     }
 
-    saveStateToLocalStorage();
-    closeStudentProfileModal();
-    renderStudentsTable();
-    showToast(`Estado de matrícula y expediente de ${student.firstName} ${student.lastName} actualizado exitosamente (${newStatus}).`, "success");
+    try {
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            ok = await EnccoCloudSync.syncNode('students', STATE.students);
+        } else if (typeof pushStateToFirebaseCloud === 'function') {
+            ok = await pushStateToFirebaseCloud(false);
+        } else {
+            ok = true;
+        }
+
+        if (!ok) throw new Error("Firebase no confirmó la actualización del expediente del estudiante.");
+
+        saveStateToLocalStorage();
+        closeStudentProfileModal();
+        renderStudentsTable();
+        showToast(`Estado de matrícula y expediente de ${student.firstName} ${student.lastName} actualizado y confirmado en Firebase (${newStatus}).`, "success");
+    } catch(err) {
+        console.error("❌ Error al guardar perfil del estudiante en Firebase:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
+    }
 }
 
 function closeStudentProfileModal() {
@@ -251297,7 +251343,7 @@ function handleExamScoreChange(studentId, value, subjectName, unit) {
 }
 
 
-function saveGradebookChanges() {
+async function saveGradebookChanges() {
     if (window.STATE && window.STATE.isLocalReadOnlyMode) {
         if (typeof showToast === 'function') {
             showToast("⚠️ Acción Bloqueada: La copia local está en modo SOLO LECTURA para evitar conflictos con el servidor central.", "warning");
@@ -251307,7 +251353,6 @@ function saveGradebookChanges() {
     const isDocente = (STATE.currentRole === 'docente');
     const currentUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente');
 
-    // Validación de bloqueo para docentes
     if (isDocente && currentUser) {
         if (STATE.config?.globalLocked && !STATE.config?.teacherBypass[currentUser.id]) {
             showToast("El ingreso de calificaciones se encuentra actualmente bloqueado por Dirección y Secretaría.", "danger");
@@ -251315,11 +251360,24 @@ function saveGradebookChanges() {
         }
     }
 
-    saveStateToLocalStorage();
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        EnccoCloudSync.syncNode('students', STATE.students);
+    try {
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            ok = await EnccoCloudSync.syncNode('students', STATE.students);
+        } else if (typeof pushStateToFirebaseCloud === 'function') {
+            ok = await pushStateToFirebaseCloud(false);
+        } else {
+            ok = true;
+        }
+
+        if (!ok) throw new Error("El servidor central de Firebase no confirmó la escritura de las calificaciones.");
+
+        saveStateToLocalStorage();
+        showToast("¡Calificaciones y actividades guardadas y confirmadas exitosamente en Google Firebase!", "success");
+    } catch(err) {
+        console.error("❌ Error al guardar calificaciones en Firebase:", err);
+        showToast(`Error al guardar calificaciones en Firebase: ${err.message || err}`, "danger");
     }
-    showToast("¡Calificaciones y actividades guardadas y sincronizadas exitosamente en el sistema!", "success");
 }
 window.saveGradebookChanges = saveGradebookChanges;
 
@@ -256321,70 +256379,26 @@ function updatePensumCatalogSelects() {
 // ──────────────────────────────────────────────────────────────────────────
 
 function suggestNextPensumCourseCode(career, grade) {
-    const list = Array.isArray(STATE.pensumCatalog) ? STATE.pensumCatalog : [];
-    let prefix = 'PC';
-    const cLower = (career || '').toLowerCase();
-    if (cLower.includes('secretari')) prefix = 'SO';
-    else if (cLower.includes('bachiller')) prefix = 'BA';
-    else if (cLower.includes('perito')) prefix = 'PC';
-    
-    let gradeNum = '4';
-    const gRaw = (grade || '').toUpperCase();
-    if (gRaw.includes('6') || gRaw.includes('SEXTO') || gRaw.includes('6TO')) gradeNum = '6';
-    else if (gRaw.includes('5') || gRaw.includes('QUINTO') || gRaw.includes('5TO')) gradeNum = '5';
-    else if (gRaw.includes('4') || gRaw.includes('CUARTO') || gRaw.includes('4TO')) gradeNum = '4';
-    else if (gRaw.includes('3') || gRaw.includes('TERCERO') || gRaw.includes('3RO')) gradeNum = '3';
-    else if (gRaw.includes('2') || gRaw.includes('SEGUNDO') || gRaw.includes('2DO')) gradeNum = '2';
-    else if (gRaw.includes('1') || gRaw.includes('PRIMERO') || gRaw.includes('1RO')) gradeNum = '1';
-
-    const basePrefix = `${prefix}${gradeNum}`;
-    let maxSeq = 0;
-    list.forEach(p => {
-        const c = String(p.code || '').toUpperCase().trim();
-        if (c.startsWith(basePrefix)) {
-            const numPart = parseInt(c.slice(basePrefix.length), 10);
-            if (!isNaN(numPart) && numPart > maxSeq) {
-                maxSeq = numPart;
-            }
-        }
-    });
-
-    const nextSeq = String(maxSeq + 1).padStart(2, '0');
-    return `${basePrefix}${nextSeq}`;
+    // REGLA ESTRICTA 2: Eliminada la generación automática de códigos de materia.
+    // Los campos de código pueden vaciarse o asignarse manualmente por el usuario.
+    return '';
 }
 
 function normalizePensumCatalogCodes() {
     if (!Array.isArray(STATE.pensumCatalog)) return;
-    const defaultCatalog = (typeof getInitialData === 'function') ? (getInitialData().pensumCatalog || []) : [];
-    
+    // REGLA ESTRICTA 2: No sobrescribir códigos vacíos; respetar el código manual definido por el usuario
     STATE.pensumCatalog.forEach(p => {
-        if (!p.code || !String(p.code).trim()) {
-            const pName = (p.name || p.subject || '').trim().toLowerCase();
-            const pGrade = (p.grade || '').trim().toLowerCase();
-            const match = defaultCatalog.find(d => 
-                (d.name || '').trim().toLowerCase() === pName &&
-                (d.grade || '').trim().toLowerCase() === pGrade
-            );
-            if (match && match.code) {
-                p.code = match.code;
-            } else {
-                p.code = suggestNextPensumCourseCode(p.career, p.grade);
-            }
-        } else {
+        if (p.code && String(p.code).trim()) {
             p.code = String(p.code).trim().toUpperCase();
+        } else {
+            p.code = ''; // Permitir expresamente campo vacío
         }
     });
 }
 
 function onPensumSubjectCareerOrGradeChange() {
-    const idInput = document.getElementById('pensumSubjectFormId') || document.getElementById('pensumSubjectModalId');
-    if (idInput && idInput.value) return; // Si estamos editando no sobrescribir el código ya existente
-    const career = document.getElementById('pensumSubjectFormCareer')?.value || '';
-    const grade = document.getElementById('pensumSubjectFormGrade')?.value || '';
-    const codeInput = document.getElementById('pensumSubjectFormCode');
-    if (codeInput) {
-        codeInput.value = suggestNextPensumCourseCode(career, grade);
-    }
+    // REGLA ESTRICTA 2: No auto-generar códigos al cambiar de carrera o grado.
+    // El usuario asigna o deja en blanco el código manualmente.
 }
 
 function renderPensumCatalogTable(searchQuery = '') {
@@ -256472,6 +256486,39 @@ function renderPensumCatalogTable(searchQuery = '') {
         const courseCode = (p.code || '').trim().toUpperCase() || 'S/C';
         const areaBadge = p.area ? `<div style="font-size:0.75rem; color:#64748b; margin-top:2px;"><i class="fa-solid fa-tag"></i> ${p.area}</div>` : '';
 
+        // Sincronización bidireccional: Obtener los docentes titulares asignados a esta materia en tiempo real
+        const pGradeRaw = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
+        let pGradeNum = 0;
+        if (pGradeRaw.includes('6') || pGradeRaw.includes('SEXTO') || pGradeRaw.includes('6TO')) pGradeNum = 6;
+        else if (pGradeRaw.includes('5') || pGradeRaw.includes('QUINTO') || pGradeRaw.includes('5TO')) pGradeNum = 5;
+        else if (pGradeRaw.includes('4') || pGradeRaw.includes('CUARTO') || pGradeRaw.includes('4TO')) pGradeNum = 4;
+
+        const matchingAssignments = (STATE.pensum || []).filter(a => {
+            const aGradeRaw = `${a.grade || ''} ${a.gradeCode || ''}`.toUpperCase();
+            let aGradeNum = 0;
+            if (aGradeRaw.includes('6') || aGradeRaw.includes('SEXTO') || aGradeRaw.includes('6TO')) aGradeNum = 6;
+            else if (aGradeRaw.includes('5') || aGradeRaw.includes('QUINTO') || aGradeRaw.includes('5TO')) aGradeNum = 5;
+            else if (aGradeRaw.includes('4') || aGradeRaw.includes('CUARTO') || aGradeRaw.includes('4TO')) aGradeNum = 4;
+
+            const isSameGrade = (pGradeNum > 0 && aGradeNum > 0) ? (pGradeNum === aGradeNum) : true;
+            const aSub = (a.subject || a.name || '').trim().toLowerCase();
+            const pSub = (p.name || p.subject || '').trim().toLowerCase();
+            return isSameGrade && (aSub === pSub || aSub.includes(pSub) || pSub.includes(aSub));
+        });
+
+        let teachersDisplay = '';
+        if (matchingAssignments.length > 0) {
+            teachersDisplay = matchingAssignments.map(a => 
+                `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-size:0.75rem; margin:2px; display:inline-flex; align-items:center; gap:4px;" title="Catedrático: ${a.teacher} (Sección ${a.section || 'General'})"><i class="fa-solid fa-user-tie"></i> ${a.teacher} <strong>(${a.section || 'A'})</strong></span>`
+            ).join(' ');
+        } else {
+            teachersDisplay = `<span class="badge badge-warning" style="font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-clock"></i> Sin docente asignado</span>`;
+        }
+
+        const courseCodeBadge = courseCode === 'S/C' || !courseCode
+            ? `<span class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1; font-size:0.78rem;">Sin Código</span>`
+            : `<span class="badge" style="font-family:'Courier New',Courier,monospace; font-weight:800; font-size:0.84rem; background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; padding:4px 8px; letter-spacing:0.5px; border-radius:6px; display:inline-block;" title="Código oficial del curso: ${courseCode}"><i class="fa-solid fa-barcode" style="font-size:0.75rem; margin-right:4px; opacity:0.75;"></i>${courseCode}</span>`;
+
         return `
         <tr>
             <td style="text-align:center;">
@@ -256484,9 +256531,7 @@ function renderPensumCatalogTable(searchQuery = '') {
                 </div>
             </td>
             <td style="text-align:center;">
-                <span class="badge" style="font-family:'Courier New',Courier,monospace; font-weight:800; font-size:0.84rem; background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; padding:4px 8px; letter-spacing:0.5px; border-radius:6px; display:inline-block;" title="Código oficial del curso: ${courseCode}">
-                    <i class="fa-solid fa-barcode" style="font-size:0.75rem; margin-right:4px; opacity:0.75;"></i>${courseCode}
-                </span>
+                ${courseCodeBadge}
             </td>
             <td><span class="badge badge-info" style="font-size:0.8rem;">${p.career || 'Perito Contador'}</span></td>
             <td><span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700; border:1px solid #cbd5e1; font-size:0.82rem;">${p.grade}</span></td>
@@ -256495,8 +256540,8 @@ function renderPensumCatalogTable(searchQuery = '') {
                 ${areaBadge}
             </td>
             <td style="text-align:center; font-weight:700; color:#0f172a;">${periodsVal} períodos/sem</td>
-            <td style="text-align:center;">
-                <span class="badge badge-success" style="font-size:0.75rem;"><i class="fa-solid fa-check-double"></i> Grado General (Sec. A, B, C, D)</span>
+            <td>
+                ${teachersDisplay}
             </td>
             <td style="text-align:center; white-space:nowrap;">
                 <button class="btn btn-sm btn-outline-primary" onclick="openEditPensumSubjectModal('${p.id}')" title="Editar materia" style="padding:3px 8px; margin-right:4px;"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -256507,21 +256552,39 @@ function renderPensumCatalogTable(searchQuery = '') {
     }).join('');
 }
 
-function deletePensumSubject(subjectId) {
+async function deletePensumSubject(subjectId) {
     if (!checkEnrolmentPermissions()) return;
     const s = (STATE.pensumCatalog || []).find(x => x.id === subjectId);
     if (!s) return;
 
-    if (!confirm(`¿Está seguro de eliminar la asignatura "${s.name || s.subject}" del pensum?`)) return;
+    if (!confirm(`¿Está seguro de eliminar la asignatura "${s.name || s.subject}" del pensum oficial?`)) return;
 
+    const prevCatalog = [...STATE.pensumCatalog];
     STATE.pensumCatalog = (STATE.pensumCatalog || []).filter(x => x.id !== subjectId);
-    saveStateToLocalStorage();
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog);
+
+    try {
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            ok = await EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog);
+        } else if (typeof pushStateToFirebaseCloud === 'function') {
+            ok = await pushStateToFirebaseCloud(false);
+        } else {
+            ok = true;
+        }
+
+        if (!ok) throw new Error("Firebase no confirmó la eliminación de la asignatura.");
+
+        saveStateToLocalStorage();
+        renderPensumCatalogTable();
+        if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+        if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+        if (typeof renderDashboard === 'function') renderDashboard();
+        showToast('Asignatura eliminada del pensum y confirmada en Firebase.', 'success');
+    } catch(err) {
+        STATE.pensumCatalog = prevCatalog;
+        console.error("❌ Error al eliminar asignatura en Firebase:", err);
+        showToast(`Error al eliminar en Firebase: ${err.message || err}`, 'danger');
     }
-    renderPensumCatalogTable();
-    if (typeof renderDashboard === 'function') renderDashboard();
-    showToast('Asignatura eliminada del pensum exitosamente.', 'success');
 }
 
 // Bloque heredado reemplazado por controlador moderno de asignaciones
@@ -257083,7 +257146,7 @@ function closePensumSubjectModal() {
     }
 }
 
-function savePensumSubjectForm(e) {
+async function savePensumSubjectForm(e) {
     if (e && e.preventDefault) e.preventDefault();
     if (!checkEnrolmentPermissions()) return;
 
@@ -257096,7 +257159,8 @@ function savePensumSubjectForm(e) {
     const hoursInput = document.getElementById('pensumSubjectFormHours');
 
     const id = idInput ? idInput.value : '';
-    let code = codeInput ? codeInput.value.trim().toUpperCase() : '';
+    // Código definido explícitamente o vacío
+    const code = codeInput ? codeInput.value.trim().toUpperCase() : '';
     const name = nameInput ? nameInput.value.trim() : '';
     const career = careerSelect ? careerSelect.value : '';
     const grade = gradeSelect ? gradeSelect.value : '';
@@ -257104,65 +257168,96 @@ function savePensumSubjectForm(e) {
     const hours = hoursInput ? parseInt(hoursInput.value) || 4 : 4;
 
     if (!name || !career || !grade) {
-        showToast('Complete todos los campos obligatorios.', 'warning');
+        showToast('Complete todos los campos obligatorios (Nombre, Carrera y Grado).', 'warning');
         return;
-    }
-
-    if (!code) {
-        code = suggestNextPensumCourseCode(career, grade);
     }
 
     if (!Array.isArray(STATE.pensumCatalog)) STATE.pensumCatalog = [];
 
-    if (id) {
-        const idx = STATE.pensumCatalog.findIndex(x => x.id === id);
-        if (idx !== -1) {
-            STATE.pensumCatalog[idx].code = code;
-            STATE.pensumCatalog[idx].name = name;
-            STATE.pensumCatalog[idx].subject = name;
-            STATE.pensumCatalog[idx].career = career;
-            STATE.pensumCatalog[idx].grade = grade;
-            STATE.pensumCatalog[idx].order = order;
-            STATE.pensumCatalog[idx].sortOrder = order;
-            STATE.pensumCatalog[idx].hours = hours;
-            STATE.pensumCatalog[idx].periods = hours;
-            STATE.pensumCatalog[idx].weeklyHours = hours;
+    const submitBtn = document.getElementById('pensumSubjectSubmitBtn');
+    const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Guardar en Pensum';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    }
+
+    try {
+        if (id) {
+            const idx = STATE.pensumCatalog.findIndex(x => x.id === id);
+            if (idx !== -1) {
+                STATE.pensumCatalog[idx].code = code;
+                STATE.pensumCatalog[idx].name = name;
+                STATE.pensumCatalog[idx].subject = name;
+                STATE.pensumCatalog[idx].career = career;
+                STATE.pensumCatalog[idx].grade = grade;
+                STATE.pensumCatalog[idx].order = order;
+                STATE.pensumCatalog[idx].sortOrder = order;
+                STATE.pensumCatalog[idx].hours = hours;
+                STATE.pensumCatalog[idx].periods = hours;
+                STATE.pensumCatalog[idx].weeklyHours = hours;
+            }
+        } else {
+            const customId = code ? ('pen-' + code.toLowerCase().replace(/[^a-z0-9]/g, '')) : ('pen-' + Date.now() + '-' + Math.floor(Math.random()*1000));
+            STATE.pensumCatalog.push({
+                id: customId,
+                code: code,
+                name: name,
+                subject: name,
+                career: career,
+                grade: grade,
+                order: order,
+                sortOrder: order,
+                hours: hours,
+                periods: hours,
+                weeklyHours: hours
+            });
         }
-    } else {
-        STATE.pensumCatalog.push({
-            id: 'pen-' + Date.now() + '-' + Math.floor(Math.random()*1000),
-            code: code,
-            name: name,
-            subject: name,
-            career: career,
-            grade: grade,
-            order: order,
-            sortOrder: order,
-            hours: hours,
-            periods: hours,
-            weeklyHours: hours
+
+        // Cascada en STATE.pensum (clases asignadas a docentes)
+        (STATE.pensum || []).forEach(asg => {
+            if ((asg.subject === name || asg.name === name) && (asg.grade === grade || asg.gradeCode === grade)) {
+                asg.code = code;
+                asg.hours = hours;
+                asg.periodsPerWeek = hours;
+            }
         });
-    }
 
-    // Sincronizar en STATE.pensum (clases asignadas a docentes)
-    (STATE.pensum || []).forEach(asg => {
-        if ((asg.subject === name || asg.name === name) && (asg.grade === grade || asg.gradeCode === grade)) {
-            asg.code = code;
-            asg.hours = hours;
-            asg.periodsPerWeek = hours;
+        // CONFIRMACIÓN DE ESCRITURA EN FIREBASE CON ASYNC/AWAIT
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            const [resCat, resPen] = await Promise.all([
+                EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog),
+                EnccoCloudSync.syncNode('pensum', STATE.pensum)
+            ]);
+            ok = resCat && resPen;
+        } else if (typeof pushStateToFirebaseCloud === 'function') {
+            ok = await pushStateToFirebaseCloud(false);
+        } else {
+            ok = true;
         }
-    });
 
-    saveStateToLocalStorage();
-    closePensumSubjectModal();
-    renderPensumCatalogTable();
-    if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
-    if (typeof renderDashboard === 'function') renderDashboard();
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog);
-        EnccoCloudSync.syncNode('pensum', STATE.pensum);
+        if (!ok) {
+            throw new Error("El servidor de Google Firebase no confirmó la escritura de la asignatura.");
+        }
+
+        saveStateToLocalStorage();
+        closePensumSubjectModal();
+        renderPensumCatalogTable();
+        if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+        if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+        if (typeof renderDashboard === 'function') renderDashboard();
+
+        const codeLabel = code ? ` [${code}]` : '';
+        showToast(`Asignatura "${name}"${codeLabel} guardada y confirmada en Firebase con éxito.`, 'success');
+    } catch(err) {
+        console.error("❌ [Firebase Error] Falló el guardado de asignatura:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origBtnHtml;
+        }
     }
-    showToast(`Asignatura "${name}" [${code}] guardada en el pensum exitosamente.`, 'success');
 }
 
 function updatePensumCatalogSelects() {
@@ -258179,7 +258274,7 @@ function toggleAllAssignmentSections() {
     });
 }
 
-function saveClassAssignmentForm(e) {
+async function saveClassAssignmentForm(e) {
     if (e && e.preventDefault) e.preventDefault();
     if (!checkEnrolmentPermissions()) return;
 
@@ -258231,66 +258326,96 @@ function saveClassAssignmentForm(e) {
 
     if (!Array.isArray(STATE.pensum)) STATE.pensum = [];
 
-    if (id) {
-        const a = STATE.pensum.find(x => x.id === id);
-        if (a) {
-            a.teacherId = teacherId;
-            a.teacher = teacherName;
-            a.grade = gradeName;
-            a.gradeCode = selectedSections[0].code;
-            a.section = selectedSections[0].section;
-            a.subject = fullSubjectName;
-            a.name = fullSubjectName;
-            a.periodsPerWeek = periods;
-            a.hours = periods;
-            if (assignedCourseCode) a.code = assignedCourseCode;
-        }
-    } else {
-        selectedSections.forEach(sec => {
-            const existingIdx = STATE.pensum.findIndex(x => 
-                (x.grade === gradeName || x.gradeCode === sec.code) &&
-                x.section === sec.section &&
-                getFullOfficialSubjectName(x.subject || x.name, gGradeNum) === fullSubjectName
-            );
+    const submitBtn = document.getElementById('classAssignmentSubmitBtn');
+    const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Guardar Asignación';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Confirmando en Firebase...';
+    }
 
-            if (existingIdx !== -1) {
-                STATE.pensum[existingIdx].teacherId = teacherId;
-                STATE.pensum[existingIdx].teacher = teacherName;
-                STATE.pensum[existingIdx].periodsPerWeek = periods;
-                STATE.pensum[existingIdx].hours = periods;
-                STATE.pensum[existingIdx].subject = fullSubjectName;
-                STATE.pensum[existingIdx].name = fullSubjectName;
-                if (assignedCourseCode) STATE.pensum[existingIdx].code = assignedCourseCode;
-            } else {
-                STATE.pensum.push({
-                    id: 'asg-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
-                    code: assignedCourseCode,
-                    teacherId: teacherId,
-                    teacher: teacherName,
-                    grade: gradeName,
-                    gradeCode: sec.code,
-                    section: sec.section,
-                    subject: fullSubjectName,
-                    name: fullSubjectName,
-                    career: 'Perito Contador',
-                    periodsPerWeek: periods,
-                    hours: periods
-                });
+    try {
+        if (id) {
+            const a = STATE.pensum.find(x => x.id === id);
+            if (a) {
+                a.teacherId = teacherId;
+                a.teacher = teacherName;
+                a.grade = gradeName;
+                a.gradeCode = selectedSections[0].code;
+                a.section = selectedSections[0].section;
+                a.subject = fullSubjectName;
+                a.name = fullSubjectName;
+                a.periodsPerWeek = periods;
+                a.hours = periods;
+                if (assignedCourseCode) a.code = assignedCourseCode;
             }
-        });
-    }
+        } else {
+            selectedSections.forEach(sec => {
+                const existingIdx = STATE.pensum.findIndex(x => 
+                    (x.grade === gradeName || x.gradeCode === sec.code) &&
+                    x.section === sec.section &&
+                    getFullOfficialSubjectName(x.subject || x.name, gGradeNum) === fullSubjectName
+                );
 
-    closeClassAssignmentModal();
-    if (typeof synchronizeGlobalDynamicUI === 'function') {
-        synchronizeGlobalDynamicUI();
-    } else {
+                if (existingIdx !== -1) {
+                    STATE.pensum[existingIdx].teacherId = teacherId;
+                    STATE.pensum[existingIdx].teacher = teacherName;
+                    STATE.pensum[existingIdx].periodsPerWeek = periods;
+                    STATE.pensum[existingIdx].hours = periods;
+                    STATE.pensum[existingIdx].subject = fullSubjectName;
+                    STATE.pensum[existingIdx].name = fullSubjectName;
+                    if (assignedCourseCode) STATE.pensum[existingIdx].code = assignedCourseCode;
+                } else {
+                    STATE.pensum.push({
+                        id: 'asg-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+                        code: assignedCourseCode,
+                        teacherId: teacherId,
+                        teacher: teacherName,
+                        grade: gradeName,
+                        gradeCode: sec.code,
+                        section: sec.section,
+                        subject: fullSubjectName,
+                        name: fullSubjectName,
+                        career: 'Perito Contador',
+                        periodsPerWeek: periods,
+                        hours: periods
+                    });
+                }
+            });
+        }
+
+        // CONFIRMACIÓN DE ESCRITURA EN FIREBASE CON ASYNC/AWAIT
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            ok = await EnccoCloudSync.syncNode('pensum', STATE.pensum);
+        } else if (typeof pushStateToFirebaseCloud === 'function') {
+            ok = await pushStateToFirebaseCloud(false);
+        } else {
+            ok = true;
+        }
+
+        if (!ok) {
+            throw new Error("El servidor de Firebase no confirmó la asignación de clase.");
+        }
+
         saveStateToLocalStorage();
+        closeClassAssignmentModal();
+
+        // Actualización bidireccional reactiva en tiempo real
         renderAssignmentsTable();
+        if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+        if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+        if (typeof renderUsersTable === 'function') renderUsersTable();
+
+        showToast(`Asignación de "${fullSubjectName}" a ${teacherName} confirmada en Firebase.`, 'success');
+    } catch(err) {
+        console.error("❌ Error al guardar asignación en Firebase:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origBtnHtml;
+        }
     }
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        EnccoCloudSync.syncNode('pensum', STATE.pensum);
-    }
-    showToast(`Asignación de "${fullSubjectName}" a ${teacherName} guardada y sincronizada en tiempo real.`, 'success');
 }
 
 function openEditClassAssignmentModal(asgId) {
@@ -258352,24 +258477,38 @@ function openEditClassAssignmentModal(asgId) {
     }
 }
 
-function deleteClassAssignment(asgId) {
+async function deleteClassAssignment(asgId) {
     if (!checkEnrolmentPermissions()) return;
     const a = (STATE.pensum || []).find(x => x.id === asgId);
     if (!a) return;
 
-    if (!confirm(`¿Está seguro de eliminar la asignación de "${a.subject || a.name}" al docente ${a.teacher}?`)) return;
+    if (!confirm(`¿Está seguro de eliminar la asignación de la clase "${a.subject || a.name}" al docente ${a.teacher}?`)) return;
 
+    const prevPensum = [...STATE.pensum];
     STATE.pensum = (STATE.pensum || []).filter(x => x.id !== asgId);
-    if (typeof synchronizeGlobalDynamicUI === 'function') {
-        synchronizeGlobalDynamicUI();
-    } else {
+
+    try {
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            ok = await EnccoCloudSync.syncNode('pensum', STATE.pensum);
+        } else if (typeof pushStateToFirebaseCloud === 'function') {
+            ok = await pushStateToFirebaseCloud(false);
+        } else {
+            ok = true;
+        }
+
+        if (!ok) throw new Error("Firebase no confirmó la eliminación de la cátedra.");
+
         saveStateToLocalStorage();
         renderAssignmentsTable();
+        if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+        if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+        showToast('Asignación de cátedra eliminada y confirmada en Firebase.', 'success');
+    } catch(err) {
+        STATE.pensum = prevPensum;
+        console.error("❌ Error al eliminar asignación en Firebase:", err);
+        showToast(`Error al eliminar en Firebase: ${err.message || err}`, 'danger');
     }
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        EnccoCloudSync.syncNode('pensum', STATE.pensum);
-    }
-    showToast('Asignación de cátedra eliminada exitosamente.', 'success');
 }
 
 function filterAssignmentsTable(searchQuery = '') {
@@ -258546,3 +258685,78 @@ window.filterPensumCatalogTable = filterPensumCatalogTable;
 window.suggestNextPensumCourseCode = suggestNextPensumCourseCode;
 window.normalizePensumCatalogCodes = normalizePensumCatalogCodes;
 window.onPensumSubjectCareerOrGradeChange = onPensumSubjectCareerOrGradeChange;
+
+// ======================================================================
+// ⚡ ESCUCHADORES BIDIRECCIONALES FIRESTORE ON-SNAPSHOT (EN MEMORIA RAM)
+// ======================================================================
+function initFirestoreModularLiveListeners() {
+    if (typeof window === 'undefined') return;
+    if (!window.FirebaseModular || !window.FirebaseModular.db) return;
+
+    try {
+        const { db, collection, onSnapshot } = window.FirebaseModular;
+        console.log("⚡ [Firestore onSnapshot] Activando sincronización bidireccional en tiempo real (Docentes y Pensum)...");
+
+        // 1. Escuchar asignaciones de cátedras ('pensum' y 'clases')
+        try {
+            onSnapshot(collection(db, 'pensum'), (snap) => {
+                if (!snap || snap.empty) return;
+                if (typeof _isSavingLocally !== 'undefined' && _isSavingLocally) return;
+                const items = [];
+                snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+                if (items.length > 0) {
+                    STATE.pensum = items;
+                    if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+                    if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+                    if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+                    if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+                }
+            }, err => console.warn('Aviso en onSnapshot pensum:', err));
+        } catch(e) {}
+
+        // 2. Escuchar catálogo de asignaturas del pensum ('pensumCatalog')
+        try {
+            onSnapshot(collection(db, 'pensumCatalog'), (snap) => {
+                if (!snap || snap.empty) return;
+                if (typeof _isSavingLocally !== 'undefined' && _isSavingLocally) return;
+                const items = [];
+                snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+                if (items.length > 0) {
+                    STATE.pensumCatalog = items;
+                    if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+                    if (typeof updatePensumCatalogSelects === 'function') updatePensumCatalogSelects();
+                    if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+                    if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+                }
+            }, err => console.warn('Aviso en onSnapshot pensumCatalog:', err));
+        } catch(e) {}
+
+        // 3. Escuchar docentes y usuarios ('users' / 'docentes')
+        try {
+            onSnapshot(collection(db, 'docentes'), (snap) => {
+                if (!snap || snap.empty) return;
+                if (typeof _isSavingLocally !== 'undefined' && _isSavingLocally) return;
+                snap.forEach(d => {
+                    const data = d.data();
+                    const idx = (STATE.users || []).findIndex(u => u.id === d.id);
+                    if (idx !== -1) {
+                        STATE.users[idx] = { ...STATE.users[idx], ...data };
+                    }
+                });
+                if (typeof renderUsersTable === 'function') renderUsersTable();
+                if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+                if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+            }, err => console.warn('Aviso en onSnapshot docentes:', err));
+        } catch(e) {}
+    } catch(err) {
+        console.warn('Aviso al configurar Firestore onSnapshot:', err);
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.initFirestoreModularLiveListeners = initFirestoreModularLiveListeners;
+    window.addEventListener('FirebaseModularReady', initFirestoreModularLiveListeners);
+    if (window.FirebaseModular && window.FirebaseModular.db) {
+        initFirestoreModularLiveListeners();
+    }
+}
