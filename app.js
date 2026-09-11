@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.09.v186_mobile_lifecycle';
+const ENCCO_BUILD_VERSION = '2026.09.10.v187_firebase_realtime_truth';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -1793,58 +1793,62 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
         disciplineReports: STATE.disciplineReports,
         attendanceRecords: STATE.attendanceRecords || {},
         dismissedAlerts: STATE.dismissedAlerts || {},
-        rolesConfig: STATE.rolesConfig || (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : []),
-        schoolHeader: STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {}),
+        rolesConfig: STATE.rolesConfig || (typeof initDefaultRolesConfig === "function" ? initDefaultRolesConfig() : []),
+        schoolHeader: STATE.schoolHeader || (typeof getInitialData === "function" ? getInitialData().schoolHeader : {}),
         lastModified: STATE.lastModified || Date.now()
     };
 
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-        updateDbSyncStatus('disconnected');
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        updateDbSyncStatus("disconnected", "⚠️ Sin conexión a Internet");
         return false;
     }
 
     if (!firebaseUrl) {
-        updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
-        return true;
+        console.warn("⚠️ [Firebase] No se encontró URL configurada de Firebase RTDB.");
+        updateDbSyncStatus("error", "⚠️ URL de Firebase no configurada");
+        return false;
     }
 
     const endpoint = `${firebaseUrl}/encc_school_state.json`;
-    // Encabezados estándar para no generar preflight CORS inválido
     const headers = {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json"
     };
 
     try {
         const response = await fetch(endpoint, {
-            method: 'PUT',
+            method: "PUT",
             headers: headers,
             body: JSON.stringify(cleanPayload)
         });
 
         if (response.ok) {
-            if (typeof EnccoDDoSProtection !== 'undefined' && EnccoDDoSProtection.recordSuccess) {
+            if (typeof EnccoDDoSProtection !== "undefined" && EnccoDDoSProtection.recordSuccess) {
                 EnccoDDoSProtection.recordSuccess();
             }
             if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.clear();
-            updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
-            if (showToastNotification && typeof showToast === 'function') {
+            updateDbSyncStatus("synced", "⚡ Tiempo Real: Sincronizado (0ms)");
+            if (showToastNotification && typeof showToast === "function") {
                 showToast("Sincronizado con Google Firebase exitosamente.", "success");
             }
             return true;
         } else {
-            console.warn("Firebase PUT status:", response.status);
-            updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
-            return true;
+            console.error("❌ [Firebase Error] Falló guardado en la nube. HTTP Status:", response.status, response.statusText);
+            const errBody = await response.text().catch(() => "");
+            console.error("Detalle de respuesta de Firebase:", errBody);
+            updateDbSyncStatus("error", `⚠️ Error Firebase (${response.status})`);
+            if (showToastNotification && typeof showToast === "function") {
+                showToast(`Error de permisos o red en Firebase (${response.status}).`, "danger");
+            }
+            return false;
         }
     } catch(err) {
-        console.warn("Aviso en sincronización en la nube:", err);
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-            updateDbSyncStatus('disconnected');
-            return false;
+        console.error("❌ [Firebase Excepción] Error al conectar con Firebase:", err);
+        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+            updateDbSyncStatus("disconnected", "⚠️ Sin conexión a Internet");
         } else {
-            updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
-            return true;
+            updateDbSyncStatus("error", "⚠️ Error de red con Firebase");
         }
+        return false;
     }
 }
 window.pushStateToFirebaseCloud = pushStateToFirebaseCloud;
@@ -4721,23 +4725,52 @@ window.deduplicateGradesCollection = deduplicateGradesCollection;
 
 function purifySchoolStructure() {
     STATE.careers = [
-        { id: 'car-1', name: 'Perito Contador', code: 'PERITO_CONTADOR', duration: '3 Años (4to, 5to y 6to)', status: 'Activa' }
+        { id: "car-1", name: "Perito Contador", code: "PERITO_CONTADOR", duration: "3 Años (4to, 5to y 6to)", status: "Activa" }
     ];
 
+    const defaultGuides = {
+        "grd-4a": { teacher: "Nehemias Yalil Salguero", id: "usr-doc-01" },
+        "grd-4b": { teacher: "Damaris Violeta Escobar Contreras de Salguero", id: "usr-doc-13" },
+        "grd-4c": { teacher: "Lilian Alas Grijalva", id: "usr-doc-06" },
+        "grd-4d": { teacher: "Sandra Paola Bernal Yanes de Argueta", id: "usr-doc-17" },
+        "grd-5a": { teacher: "Williams Esmely Gudiel Paredes", id: "usr-doc-04" },
+        "grd-5b": { teacher: "Elda Argentina López de Valdez", id: "usr-doc-14" },
+        "grd-5c": { teacher: "Héctor Noé Linares", id: "usr-doc-10" },
+        "grd-5d": { teacher: "Milvia Aracely Jacobo Escobar", id: "usr-doc-18" },
+        "grd-6a": { teacher: "Carlos Augusto Juárez Alvarez", id: "usr-doc-05" },
+        "grd-6b": { teacher: "Nery Benjamín Galvez Ramos", id: "usr-doc-07" },
+        "grd-6c": { teacher: "Aleida Maribel Escobar de Palma", id: "usr-doc-02" },
+        "grd-6d": { teacher: "Wilder Porfirio Pérez López", id: "usr-doc-11" }
+    };
+    const existingMap = new Map();
+    if (Array.isArray(STATE.gradesList)) {
+        STATE.gradesList.forEach(g => {
+            if (g && g.id) existingMap.set(g.id, { guideTeacher: g.guideTeacher, guideTeacherId: g.guideTeacherId });
+        });
+    }
+
     const officialGrades = [
-        { id: 'grd-4a', code: '4to A', name: '4to Perito Contador', section: 'Sección A', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-4b', code: '4to B', name: '4to Perito Contador', section: 'Sección B', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-4c', code: '4to C', name: '4to Perito Contador', section: 'Sección C', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-4d', code: '4to D', name: '4to Perito Contador', section: 'Sección D', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-5a', code: '5to A', name: '5to Perito Contador', section: 'Sección A', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-5b', code: '5to B', name: '5to Perito Contador', section: 'Sección B', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-5c', code: '5to C', name: '5to Perito Contador', section: 'Sección C', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-5d', code: '5to D', name: '5to Perito Contador', section: 'Sección D', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-6a', code: '6to A', name: '6to Perito Contador', section: 'Sección A', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-6b', code: '6to B', name: '6to Perito Contador', section: 'Sección B', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-6c', code: '6to C', name: '6to Perito Contador', section: 'Sección C', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-6d', code: '6to D', name: '6to Perito Contador', section: 'Sección D', career: 'Perito Contador', shift: 'Matutina' }
-    ];
+        { id: "grd-4a", code: "4to A", name: "4to Perito Contador", section: "Sección A", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-4b", code: "4to B", name: "4to Perito Contador", section: "Sección B", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-4c", code: "4to C", name: "4to Perito Contador", section: "Sección C", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-4d", code: "4to D", name: "4to Perito Contador", section: "Sección D", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-5a", code: "5to A", name: "5to Perito Contador", section: "Sección A", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-5b", code: "5to B", name: "5to Perito Contador", section: "Sección B", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-5c", code: "5to C", name: "5to Perito Contador", section: "Sección C", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-5d", code: "5to D", name: "5to Perito Contador", section: "Sección D", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-6a", code: "6to A", name: "6to Perito Contador", section: "Sección A", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-6b", code: "6to B", name: "6to Perito Contador", section: "Sección B", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-6c", code: "6to C", name: "6to Perito Contador", section: "Sección C", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-6d", code: "6to D", name: "6to Perito Contador", section: "Sección D", career: "Perito Contador", shift: "Matutina" }
+    ].map(g => {
+        const ex = existingMap.get(g.id);
+        const def = defaultGuides[g.id] || {};
+        return {
+            ...g,
+            guideTeacher: (ex && ex.guideTeacher) ? ex.guideTeacher : (def.teacher || ""),
+            guideTeacherId: (ex && ex.guideTeacherId) ? ex.guideTeacherId : (def.id || "")
+        };
+    });
 
     STATE.gradesList = officialGrades;
 
@@ -4745,7 +4778,7 @@ function purifySchoolStructure() {
         STATE.students = deduplicateStudentsCollection(STATE.students);
     }
     if (!STATE.students || STATE.students.length === 0) {
-        STATE.students = (typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : [];
+        STATE.students = (typeof OFFICIAL_SIRE_412_STUDENTS !== "undefined") ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : [];
     }
 
     if (Array.isArray(STATE.users)) {
@@ -227280,42 +227313,68 @@ function deduplicateGradesCollection(grades) {
 }
 
 function purifySchoolStructure() {
-    // 1. Carrera única: Perito Contador
     STATE.careers = [
-        { id: 'car-1', name: 'Perito Contador', code: 'PERITO_CONTADOR', duration: '3 Años (4to, 5to y 6to)', status: 'Activa' }
+        { id: "car-1", name: "Perito Contador", code: "PERITO_CONTADOR", duration: "3 Años (4to, 5to y 6to)", status: "Activa" }
     ];
 
-    // 2. Grados oficiales: 12 Secciones exactas de Perito Contador
+    const defaultGuides = {
+        "grd-4a": { teacher: "Nehemias Yalil Salguero", id: "usr-doc-01" },
+        "grd-4b": { teacher: "Damaris Violeta Escobar Contreras de Salguero", id: "usr-doc-13" },
+        "grd-4c": { teacher: "Lilian Alas Grijalva", id: "usr-doc-06" },
+        "grd-4d": { teacher: "Sandra Paola Bernal Yanes de Argueta", id: "usr-doc-17" },
+        "grd-5a": { teacher: "Williams Esmely Gudiel Paredes", id: "usr-doc-04" },
+        "grd-5b": { teacher: "Elda Argentina López de Valdez", id: "usr-doc-14" },
+        "grd-5c": { teacher: "Héctor Noé Linares", id: "usr-doc-10" },
+        "grd-5d": { teacher: "Milvia Aracely Jacobo Escobar", id: "usr-doc-18" },
+        "grd-6a": { teacher: "Carlos Augusto Juárez Alvarez", id: "usr-doc-05" },
+        "grd-6b": { teacher: "Nery Benjamín Galvez Ramos", id: "usr-doc-07" },
+        "grd-6c": { teacher: "Aleida Maribel Escobar de Palma", id: "usr-doc-02" },
+        "grd-6d": { teacher: "Wilder Porfirio Pérez López", id: "usr-doc-11" }
+    };
+    const existingMap = new Map();
+    if (Array.isArray(STATE.gradesList)) {
+        STATE.gradesList.forEach(g => {
+            if (g && g.id) existingMap.set(g.id, { guideTeacher: g.guideTeacher, guideTeacherId: g.guideTeacherId });
+        });
+    }
+
     const officialGrades = [
-        { id: 'grd-4a', code: '4to A', name: '4to Perito Contador', section: 'Sección A', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-4b', code: '4to B', name: '4to Perito Contador', section: 'Sección B', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-4c', code: '4to C', name: '4to Perito Contador', section: 'Sección C', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-4d', code: '4to D', name: '4to Perito Contador', section: 'Sección D', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-5a', code: '5to A', name: '5to Perito Contador', section: 'Sección A', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-5b', code: '5to B', name: '5to Perito Contador', section: 'Sección B', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-5c', code: '5to C', name: '5to Perito Contador', section: 'Sección C', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-5d', code: '5to D', name: '5to Perito Contador', section: 'Sección D', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-6a', code: '6to A', name: '6to Perito Contador', section: 'Sección A', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-6b', code: '6to B', name: '6to Perito Contador', section: 'Sección B', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-6c', code: '6to C', name: '6to Perito Contador', section: 'Sección C', career: 'Perito Contador', shift: 'Matutina' },
-        { id: 'grd-6d', code: '6to D', name: '6to Perito Contador', section: 'Sección D', career: 'Perito Contador', shift: 'Matutina' }
-    ];
+        { id: "grd-4a", code: "4to A", name: "4to Perito Contador", section: "Sección A", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-4b", code: "4to B", name: "4to Perito Contador", section: "Sección B", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-4c", code: "4to C", name: "4to Perito Contador", section: "Sección C", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-4d", code: "4to D", name: "4to Perito Contador", section: "Sección D", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-5a", code: "5to A", name: "5to Perito Contador", section: "Sección A", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-5b", code: "5to B", name: "5to Perito Contador", section: "Sección B", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-5c", code: "5to C", name: "5to Perito Contador", section: "Sección C", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-5d", code: "5to D", name: "5to Perito Contador", section: "Sección D", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-6a", code: "6to A", name: "6to Perito Contador", section: "Sección A", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-6b", code: "6to B", name: "6to Perito Contador", section: "Sección B", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-6c", code: "6to C", name: "6to Perito Contador", section: "Sección C", career: "Perito Contador", shift: "Matutina" },
+        { id: "grd-6d", code: "6to D", name: "6to Perito Contador", section: "Sección D", career: "Perito Contador", shift: "Matutina" }
+    ].map(g => {
+        const ex = existingMap.get(g.id);
+        const def = defaultGuides[g.id] || {};
+        return {
+            ...g,
+            guideTeacher: (ex && ex.guideTeacher) ? ex.guideTeacher : (def.teacher || ""),
+            guideTeacherId: (ex && ex.guideTeacherId) ? ex.guideTeacherId : (def.id || "")
+        };
+    });
 
     STATE.gradesList = officialGrades;
 
-    // 3. Deduplicar estudiantes
     if (Array.isArray(STATE.students)) {
         STATE.students = deduplicateStudentsCollection(STATE.students);
     }
     if (!STATE.students || STATE.students.length === 0) {
-        STATE.students = (typeof OFFICIAL_SIRE_412_STUDENTS !== 'undefined') ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : [];
+        STATE.students = (typeof OFFICIAL_SIRE_412_STUDENTS !== "undefined") ? JSON.parse(JSON.stringify(OFFICIAL_SIRE_412_STUDENTS)) : [];
     }
 
-    // 4. Deduplicar usuarios
     if (Array.isArray(STATE.users)) {
         STATE.users = deduplicateUsersCollection(STATE.users);
     }
 }
+window.purifySchoolStructure = purifySchoolStructure;
 
 
 function getInitialData() {
@@ -240003,43 +240062,74 @@ window.addEventListener('hashchange', function() {
 // 🎓 SINCRONIZACIÓN Y RECONCILIACIÓN OFICIAL DE ASIGNACIONES DOCENTES (CICLO 2026)
 // ==========================================================================
 function ensureOfficialPensumAssignments() {
-    if (!Array.isArray(STATE.pensum) || STATE.pensum.length === 0) {
-        if (typeof getInitialData === 'function' && Array.isArray(getInitialData().pensum)) {
-            STATE.pensum = JSON.parse(JSON.stringify(getInitialData().pensum));
-        }
-        return;
-    }
-
-    // Mapa de asignaciones canónicas oficiales 2026
-    const CANONICAL_MAP = [{"grade":"4to Perito Contador","section":"Sección A","subject":"Economía","teacher":"Lic. Williams Esmely Gudiel Paredes","teacherId":"usr-doc-04"},{"grade":"4to Perito Contador","section":"Sección A","subject":"Matemática","teacher":"Lic. Roberto Alex Tobar Cermeño","teacherId":"usr-doc-03"},{"grade":"4to Perito Contador","section":"Sección A","subject":"Inglés Comercial I","teacher":"Lic. Gamaliel Uzias Medrano","teacherId":"usr-doc-09"},{"grade":"4to Perito Contador","section":"Sección A","subject":"Fundamentos de Derecho","teacher":"Lic.MA. Wilder Porfirio Pérez López","teacherId":"usr-doc-11"},{"grade":"4to Perito Contador","section":"Sección A","subject":"Computación I","teacher":"Licda. Sandra Julissa Arana Lucero","teacherId":"usr-doc-12"},{"grade":"4to Perito Contador","section":"Sección A","subject":"Contabilidad de Sociedades","teacher":"Lic.MA. Wilder Porfirio Pérez López","teacherId":"usr-doc-11"},{"grade":"4to Perito Contador","section":"Sección A","subject":"Caligrafía","teacher":"Licda. Maria Jannette Salguero Mellado","teacherId":"usr-doc-16"},{"grade":"4to Perito Contador","section":"Sección A","subject":"Administración y Organización de Empresas","teacher":"Lic. Damaris Violeta Escobar de Salguero Damaris","teacherId":"usr-doc-13"},{"grade":"4to Perito Contador","section":"Sección A","subject":"Redacción y Correspondencia Mercantil","teacher":"Lic. Damaris Violeta Escobar de Salguero Damaris","teacherId":"usr-doc-13"},{"grade":"4to Perito Contador","section":"Sección B","subject":"Economía","teacher":"Lic. Nery Benjamín Galvez Ramos","teacherId":"usr-doc-07"},{"grade":"4to Perito Contador","section":"Sección B","subject":"Inglés Comercial I","teacher":"Lic. Gamaliel Uzias Medrano","teacherId":"usr-doc-09"},{"grade":"4to Perito Contador","section":"Sección B","subject":"Matemática","teacher":"Lic. Roberto Alex Tobar Cermeño","teacherId":"usr-doc-03"},{"grade":"4to Perito Contador","section":"Sección B","subject":"Fundamentos de Derecho","teacher":"Lic.MA. Wilder Porfirio Pérez López","teacherId":"usr-doc-11"},{"grade":"4to Perito Contador","section":"Sección B","subject":"Computación I","teacher":"Licda. Sandra Julissa Arana Lucero","teacherId":"usr-doc-12"},{"grade":"4to Perito Contador","section":"Sección B","subject":"Caligrafía","teacher":"Lic. Damaris Violeta Escobar de Salguero Damaris","teacherId":"usr-doc-13"},{"grade":"4to Perito Contador","section":"Sección B","subject":"Administración y Organización de Empresas","teacher":"PEM. Lilian Alas Grijalva","teacherId":"usr-doc-06"},{"grade":"4to Perito Contador","section":"Sección B","subject":"Contabilidad de Sociedades","teacher":"Lic.MA. Wilder Porfirio Pérez López","teacherId":"usr-doc-11"},{"grade":"4to Perito Contador","section":"Sección B","subject":"Redacción y Correspondencia Mercantil","teacher":"Lic. Nery Benjamín Galvez Ramos","teacherId":"usr-doc-07"},{"grade":"4to Perito Contador","section":"Sección C","subject":"Administración y Organización de Empresas","teacher":"PEM. Lilian Alas Grijalva","teacherId":"usr-doc-06"},{"grade":"4to Perito Contador","section":"Sección C","subject":"Inglés Comercial I","teacher":"Lic. Gamaliel Uzias Medrano","teacherId":"usr-doc-09"},{"grade":"4to Perito Contador","section":"Sección C","subject":"Matemática","teacher":"Lic. Roberto Alex Tobar Cermeño","teacherId":"usr-doc-03"},{"grade":"4to Perito Contador","section":"Sección C","subject":"Fundamentos de Derecho","teacher":"Lic.MA. Wilder Porfirio Pérez López","teacherId":"usr-doc-11"},{"grade":"4to Perito Contador","section":"Sección C","subject":"Computación I","teacher":"Licda. Sandra Julissa Arana Lucero","teacherId":"usr-doc-12"},{"grade":"4to Perito Contador","section":"Sección C","subject":"Caligrafía","teacher":"Lic. Nery Benjamín Galvez Ramos","teacherId":"usr-doc-07"},{"grade":"4to Perito Contador","section":"Sección C","subject":"Contabilidad de Sociedades","teacher":"Lic.MA. Wilder Porfirio Pérez López","teacherId":"usr-doc-11"},{"grade":"4to Perito Contador","section":"Sección C","subject":"Redacción y Correspondencia Mercantil","teacher":"Lic. Damaris Violeta Escobar de Salguero Damaris","teacherId":"usr-doc-13"},{"grade":"4to Perito Contador","section":"Sección C","subject":"Economía","teacher":"PEM. Milvia Aracely Jacobo Escobar","teacherId":"usr-doc-18"},{"grade":"4to Perito Contador","section":"Sección D","subject":"Matemática","teacher":"Lic. Roberto Alex Tobar Cermeño","teacherId":"usr-doc-03"},{"grade":"4to Perito Contador","section":"Sección D","subject":"Redacción y Correspondencia Mercantil","teacher":"Lic. Nery Benjamín Galvez Ramos","teacherId":"usr-doc-07"},{"grade":"4to Perito Contador","section":"Sección D","subject":"Contabilidad de Sociedades","teacher":"Lic. Edwin Osvaldo López Recinos","teacherId":"usr-doc-08"},{"grade":"4to Perito Contador","section":"Sección D","subject":"Computación I","teacher":"Licda. Sandra Julissa Arana Lucero","teacherId":"usr-doc-12"},{"grade":"4to Perito Contador","section":"Sección D","subject":"Inglés Comercial I","teacher":"PEM. Elda Argentina López de Valdez","teacherId":"usr-doc-14"},{"grade":"4to Perito Contador","section":"Sección D","subject":"Economía","teacher":"Lic. Nery Benjamín Galvez Ramos","teacherId":"usr-doc-07"},{"grade":"4to Perito Contador","section":"Sección D","subject":"Caligrafía","teacher":"Licda. Maria Jannette Salguero Mellado","teacherId":"usr-doc-16"},{"grade":"4to Perito Contador","section":"Sección D","subject":"Administración y Organización de Empresas","teacher":"PEM. Lilian Alas Grijalva","teacherId":"usr-doc-06"},{"grade":"4to Perito Contador","section":"Sección D","subject":"Fundamentos de Derecho","teacher":"Licda. Sandra Paola Bernal Yanes de Argueta","teacherId":"usr-doc-17"},{"grade":"5to Perito Contador","section":"Sección A","subject":"Cálculo Mercantil y Financiero","teacher":"PEM. Nehemias Yalil Salguero","teacherId":"usr-doc-01"},{"grade":"5to Perito Contador","section":"Sección A","subject":"Contabilidad de Costos","teacher":"Lic. Héctor Noé Linares","teacherId":"usr-doc-10"},{"grade":"5to Perito Contador","section":"Sección A","subject":"Catalogación y Archivo","teacher":"Lic. Williams Esmely Gudiel Paredes","teacherId":"usr-doc-04"},{"grade":"5to Perito Contador","section":"Sección A","subject":"Mecanografía","teacher":"Lic. Williams Esmely Gudiel Paredes","teacherId":"usr-doc-04"},{"grade":"5to Perito Contador","section":"Sección A","subject":"Finanzas Públicas","teacher":"PEM. Elda Argentina López de Valdez","teacherId":"usr-doc-14"},{"grade":"5to Perito Contador","section":"Sección A","subject":"Geografía Económica","teacher":"Lic.MA. Carlos Augusto Juarez Alvarez","teacherId":"usr-doc-05"},{"grade":"5to Perito Contador","section":"Sección A","subject":"Computación II","teacher":"PEM. Nehemias Yalil Salguero","teacherId":"usr-doc-01"},{"grade":"5to Perito Contador","section":"Sección A","subject":"Legislación Fiscal y Aduanera","teacher":"Licda. Sandra Paola Bernal Yanes de Argueta","teacherId":"usr-doc-17"},{"grade":"5to Perito Contador","section":"Sección A","subject":"Inglés Comercial II","teacher":"PEM. Milvia Aracely Jacobo Escobar","teacherId":"usr-doc-18"},{"grade":"5to Perito Contador","section":"Sección B","subject":"Mecanografía","teacher":"Lic. Williams Esmely Gudiel Paredes","teacherId":"usr-doc-04"},{"grade":"5to Perito Contador","section":"Sección B","subject":"Contabilidad de Costos","teacher":"Lic. Héctor Noé Linares","teacherId":"usr-doc-10"},{"grade":"5to Perito Contador","section":"Sección B","subject":"Catalogación y Archivo","teacher":"Lic. Williams Esmely Gudiel Paredes","teacherId":"usr-doc-04"},{"grade":"5to Perito Contador","section":"Sección B","subject":"Cálculo Mercantil y Financiero","teacher":"PEM. Elda Argentina López de Valdez","teacherId":"usr-doc-14"},{"grade":"5to Perito Contador","section":"Sección B","subject":"Geografía Económica","teacher":"PEM. Lilian Alas Grijalva","teacherId":"usr-doc-06"},{"grade":"5to Perito Contador","section":"Sección B","subject":"Finanzas Públicas","teacher":"Lic. Nery Benjamín Galvez Ramos","teacherId":"usr-doc-07"},{"grade":"5to Perito Contador","section":"Sección B","subject":"Computación II","teacher":"PEM. Nehemias Yalil Salguero","teacherId":"usr-doc-01"},{"grade":"5to Perito Contador","section":"Sección B","subject":"Inglés Comercial II","teacher":"PEM. Milvia Aracely Jacobo Escobar","teacherId":"usr-doc-18"},{"grade":"5to Perito Contador","section":"Sección B","subject":"Legislación Fiscal y Aduanera","teacher":"PEM. Lilian Alas Grijalva","teacherId":"usr-doc-06"},{"grade":"5to Perito Contador","section":"Sección C","subject":"Contabilidad de Costos","teacher":"Lic. Héctor Noé Linares","teacherId":"usr-doc-10"},{"grade":"5to Perito Contador","section":"Sección C","subject":"Cálculo Mercantil y Financiero","teacher":"Lic. Héctor Noé Linares","teacherId":"usr-doc-10"},{"grade":"5to Perito Contador","section":"Sección C","subject":"Legislación Fiscal y Aduanera","teacher":"PEM. Lilian Alas Grijalva","teacherId":"usr-doc-06"},{"grade":"5to Perito Contador","section":"Sección C","subject":"Computación II","teacher":"PEM. Nehemias Yalil Salguero","teacherId":"usr-doc-01"},{"grade":"5to Perito Contador","section":"Sección C","subject":"Inglés Comercial II","teacher":"PEM. Elda Argentina López de Valdez","teacherId":"usr-doc-14"},{"grade":"5to Perito Contador","section":"Sección C","subject":"Mecanografía","teacher":"PEM. Aleida Maribel Escobar de Palma","teacherId":"usr-doc-02"},{"grade":"5to Perito Contador","section":"Sección C","subject":"Finanzas Públicas","teacher":"Licda. Enma Leticia Macario Xum de Ruano","teacherId":"usr-doc-15"},{"grade":"5to Perito Contador","section":"Sección C","subject":"Geografía Económica","teacher":"Lic. Juan Carlos Pereira","teacherId":"usr-doc-20"},{"grade":"5to Perito Contador","section":"Sección C","subject":"Catalogación y Archivo","teacher":"Licda. Sandra Paola Bernal Yanes de Argueta","teacherId":"usr-doc-17"},{"grade":"5to Perito Contador","section":"Sección D","subject":"Contabilidad de Costos","teacher":"Lic. Héctor Noé Linares","teacherId":"usr-doc-10"},{"grade":"5to Perito Contador","section":"Sección D","subject":"Geografía Económica","teacher":"Lic. Williams Esmely Gudiel Paredes","teacherId":"usr-doc-04"},{"grade":"5to Perito Contador","section":"Sección D","subject":"Finanzas Públicas","teacher":"PEM. Lilian Alas Grijalva","teacherId":"usr-doc-06"},{"grade":"5to Perito Contador","section":"Sección D","subject":"Cálculo Mercantil y Financiero","teacher":"Lic. Héctor Noé Linares","teacherId":"usr-doc-10"},{"grade":"5to Perito Contador","section":"Sección D","subject":"Computación II","teacher":"PEM. Nehemias Yalil Salguero","teacherId":"usr-doc-01"},{"grade":"5to Perito Contador","section":"Sección D","subject":"Inglés Comercial II","teacher":"PEM. Milvia Aracely Jacobo Escobar","teacherId":"usr-doc-18"},{"grade":"5to Perito Contador","section":"Sección D","subject":"Legislación Fiscal y Aduanera","teacher":"PEM. Elda Argentina López de Valdez","teacherId":"usr-doc-14"},{"grade":"5to Perito Contador","section":"Sección D","subject":"Mecanografía","teacher":"PEM. Aleida Maribel Escobar de Palma","teacherId":"usr-doc-02"},{"grade":"5to Perito Contador","section":"Sección D","subject":"Catalogación y Archivo","teacher":"Licda. Sandra Paola Bernal Yanes de Argueta","teacherId":"usr-doc-17"},{"grade":"6to Perito Contador","section":"Sección A","subject":"Estadística Comercial","teacher":"Lic.MA. Carlos Augusto Juarez Alvarez","teacherId":"usr-doc-05"},{"grade":"6to Perito Contador","section":"Sección A","subject":"Seminario sobre Problemas Socioeconómicos de Guatemala","teacher":"PEM. Aleida Maribel Escobar de Palma","teacherId":"usr-doc-02"},{"grade":"6to Perito Contador","section":"Sección A","subject":"Computación III","teacher":"PEM. Nehemias Yalil Salguero","teacherId":"usr-doc-01"},{"grade":"6to Perito Contador","section":"Sección A","subject":"Ética Profesional y Relaciones Humanas","teacher":"Lic. Williams Esmely Gudiel Paredes","teacherId":"usr-doc-04"},{"grade":"6to Perito Contador","section":"Sección A","subject":"Contabilidad Bancaria","teacher":"Lic. Edwin Osvaldo López Recinos","teacherId":"usr-doc-08"},{"grade":"6to Perito Contador","section":"Sección A","subject":"Organización","teacher":"Lic. Williams Esmely Gudiel Paredes","teacherId":"usr-doc-04"},{"grade":"6to Perito Contador","section":"Sección A","subject":"Práctica Supervisada","teacher":"Lic. Edwin Osvaldo López Recinos","teacherId":"usr-doc-08"},{"grade":"6to Perito Contador","section":"Sección A","subject":"Derecho Mercantil y Laboral","teacher":"Lic. Nery Benjamín Galvez Ramos","teacherId":"usr-doc-07"},{"grade":"6to Perito Contador","section":"Sección A","subject":"Contabilidad Gubernamental e Integrada","teacher":"Licda. Maria Jannette Salguero Mellado","teacherId":"usr-doc-16"},{"grade":"6to Perito Contador","section":"Sección A","subject":"Auditoría","teacher":"PEM. Elda Argentina López de Valdez","teacherId":"usr-doc-14"},{"grade":"6to Perito Contador","section":"Sección B","subject":"Seminario sobre Problemas Socioeconómicos de Guatemala","teacher":"PEM. Aleida Maribel Escobar de Palma","teacherId":"usr-doc-02"},{"grade":"6to Perito Contador","section":"Sección B","subject":"Contabilidad Bancaria","teacher":"Lic.MA. Carlos Augusto Juarez Alvarez","teacherId":"usr-doc-05"},{"grade":"6to Perito Contador","section":"Sección B","subject":"Computación III","teacher":"PEM. Nehemias Yalil Salguero","teacherId":"usr-doc-01"},{"grade":"6to Perito Contador","section":"Sección B","subject":"Ética Profesional y Relaciones Humanas","teacher":"PEM. Elda Argentina López de Valdez","teacherId":"usr-doc-14"},{"grade":"6to Perito Contador","section":"Sección B","subject":"Contabilidad Gubernamental e Integrada","teacher":"Lic. Edwin Osvaldo López Recinos","teacherId":"usr-doc-08"},{"grade":"6to Perito Contador","section":"Sección B","subject":"Derecho Mercantil y Laboral","teacher":"Licda. Maria Jannette Salguero Mellado","teacherId":"usr-doc-16"},{"grade":"6to Perito Contador","section":"Sección B","subject":"Estadística Comercial","teacher":"Licda. Enma Leticia Macario Xum de Ruano","teacherId":"usr-doc-15"},{"grade":"6to Perito Contador","section":"Sección B","subject":"Práctica Supervisada","teacher":"Prof. Carlos Vinicio Grijalva Cardona","teacherId":"usr-doc-19"},{"grade":"6to Perito Contador","section":"Sección B","subject":"Organización","teacher":"Lic. Nery Benjamín Galvez Ramos","teacherId":"usr-doc-07"},{"grade":"6to Perito Contador","section":"Sección B","subject":"Auditoría","teacher":"Prof. Carlos Vinicio Grijalva Cardona","teacherId":"usr-doc-19"},{"grade":"6to Perito Contador","section":"Sección C","subject":"Seminario sobre Problemas Socioeconómicos de Guatemala","teacher":"PEM. Aleida Maribel Escobar de Palma","teacherId":"usr-doc-02"},{"grade":"6to Perito Contador","section":"Sección C","subject":"Contabilidad Gubernamental e Integrada","teacher":"Lic. Edwin Osvaldo López Recinos","teacherId":"usr-doc-08"},{"grade":"6to Perito Contador","section":"Sección C","subject":"Computación III","teacher":"PEM. Nehemias Yalil Salguero","teacherId":"usr-doc-01"},{"grade":"6to Perito Contador","section":"Sección C","subject":"Derecho Mercantil y Laboral","teacher":"PEM. Elda Argentina López de Valdez","teacherId":"usr-doc-14"},{"grade":"6to Perito Contador","section":"Sección C","subject":"Práctica Supervisada","teacher":"Lic.MA. Carlos Augusto Juarez Alvarez","teacherId":"usr-doc-05"},{"grade":"6to Perito Contador","section":"Sección C","subject":"Estadística Comercial","teacher":"Licda. Enma Leticia Macario Xum de Ruano","teacherId":"usr-doc-15"},{"grade":"6to Perito Contador","section":"Sección C","subject":"Organización","teacher":"Licda. Enma Leticia Macario Xum de Ruano","teacherId":"usr-doc-15"},{"grade":"6to Perito Contador","section":"Sección C","subject":"Contabilidad Bancaria","teacher":"Prof. Carlos Vinicio Grijalva Cardona","teacherId":"usr-doc-19"},{"grade":"6to Perito Contador","section":"Sección C","subject":"Auditoría","teacher":"Licda. Maria Jannette Salguero Mellado","teacherId":"usr-doc-16"},{"grade":"6to Perito Contador","section":"Sección C","subject":"Ética Profesional y Relaciones Humanas","teacher":"PEM. Milvia Aracely Jacobo Escobar","teacherId":"usr-doc-18"},{"grade":"6to Perito Contador","section":"Sección D","subject":"Seminario sobre Problemas Socioeconómicos de Guatemala","teacher":"PEM. Aleida Maribel Escobar de Palma","teacherId":"usr-doc-02"},{"grade":"6to Perito Contador","section":"Sección D","subject":"Ética Profesional y Relaciones Humanas","teacher":"PEM. Lilian Alas Grijalva","teacherId":"usr-doc-06"},{"grade":"6to Perito Contador","section":"Sección D","subject":"Contabilidad Gubernamental e Integrada","teacher":"Lic. Edwin Osvaldo López Recinos","teacherId":"usr-doc-08"},{"grade":"6to Perito Contador","section":"Sección D","subject":"Computación III","teacher":"PEM. Nehemias Yalil Salguero","teacherId":"usr-doc-01"},{"grade":"6to Perito Contador","section":"Sección D","subject":"Derecho Mercantil y Laboral","teacher":"Lic.MA. Wilder Porfirio Pérez López","teacherId":"usr-doc-11"},{"grade":"6to Perito Contador","section":"Sección D","subject":"Práctica Supervisada","teacher":"Lic.MA. Carlos Augusto Juarez Alvarez","teacherId":"usr-doc-05"},{"grade":"6to Perito Contador","section":"Sección D","subject":"Contabilidad Bancaria","teacher":"Lic.MA. Carlos Augusto Juarez Alvarez","teacherId":"usr-doc-05"},{"grade":"6to Perito Contador","section":"Sección D","subject":"Estadística Comercial","teacher":"Licda. Enma Leticia Macario Xum de Ruano","teacherId":"usr-doc-15"},{"grade":"6to Perito Contador","section":"Sección D","subject":"Auditoría","teacher":"Prof. Carlos Vinicio Grijalva Cardona","teacherId":"usr-doc-19"},{"grade":"6to Perito Contador","section":"Sección D","subject":"Organización","teacher":"Lic. Damaris Violeta Escobar de Salguero Damaris","teacherId":"usr-doc-13"}];
-
-    let updated = 0;
-    STATE.pensum.forEach(p => {
-        if (!p) return;
-        const target = CANONICAL_MAP.find(c => c.grade === p.grade && c.section === p.section && c.subject === p.subject);
-        if (target) {
-            if (p.teacher !== target.teacher || p.teacherId !== target.teacherId || p.teacherName !== target.teacher) {
-                p.teacher = target.teacher;
-                p.teacherName = target.teacher;
-                p.teacherId = target.teacherId;
-                updated++;
-            }
-        }
-    });
-
-    // Reconciliar también usuario Carlos Augusto Juarez Alvarez para evitar colisión de usr-doc-01
+    // Reconciliar colisión histórica de usr-doc-01 / usr-doc-05 para Carlos Augusto Juarez Alvarez
     if (Array.isArray(STATE.users)) {
         STATE.users.forEach(u => {
-            if (u && u.name && u.name.includes('Carlos Augusto Juarez') && u.id === 'usr-doc-01') {
-                u.id = 'usr-doc-05';
+            if (u && u.name && u.name.includes("Carlos Augusto Juarez") && u.id === "usr-doc-01") {
+                u.id = "usr-doc-05";
             }
         });
     }
 
-    if (updated > 0) {
-        console.log(`✅ [Pensum 2026] ${updated} cátedras reconciliadas con docentes y claves oficiales.`);
+    // Si STATE.pensum ya tiene cátedras, PRESERVARLAS AL 100%.
+    // No sobreescribir con CANONICAL_MAP para permitir que las asignaciones del usuario y de Firebase manden.
+    if (Array.isArray(STATE.pensum) && STATE.pensum.length > 0) {
+        // Limpiar únicamente posibles entradas duplicadas exactas (mismo grado, sección y materia)
+        const seen = new Set();
+        STATE.pensum = STATE.pensum.filter(p => {
+            if (!p) return false;
+            const normSubj = (p.subject || p.name || "").trim().toLowerCase();
+            const key = `${p.grade || p.gradeCode}_${p.section}_${normSubj}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+        console.log(`✅ [Pensum 2026] ${STATE.pensum.length} asignaciones de cátedras preservadas autoritativamente sin sobreescritura.`);
+        return;
+    }
+
+    // Solo si el pensum está completamente vacío (base nueva o borrada):
+    if (typeof getInitialData === "function") {
+        const d = getInitialData();
+        if (Array.isArray(d.pensum) && d.pensum.length > 0) {
+            STATE.pensum = JSON.parse(JSON.stringify(d.pensum));
+        }
     }
 }
+window.ensureOfficialPensumAssignments = ensureOfficialPensumAssignments;
+
+// ═══════════════════════════════════════════════════════════════════
+// 🌱 [v187] BOOTSTRAP AUTOMÁTICO DE ESTRUCTURA INSTITUCIONAL LIMPIA
+// Si un administrador borra la base de datos desde Firebase Console,
+// la aplicación crea la primera estructura limpia automáticamente.
+// ═══════════════════════════════════════════════════════════════════
+async function bootstrapCleanSchoolStateIfEmpty() {
+    try {
+        console.log("🌱 [v187] Creando estructura institucional limpia inicial en Firebase...");
+        const d = (typeof getInitialData === "function") ? getInitialData() : {};
+        if (!STATE.gradesList || STATE.gradesList.length === 0) {
+            if (typeof purifySchoolStructure === "function") purifySchoolStructure();
+        }
+        if (!STATE.pensum || STATE.pensum.length === 0) {
+            STATE.pensum = d.pensum || [];
+        }
+        if (!STATE.pensumCatalog || STATE.pensumCatalog.length === 0) {
+            STATE.pensumCatalog = d.pensumCatalog || [];
+        }
+        if (!STATE.careers || STATE.careers.length === 0) {
+            STATE.careers = d.careers || [];
+        }
+        if (!STATE.cycles || STATE.cycles.length === 0) {
+            STATE.cycles = d.cycles || [];
+        }
+        STATE.lastModified = Date.now();
+        await pushStateToFirebaseCloud(false);
+        console.log("✅ [v187] Estructura inicial limpia persistida exitosamente en Firebase.");
+    } catch(e) {
+        console.error("❌ Error en bootstrapCleanSchoolStateIfEmpty:", e);
+    }
+}
+window.bootstrapCleanSchoolStateIfEmpty = bootstrapCleanSchoolStateIfEmpty;
 
 async function initApp() {
     // Si estamos en login.html o index.html, no ejecutar la inicialización de la plataforma
@@ -240125,35 +240215,35 @@ async function initApp() {
     // Sincronizar e hidratar siempre la lista oficial de estudiantes y notas del 1er Bimestre
 
     // ═══════════════════════════════════════════════════════════════════
-    // ⚡ [v184] PULL AUTORITATIVO DE USUARIOS DESDE FIREBASE
-    // Firebase es la ÚNICA fuente de verdad para usuarios editados.
-    // Si Firebase tiene usuarios, SIEMPRE se usan. getInitialData() NUNCA
-    // debe sobreescribir ediciones del usuario almacenadas en Firebase.
+    // ═══════════════════════════════════════════════════════════════════
+    // ⚡ [v187] PULL AUTORITATIVO COMPLETO DESDE FIREBASE REALTIME DB
+    // Firebase es la ÚNICA fuente de verdad autoritativa para toda la plataforma.
+    // Descargar estado íntegro (usuarios, pensum, notas, asistencia, etc.)
     // ═══════════════════════════════════════════════════════════════════
     try {
-        const _fbUrlForUsers = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : null;
-        if (_fbUrlForUsers && (typeof navigator === "undefined" || navigator.onLine !== false)) {
-            console.log("⚡ [v184] Descargando usuarios autoritativos desde Firebase...");
-            const _cloudUsersRes = await fetch(_fbUrlForUsers + "/encc_school_state/users.json", { method: "GET", headers: { "Accept": "application/json" } });
-            if (_cloudUsersRes.ok) {
-                const _cloudUsersData = await _cloudUsersRes.json();
-                if (Array.isArray(_cloudUsersData) && _cloudUsersData.length > 0) {
-                    STATE.users = _cloudUsersData;
+        const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : null;
+        if (_fbUrl && (typeof navigator === "undefined" || navigator.onLine !== false)) {
+            console.log("⚡ [v187] Descargando estado autoritativo completo desde Firebase Realtime DB...");
+            const _cloudRes = await fetch(_fbUrl + "/encc_school_state.json", { method: "GET", headers: { "Accept": "application/json" } });
+            if (_cloudRes.ok) {
+                const _cloudData = await _cloudRes.json();
+                if (_cloudData && typeof _cloudData === "object" && (_cloudData.users || _cloudData.students || _cloudData.pensum)) {
+                    applyIncomingCloudState(_cloudData, true);
                     hasLoadedExistingUsers = true;
-                    console.log("✅ [v184] " + _cloudUsersData.length + " usuarios cargados desde Firebase (fuente autoritativa).");
-                    // Guardar en localStorage para offline
-                    if (typeof saveStateToLocalStorage === "function") saveStateToLocalStorage();
-                } else {
-                    console.log("ℹ️ [v184] Firebase no tiene usuarios, usando datos locales/iniciales.");
+                    console.log("✅ [v187] Estado institucional cargado íntegramente desde Firebase (fuente autoritativa).");
+                } else if (!_cloudData) {
+                    console.warn("⚠️ [v187] Base de datos vacía en Firebase. Inicializando estructura limpia institucional...");
+                    if (typeof bootstrapCleanSchoolStateIfEmpty === "function") {
+                        await bootstrapCleanSchoolStateIfEmpty();
+                    }
                 }
             } else {
-                console.warn("⚠️ [v184] Firebase respondió con status " + _cloudUsersRes.status + ", usando datos locales.");
+                console.warn("⚠️ [v187] Firebase respondió con status " + _cloudRes.status + ", usando respaldo local.");
             }
         }
     } catch(_fbPullErr) {
-        console.warn("⚠️ [v184] No se pudo conectar con Firebase para usuarios, usando datos locales:", _fbPullErr);
+        console.warn("⚠️ [v187] No se pudo conectar con Firebase en arranque, usando respaldo local:", _fbPullErr);
     }
-
     ensureSireOfficialStudents();
     ensureOfficialPensumAssignments();
 
@@ -241323,9 +241413,11 @@ function applyIncomingCloudState(incomingState, force = false) {
         return false;
     }
 
-    const LOCAL_WINS_MARGIN_MS = 3000;
-    if (!force && incomingTime < (localTime + LOCAL_WINS_MARGIN_MS) && incomingTime <= localTime) {
-        console.log("🛡️ [v185] Estado local más reciente que la nube — cambios locales preservados.");
+    // ⚡ [v187] FIREBASE ES LA ÚNICA FUENTE DE VERDAD ABSOLUTA
+    // Se eliminó LOCAL_WINS_MARGIN_MS para que ningún dispositivo ignore cambios remotos.
+    // Solo protegemos si hay un guardado local en curso en este preciso instante
+    if (!force && typeof _isSavingLocally !== "undefined" && _isSavingLocally) {
+        console.log("🛡️ [v187] Guardado local en curso — posponiendo aplicación SSE...");
         return false;
     }
 
@@ -241422,6 +241514,9 @@ function applyIncomingCloudState(incomingState, force = false) {
     // Refrescar vistas activas en tiempo real
     try {
         if (typeof renderCurrentView === 'function') renderCurrentView();
+        if (typeof renderAssignmentsTable === "function" && document.getElementById("assignmentsTableBody")) renderAssignmentsTable();
+        if (typeof renderUsersTable === "function" && document.getElementById("usersTableBody")) renderUsersTable();
+        if (typeof renderGradebookTable === "function" && document.getElementById("gradebookTable")) renderGradebookTable();
         if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
         if (typeof updateGradeSelects === 'function') updateGradeSelects();
         if (typeof updateCareerSelects === 'function') updateCareerSelects();
