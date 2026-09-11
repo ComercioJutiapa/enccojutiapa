@@ -1879,7 +1879,7 @@
                             <select id="honorRollTypeSelect" class="form-control" onchange="loadHonorRoll()" style="min-width:320px; font-weight:700;">
                                 <option value="ALL_BALANCED">🌟 Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)</option>
                                 <option value="GROUP_4TO_5TO">🥇 Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)</option>
-                                <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (10 Clases - Graduandos)</option>
+                                <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (8 Clases B1/B2 - 10 Clases B3)</option>
                             </select>
                         </div>
                         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -1897,7 +1897,7 @@
                         <div class="info-alert" style="display:none; background:#f0fdf4; border:1px solid #86efac; color:#14532d; padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px; margin:0;">
                             <i class="fa-solid fa-scale-balanced" style="font-size:1.5rem; color:#16a34a; flex-shrink:0;"></i>
                             <div style="font-size:0.86rem; line-height:1.4;">
-                                <strong>Equiparación de Promedios:</strong> Los estudiantes de <strong>4to y 5to (9 clases)</strong> y <strong>6to Grado (10 clases)</strong> se equiparan sobre <strong>Base 100 puntos</strong> para estricta justicia y equidad.
+                                <strong>Equiparación de Promedios:</strong> Los estudiantes de <strong>4to y 5to (9 clases)</strong> y <strong>6to Grado (8 clases en B1/B2 y 10 clases en B3)</strong> se equiparan sobre <strong>Base 100 puntos</strong> para estricta justicia y equidad.
                             <button type="button" onclick="dismissBannerAlert(this)" title="Cerrar esta alerta" style="margin-left:auto; background:none; border:none; color:inherit; font-size:1.25rem; font-weight:700; cursor:pointer; opacity:0.65; padding:0 4px; line-height:1;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.65'">&times;</button></div>
                         </div>
                         <div class="info-alert" style="display:none; background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:12px 16px; border-radius:8px; display:flex; align-items:center; gap:12px; margin:0;">
@@ -3571,7 +3571,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=2026.09.11.v197_boletin_completo_view_fix"></script>
+    <script src="app.js?v=2026.09.11.v198_fix_cuadro_honor_base_100"></script>
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre
         window.addEventListener('load', function() {

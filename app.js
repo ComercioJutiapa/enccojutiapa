@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.11.v197_boletin_completo_view_fix';
+const ENCCO_BUILD_VERSION = '2026.09.11.v198_fix_cuadro_honor_base_100';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -243789,6 +243789,7 @@ function getStudentAcademicInfo(student) {
     if (!student) {
         return {
             average: 0,
+            averageFormatted: '0.000',
             totalPoints: 0,
             classCount: 9,
             gradedClasses: 0,
@@ -243806,18 +243807,29 @@ function getStudentAcademicInfo(student) {
         };
     }
 
-    const rawGrade = (student.grade || student.gradeLabel || '').toUpperCase();
+    const rawGrade = (student.grade || student.gradeLabel || student.gradeCode || '').toUpperCase();
     const is6to = rawGrade.includes('6') || rawGrade.includes('SEXTO') || rawGrade.includes('6TO');
     const is5to = !is6to && (rawGrade.includes('5') || rawGrade.includes('QUINTO') || rawGrade.includes('5TO'));
     const is4to = !is6to && !is5to;
     
-    // Carga académica oficial: 4to y 5to tienen 9 clases oficiales; 6to tiene 10 clases oficiales
-    const officialClassLoad = is6to ? 10 : 9;
-    const classLoadLabel = is6to ? '10 Clases (6to)' : '9 Clases (4to/5to)';
     const activeBimestre = parseInt(STATE.config?.activeBimestre) || 1;
 
+    // REGLA OFICIAL DE CARGA Y DIVISOR DINÁMICO (Nivelación Base 100 Puntos):
+    // - 4.º y 5.º Grado: siempre se nivela sobre 9 clases oficiales (divisor = 9)
+    // - 6.º Grado Perito: durante 1.º y 2.º bimestre sobre 8 clases activas (divisor = 8); en 3.º bimestre en adelante sobre 10 clases (divisor = 10)
+    let dynamicDivisor = 9;
+    if (is6to) {
+        dynamicDivisor = (activeBimestre >= 3) ? 10 : 8;
+    } else {
+        dynamicDivisor = 9;
+    }
+
+    const officialClassLoad = dynamicDivisor;
+    const classLoadLabel = is6to 
+        ? (activeBimestre >= 3 ? '10 Clases (6to Graduandos)' : '8 Clases Activas (6to Perito)')
+        : (is5to ? '9 Clases (5to Perito)' : '9 Clases (4to Perito)');
+
     let sumCourseAverages = 0;
-    let totalAccumulatedPoints = 0;
     let gradedCount = 0;
     let hasFailedGrade = false;
     const failedSubjectsList = [];
@@ -243833,35 +243845,93 @@ function getStudentAcademicInfo(student) {
 
     const isStudentExonerated = (exoneratedCount > 0);
 
-    // Revisar calificaciones ingresadas por los docentes
-    if (student.grades && typeof student.grades === 'object') {
-        const courseNames = Object.keys(student.grades);
-        courseNames.forEach(cName => {
-            const bGrades = student.grades[cName];
-            if (Array.isArray(bGrades)) {
-                let validCourseScores = [];
-                for (let b = 1; b <= activeBimestre; b++) {
-                    const score = parseInt(bGrades[b - 1]) || 0;
-                    if (score > 0) {
-                        if (score < 60) {
-                            hasFailedGrade = true;
-                            failedSubjectsList.push(`${cName} (${score} pts)`);
-                        }
-                        validCourseScores.push(score);
-                    }
-                }
-
-                if (validCourseScores.length > 0) {
-                    const courseAvg = validCourseScores.reduce((a, b) => a + b, 0) / validCourseScores.length;
-                    sumCourseAverages += courseAvg;
-                    totalAccumulatedPoints += courseAvg;
-                    gradedCount++;
-                }
-            }
-        });
+    // 1. Obtener materias oficiales del pensum/boletín para evitar sumar nombres duplicados o alias informales
+    let subjects = [];
+    if (typeof getReportCardSubjects === 'function') {
+        subjects = getReportCardSubjects(student);
     }
 
-    // Revisar estructura moderna de gradebookDetails si existe
+    // Si es 6to y estamos en Bimestre 1 o 2 (8 clases), excluir materias de graduación que inician en B3 (Práctica Supervisada y Seminario)
+    if (is6to && activeBimestre <= 2) {
+        const cleanStr = s => (s || '').toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, '');
+        subjects = subjects.filter(sub => {
+            const c = cleanStr(sub);
+            return !c.includes('practica') && !c.includes('seminario');
+        });
+        if (subjects.length > 8) {
+            subjects = subjects.slice(0, 8);
+        }
+    } else if (!is6to) {
+        // 4to y 5to siempre sobre 9 clases
+        if (subjects.length > 9) {
+            subjects = subjects.slice(0, 9);
+        }
+    } else if (is6to && activeBimestre >= 3) {
+        if (subjects.length > 10) {
+            subjects = subjects.slice(0, 10);
+        }
+    }
+
+    if (subjects.length > 0) {
+        subjects.forEach(sub => {
+            let gradesObj = null;
+            if (typeof getReportCardSubjectGrades === 'function') {
+                gradesObj = getReportCardSubjectGrades(student, sub);
+            }
+
+            let validScores = [];
+            if (gradesObj) {
+                for (let b = 1; b <= activeBimestre; b++) {
+                    const sc = gradesObj[`b${b}`] || 0;
+                    if (sc > 0) {
+                        if (sc < 60) {
+                            hasFailedGrade = true;
+                            failedSubjectsList.push(`${sub} (B${b}: ${sc} pts)`);
+                        }
+                        validScores.push(sc);
+                    }
+                }
+            }
+
+            if (validScores.length > 0) {
+                const cAvg = validScores.reduce((a, b) => a + b, 0) / validScores.length;
+                sumCourseAverages += cAvg;
+                gradedCount++;
+            }
+        });
+    } else {
+        // Fallback canónico si getReportCardSubjects no estuviese disponible en el momento
+        if (student.grades && typeof student.grades === 'object') {
+            const seenClean = new Set();
+            Object.keys(student.grades).forEach(cName => {
+                const clean = cName.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, '');
+                if (seenClean.has(clean)) return;
+                seenClean.add(clean);
+
+                const bGrades = student.grades[cName];
+                if (Array.isArray(bGrades)) {
+                    let validScores = [];
+                    for (let b = 1; b <= activeBimestre; b++) {
+                        const score = parseInt(bGrades[b - 1]) || 0;
+                        if (score > 0) {
+                            if (score < 60) {
+                                hasFailedGrade = true;
+                                failedSubjectsList.push(`${cName} (${score} pts)`);
+                            }
+                            validScores.push(score);
+                        }
+                    }
+                    if (validScores.length > 0) {
+                        const cAvg = validScores.reduce((a, b) => a + b, 0) / validScores.length;
+                        sumCourseAverages += cAvg;
+                        gradedCount++;
+                    }
+                }
+            });
+        }
+    }
+
+    // Revisar estructura moderna de gradebookDetails si existe para verificar reprobadas adicionales
     if (student.gradebookDetails && typeof student.gradebookDetails === 'object') {
         const courses = Object.keys(student.gradebookDetails);
         courses.forEach(cName => {
@@ -243889,19 +243959,12 @@ function getStudentAcademicInfo(student) {
     const isEligible = (gradedCount > 0) && (!hasFailedGrade) && (!isStudentExonerated);
 
     if (gradedCount > 0) {
-        // Divisor dinámico equitativo:
-        // 4to y 5to: divisor fijo de 9 materias en B1, B2 y B3
-        // 6to: divisor dinámico de 8 materias en B1 y B2 (excluyendo 2 materias no impartidas); 10 en B3
-        let dynamicDivisor = 9;
-        if (is6to) {
-            dynamicDivisor = (activeBimestre >= 3) ? 10 : 8;
-        } else {
-            dynamicDivisor = 9;
-        }
-
-        // Fórmula: Promedio = ROUND( SUMA(Notas_Bimestre) / DIVISOR_DINAMICO , 3 )
-        const equitableAvg = Math.round((totalAccumulatedPoints / dynamicDivisor) * 1000) / 1000;
-        const totalPointsCalc = Math.round(totalAccumulatedPoints);
+        // Promedio nivelado sobre Base 100 estrictamente:
+        // Divisor dinámico equitativo: 9 para 4to y 5to; 8 para 6to en B1 y B2; 10 para 6to en B3.
+        const rawAvg = sumCourseAverages / dynamicDivisor;
+        const boundedAvg = Math.min(100.0, Math.max(0.0, rawAvg));
+        const equitableAvg = Math.round(boundedAvg * 1000) / 1000;
+        const totalPointsCalc = Math.round(sumCourseAverages * 10) / 10;
 
         return {
             average: equitableAvg,
@@ -243914,7 +243977,7 @@ function getStudentAcademicInfo(student) {
             is5to: is5to,
             is4to: is4to,
             officialClassLoad: dynamicDivisor,
-            classLoadLabel: is6to ? (activeBimestre >= 3 ? '10 Clases (6to)' : '8 Clases Activas (6to)') : '9 Clases (4to/5to)',
+            classLoadLabel: classLoadLabel,
             hasFailedGrade: hasFailedGrade,
             isExonerated: isStudentExonerated,
             eligibleForHonorRoll: isEligible,
@@ -243926,6 +243989,7 @@ function getStudentAcademicInfo(student) {
     // Si AÚN NO hay calificaciones ingresadas, todo permanece en 0 real (limpio)
     return {
         average: 0,
+        averageFormatted: '0.000',
         totalPoints: 0,
         classCount: officialClassLoad,
         gradedClasses: 0,
@@ -252601,7 +252665,7 @@ function loadHonorRoll() {
     let opts = `
         <option value="ALL_BALANCED">🏆 Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)</option>
         <option value="GROUP_4TO_5TO">🥈 Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)</option>
-        <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (10 Clases - Graduandos)</option>
+        <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (8 Clases B1/B2 - 10 Clases B3)</option>
     `;
 
     opts += `<optgroup label="📌 Cuadros de Honor por Grado y Sección">`;
@@ -252636,7 +252700,8 @@ function loadHonorRoll() {
             return info.is4to || info.is5to;
         });
     } else if (type === 'GROUP_6TO') {
-        titleText.textContent = `CUADRO DE HONOR OFICIAL - 6TO GRADO GRADUANDOS (10 CLASES) - CICLO ${STATE.activeCycle || '2026'}`;
+        const bLabel6to = (parseInt(STATE.config?.activeBimestre) >= 3) ? '10 CLASES' : '8 CLASES ACTIVAS';
+        titleText.textContent = `CUADRO DE HONOR OFICIAL - 6TO GRADO GRADUANDOS (${bLabel6to}) - CICLO ${STATE.activeCycle || '2026'}`;
         list = list.filter(s => {
             const info = getStudentAcademicInfo(s);
             return info.is6to;
