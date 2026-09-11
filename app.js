@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.11.v196_dynamic_teacher_names_sync';
+const ENCCO_BUILD_VERSION = '2026.09.11.v197_boletin_completo_view_fix';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -248800,14 +248800,14 @@ function buildStudentReportCardInnerHtml(s) {
 
         return `
             <tr>
-                <td style="text-align:center; font-weight:700; width:22px; border:1px solid #000000; padding:1.5px 2px; font-size:7.5px;">${idx + 1}</td>
-                <td style="font-weight:700; padding:1.5px 5px; text-align:left; border:1px solid #000000; font-size:8px; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sub}</td>
-                <td style="text-align:center; font-size:8.5px; font-weight:${isB1Fail ? "800" : "700"}; color:${isB1Fail ? "#dc2626" : (g.b1 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b1 > 0 ? g.b1 : "—"}</td>
-                <td style="text-align:center; font-size:8.5px; font-weight:${isB2Fail ? "800" : "700"}; color:${isB2Fail ? "#dc2626" : (g.b2 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b2 > 0 ? g.b2 : "—"}</td>
-                <td style="text-align:center; font-size:8.5px; font-weight:${isB3Fail ? "800" : "700"}; color:${isB3Fail ? "#dc2626" : (g.b3 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b3 > 0 ? g.b3 : "—"}</td>
-                <td style="text-align:center; font-size:8.5px; font-weight:${isB4Fail ? "800" : "700"}; color:${isB4Fail ? "#dc2626" : (g.b4 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b4 > 0 ? g.b4 : "—"}</td>
-                <td style="text-align:center; font-weight:800; font-size:9px; border:1px solid #000000; width:40px; ${isAvgFail ? "color:#dc2626; background:#fee2e2;" : "color:#0369a1; background:#f0f9ff;"}">${g.avg > 0 ? g.avg : "—"}</td>
-                <td style="text-align:center; font-weight:800; font-size:7.5px; border:1px solid #000000; width:64px; color:${resultColor};">${resultText}</td>
+                <td style="text-align:center; font-weight:700; width:22px; border:1px solid #000000; padding:1px 2px; font-size:7.2px;">${idx + 1}</td>
+                <td style="font-weight:700; padding:1px 5px; text-align:left; border:1px solid #000000; font-size:7.6px; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sub}</td>
+                <td style="text-align:center; font-size:8px; font-weight:${isB1Fail ? "800" : "700"}; color:${isB1Fail ? "#dc2626" : (g.b1 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b1 > 0 ? g.b1 : "—"}</td>
+                <td style="text-align:center; font-size:8px; font-weight:${isB2Fail ? "800" : "700"}; color:${isB2Fail ? "#dc2626" : (g.b2 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b2 > 0 ? g.b2 : "—"}</td>
+                <td style="text-align:center; font-size:8px; font-weight:${isB3Fail ? "800" : "700"}; color:${isB3Fail ? "#dc2626" : (g.b3 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b3 > 0 ? g.b3 : "—"}</td>
+                <td style="text-align:center; font-size:8px; font-weight:${isB4Fail ? "800" : "700"}; color:${isB4Fail ? "#dc2626" : (g.b4 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b4 > 0 ? g.b4 : "—"}</td>
+                <td style="text-align:center; font-weight:800; font-size:8.5px; border:1px solid #000000; width:40px; ${isAvgFail ? "color:#dc2626; background:#fee2e2;" : "color:#0369a1; background:#f0f9ff;"}">${g.avg > 0 ? g.avg : "—"}</td>
+                <td style="text-align:center; font-weight:800; font-size:7.2px; border:1px solid #000000; width:64px; color:${resultColor};">${resultText}</td>
             </tr>
         `;
     }).join("");
@@ -248820,29 +248820,29 @@ function buildStudentReportCardInnerHtml(s) {
     const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes("licda") ? "Directora del Plantel" : "Director del Plantel");
 
     return `
-        <div class="report-half-letter-sheet" style="background:#ffffff; color:#000000; width:8.5in; min-width:8.5in; max-width:8.5in; height:5in; min-height:5in; max-height:5in; box-sizing:border-box; padding:0.5in; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display:flex; flex-direction:column; justify-content:space-between; margin:0 auto; overflow:hidden;">
-            <div class="report-card-inner-frame" style="width:100%; height:100%; box-sizing:border-box; border:1.8px solid #0369a1; border-radius:6px; padding:5px 8px 3px 8px; display:flex; flex-direction:column; justify-content:space-between; background:#ffffff; overflow:hidden;">
+        <div class="report-half-letter-sheet" style="background:#ffffff; color:#000000; width:8.5in; min-width:8.5in; max-width:8.5in; height:5in; min-height:5in; max-height:5in; box-sizing:border-box; padding:0.38in 0.5in; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display:flex; flex-direction:column; justify-content:space-between; margin:0 auto; overflow:hidden;">
+            <div class="report-card-inner-frame" style="width:100%; height:100%; box-sizing:border-box; border:1.8px solid #0369a1; border-radius:6px; padding:3px 8px 2px 8px; display:flex; flex-direction:column; justify-content:space-between; background:#ffffff; overflow:hidden;">
                 <!-- ENCABEZADO INSTITUCIONAL -->
                 <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1.8px solid #0369a1; padding-bottom:2px; margin-bottom:2px; gap:8px;">
-                    <div style="width:42px; height:42px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <div style="width:36px; height:36px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                         <img src="logo.png" alt="Escudo Oficial ENCCO" onerror="this.src='portada-comercio-principal.webp'" style="max-width:100%; max-height:100%; object-fit:contain;">
                     </div>
                     <div style="flex:1; text-align:center;">
                         <div style="font-size:7.5px; font-weight:800; letter-spacing:0.5px; color:#1e293b; text-transform:uppercase;">MINISTERIO DE EDUCACIÓN — GUATEMALA</div>
-                        <div style="font-size:10px; font-weight:900; color:#0369a1; margin:0.5px 0; text-transform:uppercase; line-height:1.15;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</div>
+                        <div style="font-size:9.5px; font-weight:900; color:#0369a1; margin:0; text-transform:uppercase; line-height:1.15;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</div>
                         <div style="font-size:6.8px; font-weight:700; color:#475569; letter-spacing:0.2px;">JUTIAPA | FUNDADA EN 1970 — NIVEL MEDIO Y BÁSICO</div>
                         <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:7px; font-weight:800; padding:1px 8px; border-radius:8px; margin-top:1px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">TARJETA OFICIAL DE CALIFICACIONES — CICLO LECTIVO ${STATE.activeCycle || "2026"}</div>
                     </div>
-                    <div style="width:44px; text-align:center; flex-shrink:0;">
+                    <div style="width:40px; text-align:center; flex-shrink:0;">
                         <div style="background:#f0f9ff; border:1.2px solid #0284c7; border-radius:5px; padding:1px; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
-                            <span style="display:block; font-size:11px; font-weight:900; color:#0284c7; line-height:1;">${activeBim}.º</span>
+                            <span style="display:block; font-size:10px; font-weight:900; color:#0284c7; line-height:1;">${activeBim}.º</span>
                             <span style="display:block; font-size:5.5px; font-weight:800; color:#0f172a; line-height:1; text-transform:uppercase;">BIMESTRE<br>ACTIVO</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- DATOS DEL ESTUDIANTE -->
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-left:3.5px solid #0369a1; padding:2px 6px; font-size:7.5px; line-height:1.2; margin-bottom:2px; border-radius:3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-left:3.5px solid #0369a1; padding:1.5px 6px; font-size:7.2px; line-height:1.15; margin-bottom:1.5px; border-radius:3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
                     <div><strong style="color:#0369a1; font-weight:800;">Estudiante:</strong> <span style="font-weight:900; color:#0f172a; text-transform:uppercase;">${s.lastName}, ${s.firstName}</span></div>
                     <div><strong style="color:#0369a1; font-weight:800;">Carné Oficial:</strong> <span>${s.carne || "ENCCO-2026"}</span></div>
                     <div><strong style="color:#0369a1; font-weight:800;">Código Personal:</strong> <span>${s.personalCode || "—"}</span></div>
@@ -248881,7 +248881,7 @@ function buildStudentReportCardInnerHtml(s) {
                 <div style="display:flex; justify-content:center; align-items:flex-end; margin-top:3px; padding-bottom:1px;">
                     <div style="width:210px; text-align:center; position:relative;">
                         <img src="firma_director_sello.png" alt="Sello y Firma de Dirección" style="position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:95px; height:auto; pointer-events:none; opacity:0.96; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.12));">
-                        <div style="border-top:1.2px solid #000000; margin-top:20px; padding-top:1.5px;">
+                        <div style="border-top:1.2px solid #000000; margin-top:14px; padding-top:1px;">
                             <div style="font-size:7.8px; font-weight:800; color:#0f172a;">${dirName}</div>
                             <div style="font-size:6.8px; font-weight:700; color:#475569;">${dirTitle}</div>
                             <div style="font-size:6.2px; font-weight:600; color:#64748b;">Escuela Nacional de Ciencias Comerciales — Jutiapa</div>

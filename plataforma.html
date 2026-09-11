@@ -2059,8 +2059,8 @@
                     </div>
 
                     <!-- VISTA PREVIA INTERACTIVA DE MEDIA HOJA CARTA -->
-                    <div style="display:flex; justify-content:center; margin-bottom:30px;">
-                        <div class="report-card-preview" id="reportCardPrintArea">
+                    <div style="width:100%; display:flex; justify-content:center; margin-bottom:30px;">
+                        <div class="report-card-preview" id="reportCardPrintArea" style="max-width:920px; width:100%; overflow-x:auto;">
                             <!-- Inyectado dinámicamente con previewStudentReportCard() -->
                         </div>
                     </div>
@@ -3571,7 +3571,7 @@
     <div id="printUserCredentialsArea" style="display:none;"></div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="app.js?v=2026.09.11.v196_dynamic_teacher_names_sync"></script>
+    <script src="app.js?v=2026.09.11.v197_boletin_completo_view_fix"></script>
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre
         window.addEventListener('load', function() {
