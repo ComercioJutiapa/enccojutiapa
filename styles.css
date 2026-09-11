@@ -569,8 +569,17 @@ body {
 
 /* Estilos del contenedor de reporte oficial */
 #reportCardPrintArea, #honorRollPrintArea, #printOfficialTeacherStudentListArea {
-    background: #ffffff;
+    background: #f1f5f9;
     border-radius: var(--radius);
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow-x: auto;
+}
+#reportCardPrintArea .report-half-letter-sheet {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    background: #ffffff;
 }
 
 .section-pill {
@@ -1419,15 +1428,15 @@ body.theme-dark .att-global-pct-bar {
    CONFIGURACIÓN OFICIAL DE IMPRESIÓN: TAMAÑO OFICIO (LEGAL) Y VERTICAL (PORTRAIT)
    ========================================================================== */
 @page {
-    size: legal portrait;
-    margin: 6mm 8mm;
+    size: 8.5in 5.5in;
+    margin: 3mm 5mm;
 }
 
 @media print {
     @page {
-        size: legal portrait;
-        margin: 6mm 8mm;
-    }
+    size: 8.5in 5.5in;
+    margin: 3mm 5mm;
+}
 
     html, body {
         background: #ffffff !important;

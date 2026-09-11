@@ -248528,53 +248528,88 @@ function filterAndPopulateReportStudents() {
 }
 window.filterAndPopulateReportStudents = filterAndPopulateReportStudents;
 
+const OFFICIAL_CNB_PENSUM_ORDER = {
+    "4": [
+        { order: 1, name: "Contabilidad de Sociedades", aliases: ["contabilidad", "contabilidad de sociedades"] },
+        { order: 2, name: "Matemática Comercial", aliases: ["matematica", "matematica comercial"] },
+        { order: 3, name: "Fundamentos de Derecho", aliases: ["fundamentos derecho", "fundamentos de derecho", "derecho"] },
+        { order: 4, name: "Inglés Comercial I", aliases: ["ingles", "ingles comercial 1", "ingles comercial i", "ingles 1"] },
+        { order: 5, name: "Redacción y Correspondencia Mercantil", aliases: ["redaccion", "redaccion y correspondencia", "redaccion correspondencia mercantil", "redaccion y correspondencia mercantil"] },
+        { order: 6, name: "Introducción a la Economía", aliases: ["economia", "introduccion a la economia", "introduccion economia"] },
+        { order: 7, name: "Ortografía y Caligrafía", aliases: ["caligrafia", "ortografia", "caligrafia y ortografia", "ortografia y caligrafia"] },
+        { order: 8, name: "Administración y Organización de Empresas", aliases: ["administracion", "organizacion de oficina", "administracion y organizacion", "administracion y organizacion de empresas"] },
+        { order: 9, name: "Computación I", aliases: ["computacion", "computacion 1", "computacion i"] }
+    ],
+    "5": [
+        { order: 1, name: "Contabilidad de Costos", aliases: ["costos", "contabilidad costos", "contabilidad de costos"] },
+        { order: 2, name: "Cálculo Mercantil y Financiero", aliases: ["calculo", "calculo mercantil", "calculo mercantil y financiero"] },
+        { order: 3, name: "Inglés Comercial II", aliases: ["ingles ii", "ingles 2", "ingles comercial ii", "ingles comercial 2"] },
+        { order: 4, name: "Legislación Fiscal y Aduanera", aliases: ["legislacion", "legislacion fiscal", "legislacion fiscal y aduanal", "legislacion fiscal y aduanera"] },
+        { order: 5, name: "Finanzas Públicas", aliases: ["finanzas", "finanzas publicas"] },
+        { order: 6, name: "Geografía Económica", aliases: ["geografia", "geografia economica"] },
+        { order: 7, name: "Catalogación y Archivo", aliases: ["catalogacion", "archivo", "catalogacion y archivo"] },
+        { order: 8, name: "Mecanografía", aliases: ["mecanografia"] },
+        { order: 9, name: "Computación II", aliases: ["computacion ii", "computacion 2"] }
+    ],
+    "6": [
+        { order: 1, name: "Contabilidad Bancaria", aliases: ["bancaria", "contabilidad bancaria"] },
+        { order: 2, name: "Contabilidad Gubernamental e Integrada", aliases: ["gubernamental", "contabilidad gubernamental", "contabilidad gubernamental integrada", "contabilidad gubernamental e integrada"] },
+        { order: 3, name: "Estadística Comercial", aliases: ["estadistica", "estadistica comercial"] },
+        { order: 4, name: "Organización de Empresas", aliases: ["organizacion empresas", "organizacion de empresas", "organizacion de empresas y tecnicas de oficina"] },
+        { order: 5, name: "Ética Profesional y Relaciones Humanas", aliases: ["etica", "etica profesional", "etica profesional y relaciones humanas"] },
+        { order: 6, name: "Práctica Supervisada", aliases: ["practica", "practica supervisada"] },
+        { order: 7, name: "Auditoría", aliases: ["auditoria"] },
+        { order: 8, name: "Derecho Mercantil y Laboral", aliases: ["derecho mercantil", "derecho mercantil y laboral", "derecho mercantil y nociones de derecho laboral"] },
+        { order: 9, name: "Computación III", aliases: ["computacion iii", "computacion 3"] },
+        { order: 10, name: "Seminario sobre Problemas Socioeconómicos de Guatemala", aliases: ["seminario", "seminario problemas socioeconomicos", "seminario sobre problemas socioeconomicos de guatemala"] }
+    ]
+};
+
 function getPensumCatalogOrder(subjectName, studentGrade = '') {
-    const catalog = STATE.pensumCatalog || [];
     const cleanStr = s => (s || '').toLowerCase()
-        .normalize("NFD").replace(/[̀-ͯ]/g, "")
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]/g, '');
 
     const cleanSub = cleanStr(subjectName);
-    const cleanGrade = cleanStr(studentGrade);
+    const gClean = cleanStr(studentGrade);
+    let gNum = "4";
+    if (gClean.includes("6") || gClean.includes("sexto") || gClean.includes("6to")) gNum = "6";
+    else if (gClean.includes("5") || gClean.includes("quinto") || gClean.includes("5to")) gNum = "5";
+    else if (gClean.includes("4") || gClean.includes("cuarto") || gClean.includes("4to")) gNum = "4";
 
-    // 1. Coincidencia prioritaria en catálogo dentro del mismo grado
-    const inGrade = catalog.filter(p => {
-        const pGrade = cleanStr(p.grade || p.gradeCode);
-        return pGrade && (pGrade.includes(cleanGrade) || cleanGrade.includes(pGrade));
+    // 1. Coincidencia prioritaria en STATE.pensumCatalog si tiene orden configurado
+    const catalog = STATE.pensumCatalog || [];
+    const inGradeCatalog = catalog.filter(p => {
+        const pG = cleanStr(p.grade || p.gradeCode || '');
+        return pG.includes(gNum);
     });
 
-    let match = inGrade.find(p => {
-        const pClean = cleanStr(p.name || p.subject);
-        return pClean === cleanSub || pClean.includes(cleanSub) || cleanSub.includes(pClean);
+    const matchCatalog = inGradeCatalog.find(p => {
+        const pClean = cleanStr(p.name || p.subject || '');
+        return pClean === cleanSub || (pClean.length > 5 && (pClean.includes(cleanSub) || cleanSub.includes(pClean)));
     });
 
-    // 2. Coincidencia global en catálogo
-    if (!match) {
-        match = catalog.find(p => {
-            const pClean = cleanStr(p.name || p.subject);
-            return pClean === cleanSub || pClean.includes(cleanSub) || cleanSub.includes(pClean);
-        });
+    if (matchCatalog) {
+        const numVal = parseInt(matchCatalog.order || matchCatalog.sortOrder);
+        if (!isNaN(numVal) && numVal > 0) return numVal;
     }
 
-    if (match) {
-        const orderNum = parseInt(match.sortOrder || match.order);
-        if (!isNaN(orderNum)) return orderNum;
-        if (match.code) {
-            const codeNum = parseInt(match.code.replace(/[^0-9]/g, ''));
-            if (!isNaN(codeNum)) return codeNum;
+    // 2. Coincidencia estricta en el mapa oficial del CNB
+    const cnbList = OFFICIAL_CNB_PENSUM_ORDER[gNum] || [];
+    for (const item of cnbList) {
+        const iClean = cleanStr(item.name);
+        if (iClean === cleanSub || item.aliases.some(a => cleanStr(a) === cleanSub)) {
+            return item.order;
         }
-        const catIdx = catalog.indexOf(match);
-        if (catIdx !== -1) return catIdx + 1;
     }
 
-    // 3. Diccionario canónico de respaldo
-    if (typeof CANONICAL_CNB_28_DICTIONARY !== 'undefined') {
-        const cMatch = CANONICAL_CNB_28_DICTIONARY.find(c => {
-            const cClean = cleanStr(c.full);
-            return cClean === cleanSub || c.aliases.some(a => cleanStr(a) === cleanSub);
-        });
-        if (cMatch) {
-            return CANONICAL_CNB_28_DICTIONARY.indexOf(cMatch) + 1;
+    // 3. Coincidencia general de respaldo en cualquier grado del CNB
+    for (const [gradeKey, list] of Object.entries(OFFICIAL_CNB_PENSUM_ORDER)) {
+        for (const item of list) {
+            const iClean = cleanStr(item.name);
+            if (iClean === cleanSub || item.aliases.some(a => cleanStr(a) === cleanSub)) {
+                return item.order;
+            }
         }
     }
 
@@ -248738,7 +248773,7 @@ function getReportCardSubjectGrades(student, subject) {
 window.getReportCardSubjectGrades = getReportCardSubjectGrades;
 
 function buildStudentReportCardInnerHtml(s) {
-    if (!s) return '';
+    if (!s) return "";
     const gradeObj = (STATE.gradesList || []).find(g => 
         (g.code && g.code === s.grade) ||
         (g.name === s.grade && (!s.section || g.section === s.section)) ||
@@ -248764,73 +248799,73 @@ function buildStudentReportCardInnerHtml(s) {
         const isB4Fail = (g.b4 > 0 && g.b4 < 60);
         const isAvgFail = (g.avg > 0 && g.avg < 60);
 
-        const resultText = g.avg >= 60 ? 'APROBADO' : (g.avg > 0 ? 'REPROBADO' : 'PENDIENTE');
-        const resultColor = g.avg >= 60 ? '#15803d' : (g.avg > 0 ? '#dc2626' : '#64748b');
+        const resultText = g.avg >= 60 ? "APROBADO" : (g.avg > 0 ? "REPROBADO" : "PENDIENTE");
+        const resultColor = g.avg >= 60 ? "#15803d" : (g.avg > 0 ? "#dc2626" : "#64748b");
 
         return `
             <tr>
-                <td style="text-align:center; font-weight:700; width:28px; border:1px solid #000000; padding:4px 2px; font-size:9px;">${idx + 1}</td>
-                <td style="font-weight:700; padding:4px 6px; text-align:left; border:1px solid #000000; font-size:9.5px; color:#0f172a;">${sub}</td>
-                <td style="text-align:center; font-size:10px; font-weight:${isB1Fail ? '800' : '700'}; color:${isB1Fail ? '#dc2626' : (g.b1 > 0 ? '#000000' : '#64748b')}; border:1px solid #000000; width:40px;">${g.b1 > 0 ? g.b1 : '—'}</td>
-                <td style="text-align:center; font-size:10px; font-weight:${isB2Fail ? '800' : '700'}; color:${isB2Fail ? '#dc2626' : (g.b2 > 0 ? '#000000' : '#64748b')}; border:1px solid #000000; width:40px;">${g.b2 > 0 ? g.b2 : '—'}</td>
-                <td style="text-align:center; font-size:10px; font-weight:${isB3Fail ? '800' : '700'}; color:${isB3Fail ? '#dc2626' : (g.b3 > 0 ? '#000000' : '#64748b')}; border:1px solid #000000; width:40px;">${g.b3 > 0 ? g.b3 : '—'}</td>
-                <td style="text-align:center; font-size:10px; font-weight:${isB4Fail ? '800' : '700'}; color:${isB4Fail ? '#dc2626' : (g.b4 > 0 ? '#000000' : '#64748b')}; border:1px solid #000000; width:40px;">${g.b4 > 0 ? g.b4 : '—'}</td>
-                <td style="text-align:center; font-weight:800; font-size:10.5px; border:1px solid #000000; width:50px; ${isAvgFail ? 'color:#dc2626; background:#fee2e2;' : 'color:#0369a1; background:#f0f9ff;'}">${g.avg > 0 ? g.avg : '—'}</td>
-                <td style="text-align:center; font-weight:800; font-size:9px; border:1px solid #000000; width:72px; color:${resultColor};">${resultText}</td>
+                <td style="text-align:center; font-weight:700; width:22px; border:1px solid #000000; padding:1.5px 2px; font-size:7.5px;">${idx + 1}</td>
+                <td style="font-weight:700; padding:1.5px 5px; text-align:left; border:1px solid #000000; font-size:8px; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sub}</td>
+                <td style="text-align:center; font-size:8.5px; font-weight:${isB1Fail ? "800" : "700"}; color:${isB1Fail ? "#dc2626" : (g.b1 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b1 > 0 ? g.b1 : "—"}</td>
+                <td style="text-align:center; font-size:8.5px; font-weight:${isB2Fail ? "800" : "700"}; color:${isB2Fail ? "#dc2626" : (g.b2 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b2 > 0 ? g.b2 : "—"}</td>
+                <td style="text-align:center; font-size:8.5px; font-weight:${isB3Fail ? "800" : "700"}; color:${isB3Fail ? "#dc2626" : (g.b3 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b3 > 0 ? g.b3 : "—"}</td>
+                <td style="text-align:center; font-size:8.5px; font-weight:${isB4Fail ? "800" : "700"}; color:${isB4Fail ? "#dc2626" : (g.b4 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b4 > 0 ? g.b4 : "—"}</td>
+                <td style="text-align:center; font-weight:800; font-size:9px; border:1px solid #000000; width:40px; ${isAvgFail ? "color:#dc2626; background:#fee2e2;" : "color:#0369a1; background:#f0f9ff;"}">${g.avg > 0 ? g.avg : "—"}</td>
+                <td style="text-align:center; font-weight:800; font-size:7.5px; border:1px solid #000000; width:64px; color:${resultColor};">${resultText}</td>
             </tr>
         `;
-    }).join('');
+    }).join("");
 
     const overallAvg = subjectCount > 0 ? Math.round(totalAvgSum / subjectCount) : 0;
     const isOverallFail = (overallAvg > 0 && overallAvg < 60);
 
-    const directorUser = (STATE.users || []).find(u => u.role === 'director');
-    const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || 'Licda. Mirza Elizabeth Aragón Polanco de Hernández');
-    const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes('licda') ? 'Directora del Plantel' : 'Director del Plantel');
+    const directorUser = (STATE.users || []).find(u => u.role === "director");
+    const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || "Licda. Mirza Elizabeth Aragón Polanco de Hernández");
+    const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes("licda") ? "Directora del Plantel" : "Director del Plantel");
 
     return `
-        <div class="report-half-letter-sheet" style="background:#ffffff; color:#000000; width:100%; box-sizing:border-box; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <div class="report-half-letter-sheet" style="background:#ffffff; color:#000000; width:8.5in; max-width:8.5in; height:5.5in; max-height:5.5in; min-height:5.5in; box-sizing:border-box; padding:4mm 7mm 3mm 7mm; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display:flex; flex-direction:column; justify-content:space-between; border:2px solid #0369a1; border-radius:6px; margin:0 auto; overflow:hidden;">
             <!-- ENCABEZADO INSTITUCIONAL -->
-            <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2.5px solid #0369a1; padding-bottom:8px; margin-bottom:8px; gap:10px;">
-                <div style="width:58px; height:58px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #0369a1; padding-bottom:3px; margin-bottom:3px; gap:8px;">
+                <div style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                     <img src="logo.png" alt="Escudo Oficial ENCCO" onerror="this.src='portada-comercio-principal.webp'" style="max-width:100%; max-height:100%; object-fit:contain;">
                 </div>
                 <div style="flex:1; text-align:center;">
-                    <div style="font-size:8px; font-weight:800; letter-spacing:0.5px; color:#1e293b; text-transform:uppercase;">MINISTERIO DE EDUCACIÓN — GUATEMALA</div>
-                    <div style="font-size:11.5px; font-weight:900; color:#0369a1; margin:1px 0; text-transform:uppercase; line-height:1.15;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</div>
-                    <div style="font-size:7.5px; font-weight:700; color:#475569; letter-spacing:0.3px;">JUTIAPA | FUNDADA EN 1970 — NIVEL MEDIO Y BÁSICO</div>
-                    <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:8px; font-weight:800; padding:2px 10px; border-radius:10px; margin-top:3px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">TARJETA OFICIAL DE CALIFICACIONES — CICLO LECTIVO ${STATE.activeCycle || '2026'}</div>
+                    <div style="font-size:7.5px; font-weight:800; letter-spacing:0.5px; color:#1e293b; text-transform:uppercase;">MINISTERIO DE EDUCACIÓN — GUATEMALA</div>
+                    <div style="font-size:10.5px; font-weight:900; color:#0369a1; margin:1px 0; text-transform:uppercase; line-height:1.15;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</div>
+                    <div style="font-size:6.8px; font-weight:700; color:#475569; letter-spacing:0.2px;">JUTIAPA | FUNDADA EN 1970 — NIVEL MEDIO Y BÁSICO</div>
+                    <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:7px; font-weight:800; padding:1px 8px; border-radius:8px; margin-top:2px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">TARJETA OFICIAL DE CALIFICACIONES — CICLO LECTIVO ${STATE.activeCycle || "2026"}</div>
                 </div>
-                <div style="width:52px; text-align:center; flex-shrink:0;">
-                    <div style="background:#f0f9ff; border:1.5px solid #0284c7; border-radius:6px; padding:3px 2px; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
-                        <span style="display:block; font-size:13px; font-weight:900; color:#0284c7; line-height:1;">${activeBim}.º</span>
-                        <span style="display:block; font-size:6.5px; font-weight:800; color:#0f172a; line-height:1.1; text-transform:uppercase;">BIMESTRE<br>ACTIVO</span>
+                <div style="width:46px; text-align:center; flex-shrink:0;">
+                    <div style="background:#f0f9ff; border:1.2px solid #0284c7; border-radius:5px; padding:2px 1px; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+                        <span style="display:block; font-size:11.5px; font-weight:900; color:#0284c7; line-height:1;">${activeBim}.º</span>
+                        <span style="display:block; font-size:5.5px; font-weight:800; color:#0f172a; line-height:1; text-transform:uppercase;">BIMESTRE<br>ACTIVO</span>
                     </div>
                 </div>
             </div>
 
             <!-- DATOS DEL ESTUDIANTE -->
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:3px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-left:3.5px solid #0369a1; padding:5px 8px; font-size:8.5px; line-height:1.35; margin-bottom:8px; border-radius:3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:2px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-left:3.5px solid #0369a1; padding:2.5px 6px; font-size:7.5px; line-height:1.25; margin-bottom:3px; border-radius:3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
                 <div><strong style="color:#0369a1; font-weight:800;">Estudiante:</strong> <span style="font-weight:900; color:#0f172a; text-transform:uppercase;">${s.lastName}, ${s.firstName}</span></div>
-                <div><strong style="color:#0369a1; font-weight:800;">Carné Oficial:</strong> <span>${s.carne || 'ENCCO-2026'}</span></div>
-                <div><strong style="color:#0369a1; font-weight:800;">Código Personal:</strong> <span>${s.personalCode || '—'}</span></div>
+                <div><strong style="color:#0369a1; font-weight:800;">Carné Oficial:</strong> <span>${s.carne || "ENCCO-2026"}</span></div>
+                <div><strong style="color:#0369a1; font-weight:800;">Código Personal:</strong> <span>${s.personalCode || "—"}</span></div>
                 <div><strong style="color:#0369a1; font-weight:800;">Grado y Sección:</strong> <span>${gradeName}</span></div>
-                <div><strong style="color:#0369a1; font-weight:800;">Carrera:</strong> <span>${s.career || 'Perito Contador'}</span></div>
-                <div><strong style="color:#0369a1; font-weight:800;">Ciclo / Sede:</strong> <span>${STATE.activeCycle || '2026'} — Jornada Matutina</span></div>
+                <div><strong style="color:#0369a1; font-weight:800;">Carrera:</strong> <span>${s.career || "Perito Contador"}</span></div>
+                <div><strong style="color:#0369a1; font-weight:800;">Ciclo / Sede:</strong> <span>${STATE.activeCycle || "2026"} — Jornada Matutina</span></div>
             </div>
 
             <!-- TABLA DE CALIFICACIONES (4 BIMESTRES, PROMEDIO Y RESULTADO) -->
-            <table style="width:100%; border-collapse:collapse; font-size:9.5px; border:1.5px solid #000000; margin-bottom:8px;">
+            <table style="width:100%; border-collapse:collapse; font-size:8px; border:1.2px solid #000000; margin-bottom:2px;">
                 <thead>
                     <tr>
-                        <th style="width:28px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; padding:4px 2px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">No.</th>
-                        <th style="text-align:left; padding-left:8px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Asignatura / Área Curricular</th>
-                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">I Bim</th>
-                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">II Bim</th>
-                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">III Bim</th>
-                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">IV Bim</th>
-                        <th style="width:50px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Prom.</th>
-                        <th style="width:72px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:8px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Resultado</th>
+                        <th style="width:22px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; padding:2px 2px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">No.</th>
+                        <th style="text-align:left; padding:2px 5px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Asignatura / Área Curricular</th>
+                        <th style="width:34px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">I Bim</th>
+                        <th style="width:34px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">II Bim</th>
+                        <th style="width:34px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">III Bim</th>
+                        <th style="width:34px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">IV Bim</th>
+                        <th style="width:40px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Prom.</th>
+                        <th style="width:64px; background-color:#0369a1 !important; color:#ffffff !important; font-weight:800; font-size:7.2px; text-align:center; border:1px solid #000000; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">Resultado</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -248838,29 +248873,29 @@ function buildStudentReportCardInnerHtml(s) {
                 </tbody>
                 <tfoot>
                     <tr style="background:#f1f5f9; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">
-                        <td colspan="6" style="text-align:right; font-weight:800; padding:4px 8px; border:1px solid #000000; font-size:9.5px;">PROMEDIO GENERAL ACUMULADO:</td>
-                        <td style="text-align:center; font-weight:900; font-size:11px; border:1px solid #000000; color:${isOverallFail ? '#dc2626' : '#0369a1'}; background:${isOverallFail ? '#fee2e2' : '#e0f2fe'}; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">${overallAvg > 0 ? overallAvg : '—'}</td>
-                        <td style="text-align:center; font-weight:800; font-size:9px; border:1px solid #000000; color:${overallAvg >= 60 ? '#15803d' : (overallAvg > 0 ? '#dc2626' : '#64748b')};">${overallAvg >= 60 ? 'PROMOVIDO' : (overallAvg > 0 ? 'EN RIESGO' : 'EN CURSO')}</td>
+                        <td colspan="6" style="text-align:right; font-weight:800; padding:2px 6px; border:1px solid #000000; font-size:8px;">PROMEDIO GENERAL ACUMULADO:</td>
+                        <td style="text-align:center; font-weight:900; font-size:9px; border:1px solid #000000; color:${isOverallFail ? "#dc2626" : "#0369a1"}; background:${isOverallFail ? "#fee2e2" : "#e0f2fe"}; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">${overallAvg > 0 ? overallAvg : "—"}</td>
+                        <td style="text-align:center; font-weight:800; font-size:7.5px; border:1px solid #000000; color:${overallAvg >= 60 ? "#15803d" : (overallAvg > 0 ? "#dc2626" : "#64748b")};">${overallAvg >= 60 ? "PROMOVIDO" : (overallAvg > 0 ? "EN RIESGO" : "EN CURSO")}</td>
                     </tr>
                 </tfoot>
             </table>
 
             <!-- BLOQUE DE FIRMA ÚNICA EXCLUSIVA DE LA DIRECCIÓN -->
-            <div style="display:flex; justify-content:center; align-items:flex-end; margin-top:30px; padding-bottom:6px;">
-                <div style="width:280px; text-align:center; position:relative;">
-                    <img src="firma_director_sello.png" alt="Sello y Firma de Dirección" style="position:absolute; bottom:6px; left:50%; transform:translateX(-50%); width:140px; height:auto; pointer-events:none; opacity:0.96; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.12));">
-                    <div style="border-top:1.5px solid #000000; margin-top:55px; padding-top:4px;">
-                        <div style="font-size:9.5px; font-weight:800; color:#0f172a;">${dirName}</div>
-                        <div style="font-size:8.5px; font-weight:700; color:#475569;">${dirTitle}</div>
-                        <div style="font-size:7.5px; font-weight:600; color:#64748b;">Escuela Nacional de Ciencias Comerciales — Jutiapa</div>
+            <div style="display:flex; justify-content:center; align-items:flex-end; margin-top:8px; padding-bottom:1px;">
+                <div style="width:220px; text-align:center; position:relative;">
+                    <img src="firma_director_sello.png" alt="Sello y Firma de Dirección" style="position:absolute; bottom:10px; left:50%; transform:translateX(-50%); width:110px; height:auto; pointer-events:none; opacity:0.96; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.12));">
+                    <div style="border-top:1.2px solid #000000; margin-top:24px; padding-top:2px;">
+                        <div style="font-size:8px; font-weight:800; color:#0f172a;">${dirName}</div>
+                        <div style="font-size:7px; font-weight:700; color:#475569;">${dirTitle}</div>
+                        <div style="font-size:6.5px; font-weight:600; color:#64748b;">Escuela Nacional de Ciencias Comerciales — Jutiapa</div>
                     </div>
                 </div>
             </div>
 
             <!-- PIE DE PÁGINA INSTITUCIONAL -->
-            <div style="display:flex; justify-content:space-between; border-top:1px dotted #94a3b8; padding-top:4px; font-size:7.5px; color:#64748b; font-weight:600; margin-top:6px;">
+            <div style="display:flex; justify-content:space-between; border-top:1px dotted #94a3b8; padding-top:2px; font-size:6.8px; color:#64748b; font-weight:600; margin-top:2px;">
                 <span>ENCCO JUTIAPA • Sistema de Control Académico Oficial</span>
-                <span>Fecha de emisión: ${new Date().toLocaleDateString('es-GT')}</span>
+                <span>Fecha de emisión: ${new Date().toLocaleDateString("es-GT")}</span>
             </div>
         </div>
     `;
