@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.11.v191_honor_roll_equitable_3dec';
+const ENCCO_BUILD_VERSION = '2026.09.11.v192_honor_roll_window_fit';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -243800,54 +243800,38 @@ function getStudentAcademicInfo(student) {
 
     const isStudentExonerated = (exoneratedCount > 0);
 
-    // Revisar calificaciones ingresadas por los docentes
-    if (student.grades && typeof student.grades === 'object') {
-        const courseNames = Object.keys(student.grades);
-        courseNames.forEach(cName => {
-            const bGrades = student.grades[cName];
-            if (Array.isArray(bGrades)) {
-                let validCourseScores = [];
-                for (let b = 1; b <= activeBimestre; b++) {
-                    const score = parseInt(bGrades[b - 1]) || 0;
-                    if (score > 0) {
-                        if (score < 60) {
-                            hasFailedGrade = true;
-                            failedSubjectsList.push(`${cName} (${score} pts)`);
-                        }
-                        validCourseScores.push(score);
-                    }
-                }
+    // Revisar calificaciones ingresadas por los docentes utilizando asignaturas canónicas (evita duplicar alias)
+    const canonicalSubjects = (typeof getReportCardSubjects === 'function') 
+        ? getReportCardSubjects(student) 
+        : Object.keys(student.grades || {});
 
-                if (validCourseScores.length > 0) {
-                    const courseAvg = validCourseScores.reduce((a, b) => a + b, 0) / validCourseScores.length;
-                    sumCourseAverages += courseAvg;
-                    totalAccumulatedPoints += courseAvg;
-                    gradedCount++;
-                }
+    canonicalSubjects.forEach(cName => {
+        // En 6to grado durante Bimestres 1 y 2, omitir las 2 materias aún no impartidas
+        if (is6to && activeBimestre <= 2) {
+            const cLower = cName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            if (cLower.includes('practica') || cLower.includes('seminario')) {
+                return;
             }
-        });
-    }
+        }
 
-    // Revisar estructura moderna de gradebookDetails si existe
-    if (student.gradebookDetails && typeof student.gradebookDetails === 'object') {
-        const courses = Object.keys(student.gradebookDetails);
-        courses.forEach(cName => {
-            for (let b = 1; b <= activeBimestre; b++) {
-                const bDetail = student.gradebookDetails[cName] && student.gradebookDetails[cName][b];
-                if (bDetail) {
-                    const totalScore = (parseInt(bDetail.zona) || 0) + (parseInt(bDetail.exam) || 0);
-                    if (totalScore > 0) {
-                        if (totalScore < 60) {
-                            hasFailedGrade = true;
-                            if (!failedSubjectsList.some(f => f.startsWith(cName))) {
-                                failedSubjectsList.push(`${cName} (${totalScore} pts)`);
-                            }
-                        }
-                    }
-                }
+        let score = 0;
+        if (typeof getReportCardSubjectGrades === 'function') {
+            const gDetails = getReportCardSubjectGrades(student, cName);
+            score = activeBimestre === 1 ? gDetails.b1 : (activeBimestre === 2 ? gDetails.b2 : (activeBimestre === 3 ? gDetails.b3 : gDetails.b4));
+        } else if (student.grades && student.grades[cName] && Array.isArray(student.grades[cName])) {
+            score = parseInt(student.grades[cName][activeBimestre - 1]) || 0;
+        }
+
+        if (score > 0) {
+            if (score < 60) {
+                hasFailedGrade = true;
+                failedSubjectsList.push(`${cName} (${score} pts)`);
             }
-        });
-    }
+            sumCourseAverages += score;
+            totalAccumulatedPoints += score;
+            gradedCount++;
+        }
+    });
 
     // REGLAS ESTRICTAS DE CUADRO DE HONOR Y PROMEDIO EQUITATIVO:
     // 1. Debe tener al menos una clase calificada (gradedCount > 0)
