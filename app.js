@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.11.v195_fix_teacher_assignments_filter';
+const ENCCO_BUILD_VERSION = '2026.09.11.v196_dynamic_teacher_names_sync';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -3283,6 +3283,7 @@ function initFirebaseRealtimeConnection() {
                     } else if (cleanPath === 'pensum') {
                         if (Array.isArray(nodeData)) {
                             STATE.pensum = nodeData;
+                            if (typeof syncPensumTeachersWithUsers === 'function') syncPensumTeachersWithUsers(false);
                             // SINCRONIZACIÓN BIDIRECCIONAL EN TIEMPO REAL:
                             // Si se asigna o quita un docente en clases, actualizar editor de pensum inmediatamente sin recargar
                             if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
@@ -3305,6 +3306,7 @@ function initFirebaseRealtimeConnection() {
                     } else if (cleanPath === 'users') {
                         if (Array.isArray(nodeData)) {
                             STATE.users = nodeData;
+                            if (typeof syncPensumTeachersWithUsers === 'function') syncPensumTeachersWithUsers(true);
                             // Si se edita un docente, reflejar inmediatamente en pensum y asignaciones
                             if (typeof renderUsersTable === 'function') renderUsersTable();
                             if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
@@ -250081,6 +250083,63 @@ function isCourseAssignedToTeacher(p, user) {
 }
 window.isCourseAssignedToTeacher = isCourseAssignedToTeacher;
 
+function getTeacherOfficialName(courseOrTeacher) {
+    if (!courseOrTeacher) return 'Sin asignar';
+    const users = Array.isArray(STATE.users) ? STATE.users : [];
+    if (typeof courseOrTeacher === 'object') {
+        const c = courseOrTeacher;
+        if (c.teacherId) {
+            const u = users.find(x => x.id === c.teacherId);
+            if (u && u.name) return u.name;
+        }
+        if (typeof isCourseAssignedToTeacher === 'function') {
+            const u = users.find(x => isCourseAssignedToTeacher(c, x));
+            if (u && u.name) return u.name;
+        }
+        return c.teacher || c.teacherName || 'Sin asignar';
+    }
+    const u = users.find(x => x.id === courseOrTeacher || x.name === courseOrTeacher);
+    if (u && u.name) return u.name;
+    if (typeof isCourseAssignedToTeacher === 'function') {
+        const uMatch = users.find(x => isCourseAssignedToTeacher({ teacher: courseOrTeacher }, x));
+        if (uMatch && uMatch.name) return uMatch.name;
+    }
+    return courseOrTeacher;
+}
+window.getTeacherOfficialName = getTeacherOfficialName;
+
+function syncPensumTeachersWithUsers(saveToFirebase = false) {
+    if (!Array.isArray(STATE.pensum) || !Array.isArray(STATE.users) || STATE.users.length === 0) return false;
+    let modified = false;
+    STATE.pensum.forEach(p => {
+        const targetUser = STATE.users.find(u => (p.teacherId && u.id === p.teacherId) || (typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, u)));
+        if (targetUser) {
+            if (p.teacher !== targetUser.name) {
+                p.teacher = targetUser.name;
+                modified = true;
+            }
+            if (p.teacherName !== targetUser.name) {
+                p.teacherName = targetUser.name;
+                modified = true;
+            }
+            if (p.teacherId !== targetUser.id) {
+                p.teacherId = targetUser.id;
+                modified = true;
+            }
+        }
+    });
+    if (modified && saveToFirebase) {
+        saveStateToLocalStorage();
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('pensum', STATE.pensum);
+        } else if (typeof pushStateToFirebaseCloud === 'function') {
+            pushStateToFirebaseCloud(false);
+        }
+    }
+    return modified;
+}
+window.syncPensumTeachersWithUsers = syncPensumTeachersWithUsers;
+
 // 8. LIBRO DE CALIFICACIONES SEGÚN LA CLASE DEL DOCENTE O ADMINISTRADOR
 // ==========================================================================
 function populateTeacherCourseSelect() {
@@ -258103,7 +258162,7 @@ function renderAssignmentsTable(searchQuery = '') {
                 ${a.code ? `<span class="badge" style="font-family:'Courier New',Courier,monospace; font-size:0.75rem; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; margin-right:5px; font-weight:800;"><i class="fa-solid fa-barcode" style="font-size:0.7rem; margin-right:3px;"></i>${a.code}</span>` : ''}
                 <strong style="color:var(--brand-green-dark); font-size:0.95rem;">${subName}</strong>
             </td>
-            <td><strong style="color:var(--text-primary);"><i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${a.teacher}</strong></td>
+            <td><strong style="color:var(--text-primary);"><i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${(typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(a) : (a.teacher || a.teacherName || 'Sin asignar')}</strong></td>
             <td style="text-align:center; font-weight:700;">${a.periodsPerWeek || a.hours || a.periods || 4} períodos/sem</td>
             <td style="text-align:center; white-space:nowrap;">
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${a.id}')" title="Editar asignación" style="padding:3px 8px; margin-right:4px;"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -258610,7 +258669,7 @@ function renderAssignmentsTable(searchQuery = '') {
             <td><span class="badge badge-info" style="font-weight:700;">${a.career || 'Perito Contador'}</span></td>
             <td><strong>${a.grade || a.gradeCode} (${a.section || 'A'})</strong></td>
             <td><strong style="color:var(--brand-green-dark); font-size:0.95rem;">${subName}</strong></td>
-            <td><strong style="color:var(--text-primary);"><i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${a.teacher}</strong></td>
+            <td><strong style="color:var(--text-primary);"><i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${(typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(a) : (a.teacher || a.teacherName || 'Sin asignar')}</strong></td>
             <td style="text-align:center; font-weight:700;">${a.periodsPerWeek || a.hours || a.periods || 4} períodos/sem</td>
             <td style="text-align:center; white-space:nowrap;">
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${a.id}')" title="Editar asignación" style="padding:3px 8px; margin-right:4px;"><i class="fa-solid fa-pen-to-square"></i></button>
