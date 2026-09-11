@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.11.v194_firebase_architecture_memory_cache';
+const ENCCO_BUILD_VERSION = '2026.09.11.v195_fix_teacher_assignments_filter';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -258029,29 +258029,50 @@ function renderAssignmentsTable(searchQuery = '') {
     const tbody = document.getElementById('assignmentsTableBody');
     if (!tbody) return;
 
-    updateClassAssignmentSelects();
+    if (typeof updateClassAssignmentSelects === 'function') {
+        updateClassAssignmentSelects();
+    }
 
     const teacherFilter = (document.getElementById('assignmentTeacherFilter')?.value || 'ALL');
     const gradeFilter = (document.getElementById('assignmentGradeFilter')?.value || 'ALL');
     const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('assignmentSearchInput')?.value || '')).toLowerCase().trim();
 
-    let list = Array.isArray(STATE.pensum) ? [...STATE.pensum] : [];
+    let list = Array.isArray(STATE.pensum) && STATE.pensum.length > 0
+        ? [...STATE.pensum]
+        : (typeof getInitialData === 'function' && Array.isArray(getInitialData().pensum) ? [...getInitialData().pensum] : []);
 
     if (teacherFilter && teacherFilter !== 'ALL') {
-        list = list.filter(a => (a.teacher || '').trim() === teacherFilter.trim());
+        const targetUser = (STATE.users || []).find(u => u.name === teacherFilter || u.id === teacherFilter) || { name: teacherFilter, id: teacherFilter };
+        list = list.filter(a => {
+            if (typeof isCourseAssignedToTeacher === 'function') {
+                return isCourseAssignedToTeacher(a, targetUser);
+            }
+            if (a.teacherId && targetUser.id && a.teacherId === targetUser.id) return true;
+            if (a.teacher && targetUser.name) {
+                const normA = a.teacher.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                const normT = targetUser.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                return normA.includes(normT) || normT.includes(normA);
+            }
+            return false;
+        });
     }
+
     if (gradeFilter && gradeFilter !== 'ALL') {
-        list = list.filter(a => a.gradeCode === gradeFilter || `${a.grade} (${a.section})` === gradeFilter);
-    }
-    if (q) {
         list = list.filter(a => 
-            (a.teacher || '').toLowerCase().includes(q) ||
-            (a.subject || a.name || '').toLowerCase().includes(q) ||
-            (a.grade || '').toLowerCase().includes(q) ||
-            (a.section || '').toLowerCase().includes(q) ||
-            (a.gradeCode || '').toLowerCase().includes(q) ||
-            (a.career && a.career.toLowerCase().includes(q))
+            a.gradeCode === gradeFilter || 
+            `${a.grade} (${a.section})` === gradeFilter ||
+            `${a.grade} ${a.section}` === gradeFilter ||
+            (a.section && a.grade && `${a.grade} (${a.section})`.toLowerCase() === gradeFilter.toLowerCase()) ||
+            (a.gradeCode && a.gradeCode.toLowerCase() === gradeFilter.toLowerCase())
         );
+    }
+
+    if (q) {
+        const normQ = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        list = list.filter(a => {
+            const raw = `${a.teacher || ''} ${a.subject || a.name || a.subjectName || ''} ${a.grade || ''} ${a.section || ''} ${a.gradeCode || ''} ${a.career || ''}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return raw.includes(normQ);
+        });
     }
 
     if (list.length === 0) {
@@ -258066,7 +258087,6 @@ function renderAssignmentsTable(searchQuery = '') {
         `;
         return;
     }
-
     tbody.innerHTML = list.map(a => {
         const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toUpperCase();
         let gGradeNum = 0;
@@ -258084,7 +258104,7 @@ function renderAssignmentsTable(searchQuery = '') {
                 <strong style="color:var(--brand-green-dark); font-size:0.95rem;">${subName}</strong>
             </td>
             <td><strong style="color:var(--text-primary);"><i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${a.teacher}</strong></td>
-            <td style="text-align:center; font-weight:700;">${a.periodsPerWeek || a.hours || 4} períodos/sem</td>
+            <td style="text-align:center; font-weight:700;">${a.periodsPerWeek || a.hours || a.periods || 4} períodos/sem</td>
             <td style="text-align:center; white-space:nowrap;">
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${a.id}')" title="Editar asignación" style="padding:3px 8px; margin-right:4px;"><i class="fa-solid fa-pen-to-square"></i></button>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteClassAssignment('${a.id}')" title="Eliminar asignación" style="padding:3px 8px;"><i class="fa-solid fa-trash"></i></button>
@@ -258519,29 +258539,50 @@ function renderAssignmentsTable(searchQuery = '') {
     const tbody = document.getElementById('assignmentsTableBody');
     if (!tbody) return;
 
-    updateClassAssignmentSelects();
+    if (typeof updateClassAssignmentSelects === 'function') {
+        updateClassAssignmentSelects();
+    }
 
     const teacherFilter = (document.getElementById('assignmentTeacherFilter')?.value || 'ALL');
     const gradeFilter = (document.getElementById('assignmentGradeFilter')?.value || 'ALL');
     const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('assignmentSearchInput')?.value || '')).toLowerCase().trim();
 
-    let list = Array.isArray(STATE.pensum) ? [...STATE.pensum] : [];
+    let list = Array.isArray(STATE.pensum) && STATE.pensum.length > 0
+        ? [...STATE.pensum]
+        : (typeof getInitialData === 'function' && Array.isArray(getInitialData().pensum) ? [...getInitialData().pensum] : []);
 
     if (teacherFilter && teacherFilter !== 'ALL') {
-        list = list.filter(a => (a.teacher || '').trim() === teacherFilter.trim());
+        const targetUser = (STATE.users || []).find(u => u.name === teacherFilter || u.id === teacherFilter) || { name: teacherFilter, id: teacherFilter };
+        list = list.filter(a => {
+            if (typeof isCourseAssignedToTeacher === 'function') {
+                return isCourseAssignedToTeacher(a, targetUser);
+            }
+            if (a.teacherId && targetUser.id && a.teacherId === targetUser.id) return true;
+            if (a.teacher && targetUser.name) {
+                const normA = a.teacher.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                const normT = targetUser.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                return normA.includes(normT) || normT.includes(normA);
+            }
+            return false;
+        });
     }
+
     if (gradeFilter && gradeFilter !== 'ALL') {
-        list = list.filter(a => a.gradeCode === gradeFilter || `${a.grade} (${a.section})` === gradeFilter);
-    }
-    if (q) {
         list = list.filter(a => 
-            (a.teacher || '').toLowerCase().includes(q) ||
-            (a.subject || a.name || '').toLowerCase().includes(q) ||
-            (a.grade || '').toLowerCase().includes(q) ||
-            (a.section || '').toLowerCase().includes(q) ||
-            (a.gradeCode || '').toLowerCase().includes(q) ||
-            (a.career && a.career.toLowerCase().includes(q))
+            a.gradeCode === gradeFilter || 
+            `${a.grade} (${a.section})` === gradeFilter ||
+            `${a.grade} ${a.section}` === gradeFilter ||
+            (a.section && a.grade && `${a.grade} (${a.section})`.toLowerCase() === gradeFilter.toLowerCase()) ||
+            (a.gradeCode && a.gradeCode.toLowerCase() === gradeFilter.toLowerCase())
         );
+    }
+
+    if (q) {
+        const normQ = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        list = list.filter(a => {
+            const raw = `${a.teacher || ''} ${a.subject || a.name || a.subjectName || ''} ${a.grade || ''} ${a.section || ''} ${a.gradeCode || ''} ${a.career || ''}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return raw.includes(normQ);
+        });
     }
 
     if (list.length === 0) {
@@ -258556,7 +258597,6 @@ function renderAssignmentsTable(searchQuery = '') {
         `;
         return;
     }
-
     tbody.innerHTML = list.map(a => {
         const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toUpperCase();
         let gGradeNum = 0;
@@ -258571,7 +258611,7 @@ function renderAssignmentsTable(searchQuery = '') {
             <td><strong>${a.grade || a.gradeCode} (${a.section || 'A'})</strong></td>
             <td><strong style="color:var(--brand-green-dark); font-size:0.95rem;">${subName}</strong></td>
             <td><strong style="color:var(--text-primary);"><i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${a.teacher}</strong></td>
-            <td style="text-align:center; font-weight:700;">${a.periodsPerWeek || a.hours || 4} períodos/sem</td>
+            <td style="text-align:center; font-weight:700;">${a.periodsPerWeek || a.hours || a.periods || 4} períodos/sem</td>
             <td style="text-align:center; white-space:nowrap;">
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${a.id}')" title="Editar asignación" style="padding:3px 8px; margin-right:4px;"><i class="fa-solid fa-pen-to-square"></i></button>
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteClassAssignment('${a.id}')" title="Eliminar asignación" style="padding:3px 8px;"><i class="fa-solid fa-trash"></i></button>
