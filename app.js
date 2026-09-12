@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.11.v198_fix_cuadro_honor_base_100';
+const ENCCO_BUILD_VERSION = '2026.09.11.v199_clases_y_calificaciones_oficiales_cnb';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
@@ -240071,8 +240071,6 @@ window.addEventListener('hashchange', function() {
     }
 });
 
-
-
 // ==========================================================================
 // 🎓 SINCRONIZACIÓN Y RECONCILIACIÓN OFICIAL DE ASIGNACIONES DOCENTES (CICLO 2026)
 // ==========================================================================
@@ -240146,6 +240144,161 @@ async function bootstrapCleanSchoolStateIfEmpty() {
 }
 window.bootstrapCleanSchoolStateIfEmpty = bootstrapCleanSchoolStateIfEmpty;
 
+// ======================================================================
+// 🎓 MOTOR DE NORMALIZACIÓN OFICIAL ACADÉMICA (CNB 28 ASIGNATURAS)
+// ======================================================================
+const OFFICIAL_CANONICAL_COURSES = {
+    4: [
+        { name: "Contabilidad de Sociedades", aliases: ["sociedades", "conta sociedades", "contabilidad de sociedades", "contabilidad sociedades", "conta 1", "conta i"] },
+        { name: "Matemática Comercial", aliases: ["matematica comercial", "mate comercial", "matematica", "mate 1", "mate i"] },
+        { name: "Redacción y Correspondencia Mercantil", aliases: ["redaccion y correspondencia mercantil", "redaccion y correspondencia", "redaccion", "correspondencia", "correspondencia mercantil"] },
+        { name: "Introducción a la Economía", aliases: ["introduccion a la economia", "introduccion economia", "economia", "intro economia"] },
+        { name: "Fundamentos de Derecho", aliases: ["fundamentos de derecho", "fundamentos derecho", "derecho 1", "derecho i", "derecho"] },
+        { name: "Administración y Organización de Empresas", aliases: ["administracion y organizacion de empresas", "administracion y organizacion de oficina", "administracion", "organizacion de oficina", "admon"] },
+        { name: "Inglés Comercial I", aliases: ["ingles comercial i", "ingles comercial 1", "ingles 1", "ingles i", "ingles"] },
+        { name: "Computación I", aliases: ["computacion i", "computacion 1", "compu 1", "compu i", "computacion"] },
+        { name: "Caligrafía y Ortografía", aliases: ["caligrafia y ortografia", "ortografia y caligrafia", "caligrafia", "ortografia", "orto y cali"] }
+    ],
+    5: [
+        { name: "Contabilidad de Costos", aliases: ["contabilidad de costos", "contabilidad costos", "costos", "conta costos", "conta 2", "conta ii"] },
+        { name: "Cálculo Mercantil y Financiero", aliases: ["calculo mercantil y financiero", "calculo mercantil", "calculo", "cálculo", "calc"] },
+        { name: "Legislación Fiscal y Aduanera", aliases: ["legislacion fiscal y aduanera", "legislacion fiscal y aduanal", "legislacion fiscal", "fiscal y aduanera", "fiscal y aduanal", "leyes fiscales"] },
+        { name: "Finanzas Públicas", aliases: ["finanzas publicas", "finanzas"] },
+        { name: "Geografía Económica", aliases: ["geografia economica", "geografia"] },
+        { name: "Mecanografía", aliases: ["mecanografia", "meca"] },
+        { name: "Catalogación y Archivo", aliases: ["catalogacion y archivo", "catalogacion", "archivo"] },
+        { name: "Inglés Comercial II", aliases: ["ingles comercial ii", "ingles comercial 2", "ingles 2", "ingles ii"] },
+        { name: "Computación II", aliases: ["computacion ii", "computacion 2", "compu 2", "compu ii"] }
+    ],
+    6: [
+        { name: "Contabilidad Gubernamental e Integrada", aliases: ["contabilidad gubernamental e integrada", "contabilidad gubernamental integrada", "contabilidad gubernamental", "conta gubernamental", "gubernamental", "guber", "conta guber"] },
+        { name: "Contabilidad Bancaria", aliases: ["contabilidad bancaria", "conta bancaria", "bancaria", "conta 3", "conta iii"] },
+        { name: "Auditoría", aliases: ["auditoria", "auditoría"] },
+        { name: "Estadística Comercial", aliases: ["estadistica comercial", "estadistica", "estadística"] },
+        { name: "Seminario sobre Problemas Socioeconómicos de Guatemala", aliases: ["seminario sobre problemas socioeconomicos de guatemala", "seminario sobre problemas de la educacion socioeconomica de guatemala", "seminario", "socioeconomica"] },
+        { name: "Derecho Mercantil y Laboral", aliases: ["derecho mercantil y laboral", "derecho mercantil y nociones del derecho laboral", "derecho mercantil y nociones de derecho laboral", "derecho mercantil", "derecho laboral", "nociones de derecho laboral", "laboral y mercantil"] },
+        { name: "Organización de Empresas y Técnicas de Oficina", aliases: ["organizacion de empresas y tecnicas de oficina", "organizacion de empresas", "organizacion y metodos", "organizacion", "oym", "o y m"] },
+        { name: "Ética Profesional y Relaciones Humanas", aliases: ["etica profesional y relaciones humanas", "etica profesional", "relaciones humanas", "etica"] },
+        { name: "Práctica Supervisada", aliases: ["practica supervisada", "práctica supervisada", "practica"] },
+        { name: "Computación III", aliases: ["computacion iii", "computacion 3", "compu 3", "compu iii"] }
+    ]
+};
+
+function resolveOfficialCanonicalSubject(rawName, gradeNum) {
+    if (!rawName) return null;
+    const cleanStr = s => (s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+    const cTarget = cleanStr(rawName);
+    const candidates = OFFICIAL_CANONICAL_COURSES[gradeNum] || [];
+
+    for (const c of candidates) {
+        if (cleanStr(c.name) === cTarget) return c.name;
+    }
+    for (const c of candidates) {
+        for (const al of c.aliases) {
+            if (cleanStr(al) === cTarget) return c.name;
+        }
+    }
+    for (const c of candidates) {
+        if (cTarget.length >= 4 && (cleanStr(c.name).includes(cTarget) || cTarget.includes(cleanStr(c.name)))) {
+            return c.name;
+        }
+        for (const al of c.aliases) {
+            if (cTarget.length >= 4 && (cleanStr(al).includes(cTarget) || cTarget.includes(cleanStr(al)))) {
+                return c.name;
+            }
+        }
+    }
+    return null;
+}
+
+function normalizeSchoolAcademicData(targetState) {
+    const sState = targetState || (typeof STATE !== 'undefined' ? STATE : null);
+    if (!sState) return;
+
+    let modified = false;
+
+    // 1. Normalizar asignaciones de cátedras en pensum
+    (sState.pensum || []).forEach(p => {
+        const rawGrade = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
+        let gradeNum = 4;
+        if (rawGrade.includes('6') || rawGrade.includes('SEXTO')) gradeNum = 6;
+        else if (rawGrade.includes('5') || rawGrade.includes('QUINTO')) gradeNum = 5;
+
+        const canonical = resolveOfficialCanonicalSubject(p.subject, gradeNum);
+        if (canonical && canonical !== p.subject) {
+            p.subject = canonical;
+            modified = true;
+        }
+    });
+
+    // 2. Normalizar materias y notas de cada estudiante
+    (sState.students || []).forEach(s => {
+        const rawGrade = (s.grade || s.gradeLabel || s.gradeCode || '').toUpperCase();
+        let gradeNum = 4;
+        if (rawGrade.includes('6') || rawGrade.includes('SEXTO')) gradeNum = 6;
+        else if (rawGrade.includes('5') || rawGrade.includes('QUINTO')) gradeNum = 5;
+
+        const expectedCourses = OFFICIAL_CANONICAL_COURSES[gradeNum];
+        if (!expectedCourses) return;
+
+        const oldGrades = s.grades || {};
+        const oldDetails = s.gradebookDetails || {};
+
+        const cleanGrades = {};
+        const cleanDetails = {};
+
+        expectedCourses.forEach(c => {
+            cleanGrades[c.name] = [0, 0, 0, 0];
+            cleanDetails[c.name] = {};
+        });
+
+        // Migrar notas a nombres oficiales
+        Object.keys(oldGrades).forEach(oldKey => {
+            const canonical = resolveOfficialCanonicalSubject(oldKey, gradeNum);
+            if (canonical && cleanGrades[canonical]) {
+                const rawBGrades = Array.isArray(oldGrades[oldKey]) ? oldGrades[oldKey] : [0, 0, 0, 0];
+                for (let b = 0; b < 4; b++) {
+                    const sc = parseInt(rawBGrades[b]) || 0;
+                    if (sc > cleanGrades[canonical][b]) {
+                        cleanGrades[canonical][b] = sc;
+                    }
+                }
+            }
+        });
+
+        // Migrar gradebookDetails a nombres oficiales
+        Object.keys(oldDetails).forEach(oldKey => {
+            const canonical = resolveOfficialCanonicalSubject(oldKey, gradeNum);
+            if (canonical && cleanDetails[canonical]) {
+                const bDetails = oldDetails[oldKey];
+                if (bDetails && typeof bDetails === 'object') {
+                    for (let b = 1; b <= 4; b++) {
+                        const u = String(b);
+                        if (bDetails[u]) {
+                            if (!cleanDetails[canonical][u]) {
+                                cleanDetails[canonical][u] = JSON.parse(JSON.stringify(bDetails[u]));
+                            } else {
+                                const oldTot = (parseInt(bDetails[u].zona) || 0) + (parseInt(bDetails[u].exam) || 0);
+                                const curTot = (parseInt(cleanDetails[canonical][u].zona) || 0) + (parseInt(cleanDetails[canonical][u].exam) || 0);
+                                if (oldTot > curTot) {
+                                    cleanDetails[canonical][u] = JSON.parse(JSON.stringify(bDetails[u]));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        s.grades = cleanGrades;
+        s.gradebookDetails = cleanDetails;
+    });
+
+    return modified;
+}
+window.normalizeSchoolAcademicData = normalizeSchoolAcademicData;
+window.resolveOfficialCanonicalSubject = resolveOfficialCanonicalSubject;
+
 async function initApp() {
     // Si estamos en login.html o index.html, consultar usuarios directamente desde Firebase en tiempo real
     if (typeof window !== 'undefined') {
@@ -240185,6 +240338,7 @@ async function initApp() {
     }
 
     if (window.SecurityEngine) window.SecurityEngine.initInactivityGuard();
+    if (typeof normalizeSchoolAcademicData === "function") normalizeSchoolAcademicData(STATE);
 
     // ⚡ [v189] PULL AUTORITATIVO EXCLUSIVO DESDE FIREBASE REALTIME DB
     // Firebase es la ÚNICA fuente de verdad autoritativa. Cero lectura de bases locales.
@@ -241360,6 +241514,7 @@ if (typeof window !== 'undefined') {
 
 // 3. Aplicación Inteligente del Estado Recibido en Tiempo Real
 function applyIncomingCloudState(incomingState, force = false) {
+    if (typeof normalizeSchoolAcademicData === "function") normalizeSchoolAcademicData(incomingState);
     if (!incomingState || typeof incomingState !== 'object') return false;
 
     // Si estamos inspeccionando copia local en Modo Solo Lectura, no sobrescribir la vista de inspección
