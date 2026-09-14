@@ -5481,9 +5481,42 @@ function ensureOfficialPensumAssignments() {
         return;
     }
 
-    // Si el pensum está vacío, se preserva en espera de los datos de Firebase
+    // Si el pensum está vacío, consultar rutas oficiales de Firebase
+    if (!Array.isArray(STATE.pensum) || STATE.pensum.length === 0) {
+        const rutaColeccion = 'encc_school_state/pensum';
+        console.log("Consultando asignaciones en ruta:", rutaColeccion);
+        if (typeof loadPensumFromCloudFallback === 'function') {
+            loadPensumFromCloudFallback();
+        }
+    }
 }
 window.ensureOfficialPensumAssignments = ensureOfficialPensumAssignments;
+
+async function loadPensumFromCloudFallback() {
+    const rutaColeccion = 'encc_school_state/pensum';
+    console.log("Consultando asignaciones en ruta:", rutaColeccion);
+    try {
+        const fbUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
+        const res = await fetch(`${fbUrl}/encc_school_state/pensum.json?t=${Date.now()}`);
+        if (res.ok) {
+            const data = await res.json();
+            const items = Array.isArray(data) ? data : (data && typeof data === 'object' ? Object.values(data) : []);
+            if (items.length > 0) {
+                STATE.pensum = items;
+                console.log(`✅ [Pensum 2026] ${items.length} asignaciones vinculadas exitosamente desde ${rutaColeccion}`);
+                if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+                if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+                if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+                if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+                return items;
+            }
+        }
+    } catch(e) {
+        console.warn("Aviso al consultar asignaciones en ruta:", rutaColeccion, e);
+    }
+    return [];
+}
+window.loadPensumFromCloudFallback = loadPensumFromCloudFallback;
 
 // ═══════════════════════════════════════════════════════════════════
 // 🌱 [v187] BOOTSTRAP AUTOMÁTICO DE ESTRUCTURA INSTITUCIONAL LIMPIA
@@ -5720,6 +5753,8 @@ async function initApp() {
     try {
         const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== "undefined" ? ENCCO_OFFICIAL_FIREBASE_URL : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com");
         if (_fbUrl && (typeof navigator === "undefined" || navigator.onLine !== false)) {
+            const rutaColeccion = 'encc_school_state/pensum';
+            console.log("Consultando asignaciones en ruta:", rutaColeccion);
             console.log("⚡ [v189] Descargando estado autoritativo completo directamente desde Firebase Realtime DB...");
             const _cloudRes = await fetch(_fbUrl + "/encc_school_state.json?t=" + Date.now(), { method: "GET", headers: { "Accept": "application/json" } });
             if (_cloudRes.ok) {
@@ -13166,15 +13201,30 @@ async function setOfficialActiveBimestre() {
             const configRef = doc(db, "configuracion", "sistema");
 
             // Competencia entre la escritura de Firebase y el timeout
-            await Promise.race([
-                setDoc(configRef, { 
-                    bimestreActivoOficial: nuevoBimestre,
-                    estadoBloqueoGlobal: "HABILITADO",
-                    bimestreSeleccionado: bimestreSeleccionado,
+            // Sincronización Realtime Database inmediata
+            const rtdbPromise = (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.patchNode === 'function')
+                ? EnccoCloudSync.patchNode('config', {
                     activeBimestre: unitNum,
+                    bimestreActivoOficial: bimestreSeleccionado,
+                    estadoBloqueoGlobal: "HABILITADO",
                     ultimaActualizacion: ultimaActualizacion,
-                    fechaModificacion: new Date().toISOString()
-                }, { merge: true }),
+                    fechaModificacion: fechaModificacion,
+                    lastModified: nowTime
+                })
+                : Promise.resolve(true);
+
+            const fsPromise = setDoc(configRef, { 
+                bimestreActivoOficial: nuevoBimestre,
+                estadoBloqueoGlobal: "HABILITADO",
+                bimestreSeleccionado: bimestreSeleccionado,
+                activeBimestre: unitNum,
+                ultimaActualizacion: ultimaActualizacion,
+                fechaModificacion: new Date().toISOString()
+            }, { merge: true });
+
+            // Competencia entre la escritura de Firebase y el timeout
+            await Promise.race([
+                Promise.allSettled([fsPromise, rtdbPromise]),
                 timeout
             ]);
 
@@ -25676,6 +25726,12 @@ function renderAssignmentsTable(searchQuery = '') {
     const tbody = document.getElementById('assignmentsTableBody');
     if (!tbody) return;
 
+    const rutaColeccion = 'pensum';
+    console.log("Consultando asignaciones en ruta:", rutaColeccion);
+    if ((!STATE.pensum || STATE.pensum.length === 0) && typeof loadPensumFromCloudFallback === 'function') {
+        loadPensumFromCloudFallback();
+    }
+
     if (typeof updateClassAssignmentSelects === 'function') {
         updateClassAssignmentSelects();
     }
@@ -26067,6 +26123,8 @@ async function saveClassAssignmentForm(e) {
         }
 
         const nowTime = Date.now();
+        const rutaColeccion = 'pensum';
+        console.log("Consultando asignaciones en ruta:", rutaColeccion);
         // 🌟 A. Persistencia Atómica en Firestore (colección pensum con merge: true)
         if (window.FirebaseModular && window.FirebaseModular.db) {
             try {
@@ -26186,6 +26244,8 @@ function openEditClassAssignmentModal(asgId) {
 
 async function deleteClassAssignment(asgId) {
     if (!checkEnrolmentPermissions()) return;
+    const rutaColeccion = 'pensum';
+    console.log("Consultando asignaciones en ruta:", rutaColeccion);
     const a = (STATE.pensum || []).find(x => x.id === asgId);
     if (!a) return;
 
@@ -26236,6 +26296,12 @@ function filterAssignmentsTable(searchQuery = '') {
 function renderAssignmentsTable(searchQuery = '') {
     const tbody = document.getElementById('assignmentsTableBody');
     if (!tbody) return;
+
+    const rutaColeccion = 'pensum';
+    console.log("Consultando asignaciones en ruta:", rutaColeccion);
+    if ((!STATE.pensum || STATE.pensum.length === 0) && typeof loadPensumFromCloudFallback === 'function') {
+        loadPensumFromCloudFallback();
+    }
 
     if (typeof updateClassAssignmentSelects === 'function') {
         updateClassAssignmentSelects();
@@ -26779,18 +26845,25 @@ function initFirestoreModularLiveListeners() {
 
         // 5. 📚 ESCUCHAR ASIGNACIONES DE CÁTEDRAS ('pensum' y 'clases')
         try {
-            const unsubPensum = onSnapshot(collection(db, 'pensum'), (snap) => {
+            const rutaColeccion = 'pensum';
+            console.log("Consultando asignaciones en ruta:", rutaColeccion);
+            const unsubPensum = onSnapshot(collection(db, rutaColeccion), (snap) => {
                 if (!snap || snap.empty) return;
                 // Snapshot listener activo sin bloqueos locales
                 const items = [];
                 snap.forEach(d => items.push({ id: d.id, ...d.data() }));
-                if (items.length > 0) {
+                if (items.length >= (STATE.pensum || []).length && items.length > 0) {
                     STATE.pensum = items;
-                    if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
-                    if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
-                    if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
-                    if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+                } else if (items.length > 0) {
+                    // Fusión inteligente para preservar nómina autoritativa de 112 cátedras
+                    const currentMap = new Map((STATE.pensum || []).map(p => [p.id, p]));
+                    items.forEach(item => currentMap.set(item.id, { ...(currentMap.get(item.id) || {}), ...item }));
+                    STATE.pensum = Array.from(currentMap.values());
                 }
+                if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+                if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+                if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+                if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
             }, err => console.warn('Aviso en onSnapshot pensum:', err));
             if (typeof unsubPensum === 'function') _firestoreModularUnsubscribers.push(unsubPensum);
         } catch(e) {}
