@@ -3091,22 +3091,26 @@ async function saveUserForm(e) {
                 const userDocRef = doc(db, 'users', savedUserObj.id);
                 const userPayload = { ...savedUserObj, lastModified: nowTime };
 
-                const userFsAction = (typeof updateDoc === 'function')
-                    ? updateDoc(userDocRef, userPayload).catch(e => {
-                        if (typeof setDoc === 'function') return setDoc(userDocRef, userPayload, { merge: true });
-                        throw e;
-                    })
-                    : (typeof setDoc === 'function' ? setDoc(userDocRef, userPayload, { merge: true }) : Promise.resolve());
+                const userFsAction = (typeof setDoc === 'function')
+                    ? setDoc(userDocRef, userPayload, { merge: true })
+                    : ((typeof updateDoc === 'function')
+                        ? updateDoc(userDocRef, userPayload).catch(e => {
+                            if (typeof setDoc === 'function') return setDoc(userDocRef, userPayload, { merge: true });
+                            throw e;
+                        })
+                        : Promise.resolve());
                 await withTimeout(userFsAction, 8000, 'Tiempo de espera en Firestore agotado.');
 
                 if (savedUserObj.role === 'docente') {
                     const docDocRef = doc(db, 'docentes', savedUserObj.id);
-                    const docFsAction = (typeof updateDoc === 'function')
+                    const docFsAction = (typeof setDoc === 'function')
+                    ? setDoc(docDocRef, userPayload, { merge: true })
+                    : ((typeof updateDoc === 'function')
                         ? updateDoc(docDocRef, userPayload).catch(e => {
                             if (typeof setDoc === 'function') return setDoc(docDocRef, userPayload, { merge: true });
                             throw e;
                         })
-                        : (typeof setDoc === 'function' ? setDoc(docDocRef, userPayload, { merge: true }) : Promise.resolve());
+                        : Promise.resolve());
                     await withTimeout(docFsAction, 8000, 'Tiempo de espera al guardar docente en Firestore agotado.');
                 } else if (typeof deleteDoc === 'function' || (window.FirebaseModular && typeof window.FirebaseModular.deleteDoc === 'function')) {
                     const delFn = (typeof deleteDoc === 'function') ? deleteDoc : window.FirebaseModular.deleteDoc;
@@ -3384,12 +3388,14 @@ async function saveCareerForm(e) {
                 if (targetC) {
                     const cRef = doc(db, 'careers', targetC.id);
                     const cPayload = { ...targetC, lastModified: nowTime };
-                    const fsAction = (typeof updateDoc === 'function')
+                    const fsAction = (typeof setDoc === 'function')
+                    ? setDoc(cRef, cPayload, { merge: true })
+                    : ((typeof updateDoc === 'function')
                         ? updateDoc(cRef, cPayload).catch(e => {
                             if (typeof setDoc === 'function') return setDoc(cRef, cPayload, { merge: true });
                             throw e;
                         })
-                        : (typeof setDoc === 'function' ? setDoc(cRef, cPayload, { merge: true }) : Promise.resolve());
+                        : Promise.resolve());
                     await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
                 }
             } catch(fsErr) {
@@ -9204,12 +9210,14 @@ async function saveStudentForm(e) {
                 const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
                 const stuRef = doc(db, 'students', studentObj.id);
                 const stuPayload = { ...studentObj, lastModified: nowTime };
-                const fsAction = (typeof updateDoc === 'function')
-                    ? updateDoc(stuRef, stuPayload).catch(e => {
-                        if (typeof setDoc === 'function') return setDoc(stuRef, stuPayload, { merge: true });
-                        throw e;
-                    })
-                    : (typeof setDoc === 'function' ? setDoc(stuRef, stuPayload, { merge: true }) : Promise.resolve());
+                const fsAction = (typeof setDoc === 'function')
+                    ? setDoc(stuRef, stuPayload, { merge: true })
+                    : ((typeof updateDoc === 'function')
+                        ? updateDoc(stuRef, stuPayload).catch(e => {
+                            if (typeof setDoc === 'function') return setDoc(stuRef, stuPayload, { merge: true });
+                            throw e;
+                        })
+                        : Promise.resolve());
                 await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
             } catch(fsErr) {
                 console.warn("Aviso al persistir estudiante en Firestore:", fsErr);
@@ -9641,12 +9649,14 @@ async function saveAcademicExoneration(e) {
                 const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
                 const stuRef = doc(db, 'students', student.id);
                 const stuPayload = { academicExceptions: student.academicExceptions, lastModified: nowTime };
-                const fsAction = (typeof updateDoc === 'function')
-                    ? updateDoc(stuRef, stuPayload).catch(e => {
-                        if (typeof setDoc === 'function') return setDoc(stuRef, stuPayload, { merge: true });
-                        throw e;
-                    })
-                    : (typeof setDoc === 'function' ? setDoc(stuRef, stuPayload, { merge: true }) : Promise.resolve());
+                const fsAction = (typeof setDoc === 'function')
+                    ? setDoc(stuRef, stuPayload, { merge: true })
+                    : ((typeof updateDoc === 'function')
+                        ? updateDoc(stuRef, stuPayload).catch(e => {
+                            if (typeof setDoc === 'function') return setDoc(stuRef, stuPayload, { merge: true });
+                            throw e;
+                        })
+                        : Promise.resolve());
                 await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
             } catch(fsErr) {
                 console.warn("Aviso en Firestore al guardar exoneración:", fsErr);
@@ -13159,6 +13169,7 @@ async function setOfficialActiveBimestre() {
             await Promise.race([
                 setDoc(configRef, { 
                     bimestreActivoOficial: nuevoBimestre,
+                    estadoBloqueoGlobal: "HABILITADO",
                     bimestreSeleccionado: bimestreSeleccionado,
                     activeBimestre: unitNum,
                     ultimaActualizacion: ultimaActualizacion,
@@ -13177,6 +13188,7 @@ async function setOfficialActiveBimestre() {
             const bData = {
                 activeBimestre: unitNum,
                 bimestreActivoOficial: bimestreSeleccionado,
+                estadoBloqueoGlobal: "HABILITADO",
                 ultimaActualizacion: ultimaActualizacion,
                 fechaModificacion: fechaModificacion,
                 lastModified: nowTime
@@ -13212,8 +13224,12 @@ async function setOfficialActiveBimestre() {
             ]).catch(rtdbErr => console.warn("Aviso en RTDB syncNode:", rtdbErr));
         }
 
+        if (typeof STATE !== 'undefined' && STATE.config) {
+            STATE.config.bimestreActivoOficial = bimestreSeleccionado;
+            STATE.config.estadoBloqueoGlobal = "HABILITADO";
+        }
         if (typeof mostrarNotificacion === 'function') {
-            mostrarNotificacion("Bimestre fijado exitosamente", "success");
+            mostrarNotificacion("Bimestre fijado correctamente en Firebase", "success");
         } else if (typeof showToast === 'function') {
             showToast(`¡Bimestre activo oficial fijado a: Unidad ${unitNum} (${bRoman} Bimestre)! Sincronizado dinámicamente en la nube.`, "success");
         }
@@ -15811,12 +15827,14 @@ async function saveDisciplineResolutionForm(e) {
                 const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
                 const dRef = doc(db, 'disciplineReports', rep.id);
                 const dPayload = { ...rep, lastModified: nowTime };
-                const fsAction = (typeof updateDoc === 'function')
-                    ? updateDoc(dRef, dPayload).catch(e => {
-                        if (typeof setDoc === 'function') return setDoc(dRef, dPayload, { merge: true });
-                        throw e;
-                    })
-                    : (typeof setDoc === 'function' ? setDoc(dRef, dPayload, { merge: true }) : Promise.resolve());
+                const fsAction = (typeof setDoc === 'function')
+                    ? setDoc(dRef, dPayload, { merge: true })
+                    : ((typeof updateDoc === 'function')
+                        ? updateDoc(dRef, dPayload).catch(e => {
+                            if (typeof setDoc === 'function') return setDoc(dRef, dPayload, { merge: true });
+                            throw e;
+                        })
+                        : Promise.resolve());
                 await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
             } catch(fsErr) {
                 console.warn("Aviso al actualizar resolución disciplinaria en Firestore:", fsErr);
@@ -16687,12 +16705,14 @@ async function saveCycleForm(e) {
                     const cRef = doc(db, 'cycles', targetC.id);
                     const ciclosRef = doc(db, 'ciclos', targetC.id);
                     const cPayload = { ...targetC, lastModified: nowTime };
-                    const fsAction = (typeof updateDoc === 'function')
+                    const fsAction = (typeof setDoc === 'function')
+                    ? setDoc(cRef, cPayload, { merge: true })
+                    : ((typeof updateDoc === 'function')
                         ? updateDoc(cRef, cPayload).catch(e => {
                             if (typeof setDoc === 'function') return setDoc(cRef, cPayload, { merge: true });
                             throw e;
                         })
-                        : (typeof setDoc === 'function' ? setDoc(cRef, cPayload, { merge: true }) : Promise.resolve());
+                        : Promise.resolve());
                     await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
                     if (typeof setDoc === 'function') {
                         await setDoc(ciclosRef, cPayload, { merge: true });
@@ -24718,12 +24738,14 @@ async function savePensumSubjectForm(e) {
                 if (targetSubject && targetSubject.id) {
                     const subRef = doc(db, 'pensumCatalog', targetSubject.id);
                     const subData = { ...targetSubject, lastModified: nowTime };
-                    const fsAction = (typeof updateDoc === 'function')
+                    const fsAction = (typeof setDoc === 'function')
+                    ? setDoc(subRef, subData, { merge: true })
+                    : ((typeof updateDoc === 'function')
                         ? updateDoc(subRef, subData).catch(e => {
                             if (typeof setDoc === 'function') return setDoc(subRef, subData, { merge: true });
                             throw e;
                         })
-                        : (typeof setDoc === 'function' ? setDoc(subRef, subData, { merge: true }) : Promise.resolve());
+                        : Promise.resolve());
                     await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
                 }
             } catch(fsErr) {
@@ -25303,12 +25325,14 @@ async function saveGradeForm(e) {
                     const gRef = doc(db, 'gradesList', grd.id || grd.code);
                     const gsRef = doc(db, 'grados_secciones', grd.id || grd.code);
                     const gPayload = { ...grd, lastModified: nowTime };
-                    const fsAction = (typeof updateDoc === 'function')
+                    const fsAction = (typeof setDoc === 'function')
+                    ? setDoc(gRef, gPayload, { merge: true })
+                    : ((typeof updateDoc === 'function')
                         ? updateDoc(gRef, gPayload).catch(e => {
                             if (typeof setDoc === 'function') return setDoc(gRef, gPayload, { merge: true });
                             throw e;
                         })
-                        : (typeof setDoc === 'function' ? setDoc(gRef, gPayload, { merge: true }) : Promise.resolve());
+                        : Promise.resolve());
                     await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
                     if (typeof setDoc === 'function') {
                         await setDoc(gsRef, gPayload, { merge: true });
@@ -26052,12 +26076,14 @@ async function saveClassAssignmentForm(e) {
                     if (asg && asg.id) {
                         const asgRef = doc(db, 'pensum', asg.id);
                         const asgData = { ...asg, lastModified: nowTime };
-                        const fsAction = (typeof updateDoc === 'function')
-                            ? updateDoc(asgRef, asgData).catch(e => {
-                                if (typeof setDoc === 'function') return setDoc(asgRef, asgData, { merge: true });
-                                throw e;
-                            })
-                            : (typeof setDoc === 'function' ? setDoc(asgRef, asgData, { merge: true }) : Promise.resolve());
+                        const fsAction = (typeof setDoc === 'function')
+                    ? setDoc(asgRef, asgData, { merge: true })
+                    : ((typeof updateDoc === 'function')
+                        ? updateDoc(asgRef, asgData).catch(e => {
+                            if (typeof setDoc === 'function') return setDoc(asgRef, asgData, { merge: true });
+                            throw e;
+                        })
+                        : Promise.resolve());
                         await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
                     }
                 }
