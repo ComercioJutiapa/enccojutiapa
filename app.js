@@ -13063,43 +13063,63 @@ async function setOfficialActiveBimestre() {
         return;
     }
 
-    const select = document.getElementById('selectBimestre') || document.getElementById('officialActiveBimestreSelect');
-    if (!select) return;
+    const selectBimestre = document.getElementById('selectBimestreActivo') || 
+                           document.getElementById('selectBimestre') || 
+                           document.getElementById('officialActiveBimestreSelect');
+    if (!selectBimestre) return;
 
-    const bimestreSeleccionado = document.getElementById('selectBimestre') ? document.getElementById('selectBimestre').value : select.value;
-    const unitNum = parseInt(bimestreSeleccionado) || 1;
-    if (!STATE.config) STATE.config = {};
-    STATE.config.activeBimestre = unitNum;
-    STATE.config.bimestreActivoOficial = bimestreSeleccionado;
+    const btnFijar = document.getElementById('btnFijarBimestre') || 
+                     document.getElementById('btnSetOfficialBimestre') || 
+                     document.querySelector('button[onclick*="setOfficialActiveBimestre"]') || 
+                     document.querySelector('button[onclick*="fijarBimestreOficial"]');
 
-    const bRoman = ['I', 'II', 'III', 'IV'][unitNum - 1] || 'I';
+    const submitBtn = btnFijar;
+    const textoOriginal = (btnFijar && btnFijar.getAttribute('data-orig-html')) 
+        ? btnFijar.getAttribute('data-orig-html') 
+        : (btnFijar ? btnFijar.innerHTML : '<i class="fa-solid fa-check-circle"></i> Fijar y Activar Bimestre para Maestros');
+    const origBtnHtml = textoOriginal;
 
-    const headerBadge = document.getElementById('headerPreviewBimestreBadge');
-    if (headerBadge) {
-        headerBadge.textContent = `${unitNum}º Bimestre Activo`;
+    if (btnFijar && !btnFijar.getAttribute('data-orig-html')) {
+        btnFijar.setAttribute('data-orig-html', textoOriginal);
     }
 
-    // 🔌 Des-suscribir listener del bimestre anterior antes del cambio
-    if (typeof unsubscribeCurrentGradebookListener === 'function') {
-        unsubscribeCurrentGradebookListener();
-    }
-
-    const submitBtn = document.querySelector('button[onclick*="setOfficialActiveBimestre"]') || document.getElementById('btnSetOfficialBimestre');
-    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : null;
-    if (submitBtn && !submitBtn.getAttribute('data-orig-html') && origBtnHtml) {
-        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    if (btnFijar) {
+        btnFijar.disabled = true;
+        btnFijar.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Fijando en Firebase...';
     }
     if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Fijando en Firebase...';
     }
 
-    const nowTime = Date.now();
-    const fechaModificacion = new Date().toISOString();
+    const nuevoBimestre = selectBimestre.value;
+    const bimestreSeleccionado = nuevoBimestre;
+    const unitNum = parseInt(nuevoBimestre) || 1;
 
     try {
+        if (!nuevoBimestre) throw new Error("Debe seleccionar un bimestre válido.");
+
+        if (!STATE.config) STATE.config = {};
+        STATE.config.activeBimestre = unitNum;
+        STATE.config.bimestreActivoOficial = nuevoBimestre;
+
+        const bRoman = ['I', 'II', 'III', 'IV'][unitNum - 1] || 'I';
+
+        const headerBadge = document.getElementById('headerPreviewBimestreBadge');
+        if (headerBadge) {
+            headerBadge.textContent = `${unitNum}º Bimestre Activo`;
+        }
+
+        // 🔌 Des-suscribir listener del bimestre anterior antes del cambio
+        if (typeof unsubscribeCurrentGradebookListener === 'function') {
+            unsubscribeCurrentGradebookListener();
+        }
+
+        const nowTime = Date.now();
+        const fechaModificacion = new Date().toISOString();
+        const ultimaActualizacion = fechaModificacion;
+
         if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(nowTime));
+            try { localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(nowTime)); } catch(e) {}
         }
 
         // Notificación atómica inter-pestañas
@@ -13108,22 +13128,28 @@ async function setOfficialActiveBimestre() {
                 _enccBroadcastChannel.postMessage({
                     type: 'NODE_UPDATED',
                     node: 'config',
-                    data: { activeBimestre: unitNum, bimestreActivoOficial: bimestreSeleccionado },
+                    data: { activeBimestre: unitNum, bimestreActivoOficial: nuevoBimestre },
                     timestamp: nowTime
                 });
             } catch(bcErr) {}
         }
 
-        // 🌟 A. Escritura Atómica Quirúrgica en Firestore (configuracion/sistema con merge: true)
+        // 🌟 A. Escritura Atómica Quirúrgica en Firestore (configuracion/sistema con merge: true y timeout protector)
         const modular = window.FirebaseModular;
         if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
             const { db, doc, setDoc } = modular;
             const configRef = doc(db, "configuracion", "sistema");
 
-            await setDoc(configRef, {
-                bimestreActivoOficial: bimestreSeleccionado,
-                fechaModificacion: new Date().toISOString()
-            }, { merge: true });
+            await withTimeout(
+                setDoc(configRef, {
+                    bimestreActivoOficial: bimestreSeleccionado,
+                    activeBimestre: unitNum,
+                    ultimaActualizacion: ultimaActualizacion,
+                    fechaModificacion: new Date().toISOString()
+                }, { merge: true }),
+                5000,
+                'Tiempo de espera en Firestore (configuracion/sistema) agotado.'
+            );
 
             // Nodos secundarios para compatibilidad universal
             const bRef = doc(db, 'config', 'bimestre_activo');
@@ -13133,6 +13159,7 @@ async function setOfficialActiveBimestre() {
             const bData = {
                 activeBimestre: unitNum,
                 bimestreActivoOficial: bimestreSeleccionado,
+                ultimaActualizacion: ultimaActualizacion,
                 fechaModificacion: fechaModificacion,
                 lastModified: nowTime
             };
@@ -13149,42 +13176,69 @@ async function setOfficialActiveBimestre() {
             console.log(`🔥 [Firestore] Bimestre Activo Oficial (${bimestreSeleccionado}) persistido con merge: true en configuracion/sistema.`);
         }
 
-        // 🌟 B. Persistencia Atómica Parcial en Firebase Realtime Database
+        // 🌟 B. Persistencia en Firebase Realtime Database
         if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.patchNode === 'function') {
             await withTimeout(
                 EnccoCloudSync.patchNode('config', {
                     activeBimestre: unitNum,
                     bimestreActivoOficial: bimestreSeleccionado,
+                    ultimaActualizacion: ultimaActualizacion,
                     fechaModificacion: fechaModificacion,
                     lastModified: nowTime
                 }),
-                8000,
+                5000,
                 'Tiempo de espera en Realtime Database agotado.'
-            );
+            ).catch(rtdbErr => console.warn("Aviso en RTDB patchNode:", rtdbErr));
         }
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
             await withTimeout(
                 EnccoCloudSync.syncNode('config', STATE.config),
-                8000,
+                5000,
                 'Tiempo de espera en Realtime Database agotado.'
-            );
+            ).catch(rtdbErr => console.warn("Aviso en RTDB syncNode:", rtdbErr));
         }
 
-        showToast(`¡Bimestre activo oficial fijado a: Unidad ${unitNum} (${bRoman} Bimestre)! Sincronizado dinámicamente en la nube.`, "success");
+        if (typeof mostrarNotificacion === 'function') {
+            mostrarNotificacion("Bimestre fijado exitosamente", "success");
+        } else {
+            showToast(`¡Bimestre activo oficial fijado a: Unidad ${unitNum} (${bRoman} Bimestre)! Sincronizado dinámicamente en la nube.`, "success");
+        }
 
         if (typeof populateGradebookBimestreSelect === 'function') populateGradebookBimestreSelect();
         if (typeof renderCurrentView === 'function') renderCurrentView();
     } catch(err) {
-        console.error("❌ Error al fijar bimestre activo en Firebase:", err);
-        showToast("Error al fijar bimestre activo en Firebase: " + (err.message || err), "danger");
+        console.error("Error al fijar el bimestre en Firebase:", err);
+        if (typeof showToast === 'function') {
+            showToast("Ocurrió un error al guardar en Firebase: " + (err.message || err), "danger");
+        } else {
+            alert("Ocurrió un error al guardar en Firebase: " + (err.message || err));
+        }
     } finally {
-        if (submitBtn && origBtnHtml) {
+        // RESTAURACIÓN OBLIGATORIA DEL BOTÓN (NUNCA SE QUEDA ATRAPADO EN ESTADO DE CARGA)
+        const currentBtn = document.getElementById('btnFijarBimestre') || 
+                           document.getElementById('btnSetOfficialBimestre') || 
+                           document.querySelector('button[onclick*="setOfficialActiveBimestre"]') || 
+                           document.querySelector('button[onclick*="fijarBimestreOficial"]') || 
+                           btnFijar ||
+                           submitBtn;
+        if (currentBtn) {
+            currentBtn.disabled = false;
+            currentBtn.innerHTML = currentBtn.getAttribute('data-orig-html') || origBtnHtml || textoOriginal;
+        }
+        if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml || textoOriginal;
+        }
+        if (btnFijar) {
+            btnFijar.disabled = false;
+            btnFijar.innerHTML = textoOriginal;
         }
     }
 }
 window.setOfficialActiveBimestre = setOfficialActiveBimestre;
+window.fijarBimestreOficial = setOfficialActiveBimestre;
+
+
 
 async function toggleGlobalLock() {
     if (STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') return;
