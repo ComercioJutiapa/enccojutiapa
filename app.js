@@ -4716,6 +4716,50 @@ function getStudentCountByGradeAndSection(arg1, arg2, arg3) {
 }
 window.getStudentCountByGradeAndSection = getStudentCountByGradeAndSection;
 
+// UNIVERSAL DOCENTE ASSIGNMENT MATCHER (DINÁMICO PARA TODOS LOS DOCENTES)
+function isCourseAssignedToTeacher(p, user) {
+    if (!p || !user) return false;
+    // 1. Coincidencia directa por ID
+    if (p.teacherId && user.id) {
+        if (p.teacherId === user.id) return true;
+        // Reconciliación cruzada de usuario auxiliar/admin y docente titular de Nehemias
+        if ((p.teacherId === 'usr-aux-01' || p.teacherId === 'usr-doc-01') && 
+            (user.id === 'usr-aux-01' || user.id === 'usr-doc-01')) {
+            return true;
+        }
+    }
+
+    // 2. Extracción de nombres a comparar
+    const courseTeacher = p.teacher || p.teacherName || '';
+    const userName = user.name || user.username || '';
+    if (!courseTeacher || !userName) return false;
+
+    const cleanStr = s => String(s).toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/^(licda\.|lic\.|pem\.|prof\.|profesor|profesora|ma\.|ing\.|dr\.|dra\.)\s*/gi, "")
+        .replace(/[\.,]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const cleanCourseTeacher = cleanStr(courseTeacher);
+    const cleanUserName = cleanStr(userName);
+    if (!cleanCourseTeacher || !cleanUserName) return false;
+    if (cleanCourseTeacher === cleanUserName) return true;
+    
+    // Inclusión bidireccional
+    if (cleanCourseTeacher.includes(cleanUserName) || cleanUserName.includes(cleanCourseTeacher)) return true;
+
+    // Coincidencia por palabras clave
+    const wordsCourse = cleanCourseTeacher.split(/\s+/).filter(w => w.length > 2);
+    const wordsUser = cleanUserName.split(/\s+/).filter(w => w.length > 2);
+    const matched = wordsCourse.filter(w => wordsUser.includes(w));
+    if (matched.length >= 2) return true;
+    if (wordsCourse.length === 1 && wordsUser.includes(wordsCourse[0])) return true;
+
+    return false;
+}
+window.isCourseAssignedToTeacher = isCourseAssignedToTeacher;
+
 
 // ======================================================================
 //             CONTROLADORES GLOBALES DE VENTANAS MODALES
@@ -7379,6 +7423,7 @@ function impersonateUser(userId) {
         if (bRole) bRole.textContent = targetUser.title || targetUser.role.toUpperCase();
     }
 
+    if (typeof syncPensumTeachersWithUsers === 'function') syncPensumTeachersWithUsers(false);
     switchRole(targetUser.role);
     synchronizeGlobalDynamicUI();
 
@@ -7553,21 +7598,18 @@ function renderDashboard() {
         welcomeTitle.textContent = `¡Bienvenido Catedrático, ${currentUser.name}!`;
         welcomeSubtitle.textContent = `Portal de Ingreso de Calificaciones, Control de Asistencia e Impresión de Listados.`;
 
-        // Filtrar clases asignadas al docente
-        const myClasses = (STATE.pensum || []).filter(p => 
-            p.teacherId === currentUser.id || 
-            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase()) ||
-            (currentUser.name && p.teacher && p.teacher.toLowerCase().includes(currentUser.name.toLowerCase()))
-        );
+        // Filtrar clases asignadas al docente de forma dinámica y universal
+        const myClasses = (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(p, currentUser) : (p.teacherId === currentUser.id || (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())));
 
         // Agrupar clases separadas por grado y sección
         const groupedGrades = {};
         myClasses.forEach(c => {
-            const key = `${c.grade}__${c.section || 'A'}__${c.career || ''}`;
+            const sec = (c.section || 'A').trim();
+            const key = `${c.grade || ''}__${sec}__${c.career || ''}`;
             if (!groupedGrades[key]) {
                 groupedGrades[key] = {
                     grade: c.grade,
-                    section: c.section || 'A',
+                    section: sec,
                     career: c.career || '',
                     classes: []
                 };
@@ -7582,11 +7624,13 @@ function renderDashboard() {
             totalStudentsCount += getStudentCountByGradeAndSection(g.grade, g.grade, g.section);
         });
 
+        const activeBimestreDisplay = STATE.config?.bimestreActivoOficial || STATE.config?.activeBimestre || 1;
+
         kpiGrid.innerHTML = `
             <div class="kpi-card"><div class="kpi-icon green"><i class="fa-solid fa-book-bookmark"></i></div><div class="kpi-info"><h4>Clases Asignadas</h4><h2>${myClasses.length}</h2><p>Cursos a su cargo</p></div></div>
             <div class="kpi-card"><div class="kpi-icon blue"><i class="fa-solid fa-graduation-cap"></i></div><div class="kpi-info"><h4>Grados que Imparte</h4><h2>${gradeKeys.length}</h2><p>Secciones asignadas</p></div></div>
             <div class="kpi-card"><div class="kpi-icon orange"><i class="fa-solid fa-users"></i></div><div class="kpi-info"><h4>Total Estudiantes</h4><h2>${totalStudentsCount}</h2><p>Inscritos en sus grados</p></div></div>
-            <div class="kpi-card"><div class="kpi-icon purple"><i class="fa-solid fa-calendar-check"></i></div><div class="kpi-info"><h4>Bimestre Activo</h4><h2>${STATE.config?.activeBimestre || 2}°</h2><p>Oficial para calificar</p></div></div>
+            <div class="kpi-card"><div class="kpi-icon purple"><i class="fa-solid fa-calendar-check"></i></div><div class="kpi-info"><h4>Bimestre Activo</h4><h2>${activeBimestreDisplay}°</h2><p>Oficial para calificar</p></div></div>
         `;
 
         if (gradeKeys.length === 0) {
@@ -11111,10 +11155,7 @@ function printGradebookOfficialList() {
     const currentUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente');
 
     if (!targetPensum && isDocente && currentUser) {
-        targetPensum = (STATE.pensum || []).find(p => 
-            p.teacherId === currentUser.id || 
-            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())
-        );
+        targetPensum = (STATE.pensum || []).find(p => isCourseAssignedToTeacher(p, currentUser));
     } else if (!targetPensum) {
         targetPensum = (STATE.pensum || [])[0];
     }
@@ -14271,11 +14312,7 @@ function getUserAlerts() {
         }
 
         // 2. Cátedras y Secciones del Docente
-        const myClasses = (STATE.pensum || []).filter(p => 
-            p.teacherId === currentUser.id || 
-            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase()) ||
-            (currentUser.name && p.teacher && p.teacher.toLowerCase().includes(currentUser.name.toLowerCase()))
-        );
+        const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
 
         if (myClasses.length > 0) {
             rawAlerts.push({
@@ -16907,7 +16944,8 @@ function syncPensumTeachersWithUsers(saveToFirebase = false) {
     if (!Array.isArray(STATE.pensum) || !Array.isArray(STATE.users) || STATE.users.length === 0) return false;
     let modified = false;
     STATE.pensum.forEach(p => {
-        const targetUser = STATE.users.find(u => (p.teacherId && u.id === p.teacherId) || (typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, u)));
+        const targetUser = STATE.users.find(u => u.role === 'docente' && ((p.teacherId && u.id === p.teacherId) || (typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, u)))) ||
+                           STATE.users.find(u => (p.teacherId && u.id === p.teacherId) || (typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, u)));
         if (targetUser) {
             if (p.teacher !== targetUser.name) {
                 p.teacher = targetUser.name;
@@ -17945,10 +17983,7 @@ function openGradingConfigModal() {
     const currentUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente') || STATE.users[0];
 
     if (isDocente && currentUser && !targetPensum) {
-        targetPensum = (STATE.pensum || []).find(p => 
-            p.teacherId === currentUser.id || 
-            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())
-        );
+        targetPensum = (STATE.pensum || []).find(p => isCourseAssignedToTeacher(p, currentUser));
     } else if (!targetPensum) {
         targetPensum = (STATE.pensum || [])[0];
     }
@@ -18087,10 +18122,7 @@ async function saveGradingConfigForm(e) {
     const currentUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente') || STATE.users[0];
 
     if (isDocente && currentUser && !targetPensum) {
-        targetPensum = (STATE.pensum || []).find(p => 
-            p.teacherId === currentUser.id || 
-            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())
-        );
+        targetPensum = (STATE.pensum || []).find(p => isCourseAssignedToTeacher(p, currentUser));
     } else if (!targetPensum) {
         targetPensum = (STATE.pensum || [])[0];
     }
@@ -18237,10 +18269,7 @@ function loadTeacherGradebook() {
 
     // Para docentes, si no hay clase seleccionada, buscar la primera clase asignada a este docente
     if (isDocente && currentUser && !targetPensum) {
-        targetPensum = (STATE.pensum || []).find(p => 
-            p.teacherId === currentUser.id || 
-            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())
-        );
+        targetPensum = (STATE.pensum || []).find(p => isCourseAssignedToTeacher(p, currentUser));
     } else if (!targetPensum) {
         targetPensum = (STATE.pensum || [])[0];
     }
@@ -18840,11 +18869,7 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
     let gradeOptionsHtml = '';
 
     if (isDocente && currentUser && !isDirectorOrAdmin) {
-        const myClasses = (STATE.pensum || []).filter(p => 
-            p.teacherId === currentUser.id || 
-            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase()) ||
-            (currentUser.name && p.teacher && p.teacher.toLowerCase().includes(currentUser.name.toLowerCase()))
-        );
+        const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
 
         const uniqueGrades = new Map();
         myClasses.forEach(c => {
@@ -18963,17 +18988,9 @@ function updateAttendanceCoursesList() {
     });
 
     if (isDocente && currentUser && !isDirectorOrAdmin) {
-        matchingPensum = matchingPensum.filter(p => 
-            p.teacherId === currentUser.id || 
-            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase()) ||
-            (currentUser.name && p.teacher && p.teacher.toLowerCase().includes(currentUser.name.toLowerCase()))
-        );
+        matchingPensum = matchingPensum.filter(p => isCourseAssignedToTeacher(p, currentUser));
     } else if (isDirectorOrAdmin && activeTeacherObj) {
-        matchingPensum = matchingPensum.filter(p => 
-            p.teacherId === activeTeacherObj.id || 
-            (p.teacher && p.teacher.toLowerCase() === activeTeacherObj.name.toLowerCase()) ||
-            (activeTeacherObj.name && p.teacher && p.teacher.toLowerCase().includes(activeTeacherObj.name.toLowerCase()))
-        );
+        matchingPensum = matchingPensum.filter(p => isCourseAssignedToTeacher(p, activeTeacherObj));
     }
 
     if (matchingPensum.length > 0) {
@@ -22023,10 +22040,7 @@ function exportGradebookOfficialExcel() {
     const currentUser = STATE.currentUser || (STATE.users || []).find(u => u.role === 'docente');
 
     if (!targetPensum && isDocente && currentUser) {
-        targetPensum = (STATE.pensum || []).find(p => 
-            p.teacherId === currentUser.id || 
-            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())
-        );
+        targetPensum = (STATE.pensum || []).find(p => isCourseAssignedToTeacher(p, currentUser));
     } else if (!targetPensum) {
         targetPensum = (STATE.pensum || [])[0];
     }
@@ -22303,10 +22317,7 @@ async function handleGradebookExcelImport(e) {
     const currentUser = STATE.currentUser || (STATE.users || []).find(u => u.role === 'docente');
 
     if (!targetPensum && isDocente && currentUser) {
-        targetPensum = (STATE.pensum || []).find(p => 
-            p.teacherId === currentUser.id || 
-            (p.teacher && p.teacher.toLowerCase() === currentUser.name.toLowerCase())
-        );
+        targetPensum = (STATE.pensum || []).find(p => isCourseAssignedToTeacher(p, currentUser));
     } else if (!targetPensum) {
         targetPensum = (STATE.pensum || [])[0];
     }
