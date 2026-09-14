@@ -13049,40 +13049,46 @@ async function loadLockStatus() {
 }
 window.loadLockStatus = loadLockStatus;
 
+// Soporte transparente para resolución dual de IDs en selector de bimestre
+if (typeof document !== 'undefined' && document.getElementById && !document._enccBimestreIdHook) {
+    document._enccBimestreIdHook = true;
+    const _origGetElem = document.getElementById.bind(document);
+    document.getElementById = function(id) {
+        if (id === 'officialActiveBimestreSelect') {
+            return _origGetElem('selectBimestreActivo') || _origGetElem('officialActiveBimestreSelect');
+        }
+        if (id === 'selectBimestreActivo') {
+            return _origGetElem('selectBimestreActivo') || _origGetElem('officialActiveBimestreSelect');
+        }
+        return _origGetElem(id);
+    };
+}
+
 async function setOfficialActiveBimestre() {
     const e = arguments[0] || (typeof window !== 'undefined' && window.event ? window.event : null);
-    if (e) {
-        if (e._enccoHandled) return;
-        e._enccoHandled = true;
-        if (e.preventDefault) e.preventDefault();
-        if (e.stopPropagation) e.stopPropagation();
-    }
+    if (e && e.preventDefault) e.preventDefault();
 
     if (STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') {
         showToast("Solo Secretaría, Dirección o Administración pueden fijar el bimestre activo.", "danger");
         return;
     }
 
-    const selectBimestre = document.getElementById('selectBimestreActivo') || 
-                           document.getElementById('selectBimestre') || 
-                           document.getElementById('officialActiveBimestreSelect');
-    if (!selectBimestre) return;
+    const btn = document.getElementById('btnFijarBimestre') || 
+                document.getElementById('btnSetOfficialBimestre') || 
+                document.querySelector('button[onclick*="setOfficialActiveBimestre"]') || 
+                document.querySelector('button[onclick*="fijarBimestreOficial"]');
+    const select = document.getElementById('selectBimestreActivo') || 
+                   document.getElementById('officialActiveBimestreSelect') || 
+                   document.getElementById('selectBimestre');
+    const textoOriginal = '✔ Fijar y Activar Bimestre para Maestros';
 
-    const btnFijar = document.getElementById('btnFijarBimestre') || 
-                     document.getElementById('btnSetOfficialBimestre') || 
-                     document.querySelector('button[onclick*="setOfficialActiveBimestre"]') || 
-                     document.querySelector('button[onclick*="fijarBimestreOficial"]');
+    const btnFijar = btn;
+    const submitBtn = btn;
 
-    const submitBtn = btnFijar;
-    const textoOriginal = (btnFijar && btnFijar.getAttribute('data-orig-html')) 
-        ? btnFijar.getAttribute('data-orig-html') 
-        : (btnFijar ? btnFijar.innerHTML : '<i class="fa-solid fa-check-circle"></i> Fijar y Activar Bimestre para Maestros');
-    const origBtnHtml = textoOriginal;
-
-    if (btnFijar && !btnFijar.getAttribute('data-orig-html')) {
-        btnFijar.setAttribute('data-orig-html', textoOriginal);
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> Fijando en Firebase...';
     }
-
     if (btnFijar) {
         btnFijar.disabled = true;
         btnFijar.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Fijando en Firebase...';
@@ -13091,7 +13097,17 @@ async function setOfficialActiveBimestre() {
         submitBtn.disabled = true;
     }
 
-    const nuevoBimestre = selectBimestre.value;
+    // Promesa con Timeout de 5 segundos
+    const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Tiempo de espera agotado al conectar con Firebase")), 5000)
+    );
+
+    if (!select) {
+        if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
+        return;
+    }
+
+    const nuevoBimestre = select.value;
     const bimestreSeleccionado = nuevoBimestre;
     const unitNum = parseInt(nuevoBimestre) || 1;
 
@@ -13103,13 +13119,12 @@ async function setOfficialActiveBimestre() {
         STATE.config.bimestreActivoOficial = nuevoBimestre;
 
         const bRoman = ['I', 'II', 'III', 'IV'][unitNum - 1] || 'I';
-
         const headerBadge = document.getElementById('headerPreviewBimestreBadge');
         if (headerBadge) {
             headerBadge.textContent = `${unitNum}º Bimestre Activo`;
         }
 
-        // 🔌 Des-suscribir listener del bimestre anterior antes del cambio
+        // 🔌 Limpieza preventiva del listener del bimestre anterior
         if (typeof unsubscribeCurrentGradebookListener === 'function') {
             unsubscribeCurrentGradebookListener();
         }
@@ -13122,7 +13137,7 @@ async function setOfficialActiveBimestre() {
             try { localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(nowTime)); } catch(e) {}
         }
 
-        // Notificación atómica inter-pestañas
+        // Notificación inter-pestañas local (0ms)
         if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
             try {
                 _enccBroadcastChannel.postMessage({
@@ -13134,22 +13149,25 @@ async function setOfficialActiveBimestre() {
             } catch(bcErr) {}
         }
 
-        // 🌟 A. Escritura Atómica Quirúrgica en Firestore (configuracion/sistema con merge: true y timeout protector)
+        // 🌟 Competencia entre la escritura de Firebase y el timeout de 5s
         const modular = window.FirebaseModular;
         if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
             const { db, doc, setDoc } = modular;
             const configRef = doc(db, "configuracion", "sistema");
 
-            await withTimeout(
-                setDoc(configRef, {
-                    bimestreActivoOficial: bimestreSeleccionado,
+            // Competencia entre la escritura de Firebase y el timeout
+            await Promise.race([
+                setDoc(configRef, { 
+                    bimestreActivoOficial: nuevoBimestre,
+                    bimestreSeleccionado: bimestreSeleccionado,
                     activeBimestre: unitNum,
                     ultimaActualizacion: ultimaActualizacion,
                     fechaModificacion: new Date().toISOString()
                 }, { merge: true }),
-                5000,
-                'Tiempo de espera en Firestore (configuracion/sistema) agotado.'
-            );
+                timeout
+            ]);
+
+            console.log("Bimestre fijado exitosamente en Firebase");
 
             // Nodos secundarios para compatibilidad universal
             const bRef = doc(db, 'config', 'bimestre_activo');
@@ -13172,13 +13190,11 @@ async function setOfficialActiveBimestre() {
             } catch(secErr) {
                 console.warn("Aviso en nodos secundarios de Firestore:", secErr);
             }
-
-            console.log(`🔥 [Firestore] Bimestre Activo Oficial (${bimestreSeleccionado}) persistido con merge: true en configuracion/sistema.`);
         }
 
-        // 🌟 B. Persistencia en Firebase Realtime Database
+        // Sincronización Realtime Database
         if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.patchNode === 'function') {
-            await withTimeout(
+            await Promise.race([
                 EnccoCloudSync.patchNode('config', {
                     activeBimestre: unitNum,
                     bimestreActivoOficial: bimestreSeleccionado,
@@ -13186,59 +13202,64 @@ async function setOfficialActiveBimestre() {
                     fechaModificacion: fechaModificacion,
                     lastModified: nowTime
                 }),
-                5000,
-                'Tiempo de espera en Realtime Database agotado.'
-            ).catch(rtdbErr => console.warn("Aviso en RTDB patchNode:", rtdbErr));
+                timeout
+            ]).catch(rtdbErr => console.warn("Aviso en RTDB patchNode:", rtdbErr));
         }
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            await withTimeout(
+            await Promise.race([
                 EnccoCloudSync.syncNode('config', STATE.config),
-                5000,
-                'Tiempo de espera en Realtime Database agotado.'
-            ).catch(rtdbErr => console.warn("Aviso en RTDB syncNode:", rtdbErr));
+                timeout
+            ]).catch(rtdbErr => console.warn("Aviso en RTDB syncNode:", rtdbErr));
         }
 
         if (typeof mostrarNotificacion === 'function') {
             mostrarNotificacion("Bimestre fijado exitosamente", "success");
-        } else {
+        } else if (typeof showToast === 'function') {
             showToast(`¡Bimestre activo oficial fijado a: Unidad ${unitNum} (${bRoman} Bimestre)! Sincronizado dinámicamente en la nube.`, "success");
         }
 
         if (typeof populateGradebookBimestreSelect === 'function') populateGradebookBimestreSelect();
         if (typeof renderCurrentView === 'function') renderCurrentView();
     } catch(err) {
-        console.error("Error al fijar el bimestre en Firebase:", err);
-        if (typeof showToast === 'function') {
-            showToast("Ocurrió un error al guardar en Firebase: " + (err.message || err), "danger");
-        } else {
-            alert("Ocurrió un error al guardar en Firebase: " + (err.message || err));
+        const error = err;
+        console.error("Error al fijar el bimestre:", error);
+        if (typeof alert === 'function') {
+            alert("Atención: " + error.message);
+        } else if (typeof showToast === 'function') {
+            showToast("Atención: " + error.message, "danger");
         }
     } finally {
-        // RESTAURACIÓN OBLIGATORIA DEL BOTÓN (NUNCA SE QUEDA ATRAPADO EN ESTADO DE CARGA)
+        // DESBLOQUEO OBLIGATORIO DE INTERFAZ
         const currentBtn = document.getElementById('btnFijarBimestre') || 
                            document.getElementById('btnSetOfficialBimestre') || 
                            document.querySelector('button[onclick*="setOfficialActiveBimestre"]') || 
                            document.querySelector('button[onclick*="fijarBimestreOficial"]') || 
                            btnFijar ||
+                           btn ||
                            submitBtn;
         if (currentBtn) {
             currentBtn.disabled = false;
-            currentBtn.innerHTML = currentBtn.getAttribute('data-orig-html') || origBtnHtml || textoOriginal;
+            currentBtn.innerHTML = textoOriginal;
         }
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml || textoOriginal;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = textoOriginal;
         }
         if (btnFijar) {
             btnFijar.disabled = false;
             btnFijar.innerHTML = textoOriginal;
         }
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = textoOriginal;
+        }
     }
 }
 window.setOfficialActiveBimestre = setOfficialActiveBimestre;
 window.fijarBimestreOficial = setOfficialActiveBimestre;
-
-
+async function fijarBimestreOficial(e) {
+    return setOfficialActiveBimestre(e);
+}
 
 async function toggleGlobalLock() {
     if (STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') return;
@@ -26812,6 +26833,67 @@ if (typeof window !== 'undefined') {
     if (window.FirebaseModular && window.FirebaseModular.db) {
         initFirestoreModularLiveListeners();
     }
+}
+
+// ==============================================================================
+// 🌐 DIAGNÓSTICO DE RED, LIMPIEZA DE LISTENERS Y LIBERACIÓN DE RECURSOS
+// ==============================================================================
+async function diagnosticoRedFirebase() {
+    console.log("🔍 [Diagnóstico de Red] Iniciando auditoría de conectividad y sockets...");
+    const report = {
+        timestamp: new Date().toISOString(),
+        online: typeof navigator !== "undefined" ? navigator.onLine : true,
+        rtdbUrl: typeof getFirebaseDatabaseUrl === "function" ? getFirebaseDatabaseUrl() : "N/A",
+        rtdbLatencyMs: null,
+        rtdbStatus: "pending",
+        firestoreActiveListeners: (typeof _firestoreModularUnsubscribers !== "undefined") ? _firestoreModularUnsubscribers.length : 0,
+        firestoreReady: !!(typeof window !== "undefined" && window.FirebaseModular && window.FirebaseModular.db),
+        eventSourceConnected: !!(typeof _firebaseEventSource !== "undefined" && _firebaseEventSource && _firebaseEventSource.readyState === 1)
+    };
+    const startRtdb = Date.now();
+    try {
+        const controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 4000) : null;
+        const res = await fetch(`${report.rtdbUrl}/encc_school_state/lastModified.json`, {
+            signal: controller ? controller.signal : undefined
+        });
+        if (timeoutId) clearTimeout(timeoutId);
+        report.rtdbLatencyMs = Date.now() - startRtdb;
+        report.rtdbStatus = res.ok ? "Optimo (200 OK)" : `HTTP ${res.status}`;
+    } catch(err) {
+        report.rtdbLatencyMs = Date.now() - startRtdb;
+        report.rtdbStatus = err.name === "AbortError" ? "TIMEOUT (>4000ms)" : err.message;
+    }
+    if (typeof console.table === "function") {
+        console.table(report);
+    } else {
+        console.log("Reporte de Diagnostico:", report);
+    }
+    return report;
+}
+
+function limpiarListenersFirebase() {
+    console.log("🧹 [Limpieza de Sockets] Desuscribiendo listeners activos para descongestionar el canal de red...");
+    let count = 0;
+    if (typeof unsubscribeAllFirestoreListeners === "function") {
+        count += (typeof _firestoreModularUnsubscribers !== "undefined" && Array.isArray(_firestoreModularUnsubscribers)) ? _firestoreModularUnsubscribers.length : 0;
+        unsubscribeAllFirestoreListeners();
+    }
+    if (typeof _firebaseEventSource !== "undefined" && _firebaseEventSource) {
+        try {
+            _firebaseEventSource.close();
+            _firebaseEventSource = null;
+            count++;
+            console.log("EventSource SSE cerrado.");
+        } catch(e) {}
+    }
+    console.log(`✅ [Limpieza de Sockets] Se cerraron ${count} conexiones y listeners concurrentes.`);
+    return count;
+}
+
+if (typeof window !== "undefined") {
+    window.diagnosticoRedFirebase = diagnosticoRedFirebase;
+    window.limpiarListenersFirebase = limpiarListenersFirebase;
 }
 
 // ==============================================================================
