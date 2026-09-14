@@ -26897,6 +26897,74 @@ if (typeof window !== "undefined") {
 }
 
 // ==============================================================================
+// 🧪 PRUEBA DE ESCRITURA INMEDIATA EN FIRESTORE Y REALTIME DATABASE
+// ==============================================================================
+async function probarEscrituraFirestore() {
+    console.log("🧪 [Prueba de Escritura Inmediata] Iniciando test en Firestore y RTDB...");
+    const results = {
+        timestamp: new Date().toISOString(),
+        realtimeDatabase: { status: "pending", latencyMs: null, error: null },
+        firestore: { status: "pending", latencyMs: null, error: null }
+    };
+    // 1. Probar Realtime Database
+    const startRtdb = Date.now();
+    try {
+        const firebaseUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com";
+        const controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 4000) : null;
+        const res = await fetch(`${firebaseUrl}/encc_school_state/config.json`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pingTestAt: new Date().toISOString() }),
+            signal: controller ? controller.signal : undefined
+        });
+        if (timeoutId) clearTimeout(timeoutId);
+        results.realtimeDatabase.latencyMs = Date.now() - startRtdb;
+        results.realtimeDatabase.status = res.ok ? `EXITO (HTTP ${res.status})` : `Error HTTP ${res.status}`;
+    } catch(rtdbErr) {
+        results.realtimeDatabase.latencyMs = Date.now() - startRtdb;
+        results.realtimeDatabase.status = "Fallo";
+        results.realtimeDatabase.error = rtdbErr.message;
+    }
+    // 2. Probar Cloud Firestore
+    const startFs = Date.now();
+    if (window.FirebaseModular && window.FirebaseModular.db && typeof window.FirebaseModular.setDoc === "function") {
+        const { db, doc, setDoc } = window.FirebaseModular;
+        const testRef = doc(db, "configuracion", "sistema");
+        const timeoutFs = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error("Tiempo de espera agotado (>4000ms).")), 4000)
+        );
+        try {
+            await Promise.race([
+                setDoc(testRef, { 
+                    ultimaPruebaEscritura: new Date().toISOString(),
+                    testWritePing: true
+                }, { merge: true }),
+                timeoutFs
+            ]);
+            results.firestore.latencyMs = Date.now() - startFs;
+            results.firestore.status = "EXITO (setDoc confirmado en configuracion/sistema)";
+        } catch(fsErr) {
+            results.firestore.latencyMs = Date.now() - startFs;
+            results.firestore.status = "Tiempo de espera / Error";
+            results.firestore.error = fsErr.message;
+        }
+    } else {
+        results.firestore.status = "SDK Firestore no inicializado en memoria";
+    }
+    if (typeof console.table === "function") {
+        console.table(results);
+    } else {
+        console.log("Resultados de prueba de escritura:", results);
+    }
+    return results;
+}
+
+if (typeof window !== "undefined") {
+    window.probarEscrituraFirestore = probarEscrituraFirestore;
+}
+
+// ==============================================================================
 // 🛡️ DELEGACIÓN UNIVERSAL DE EVENTOS DE GUARDADO (GLOBAL SAVE DISPATCHER)
 // ==============================================================================
 let _globalSaveDelegationInitialized = false;
