@@ -10079,14 +10079,23 @@ function handlePhotoUpload(e) {
 }
 
 async function saveStudentProfileForm(e) {
-    if (e && e.preventDefault) e.preventDefault();
+    if (e) {
+        if (e._enccoHandled) return;
+        e._enccoHandled = true;
+        if (e.preventDefault) e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+    }
     if (!checkEnrolmentPermissions()) return;
 
     const student = (STATE.students || []).find(s => 
         String(s.id) === String(STATE.selectedStudentId) || 
         (s.carne && s.carne === STATE.selectedStudentId)
     );
-    if (!student) return;
+    if (!student || !student.id) {
+        console.error("Error: ID del estudiante no identificado.");
+        showToast("No se pudo identificar al estudiante seleccionado.", "danger");
+        return;
+    }
 
     const newStatus = document.getElementById('profStatusSelect')?.value || 'Activo';
     const reason = (document.getElementById('profRetireReason')?.value || '').trim();
@@ -10097,6 +10106,16 @@ async function saveStudentProfileForm(e) {
             document.getElementById('profRetireReason')?.focus();
             return;
         }
+    }
+
+    const submitBtn = document.querySelector('#studentProfileModal form button[type="submit"]') || document.querySelector('#studentProfileModal button.btn-primary');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Guardar Información';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    }
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
     }
 
     student.photo = document.getElementById('profilePhotoImg')?.src || student.photo;
@@ -10144,15 +10163,17 @@ async function saveStudentProfileForm(e) {
     try {
         student.lastModified = Date.now();
         // 🌟 A. Persistencia Atómica en Firestore (colección students con merge: true)
-        if (window.FirebaseModular && window.FirebaseModular.db) {
+        const modular = window.FirebaseModular;
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
             try {
-                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
+                const { db, doc, updateDoc, setDoc } = modular;
                 const stuRef = doc(db, 'students', student.id);
-                if (typeof updateDoc === 'function') {
-                    try { await updateDoc(stuRef, student); } catch(e) { if (typeof setDoc === 'function') await setDoc(stuRef, student, { merge: true }); }
-                } else if (typeof setDoc === 'function') {
-                    await setDoc(stuRef, student, { merge: true });
-                }
+                const fsAction = (typeof modular.updateDoc === 'function')
+                    ? modular.updateDoc(stuRef, student).catch(e => {
+                        return modular.setDoc(stuRef, student, { merge: true });
+                    })
+                    : modular.setDoc(stuRef, student, { merge: true });
+                await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
             } catch(fsErr) {
                 console.warn("Aviso al guardar estudiante en Firestore:", fsErr);
             }
@@ -10161,7 +10182,7 @@ async function saveStudentProfileForm(e) {
         // 🌟 B. Sincronización atómica aislada en RTDB (SÓLO nodo 'students')
         let ok = false;
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await EnccoCloudSync.syncNode('students', STATE.students);
+            ok = await withTimeout(EnccoCloudSync.syncNode('students', STATE.students), 8000, 'Tiempo de espera en Realtime Database agotado.');
         } else {
             ok = true;
         }
@@ -10175,6 +10196,11 @@ async function saveStudentProfileForm(e) {
     } catch(err) {
         console.error("❌ Error al guardar perfil del estudiante en Firebase:", err);
         showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
+        }
     }
 }
 
@@ -19272,25 +19298,54 @@ function markAllPresentToday() {
     showToast(`Se registraron ${students.length} asistencias en 'Presente' para el día ${targetDay}.`, 'success');
 }
 
-async function saveAttendanceRecords(showToastMsg = true) {
+async function saveAttendanceRecords(showToastMsg = true, e = null) {
+    if (e) {
+        if (e._enccoHandled) return;
+        e._enccoHandled = true;
+        if (e.preventDefault) e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+    }
+    const submitBtn = document.querySelector('button[onclick*="saveAttendanceRecords"]') || document.getElementById('saveAttendanceBtn');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : null;
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html') && origBtnHtml) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    }
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando...';
+    }
+
     try {
         const modular = window.FirebaseModular;
         if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
-            await modular.setDoc(modular.doc(modular.db, 'config', 'asistencia'), {
-                records: STATE.attendanceRecords || {},
-                lastModified: Date.now()
-            }, { merge: true });
+            await withTimeout(
+                modular.setDoc(modular.doc(modular.db, 'config', 'asistencia'), {
+                    records: STATE.attendanceRecords || {},
+                    lastModified: Date.now()
+                }, { merge: true }),
+                8000,
+                'Tiempo de espera en Firestore agotado.'
+            );
         }
     } catch(fsErr) {
         console.warn("Aviso en Firestore al guardar asistencia:", fsErr);
     }
 
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-        EnccoCloudSync.patchNode('attendanceRecords', STATE.attendanceRecords || {});
-    }
-
-    if (showToastMsg) {
-        showToast('Planilla de asistencia guardada y sincronizada exitosamente en tiempo real.', 'success');
+    try {
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+            await withTimeout(EnccoCloudSync.patchNode('attendanceRecords', STATE.attendanceRecords || {}), 8000, 'Tiempo de espera en Realtime Database agotado.');
+        }
+        if (showToastMsg) {
+            showToast('Planilla de asistencia guardada y sincronizada exitosamente en tiempo real.', 'success');
+        }
+    } catch(err) {
+        console.error("Error al guardar asistencia:", err);
+        showToast("Error al guardar asistencia en Firebase: " + (err.message || err), "danger");
+    } finally {
+        if (submitBtn && origBtnHtml) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
+        }
     }
 }
 
@@ -26552,5 +26607,173 @@ if (typeof window !== 'undefined') {
 
     if (window.FirebaseModular && window.FirebaseModular.db) {
         initFirestoreModularLiveListeners();
+    }
+}
+
+// ==============================================================================
+// 🛡️ DELEGACIÓN UNIVERSAL DE EVENTOS DE GUARDADO (GLOBAL SAVE DISPATCHER)
+// ==============================================================================
+let _globalSaveDelegationInitialized = false;
+function initGlobalSaveDelegation() {
+    if (typeof document === 'undefined') return;
+    if (_globalSaveDelegationInitialized) return;
+    _globalSaveDelegationInitialized = true;
+
+    // A. Interceptación delegada de envíos de formularios (submit por botón o Enter)
+    document.addEventListener('submit', async function (e) {
+        const form = e.target;
+        if (!form || !form.tagName || form.tagName.toUpperCase() !== 'FORM') return;
+
+        if (e._enccoHandled) return;
+
+        let saveHandler = null;
+        let handlerName = '';
+
+        if (form.id === 'mainEnrollmentForm' || (form.closest && form.closest('#enrollmentModal'))) {
+            saveHandler = window.saveStudentForm;
+            handlerName = 'saveStudentForm';
+        } else if (form.id === 'userModalMainForm' || (form.closest && form.closest('#userModal'))) {
+            saveHandler = window.submitUserForm || window.saveUserForm;
+            handlerName = 'submitUserForm';
+        } else if (form.id === 'pensumSubjectForm' || (form.closest && form.closest('#pensumSubjectModal'))) {
+            saveHandler = window.savePensumSubjectForm;
+            handlerName = 'savePensumSubjectForm';
+        } else if (form.closest && form.closest('#classAssignmentModal')) {
+            saveHandler = window.saveClassAssignmentForm;
+            handlerName = 'saveClassAssignmentForm';
+        } else if (form.closest && (form.closest('#gradeModal') || form.closest('#gradebookEntryModal'))) {
+            saveHandler = window.saveGradeForm;
+            handlerName = 'saveGradeForm';
+        } else if (form.closest && form.closest('#assignGuideTeacherModal')) {
+            saveHandler = window.saveQuickGuideTeacher;
+            handlerName = 'saveQuickGuideTeacher';
+        } else if (form.closest && form.closest('#gradingConfigModal')) {
+            saveHandler = window.saveGradingConfigForm;
+            handlerName = 'saveGradingConfigForm';
+        } else if (form.closest && form.closest('#careerModal')) {
+            saveHandler = window.saveCareerForm;
+            handlerName = 'saveCareerForm';
+        } else if (form.closest && form.closest('#cycleModal')) {
+            saveHandler = window.saveCycleForm;
+            handlerName = 'saveCycleForm';
+        } else if (form.closest && form.closest('#studentProfileModal')) {
+            saveHandler = window.saveStudentProfileForm;
+            handlerName = 'saveStudentProfileForm';
+        } else if (form.id === 'academicExonerationForm' || (form.closest && form.closest('#academicExonerationModal'))) {
+            saveHandler = window.saveAcademicExoneration;
+            handlerName = 'saveAcademicExoneration';
+        } else if (form.closest && form.closest('#disciplineModal')) {
+            saveHandler = window.saveDisciplineForm;
+            handlerName = 'saveDisciplineForm';
+        } else if (form.closest && form.closest('#disciplineResolutionModal')) {
+            saveHandler = window.saveDisciplineResolutionForm;
+            handlerName = 'saveDisciplineResolutionForm';
+        } else if (form.id === 'roleForm' || (form.closest && form.closest('#roleModal'))) {
+            saveHandler = window.saveRoleForm;
+            handlerName = 'saveRoleForm';
+        } else if (form.id === 'formGradeEditRequest' || (form.closest && form.closest('#modalGradeEditRequest'))) {
+            saveHandler = window.submitGradeEditRequest;
+            handlerName = 'submitGradeEditRequest';
+        } else if (form.closest && form.closest('#forgotPasswordModal')) {
+            saveHandler = window.handlePasswordRecovery;
+            handlerName = 'handlePasswordRecovery';
+        }
+
+        if (typeof saveHandler === 'function') {
+            e.preventDefault();
+            if (e.stopPropagation) e.stopPropagation();
+            e._enccoHandled = true;
+            try {
+                await saveHandler(e);
+            } catch (err) {
+                console.error(`❌ [Global Save Dispatcher] Error al procesar ${handlerName}:`, err);
+            }
+        }
+    }, false);
+
+    // B. Interceptación delegada de clics en botones de guardado (type="button", toolbars o tablas dinámicas)
+    document.addEventListener('click', async function (e) {
+        const btn = e.target ? (e.target.closest ? e.target.closest('button, .btn-save-trigger, input[type="submit"]') : null) : null;
+        if (!btn) return;
+
+        if (btn.disabled || (btn.innerHTML && btn.innerHTML.includes('fa-spin'))) {
+            e.preventDefault();
+            return;
+        }
+
+        if (e._enccoHandled) return;
+
+        let saveHandler = null;
+        let handlerName = '';
+        const btnOnclick = btn.getAttribute('onclick') || '';
+
+        if (btn.id === 'userFormSubmitBtn' || btnOnclick.includes('submitUserForm') || btnOnclick.includes('saveUserForm')) {
+            saveHandler = window.submitUserForm || window.saveUserForm;
+            handlerName = 'submitUserForm';
+        } else if (btn.id === 'enrollmentSubmitTopBtn' || btn.id === 'enrollmentSubmitBottomBtn' || (btnOnclick.includes('saveStudentForm') && !btnOnclick.includes('saveStudentProfileForm'))) {
+            saveHandler = window.saveStudentForm;
+            handlerName = 'saveStudentForm';
+        } else if (btnOnclick.includes('saveGradebookChanges')) {
+            saveHandler = window.saveGradebookChanges;
+            handlerName = 'saveGradebookChanges';
+        } else if (btnOnclick.includes('saveAttendanceRecords')) {
+            saveHandler = window.saveAttendanceRecords;
+            handlerName = 'saveAttendanceRecords';
+        } else if (btnOnclick.includes('saveActiveRolePermissions')) {
+            saveHandler = window.saveActiveRolePermissions;
+            handlerName = 'saveActiveRolePermissions';
+        } else if (btnOnclick.includes('saveFirebaseDatabaseConfig')) {
+            saveHandler = window.saveFirebaseDatabaseConfig;
+            handlerName = 'saveFirebaseDatabaseConfig';
+        } else if (btnOnclick.includes('saveSchoolHeaderConfig')) {
+            saveHandler = window.saveSchoolHeaderConfig;
+            handlerName = 'saveSchoolHeaderConfig';
+        }
+
+        if (typeof saveHandler === 'function') {
+            e.preventDefault();
+            if (e.stopPropagation) e.stopPropagation();
+            e._enccoHandled = true;
+            try {
+                await saveHandler(e);
+            } catch (err) {
+                console.error(`❌ [Global Save Dispatcher] Error al procesar clic en ${handlerName}:`, err);
+            }
+        }
+    }, false);
+}
+
+// Exportación universal en window para garantizar resolución en cualquier contexto
+if (typeof window !== 'undefined') {
+    window.submitUserForm = submitUserForm;
+    window.saveUserForm = saveUserForm;
+    window.savePensumSubjectForm = savePensumSubjectForm;
+    window.saveClassAssignmentForm = saveClassAssignmentForm;
+    window.saveGradeForm = saveGradeForm;
+    window.saveGradebookChanges = saveGradebookChanges;
+    window.saveQuickGuideTeacher = saveQuickGuideTeacher;
+    window.saveCareerForm = saveCareerForm;
+    window.saveCycleForm = saveCycleForm;
+    window.saveGradingConfigForm = saveGradingConfigForm;
+    window.submitGradeEditRequest = submitGradeEditRequest;
+    window.saveAcademicExoneration = saveAcademicExoneration;
+    window.saveDisciplineForm = saveDisciplineForm;
+    window.saveDisciplineResolutionForm = saveDisciplineResolutionForm;
+    window.saveStudentForm = saveStudentForm;
+    window.saveStudentProfileForm = saveStudentProfileForm;
+    window.saveRoleForm = saveRoleForm;
+    window.saveActiveRolePermissions = saveActiveRolePermissions;
+    window.saveAttendanceRecords = saveAttendanceRecords;
+    window.saveSchoolHeaderConfig = saveSchoolHeaderConfig;
+    window.saveFirebaseDatabaseConfig = saveFirebaseDatabaseConfig;
+    window.handlePasswordRecovery = handlePasswordRecovery;
+    window.initGlobalSaveDelegation = initGlobalSaveDelegation;
+
+    if (typeof document !== 'undefined') {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initGlobalSaveDelegation);
+        } else {
+            initGlobalSaveDelegation();
+        }
     }
 }
