@@ -2451,7 +2451,7 @@
                 </div>
                 <div class="modal-footer" style="background:#f8fafc;">
                     <button type="button" class="btn btn-secondary" onclick="closeAssignGuideTeacherModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-success" style="font-weight:700;"><i class="fa-solid fa-check"></i> Guardar Asignación</button>
+                    <button type="submit" id="guideTeacherSubmitBtn" class="btn btn-success" style="font-weight:700;"><i class="fa-solid fa-check"></i> Guardar Asignación</button>
                 </div>
             </form>
         </div>
@@ -2824,7 +2824,7 @@
                 <div class="modal-footer" style="background:#f8fafc;">
                     <button type="button" class="btn btn-secondary" onclick="closeGradingConfigModal()">Cancelar</button>
                     <button type="button" class="btn btn-outline-primary" onclick="resetGradingConfigToDefaults()">Valores por Defecto (60/40)</button>
-                    <button type="submit" class="btn btn-success" style="font-weight:700;"><i class="fa-solid fa-floppy-disk"></i> Guardar Ponderación</button>
+                    <button type="submit" id="gradingConfigSubmitBtn" class="btn btn-success" style="font-weight:700;"><i class="fa-solid fa-floppy-disk"></i> Guardar Ponderación</button>
                 </div>
             </form>
         </div>
@@ -3312,7 +3312,7 @@
                         </div>
                     </div>
                     <div style="text-align:right;">
-                        <button type="submit" class="btn btn-sm btn-success" style="font-weight:700;">
+                        <button type="submit" id="academicExonerationSubmitBtn" class="btn btn-sm btn-success" style="font-weight:700;">
                             <i class="fa-solid fa-check"></i> Aplicar Consideración
                         </button>
                     </div>
@@ -3418,7 +3418,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeDisciplineModal()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Registrar Reporte</button>
+                    <button type="submit" id="disciplineSubmitBtn" class="btn btn-primary">Registrar Reporte</button>
                 </div>
             </form>
         </div>
@@ -3436,7 +3436,7 @@
             </div>
 
             <!-- FORMULARIO -->
-            <form id="userModalMainForm" onsubmit="submitUserForm(); return false;">
+            <form id="userModalMainForm" onsubmit="submitUserForm(event); return false;">
                 <input type="hidden" id="userFormId" value="">
                 <div class="modal-body" style="padding:20px; display:flex; flex-direction:column; gap:14px; max-height:calc(85vh - 130px); overflow-y:auto;">
                     
@@ -3511,7 +3511,7 @@
                     <button type="button" onclick="closeUserModal()" class="btn btn-secondary" style="padding:9px 20px; font-weight:700; border-radius:8px; cursor:pointer;">
                         Cancelar
                     </button>
-                    <button type="button" id="userFormSubmitBtn" onclick="submitUserForm()" class="btn btn-primary" style="padding:9px 24px; font-weight:800; border-radius:8px; background:#15803d; border-color:#166534; color:#ffffff; cursor:pointer; display:inline-flex; align-items:center; gap:8px;">
+                    <button type="button" id="userFormSubmitBtn" onclick="submitUserForm(event)" class="btn btn-primary" style="padding:9px 24px; font-weight:800; border-radius:8px; background:#15803d; border-color:#166534; color:#ffffff; cursor:pointer; display:inline-flex; align-items:center; gap:8px;">
                         <i class="fa-solid fa-floppy-disk"></i> Guardar Usuario
                     </button>
                 </div>
@@ -3858,7 +3858,7 @@
                 </div>
                 <div class="modal-footer" style="padding:14px 22px; background:#f8fafc; border-top:1.5px solid #e2e8f0; display:flex; justify-content:flex-end; gap:10px;">
                     <button type="button" class="btn btn-secondary" onclick="closeRoleModal()" style="padding:9px 20px; font-weight:700; border-radius:8px;">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" style="padding:9px 24px; font-weight:800; border-radius:8px; background:#0284c7; border-color:#0369a1; color:#fff; display:inline-flex; align-items:center; gap:8px;">
+                    <button type="submit" id="roleSubmitBtn" class="btn btn-primary" style="padding:9px 24px; font-weight:800; border-radius:8px; background:#0284c7; border-color:#0369a1; color:#fff; display:inline-flex; align-items:center; gap:8px;">
                         <i class="fa-solid fa-floppy-disk"></i> Guardar Configuración de Rol
                     </button>
                 </div>
@@ -4066,7 +4066,7 @@
                     </span>
                     <div style="display:flex; gap:10px;">
                         <button type="button" class="btn btn-secondary" onclick="closeGradeEditRequestModal()">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" style="font-weight:700; background:#2563eb;">
+                        <button type="submit" id="gradeEditReqSubmitBtn" class="btn btn-primary" style="font-weight:700; background:#2563eb;">
                             <i class="fa-solid fa-paper-plane"></i> Enviar Solicitud a Dirección
                         </button>
                     </div>

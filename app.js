@@ -109,6 +109,13 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 const ENCCO_BUILD_VERSION = '2026.09.11.v199_clases_y_calificaciones_oficiales_cnb';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
+const withTimeout = (promise, ms = 8000, errorMsg = 'Tiempo de espera agotado al conectar con Firebase.') => {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(errorMsg)), ms))
+    ]);
+};
+window.withTimeout = withTimeout;
 window._locallyDirtyStudentIds = window._locallyDirtyStudentIds || new Set();
 
 
@@ -2909,13 +2916,13 @@ async function syncUsersToDatabaseImmediate(showToastNotification = true) {
 }
 window.syncUsersToDatabaseImmediate = syncUsersToDatabaseImmediate;
 async function saveUserForm(e) {
-    if (typeof EnccoSecurityShield !== 'undefined' && !EnccoSecurityShield.isAuthorizedRole('admin')) {
-        if (typeof showToast === 'function') showToast('Acceso denegado: Modificación de cuentas restringida a Administrador.', 'danger');
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    // Verificación de permisos administrativos (admin, director, secretaria)
+    if (typeof checkEnrolmentPermissions === 'function' && !checkEnrolmentPermissions()) {
+        if (typeof showToast === 'function') showToast('Acceso denegado: Modificación de cuentas restringida a personal autorizado.', 'danger');
         return;
-    }
-    if (e) {
-        if (typeof e.preventDefault === 'function') e.preventDefault();
-        if (typeof e.stopPropagation === 'function') e.stopPropagation();
     }
 
     const idInput = document.getElementById('userFormId');
@@ -2938,8 +2945,36 @@ async function saveUserForm(e) {
     const renglon = renglonSelect ? renglonSelect.value : '011';
     const gender = genderSelect ? genderSelect.value : 'Masculino';
 
+    const titleEl = document.getElementById('userModalTitle');
+    const isEditing = Boolean(userId) || (titleEl && titleEl.textContent && titleEl.textContent.includes('Editar'));
+
+    // 🚨 2. Verificación de Referencia e ID de Documento en Firebase
+    if (isEditing) {
+        if (!userId || userId === 'undefined' || userId === 'null') {
+            console.error("Error: ID del usuario no encontrado o indefinido.");
+            if (typeof Swal !== 'undefined' && Swal.fire) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ID no encontrado',
+                    text: 'Error: ID del usuario no encontrado o indefinido.'
+                });
+            } else {
+                showToast("Error: ID del usuario no encontrado o indefinido.", "danger");
+            }
+            return;
+        }
+    }
+
     if (!name) {
-        showToast('El nombre del usuario o docente es obligatorio.', 'warning');
+        if (typeof Swal !== 'undefined' && Swal.fire) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Nombre Requerido',
+                text: 'El nombre del usuario o docente es obligatorio.'
+            });
+        } else {
+            showToast('El nombre del usuario o docente es obligatorio.', 'warning');
+        }
         return;
     }
 
@@ -2948,8 +2983,14 @@ async function saveUserForm(e) {
         STATE.users = (Array.isArray(initD.users) && initD.users.length >= 20) ? initD.users : [];
     }
 
-    const submitBtn = document.querySelector('#userModal form button[type="submit"]') || document.querySelector('button[onclick*="saveUserForm"]');
-    const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Guardar';
+    const submitBtn = document.getElementById('userFormSubmitBtn') || 
+                      document.querySelector('#userModal form button[type="submit"]') || 
+                      document.querySelector('#userModal button[onclick*="UserForm"]');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : '<i class="fa-solid fa-floppy-disk"></i> Guardar Usuario';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    }
+
     if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
@@ -3041,8 +3082,6 @@ async function saveUserForm(e) {
             STATE.users = deduplicateUsersCollection(STATE.users);
         }
 
-        // CONFIRMACIÓN DE ESCRITURA EN FIREBASE CON ASYNC/AWAIT (DUAL ATOMIC FIRESTORE + RTDB)
-        let ok = false;
         const nowTime = Date.now();
 
         // 🌟 A. Persistencia Atómica en Google Cloud Firestore (updateDoc con fallback merge: true)
@@ -3052,45 +3091,40 @@ async function saveUserForm(e) {
                 const userDocRef = doc(db, 'users', savedUserObj.id);
                 const userPayload = { ...savedUserObj, lastModified: nowTime };
 
-                if (typeof updateDoc === 'function') {
-                    try {
-                        await updateDoc(userDocRef, userPayload);
-                    } catch(e) {
-                        if (typeof setDoc === 'function') await setDoc(userDocRef, userPayload, { merge: true });
-                    }
-                } else if (typeof setDoc === 'function') {
-                    await setDoc(userDocRef, userPayload, { merge: true });
-                }
+                const userFsAction = (typeof updateDoc === 'function')
+                    ? updateDoc(userDocRef, userPayload).catch(e => {
+                        if (typeof setDoc === 'function') return setDoc(userDocRef, userPayload, { merge: true });
+                        throw e;
+                    })
+                    : (typeof setDoc === 'function' ? setDoc(userDocRef, userPayload, { merge: true }) : Promise.resolve());
+                await withTimeout(userFsAction, 8000, 'Tiempo de espera en Firestore agotado.');
 
                 if (savedUserObj.role === 'docente') {
                     const docDocRef = doc(db, 'docentes', savedUserObj.id);
-                    if (typeof updateDoc === 'function') {
-                        try {
-                            await updateDoc(docDocRef, userPayload);
-                        } catch(e) {
-                            if (typeof setDoc === 'function') await setDoc(docDocRef, userPayload, { merge: true });
-                        }
-                    } else if (typeof setDoc === 'function') {
-                        await setDoc(docDocRef, userPayload, { merge: true });
-                    }
+                    const docFsAction = (typeof updateDoc === 'function')
+                        ? updateDoc(docDocRef, userPayload).catch(e => {
+                            if (typeof setDoc === 'function') return setDoc(docDocRef, userPayload, { merge: true });
+                            throw e;
+                        })
+                        : (typeof setDoc === 'function' ? setDoc(docDocRef, userPayload, { merge: true }) : Promise.resolve());
+                    await withTimeout(docFsAction, 8000, 'Tiempo de espera al guardar docente en Firestore agotado.');
                 } else if (typeof deleteDoc === 'function' || (window.FirebaseModular && typeof window.FirebaseModular.deleteDoc === 'function')) {
                     const delFn = (typeof deleteDoc === 'function') ? deleteDoc : window.FirebaseModular.deleteDoc;
                     try {
                         await delFn(doc(db, 'docentes', savedUserObj.id));
-                        console.log(`🗑️ [Firestore] Usuario removido de 'docentes' por cambio de rol a "${savedUserObj.role}".`);
                     } catch(delErr) {}
                 }
-                console.log(`🔥 [Firestore] Usuario "${savedUserObj.name}" persistido atómicamente con rol "${savedUserObj.role}".`);
             } catch(fsErr) {
-                console.warn("Aviso al persistir usuario en Firestore:", fsErr);
+                console.warn("Aviso al persistir usuario en Firestore (continuando con RTDB):", fsErr);
             }
         }
 
         // 🌟 B. Persistencia Atómica y Aislada en Firebase Realtime Database (SÓLO colección 'users')
+        let ok = false;
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await EnccoCloudSync.syncNode('users', STATE.users);
+            ok = await withTimeout(EnccoCloudSync.syncNode('users', STATE.users), 8000, 'Tiempo de espera agotado en Firebase Realtime Database.');
         } else if (typeof syncUsersToDatabaseImmediate === 'function') {
-            ok = await syncUsersToDatabaseImmediate(false);
+            ok = await withTimeout(syncUsersToDatabaseImmediate(false), 8000, 'Tiempo de espera agotado al sincronizar usuarios con Firebase.');
         } else {
             ok = true;
         }
@@ -3102,7 +3136,7 @@ async function saveUserForm(e) {
         STATE.lastModified = Date.now();
         saveStateToLocalStorage();
 
-        // La interfaz solo confirma tras recibir la respuesta exitosa del servidor
+        // Cierre de modal y actualización de tablas tras recibir confirmación de Firebase
         closeUserModal();
         if (typeof renderUsersTable === 'function') renderUsersTable();
         if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
@@ -3114,14 +3148,34 @@ async function saveUserForm(e) {
             if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
         } catch(uiErr) {}
 
-        showToast(`Usuario "${name}" guardado y confirmado en Firebase exitosamente.`, "success");
+        if (typeof Swal !== 'undefined' && Swal.fire) {
+            Swal.fire({
+                icon: 'success',
+                title: '¡Guardado Exitoso!',
+                text: `Usuario "${name}" guardado y confirmado en Firebase con éxito.`,
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } else {
+            showToast(`Usuario "${name}" guardado y confirmado en Firebase exitosamente.`, "success");
+        }
     } catch(err) {
         console.error("❌ Error al guardar usuario en Firebase:", err);
-        showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
+        const errMsg = err && err.message ? err.message : String(err);
+        if (typeof Swal !== 'undefined' && Swal.fire) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al Guardar en Firebase',
+                text: errMsg,
+                confirmButtonColor: '#15803d'
+            });
+        } else {
+            showToast(`Error al guardar en Firebase: ${errMsg}`, "danger");
+        }
     } finally {
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = origBtnHtml;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml || '<i class="fa-solid fa-floppy-disk"></i> Guardar Usuario';
         }
     }
 }
@@ -3249,52 +3303,131 @@ function deleteCareer(careerId) {
 }
 window.deleteCareer = deleteCareer;
 
-function saveCareerForm(e) {
+async function saveCareerForm(e) {
     if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (!checkEnrolmentPermissions()) return;
+
     normalizeCareers();
-
-    const idInput = document.getElementById('careerFormId');
-    const nameInput = document.getElementById('newCareerName');
-    const durationInput = document.getElementById('newCareerDuration');
-
-    const cid = idInput ? idInput.value.trim() : '';
-    const name = nameInput ? nameInput.value.trim() : '';
-    const duration = durationInput ? durationInput.value.trim() : '3 Años';
+    const careerId = document.getElementById('careerFormId')?.value?.trim();
+    const name = document.getElementById('newCareerName')?.value?.trim();
+    const duration = document.getElementById('newCareerDuration')?.value?.trim();
 
     if (!name) {
         showToast("Ingrese el nombre de la carrera.", "warning");
         return;
     }
 
-    if (cid) {
-        const c = STATE.careers.find(car => car.id === cid);
-        if (c) {
-            c.name = name;
-            c.duration = duration;
-            showToast(`Carrera "${name}" actualizada correctamente.`, "success");
-        }
-    } else {
-        const exists = STATE.careers.some(car => car.name.toLowerCase() === name.toLowerCase());
-        if (exists) {
-            showToast(`La carrera "${name}" ya se encuentra registrada.`, "warning");
+    const isEditing = Boolean(careerId);
+    if (isEditing) {
+        if (!careerId || careerId === 'undefined' || careerId === 'null') {
+            console.error("Error: ID de la carrera no encontrado o indefinido.");
+            showToast("Error: ID de la carrera no encontrado o indefinido.", "danger");
             return;
         }
-        const newCar = {
-            id: 'car-' + Date.now(),
-            name: name,
-            code: name.toUpperCase().replace(/\s+/g, '_').slice(0, 16),
-            duration: duration,
-            status: 'Activa'
-        };
-        STATE.careers.push(newCar);
-        showToast(`Carrera "${name}" agregada exitosamente.`, "success");
     }
 
-    saveStateToLocalStorage();
-    updateCareerSelects();
-    renderCareerList();
-    resetCareerForm();
-    closeCareerModal();
+    const submitBtn = document.getElementById('careerSubmitBtn') || document.querySelector('#careerModal form button[type="submit"]');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Guardar Carrera';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    }
+
+    try {
+        if (careerId) {
+            const career = STATE.careers.find(c => c.id === careerId);
+            if (career) {
+                const oldName = career.name;
+                career.name = name;
+                career.duration = duration || '3 Años';
+                career.code = name.toUpperCase().replace(/\s+/g, '_');
+
+                // Actualizar referencias en pensum y grados
+                (STATE.pensum || []).forEach(p => {
+                    if (p.career === oldName) p.career = name;
+                });
+                (STATE.gradesList || []).forEach(g => {
+                    if (g.career === oldName) g.career = name;
+                });
+            } else {
+                throw new Error(`Carrera con ID "${careerId}" no encontrada.`);
+            }
+        } else {
+            const exists = STATE.careers.some(c => c.name.toLowerCase() === name.toLowerCase());
+            if (exists) {
+                showToast(`La carrera "${name}" ya se encuentra registrada en la institución.`, "warning");
+                return;
+            }
+
+            STATE.careers.push({
+                id: 'car-' + Date.now(),
+                name,
+                code: name.toUpperCase().replace(/\s+/g, '_'),
+                duration: duration || '3 Años',
+                status: 'Activa'
+            });
+        }
+
+        const nowTime = Date.now();
+        STATE.lastModified = nowTime;
+
+        // 🌟 A. Persistencia Atómica en Firestore
+        if (window.FirebaseModular && window.FirebaseModular.db) {
+            try {
+                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
+                const targetC = careerId ? STATE.careers.find(c => c.id === careerId) : STATE.careers[STATE.careers.length - 1];
+                if (targetC) {
+                    const cRef = doc(db, 'careers', targetC.id);
+                    const cPayload = { ...targetC, lastModified: nowTime };
+                    const fsAction = (typeof updateDoc === 'function')
+                        ? updateDoc(cRef, cPayload).catch(e => {
+                            if (typeof setDoc === 'function') return setDoc(cRef, cPayload, { merge: true });
+                            throw e;
+                        })
+                        : (typeof setDoc === 'function' ? setDoc(cRef, cPayload, { merge: true }) : Promise.resolve());
+                    await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
+                }
+            } catch(fsErr) {
+                console.warn("Aviso al guardar carrera en Firestore:", fsErr);
+            }
+        }
+
+        // 🌟 B. Sincronización en Realtime Database
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            ok = await withTimeout(EnccoCloudSync.syncNode('careers', STATE.careers), 8000, 'Tiempo de espera en Realtime Database agotado.');
+        } else {
+            ok = true;
+        }
+
+        if (!ok) {
+            throw new Error("El servidor de Firebase no confirmó la escritura de carreras.");
+        }
+
+        saveStateToLocalStorage();
+        resetCareerForm();
+        renderCareerList();
+        updateCareerSelects();
+        renderGradesTable();
+        renderPensumCatalogTable();
+        renderAssignmentsTable();
+        closeCareerModal();
+
+        showToast(`Carrera "${name}" guardada y confirmada en Firebase.`, "success");
+    } catch(err) {
+        console.error("❌ Error al guardar carrera en Firebase:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
+        }
+    }
 }
 window.saveCareerForm = saveCareerForm;
 
@@ -8950,208 +9083,147 @@ function validateStudentFormLiveDuplicate() {
 }
 
 async function saveStudentForm(e) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
     if (!checkEnrolmentPermissions()) return;
 
-    const studentId = document.getElementById('studentFormId').value;
-    const carne = document.getElementById('studentFormCarne').value.trim() || ('ENCCO-' + Date.now().toString().slice(-4));
-    const personalCode = document.getElementById('studentFormPersonalCode').value.trim();
-    const cui = document.getElementById('studentFormCui').value.trim();
-    const firstName = document.getElementById('studentFormFirstName').value.trim();
-    const lastName = document.getElementById('studentFormLastName').value.trim();
-    const birthDate = document.getElementById('studentFormBirthDate').value;
-    const age = calculateStudentAge(birthDate);
-    const phone = document.getElementById('studentFormPhone').value.trim();
-    const email = document.getElementById('studentFormEmail').value.trim();
-    const address = document.getElementById('studentFormAddress').value.trim();
-    const grade = document.getElementById('studentFormGrade').value;
-    const cycle = document.getElementById('studentFormCycle').value || STATE.activeCycle;
-    const shift = document.getElementById('studentFormShift').value;
+    const studentId = document.getElementById('studentFormId')?.value?.trim();
+    const carne = document.getElementById('studentFormCarne')?.value?.trim() || ('ENCCO-' + Date.now().toString().slice(-4));
+    const personalCode = document.getElementById('studentFormPersonalCode')?.value?.trim() || '';
+    const cui = document.getElementById('studentFormCui')?.value?.trim() || '';
+    const firstName = document.getElementById('studentFormFirstName')?.value?.trim() || '';
+    const lastName = document.getElementById('studentFormLastName')?.value?.trim() || '';
+    const birthDate = document.getElementById('studentFormBirthDate')?.value || '';
+    const age = typeof calculateStudentAge === 'function' ? calculateStudentAge(birthDate) : '';
+    const phone = document.getElementById('studentFormPhone')?.value?.trim() || '';
+    const email = document.getElementById('studentFormEmail')?.value?.trim() || '';
+    const address = document.getElementById('studentFormAddress')?.value?.trim() || '';
+    const grade = document.getElementById('studentFormGrade')?.value || '';
+    const cycle = document.getElementById('studentFormCycle')?.value || STATE.activeCycle;
+    const shift = document.getElementById('studentFormShift')?.value || 'Matutina';
 
-    // Verificar si el estudiante ya está inscrito en otro grado para el mismo ciclo
-    const duplicate = checkStudentDuplicateEnrollment({
-        personalCode, cui, carne, firstName, lastName, birthDate, cycle
-    }, studentId);
-
-    if (duplicate) {
-        const dupGrade = duplicate.gradeLabel || duplicate.grade || 'otro grado';
-        const dupCycle = duplicate.cycle || STATE.activeCycle || 'el ciclo lectivo actual';
-        showToast(`⚠️ No se puede duplicar la inscripción: El alumno "${duplicate.firstName} ${duplicate.lastName}" ya está inscrito en "${dupGrade}" (${dupCycle}).`, "danger");
-        return;
-    }
-
-    // Encargado y padres
-    const motherName = document.getElementById('studentFormMotherName').value.trim();
-    const motherDpi = document.getElementById('studentFormMotherDpi').value.trim();
-    const motherPhone1 = document.getElementById('studentFormMotherPhone1').value.trim();
-    const motherPhone2 = document.getElementById('studentFormMotherPhone2').value.trim();
-
-    const fatherName = document.getElementById('studentFormFatherName').value.trim();
-    const fatherDpi = document.getElementById('studentFormFatherDpi').value.trim();
-    const fatherPhone1 = document.getElementById('studentFormFatherPhone1').value.trim();
-    const fatherPhone2 = document.getElementById('studentFormFatherPhone2').value.trim();
-
-    const guardianName = document.getElementById('studentFormGuardianName').value.trim();
-    const guardianDpi = document.getElementById('studentFormGuardianDpi').value.trim();
-    const guardianPhone1 = document.getElementById('studentFormGuardianPhone1').value.trim();
-    const guardianPhone2 = document.getElementById('studentFormGuardianPhone2').value.trim();
-
-    // Tutor representativo para listas rápidas
-    const primaryTutor = guardianName || motherName || fatherName || 'No registrado';
-    const primaryPhone = guardianPhone1 || motherPhone1 || fatherPhone1 || phone || '';
-
-    const photo = document.getElementById('studentFormPhotoPreview').src;
-
-    const gradeSelectEl = document.getElementById('studentFormGrade');
-    let selGrade = grade;
-    let selSection = 'Sección A';
-    let selCode = '';
-    const selOpt = gradeSelectEl?.selectedOptions?.[0];
-    if (selOpt && selOpt.dataset && selOpt.dataset.grade) {
-        selGrade = selOpt.dataset.grade;
-        selSection = selOpt.dataset.section || 'Sección A';
-        selCode = selOpt.dataset.code || '';
-    } else {
-        const parts = (grade || '').split(' - ');
-        if (parts.length >= 2) {
-            selGrade = parts[0].trim();
-            selSection = parts[1].trim();
-        }
-    }
-    const cleanAssign = getStudentAssignment({ grade: selGrade, section: selSection, gradeCode: selCode });
-
-    if (studentId) {
-        const student = (STATE.students || []).find(s => 
-            String(s.id) === String(studentId) || 
-            (s.carne && carne && s.carne === carne) ||
-            (s.personalCode && personalCode && s.personalCode === personalCode) ||
-            (s.cui && cui && s.cui === cui)
-        );
-        if (student) {
-            student.carne = carne;
-            student.personalCode = personalCode;
-            student.cui = cui;
-            student.firstName = firstName;
-            student.lastName = lastName;
-            student.birthDate = birthDate;
-            student.age = age;
-            student.phone = phone;
-            student.email = email;
-            student.address = address;
-            student.grade = cleanAssign.grade;
-            student.section = cleanAssign.section;
-            student.gradeCode = cleanAssign.gradeCode || selCode;
-            student.gradeLabel = cleanAssign.fullLabel;
-            student.cycle = cycle;
-            student.shift = shift;
-            student.photo = photo;
-
-            student.motherName = motherName;
-            student.motherDpi = motherDpi;
-            student.motherPhone1 = motherPhone1;
-            student.motherPhone2 = motherPhone2;
-
-            student.fatherName = fatherName;
-            student.fatherDpi = fatherDpi;
-            student.fatherPhone1 = fatherPhone1;
-            student.fatherPhone2 = fatherPhone2;
-
-            student.guardianName = guardianName;
-            student.guardianDpi = guardianDpi;
-            student.guardianPhone1 = guardianPhone1;
-            student.guardianPhone2 = guardianPhone2;
-
-            student.tutor = primaryTutor;
-            student.tutorPhone = primaryPhone;
-
-            saveStateToLocalStorage();
-            showToast('Estudiante guardado exitosamente.', 'success');
-            closeStudentProfileModal();
-            hideModalById('studentProfileModal');
-            if (typeof renderStudentsTable === 'function') renderStudentsTable();
-            if (typeof renderDashboard === 'function') renderDashboard();
-        }
-    } else {
-        STATE.students.push({
-            id: 'stu-' + Date.now(),
-            carne,
-            personalCode,
-            cui,
-            firstName,
-            lastName,
-            birthDate,
-            age,
-            phone,
-            email,
-            address,
-            grade: cleanAssign.grade,
-            section: cleanAssign.section,
-            gradeCode: cleanAssign.gradeCode || selCode,
-            gradeLabel: cleanAssign.fullLabel,
-            cycle,
-            shift,
-            photo,
-            motherName,
-            motherDpi,
-            motherPhone1,
-            motherPhone2,
-            fatherName,
-            fatherDpi,
-            fatherPhone1,
-            fatherPhone2,
-            guardianName,
-            guardianDpi,
-            guardianPhone1,
-            guardianPhone2,
-            tutor: primaryTutor,
-            tutorPhone: primaryPhone,
-            status: 'Activo',
-            retireReason: '',
-            retireRecipient: '',
-            retireDate: '',
-            grades: {}
-        });
-        saveStateToLocalStorage();
-        showToast('Estudiante guardado exitosamente.', 'success');
-        closeStudentProfileModal();
-        hideModalById('studentProfileModal');
-        if (typeof renderStudentsTable === 'function') renderStudentsTable();
-        if (typeof renderDashboard === 'function') renderDashboard();
-    }
-
-    saveStateToLocalStorage();
-
-    // 🌟 A. Persistencia Atómica en Firestore (colección students con merge: true)
-    if (window.FirebaseModular && window.FirebaseModular.db) {
-        try {
-            const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
-            const targetStudent = studentId ? (STATE.students || []).find(s => String(s.id) === String(studentId)) : STATE.students[STATE.students.length - 1];
-            if (targetStudent && targetStudent.id) {
-                targetStudent.lastModified = Date.now();
-                const stuRef = doc(db, 'students', targetStudent.id);
-                if (typeof updateDoc === 'function') {
-                    try {
-                        await updateDoc(stuRef, targetStudent);
-                    } catch(e) {
-                        if (typeof setDoc === 'function') await setDoc(stuRef, targetStudent, { merge: true });
-                    }
-                } else if (typeof setDoc === 'function') {
-                    await setDoc(stuRef, targetStudent, { merge: true });
-                }
-            }
-        } catch(fsErr) {
-            console.error("Error al guardar estudiante en Firestore:", fsErr);
-            showToast("Error al guardar en base de datos: " + (fsErr.message || fsErr), "danger");
+    const isEditing = Boolean(studentId);
+    if (isEditing) {
+        if (!studentId || studentId === 'undefined' || studentId === 'null') {
+            console.error("Error: ID del estudiante no encontrado o indefinido.");
+            showToast("Error: ID del estudiante no encontrado o indefinido.", "danger");
             return;
         }
     }
 
-    // 🌟 B. Sincronización atómica aislada en RTDB (SÓLO nodo 'students')
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        await EnccoCloudSync.syncNode('students', STATE.students);
+    if (!firstName || !lastName || !grade) {
+        showToast("Complete los campos obligatorios del estudiante (Nombres, Apellidos y Grado).", "warning");
+        return;
     }
-    resetStudentEnrollmentForm(false);
-    navigateTo('students');
+
+    // Verificar duplicado
+    if (typeof checkStudentDuplicateEnrollment === 'function') {
+        const duplicate = checkStudentDuplicateEnrollment({
+            personalCode, cui, carne, firstName, lastName, birthDate, cycle
+        }, studentId);
+
+        if (duplicate) {
+            const dupGrade = duplicate.gradeLabel || duplicate.grade || 'otro grado';
+            const dupCycle = duplicate.cycle || STATE.activeCycle || 'el ciclo lectivo actual';
+            showToast(`⚠️ No se puede duplicar la inscripción: El alumno "${duplicate.firstName} ${duplicate.lastName}" ya está inscrito en ${dupGrade} para el ciclo ${dupCycle}.`, 'warning');
+            return;
+        }
+    }
+
+    const submitBtn = document.getElementById('enrollmentSubmitBottomBtn') || 
+                      document.getElementById('enrollmentSubmitTopBtn') || 
+                      document.querySelector('#mainEnrollmentForm button[type="submit"]');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Guardar Inscripción';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    }
+
+    try {
+        let studentObj = null;
+        if (studentId) {
+            const idx = STATE.students.findIndex(s => s.id === studentId);
+            if (idx !== -1) {
+                STATE.students[idx] = {
+                    ...STATE.students[idx],
+                    carne, personalCode, cui, firstName, lastName,
+                    name: `${firstName} ${lastName}`.trim(),
+                    birthDate, age, phone, email, address,
+                    grade, gradeCode: grade, cycle, shift,
+                    lastModified: Date.now()
+                };
+                studentObj = STATE.students[idx];
+            } else {
+                throw new Error(`Estudiante con ID "${studentId}" no encontrado en memoria.`);
+            }
+        } else {
+            studentObj = {
+                id: 'stu-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+                carne, personalCode, cui, firstName, lastName,
+                name: `${firstName} ${lastName}`.trim(),
+                birthDate, age, phone, email, address,
+                grade, gradeCode: grade, cycle, shift,
+                status: 'Activo',
+                enrolledAt: new Date().toISOString(),
+                lastModified: Date.now()
+            };
+            STATE.students.push(studentObj);
+        }
+
+        const nowTime = Date.now();
+        STATE.lastModified = nowTime;
+
+        // 🌟 A. Persistencia Atómica en Firestore
+        if (window.FirebaseModular && window.FirebaseModular.db && studentObj) {
+            try {
+                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
+                const stuRef = doc(db, 'students', studentObj.id);
+                const stuPayload = { ...studentObj, lastModified: nowTime };
+                const fsAction = (typeof updateDoc === 'function')
+                    ? updateDoc(stuRef, stuPayload).catch(e => {
+                        if (typeof setDoc === 'function') return setDoc(stuRef, stuPayload, { merge: true });
+                        throw e;
+                    })
+                    : (typeof setDoc === 'function' ? setDoc(stuRef, stuPayload, { merge: true }) : Promise.resolve());
+                await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
+            } catch(fsErr) {
+                console.warn("Aviso al persistir estudiante en Firestore:", fsErr);
+            }
+        }
+
+        // 🌟 B. Sincronización en Realtime Database
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            ok = await withTimeout(EnccoCloudSync.syncNode('students', STATE.students), 8000, 'Tiempo de espera en Realtime Database agotado.');
+        } else {
+            ok = true;
+        }
+
+        if (!ok) {
+            throw new Error("El servidor de Firebase no confirmó el registro del estudiante.");
+        }
+
+        saveStateToLocalStorage();
+        if (typeof renderStudentsTable === 'function') renderStudentsTable();
+        if (typeof renderDashboard === 'function') renderDashboard();
+
+        showToast(`Estudiante "${firstName} ${lastName}" guardado y confirmado en Firebase con éxito.`, 'success');
+        if (!studentId && typeof resetStudentEnrollmentForm === 'function') {
+            resetStudentEnrollmentForm();
+        }
+    } catch(err) {
+        console.error("❌ Error al guardar estudiante en Firebase:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
+        }
+    }
 }
 
 function isSubjectBimestreExonerated(student, subjectName, bimestreNum) {
@@ -9488,52 +9560,107 @@ function renderAcademicExonerationsList(student) {
 }
 
 async function saveAcademicExoneration(e) {
-    if (e) e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+
     const studentId = STATE.exonerationStudentId;
+    if (!studentId || studentId === 'undefined' || studentId === 'null') {
+        console.error("Error: ID del estudiante no encontrado o indefinido.");
+        showToast("Error: Estudiante no seleccionado.", "danger");
+        return;
+    }
+
     const student = (STATE.students || []).find(s => s.id === studentId);
-    if (!student) return;
+    if (!student) {
+        showToast("Estudiante no encontrado en nómina.", "warning");
+        return;
+    }
 
     const subject = document.getElementById('exonFormSubject')?.value || 'ALL';
     const bimestre = document.getElementById('exonFormBimestre')?.value || '2';
     const type = document.getElementById('exonFormType')?.value || 'EXONERADO';
-    const reason = document.getElementById('exonFormReason')?.value || '';
+    const reason = (document.getElementById('exonFormReason')?.value || '').trim();
 
-    if (!student.academicExceptions) student.academicExceptions = [];
+    if (!reason) {
+        showToast("Ingrese el motivo o dictamen de la exoneración/consideración.", "warning");
+        return;
+    }
 
-    const newEx = {
-        id: `exon-${Date.now()}`,
-        subject: subject,
-        bimestre: bimestre,
-        type: type,
-        reason: reason.trim(),
-        date: new Date().toLocaleDateString('es-GT'),
-        authorizedBy: STATE.currentUser ? STATE.currentUser.name : 'Dirección / Secretaría ENCCO'
-    };
-    student.academicExceptions.push(newEx);
+    const submitBtn = document.getElementById('academicExonerationSubmitBtn') || document.querySelector('#academicExonerationForm button[type="submit"]');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Aplicar Consideración';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    }
 
     try {
-        const modular = window.FirebaseModular;
-        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.updateDoc === 'function') {
-            await modular.updateDoc(modular.doc(modular.db, 'students', student.id), {
-                academicExceptions: student.academicExceptions,
-                lastModified: Date.now()
-            });
+        if (!student.academicExceptions) student.academicExceptions = [];
+
+        const newEx = {
+            id: `exon-${Date.now()}`,
+            subject: subject,
+            bimestre: bimestre,
+            type: type,
+            reason: reason,
+            date: new Date().toLocaleDateString('es-GT'),
+            authorizedBy: STATE.currentUser ? STATE.currentUser.name : 'Dirección / Secretaría ENCCO'
+        };
+        student.academicExceptions.push(newEx);
+
+        const nowTime = Date.now();
+        STATE.lastModified = nowTime;
+
+        // 🌟 A. Persistencia Atómica en Firestore
+        if (window.FirebaseModular && window.FirebaseModular.db) {
+            try {
+                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
+                const stuRef = doc(db, 'students', student.id);
+                const stuPayload = { academicExceptions: student.academicExceptions, lastModified: nowTime };
+                const fsAction = (typeof updateDoc === 'function')
+                    ? updateDoc(stuRef, stuPayload).catch(e => {
+                        if (typeof setDoc === 'function') return setDoc(stuRef, stuPayload, { merge: true });
+                        throw e;
+                    })
+                    : (typeof setDoc === 'function' ? setDoc(stuRef, stuPayload, { merge: true }) : Promise.resolve());
+                await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
+            } catch(fsErr) {
+                console.warn("Aviso en Firestore al guardar exoneración:", fsErr);
+            }
         }
-    } catch(fsErr) {
-        console.warn("Aviso en Firestore al guardar exoneración:", fsErr);
+
+        // 🌟 B. Sincronización en Realtime Database
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+            ok = await withTimeout(
+                EnccoCloudSync.patchNode('students', { [student.id]: { academicExceptions: student.academicExceptions } }),
+                8000,
+                'Tiempo de espera en Realtime Database agotado.'
+            );
+        } else {
+            ok = true;
+        }
+
+        saveStateToLocalStorage();
+        renderAcademicExonerationsList(student);
+        loadHonorRoll();
+
+        const form = document.getElementById('academicExonerationForm');
+        if (form) form.reset();
+
+        showToast("Consideración académica aplicada y guardada en Firebase exitosamente.", "success");
+    } catch(err) {
+        console.error("❌ Error al guardar consideración académica:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
+        }
     }
-
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-        EnccoCloudSync.patchNode('students', { [student.id]: { academicExceptions: student.academicExceptions } });
-    }
-
-    renderAcademicExonerationsList(student);
-    loadHonorRoll();
-
-    const form = document.getElementById('academicExonerationForm');
-    if (form) form.reset();
-
-    showToast("¡Consideración individual / exoneración aplicada correctamente!", "success");
 }
 
 async function deleteAcademicExoneration(studentId, exIndex) {
@@ -12639,57 +12766,122 @@ function closeDisciplineModal() {
     }
 }
 
-function saveDisciplineForm(e) {
-    e.preventDefault();
-    const stuId = document.getElementById('discStudentSelect').value;
-    const student = STATE.students.find(s => s.id === stuId);
-    const severity = document.getElementById('discSeverity').value;
-    const reason = document.getElementById('discReason').value.trim();
-
-    if (!stuId || !reason) {
-        showToast('Seleccione un estudiante e ingrese la causa del reporte disciplinario.', 'warning');
+async function saveDisciplineForm(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (typeof checkDisciplineCreatePermission === 'function' && !checkDisciplineCreatePermission()) {
+        showToast('No tiene permisos para registrar reportes disciplinarios.', 'warning');
         return;
     }
 
-    const reporterName = STATE.currentUser ? STATE.currentUser.name : 'Catedrático';
-    const stuName = student ? (student.name || (student.firstName + ' ' + student.lastName)) : 'Estudiante';
-    const stuGrade = student ? (student.grade || student.gradeCode || 'Grado') : 'Grado';
+    const stuSelect = document.getElementById('discStudentSelect');
+    const stuId = stuSelect ? stuSelect.value : '';
+    const student = (STATE.students || []).find(s => s.id === stuId);
 
-    const newReport = {
-        id: 'disc-' + Date.now(),
-        studentId: stuId,
-        studentName: stuName,
-        grade: stuGrade,
-        teacher: reporterName,
-        reporterId: STATE.currentUser ? STATE.currentUser.id : '',
-        reporterName: reporterName,
-        date: new Date().toISOString().split('T')[0],
-        timestamp: new Date().toISOString(),
-        severity: severity,
-        reason: reason,
-        description: reason,
-        resolutionStatus: 'Pendiente',
-        resolutionText: '',
-        resolutionDate: '',
-        resolvedBy: ''
-    };
+    const severityInput = document.getElementById('discSeverity');
+    const severity = severityInput ? severityInput.value : 'Leve';
 
-    if (!Array.isArray(STATE.disciplineReports)) STATE.disciplineReports = [];
-    STATE.disciplineReports.unshift(newReport);
-    if (!Array.isArray(STATE.discipline)) STATE.discipline = [];
-    STATE.discipline.unshift(newReport);
+    const reasonInput = document.getElementById('discReason');
+    const reason = reasonInput ? reasonInput.value.trim() : '';
 
-    saveStateToLocalStorage();
-    closeDisciplineModal();
-    renderDisciplineTable();
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports);
+    const dateInput = document.getElementById('discDate');
+    const date = (dateInput && dateInput.value) ? dateInput.value : new Date().toISOString().split('T')[0];
+
+    // 🚨 2. Verificación de Referencia e ID de Documento
+    if (!stuId || stuId === 'undefined' || stuId === 'null') {
+        console.error("Error: ID del estudiante no seleccionado o indefinido.");
+        showToast('Seleccione un estudiante válido.', 'warning');
+        return;
     }
 
-    // 🚨 Alerta instantánea para el Profesor Auxiliar
-    const alertMsg = `⚠️ Nuevo Reporte Disciplinario: ${stuName} (${stuGrade}) reportado por ${reporterName}. Motivo: ${reason.substring(0, 45)}...`;
-    showNotificationToast(alertMsg, severity === 'Grave' ? 'danger' : 'warning');
-    showToast('Reporte disciplinario registrado. Notificación enviada al Profesor Auxiliar.', 'success');
+    if (!reason) {
+        showToast('Ingrese el motivo del reporte disciplinario.', 'warning');
+        return;
+    }
+
+    const submitBtn = document.getElementById('disciplineSubmitBtn') || document.querySelector('#disciplineModal form button[type="submit"]');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Registrar Reporte';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    }
+
+    try {
+        const stuName = student ? (student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim()) : 'Estudiante';
+        const grade = student ? (student.grade || student.gradeCode || 'Perito Contador') : '4to Perito Contador';
+        const section = student ? (student.section || 'Sección A') : 'Sección A';
+        const teacherName = STATE.currentUser ? (STATE.currentUser.name || STATE.currentUser.username) : 'Docente Catedrático';
+
+        if (!Array.isArray(STATE.disciplineReports)) STATE.disciplineReports = [];
+
+        const newReport = {
+            id: 'rep-disc-' + Date.now(),
+            studentId: stuId,
+            studentName: stuName,
+            grade: `${grade} (${section})`,
+            teacher: teacherName,
+            teacherId: STATE.currentUser ? STATE.currentUser.id : '',
+            date: date,
+            severity: severity,
+            reason: reason,
+            status: 'Pendiente',
+            actionType: 'Pendiente de Resolución por Auxiliatura',
+            resolution: '',
+            resolvedBy: '',
+            resolutionDate: '',
+            isLocked: false
+        };
+
+        STATE.disciplineReports.unshift(newReport);
+        const nowTime = Date.now();
+        STATE.lastModified = nowTime;
+
+        // 🌟 A. Persistencia Atómica en Firestore
+        if (window.FirebaseModular && window.FirebaseModular.db) {
+            try {
+                const { db, doc, setDoc } = window.FirebaseModular;
+                const dRef = doc(db, 'disciplineReports', newReport.id);
+                const discRef = doc(db, 'disciplina', newReport.id);
+                const dPayload = { ...newReport, lastModified: nowTime };
+                if (typeof setDoc === 'function') {
+                    await withTimeout(setDoc(dRef, dPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
+                    await setDoc(discRef, dPayload, { merge: true });
+                }
+            } catch(fsErr) {
+                console.warn("Aviso al guardar reporte disciplinario en Firestore:", fsErr);
+            }
+        }
+
+        // 🌟 B. Sincronización en Realtime Database
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            ok = await withTimeout(EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports), 8000, 'Tiempo de espera en Realtime Database agotado.');
+        } else {
+            ok = true;
+        }
+
+        if (!ok) {
+            throw new Error("El servidor de Firebase no confirmó el registro del reporte disciplinario.");
+        }
+
+        saveStateToLocalStorage();
+        closeDisciplineModal();
+        renderDisciplineTable();
+
+        showToast(`Reporte disciplinario para ${stuName} guardado y confirmado en Firebase con éxito.`, 'success');
+    } catch(err) {
+        console.error("❌ Error al guardar reporte disciplinario:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
+        }
+    }
 }
 
 // ==========================================================================
@@ -13060,12 +13252,19 @@ function closeGradeEditRequestModal() {
 window.closeGradeEditRequestModal = closeGradeEditRequestModal;
 
 async function submitGradeEditRequest(event) {
-    if (event) event.preventDefault();
+    if (event && event.preventDefault) event.preventDefault();
+    if (event && event.stopPropagation) event.stopPropagation();
 
-    const pensumId = document.getElementById('reqModalPensumId')?.value;
+    const pensumId = document.getElementById('reqModalPensumId')?.value?.trim();
     const unit = parseInt(document.getElementById('reqModalBimestre')?.value) || 1;
     const reason = (document.getElementById('reqModalReason')?.value || '').trim();
     const durationHours = parseInt(document.getElementById('reqModalDuration')?.value) || 48;
+
+    if (!pensumId || pensumId === 'undefined' || pensumId === 'null') {
+        console.error("Error: ID de la cátedra/pensum no encontrado o indefinido.");
+        showToast("Error: ID de la cátedra no identificado.", "danger");
+        return;
+    }
 
     if (!reason) {
         showToast("Por favor proporcione el motivo o justificación académica de la solicitud.", "warning");
@@ -13079,69 +13278,96 @@ async function submitGradeEditRequest(event) {
         STATE.gradeEditRequests = [];
     }
 
-    // Verificar si ya existe una solicitud pendiente idéntica
-    const existingPending = STATE.gradeEditRequests.find(r => 
-        r.status === 'pending' &&
-        (r.teacherId === currentUser?.id || (currentUser?.email && r.teacherEmail === currentUser?.email)) &&
-        r.pensumId === pensumId &&
-        parseInt(r.bimestre) === unit
-    );
-
-    if (existingPending) {
-        showToast("Ya existe una solicitud pendiente de revisión para este curso y bimestre.", "info");
-        closeGradeEditRequestModal();
-        return;
+    const submitBtn = document.getElementById('gradeEditReqSubmitBtn') || document.querySelector('#formGradeEditRequest button[type="submit"]');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Enviar Solicitud a Dirección';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
     }
 
-    const newRequest = {
-        id: 'REQ_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
-        teacherId: currentUser?.id || 'DOCENTE_ID',
-        teacherName: currentUser?.name || 'Catedrático Titular',
-        teacherEmail: currentUser?.email || '',
-        pensumId: pensumId,
-        subject: targetPensum?.subject || 'Asignatura',
-        grade: targetPensum?.grade || '',
-        section: targetPensum?.section || '',
-        gradeCode: targetPensum?.gradeCode || '',
-        bimestre: unit,
-        reason: reason,
-        requestedHours: durationHours,
-        requestedAt: new Date().toISOString(),
-        status: 'pending',
-        approvedBy: null,
-        approvedAt: null,
-        expiresAt: null,
-        adminNotes: ''
-    };
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    }
 
-    STATE.gradeEditRequests.push(newRequest);
-    saveStateToLocalStorage();
+    try {
+        // Verificar si ya existe una solicitud pendiente idéntica
+        const existingPending = STATE.gradeEditRequests.find(r => 
+            r.status === 'pending' &&
+            (r.teacherId === currentUser?.id || (currentUser?.email && r.teacherEmail === currentUser?.email)) &&
+            r.pensumId === pensumId &&
+            parseInt(r.bimestre) === unit
+        );
 
-    // 🌟 A. Persistencia Atómica en Firestore (colección gradeEditRequests con merge: true)
-    if (window.FirebaseModular && window.FirebaseModular.db) {
-        try {
-            const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
-            const reqRef = doc(db, 'gradeEditRequests', newRequest.id);
-            if (typeof updateDoc === 'function') {
-                try { await updateDoc(reqRef, newRequest); } catch(e) { if (typeof setDoc === 'function') await setDoc(reqRef, newRequest, { merge: true }); }
-            } else if (typeof setDoc === 'function') {
-                await setDoc(reqRef, newRequest, { merge: true });
+        if (existingPending) {
+            showToast("Ya existe una solicitud pendiente de revisión para este curso y bimestre.", "info");
+            closeGradeEditRequestModal();
+            return;
+        }
+
+        const newRequest = {
+            id: 'REQ_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+            teacherId: currentUser?.id || 'DOCENTE_ID',
+            teacherName: currentUser?.name || 'Catedrático Titular',
+            teacherEmail: currentUser?.email || '',
+            pensumId: pensumId,
+            subject: targetPensum?.subject || 'Asignatura',
+            grade: targetPensum?.grade || targetPensum?.gradeCode || 'Grado',
+            section: targetPensum?.section || 'Sección',
+            bimestre: unit,
+            reason: reason,
+            durationHours: durationHours,
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+            resolvedAt: null,
+            resolvedBy: null
+        };
+
+        STATE.gradeEditRequests.push(newRequest);
+        const nowTime = Date.now();
+        STATE.lastModified = nowTime;
+
+        // 🌟 A. Persistencia Atómica en Firestore
+        if (window.FirebaseModular && window.FirebaseModular.db) {
+            try {
+                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
+                const reqRef = doc(db, 'gradeEditRequests', newRequest.id);
+                const reqPayload = { ...newRequest, lastModified: nowTime };
+                const fsAction = (typeof setDoc === 'function') 
+                    ? setDoc(reqRef, reqPayload, { merge: true }) 
+                    : Promise.resolve();
+                await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
+            } catch(fsErr) {
+                console.warn("Aviso al guardar solicitud en Firestore:", fsErr);
             }
-        } catch(fsErr) {
-            console.warn("Aviso al registrar solicitud en Firestore:", fsErr);
+        }
+
+        // 🌟 B. Sincronización en Realtime Database
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            ok = await withTimeout(EnccoCloudSync.syncNode('gradeEditRequests', STATE.gradeEditRequests), 8000, 'Tiempo de espera en Realtime Database agotado.');
+        } else {
+            ok = true;
+        }
+
+        if (!ok) {
+            throw new Error("El servidor de Firebase no confirmó la solicitud de habilitación.");
+        }
+
+        saveStateToLocalStorage();
+        closeGradeEditRequestModal();
+        renderGradebook();
+        if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
+
+        showToast("Solicitud enviada a Dirección y confirmada en Firebase con éxito.", "success");
+    } catch(err) {
+        console.error("❌ Error al enviar solicitud:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
         }
     }
-
-    // 🌟 B. Sincronización atómica aislada en Realtime Database
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        await EnccoCloudSync.syncNode('gradeEditRequests', STATE.gradeEditRequests);
-    }
-
-    closeGradeEditRequestModal();
-    showToast("¡Solicitud enviada a Dirección y Secretaría exitosamente!", "success");
-
-    loadTeacherGradebook();
-    updatePendingRequestsBadge();
 }
 window.submitGradeEditRequest = submitGradeEditRequest;
 
@@ -15287,6 +15513,7 @@ function closeDisciplineResolutionModal() {
 
 async function saveDisciplineResolutionForm(e) {
     if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
 
     const idInput = document.getElementById('discResModalReportId');
     const statusSelect = document.getElementById('discResStatusSelect');
@@ -15298,27 +15525,93 @@ async function saveDisciplineResolutionForm(e) {
     const actionType = actionSelect ? actionSelect.value : 'Citación de Padres de Familia';
     const resolutionText = resTextarea ? resTextarea.value.trim() : '';
 
-    if (!resolutionText) {
-        showToast('Debe ingresar el dictamen o resolución de la falta disciplinaria.', 'warning');
+    // 🚨 2. Verificación de Referencia e ID de Documento en Firebase
+    if (!reportId || reportId === 'undefined' || reportId === 'null') {
+        console.error("Error: ID del reporte disciplinario no encontrado o indefinido.");
+        showToast("Error: ID del reporte disciplinario no encontrado o indefinido.", "danger");
         return;
     }
 
-    let list = STATE.disciplineReports || STATE.discipline || [];
-    const rep = list.find(r => r.id === reportId);
-    if (rep) {
+    if (!resolutionText) {
+        showToast('Debe ingresar el dictamen o resolución oficial de la falta disciplinaria.', 'warning');
+        return;
+    }
+
+    const submitBtn = document.getElementById('discResSubmitBtn') || document.querySelector('#disciplineResolutionModal form button[type="submit"]');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Guardar Resolución';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    }
+
+    try {
+        let list = STATE.disciplineReports || STATE.discipline || [];
+        const rep = list.find(r => r.id === reportId);
+        if (!rep) {
+            throw new Error('Reporte disciplinario no encontrado en memoria.');
+        }
+
+        const userName = STATE.currentUser ? (STATE.currentUser.name || STATE.currentUser.username) : 'Profesor Auxiliar';
+
         rep.status = status;
-        rep.resolutionStatus = status;
         rep.actionType = actionType;
         rep.resolution = resolutionText;
         rep.resolutionText = resolutionText;
         rep.resolutionDate = new Date().toISOString();
-        rep.resolvedBy = STATE.currentUser ? STATE.currentUser.name : 'Profesor Auxiliar';
-    }
+        rep.resolvedBy = userName;
+        rep.isLocked = (status === 'Resuelto');
 
-    saveStateToLocalStorage();
-    closeDisciplineResolutionModal();
-    renderDisciplineTable();
-    showToast('Resolución disciplinaria registrada y guardada exitosamente.', 'success');
+        const nowTime = Date.now();
+        STATE.lastModified = nowTime;
+
+        // 🌟 A. Persistencia Atómica en Firestore
+        if (window.FirebaseModular && window.FirebaseModular.db) {
+            try {
+                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
+                const dRef = doc(db, 'disciplineReports', rep.id);
+                const dPayload = { ...rep, lastModified: nowTime };
+                const fsAction = (typeof updateDoc === 'function')
+                    ? updateDoc(dRef, dPayload).catch(e => {
+                        if (typeof setDoc === 'function') return setDoc(dRef, dPayload, { merge: true });
+                        throw e;
+                    })
+                    : (typeof setDoc === 'function' ? setDoc(dRef, dPayload, { merge: true }) : Promise.resolve());
+                await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
+            } catch(fsErr) {
+                console.warn("Aviso al actualizar resolución disciplinaria en Firestore:", fsErr);
+            }
+        }
+
+        // 🌟 B. Sincronización en Realtime Database
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            ok = await withTimeout(EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports), 8000, 'Tiempo de espera en Realtime Database agotado.');
+        } else {
+            ok = true;
+        }
+
+        if (!ok) {
+            throw new Error("El servidor de Firebase no confirmó la resolución disciplinaria.");
+        }
+
+        saveStateToLocalStorage();
+        closeDisciplineResolutionModal();
+        renderDisciplineTable();
+
+        showToast('Resolución disciplinaria guardada y confirmada en Firebase con éxito.', 'success');
+    } catch(err) {
+        console.error("❌ Error al guardar resolución disciplinaria:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
+        }
+    }
 }
 
 
@@ -16076,69 +16369,137 @@ function resetCycleForm() {
     document.getElementById('cycleSubmitBtn').innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Ciclo Lectivo';
 }
 
-function saveCycleForm(e) {
-    e.preventDefault();
+async function saveCycleForm(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
     if (!checkEnrolmentPermissions()) return;
-    const cycleId = document.getElementById('cycleFormId').value;
-    const name = document.getElementById('newCycleName').value.trim();
-    const status = document.getElementById('newCycleStatus').value;
-    const description = document.getElementById('newCycleDescription').value.trim();
+    const cycleId = document.getElementById('cycleFormId')?.value?.trim();
+    const name = document.getElementById('newCycleName')?.value?.trim();
+    const status = document.getElementById('newCycleStatus')?.value || 'Activo';
+    const description = document.getElementById('newCycleDescription')?.value?.trim() || '';
+
+    if (!name) {
+        showToast("Ingrese el nombre del ciclo lectivo.", "warning");
+        return;
+    }
 
     if (!STATE.cycles) STATE.cycles = [];
 
-    if (cycleId) {
-        const c = STATE.cycles.find(x => x.id === cycleId);
-        if (c) {
-            const oldName = c.name;
-            c.name = name;
-            c.status = status;
-            c.description = description;
-            if (STATE.activeCycle === oldName) {
-                STATE.activeCycle = name;
-            }
-            showToast(`Ciclo escolar "${name}" actualizado correctamente.`, "success"); closeCycleModal(); hideModalById('cycleModal');
-        }
-    } else {
-        // Verificar si ya existe
-        if (STATE.cycles.some(x => x.name.toLowerCase() === name.toLowerCase())) {
-            showToast(`El ciclo "${name}" ya se encuentra registrado.`, "warning");
+    const isEditing = Boolean(cycleId);
+    if (isEditing) {
+        if (!cycleId || cycleId === 'undefined' || cycleId === 'null') {
+            console.error("Error: ID del ciclo no encontrado o indefinido.");
+            showToast("Error: ID del ciclo no encontrado o indefinido.", "danger");
             return;
         }
+    }
 
-        const newCycle = {
-            id: 'cyc-' + Date.now(),
-            name,
-            status,
-            description
-        };
-        STATE.cycles.push(newCycle);
+    const submitBtn = document.getElementById('cycleSubmitBtn') || document.querySelector('#cycleModal form button[type="submit"]');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Guardar Ciclo Lectivo';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    }
 
-        // Si es el primer ciclo o se marcó como activo, hacerlo el ciclo activo
-        if (STATE.cycles.length === 1 || status === 'Activo') {
-            STATE.activeCycle = name;
-        }
-        showToast(`Ciclo escolar "${name}" ingresado exitosamente.`, "success");
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
     }
 
     try {
-        const modular = window.FirebaseModular;
-        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
-            const targetC = cycleId ? STATE.cycles.find(x => x.id === cycleId) : STATE.cycles[STATE.cycles.length - 1];
-            if (targetC) {
-                modular.setDoc(modular.doc(modular.db, 'ciclos', targetC.id), targetC, { merge: true }).catch(e => {});
+        if (cycleId) {
+            const c = STATE.cycles.find(x => x.id === cycleId);
+            if (c) {
+                const oldName = c.name;
+                c.name = name;
+                c.status = status;
+                c.description = description;
+                if (STATE.activeCycle === oldName) {
+                    STATE.activeCycle = name;
+                }
+            } else {
+                throw new Error(`Ciclo lectivo "${cycleId}" no encontrado.`);
+            }
+        } else {
+            if (STATE.cycles.some(x => x.name.toLowerCase() === name.toLowerCase())) {
+                showToast(`El ciclo "${name}" ya se encuentra registrado.`, "warning");
+                return;
+            }
+
+            const newCycle = {
+                id: 'cyc-' + Date.now(),
+                name,
+                status,
+                description
+            };
+            STATE.cycles.push(newCycle);
+
+            if (STATE.cycles.length === 1 || status === 'Activo') {
+                STATE.activeCycle = name;
             }
         }
-    } catch(fsErr) {}
 
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-        EnccoCloudSync.patchNode('cycles', STATE.cycles);
+        const nowTime = Date.now();
+        STATE.lastModified = nowTime;
+
+        // 🌟 A. Persistencia Atómica en Firestore
+        if (window.FirebaseModular && window.FirebaseModular.db) {
+            try {
+                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
+                const targetC = cycleId ? STATE.cycles.find(x => x.id === cycleId) : STATE.cycles[STATE.cycles.length - 1];
+                if (targetC) {
+                    const cRef = doc(db, 'cycles', targetC.id);
+                    const ciclosRef = doc(db, 'ciclos', targetC.id);
+                    const cPayload = { ...targetC, lastModified: nowTime };
+                    const fsAction = (typeof updateDoc === 'function')
+                        ? updateDoc(cRef, cPayload).catch(e => {
+                            if (typeof setDoc === 'function') return setDoc(cRef, cPayload, { merge: true });
+                            throw e;
+                        })
+                        : (typeof setDoc === 'function' ? setDoc(cRef, cPayload, { merge: true }) : Promise.resolve());
+                    await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
+                    if (typeof setDoc === 'function') {
+                        await setDoc(ciclosRef, cPayload, { merge: true });
+                    }
+                }
+            } catch(fsErr) {
+                console.warn("Aviso al guardar ciclo en Firestore:", fsErr);
+            }
+        }
+
+        // 🌟 B. Sincronización en Realtime Database
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            const syncActions = [
+                EnccoCloudSync.syncNode('cycles', STATE.cycles),
+                EnccoCloudSync.syncNode('activeCycle', STATE.activeCycle)
+            ];
+            const results = await withTimeout(Promise.all(syncActions), 8000, 'Tiempo de espera en Realtime Database agotado.');
+            ok = results[0] && results[1];
+        } else {
+            ok = true;
+        }
+
+        if (!ok) {
+            throw new Error("El servidor de Firebase no confirmó la escritura de ciclos escolares.");
+        }
+
+        saveStateToLocalStorage();
+        resetCycleForm();
+        renderCyclesList();
+        updateCycleSelects();
+        closeCycleModal();
+        hideModalById('cycleModal');
+
+        showToast(`Ciclo escolar "${name}" guardado y confirmado en Firebase con éxito.`, "success");
+    } catch(err) {
+        console.error("❌ Error al guardar ciclo lectivo:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
+        }
     }
-
-    resetCycleForm();
-    renderCycleList();
-    updateCycleSelects();
-    renderCurrentView();
-    if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(viewName);
 }
 
 function setCycleActive(cycleId) {
@@ -17410,7 +17771,8 @@ function resetGradingConfigToDefaults() {
 }
 
 async function saveGradingConfigForm(e) {
-    if (e) e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
 
     const selectedId = document.getElementById('teacherCourseSelect') ? document.getElementById('teacherCourseSelect').value : null;
     let targetPensum = (STATE.pensum || []).find(p => p.id === selectedId);
@@ -17426,7 +17788,8 @@ async function saveGradingConfigForm(e) {
         targetPensum = (STATE.pensum || [])[0];
     }
 
-    if (!targetPensum) {
+    if (!targetPensum || !targetPensum.id) {
+        console.error("Error: ID de la clase/pensum no identificado.");
         showToast("No se pudo identificar la clase a configurar.", "danger");
         return;
     }
@@ -17448,41 +17811,99 @@ async function saveGradingConfigForm(e) {
         }
     }
 
-    const nameInputs = document.querySelectorAll('.cfg-act-name');
-    const ptsInputs = document.querySelectorAll('.cfg-act-pts');
-    const activities = [];
-
-    for (let i = 0; i < 10; i++) {
-        const name = (nameInputs[i]?.value || `Act. ${i + 1}`).trim();
-        const max = Math.max(0, parseInt(ptsInputs[i]?.value) || 0);
-        activities.push({ name, max });
+    const submitBtn = document.getElementById('gradingConfigSubmitBtn') || document.querySelector('#gradingConfigModal form button[type="submit"]');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Guardar Ponderación';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
     }
 
-    if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
-    const key = getGradingConfigKey(targetPensum, currentUnit);
-
-    STATE.gradingConfigs[key] = {
-        zonaMax: zVal,
-        examMax: eVal,
-        activities: activities
-    };
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    }
 
     try {
+        const nameInputs = document.querySelectorAll('.cfg-act-name');
+        const ptsInputs = document.querySelectorAll('.cfg-act-pts');
+        const acts = [];
+        nameInputs.forEach((inp, idx) => {
+            const nm = inp.value.trim();
+            const p = parseInt(ptsInputs[idx]?.value) || 0;
+            if (nm) {
+                acts.push({ name: nm, maxPoints: p });
+            }
+        });
+
+        if (!targetPensum.gradingConfig) targetPensum.gradingConfig = {};
+        if (!targetPensum.gradingConfig[`b${currentUnit}`]) targetPensum.gradingConfig[`b${currentUnit}`] = {};
+
+        targetPensum.gradingConfig[`b${currentUnit}`] = {
+            zonaMax: zVal,
+            examMax: eVal,
+            activities: acts,
+            updatedAt: new Date().toISOString(),
+            updatedBy: currentUser ? currentUser.name : 'Docente'
+        };
+
+        const nowTime = Date.now();
+        STATE.lastModified = nowTime;
+
+        // 🌟 A. Persistencia Atómica en Firestore
         const modular = window.FirebaseModular;
         if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
-            await modular.setDoc(modular.doc(modular.db, 'config_ponderaciones', key), STATE.gradingConfigs[key], { merge: true });
+            try {
+                const pRef = modular.doc(modular.db, 'pensum', targetPensum.id);
+                const pData = { gradingConfig: targetPensum.gradingConfig, lastModified: nowTime };
+                const fsAction = (typeof modular.updateDoc === 'function')
+                    ? modular.updateDoc(pRef, pData).catch(e => {
+                        return modular.setDoc(pRef, pData, { merge: true });
+                    })
+                    : modular.setDoc(pRef, pData, { merge: true });
+                await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
+                await withTimeout(
+                    modular.setDoc(modular.doc(modular.db, 'config_ponderaciones', targetPensum.id), {
+                        [targetPensum.id]: targetPensum.gradingConfig,
+                        lastModified: nowTime
+                    }, { merge: true }),
+                    8000,
+                    'Tiempo de espera en Firestore agotado.'
+                );
+            } catch(fsErr) {
+                console.warn("Aviso al guardar ponderación en Firestore:", fsErr);
+            }
         }
-    } catch(fsErr) {
-        console.warn("Aviso en Firestore ponderaciones:", fsErr);
-    }
 
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-        EnccoCloudSync.patchNode('gradingConfigs', { [key]: STATE.gradingConfigs[key] });
-    }
+        // 🌟 B. Sincronización en Realtime Database
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined') {
+            if (EnccoCloudSync.syncNode) {
+                ok = await withTimeout(EnccoCloudSync.syncNode('pensum', STATE.pensum), 8000, 'Tiempo de espera en Realtime Database agotado.');
+            }
+            if (EnccoCloudSync.patchNode) {
+                EnccoCloudSync.patchNode('gradingConfigs', { [targetPensum.id]: targetPensum.gradingConfig });
+            }
+        } else {
+            ok = true;
+        }
 
-    closeGradingConfigModal();
-    loadTeacherGradebook();
-    showToast(`¡Ponderación guardada con éxito para ${targetPensum.subject} (Bimestre ${currentUnit})! Zona: ${zVal} pts, Examen: ${eVal} pts.`, "success");
+        if (!ok) {
+            throw new Error("El servidor de Firebase no confirmó la actualización de la ponderación.");
+        }
+
+        saveStateToLocalStorage();
+        closeGradingConfigModal();
+        renderGradebook();
+
+        showToast(`Ponderación del Bimestre ${currentUnit} guardada y confirmada en Firebase con éxito.`, "success");
+    } catch(err) {
+        console.error("❌ Error al guardar ponderación:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
+        }
+    }
 }
 
 let _currentGradebookUnsubscriber = null;
@@ -22710,6 +23131,7 @@ window.populateGuideTeacherSelect = populateGuideTeacherSelect;
 
 async function saveQuickGuideTeacher(e) {
     if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
     if (typeof canRoleModify === 'function' && !canRoleModify('guide-teachers', STATE.currentRole)) {
         showToast('Acceso Restringido: Su rol no tiene autorización para asignar o modificar Maestros Guías.', 'warning');
         return;
@@ -22717,20 +23139,38 @@ async function saveQuickGuideTeacher(e) {
     const gradeId = (document.getElementById('guideTeacherModalGradeId') || document.getElementById('quickGuideGradeId'))?.value;
     const teacherId = (document.getElementById('guideTeacherSelectModal') || document.getElementById('quickGuideTeacherSelect'))?.value;
     
-    const grade = (STATE.gradesList || []).find(g => g.id === gradeId);
-    if (grade) {
+    // 🚨 2. Verificación de Referencia e ID de Documento en Firebase
+    if (!gradeId || gradeId === 'undefined' || gradeId === 'null') {
+        console.error("Error: ID del grado no encontrado o indefinido.");
+        showToast("Error: ID del grado no encontrado o indefinido.", "danger");
+        return;
+    }
+
+    const submitBtn = document.getElementById('guideTeacherSubmitBtn') || document.querySelector('#assignGuideTeacherModal form button[type="submit"]');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Guardar Asignación';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    }
+
+    try {
+        const grade = (STATE.gradesList || []).find(g => g.id === gradeId);
+        if (!grade) {
+            throw new Error("No se encontró el grado a asignar.");
+        }
+
         const teacherObj = (STATE.users || []).find(u => u.id === teacherId);
         grade.guideTeacherId = teacherId || null;
         grade.guideTeacher = teacherObj ? teacherObj.name : (teacherId ? teacherId : 'Sin asignar');
         
-        STATE.lastModified = Date.now();
-        saveStateToLocalStorage();
-        closeAssignGuideTeacherModal();
-        renderGradesTable();
-        if (typeof renderDashboard === 'function') renderDashboard();
-        
         const nowTime = Date.now();
-        // 🌟 A. Persistencia Atómica en Firestore (colección maestros_guias y gradesList)
+        STATE.lastModified = nowTime;
+
+        // 🌟 A. Persistencia Atómica en Firestore
         if (window.FirebaseModular && window.FirebaseModular.db) {
             try {
                 const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
@@ -22745,23 +23185,45 @@ async function saveQuickGuideTeacher(e) {
                     guideTeacher: grade.guideTeacher,
                     lastModified: nowTime
                 };
-                if (typeof updateDoc === 'function') {
-                    try { await updateDoc(gRef, { guideTeacherId: grade.guideTeacherId, guideTeacher: grade.guideTeacher, lastModified: nowTime }); } catch(e) { if (typeof setDoc === 'function') await setDoc(gRef, { ...grade, lastModified: nowTime }, { merge: true }); }
-                    try { await updateDoc(mgRef, guidePayload); } catch(e) { if (typeof setDoc === 'function') await setDoc(mgRef, guidePayload, { merge: true }); }
-                } else if (typeof setDoc === 'function') {
-                    await setDoc(gRef, { ...grade, lastModified: nowTime }, { merge: true });
-                    await setDoc(mgRef, guidePayload, { merge: true });
-                }
+                const fsAction = (typeof updateDoc === 'function')
+                    ? updateDoc(gRef, { guideTeacherId: grade.guideTeacherId, guideTeacher: grade.guideTeacher, lastModified: nowTime }).catch(e => {
+                        if (typeof setDoc === 'function') return setDoc(gRef, { ...grade, lastModified: nowTime }, { merge: true });
+                        throw e;
+                    })
+                    : (typeof setDoc === 'function' ? setDoc(gRef, { ...grade, lastModified: nowTime }, { merge: true }) : Promise.resolve());
+                await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
+                if (typeof setDoc === 'function') await setDoc(mgRef, guidePayload, { merge: true });
             } catch(fsErr) {
                 console.warn("Aviso al guardar maestro guía en Firestore:", fsErr);
             }
         }
 
-        // 🌟 B. Sincronización atómica y aislada en Realtime Database (SÓLO gradesList)
+        // 🌟 B. Sincronización atómica y aislada en Realtime Database
+        let ok = false;
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
+            ok = await withTimeout(EnccoCloudSync.syncNode('gradesList', STATE.gradesList), 8000, 'Tiempo de espera agotado en Realtime Database.');
+        } else {
+            ok = true;
         }
+
+        if (!ok) {
+            throw new Error("El servidor de Firebase no confirmó la asignación del maestro guía.");
+        }
+
+        saveStateToLocalStorage();
+        closeAssignGuideTeacherModal();
+        renderGradesTable();
+        if (typeof renderDashboard === 'function') renderDashboard();
+
         showToast(`Maestro Guía "${grade.guideTeacher}" asignado a ${grade.name} (${grade.section}).`, 'success');
+    } catch(err) {
+        console.error("❌ Error al guardar maestro guía:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
+        }
     }
 }
 window.saveQuickGuideTeacher = saveQuickGuideTeacher;
@@ -23082,6 +23544,7 @@ function normalizePensumCatalogCodes() {
     if (!Array.isArray(STATE.pensumCatalog)) return;
     // REGLA ESTRICTA 2: No sobrescribir códigos vacíos; respetar el código manual definido por el usuario
     STATE.pensumCatalog.forEach(p => {
+        p.id = p.id || ('pen-' + (p.code ? p.code.toLowerCase().replace(/[^a-z0-9]/g, '') : Date.now() + '-' + Math.floor(Math.random()*1000)));
         if (p.code && String(p.code).trim()) {
             p.code = String(p.code).trim().toUpperCase();
         } else {
@@ -23840,6 +24303,14 @@ function openEditPensumSubjectModal(subjectId) {
     const titleEl = document.getElementById('pensumSubjectModalTitle');
     if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-pen-to-square"></i> Editar Asignatura "${subjectName}"`;
 
+    const submitBtn = document.getElementById('pensumSubjectSubmitBtn') || (document.getElementById('pensumSubjectModal') ? document.getElementById('pensumSubjectModal').querySelector('button[type="submit"]') : null);
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        if (submitBtn.getAttribute('data-orig-html')) {
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html');
+        }
+    }
+
     showModalById('pensumSubjectModal');
 }
 
@@ -23853,7 +24324,14 @@ function closePensumSubjectModal() {
 
 async function savePensumSubjectForm(e) {
     if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
     if (!checkEnrolmentPermissions()) return;
+
+    const submitBtn = document.getElementById('pensumSubjectSubmitBtn') || document.querySelector('#pensumSubjectModal form button[type="submit"]');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : '<i class="fa-solid fa-save"></i> Guardar en Pensum';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    }
 
     const idInput = document.getElementById('pensumSubjectFormId') || document.getElementById('pensumSubjectModalId');
     const codeInput = document.getElementById('pensumSubjectFormCode');
@@ -23863,8 +24341,27 @@ async function savePensumSubjectForm(e) {
     const orderInput = document.getElementById('pensumSubjectFormSortOrder') || document.getElementById('pensumSubjectOrder');
     const hoursInput = document.getElementById('pensumSubjectFormHours');
 
-    const id = idInput ? idInput.value : '';
-    // Código definido explícitamente o vacío
+    const titleEl = document.getElementById('pensumSubjectModalTitle');
+    const asignaturaId = idInput ? (idInput.value || '').trim() : '';
+    const isEditing = Boolean(asignaturaId) || (titleEl && titleEl.textContent && titleEl.textContent.includes('Editar Asignatura'));
+
+    // 🚨 2. Verificación de Referencia e ID de Documento en Firebase
+    if (isEditing) {
+        if (!asignaturaId || asignaturaId === 'undefined' || asignaturaId === 'null') {
+            console.error("Error: ID de la asignatura no encontrado o indefinido.");
+            if (typeof Swal !== 'undefined' && Swal.fire) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'ID no encontrado',
+                    text: 'Error: ID de la asignatura no encontrado o indefinido.'
+                });
+            } else {
+                showToast("Error: ID de la asignatura no encontrado o indefinido.", "danger");
+            }
+            return;
+        }
+    }
+
     const code = codeInput ? codeInput.value.trim().toUpperCase() : '';
     const name = nameInput ? nameInput.value.trim() : '';
     const career = careerSelect ? careerSelect.value : '';
@@ -23873,23 +24370,37 @@ async function savePensumSubjectForm(e) {
     const hours = hoursInput ? parseInt(hoursInput.value) || 4 : 4;
 
     if (!name || !career || !grade) {
-        showToast('Complete todos los campos obligatorios (Nombre, Carrera y Grado).', 'warning');
+        if (typeof Swal !== 'undefined' && Swal.fire) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Campos requeridos',
+                text: 'Complete todos los campos obligatorios (Nombre, Carrera y Grado).'
+            });
+        } else {
+            showToast('Complete todos los campos obligatorios (Nombre, Carrera y Grado).', 'warning');
+        }
         return;
     }
 
-    if (!Array.isArray(STATE.pensumCatalog)) STATE.pensumCatalog = [];
-
-    const submitBtn = document.getElementById('pensumSubjectSubmitBtn');
-    const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Guardar en Pensum';
     if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
     }
 
     try {
-        if (id) {
-            const idx = STATE.pensumCatalog.findIndex(x => x.id === id);
+        if (!Array.isArray(STATE.pensumCatalog)) STATE.pensumCatalog = [];
+
+        let targetId = asignaturaId;
+
+        if (isEditing || targetId) {
+            let idx = STATE.pensumCatalog.findIndex(x => x && x.id === targetId);
+            if (idx === -1 && targetId) {
+                idx = STATE.pensumCatalog.findIndex(x => x && (x.code === code || (x.name || x.subject) === name));
+            }
+
             if (idx !== -1) {
+                targetId = STATE.pensumCatalog[idx].id || targetId;
+                STATE.pensumCatalog[idx].id = targetId;
                 STATE.pensumCatalog[idx].code = code;
                 STATE.pensumCatalog[idx].name = name;
                 STATE.pensumCatalog[idx].subject = name;
@@ -23900,11 +24411,14 @@ async function savePensumSubjectForm(e) {
                 STATE.pensumCatalog[idx].hours = hours;
                 STATE.pensumCatalog[idx].periods = hours;
                 STATE.pensumCatalog[idx].weeklyHours = hours;
+                STATE.pensumCatalog[idx].lastModified = Date.now();
+            } else {
+                throw new Error(`No se encontró la asignatura con ID "${targetId}" para actualizar en el catálogo.`);
             }
         } else {
-            const customId = code ? ('pen-' + code.toLowerCase().replace(/[^a-z0-9]/g, '')) : ('pen-' + Date.now() + '-' + Math.floor(Math.random()*1000));
+            targetId = code ? ('pen-' + code.toLowerCase().replace(/[^a-z0-9]/g, '')) : ('pen-' + Date.now() + '-' + Math.floor(Math.random()*1000));
             STATE.pensumCatalog.push({
-                id: customId,
+                id: targetId,
                 code: code,
                 name: name,
                 subject: name,
@@ -23914,7 +24428,8 @@ async function savePensumSubjectForm(e) {
                 sortOrder: order,
                 hours: hours,
                 periods: hours,
-                weeklyHours: hours
+                weeklyHours: hours,
+                lastModified: Date.now()
             });
         }
 
@@ -23928,32 +24443,36 @@ async function savePensumSubjectForm(e) {
         });
 
         const nowTime = Date.now();
-        // 🌟 A. Persistencia Atómica en Firestore (colecciones pensumCatalog y pensum con merge: true)
+
+        // 🌟 A. Persistencia Atómica en Firestore
         if (window.FirebaseModular && window.FirebaseModular.db) {
             try {
                 const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
-                const targetSubject = id ? (STATE.pensumCatalog || []).find(x => x.id === id) : STATE.pensumCatalog[STATE.pensumCatalog.length - 1];
+                const targetSubject = (STATE.pensumCatalog || []).find(x => x.id === targetId);
                 if (targetSubject && targetSubject.id) {
                     const subRef = doc(db, 'pensumCatalog', targetSubject.id);
                     const subData = { ...targetSubject, lastModified: nowTime };
-                    if (typeof updateDoc === 'function') {
-                        try { await updateDoc(subRef, subData); } catch(e) { if (typeof setDoc === 'function') await setDoc(subRef, subData, { merge: true }); }
-                    } else if (typeof setDoc === 'function') {
-                        await setDoc(subRef, subData, { merge: true });
-                    }
+                    const fsAction = (typeof updateDoc === 'function')
+                        ? updateDoc(subRef, subData).catch(e => {
+                            if (typeof setDoc === 'function') return setDoc(subRef, subData, { merge: true });
+                            throw e;
+                        })
+                        : (typeof setDoc === 'function' ? setDoc(subRef, subData, { merge: true }) : Promise.resolve());
+                    await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
                 }
             } catch(fsErr) {
-                console.warn("Aviso al guardar asignatura en Firestore:", fsErr);
+                console.warn("Aviso al guardar asignatura en Firestore (continuando con RTDB):", fsErr);
             }
         }
 
         // 🌟 B. Sincronización atómica aislada en Realtime Database
         let ok = false;
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            const [resCat, resPen] = await Promise.all([
+            const syncPromise = Promise.all([
                 EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog),
                 EnccoCloudSync.syncNode('pensum', STATE.pensum)
             ]);
+            const [resCat, resPen] = await withTimeout(syncPromise, 8000, 'Tiempo de espera agotado en Firebase Realtime Database.');
             ok = resCat && resPen;
         } else {
             ok = true;
@@ -23971,14 +24490,34 @@ async function savePensumSubjectForm(e) {
         if (typeof renderDashboard === 'function') renderDashboard();
 
         const codeLabel = code ? ` [${code}]` : '';
-        showToast(`Asignatura "${name}"${codeLabel} guardada y confirmada en Firebase con éxito.`, 'success');
+        if (typeof Swal !== 'undefined' && Swal.fire) {
+            Swal.fire({
+                icon: 'success',
+                title: '¡Guardado Exitoso!',
+                text: `Asignatura "${name}"${codeLabel} guardada y confirmada en Firebase con éxito.`,
+                timer: 2000,
+                showConfirmButton: false
+            });
+        } else {
+            showToast(`Asignatura "${name}"${codeLabel} guardada y confirmada en Firebase con éxito.`, 'success');
+        }
     } catch(err) {
         console.error("❌ [Firebase Error] Falló el guardado de asignatura:", err);
-        showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
+        const errMsg = err && err.message ? err.message : String(err);
+        if (typeof Swal !== 'undefined' && Swal.fire) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al Guardar en Firebase',
+                text: errMsg,
+                confirmButtonColor: '#047857'
+            });
+        } else {
+            showToast(`Error al guardar en Firebase: ${errMsg}`, 'danger');
+        }
     } finally {
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = origBtnHtml;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml || '<i class="fa-solid fa-save"></i> Guardar en Pensum';
         }
     }
 }
@@ -24379,6 +24918,7 @@ function syncCustomSectionsInput(val) {
 
 async function saveGradeForm(e) {
     if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
     if (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante') {
         showToast('Acceso denegado: No tiene permisos para guardar grados ni secciones.', 'danger');
         return;
@@ -24394,11 +24934,23 @@ async function saveGradeForm(e) {
     const guideSelect = document.getElementById('gradeFormGuideTeacher');
     const customSectionsInput = document.getElementById('gradeFormCustomSections');
 
-    const id = idInput ? idInput.value : '';
+    const id = idInput ? idInput.value.trim() : '';
     const name = nameInput ? nameInput.value.trim() : '';
     const career = careerSelect ? careerSelect.value : 'Perito Contador';
     const shift = shiftSelect ? shiftSelect.value : 'Matutina';
     const guideTeacher = guideSelect ? guideSelect.value : '';
+
+    const titleEl = document.getElementById('gradeModalTitle');
+    const isEditing = Boolean(id) || (titleEl && titleEl.textContent && titleEl.textContent.includes('Editar'));
+
+    // 🚨 2. Verificación de Referencia e ID de Documento en Firebase
+    if (isEditing) {
+        if (!id || id === 'undefined' || id === 'null') {
+            console.error("Error: ID del grado no encontrado o indefinido.");
+            showToast("Error: ID del grado no encontrado o indefinido.", "danger");
+            return;
+        }
+    }
 
     if (!name || !career) {
         showToast('Complete el nombre del grado y seleccione la carrera.', 'warning');
@@ -24407,96 +24959,129 @@ async function saveGradeForm(e) {
 
     if (!Array.isArray(STATE.gradesList)) STATE.gradesList = [];
 
-    if (id) {
-        // Modo edición de grado existente
-        const idx = STATE.gradesList.findIndex(x => x.id === id);
-        if (idx !== -1) {
-            const secVal = sectionInput ? sectionInput.value.trim() : STATE.gradesList[idx].section;
-            const codeVal = codeInput ? codeInput.value.trim() : STATE.gradesList[idx].code;
-            STATE.gradesList[idx].name = name;
-            STATE.gradesList[idx].career = career;
-            STATE.gradesList[idx].shift = shift;
-            STATE.gradesList[idx].section = secVal;
-            STATE.gradesList[idx].code = codeVal || `${name} ${secVal}`;
-            const guideUserObj = (STATE.users || []).find(u => u.id === guideTeacher || u.name === guideTeacher);
-            STATE.gradesList[idx].guideTeacherId = guideUserObj ? guideUserObj.id : (guideTeacher || null);
-            STATE.gradesList[idx].guideTeacher = guideUserObj ? guideUserObj.name : (guideTeacher || 'Sin asignar');
-        }
-    } else {
-        // Modo creación: recopilar secciones seleccionadas
-        let selectedSections = [];
-        document.querySelectorAll('#quickSectionBadges .section-pill.active').forEach(b => {
-            selectedSections.push(b.textContent.trim());
-        });
-
-        if (customSectionsInput && customSectionsInput.value.trim()) {
-            const customs = customSectionsInput.value.split(',').map(s => s.trim()).filter(Boolean);
-            customs.forEach(c => {
-                const sName = c.toLowerCase().startsWith('sección') ? c : `Sección ${c}`;
-                if (!selectedSections.includes(sName)) selectedSections.push(sName);
-            });
-        }
-
-        if (selectedSections.length === 0) selectedSections = ['Sección A'];
-
-        // Crear cada grado/sección
-        selectedSections.forEach(sec => {
-            const shortSec = sec.replace('Sección', '').trim();
-            const code = `${name.replace('Perito Contador', 'PC').trim()} ${shortSec}`;
-            const guideUserObj = (STATE.users || []).find(u => u.id === guideTeacher || u.name === guideTeacher);
-            STATE.gradesList.push({
-                id: 'grd-' + Date.now() + '-' + Math.floor(Math.random()*1000),
-                name: name,
-                career: career,
-                shift: shift,
-                section: sec,
-                code: code,
-                guideTeacherId: guideUserObj ? guideUserObj.id : (guideTeacher || null),
-                guideTeacher: guideUserObj ? guideUserObj.name : (guideTeacher || 'Sin asignar')
-            });
-        });
+    const submitBtn = document.getElementById('gradeSubmitBtn') || document.querySelector('#gradeModal form button[type="submit"]');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Guardar Grado(s)';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
     }
 
-    STATE.gradesList = sortGrades(STATE.gradesList);
-    const nowTime = Date.now();
-    STATE.lastModified = nowTime;
-    saveStateToLocalStorage();
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    }
 
-    // 🌟 A. Persistencia Atómica en Firestore (colecciones gradesList y grados_secciones con updateDoc / merge)
-    if (window.FirebaseModular && window.FirebaseModular.db) {
-        try {
-            const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
-            const targetGrades = id ? [STATE.gradesList.find(x => x.id === id)].filter(Boolean) : (typeof selectedSections !== 'undefined' ? STATE.gradesList.filter(g => g.name === name) : [STATE.gradesList[STATE.gradesList.length - 1]]);
-            for (const grd of targetGrades) {
-                if (!grd) continue;
-                const gRef = doc(db, 'gradesList', grd.id || grd.code);
-                const gsRef = doc(db, 'grados_secciones', grd.id || grd.code);
-                const gPayload = { ...grd, lastModified: nowTime };
-                if (typeof updateDoc === 'function') {
-                    try { await updateDoc(gRef, gPayload); } catch(e) { if (typeof setDoc === 'function') await setDoc(gRef, gPayload, { merge: true }); }
-                    try { await updateDoc(gsRef, gPayload); } catch(e) { if (typeof setDoc === 'function') await setDoc(gsRef, gPayload, { merge: true }); }
-                } else if (typeof setDoc === 'function') {
-                    await setDoc(gRef, gPayload, { merge: true });
-                    await setDoc(gsRef, gPayload, { merge: true });
-                }
+    try {
+        if (id) {
+            // Modo edición de grado existente
+            const idx = STATE.gradesList.findIndex(x => x.id === id);
+            if (idx !== -1) {
+                const secVal = sectionInput ? sectionInput.value.trim() : STATE.gradesList[idx].section;
+                const codeVal = codeInput ? codeInput.value.trim() : STATE.gradesList[idx].code;
+                STATE.gradesList[idx].name = name;
+                STATE.gradesList[idx].career = career;
+                STATE.gradesList[idx].shift = shift;
+                STATE.gradesList[idx].section = secVal;
+                STATE.gradesList[idx].code = codeVal || `${name} ${secVal}`;
+                const guideUserObj = (STATE.users || []).find(u => u.id === guideTeacher || u.name === guideTeacher);
+                STATE.gradesList[idx].guideTeacherId = guideUserObj ? guideUserObj.id : (guideTeacher || null);
+                STATE.gradesList[idx].guideTeacher = guideUserObj ? guideUserObj.name : (guideTeacher || 'Sin asignar');
+            } else {
+                throw new Error(`Grado con ID "${id}" no encontrado en memoria.`);
             }
-            console.log("🔥 [Firestore] Grados y secciones persistidos atómicamente en grados_secciones y gradesList.");
-        } catch(fsErr) {
-            console.warn("Aviso al persistir grados en Firestore:", fsErr);
+        } else {
+            // Modo creación: recopilar secciones seleccionadas
+            let selectedSections = [];
+            document.querySelectorAll('#quickSectionBadges .section-pill.active').forEach(b => {
+                selectedSections.push(b.textContent.trim());
+            });
+
+            if (customSectionsInput && customSectionsInput.value.trim()) {
+                const customs = customSectionsInput.value.split(',').map(s => s.trim()).filter(Boolean);
+                customs.forEach(c => {
+                    const sName = c.toLowerCase().startsWith('sección') ? c : `Sección ${c}`;
+                    if (!selectedSections.includes(sName)) selectedSections.push(sName);
+                });
+            }
+
+            if (selectedSections.length === 0) selectedSections = ['Sección A'];
+
+            // Crear cada grado/sección
+            selectedSections.forEach(sec => {
+                const shortSec = sec.replace('Sección', '').trim();
+                const code = `${name.replace('Perito Contador', 'PC').trim()} ${shortSec}`;
+                const guideUserObj = (STATE.users || []).find(u => u.id === guideTeacher || u.name === guideTeacher);
+                STATE.gradesList.push({
+                    id: 'grd-' + Date.now() + '-' + Math.floor(Math.random()*1000),
+                    name: name,
+                    career: career,
+                    shift: shift,
+                    section: sec,
+                    code: code,
+                    guideTeacherId: guideUserObj ? guideUserObj.id : (guideTeacher || null),
+                    guideTeacher: guideUserObj ? guideUserObj.name : (guideTeacher || 'Sin asignar')
+                });
+            });
+        }
+
+        STATE.gradesList = sortGrades(STATE.gradesList);
+        const nowTime = Date.now();
+        STATE.lastModified = nowTime;
+
+        // 🌟 A. Persistencia Atómica en Firestore
+        if (window.FirebaseModular && window.FirebaseModular.db) {
+            try {
+                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
+                const targetGrades = id ? [STATE.gradesList.find(x => x.id === id)].filter(Boolean) : STATE.gradesList.filter(g => g.name === name);
+                for (const grd of targetGrades) {
+                    if (!grd) continue;
+                    const gRef = doc(db, 'gradesList', grd.id || grd.code);
+                    const gsRef = doc(db, 'grados_secciones', grd.id || grd.code);
+                    const gPayload = { ...grd, lastModified: nowTime };
+                    const fsAction = (typeof updateDoc === 'function')
+                        ? updateDoc(gRef, gPayload).catch(e => {
+                            if (typeof setDoc === 'function') return setDoc(gRef, gPayload, { merge: true });
+                            throw e;
+                        })
+                        : (typeof setDoc === 'function' ? setDoc(gRef, gPayload, { merge: true }) : Promise.resolve());
+                    await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
+                    if (typeof setDoc === 'function') {
+                        await setDoc(gsRef, gPayload, { merge: true });
+                    }
+                }
+            } catch(fsErr) {
+                console.warn("Aviso al persistir grados en Firestore:", fsErr);
+            }
+        }
+
+        // 🌟 B. Sincronización Atómica y Aislada en Realtime Database
+        let ok = false;
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            ok = await withTimeout(EnccoCloudSync.syncNode('gradesList', STATE.gradesList), 8000, 'Tiempo de espera agotado en Realtime Database.');
+        } else {
+            ok = true;
+        }
+
+        if (!ok) {
+            throw new Error("El servidor de Firebase no confirmó la escritura de grados y secciones.");
+        }
+
+        saveStateToLocalStorage();
+        closeGradeModal();
+        updateGradeSelects();
+        renderGradesTable();
+        if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
+        if (typeof renderDashboard === 'function') renderDashboard();
+
+        showToast(`Grado "${name}" guardado y confirmado en Firebase con éxito.`, 'success');
+    } catch(err) {
+        console.error("❌ Error al guardar grado:", err);
+        showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
         }
     }
-
-    // 🌟 B. Sincronización Atómica y Aislada en Realtime Database (SÓLO gradesList)
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
-    }
-
-    closeGradeModal();
-    updateGradeSelects();
-    renderGradesTable();
-    if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
-    if (typeof renderDashboard === 'function') renderDashboard();
-    showToast(`Grado y secciones guardados correctamente.`, 'success');
 }
 
 async function deleteGrade(gradeId) {
@@ -25068,6 +25653,7 @@ function toggleAllAssignmentSections() {
 
 async function saveClassAssignmentForm(e) {
     if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
     if (!checkEnrolmentPermissions()) return;
 
     const idInput = document.getElementById('classAssignmentFormId');
@@ -25098,6 +25684,17 @@ async function saveClassAssignmentForm(e) {
         return;
     }
 
+    // 🚨 2. Verificación de Referencia e ID de Documento en modo edición
+    const titleEl = document.getElementById('classAssignmentModalTitle');
+    const isEditing = Boolean(id) || (titleEl && titleEl.textContent && titleEl.textContent.includes('Editar'));
+    if (isEditing) {
+        if (!id || id === 'undefined' || id === 'null') {
+            console.error("Error: ID de la asignación no encontrado o indefinido.");
+            showToast("Error: ID de la asignación no encontrado o indefinido.", "danger");
+            return;
+        }
+    }
+
     const teacher = (STATE.users || []).find(u => u.id === teacherId);
     const teacherName = teacher ? teacher.name : 'Catedrático Titular';
 
@@ -25118,11 +25715,15 @@ async function saveClassAssignmentForm(e) {
 
     if (!Array.isArray(STATE.pensum)) STATE.pensum = [];
 
-    const submitBtn = document.getElementById('classAssignmentSubmitBtn');
-    const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Guardar Asignación';
+    const submitBtn = document.getElementById('classAssignmentSubmitBtn') || document.querySelector('#classAssignmentModal form button[type="submit"]');
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Guardar Asignación';
+    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    }
+
     if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Confirmando en Firebase...';
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
     }
 
     try {
@@ -25185,11 +25786,13 @@ async function saveClassAssignmentForm(e) {
                     if (asg && asg.id) {
                         const asgRef = doc(db, 'pensum', asg.id);
                         const asgData = { ...asg, lastModified: nowTime };
-                        if (typeof updateDoc === 'function') {
-                            try { await updateDoc(asgRef, asgData); } catch(e) { if (typeof setDoc === 'function') await setDoc(asgRef, asgData, { merge: true }); }
-                        } else if (typeof setDoc === 'function') {
-                            await setDoc(asgRef, asgData, { merge: true });
-                        }
+                        const fsAction = (typeof updateDoc === 'function')
+                            ? updateDoc(asgRef, asgData).catch(e => {
+                                if (typeof setDoc === 'function') return setDoc(asgRef, asgData, { merge: true });
+                                throw e;
+                            })
+                            : (typeof setDoc === 'function' ? setDoc(asgRef, asgData, { merge: true }) : Promise.resolve());
+                        await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
                     }
                 }
             } catch(fsErr) {
@@ -25200,7 +25803,7 @@ async function saveClassAssignmentForm(e) {
         // 🌟 B. Sincronización atómica aislada en Realtime Database
         let ok = false;
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await EnccoCloudSync.syncNode('pensum', STATE.pensum);
+            ok = await withTimeout(EnccoCloudSync.syncNode('pensum', STATE.pensum), 8000, 'Tiempo de espera agotado en Realtime Database.');
         } else {
             ok = true;
         }
@@ -25212,7 +25815,7 @@ async function saveClassAssignmentForm(e) {
         saveStateToLocalStorage();
         closeClassAssignmentModal();
 
-        // Actualización bidireccional reactiva en tiempo real
+        // Actualización reactiva
         renderAssignmentsTable();
         if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
         if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
@@ -25225,7 +25828,7 @@ async function saveClassAssignmentForm(e) {
     } finally {
         if (submitBtn) {
             submitBtn.disabled = false;
-            submitBtn.innerHTML = origBtnHtml;
+            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
         }
     }
 }

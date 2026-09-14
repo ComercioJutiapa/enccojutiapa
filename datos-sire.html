@@ -802,14 +802,20 @@
                 <h3>
                     <i class="fa-solid fa-table-list" style="color:#16a34a;"></i> Validación y Cálculo de Promedios para SIRE
                 </h3>
-                <div style="display:flex; gap:8px;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                     <button type="button" class="btn-sire-outline" onclick="reloadSireDataFromFirebase()" title="Recargar lectura desde Firebase sin modificar datos">
                         <i class="fa-solid fa-rotate"></i> Recargar
                     </button>
-                    <button type="button" class="btn-sire-success" onclick="exportSireExcel()">
+                    <button type="button" class="btn-sire-primary" onclick="exportSireXml()" style="background:#0284c7; color:#fff;" title="Exportar archivo XML oficial en formato <data-set> para SIRE MINEDUC">
+                        <i class="fa-solid fa-file-code"></i> Exportar a XML SIRE
+                    </button>
+                    <button type="button" class="btn-sire-outline" onclick="previewSireXml()" title="Previsualizar estructura XML oficial <data-set> en pantalla">
+                        <i class="fa-solid fa-code"></i> Previsualizar XML
+                    </button>
+                    <button type="button" class="btn-sire-success" onclick="exportSireExcel()" title="Exportar consolidado a Excel">
                         <i class="fa-solid fa-file-excel"></i> Exportar a Excel SIRE
                     </button>
-                    <button type="button" class="btn-sire-primary" onclick="window.print()">
+                    <button type="button" class="btn-sire-outline" onclick="window.print()" title="Imprimir cuadro oficial">
                         <i class="fa-solid fa-print"></i> Imprimir Cuadro Oficial
                     </button>
                 </div>
@@ -821,8 +827,8 @@
                     <div class="filter-inputs">
                         <div>
                             <select id="filterGrade" class="form-control-sire" style="padding:6px 10px; font-size:0.85rem;" onchange="applySireFilters()">
-                                <option value="ALL">-- Todos los Grados --</option>
-                                <option value="4to Grado" selected>4to Perito Contador</option>
+                                <option value="ALL" selected>-- Todos los Grados (Nómina Completa) --</option>
+                                <option value="4to">4to Perito Contador</option>
                                 <option value="5to Grado">5to Perito Contador</option>
                                 <option value="6to Grado">6to Perito Contador</option>
                             </select>
@@ -830,10 +836,10 @@
 
                         <div>
                             <select id="filterSection" class="form-control-sire" style="padding:6px 10px; font-size:0.85rem;" onchange="applySireFilters()">
-                                <option value="ALL">-- Todas las Secciones --</option>
-                                <option value="Sección A">Sección A</option>
-                                <option value="Sección B">Sección B</option>
-                                <option value="Sección C">Sección C</option>
+                                <option value="ALL" selected>-- Todas las Secciones --</option>
+                                <option value="A">Sección A</option>
+                                <option value="B">Sección B</option>
+                                <option value="C">Sección C</option>
                             </select>
                         </div>
 
@@ -860,7 +866,7 @@
                 <!-- Tabla de Calificaciones y Promedios -->
                 <div class="table-responsive-sire">
                     <table class="sire-table" id="sireStudentsTable">
-                        <thead>
+                        <thead id="sireTableHead">
                             <tr>
                                 <th style="width:40px; text-align:center;">#</th>
                                 <th style="width:110px;">Código Personal</th>
@@ -967,6 +973,7 @@
         let _sireStudents = [];
         let _sireSubjects = [];
         let _filteredStudents = [];
+        let _sirePensumCatalog = [];
 
         // 1. AUTO-TABULACIÓN Y GESTIÓN DE LAS 4 CASILLAS DE ESTABLECIMIENTO
         function handleSireBoxInput(currentInput, nextInputId, maxLen) {
@@ -1026,13 +1033,23 @@
         // 3. LECTURA ESTRICTA DE FIREBASE (SIN ESCRITURA / CERO MUTACIÓN)
         async function initFirebaseDataReader() {
             try {
+                // 1. Lectura modular desde Firestore (Memoria RAM exclusiva)
                 if (window.FirebaseModular && window.FirebaseModular.db) {
                     await fetchFromFirestore(window.FirebaseModular.db);
                 } else {
-                    window.addEventListener('SireFirebaseReady', () => {
-                        fetchFromFirestore(window.FirebaseModular.db);
+                    window.addEventListener('SireFirebaseReady', async () => {
+                        await fetchFromFirestore(window.FirebaseModular.db);
                     });
-                    setTimeout(fallbackFetchStudents, 800);
+                }
+
+                // 2. Si Firestore devolvió 0 alumnos, intentar Realtime Database REST (Lectura pura GET)
+                if (_sireStudents.length === 0) {
+                    await fetchFromRtdbRest();
+                }
+
+                // 3. Fallback seguro en memoria de ventana padre
+                if (_sireStudents.length === 0) {
+                    fallbackFetchStudents();
                 }
             } catch(e) {
                 console.warn("Aviso al inicializar lector:", e);
@@ -1040,9 +1057,56 @@
             }
         }
 
+        async function fetchFromRtdbRest() {
+            try {
+                // Lectura complementaria de pensumCatalog si existe en RTDB (GET pura lectura)
+                try {
+                    const pensumRes = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/pensumCatalog.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                    if (pensumRes.ok) {
+                        const pData = await pensumRes.json();
+                        if (pData) {
+                            if (Array.isArray(pData)) _sirePensumCatalog = pData.filter(Boolean);
+                            else if (typeof pData === 'object') _sirePensumCatalog = Object.keys(pData).map(k => ({ id: k, ...pData[k] }));
+                        }
+                    }
+                } catch(e) {}
+
+                const url = 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json';
+                const res = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data) {
+                        let list = [];
+                        if (Array.isArray(data)) {
+                            list = data.filter(Boolean);
+                        } else if (typeof data === 'object') {
+                            list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+                        }
+                        if (list.length > 0) {
+                            _sireStudents = list;
+                            console.log("✅ [Datos para Sire] Alumnos cargados desde Firebase Realtime Database (REST):", list.length);
+                            applySireFilters();
+                            return true;
+                        }
+                    }
+                }
+            } catch(err) {
+                console.warn("Aviso al leer de RTDB REST:", err);
+            }
+            return false;
+        }
+
         async function fetchFromFirestore(db) {
             try {
                 const fsMod = window.FirebaseModular.fsMod;
+                // Lectura complementaria de pensumCatalog si existe en Firestore (GET pura lectura)
+                try {
+                    const pSnap = await fsMod.getDocs(fsMod.collection(db, 'pensumCatalog'));
+                    const pList = [];
+                    pSnap.forEach(d => pList.push({ id: d.id, ...d.data() }));
+                    if (pList.length > 0) _sirePensumCatalog = pList;
+                } catch(e) {}
+
                 const snap = await fsMod.getDocs(fsMod.collection(db, 'students'));
                 const list = [];
                 snap.forEach(doc => {
@@ -1062,8 +1126,13 @@
         }
 
         function fallbackFetchStudents() {
-            if (window.opener && window.opener.STATE && Array.isArray(window.opener.STATE.students)) {
-                _sireStudents = window.opener.STATE.students;
+            if (window.opener && window.opener.STATE) {
+                if (Array.isArray(window.opener.STATE.students)) {
+                    _sireStudents = window.opener.STATE.students;
+                }
+                if (Array.isArray(window.opener.STATE.pensumCatalog)) {
+                    _sirePensumCatalog = window.opener.STATE.pensumCatalog;
+                }
                 applySireFilters();
             } else {
                 fetch('/api/sire/averages?role=director')
@@ -1113,6 +1182,114 @@
             'ética profesional': 'CNB-EP-303'
         };
 
+        const SIRE_COURSE_CODES = {
+            'contabilidad de sociedades': '101',
+            'contabilidad general': '101',
+            'matemática comercial': '102',
+            'matematica comercial': '102',
+            'fundamentos de derecho': '103',
+            'inglés comercial i': '104',
+            'ingles comercial i': '104',
+            'inglés comercial': '104',
+            'ingles comercial': '104',
+            'ingles tecnico': '104',
+            'inglés técnico i': '104',
+            'redacción y correspondencia mercantil': '105',
+            'redaccion y correspondencia mercantil': '105',
+            'redacción y correspondencia': '105',
+            'redaccion y correspondencia': '105',
+            'introducción a la economía': '106',
+            'introduccion a la economia': '106',
+            'ortografía y caligrafía': '107',
+            'ortografia y caligrafia': '107',
+            'administración y organización de oficina': '108',
+            'administracion y organizacion de oficina': '108',
+            'administración y organización de empresas': '108',
+            'administracion y organizacion de empresas': '108',
+            'computación i': '109',
+            'computacion i': '109',
+            'computación': '109',
+            'computacion': '109',
+            'contabilidad de costos': '201',
+            'cálculo mercantil y financiero': '202',
+            'calculo mercantil y financiero': '202',
+            'inglés comercial ii': '203',
+            'ingles comercial ii': '203',
+            'legislación fiscal y aduanal': '204',
+            'legislacion fiscal y aduanal': '204',
+            'legislación fiscal': '204',
+            'legislacion fiscal': '204',
+            'finanzas públicas': '205',
+            'finanzas publicas': '205',
+            'geografía económica': '206',
+            'geografia economica': '206',
+            'catalogación y archivo': '207',
+            'catalogacion y archivo': '207',
+            'mecanografía': '208',
+            'mecanografia': '208',
+            'computación ii': '209',
+            'computacion ii': '209',
+            'contabilidad bancaria': '301',
+            'contabilidad gubernamental integrada': '302',
+            'contabilidad gubernamental': '302',
+            'estadística comercial': '303',
+            'estadistica comercial': '303',
+            'organización de empresas': '304',
+            'organizacion de empresas': '304',
+            'ética profesional y relaciones humanas': '305',
+            'etica profesional y relaciones humanas': '305',
+            'ética profesional': '305',
+            'etica profesional': '305',
+            'práctica supervisada': '306',
+            'practica supervisada': '306',
+            'auditoría': '307',
+            'auditoria': '307',
+            'derecho mercantil y nociones de derecho laboral': '308',
+            'derecho mercantil': '308',
+            'computación iii': '309',
+            'computacion iii': '309',
+            'seminario': '310',
+            'seminario sobre problemas socioeconómicos de guatemala': '310'
+        };
+
+        // Pensum canónico oficial ENCCO 2026 por grado (28 Asignaturas CNB)
+        const CANONICAL_PENSUM_BY_GRADE = {
+            '4to': [
+                { name: 'Contabilidad de Sociedades', code: '101' },
+                { name: 'Matemática Comercial', code: '102' },
+                { name: 'Fundamentos de Derecho', code: '103' },
+                { name: 'Inglés Comercial I', code: '104' },
+                { name: 'Redacción y Correspondencia Mercantil', code: '105' },
+                { name: 'Introducción a la Economía', code: '106' },
+                { name: 'Ortografía y Caligrafía', code: '107' },
+                { name: 'Administración y Organización de Oficina', code: '108' },
+                { name: 'Computación I', code: '109' }
+            ],
+            '5to': [
+                { name: 'Contabilidad de Costos', code: '201' },
+                { name: 'Cálculo Mercantil y Financiero', code: '202' },
+                { name: 'Inglés Comercial II', code: '203' },
+                { name: 'Legislación Fiscal y Aduanal', code: '204' },
+                { name: 'Finanzas Públicas', code: '205' },
+                { name: 'Geografía Económica', code: '206' },
+                { name: 'Catalogación y Archivo', code: '207' },
+                { name: 'Mecanografía', code: '208' },
+                { name: 'Computación II', code: '209' }
+            ],
+            '6to': [
+                { name: 'Contabilidad Bancaria', code: '301' },
+                { name: 'Contabilidad Gubernamental Integrada', code: '302' },
+                { name: 'Estadística Comercial', code: '303' },
+                { name: 'Organización de Empresas', code: '304' },
+                { name: 'Ética Profesional y Relaciones Humanas', code: '305' },
+                { name: 'Práctica Supervisada', code: '306' },
+                { name: 'Auditoría', code: '307' },
+                { name: 'Derecho Mercantil y Nociones de Derecho Laboral', code: '308' },
+                { name: 'Computación III', code: '309' },
+                { name: 'Seminario sobre Problemas Socioeconómicos de Guatemala', code: '310' }
+            ]
+        };
+
         function getOfficialCnbCode(subjectName) {
             if (!subjectName) return null;
             const norm = subjectName.toLowerCase().trim();
@@ -1121,6 +1298,183 @@
                 if (norm.includes(key) || key.includes(norm)) return val;
             }
             return null;
+        }
+
+        // Resolución dinámica y universal de Códigos de Curso SIRE / CNB
+        function resolveCourseSireCode(subjName) {
+            if (!subjName) return null;
+            const norm = subjName.toLowerCase().trim();
+
+            // 1. Catálogo dinámico de pensum cargado de Firebase si existe
+            if (typeof _sirePensumCatalog !== "undefined" && Array.isArray(_sirePensumCatalog) && _sirePensumCatalog.length > 0) {
+                const found = _sirePensumCatalog.find(p => (p.name || p.nombre || '').toLowerCase().trim() === norm);
+                if (found && (found.codCurso || found.codigoCurso || found.code || found.codigo)) {
+                    return String(found.codCurso || found.codigoCurso || found.code || found.codigo);
+                }
+            }
+
+            // 2. Diccionario oficial SIRE_COURSE_CODES
+            if (typeof SIRE_COURSE_CODES !== 'undefined' && SIRE_COURSE_CODES[norm]) {
+                return SIRE_COURSE_CODES[norm];
+            }
+            if (typeof SIRE_COURSE_CODES !== 'undefined') {
+                for (const [k, v] of Object.entries(SIRE_COURSE_CODES)) {
+                    if (norm.includes(k) || k.includes(norm)) return v;
+                }
+            }
+
+            // 3. Catálogo CNB MINEDUC
+            if (typeof getOfficialCnbCode === 'function') {
+                const cnb = getOfficialCnbCode(subjName);
+                if (cnb) {
+                    const digits = cnb.replace(/[^0-9]/g, '');
+                    if (digits) return digits;
+                    return cnb;
+                }
+            }
+
+            return null;
+        }
+
+        // Determina la lista ordenada de asignaturas para el grado activo
+        function getActiveGradeSubjects(gradeFilter, studentCohort) {
+            let subjects = [];
+            const addedNames = new Set();
+            const fGrade = (gradeFilter || '').toLowerCase();
+            let matchedGradeKey = null;
+
+            if (fGrade.includes('4') || fGrade.includes('cuarto')) matchedGradeKey = '4to';
+            else if (fGrade.includes('5') || fGrade.includes('quinto')) matchedGradeKey = '5to';
+            else if (fGrade.includes('6') || fGrade.includes('sexto')) matchedGradeKey = '6to';
+
+            // 1. Extraer del catálogo pensum de Firebase si corresponde al grado
+            if (matchedGradeKey && Array.isArray(_sirePensumCatalog) && _sirePensumCatalog.length > 0) {
+                _sirePensumCatalog.forEach(p => {
+                    const pGrade = (p.grado || p.grade || '').toLowerCase();
+                    if ((matchedGradeKey === '4to' && (pGrade.includes('4') || pGrade.includes('cuarto'))) ||
+                        (matchedGradeKey === '5to' && (pGrade.includes('5') || pGrade.includes('quinto'))) ||
+                        (matchedGradeKey === '6to' && (pGrade.includes('6') || pGrade.includes('sexto')))) {
+                        const name = p.nombre || p.name;
+                        if (name && !addedNames.has(name.toLowerCase().trim())) {
+                            addedNames.add(name.toLowerCase().trim());
+                            const code = p.codCurso || p.codigoCurso || p.code || resolveCourseSireCode(name);
+                            subjects.push({ name, code: code || null });
+                        }
+                    }
+                });
+            }
+
+            // 2. Pensum canónico oficial ENCCO 2026
+            if (matchedGradeKey && CANONICAL_PENSUM_BY_GRADE[matchedGradeKey]) {
+                CANONICAL_PENSUM_BY_GRADE[matchedGradeKey].forEach(item => {
+                    if (!addedNames.has(item.name.toLowerCase().trim())) {
+                        addedNames.add(item.name.toLowerCase().trim());
+                        subjects.push({ name: item.name, code: item.code });
+                    }
+                });
+            }
+
+            // 3. Si hay estudiantes filtrados, complementar con materias reales en sus calificaciones
+            if (Array.isArray(studentCohort) && studentCohort.length > 0) {
+                studentCohort.forEach(st => {
+                    const gMap = st.grades || {};
+                    Object.keys(gMap).forEach(k => {
+                        const norm = k.toLowerCase().trim();
+                        const isExisting = subjects.some(s => {
+                            const sNorm = s.name.toLowerCase().trim();
+                            if (sNorm === norm) return true;
+                            const sCode = s.code;
+                            const kCode = resolveCourseSireCode(k);
+                            return sCode && kCode && sCode === kCode;
+                        });
+
+                        if (!isExisting && !addedNames.has(norm)) {
+                            addedNames.add(norm);
+                            const code = resolveCourseSireCode(k);
+                            subjects.push({ name: k, code: code || null });
+                        }
+                    });
+                });
+            }
+
+            // 4. Si es ALL o lista vacía, presentar pensum canónico general consolidado
+            if (subjects.length === 0) {
+                ['4to', '5to', '6to'].forEach(gk => {
+                    CANONICAL_PENSUM_BY_GRADE[gk].forEach(item => {
+                        if (!addedNames.has(item.name.toLowerCase().trim())) {
+                            addedNames.add(item.name.toLowerCase().trim());
+                            subjects.push({ name: item.name, code: item.code });
+                        }
+                    });
+                });
+            }
+
+            return subjects;
+        }
+
+        // Obtiene la nota de una materia específica para un estudiante y período
+        function getStudentSubjectScore(student, subjectName, period) {
+            if (!student || !student.grades) return null;
+            const grades = student.grades;
+
+            // Coincidencia directa
+            let entry = grades[subjectName];
+
+            // Coincidencia insensible a mayúsculas
+            if (entry === undefined) {
+                const normTarget = subjectName.toLowerCase().trim();
+                for (const [k, val] of Object.entries(grades)) {
+                    if (k.toLowerCase().trim() === normTarget) {
+                        entry = val;
+                        break;
+                    }
+                }
+            }
+
+            // Coincidencia por código SIRE o similitud semántica
+            if (entry === undefined) {
+                const targetCode = resolveCourseSireCode(subjectName);
+                for (const [k, val] of Object.entries(grades)) {
+                    const kCode = resolveCourseSireCode(k);
+                    if (targetCode && kCode && targetCode === kCode) {
+                        entry = val;
+                        break;
+                    }
+                    const normK = k.toLowerCase().trim();
+                    const normTarget = subjectName.toLowerCase().trim();
+                    if (normK.includes(normTarget) || normTarget.includes(normK)) {
+                        entry = val;
+                        break;
+                    }
+                }
+            }
+
+            if (entry === undefined || entry === null) return null;
+
+            let score = null;
+            if (Array.isArray(entry)) {
+                if (period === 'B1') score = entry[0];
+                else if (period === 'B2') score = entry[1];
+                else if (period === 'B3') score = entry[2];
+                else if (period === 'B4') score = entry[3];
+                else {
+                    const valid = entry.filter(x => typeof x === 'number' && x > 0);
+                    score = valid.length > 0 ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : null;
+                }
+            } else if (typeof entry === 'object') {
+                if (period === 'B1') score = entry.b1 || entry['1'];
+                else if (period === 'B2') score = entry.b2 || entry['2'];
+                else if (period === 'B3') score = entry.b3 || entry['3'];
+                else if (period === 'B4') score = entry.b4 || entry['4'];
+                else {
+                    const valid = [entry.b1 || entry['1'], entry.b2 || entry['2'], entry.b3 || entry['3'], entry.b4 || entry['4']].filter(x => typeof x === 'number' && x > 0);
+                    score = valid.length > 0 ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : null;
+                }
+            } else if (typeof entry === 'number') {
+                score = entry;
+            }
+
+            return (typeof score === 'number' && !isNaN(score)) ? score : null;
         }
 
         // 4. MOTOR DE CÁLCULO DE PROMEDIOS (LECTURA PURA)
@@ -1193,7 +1547,7 @@
             };
         }
 
-        // 5. FILTRADO Y RENDERIZADO REACTIVO
+        // 5. FILTRADO Y RENDERIZADO REACTIVO DE LA MATRIZ SIRE
         function applySireFilters() {
             const gradeFilter = document.getElementById('filterGrade').value;
             const sectionFilter = document.getElementById('filterSection').value;
@@ -1202,16 +1556,24 @@
 
             _filteredStudents = _sireStudents.filter(s => {
                 if (gradeFilter !== 'ALL') {
-                    const sGrade = (s.grado || '').toLowerCase();
-                    if (!sGrade.includes(gradeFilter.toLowerCase())) return false;
+                    const sGrade = (s.grado || s.grade || s.carrera || '').toLowerCase();
+                    const fGrade = gradeFilter.toLowerCase();
+                    let match = sGrade.includes(fGrade);
+                    if (!match) {
+                        if ((fGrade.includes('4') || fGrade.includes('cuarto')) && (sGrade.includes('4') || sGrade.includes('cuarto'))) match = true;
+                        if ((fGrade.includes('5') || fGrade.includes('quinto')) && (sGrade.includes('5') || sGrade.includes('quinto'))) match = true;
+                        if ((fGrade.includes('6') || fGrade.includes('sexto')) && (sGrade.includes('6') || sGrade.includes('sexto'))) match = true;
+                    }
+                    if (!match) return false;
                 }
                 if (sectionFilter !== 'ALL') {
-                    const sSec = (s.seccion || '').toLowerCase();
-                    if (!sSec.includes(sectionFilter.toLowerCase().replace('sección', '').trim())) return false;
+                    const sSec = (s.seccion || s.section || s.grado || s.grade || '').toLowerCase();
+                    const fSec = sectionFilter.toLowerCase().replace(/secci[oó]n/g, '').trim();
+                    if (!sSec.includes(fSec)) return false;
                 }
                 if (searchTerm) {
-                    const name = (s.nombre || (s.apellidos + ' ' + s.nombres) || '').toLowerCase();
-                    const code = (s.codigoPersonal || s.codigo || '').toLowerCase();
+                    const name = (s.fullName || s.nombre || (s.lastName ? s.lastName + ' ' + s.firstName : (s.apellidos ? s.apellidos + ' ' + s.nombres : '')) || '').toLowerCase();
+                    const code = (s.personalCode || s.codigoPersonal || s.codigo || s.carne || '').toLowerCase();
                     const cui = (s.cui || s.dpi || '').toLowerCase();
                     if (!name.includes(searchTerm) && !code.includes(searchTerm) && !cui.includes(searchTerm)) {
                         return false;
@@ -1225,22 +1587,59 @@
         }
 
         function renderSireTable(period) {
+            const thead = document.getElementById('sireTableHead');
             const tbody = document.getElementById('sireTableBody');
             document.getElementById('filteredCountSpan').textContent = _filteredStudents.length;
 
+            const gradeFilter = document.getElementById('filterGrade').value;
+            const subjects = getActiveGradeSubjects(gradeFilter, _filteredStudents);
+
+            // 1. Renderizado dinámico de encabezados con materias y códigos SIRE / CNB
+            if (thead) {
+                let theadHtml = '<tr>' +
+                    '<th style="width:40px; text-align:center;">#</th>' +
+                    '<th style="width:115px;">Código Personal</th>' +
+                    '<th style="width:125px;">CUI / DPI</th>' +
+                    '<th style="min-width:180px;">Apellidos y Nombres</th>';
+
+                subjects.forEach(s => {
+                    const resolvedCode = resolveCourseSireCode(s.name) || s.code;
+                    const codeBadge = resolvedCode
+                        ? '<br><small style="font-size:0.7rem; font-family:monospace; color:#0284c7; font-weight:700;">[Cod: ' + resolvedCode + ']</small>'
+                        : '<br><small style="font-size:0.7rem; font-family:monospace; color:#dc2626; font-weight:700;">[Sin Cód.]</small>';
+
+                    theadHtml += '<th style="text-align:center; min-width:110px; padding:8px 10px; white-space:normal; vertical-align:middle;">' +
+                        '<div style="font-size:0.78rem; line-height:1.2; font-weight:700; color:#334155;">' + s.name + '</div>' +
+                        codeBadge +
+                    '</th>';
+                });
+
+                theadHtml += '<th style="width:90px; text-align:center;">Promedio General</th>' +
+                    '<th style="width:75px; text-align:center;">Aprobadas</th>' +
+                    '<th style="width:75px; text-align:center;">Reprobadas</th>' +
+                    '<th style="width:110px; text-align:center;">Estado SIRE</th>' +
+                    '<th style="width:65px; text-align:center;" class="no-print">Detalle</th>' +
+                '</tr>';
+
+                thead.innerHTML = theadHtml;
+            }
+
             if (_filteredStudents.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:30px; color:#64748b;">No se encontraron registros de estudiantes con los filtros seleccionados.</td></tr>';
+                const totalCols = 4 + subjects.length + 5;
+                tbody.innerHTML = '<tr><td colspan="' + totalCols + '" style="text-align:center; padding:35px; color:#64748b;"><i class="fa-solid fa-folder-open" style="font-size:1.8rem; margin-bottom:8px; display:block; color:#94a3b8;"></i>No se encontraron registros de estudiantes con los filtros seleccionados.</td></tr>';
                 return;
             }
 
-            let html = '';
+            // 2. Renderizado dinámico de filas de estudiantes con matriz de notas
+            let tbodyHtml = '';
             _filteredStudents.forEach((st, idx) => {
                 const stats = calculateStudentAverages(st, period);
                 const fullName = st.nombre || (st.apellidos ? st.apellidos + ', ' + st.nombres : 'Estudiante ' + (idx + 1));
                 const codPersonal = st.codigoPersonal || st.codigo || 'S/' + (1000 + idx);
                 const rawCui = (st.cui || st.dpi || '').trim();
-                
-                // ⚠️ Resaltado de advertencia: Falta de CUI/DPI (Rojo: ausente, Amarillo: formato incompleto)
+                const gradoSec = (st.grado || '4to Grado') + ' ' + (st.seccion || 'A');
+
+                // Resaltado de advertencia CUI / DPI
                 let cuiHtml = '';
                 let hasCuiError = false;
                 if (!rawCui) {
@@ -1253,7 +1652,9 @@
                     cuiHtml = '<span style="font-family:monospace; font-size:0.82rem; color:#0369a1; font-weight:600;"><i class="fa-solid fa-check" style="color:#16a34a; font-size:0.7rem;"></i> ' + rawCui + '</span>';
                 }
 
-                const gradoSec = (st.grado || '4to Grado') + ' ' + (st.seccion || 'A');
+                const gradeBadge = (gradeFilter === 'ALL')
+                    ? ' <span class="badge" style="font-size:0.7rem; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; font-weight:600; padding:1px 6px; border-radius:4px;">' + gradoSec + '</span>'
+                    : '';
 
                 const gradeClass = stats.average >= 60 ? 'grade-pass' : 'grade-fail';
                 const statusBadge = stats.isPromoted 
@@ -1262,13 +1663,26 @@
 
                 const rowBg = hasCuiError ? 'style="background-color:#fffbeb;"' : '';
 
-                html += '<tr ' + rowBg + '>' +
+                tbodyHtml += '<tr ' + rowBg + '>' +
                     '<td style="text-align:center; font-weight:700; color:#64748b;">' + (idx + 1) + '</td>' +
                     '<td style="font-family:monospace; font-weight:700; color:#0369a1;">' + codPersonal + '</td>' +
                     '<td style="white-space:nowrap;">' + cuiHtml + '</td>' +
-                    '<td style="font-weight:700; color:#0f172a;">' + fullName + (hasCuiError ? ' <i class="fa-solid fa-triangle-exclamation" style="color:#d97706; font-size:0.8rem;" title="Requiere completar CUI antes de carga SIRE"></i>' : '') + '</td>' +
-                    '<td style="font-size:0.8rem; color:#475569;">' + gradoSec + '</td>' +
-                    '<td style="text-align:center;"><span class="grade-badge ' + gradeClass + '">' + stats.average + '</span></td>' +
+                    '<td style="font-weight:700; color:#0f172a;">' + fullName + gradeBadge + (hasCuiError ? ' <i class="fa-solid fa-triangle-exclamation" style="color:#d97706; font-size:0.8rem;" title="Requiere completar CUI antes de carga SIRE"></i>' : '') + '</td>';
+
+                // Celdas de calificación por materia en la matriz
+                subjects.forEach(subj => {
+                    const score = getStudentSubjectScore(st, subj.name, period);
+                    if (score === null || score === undefined || score === 0) {
+                        tbodyHtml += '<td style="text-align:center; color:#94a3b8; font-weight:600;">-</td>';
+                    } else if (score >= 60) {
+                        tbodyHtml += '<td style="text-align:center;"><span class="grade-badge grade-pass" style="font-size:0.8rem; padding:3px 7px;">' + score + '</span></td>';
+                    } else {
+                        tbodyHtml += '<td style="text-align:center;"><span class="grade-badge grade-fail" style="font-size:0.8rem; padding:3px 7px;">' + score + '</span></td>';
+                    }
+                });
+
+                // Columnas de resumen final
+                tbodyHtml += '<td style="text-align:center;"><span class="grade-badge ' + gradeClass + '">' + stats.average + '</span></td>' +
                     '<td style="text-align:center; font-weight:700; color:#15803d;">' + stats.passedCount + '</td>' +
                     '<td style="text-align:center; font-weight:700; color:#dc2626;">' + stats.failedCount + '</td>' +
                     '<td style="text-align:center;">' + statusBadge + '</td>' +
@@ -1280,9 +1694,10 @@
                 '</tr>';
             });
 
-            tbody.innerHTML = html;
+            tbody.innerHTML = tbodyHtml;
         }
 
+        // 3. SINCRONIZACIÓN DE TARJETAS ESTADÍSTICAS SUPERIORES
         function updateStatsSummary(period) {
             const total = _filteredStudents.length;
             let passCount = 0;
@@ -1291,7 +1706,7 @@
 
             _filteredStudents.forEach(st => {
                 const stats = calculateStudentAverages(st, period);
-                if (stats.average >= 60) passCount++;
+                if (stats.isPromoted) passCount++;
                 else failCount++;
                 sumAverages += stats.average;
             });
@@ -1471,6 +1886,165 @@
         }
 
         // 7. EXPORTACIÓN EXCEL EN FORMATO SIRE MINEDUC
+        
+        // ======================================================================
+        //   MOTOR OFICIAL DE GENERACIÓN Y EXPORTACIÓN XML SIRE MINEDUC (<data-set>)
+        // ======================================================================
+
+// SIRE_COURSE_CODES reubicado en la cabecera de catálogos
+
+        function getSireCourseCode(subjName, defaultIdx = 1) {
+            if (!subjName) return String(defaultIdx);
+            if (typeof resolveCourseSireCode === 'function') {
+                const resolved = resolveCourseSireCode(subjName);
+                if (resolved) return resolved;
+            }
+            const norm = subjName.toLowerCase().trim();
+            if (typeof SIRE_COURSE_CODES !== 'undefined' && SIRE_COURSE_CODES[norm]) return SIRE_COURSE_CODES[norm];
+            if (typeof SIRE_COURSE_CODES !== 'undefined') {
+                for (const [k, v] of Object.entries(SIRE_COURSE_CODES)) {
+                    if (norm.includes(k) || k.includes(norm)) return v;
+                }
+            }
+            if (typeof getOfficialCnbCode === 'function') {
+                const cnb = getOfficialCnbCode(subjName);
+                if (cnb) {
+                    const digits = cnb.replace(/[^0-9]/g, '');
+                    if (digits) return digits;
+                    return cnb;
+                }
+            }
+            return String(defaultIdx);
+        }
+
+        function escapeXml(unsafe) {
+            if (unsafe === null || unsafe === undefined) return '';
+            return String(unsafe)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        function generateSireXmlDataSet(studentsList, period) {
+            let recordsXml = '';
+            let recordCount = 0;
+            const studentsToProcess = (studentsList && studentsList.length > 0) ? studentsList : _sireStudents;
+
+            studentsToProcess.forEach(st => {
+                const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim();
+                const gradesMap = st.grades || {};
+                const subjects = Object.keys(gradesMap);
+
+                if (subjects.length > 0) {
+                    subjects.forEach((subj, sIdx) => {
+                        const codCurso = getSireCourseCode(subj, sIdx + 1);
+                        const g = gradesMap[subj];
+                        let score = 0;
+
+                        if (Array.isArray(g)) {
+                            if (period === 'B1') score = g[0] || 0;
+                            else if (period === 'B2') score = g[1] || 0;
+                            else if (period === 'B3') score = g[2] || 0;
+                            else if (period === 'B4') score = g[3] || 0;
+                            else {
+                                const valid = g.filter(v => typeof v === 'number' && v > 0);
+                                score = valid.length > 0 ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : 0;
+                            }
+                        } else if (typeof g === 'object' && g !== null) {
+                            if (period === 'B1') score = g.b1 || g['1'] || 0;
+                            else if (period === 'B2') score = g.b2 || g['2'] || 0;
+                            else if (period === 'B3') score = g.b3 || g['3'] || 0;
+                            else if (period === 'B4') score = g.b4 || g['4'] || 0;
+                            else {
+                                const scores = [g.b1 || g['1'], g.b2 || g['2'], g.b3 || g['3'], g.b4 || g['4']].filter(x => typeof x === 'number' && x > 0);
+                                score = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+                            }
+                        } else if (typeof g === 'number') {
+                            score = g;
+                        }
+
+                        recordsXml += '  <record>\n' +
+                            '    <Codigo_Personal>' + escapeXml(codPersonal) + '</Codigo_Personal>\n' +
+                            '    <Cod_Curso>' + escapeXml(codCurso) + '</Cod_Curso>\n' +
+                            '    <Tipo_Cuadro>F</Tipo_Cuadro>\n' +
+                            '    <Nota>' + Math.round(score) + '</Nota>\n' +
+                            '  </record>\n';
+                        recordCount++;
+                    });
+                } else {
+                    const stats = calculateStudentAverages(st, period);
+                    recordsXml += '  <record>\n' +
+                        '    <Codigo_Personal>' + escapeXml(codPersonal) + '</Codigo_Personal>\n' +
+                        '    <Cod_Curso>101</Cod_Curso>\n' +
+                        '    <Tipo_Cuadro>F</Tipo_Cuadro>\n' +
+                        '    <Nota>' + Math.round(stats.average) + '</Nota>\n' +
+                        '  </record>\n';
+                    recordCount++;
+                }
+            });
+
+            const fullXml = '<data-set xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n' +
+                recordsXml +
+                '</data-set>';
+
+            return {
+                xml: fullXml,
+                count: recordCount
+            };
+        }
+
+        function exportSireXml() {
+            const period = document.getElementById('filterPeriod').value;
+            const studentsToExport = _filteredStudents.length > 0 ? _filteredStudents : _sireStudents;
+
+            if (!studentsToExport || studentsToExport.length === 0) {
+                alert('No hay estudiantes disponibles para exportar a XML. Verifique que existan registros cargados en la tabla.');
+                return;
+            }
+
+            const { xml, count } = generateSireXmlDataSet(studentsToExport, period);
+
+            const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert('✅ Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <data-set>\nTotal de registros exportados: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml');
+        }
+
+        function previewSireXml() {
+            const period = document.getElementById('filterPeriod').value;
+            const studentsToExport = _filteredStudents.length > 0 ? _filteredStudents : _sireStudents;
+
+            if (!studentsToExport || studentsToExport.length === 0) {
+                alert('No hay estudiantes disponibles para previsualizar XML.');
+                return;
+            }
+
+            const { xml, count } = generateSireXmlDataSet(studentsToExport, period);
+            document.getElementById('xmlPreviewContent').value = xml;
+            document.getElementById('xmlPreviewCountBadge').textContent = count + ' registros';
+            document.getElementById('xmlPreviewModal').style.display = 'flex';
+        }
+
+        function closeXmlPreviewModal() {
+            document.getElementById('xmlPreviewModal').style.display = 'none';
+        }
+
+        function copyXmlToClipboard() {
+            const textarea = document.getElementById('xmlPreviewContent');
+            textarea.select();
+            document.execCommand('copy');
+            alert('📋 XML copiado al portapapeles.');
+        }
+
         function exportSireExcel() {
             if (typeof XLSX === 'undefined') {
                 alert('La biblioteca de exportación Excel aún está cargando. Espere un momento.');
@@ -1596,5 +2170,38 @@
             }
         }
     </script>
+
+    <!-- MODAL DE PREVISUALIZACIÓN XML <data-set> -->
+    <div id="xmlPreviewModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this) closeXmlPreviewModal()">
+        <div class="modal-container" style="max-width:850px;">
+            <div class="sire-card-header" style="background:#0c4a6e; color:#fff;">
+                <h3 style="color:#fff;">
+                    <i class="fa-solid fa-file-code"></i> Previsualización XML Oficial SIRE MINEDUC (&lt;data-set&gt;)
+                </h3>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span id="xmlPreviewCountBadge" class="badge" style="background:#10b981; color:#fff; font-weight:700; padding:4px 10px; border-radius:12px;">0 registros</span>
+                    <button type="button" onclick="closeXmlPreviewModal()" style="background:none; border:none; color:#fff; font-size:1.4rem; cursor:pointer;">&times;</button>
+                </div>
+            </div>
+            <div class="sire-card-body" style="padding:16px;">
+                <p style="margin:0 0 10px; font-size:0.85rem; color:#475569;">
+                    Sintaxis oficial generada bajo el esquema <code>&lt;data-set xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"&gt;</code>:
+                </p>
+                <textarea id="xmlPreviewContent" readonly style="width:100%; height:380px; font-family:'Courier New', monospace; font-size:0.85rem; padding:12px; border-radius:8px; border:1.5px solid #cbd5e1; background:#0f172a; color:#38bdf8; box-sizing:border-box; resize:vertical;"></textarea>
+            </div>
+            <div style="padding:14px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+                <button type="button" class="btn-sire-outline" onclick="copyXmlToClipboard()">
+                    <i class="fa-solid fa-copy"></i> Copiar XML
+                </button>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" class="btn-sire-primary" onclick="exportSireXml(); closeXmlPreviewModal();">
+                        <i class="fa-solid fa-download"></i> Descargar XML (.xml)
+                    </button>
+                    <button type="button" class="btn-sire-outline" onclick="closeXmlPreviewModal()">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
