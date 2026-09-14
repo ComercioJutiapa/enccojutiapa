@@ -474,7 +474,7 @@
                 </a>
 
                 <!-- SECCIÓN CONTROL ACADÉMICO Y SECRETARÍA -->
-                <div class="nav-section-label" data-perm="grades,guide-teachers,pensum,class-assignments,enrollment,students,excel-import,grade-lock,cycles">CONTROL ACADÉMICO Y SECRETARÍA</div>
+                <div class="nav-section-label" data-perm="grades,guide-teachers,pensum,class-assignments,enrollment,students,datos-sire,excel-import,grade-lock,cycles">CONTROL ACADÉMICO Y SECRETARÍA</div>
                 <a href="#" class="nav-item" data-view="grades" data-perm="grades" onclick="navigateTo('grades', event)">
                     <i class="fa-solid fa-graduation-cap"></i>
                     <span>Editor de Grados y Secciones</span>
@@ -499,13 +499,19 @@
                     <i class="fa-solid fa-address-book"></i>
                     <span>Nómina y Expedientes de Alumnos</span>
                 </a>
+                <a href="datos-sire.html" class="nav-item hidden" data-view="datos-sire" data-perm="datos-sire" data-allowed="director,secretaria,admin" onclick="navigateTo('datos-sire', event)" title="Módulo Oficial Datos para Sire MINEDUC" style="display:none !important;">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <span>Datos para Sire</span>
+                    <span class="badge" style="margin-left:auto; font-size:0.65rem; padding:2px 6px; background:#10b981; color:#fff; border-radius:4px; font-weight:700;">OFICIAL</span>
+                </a>
                 <a href="#" class="nav-item" data-view="excel-import" data-perm="excel-import" onclick="navigateTo('excel-import', event)">
                     <i class="fa-solid fa-file-excel"></i>
-                    <span>Importar / Formatos Excel SIRE</span>
+                    <span>Plantillas y Listas Excel</span>
                 </a>
                 <a href="#" class="nav-item" data-view="grade-lock" data-perm="grade-lock" onclick="navigateTo('grade-lock', event)">
                     <i class="fa-solid fa-lock"></i>
                     <span>Bloqueo de Bimestres</span>
+                    <span id="pendingGradeRequestsBadge" class="badge badge-danger" style="display:none; margin-left:auto; font-size:0.7rem; padding:2px 6px; border-radius:10px;">0</span>
                 </a>
                 <a href="#" class="nav-item" data-perm="cycles" onclick="openCycleModal(event)">
                     <i class="fa-solid fa-calendar-days"></i>
@@ -1527,6 +1533,56 @@
                             <h3><i class="fa-solid fa-user-check" style="color:var(--brand-blue);"></i> Habilitación Individual de Catedráticos</h3>
                             <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:12px;">Habilite docentes específicos para ingresar o modificar notas aun cuando el sistema se encuentre bloqueado:</p>
                             <div id="teacherLockList" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:10px;"></div>
+                        </div>
+
+                        <!-- TARJETA: BANDEJA DE SOLICITUDES DE HABILITACIÓN DE EDICIÓN DE NOTAS -->
+                        <div class="config-card" style="grid-column: 1 / -1; border-top:4px solid #8b5cf6; margin-top:14px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                                <div>
+                                    <h3 style="margin:0; display:flex; align-items:center; gap:8px;">
+                                        <i class="fa-solid fa-clipboard-check" style="color:#8b5cf6;"></i> Solicitudes de Habilitación de Edición de Calificaciones
+                                    </h3>
+                                    <p style="font-size:0.85rem; color:var(--text-secondary); margin:4px 0 0 0;">
+                                        Autorice o rechace las solicitudes enviadas por catedráticos para modificar notas en bimestres cerrados.
+                                    </p>
+                                </div>
+                                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                    <div class="btn-group" role="group" style="display:inline-flex; border-radius:var(--radius-sm); overflow:hidden; border:1px solid var(--border-color);">
+                                        <button type="button" class="btn btn-xs active" id="btnFilterReqPending" onclick="filterGradeEditRequests('pending')" style="background:#8b5cf6; color:white; font-weight:700; padding:6px 12px; border:none; cursor:pointer;">
+                                            Pendientes <span id="countReqPending" class="badge badge-light" style="margin-left:4px; font-size:0.75rem; color:#8b5cf6;">0</span>
+                                        </button>
+                                        <button type="button" class="btn btn-xs" id="btnFilterReqApproved" onclick="filterGradeEditRequests('approved')" style="background:white; color:var(--text-primary); font-weight:600; padding:6px 12px; border:none; border-left:1px solid var(--border-color); cursor:pointer;">
+                                            Aprobadas / Activas <span id="countReqApproved" class="badge badge-light" style="margin-left:4px; font-size:0.75rem;">0</span>
+                                        </button>
+                                        <button type="button" class="btn btn-xs" id="btnFilterReqAll" onclick="filterGradeEditRequests('all')" style="background:white; color:var(--text-primary); font-weight:600; padding:6px 12px; border:none; border-left:1px solid var(--border-color); cursor:pointer;">
+                                            Historial Completo <span id="countReqAll" class="badge badge-light" style="margin-left:4px; font-size:0.75rem;">0</span>
+                                        </button>
+                                    </div>
+                                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="renderGradeEditRequestsTable()" title="Refrescar solicitudes">
+                                        <i class="fa-solid fa-rotate"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style="overflow-x:auto;">
+                                <table class="table table-bordered table-hover" style="margin:0; font-size:0.86rem; background:white;">
+                                    <thead>
+                                        <tr style="background:#1e1b4b; color:white; text-align:center;">
+                                            <th style="min-width:130px; padding:8px;">Fecha Solicitud</th>
+                                            <th style="min-width:180px; text-align:left; padding:8px;">Catedrático</th>
+                                            <th style="min-width:160px; text-align:left; padding:8px;">Curso & Grado</th>
+                                            <th style="min-width:90px; padding:8px;">Bimestre</th>
+                                            <th style="min-width:220px; text-align:left; padding:8px;">Motivo / Justificación</th>
+                                            <th style="min-width:130px; padding:8px;">Plazo / Vigencia</th>
+                                            <th style="min-width:110px; padding:8px;">Estado</th>
+                                            <th style="min-width:140px; padding:8px;">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="gradeEditRequestsTableBody">
+                                        <!-- Renderizado dinámicamente -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -3945,6 +4001,77 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE SOLICITUD DE HABILITACIÓN DE EDICIÓN DE NOTAS (DOCENTES) -->
+    <div class="modal-overlay" id="modalGradeEditRequest" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeGradeEditRequestModal()">
+        <div class="modal-container" style="max-width:620px;">
+            <div class="modal-header" style="background:linear-gradient(135deg, #1e3a8a, #3b82f6); color:#fff;">
+                <h3 style="color:#fff; margin:0; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-key"></i> Solicitud de Habilitación de Edición de Calificaciones
+                </h3>
+                <button class="modal-close" onclick="closeGradeEditRequestModal()" style="color:#fff;">&times;</button>
+            </div>
+            <form id="formGradeEditRequest" onsubmit="submitGradeEditRequest(event)">
+                <div class="modal-body" style="padding:20px; font-size:0.9rem;">
+                    <div style="background:#eff6ff; border-left:4px solid #3b82f6; padding:10px 14px; border-radius:4px; margin-bottom:16px; font-size:0.85rem; color:#1e40af;">
+                        <i class="fa-solid fa-circle-info"></i> <strong>Aviso Importante:</strong> El bimestre seleccionado se encuentra cerrado oficialmente. Para realizar modificaciones, asentar notas rezagadas o corregir zonas, debe enviar esta solicitud a Dirección y Secretaría para su respectiva autorización.
+                    </div>
+
+                    <input type="hidden" id="reqModalPensumId">
+                    <input type="hidden" id="reqModalBimestre">
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+                        <div class="form-group" style="margin:0;">
+                            <label style="font-weight:700; font-size:0.85rem;"><i class="fa-solid fa-user-tie"></i> Catedrático Solicitante:</label>
+                            <input type="text" id="reqModalTeacherName" class="form-control" readonly style="background:#f8fafc; font-weight:600;">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label style="font-weight:700; font-size:0.85rem;"><i class="fa-solid fa-calendar-check"></i> Bimestre a Habilitar:</label>
+                            <input type="text" id="reqModalBimestreText" class="form-control" readonly style="background:#f8fafc; font-weight:700; color:#1e40af;">
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px; margin-bottom:14px;">
+                        <div class="form-group" style="margin:0;">
+                            <label style="font-weight:700; font-size:0.85rem;"><i class="fa-solid fa-book"></i> Asignatura / Curso:</label>
+                            <input type="text" id="reqModalSubject" class="form-control" readonly style="background:#f8fafc;">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label style="font-weight:700; font-size:0.85rem;"><i class="fa-solid fa-graduation-cap"></i> Grado & Sección:</label>
+                            <input type="text" id="reqModalGrade" class="form-control" readonly style="background:#f8fafc;">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:14px;">
+                        <label style="font-weight:700; font-size:0.85rem;"><i class="fa-solid fa-hourglass-half"></i> Plazo Estimado Requerido:</label>
+                        <select id="reqModalDuration" class="form-control" style="font-weight:600;">
+                            <option value="24">24 Horas (1 Día Calendario)</option>
+                            <option value="48" selected>48 Horas (2 Días Calendario)</option>
+                            <option value="72">72 Horas (3 Días Calendario)</option>
+                            <option value="120">5 Días (Semana Laboral)</option>
+                        </select>
+                        <small style="color:var(--text-muted); font-size:0.75rem;">Tiempo durante el cual el sistema mantendrá la habilitación activa una vez sea aprobada por Dirección.</small>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:8px;">
+                        <label style="font-weight:700; font-size:0.85rem;"><i class="fa-solid fa-comment-dots"></i> Motivo / Justificación Académica <span style="color:#ef4444;">*</span>:</label>
+                        <textarea id="reqModalReason" class="form-control" rows="3" required placeholder="Describa detalladamente el motivo de la corrección o ingreso extemporáneo (ej. Revisión de prueba de estudiante Juan Pérez, asentamiento de actividades justificadas por enfermedad, error involuntario en zona, etc.)." style="resize:vertical;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="padding:14px 20px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.75rem; color:var(--text-muted);">
+                        <i class="fa-solid fa-clock"></i> Quedará registrada en la bitácora institucional.
+                    </span>
+                    <div style="display:flex; gap:10px;">
+                        <button type="button" class="btn btn-secondary" onclick="closeGradeEditRequestModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" style="font-weight:700; background:#2563eb;">
+                            <i class="fa-solid fa-paper-plane"></i> Enviar Solicitud a Dirección
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 </body>

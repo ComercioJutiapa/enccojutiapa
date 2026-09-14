@@ -1,18 +1,29 @@
-# Logs
+# Logs y temporales
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 firebase-debug.log*
-
-# OS Files
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Archives
+# Archivos de respaldo y datos locales
+*.bak
+*.json.old
+backup/
+backups/
+respaldos/
+*backup*
+seed/
 *.zip
 *.tar.gz
 
-# Scratch files
+# Variables de entorno y credenciales
+.env
+.env.local
+.env.*.local
+
+# Scratch y temporales de desarrollo
 scratch*
+

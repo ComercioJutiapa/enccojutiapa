@@ -547,11 +547,11 @@
 
             const usersList = (window.STATE && Array.isArray(window.STATE.users) && window.STATE.users.length > 0)
                 ? window.STATE.users
-                : (typeof getInitialData === 'function' ? getInitialData().users : []);
+                : [];
 
             const studentsList = (window.STATE && Array.isArray(window.STATE.students) && window.STATE.students.length > 0)
                 ? window.STATE.students
-                : (typeof getInitialData === 'function' ? getInitialData().students : []);
+                : [];
 
             // 3. Verificación de credenciales oficiales del usuario
             const authRes = (typeof verifyUserAuthCredentials === 'function')
