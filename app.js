@@ -1688,7 +1688,37 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     if (Array.isArray(STATE.cycles) && STATE.cycles.length > 0) cleanPayload.cycles = STATE.cycles;
     if (Array.isArray(STATE.users) && STATE.users.length >= 20) cleanPayload.users = STATE.users;
     if (Array.isArray(STATE.careers) && STATE.careers.length > 0) cleanPayload.careers = STATE.careers;
-    if (Array.isArray(STATE.gradesList) && STATE.gradesList.length > 0) cleanPayload.gradesList = STATE.gradesList;
+
+    // 🛡️ Salvaguarda Estricta de Grados y Secciones: el colegio opera con 12 secciones oficiales
+    if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
+    if (Array.isArray(STATE.gradesList) && STATE.gradesList.length >= 12) {
+        cleanPayload.gradesList = STATE.gradesList;
+        // Construir y sincronizar mapa de secciones oficial
+        const seccionesMap = {};
+        STATE.gradesList.forEach(g => {
+            const m = (g.code || '').match(/(\d+to)\s*([A-D])/i);
+            if (m) {
+                const docId = `${m[1]}_${m[2].toUpperCase()}`;
+                seccionesMap[docId] = {
+                    gradoId: m[1],
+                    seccionId: m[2].toUpperCase(),
+                    grado: g.name,
+                    seccion: g.section,
+                    codigo: g.code,
+                    id: g.id,
+                    carrera: g.career || 'Perito Contador',
+                    jornada: g.shift || 'Matutina',
+                    maestroGuiaId: g.guideTeacherId || null,
+                    maestroGuiaNombre: g.guideTeacher || 'Sin asignar',
+                    ultimaActualizacion: new Date().toISOString()
+                };
+            }
+        });
+        if (Object.keys(seccionesMap).length >= 12) {
+            cleanPayload.secciones = seccionesMap;
+        }
+    }
+
     if (Array.isArray(STATE.pensumCatalog) && STATE.pensumCatalog.length > 0) cleanPayload.pensumCatalog = STATE.pensumCatalog;
     if (Array.isArray(STATE.students) && STATE.students.length > 0) cleanPayload.students = STATE.students;
     if (Array.isArray(STATE.pensum) && STATE.pensum.length > 0) cleanPayload.pensum = STATE.pensum;
@@ -1836,6 +1866,13 @@ const EnccoCloudSync = {
         if ((nodeName === 'users' || nodeName.startsWith('users')) && (!Array.isArray(data) || data.length === 0)) {
             console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar colección de usuarios truncada (${data.length} < 20). Operación cancelada para proteger integridad.`);
             return false;
+        }
+        if ((nodeName === 'gradesList' || nodeName.startsWith('gradesList')) && Array.isArray(data) && data.length < 12) {
+            console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar colección de grados truncada (${data.length} < 12). Autocompletando con catálogo oficial para proteger integridad.`);
+            if (typeof ensureOfficialGradesList === 'function') {
+                ensureOfficialGradesList();
+                data = STATE.gradesList;
+            }
         }
         const firebaseUrl = this.getUrl();
         const now = Date.now();
@@ -4477,6 +4514,7 @@ async function handleDirectGuideTeacherChange(gradeId, newTeacherId, optionalMae
                 await EnccoCloudSync.patchNode(`secciones/${docId}`, seccionRtdbPayload);
             }
             if (typeof EnccoCloudSync.syncNode === 'function') {
+                if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
                 await EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
             }
         }
@@ -5538,6 +5576,15 @@ function purifySchoolStructure() {
 }
 window.purifySchoolStructure = purifySchoolStructure;
 
+function ensureOfficialGradesList() {
+    const officialIds = ["grd-4a","grd-4b","grd-4c","grd-4d","grd-5a","grd-5b","grd-5c","grd-5d","grd-6a","grd-6b","grd-6c","grd-6d"];
+    if (!Array.isArray(STATE.gradesList) || STATE.gradesList.length < 12 || !officialIds.every(id => STATE.gradesList.some(g => g && g.id === id))) {
+        if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
+    }
+    return STATE.gradesList;
+}
+window.ensureOfficialGradesList = ensureOfficialGradesList;
+
 
 function getInitialData() {
     return {
@@ -6123,9 +6170,10 @@ async function initApp() {
     if (!hasLoadedExistingUsers && (!Array.isArray(STATE.users) || STATE.users.length === 0)) {
         loadDefaults(false);
     }
-    if (!STATE.careers || STATE.careers.length === 0 || !STATE.gradesList || STATE.gradesList.length === 0) {
+    if (!STATE.careers || STATE.careers.length === 0 || !STATE.gradesList || STATE.gradesList.length < 12) {
         if (typeof purifySchoolStructure === 'function') purifySchoolStructure();
     }
+    if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
 
     ensureSireOfficialStudents();
     ensureOfficialPensumAssignments();
@@ -7286,7 +7334,33 @@ function applyIncomingCloudState(incomingState, force = false) {
     // 4. Asignación de Cátedras y Pensum (Protección anti-sobreescritura por arreglos vacíos)
     if (Array.isArray(incomingState.pensum) && (incomingState.pensum.length > 0 || !STATE.pensum || STATE.pensum.length === 0)) STATE.pensum = incomingState.pensum;
     if (Array.isArray(incomingState.pensumCatalog) && (incomingState.pensumCatalog.length > 0 || !STATE.pensumCatalog || STATE.pensumCatalog.length === 0)) STATE.pensumCatalog = incomingState.pensumCatalog;
-    if (Array.isArray(incomingState.gradesList) && (incomingState.gradesList.length > 0 || !STATE.gradesList || STATE.gradesList.length === 0)) STATE.gradesList = incomingState.gradesList;
+    // Blindaje de Grados y Secciones: el colegio opera exclusivamente con las 12 secciones oficiales
+    if (Array.isArray(incomingState.gradesList) && incomingState.gradesList.length >= 12) {
+        STATE.gradesList = incomingState.gradesList;
+    } else if (Array.isArray(incomingState.gradesList) && incomingState.gradesList.length > 0) {
+        if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
+        incomingState.gradesList.forEach(incG => {
+            const localG = (STATE.gradesList || []).find(g => g && (g.id === incG.id || g.code === incG.code));
+            if (localG) Object.assign(localG, incG);
+        });
+    } else {
+        if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
+    }
+
+    // Sincronización bidireccional desde la entidad 'secciones' (RTDB / Firestore)
+    if (incomingState.secciones && typeof incomingState.secciones === 'object') {
+        Object.values(incomingState.secciones).forEach(sec => {
+            if (!sec) return;
+            const gMatch = (STATE.gradesList || []).find(g => 
+                g && ((sec.id && g.id === sec.id) || (sec.codigo && g.code === sec.codigo) ||
+                (sec.gradoId && sec.seccionId && g.code && g.code.includes(sec.gradoId) && g.code.includes(sec.seccionId)))
+            );
+            if (gMatch) {
+                if (sec.maestroGuiaId) gMatch.guideTeacherId = sec.maestroGuiaId;
+                if (sec.maestroGuiaNombre) gMatch.guideTeacher = sec.maestroGuiaNombre;
+            }
+        });
+    }
     if (Array.isArray(incomingState.careers) && (incomingState.careers.length > 0 || !STATE.careers || STATE.careers.length === 0)) STATE.careers = incomingState.careers;
 
     // 5. Asistencia y Disciplina
@@ -7481,7 +7555,7 @@ function saveStateRecursively(options = { syncCloud: false, isAutoSave: false })
             theme: STATE.theme || 'light',
             users: recursiveDeepClone(STATE.users || []),
             careers: recursiveDeepClone(STATE.careers || []),
-            gradesList: recursiveDeepClone(STATE.gradesList || []),
+            gradesList: recursiveDeepClone((typeof ensureOfficialGradesList === 'function' ? ensureOfficialGradesList() : STATE.gradesList) || []),
             pensumCatalog: recursiveDeepClone(STATE.pensumCatalog || []),
             students: recursiveDeepClone(STATE.students || []),
             pensum: recursiveDeepClone(STATE.pensum || []),
@@ -27028,17 +27102,47 @@ function initFirestoreModularLiveListeners() {
         try {
             const unsubGrades = onSnapshot(collection(db, 'gradesList'), (snap) => {
                 if (!snap || snap.empty) return;
-                // Snapshot listener activo sin bloqueos locales
-                const grades = [];
-                snap.forEach(d => grades.push({ id: d.id, ...d.data() }));
-                if (grades.length > 0) {
-                    STATE.gradesList = grades;
+                if (!Array.isArray(STATE.gradesList) || STATE.gradesList.length < 12) {
+                    if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
+                }
+                snap.forEach(d => {
+                    const gData = { id: d.id, ...d.data() };
+                    const idx = (STATE.gradesList || []).findIndex(g => g && (g.id === d.id || g.code === d.id));
+                    if (idx !== -1) {
+                        STATE.gradesList[idx] = { ...STATE.gradesList[idx], ...gData };
+                    } else {
+                        STATE.gradesList.push(gData);
+                    }
+                });
+                if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
+                if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
+                if (typeof renderGradesTable === 'function') renderGradesTable();
+                if (typeof updateGradeSelects === 'function') updateGradeSelects();
+                if (typeof renderCurrentView === 'function' && (STATE.activeView === 'grades' || STATE.activeView === 'guide-teachers')) renderCurrentView();
+            }, err => console.warn('Aviso en onSnapshot gradesList:', err));
+
+            // Sincronizar también entidad 'secciones' en tiempo real
+            try {
+                const unsubSecciones = onSnapshot(collection(db, 'secciones'), (secSnap) => {
+                    if (!secSnap || secSnap.empty) return;
+                    secSnap.forEach(d => {
+                        const sec = d.data();
+                        if (!sec) return;
+                        const docId = d.id;
+                        const gMatch = (STATE.gradesList || []).find(g => 
+                            g && (g.id === sec.id || g.code === sec.codigo ||
+                            (docId && docId.includes('_') && g.code && g.code.includes(docId.split('_')[0]) && g.code.includes(docId.split('_')[1])))
+                        );
+                        if (gMatch) {
+                            if (sec.maestroGuiaId) gMatch.guideTeacherId = sec.maestroGuiaId;
+                            if (sec.maestroGuiaNombre) gMatch.guideTeacher = sec.maestroGuiaNombre;
+                        }
+                    });
                     if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
                     if (typeof renderGradesTable === 'function') renderGradesTable();
-                    if (typeof updateGradeSelects === 'function') updateGradeSelects();
-                    if (typeof renderCurrentView === 'function' && (STATE.activeView === 'grades' || STATE.activeView === 'guide-teachers')) renderCurrentView();
-                }
-            }, err => console.warn('Aviso en onSnapshot gradesList:', err));
+                }, err => console.warn('Aviso en onSnapshot secciones:', err));
+                if (typeof unsubSecciones === 'function') _firestoreModularUnsubscribers.push(unsubSecciones);
+            } catch(eSec) {}
             if (typeof unsubGrades === 'function') _firestoreModularUnsubscribers.push(unsubGrades);
         } catch(e) {}
 

@@ -593,7 +593,7 @@
                 }
             }
 
-            // 2. Dual Write a Firebase RTDB (/encc_school_state/secciones y /secciones)
+            // 2. Dual Write a Firebase RTDB (/encc_school_state/secciones, /secciones y gradesList)
             try {
                 await Promise.allSettled([
                     fetch(`${RTDB_BASE_URL}/encc_school_state/secciones/${docId}.json`, {
@@ -607,6 +607,33 @@
                         body: JSON.stringify(seccionPayload)
                     })
                 ]);
+
+                // Sincronizar simultáneamente con el catálogo oficial de gradesList
+                const gRes = await fetch(`${RTDB_BASE_URL}/encc_school_state/gradesList.json?t=${Date.now()}`);
+                if (gRes.ok) {
+                    const gList = await gRes.json();
+                    if (Array.isArray(gList) && gList.length >= 12) {
+                        const targetId = `grd-${String(gradoId).replace('to','')}${String(seccionId).toLowerCase()}`;
+                        const targetG = gList.find(x => x && (x.id === targetId || x.code === `${gradoId} ${seccionId}`));
+                        if (targetG) {
+                            targetG.guideTeacher = teacherName;
+                            targetG.guideTeacherId = maestroId || null;
+                            targetG.lastModified = Date.now();
+                            await Promise.allSettled([
+                                fetch(`${RTDB_BASE_URL}/encc_school_state/gradesList.json`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(gList)
+                                }),
+                                fetch(`${RTDB_BASE_URL}/gradesList.json`, {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(gList)
+                                })
+                            ]);
+                        }
+                    }
+                }
             } catch(rErr) {
                 console.warn("Aviso al guardar en RTDB:", rErr);
             }
