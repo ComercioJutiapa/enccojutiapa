@@ -1493,20 +1493,51 @@
                     </div>
 
                     <div class="config-grid">
-                        <!-- TARJETA: BIMESTRE ACTIVO OFICIAL -->
+                        <!-- TARJETA: CONTROL DE BIMESTRES Y UNIDADES ACTIVAS -->
                         <div class="config-card" style="border-top:4px solid var(--brand-green);">
-                            <h3><i class="fa-solid fa-calendar-check" style="color:var(--brand-green);"></i> Bimestre Activo Oficial para Catedráticos</h3>
+                            <h3><i class="fa-solid fa-calendar-check" style="color:var(--brand-green);"></i> Control de Bimestres y Unidades Activas</h3>
                             <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:12px;">
-                                Establezca qué bimestre estará disponible para el ingreso de notas de los docentes. <strong>Los maestros solo podrán ver y calificar el bimestre activo seleccionado aquí.</strong>
+                                Configure el <strong>Bimestre Oficial Principal</strong> y habilite las <strong>Unidades específicas</strong> donde los catedráticos pueden ingresar o modificar calificaciones.
                             </p>
                             <div class="form-group">
-                                <label style="font-weight:700;">Seleccionar Bimestre Oficial Activo:</label>
-                                <select id="selectBimestreActivo" name="officialActiveBimestreSelect" data-official-id="officialActiveBimestreSelect" class="form-control" style="font-weight:700; font-size:0.95rem; margin-bottom:10px;">
+                                <label style="font-weight:700;">Bimestre Oficial Principal (Visualización por Defecto):</label>
+                                <select id="officialActiveBimestreSelect" data-id="selectBimestreActivo" name="selectBimestreActivo" data-official-id="officialActiveBimestreSelect" class="form-control" style="font-weight:700; font-size:0.95rem; margin-bottom:12px;" onchange="if(typeof onPrimaryBimestreSelectChange==='function') onPrimaryBimestreSelectChange(this.value)">
                                     <option value="1">1er. Bimestre (Unidad 1)</option>
                                     <option value="2">2do. Bimestre (Unidad 2)</option>
                                     <option value="3">3er. Bimestre (Unidad 3)</option>
                                     <option value="4">4to. Bimestre (Unidad 4)</option>
                                 </select>
+
+                                <label style="font-weight:700; margin-top:8px; display:block;">Unidades Habilitadas para Modificación de Notas:</label>
+                                <div style="background:var(--bg-main); border:1px solid var(--border-color); border-radius:8px; padding:12px; margin-bottom:12px;">
+                                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px;">
+                                        <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:600; font-size:0.88rem;">
+                                            <input type="checkbox" id="checkActiveUnit1" value="1" style="width:18px; height:18px; accent-color:var(--brand-green);">
+                                            <span>Unidad 1 (I)</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:600; font-size:0.88rem;">
+                                            <input type="checkbox" id="checkActiveUnit2" value="2" style="width:18px; height:18px; accent-color:var(--brand-green);">
+                                            <span>Unidad 2 (II)</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:600; font-size:0.88rem;">
+                                            <input type="checkbox" id="checkActiveUnit3" value="3" style="width:18px; height:18px; accent-color:var(--brand-green);">
+                                            <span>Unidad 3 (III)</span>
+                                        </label>
+                                        <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:600; font-size:0.88rem;">
+                                            <input type="checkbox" id="checkActiveUnit4" value="4" style="width:18px; height:18px; accent-color:var(--brand-green);">
+                                            <span>Unidad 4 (IV)</span>
+                                        </label>
+                                    </div>
+                                    <div style="display:flex; gap:8px; margin-top:10px;">
+                                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="setAllUnitsActive(true)" style="font-size:0.75rem; padding:3px 8px;">
+                                            <i class="fa-solid fa-check-double"></i> Habilitar Todas
+                                        </button>
+                                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="setOnlyPrimaryUnitActive()" style="font-size:0.75rem; padding:3px 8px;">
+                                            <i class="fa-solid fa-filter"></i> Solo Principal
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <button id="btnFijarBimestre" class="btn btn-success btn-block" onclick="setOfficialActiveBimestre(event)" style="font-weight:700;">
                                     <i class="fa-solid fa-check-circle"></i> Fijar y Activar Bimestre para Maestros
                                 </button>

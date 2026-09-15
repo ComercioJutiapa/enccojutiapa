@@ -5428,7 +5428,7 @@ var STATE = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {
     dismissedAlerts: {},
     gradeEditRequests: [],
     schoolHeader: { schoolName: 'Escuela Nacional de Ciencias Comerciales', schoolCode: '22-01-0014-46', location: 'Jutiapa, Guatemala' },
-    config: { activeBimestre: 1, globalLocked: false, minPassingScore: 60, teacherBypass: {} }
+    config: { activeBimestre: 1, activeUnits: [1], globalLocked: false, minPassingScore: 60, teacherBypass: {} }
 };
 if (typeof window !== 'undefined') window.STATE = STATE;
 
@@ -6884,7 +6884,8 @@ function loadDefaults(autoSave = false) {
     if (!Array.isArray(STATE.cycles)) STATE.cycles = [];
     if (!Array.isArray(STATE.rolesConfig)) STATE.rolesConfig = [];
     if (!Array.isArray(STATE.pensumCatalog)) STATE.pensumCatalog = [];
-    if (!STATE.config) STATE.config = { activeBimestre: 1, globalLocked: false, minPassingScore: 60, teacherBypass: {} };
+    if (!STATE.config) STATE.config = { activeBimestre: 1, activeUnits: [1], globalLocked: false, minPassingScore: 60, teacherBypass: {} };
+    if (!Array.isArray(STATE.config.activeUnits)) STATE.config.activeUnits = [STATE.config.activeBimestre || 1];
     if (!STATE.schoolHeader) STATE.schoolHeader = { schoolName: 'Escuela Nacional de Ciencias Comerciales', schoolCode: '22-01-0014-46', location: 'Jutiapa' };
 }
 
@@ -13032,58 +13033,74 @@ async function saveDisciplineForm(e) {
 // ==========================================================================
 // 12. BLOQUEO DE BIMESTRES & PENSUM
 // ==========================================================================
+function setAllUnitsActive(allActive) {
+    [1, 2, 3, 4].forEach(u => {
+        const chk = document.getElementById('checkActiveUnit' + u);
+        if (chk) chk.checked = !!allActive;
+    });
+}
+window.setAllUnitsActive = setAllUnitsActive;
+
+function setOnlyPrimaryUnitActive() {
+    const select = document.getElementById('selectBimestreActivo') || document.getElementById('officialActiveBimestreSelect');
+    const primary = select ? (parseInt(select.value) || 1) : 1;
+    [1, 2, 3, 4].forEach(u => {
+        const chk = document.getElementById('checkActiveUnit' + u);
+        if (chk) chk.checked = (u === primary);
+    });
+}
+window.setOnlyPrimaryUnitActive = setOnlyPrimaryUnitActive;
+
+function onPrimaryBimestreSelectChange(val) {
+    const num = parseInt(val) || 1;
+    const chk = document.getElementById('checkActiveUnit' + num);
+    if (chk) chk.checked = true;
+}
+window.onPrimaryBimestreSelectChange = onPrimaryBimestreSelectChange;
+
 async function loadLockStatus() {
     const list = document.getElementById('teacherLockList');
     const select = document.getElementById('officialActiveBimestreSelect') || document.getElementById('selectBimestre');
     const globalLockBadge = document.getElementById('globalLockBadge');
 
-    // 🌟 Sincronización Inicial de Estado: Consultar primero a Firebase (Lectura Previa Obligatoria)
+    // 🌟 Sincronización Inicial de Estado: Consultar Firebase RTDB y Firestore
     let cloudBimestre = null;
     let cloudGlobalLocked = null;
+    let cloudActiveUnits = null;
+
+    const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
+    if (firebaseUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+        try {
+            const rtdbConfigRes = await fetch(`${firebaseUrl}/encc_school_state/config.json?t=${Date.now()}`);
+            if (rtdbConfigRes.ok) {
+                const rtdbCfg = await rtdbConfigRes.json();
+                if (rtdbCfg) {
+                    if (rtdbCfg.activeBimestre) cloudBimestre = parseInt(rtdbCfg.activeBimestre);
+                    if (rtdbCfg.globalLocked !== undefined) cloudGlobalLocked = !!rtdbCfg.globalLocked;
+                    if (Array.isArray(rtdbCfg.activeUnits) && rtdbCfg.activeUnits.length > 0) {
+                        cloudActiveUnits = rtdbCfg.activeUnits.map(Number);
+                    }
+                }
+            }
+        } catch(rErr) {
+            console.warn("Aviso al leer config de RTDB en loadLockStatus:", rErr);
+        }
+    }
 
     if (window.FirebaseModular && window.FirebaseModular.db) {
         try {
             const { db, doc, getDoc } = window.FirebaseModular;
-            // 1. Consultar nodo oficial: configuracion/sistema
             const configRef = doc(db, "configuracion", "sistema");
-            const snap = await withTimeout(getDoc(configRef), 5000, 'Timeout al leer configuracion/sistema').catch(() => null);
+            const snap = await withTimeout(getDoc(configRef), 3000, 'Timeout al leer configuracion/sistema').catch(() => null);
             if (snap && snap.exists()) {
                 const cData = snap.data();
                 const bVal = parseInt(cData.bimestreActivoOficial || cData.activeBimestre);
-                if (bVal && bVal >= 1 && bVal <= 4) cloudBimestre = bVal;
-                if (cData.globalLocked !== undefined) cloudGlobalLocked = !!cData.globalLocked;
-            }
-
-            // 2. Nodo complementario: configuracion/bimestreActivo
-            if (!cloudBimestre) {
-                const snapBimAct = await withTimeout(getDoc(doc(db, "configuracion", "bimestreActivo")), 4000).catch(() => null);
-                if (snapBimAct && snapBimAct.exists()) {
-                    const bVal = parseInt(snapBimAct.data().bimestreActivoOficial || snapBimAct.data().activeBimestre);
-                    if (bVal && bVal >= 1 && bVal <= 4) cloudBimestre = bVal;
-                }
-            }
-
-            // 3. Nodo secundario compatible: config/bimestre_activo
-            if (!cloudBimestre) {
-                const snapBim = await withTimeout(getDoc(doc(db, "config", "bimestre_activo")), 4000).catch(() => null);
-                if (snapBim && snapBim.exists()) {
-                    const bVal = parseInt(snapBim.data().bimestreActivoOficial || snapBim.data().activeBimestre);
-                    if (bVal && bVal >= 1 && bVal <= 4) cloudBimestre = bVal;
-                }
-            }
-
-            // 4. Nodo secundario: configuracion_sistema/global
-            if (!cloudBimestre) {
-                const snapSys = await withTimeout(getDoc(doc(db, "configuracion_sistema", "global")), 4000).catch(() => null);
-                if (snapSys && snapSys.exists()) {
-                    const cData = snapSys.data();
-                    const bVal = parseInt(cData.bimestreActivoOficial || cData.activeBimestre);
-                    if (bVal && bVal >= 1 && bVal <= 4) cloudBimestre = bVal;
-                    if (cData.globalLocked !== undefined && cloudGlobalLocked === null) cloudGlobalLocked = !!cData.globalLocked;
-                }
+                if (bVal && bVal >= 1 && bVal <= 4 && !cloudBimestre) cloudBimestre = bVal;
+                if (cData.globalLocked !== undefined && cloudGlobalLocked === null) cloudGlobalLocked = !!cData.globalLocked;
+                if (Array.isArray(cData.activeUnits) && !cloudActiveUnits) cloudActiveUnits = cData.activeUnits.map(Number);
             }
         } catch(fsErr) {
-            console.warn("Aviso al consultar configuración en Firebase (loadLockStatus):", fsErr);
+            console.warn("Aviso al consultar configuración en Firestore (loadLockStatus):", fsErr);
         }
     }
 
@@ -13096,15 +13113,30 @@ async function loadLockStatus() {
         if (!STATE.config) STATE.config = {};
         STATE.config.globalLocked = cloudGlobalLocked;
     }
+    if (cloudActiveUnits && cloudActiveUnits.length > 0) {
+        if (!STATE.config) STATE.config = {};
+        STATE.config.activeUnits = cloudActiveUnits;
+    } else if (!STATE.config?.activeUnits || STATE.config.activeUnits.length === 0) {
+        if (!STATE.config) STATE.config = {};
+        STATE.config.activeUnits = [STATE.config.activeBimestre || 1];
+    }
 
-    // Resolver el valor devuelto por Firebase o sincronizado en memoria (PROHIBIDO fallback local antes de respuesta)
-    const activeBim = parseInt(STATE.config?.bimestreActivoOficial || STATE.config?.activeBimestre);
+    const activeBim = parseInt(STATE.config?.bimestreActivoOficial || STATE.config?.activeBimestre) || 1;
+    const activeUnits = (Array.isArray(STATE.config?.activeUnits) && STATE.config.activeUnits.length > 0)
+        ? STATE.config.activeUnits.map(Number)
+        : [activeBim];
 
-    // El selector desplegable (<select>) debe seleccionarse automáticamente con el valor devuelto por Firebase
-    if (select && activeBim && activeBim >= 1 && activeBim <= 4) {
+    // Sincronizar el selector desplegable con el bimestre principal
+    if (select && activeBim >= 1 && activeBim <= 4) {
         select.value = String(activeBim);
         select.disabled = false;
     }
+
+    // Sincronizar los 4 checkboxes de unidades activas
+    [1, 2, 3, 4].forEach(u => {
+        const chk = document.getElementById('checkActiveUnit' + u);
+        if (chk) chk.checked = activeUnits.includes(u);
+    });
 
     if (globalLockBadge) {
         globalLockBadge.className = STATE.config?.globalLocked ? 'badge badge-danger' : 'badge badge-success';
@@ -13167,54 +13199,48 @@ async function setOfficialActiveBimestre() {
     if (e && e.preventDefault) e.preventDefault();
 
     if (STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') {
-        showToast("Solo Secretaría, Dirección o Administración pueden fijar el bimestre activo.", "danger");
+        showToast("Solo Secretaría, Dirección o Administración pueden fijar los bimestres activos.", "danger");
         return;
     }
 
-    const btn = document.getElementById('btnFijarBimestre') || 
-                document.getElementById('btnSetOfficialBimestre') || 
-                document.querySelector('button[onclick*="setOfficialActiveBimestre"]') || 
-                document.querySelector('button[onclick*="fijarBimestreOficial"]');
-    const select = document.getElementById('selectBimestreActivo') || 
-                   document.getElementById('officialActiveBimestreSelect') || 
+    const btnFijar = document.getElementById('btnFijarBimestre') || 
+                     document.getElementById('btnSetOfficialBimestre') || 
+                     document.querySelector('button[onclick*="setOfficialActiveBimestre"]') || 
+                     document.querySelector('button[onclick*="fijarBimestreOficial"]');
+    const submitBtn = btnFijar;
+    const currentBtn = btnFijar;
+    const select = document.getElementById('officialActiveBimestreSelect') || 
+                   document.getElementById('selectBimestreActivo') || 
                    document.getElementById('selectBimestre');
-    const textoOriginal = '✔ Fijar y Activar Bimestre para Maestros';
+    const textoOriginal = '<i class="fa-solid fa-check-circle"></i> Fijar y Activar Bimestre para Maestros';
 
-    const btnFijar = btn;
-    const submitBtn = btn;
-
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> Fijando en Firebase...';
-    }
+    if (btnFijar) btnFijar.disabled = true;
+    if (submitBtn) submitBtn.disabled = true;
     if (btnFijar) {
-        btnFijar.disabled = true;
         btnFijar.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Fijando en Firebase...';
     }
-    if (submitBtn) {
-        submitBtn.disabled = true;
+
+    const unitNum = select ? (parseInt(select.value) || 1) : 1;
+    const bimestreSeleccionado = String(unitNum);
+
+    // Obtener las unidades marcadas en los checkboxes
+    let activeUnits = [];
+    [1, 2, 3, 4].forEach(u => {
+        const chk = document.getElementById('checkActiveUnit' + u);
+        if (chk && chk.checked) activeUnits.push(u);
+    });
+    if (activeUnits.length === 0) {
+        activeUnits = [unitNum];
+        const chk = document.getElementById('checkActiveUnit' + unitNum);
+        if (chk) chk.checked = true;
     }
-
-    // Promesa con Timeout de 5 segundos
-    const timeout = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Tiempo de espera agotado al conectar con Firebase")), 5000)
-    );
-
-    if (!select) {
-        if (btn) { btn.disabled = false; btn.innerHTML = textoOriginal; }
-        return;
-    }
-
-    const nuevoBimestre = select.value;
-    const bimestreSeleccionado = nuevoBimestre;
-    const unitNum = parseInt(nuevoBimestre) || 1;
 
     try {
-        if (!nuevoBimestre) throw new Error("Debe seleccionar un bimestre válido.");
-
         if (!STATE.config) STATE.config = {};
         STATE.config.activeBimestre = unitNum;
-        STATE.config.bimestreActivoOficial = nuevoBimestre;
+        STATE.config.bimestreActivoOficial = bimestreSeleccionado;
+        STATE.config.activeUnits = activeUnits;
+        STATE.config.estadoBloqueoGlobal = "HABILITADO";
 
         const bRoman = ['I', 'II', 'III', 'IV'][unitNum - 1] || 'I';
         const headerBadge = document.getElementById('headerPreviewBimestreBadge');
@@ -13222,7 +13248,7 @@ async function setOfficialActiveBimestre() {
             headerBadge.textContent = `${unitNum}º Bimestre Activo`;
         }
 
-        // 🔌 Limpieza preventiva del listener del bimestre anterior
+        // Limpieza preventiva de listeners
         if (typeof unsubscribeCurrentGradebookListener === 'function') {
             unsubscribeCurrentGradebookListener();
         }
@@ -13241,137 +13267,76 @@ async function setOfficialActiveBimestre() {
                 _enccBroadcastChannel.postMessage({
                     type: 'NODE_UPDATED',
                     node: 'config',
-                    data: { activeBimestre: unitNum, bimestreActivoOficial: nuevoBimestre },
+                    data: { activeBimestre: unitNum, activeUnits: activeUnits, bimestreActivoOficial: bimestreSeleccionado },
                     timestamp: nowTime
                 });
             } catch(bcErr) {}
         }
 
-        // 🌟 Competencia entre la escritura de Firebase y el timeout de 5s
-        const modular = window.FirebaseModular;
-        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
-            const { db, doc, setDoc } = modular;
-            const configRef = doc(db, "configuracion", "sistema");
+        const configPayload = {
+            activeBimestre: unitNum,
+            bimestreActivoOficial: bimestreSeleccionado,
+            activeUnits: activeUnits,
+            estadoBloqueoGlobal: "HABILITADO",
+            ultimaActualizacion: ultimaActualizacion,
+            fechaModificacion: new Date().toISOString(),
+            lastModified: nowTime
+        };
 
-            // Competencia entre la escritura de Firebase y el timeout
-            // Sincronización Realtime Database inmediata
-            const rtdbPromise = (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.patchNode === 'function')
-                ? EnccoCloudSync.patchNode('config', {
-                    activeBimestre: unitNum,
-                    bimestreActivoOficial: bimestreSeleccionado,
-                    estadoBloqueoGlobal: "HABILITADO",
-                    ultimaActualizacion: ultimaActualizacion,
-                    fechaModificacion: fechaModificacion,
-                    lastModified: nowTime
-                })
-                : Promise.resolve(true);
-
-            const fsPromise = setDoc(configRef, { 
-                bimestreActivoOficial: nuevoBimestre,
-                estadoBloqueoGlobal: "HABILITADO",
-                bimestreSeleccionado: bimestreSeleccionado,
-                activeBimestre: unitNum,
-                ultimaActualizacion: ultimaActualizacion,
-                fechaModificacion: new Date().toISOString()
-            }, { merge: true });
-
-            // Competencia entre la escritura de Firebase y el timeout
-            await Promise.race([
-                Promise.allSettled([fsPromise, rtdbPromise]),
-                timeout
-            ]);
-
-            console.log("Bimestre fijado exitosamente en Firebase");
-
-            // Nodos secundarios para compatibilidad universal
-            const bRef = doc(db, 'config', 'bimestre_activo');
-            const sysRef = doc(db, 'configuracion_sistema', 'global');
-            const gRef = doc(db, 'config', 'general');
-            const bimActRef = doc(db, 'configuracion', 'bimestreActivo');
-            const bData = {
-                activeBimestre: unitNum,
-                bimestreActivoOficial: bimestreSeleccionado,
-                estadoBloqueoGlobal: "HABILITADO",
-                ultimaActualizacion: ultimaActualizacion,
-                fechaModificacion: fechaModificacion,
-                lastModified: nowTime
-            };
-
-            try {
-                await setDoc(bRef, bData, { merge: true });
-                await setDoc(sysRef, bData, { merge: true });
-                await setDoc(bimActRef, bData, { merge: true });
-                await setDoc(gRef, { config: { activeBimestre: unitNum, bimestreActivoOficial: bimestreSeleccionado, fechaModificacion } }, { merge: true });
-            } catch(secErr) {
-                console.warn("Aviso en nodos secundarios de Firestore:", secErr);
+        // 🌟 Sincronización Realtime Database inmediata dual (root y encc_school_state)
+        const rtdbPromise = (async () => {
+            if (typeof EnccoCloudSync !== 'undefined') {
+                if (typeof EnccoCloudSync.patchNode === 'function') {
+                    await EnccoCloudSync.patchNode('config', configPayload);
+                }
+                if (typeof EnccoCloudSync.syncNode === 'function') {
+                    await EnccoCloudSync.syncNode('config', STATE.config);
+                }
             }
-        }
+        })();
 
-        // Sincronización Realtime Database
-        if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.patchNode === 'function') {
-            await Promise.race([
-                EnccoCloudSync.patchNode('config', {
-                    activeBimestre: unitNum,
-                    bimestreActivoOficial: bimestreSeleccionado,
-                    ultimaActualizacion: ultimaActualizacion,
-                    fechaModificacion: fechaModificacion,
-                    lastModified: nowTime
-                }),
-                timeout
-            ]).catch(rtdbErr => console.warn("Aviso en RTDB patchNode:", rtdbErr));
-        }
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            await Promise.race([
-                EnccoCloudSync.syncNode('config', STATE.config),
-                timeout
-            ]).catch(rtdbErr => console.warn("Aviso en RTDB syncNode:", rtdbErr));
-        }
+        // 🌟 Sincronización Firestore múltiple y coordinada
+        const fsPromise = (async () => {
+            const modular = window.FirebaseModular;
+            if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+                const { db, doc, setDoc } = modular;
+                const configRef = doc(db, "configuracion", "sistema");
+                const bRef = doc(db, 'config', 'bimestre_activo');
+                const bData = { bimestreActivoOficial: bimestreSeleccionado, activeBimestre: unitNum, activeUnits, lastModified: nowTime };
+                const bimActRef = doc(db, 'configuracion', 'bimestreActivo');
+                const genRef = doc(db, 'config', 'general');
+                const sysRef = doc(db, 'configuracion_sistema', 'global');
 
-        if (typeof STATE !== 'undefined' && STATE.config) {
-            STATE.config.bimestreActivoOficial = bimestreSeleccionado;
-            STATE.config.estadoBloqueoGlobal = "HABILITADO";
-        }
-        if (typeof mostrarNotificacion === 'function') {
-            mostrarNotificacion("Bimestre fijado correctamente en Firebase", "success");
-        } else if (typeof showToast === 'function') {
-            showToast(`¡Bimestre activo oficial fijado a: Unidad ${unitNum} (${bRoman} Bimestre)! Sincronizado dinámicamente en la nube.`, "success");
-        }
+                const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout Firestore')), 8000));
+                await setDoc(bRef, bData, { merge: true });
+                await Promise.race([
+                    Promise.all([
+                        setDoc(configRef, configPayload, { merge: true }),
+                        setDoc(bimActRef, configPayload, { merge: true }),
+                        setDoc(genRef, configPayload, { merge: true }),
+                        setDoc(sysRef, configPayload, { merge: true })
+                    ]),
+                    timeoutPromise
+                ]);
+            }
+        })();
+
+        await Promise.allSettled([fsPromise, rtdbPromise]);
+
+        const unitsNames = activeUnits.map(u => `U${u}`).join(', ');
+        showToast(`¡Configuración de bimestres guardada en Firebase! Bimestre Principal: ${unitNum}º (${bRoman}). Unidades Habilitadas: [${unitsNames}].`, "success");
 
         if (typeof populateGradebookBimestreSelect === 'function') populateGradebookBimestreSelect();
+        if (typeof loadLockStatus === 'function') loadLockStatus();
         if (typeof renderCurrentView === 'function') renderCurrentView();
     } catch(err) {
-        const error = err;
-        console.error("Error al fijar el bimestre:", error);
-        if (typeof alert === 'function') {
-            alert("Atención: " + error.message);
-        } else if (typeof showToast === 'function') {
-            showToast("Atención: " + error.message, "danger");
-        }
+        console.error("Error al fijar bimestres:", err);
+        showToast("Error al fijar bimestres: " + (err.message || err), "danger");
     } finally {
-        // DESBLOQUEO OBLIGATORIO DE INTERFAZ
-        const currentBtn = document.getElementById('btnFijarBimestre') || 
-                           document.getElementById('btnSetOfficialBimestre') || 
-                           document.querySelector('button[onclick*="setOfficialActiveBimestre"]') || 
-                           document.querySelector('button[onclick*="fijarBimestreOficial"]') || 
-                           btnFijar ||
-                           btn ||
-                           submitBtn;
-        if (currentBtn) {
-            currentBtn.disabled = false;
-            currentBtn.innerHTML = textoOriginal;
-        }
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = textoOriginal;
-        }
-        if (btnFijar) {
-            btnFijar.disabled = false;
-            btnFijar.innerHTML = textoOriginal;
-        }
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = textoOriginal;
-        }
+        if (currentBtn) currentBtn.disabled = false;
+        if (submitBtn) submitBtn.disabled = false;
+        if (btnFijar) btnFijar.disabled = false;
+        if (btnFijar) btnFijar.innerHTML = textoOriginal;
     }
 }
 window.setOfficialActiveBimestre = setOfficialActiveBimestre;
@@ -13500,6 +13465,9 @@ function isGradebookEditableForUser(pensumId, unit) {
 
     const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
     const currentUnit = parseInt(unit) || activeBim;
+    const activeUnits = (Array.isArray(STATE.config?.activeUnits) && STATE.config.activeUnits.length > 0)
+        ? STATE.config.activeUnits.map(Number)
+        : [activeBim];
 
     // Verificar si el sistema está bajo bloqueo global
     const isGlobalLocked = !!STATE.config?.globalLocked;
@@ -13526,8 +13494,8 @@ function isGradebookEditableForUser(pensumId, unit) {
         };
     }
 
-    // Si es el bimestre activo oficial
-    if (currentUnit === activeBim) {
+    // Si es un bimestre / unidad activa habilitada por Dirección
+    if (activeUnits.includes(currentUnit) || currentUnit === activeBim) {
         if (isGlobalLocked && !hasGlobalBypass) {
             return {
                 editable: false,
@@ -13538,11 +13506,12 @@ function isGradebookEditableForUser(pensumId, unit) {
         return { editable: true, reason: 'active_bimestre' };
     }
 
-    // Si no es el bimestre activo y no cuenta con solicitud aprobada vigente
+    // Si no es un bimestre activo y no cuenta con solicitud aprobada vigente
+    const activeNames = activeUnits.map(u => 'Unidad ' + u).join(', ');
     return {
         editable: false,
         reason: 'bimestre_closed',
-        message: 'La Unidad ' + currentUnit + ' se encuentra cerrada oficialmente (El bimestre activo oficial es la Unidad ' + activeBim + ').'
+        message: 'La Unidad ' + currentUnit + ' se encuentra cerrada oficialmente (Las unidades habilitadas son: ' + activeNames + ').'
     };
 }
 window.isGradebookEditableForUser = isGradebookEditableForUser;
@@ -17028,6 +16997,10 @@ function populateGradebookBimestreSelect() {
     if (!select) return;
 
     const activeB = parseInt(STATE.config?.activeBimestre) || 1;
+    const activeUnits = (Array.isArray(STATE.config?.activeUnits) && STATE.config.activeUnits.length > 0)
+        ? STATE.config.activeUnits.map(Number)
+        : [activeB];
+
     const bNames = {
         1: 'Unidad 1 / I Bimestre',
         2: 'Unidad 2 / II Bimestre',
@@ -17039,12 +17012,20 @@ function populateGradebookBimestreSelect() {
     const prevVal = select.value ? parseInt(select.value) : null;
     const selectedBim = (prevVal && prevVal >= 1 && prevVal <= 4) ? prevVal : activeB;
 
-    select.innerHTML = `
-        <option value="1">Unidad 1 / I Bimestre ${activeB === 1 ? '⭐ (Activo Oficial)' : ''}</option>
-        <option value="2">Unidad 2 / II Bimestre ${activeB === 2 ? '⭐ (Activo Oficial)' : ''}</option>
-        <option value="3">Unidad 3 / III Bimestre ${activeB === 3 ? '⭐ (Activo Oficial)' : ''}</option>
-        <option value="4">Unidad 4 / IV Bimestre ${activeB === 4 ? '⭐ (Activo Oficial)' : ''}</option>
-    `;
+    let optionsHtml = '';
+    for (let u = 1; u <= 4; u++) {
+        let tag = '';
+        if (u === activeB) {
+            tag = ' ⭐ (Oficial Principal - Habilitado)';
+        } else if (activeUnits.includes(u)) {
+            tag = ' ✅ (Habilitado para Modificar)';
+        } else {
+            tag = ' 🔒 (Cerrado)';
+        }
+        optionsHtml += `<option value="${u}">${bNames[u]}${tag}</option>\n`;
+    }
+
+    select.innerHTML = optionsHtml;
     select.value = selectedBim.toString();
     select.disabled = false;
     select.style.backgroundColor = '#ffffff';
@@ -17056,17 +17037,24 @@ function populateGradebookBimestreSelect() {
             notice.style.background = '#ecfdf5';
             notice.style.borderColor = '#a7f3d0';
             notice.style.color = '#065f46';
-            noticeText.innerHTML = `<i class="fa-solid fa-circle-check"></i> <strong>Bimestre Activo Oficial:</strong> ${bNames[activeB] || `Unidad ${activeB}`} (Habilitado por Dirección y Secretaría).`;
+            noticeText.innerHTML = `<i class="fa-solid fa-circle-check"></i> <strong>Bimestre Activo Oficial Principal:</strong> ${bNames[activeB] || ('Unidad ' + activeB)} (Habilitado por Dirección y Secretaría para ingreso de notas).`;
+        } else if (activeUnits.includes(selectedBim)) {
+            notice.style.background = '#ecfdf5';
+            notice.style.borderColor = '#a7f3d0';
+            notice.style.color = '#065f46';
+            noticeText.innerHTML = `<i class="fa-solid fa-circle-check"></i> <strong>Unidad Activa Habilitada:</strong> ${bNames[selectedBim] || ('Unidad ' + selectedBim)} (Habilitada por Dirección y Secretaría para ingreso y modificación de notas).`;
         } else {
             notice.style.background = '#fef3c7';
             notice.style.borderColor = '#fde68a';
             notice.style.color = '#92400e';
-            noticeText.innerHTML = `<i class="fa-solid fa-calendar-days"></i> <strong>Visualizando:</strong> ${bNames[selectedBim] || `Unidad ${selectedBim}`} (El Bimestre Activo Oficial es ${bNames[activeB]}).`;
+            const activeListStr = activeUnits.map(u => bNames[u]).join(', ');
+            noticeText.innerHTML = `<i class="fa-solid fa-calendar-days"></i> <strong>Visualizando:</strong> ${bNames[selectedBim] || ('Unidad ' + selectedBim)} (Cerrado para edición directa. Unidades habilitadas: ${activeListStr}).`;
         }
     }
 
     renderTeacherGradeProgressTable();
 }
+window.populateGradebookBimestreSelect = populateGradebookBimestreSelect;
 
 // ==========================================================================
 // 🛡️ CONTROL DIRECTIVO: SUPERVISIÓN Y AUDITORÍA DE INGRESO DE NOTAS POR DOCENTE (V73)
@@ -17899,6 +17887,10 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
                 const studentUnitDetailsEndpoint = `${firebaseUrl}/encc_school_state/students/${rtdbIdx}/gradebookDetails/${encodeURIComponent(subjectName)}/${uStr}.json`;
                 const timeEndpoint = `${firebaseUrl}/encc_school_state/lastModified.json`;
 
+                const rootGradesEndpoint = `${firebaseUrl}/students/${rtdbIdx}/grades.json`;
+                const rootUnitDetailsEndpoint = `${firebaseUrl}/students/${rtdbIdx}/gradebookDetails/${encodeURIComponent(subjectName)}/${uStr}.json`;
+                const rootTimeEndpoint = `${firebaseUrl}/lastModified.json`;
+
                 const [resGrades, resDetails, resTime] = await Promise.all([
                     fetch(studentGradesEndpoint, {
                         method: 'PATCH',
@@ -17914,7 +17906,22 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(now)
-                    })
+                    }),
+                    fetch(rootGradesEndpoint, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ [subjectName]: student.grades[subjectName] })
+                    }).catch(() => {}),
+                    fetch(rootUnitDetailsEndpoint, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(currentUnitDetails)
+                    }).catch(() => {}),
+                    fetch(rootTimeEndpoint, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(now)
+                    }).catch(() => {})
                 ]);
                 if (!resGrades.ok || !resDetails.ok) {
                     console.warn('Aviso en respuesta de Firebase RTDB para calificación:', resGrades.status, resDetails.status);
@@ -18342,9 +18349,11 @@ function loadTeacherGradebook() {
             gbNotice.style.borderColor = '#a7f3d0';
             gbNotice.style.color = '#065f46';
             if (currentUnit === actB) {
-                gbNoticeText.innerHTML = `<i class="fa-solid fa-circle-check"></i> <strong>Bimestre Activo Oficial:</strong> ${bNamesMap[actB] || `Unidad ${actB}`} (Habilitado para calificación por Dirección y Secretaría).`;
+                gbNoticeText.innerHTML = `<i class="fa-solid fa-circle-check"></i> <strong>Bimestre Activo Oficial Principal:</strong> ${bNamesMap[actB] || ('Unidad ' + actB)} (Habilitado para calificación por Dirección y Secretaría).`;
+            } else if (editPermission.reason === 'active_bimestre') {
+                gbNoticeText.innerHTML = `<i class="fa-solid fa-circle-check"></i> <strong>Unidad Activa Habilitada:</strong> ${bNamesMap[currentUnit] || ('Unidad ' + currentUnit)} (Habilitada por Dirección y Secretaría para ingreso y modificación de notas).`;
             } else {
-                gbNoticeText.innerHTML = `<i class="fa-solid fa-user-shield"></i> <strong>Modo Administrativo:</strong> Visualizando y editando ${bNamesMap[currentUnit] || `Unidad ${currentUnit}`} con permisos de Administración/Dirección.`;
+                gbNoticeText.innerHTML = `<i class="fa-solid fa-user-shield"></i> <strong>Modo Administrativo:</strong> Visualizando y editando ${bNamesMap[currentUnit] || ('Unidad ' + currentUnit)} con permisos de Administración/Dirección.`;
             }
         } else {
             // No editable (Bimestre Cerrado o Bloqueo Global)
