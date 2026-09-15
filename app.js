@@ -1796,6 +1796,7 @@ const EnccoCloudSync = {
         }
         try {
             const nodeEndpoint = `${firebaseUrl}/encc_school_state/${nodeName}.json`;
+            const rootNodeEndpoint = `${firebaseUrl}/${nodeName}.json`;
             const timeEndpoint = `${firebaseUrl}/encc_school_state/lastModified.json`;
             const [resNode, resTime] = await Promise.all([
                 fetch(nodeEndpoint, {
@@ -1803,6 +1804,11 @@ const EnccoCloudSync = {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(partialData)
                 }),
+                fetch(rootNodeEndpoint, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(partialData)
+                }).catch(() => null),
                 fetch(timeEndpoint, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
@@ -1867,6 +1873,7 @@ const EnccoCloudSync = {
 
         try {
             const nodeEndpoint = `${firebaseUrl}/encc_school_state/${nodeName}.json`;
+            const rootNodeEndpoint = `${firebaseUrl}/${nodeName}.json`;
             const timeEndpoint = `${firebaseUrl}/encc_school_state/lastModified.json`;
 
             const [resNode, resTime] = await Promise.all([
@@ -1875,6 +1882,11 @@ const EnccoCloudSync = {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 }),
+                fetch(rootNodeEndpoint, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                }).catch(() => null),
                 fetch(timeEndpoint, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },

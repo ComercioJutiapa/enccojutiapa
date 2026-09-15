@@ -1059,11 +1059,18 @@
 
         async function fetchFromRtdbRest() {
             try {
-                // Lectura complementaria de pensumCatalog si existe en RTDB (GET pura lectura)
+                // Lectura complementaria de pensumCatalog si existe en RTDB (GET pura lectura con fallback resiliente)
                 try {
-                    const pensumRes = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/pensumCatalog.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                    let pensumRes = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/pensumCatalog.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                    if (!pensumRes.ok) {
+                        pensumRes = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/pensumCatalog.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                    }
                     if (pensumRes.ok) {
-                        const pData = await pensumRes.json();
+                        let pData = await pensumRes.json();
+                        if (!pData) {
+                            const pFallback = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/pensumCatalog.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                            if (pFallback.ok) pData = await pFallback.json();
+                        }
                         if (pData) {
                             if (Array.isArray(pData)) _sirePensumCatalog = pData.filter(Boolean);
                             else if (typeof pData === 'object') _sirePensumCatalog = Object.keys(pData).map(k => ({ id: k, ...pData[k] }));
@@ -1071,10 +1078,17 @@
                     }
                 } catch(e) {}
 
-                const url = 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json';
-                const res = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } });
+                // Lectura de estudiantes con redundancia institucional (root y encc_school_state)
+                let res = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                if (!res.ok) {
+                    res = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                }
                 if (res.ok) {
-                    const data = await res.json();
+                    let data = await res.json();
+                    if (!data) {
+                        const sFallback = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                        if (sFallback.ok) data = await sFallback.json();
+                    }
                     if (data) {
                         let list = [];
                         if (Array.isArray(data)) {
