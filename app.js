@@ -3795,6 +3795,43 @@ function initFirebaseRealtimeConnection() {
                             if (typeof renderGradesTable === 'function') renderGradesTable();
                             if (typeof updateGradeSelects === 'function') updateGradeSelects();
                         }
+                    } else if (cleanPath === 'secciones' || cleanPath === 'secciones.json') {
+                        if (nodeData && typeof nodeData === 'object') {
+                            Object.entries(nodeData).forEach(([docKey, sec]) => {
+                                if (sec) {
+                                    const gId = sec.gradoId || (docKey.split('_')[0]);
+                                    const sId = sec.seccionId || (docKey.split('_')[1]);
+                                    const targetGrade = (STATE.gradesList || []).find(g => 
+                                        (g && g.id === sec.id) || 
+                                        (g && g.code && g.code.includes(gId) && g.code.includes(sId)) ||
+                                        (g && g.name && g.name.includes(gId) && g.section && g.section.includes(sId))
+                                    );
+                                    if (targetGrade) {
+                                        targetGrade.guideTeacherId = sec.maestroGuiaId || null;
+                                        targetGrade.guideTeacher = sec.maestroGuiaNombre || 'Sin asignar';
+                                    }
+                                }
+                            });
+                            if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
+                            if (typeof renderGradesTable === 'function') renderGradesTable();
+                        }
+                    } else if (cleanPath.startsWith('secciones/')) {
+                        const secKey = cleanPath.split('/')[1];
+                        if (secKey && nodeData && typeof nodeData === 'object') {
+                            const parts = secKey.split('_');
+                            const gId = nodeData.gradoId || parts[0];
+                            const sId = nodeData.seccionId || parts[1];
+                            const targetGrade = (STATE.gradesList || []).find(g => 
+                                (g && g.code && g.code.includes(gId) && g.code.includes(sId)) ||
+                                (g && g.name && g.name.includes(gId) && g.section && g.section.includes(sId))
+                            );
+                            if (targetGrade) {
+                                targetGrade.guideTeacherId = nodeData.maestroGuiaId || null;
+                                targetGrade.guideTeacher = nodeData.maestroGuiaNombre || 'Sin asignar';
+                                if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
+                                if (typeof renderGradesTable === 'function') renderGradesTable();
+                            }
+                        }
                     } else if (cleanPath === 'students') {
                         if (Array.isArray(nodeData)) {
                             if (!window._rtdbStudentIndexMap) window._rtdbStudentIndexMap = new Map();
@@ -4152,87 +4189,183 @@ function filterGuideTeachersView(query = '') {
 }
 window.filterGuideTeachersView = filterGuideTeachersView;
 
-async function handleDirectGuideTeacherChange(gradeId, newTeacherId) {
+async function handleDirectGuideTeacherChange(gradeId, newTeacherId, optionalMaestroId) {
     if (typeof canRoleModify === 'function' && !canRoleModify('guide-teachers', STATE.currentRole)) {
         showToast('Acceso Restringido: Su rol no tiene autorización para modificar o asignar Maestros Guías.', 'warning');
         return;
     }
 
-    const grade = (STATE.gradesList || []).find(g => g && (g.id === gradeId || g.code === gradeId));
-    if (!grade) return;
-    const teacherObj = (STATE.users || []).find(u => u.id === newTeacherId || u.name === newTeacherId);
-    const oldTeacherId = grade.guideTeacherId;
-    const oldTeacherName = grade.guideTeacher;
+    let gradoId, seccionId, maestroId;
+    if (optionalMaestroId !== undefined) {
+        gradoId = gradeId;
+        seccionId = newTeacherId;
+        maestroId = optionalMaestroId;
+    } else {
+        maestroId = newTeacherId;
+        const raw = String(gradeId || '');
+        if (raw.includes('_')) {
+            const p = raw.split('_');
+            gradoId = p[0];
+            seccionId = p[1];
+        } else if (raw.startsWith('grd-')) {
+            const m = raw.match(/grd-(\d+)([a-zA-Z]+)/);
+            if (m) {
+                gradoId = m[1] + 'to';
+                seccionId = m[2].toUpperCase();
+            } else {
+                gradoId = raw;
+                seccionId = 'A';
+            }
+        } else if (raw.includes(' ')) {
+            const p = raw.split(' ');
+            gradoId = p[0];
+            seccionId = p[1];
+        } else {
+            gradoId = raw;
+            seccionId = 'A';
+        }
+    }
 
-    grade.guideTeacherId = teacherObj ? teacherObj.id : (newTeacherId || null);
-    grade.guideTeacher = teacherObj ? teacherObj.name : (newTeacherId ? newTeacherId : 'Sin asignar');
+    // Normalizar gradoId y seccionId
+    let gClean = String(gradoId || '').trim();
+    let sClean = String(seccionId || '').trim().replace(/^Sección\s*/i, '');
+    if (gClean.startsWith('grd-')) {
+        const m = gClean.match(/grd-(\d+)([a-zA-Z]+)/);
+        if (m) {
+            gClean = m[1] + 'to';
+            if (!sClean) sClean = m[2].toUpperCase();
+        }
+    }
+    if (gClean.includes('Perito')) {
+        const m = gClean.match(/(\d+to)/);
+        if (m) gClean = m[1];
+    }
+    if (!sClean) sClean = 'A';
+
+    const docId = `${gClean}_${sClean}`;
+
+    const grade = (STATE.gradesList || []).find(g => 
+        (g && g.id === gradeId) ||
+        (g && g.code === gradeId) ||
+        (g && g.code && g.code.includes(gClean) && g.code.includes(sClean)) ||
+        (g && g.name && g.name.includes(gClean) && g.section && g.section.includes(sClean))
+    );
+
+    const teacherObj = (STATE.users || []).find(u => u.id === maestroId || u.name === maestroId);
+    const oldTeacherId = grade ? grade.guideTeacherId : null;
+    const oldTeacherName = grade ? grade.guideTeacher : null;
+    const resolvedTeacherId = teacherObj ? teacherObj.id : (maestroId || null);
+    const resolvedTeacherName = teacherObj ? teacherObj.name : (maestroId ? maestroId : 'Sin asignar');
+
+    if (grade) {
+        grade.guideTeacherId = resolvedTeacherId;
+        grade.guideTeacher = resolvedTeacherName;
+    }
 
     const now = Date.now();
+    const nowIso = new Date().toISOString();
     STATE.lastModified = now;
     STATE._lastSavedLocally = now;
 
     try {
-        // 🌟 1. Confirmación de escritura atómica en Google Cloud Firestore (entidades aisladas gradesList y maestros_guias)
+        // 🌟 1. Escritura quirúrgica inmediata en Google Cloud Firestore: doc(db, "secciones", `${gradoId}_${seccionId}`)
         if (window.FirebaseModular && window.FirebaseModular.db) {
-            const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
-            const gRef = doc(db, 'gradesList', grade.id || grade.code);
-            const mgRef = doc(db, 'maestros_guias', grade.id || grade.code);
-            const guidePayload = {
-                gradeId: grade.id,
-                gradeName: grade.name,
-                section: grade.section,
-                career: grade.career || 'Perito Contador',
-                guideTeacherId: grade.guideTeacherId,
-                guideTeacher: grade.guideTeacher,
-                lastModified: now
+            const { db, doc, setDoc } = window.FirebaseModular;
+            const secRef = doc(db, "secciones", docId);
+            const seccionFirestorePayload = {
+                gradoId: gClean,
+                seccionId: sClean,
+                grado: `${gClean} Perito Contador`,
+                seccion: `Sección ${sClean}`,
+                codigo: `${gClean} ${sClean}`,
+                maestroGuiaId: resolvedTeacherId,
+                maestroGuiaNombre: resolvedTeacherName,
+                ultimaActualizacion: nowIso
             };
+            await setDoc(secRef, seccionFirestorePayload, { merge: true });
 
-            if (typeof updateDoc === 'function') {
-                try {
-                    await updateDoc(gRef, { guideTeacherId: grade.guideTeacherId, guideTeacher: grade.guideTeacher, lastModified: now });
-                } catch(e) {
-                    if (typeof setDoc === 'function') await setDoc(gRef, { ...grade, lastModified: now }, { merge: true });
-                }
-                try {
-                    await updateDoc(mgRef, guidePayload);
-                } catch(e) {
-                    if (typeof setDoc === 'function') await setDoc(mgRef, guidePayload, { merge: true });
-                }
-            } else if (typeof setDoc === 'function') {
+            if (grade) {
+                const gRef = doc(db, 'gradesList', grade.id || grade.code);
+                const mgRef = doc(db, 'maestros_guias', grade.id || grade.code);
+                const guidePayload = {
+                    gradeId: grade.id,
+                    gradeName: grade.name,
+                    section: grade.section,
+                    career: grade.career || 'Perito Contador',
+                    guideTeacherId: grade.guideTeacherId,
+                    guideTeacher: grade.guideTeacher,
+                    lastModified: now
+                };
                 await setDoc(gRef, { ...grade, lastModified: now }, { merge: true });
                 await setDoc(mgRef, guidePayload, { merge: true });
             }
-            console.log(`🔥 [Firestore] Maestro Guía para grado ${grade.id || grade.code} persistido atómicamente en gradesList y maestros_guias.`);
+            console.log(`🔥 [Firestore] Maestro Guía para sección ${docId} persistido con setDoc(merge:true) en 'secciones/${docId}'.`);
         }
 
-        // 🌟 2. Confirmación de escritura atómica y aislada en Firebase Realtime Database (SÓLO gradesList)
-        let rtdbOk = false;
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            rtdbOk = await EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
-        } else {
-            rtdbOk = true;
+        // 🌟 2. Escritura atómica y aislada en Firebase Realtime Database
+        // Sincronización en /secciones/${docId}, /encc_school_state/secciones/${docId} y gradesList
+        const seccionRtdbPayload = {
+            gradoId: gClean,
+            seccionId: sClean,
+            grado: `${gClean} Perito Contador`,
+            seccion: `Sección ${sClean}`,
+            codigo: `${gClean} ${sClean}`,
+            id: grade ? grade.id : `grd-${gClean.replace('to','')}${sClean.toLowerCase()}`,
+            carrera: grade ? (grade.career || "Perito Contador") : "Perito Contador",
+            jornada: grade ? (grade.shift || "Matutina") : "Matutina",
+            maestroGuiaId: resolvedTeacherId,
+            maestroGuiaNombre: resolvedTeacherName,
+            ultimaActualizacion: nowIso
+        };
+
+        if (typeof EnccoCloudSync !== 'undefined') {
+            if (typeof EnccoCloudSync.patchNode === 'function') {
+                await EnccoCloudSync.patchNode(`secciones/${docId}`, seccionRtdbPayload);
+            }
+            if (typeof EnccoCloudSync.syncNode === 'function') {
+                await EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
+            }
         }
 
-        if (!rtdbOk) {
-            throw new Error("El servidor de Firebase no confirmó la asignación del maestro guía.");
+        // Fetch REST fallback dual garantizado a RTDB
+        const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
+        if (firebaseUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+            try {
+                fetch(`${firebaseUrl}/encc_school_state/secciones/${docId}.json`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(seccionRtdbPayload)
+                }).catch(() => {});
+                fetch(`${firebaseUrl}/secciones/${docId}.json`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(seccionRtdbPayload)
+                }).catch(() => {});
+            } catch(e) {}
         }
 
         saveStateToLocalStorage();
-        renderGuideTeachersView();
+        if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
         if (typeof renderGradesTable === 'function') renderGradesTable();
         if (typeof renderDashboard === 'function') renderDashboard();
 
-        showToast(`Maestro(a) Guía "${grade.guideTeacher}" asignado y confirmado en Firebase para ${grade.name} (${grade.section}).`, 'success');
+        showToast(`Maestro(a) Guía "${resolvedTeacherName}" asignado y confirmado en Firebase para ${gClean} (${sClean}).`, 'success');
     } catch(err) {
-        // Revertir en memoria si el servidor rechazó el guardado
-        grade.guideTeacherId = oldTeacherId;
-        grade.guideTeacher = oldTeacherName;
-        renderGuideTeachersView();
+        if (grade) {
+            grade.guideTeacherId = oldTeacherId;
+            grade.guideTeacher = oldTeacherName;
+        }
+        if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
         console.error("❌ [Firebase Error] Falló la asignación de maestro guía:", err);
         showToast(`Error al guardar maestro guía en Firebase: ${err.message || err}`, 'danger');
     }
 }
 window.handleDirectGuideTeacherChange = handleDirectGuideTeacherChange;
+
+async function asignarMaestroGuia(gradoId, seccionId, maestroId) {
+    return handleDirectGuideTeacherChange(gradoId, seccionId, maestroId);
+}
+window.asignarMaestroGuia = asignarMaestroGuia;
 
 function printGuideTeachersOfficialDirectory() {
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});

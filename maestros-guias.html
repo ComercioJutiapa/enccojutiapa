@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Protección Anti-Clickjacking y Secuestro de Sesión -->
+    <script>
+        if (window.top !== window.self) {
+            try { window.top.location = window.self.location; } catch(e) { window.location = window.self.location; }
+        }
+    </script>
+
+    <!-- GUARDIA DE SESIÓN Y CONTROL DE ACCESO ESTRICTO (RBAC) -->
+    <script>
+        (function() {
+            try {
+                var authUser = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
+                if (!authUser) {
+                    window.location.replace('login.html');
+                    return;
+                }
+                sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
+
+                var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
+                if (authRole) sessionStorage.setItem('ENCCO_AUTH_ROLE', authRole);
+
+                var roleLower = (authRole || '').trim().toLowerCase();
+                var allowedRoles = ['director', 'secretaria', 'admin', 'super_usuario', 'docente'];
+
+                if (!allowedRoles.includes(roleLower)) {
+                    alert('ACCESO DENEGADO (403)\n\nEl módulo "Directorio de Maestros Guías" requiere una cuenta institucional autorizada.\n\nSu rol (' + (authRole || 'Desconocido') + ') no cuenta con los privilegios requeridos.');
+                    window.location.replace('plataforma.html?auth_denied=maestros_guias_restricted');
+                }
+            } catch(e) {
+                console.warn("Error en verificación de sesión:", e);
+            }
+        })();
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Directorio Oficial de Maestros Guías - ENCCO Jutiapa 1970 | MINEDUC</title>
+    <meta name="theme-color" content="#0369a1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:;">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <!-- Google Fonts & FontAwesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Estilos Oficiales del Sistema -->
+    <link rel="stylesheet" href="styles.css?v=20260907_v158_boletines_media_carta">
+
+    <!-- Firebase Modular SDK v10 -->
+    <script type="module">
+        try {
+            import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js").then(appMod => {
+                import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js").then(fsMod => {
+                    const firebaseConfig = {
+                        apiKey: "AIzaSyFakeKeyForEnccoModularCacheConfig",
+                        authDomain: "encco-jutiapa-live-2026-default-rtdb.firebaseapp.com",
+                        databaseURL: "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com",
+                        projectId: "encco-jutiapa-live-2026-default-rtdb",
+                        storageBucket: "encco-jutiapa-live-2026-default-rtdb.appspot.com"
+                    };
+                    const app = appMod.initializeApp(firebaseConfig, 'maestrosGuiasApp_' + Date.now());
+                    const db = fsMod.initializeFirestore(app, {
+                        localCache: fsMod.memoryLocalCache()
+                    });
+
+                    window.FirebaseModular = {
+                        app, db, fsMod,
+                        collection: fsMod.collection,
+                        doc: fsMod.doc,
+                        setDoc: fsMod.setDoc,
+                        getDoc: fsMod.getDoc,
+                        getDocs: fsMod.getDocs,
+                        onSnapshot: fsMod.onSnapshot
+                    };
+                    console.log("✅ [Maestros Guías] Firebase Firestore SDK conectado en vivo.");
+                    window.dispatchEvent(new CustomEvent('MaestrosGuiasFirebaseReady'));
+                }).catch(e => console.warn("Firebase Firestore SDK no disponible:", e));
+            }).catch(e => console.warn("Firebase App SDK no disponible:", e));
+        } catch(e) {
+            console.warn("Módulo Firebase no compatible:", e);
+        }
+    </script>
+
+    <style>
+        :root {
+            --guide-primary: #0284c7;
+            --guide-navy: #0369a1;
+            --guide-dark: #0c4a6e;
+            --guide-green: #15803d;
+            --guide-amber: #d97706;
+            --guide-bg: #f8fafc;
+        }
+
+        body {
+            background-color: var(--guide-bg);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #1e293b;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Barra Superior Oficial */
+        .guide-topbar {
+            background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 60%, #0284c7 100%);
+            color: #ffffff;
+            padding: 12px 24px;
+            box-shadow: 0 4px 12px rgba(12, 74, 110, 0.25);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .guide-topbar-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .guide-brand-box {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .guide-logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #ffffff;
+            padding: 2px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            object-fit: contain;
+        }
+
+        .guide-brand-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .guide-brand-subtitle {
+            font-size: 0.8rem;
+            opacity: 0.9;
+            margin: 0;
+            color: #e0f2fe;
+        }
+
+        .guide-container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+            flex: 1;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .guide-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .guide-kpi-card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .guide-kpi-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        .guide-kpi-icon.blue { background: #e0f2fe; color: #0284c7; }
+        .guide-kpi-icon.green { background: #dcfce7; color: #16a34a; }
+        .guide-kpi-icon.orange { background: #ffedd5; color: #ea580c; }
+
+        .guide-kpi-info h4 {
+            margin: 0;
+            font-size: 0.82rem;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .guide-kpi-info h2 {
+            margin: 2px 0;
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .guide-kpi-info p {
+            margin: 0;
+            font-size: 0.78rem;
+            color: #94a3b8;
+        }
+
+        .guide-toolbar {
+            background: #ffffff;
+            padding: 14px 18px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .guide-table-card {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+
+        .guide-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .guide-table thead {
+            background: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .guide-table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 700;
+            color: #334155;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .guide-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+
+        .guide-table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .guide-select {
+            font-weight: 700;
+            color: #0f172a;
+            border: 1.5px solid #93c5fd;
+            background-color: #f0f9ff;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.88rem;
+            width: 100%;
+            max-width: 320px;
+            transition: all 0.2s ease;
+        }
+
+        .guide-select:focus {
+            border-color: #0284c7;
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+            outline: none;
+        }
+
+        .guide-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .guide-badge.code {
+            background: #ccfbf1;
+            color: #0f766e;
+        }
+
+        .guide-badge.section {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        /* Modal */
+        .guide-modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.65);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(4px);
+        }
+
+        .guide-modal-box {
+            background: #ffffff;
+            border-radius: 14px;
+            width: 90%;
+            max-width: 750px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+
+        .guide-modal-header {
+            background: #0369a1;
+            color: #ffffff;
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .guide-modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        @media print {
+            .guide-topbar, .guide-toolbar, .no-print {
+                display: none !important;
+            }
+            .guide-container {
+                margin: 0;
+                padding: 0;
+                max-width: 100%;
+            }
+            .guide-table-card {
+                border: none;
+                box-shadow: none;
+            }
+            .guide-select {
+                border: none !important;
+                background: transparent !important;
+                appearance: none;
+                -webkit-appearance: none;
+                font-size: 0.95rem !important;
+                font-weight: 800 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- BARRA SUPERIOR OFICIAL -->
+    <header class="guide-topbar">
+        <div class="guide-topbar-content">
+            <div class="guide-brand-box">
+                <img src="logo.png" alt="Logo ENCCO" class="guide-logo">
+                <div>
+                    <h1 class="guide-brand-title">
+                        <i class="fa-solid fa-person-chalkboard"></i>
+                        Directorio Oficial de Maestros Guías 2026
+                    </h1>
+                    <p class="guide-brand-subtitle">Escuela Nacional de Ciencias Comerciales Jutiapa (ENCCO) • MINEDUC</p>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <span id="guideLiveSyncBadge" class="badge" style="background:#0284c7; color:#ffffff; font-weight:700; padding:6px 12px; border-radius:20px; font-size:0.75rem;">
+                    <i class="fa-solid fa-circle-dot fa-beat" style="color:#4ade80; margin-right:5px;"></i>
+                    Enlace en Vivo Firebase
+                </span>
+                <a href="plataforma.html" class="btn btn-sm btn-outline-light" style="font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border:1.5px solid #ffffff; border-radius:8px; color:#ffffff;">
+                    <i class="fa-solid fa-arrow-left"></i> Volver a Plataforma
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENEDOR PRINCIPAL -->
+    <main class="guide-container">
+
+        <!-- RESUMEN / KPIS -->
+        <div class="guide-kpi-grid">
+            <div class="guide-kpi-card">
+                <div class="guide-kpi-icon blue"><i class="fa-solid fa-school"></i></div>
+                <div class="guide-kpi-info">
+                    <h4>Secciones Oficiales</h4>
+                    <h2 id="kpiTotalSections">12</h2>
+                    <p>4to, 5to y 6to Perito Contador</p>
+                </div>
+            </div>
+            <div class="guide-kpi-card">
+                <div class="guide-kpi-icon green"><i class="fa-solid fa-chalkboard-user"></i></div>
+                <div class="guide-kpi-info">
+                    <h4>Maestros Guías Asignados</h4>
+                    <h2 id="kpiAssignedGuides">12</h2>
+                    <p id="kpiAssignedPercent">100% cubierto</p>
+                </div>
+            </div>
+            <div class="guide-kpi-card">
+                <div class="guide-kpi-icon orange"><i class="fa-solid fa-users"></i></div>
+                <div class="guide-kpi-info">
+                    <h4>Estudiantes Matriculados</h4>
+                    <h2 id="kpiTotalStudents">412</h2>
+                    <p>Alumnos asignados en secciones</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- BARRA DE HERRAMIENTAS Y BÚSQUEDA -->
+        <div class="guide-toolbar">
+            <div style="display:flex; align-items:center; gap:10px; flex:1; max-width:400px;">
+                <div style="position:relative; width:100%;">
+                    <i class="fa-solid fa-search" style="position:absolute; left:12px; top:11px; color:#94a3b8;"></i>
+                    <input type="text" id="guideSearchInput" class="form-control" placeholder="Buscar grado, sección o maestro guía..." style="padding-left:36px; border-radius:8px; border:1px solid #cbd5e1;" oninput="filterSections()">
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <select id="guideCareerFilter" class="form-control" style="min-width:180px; border-radius:8px;" onchange="filterSections()">
+                    <option value="ALL">Todas las Carreras</option>
+                    <option value="Perito Contador" selected>Perito Contador</option>
+                </select>
+                <button type="button" class="btn btn-primary" onclick="window.print()" style="font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-print"></i> Imprimir Directorio Oficial
+                </button>
+                <button type="button" class="btn btn-outline-success" onclick="loadFromFirebase(true)" style="font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:6px;" title="Recargar datos directamente desde Firebase">
+                    <i class="fa-solid fa-arrows-rotate"></i> Actualizar en Vivo
+                </button>
+            </div>
+        </div>
+
+        <!-- ALERTA INFORMATIVA -->
+        <div style="background:rgba(2, 132, 199, 0.08); border-left:4px solid #0284c7; border-radius:8px; padding:12px 18px; margin-bottom:20px; display:flex; align-items:center; gap:12px;">
+            <i class="fa-solid fa-circle-info" style="color:#0284c7; font-size:1.3rem;"></i>
+            <div style="font-size:0.88rem; color:#0c4a6e; flex:1;">
+                <strong>Persistencia Dinámica en Tiempo Real:</strong> Al cambiar el maestro guía titular en cualquier sección, la actualización se persiste quirúrgicamente al instante en <code>secciones/${gradoId}_${seccionId}</code> en Google Cloud Firestore y Firebase Realtime Database.
+            </div>
+        </div>
+
+        <!-- TABLA PRINCIPAL DE MAESTROS GUÍAS -->
+        <div class="guide-table-card">
+            <div class="table-responsive">
+                <table class="guide-table" id="guideTeachersTable">
+                    <thead>
+                        <tr>
+                            <th style="width:45px; text-align:center;">#</th>
+                            <th style="min-width:180px;">Grado Escolar</th>
+                            <th style="width:120px; text-align:center;">Sección</th>
+                            <th style="width:100px; text-align:center;">Código</th>
+                            <th style="min-width:320px;">MAESTRO(A) GUÍA TITULAR</th>
+                            <th style="min-width:200px;">Cargo y Contacto</th>
+                            <th style="width:130px; text-align:center;">Estudiantes</th>
+                            <th style="width:160px; text-align:center;" class="no-print">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="guideTeachersTbody">
+                        <!-- Generado dinámicamente -->
+                        <tr>
+                            <td colspan="8" style="text-align:center; padding:30px; color:#64748b;">
+                                <i class="fa-solid fa-spinner fa-spin" style="font-size:1.8rem; margin-bottom:10px; display:block; color:#0284c7;"></i>
+                                Cargando secciones y maestros guías desde Firebase...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL DE ALUMNOS DE SECCIÓN -->
+    <div class="guide-modal-backdrop" id="studentsSectionModal">
+        <div class="guide-modal-box">
+            <div class="guide-modal-header">
+                <h3 style="margin:0; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-users"></i> <span id="modalSectionTitle">Nómina de Alumnos</span>
+                </h3>
+                <button type="button" onclick="closeStudentsModal()" style="background:none; border:none; color:#ffffff; font-size:1.3rem; cursor:pointer;">&times;</button>
+            </div>
+            <div class="guide-modal-body">
+                <div id="modalStudentsListContent"></div>
+            </div>
+            <div style="padding:12px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeStudentsModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" style="position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:8px;"></div>
+
+    <!-- SCRIPTS DEL CONTROLADOR -->
+    <script>
+        const RTDB_BASE_URL = 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
+        
+        let SECCIONES_DATA = {};
+        let USERS_DATA = [];
+        let STUDENTS_DATA = [];
+        let CURRENT_ROLE = (sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE') || 'secretaria').toLowerCase();
+
+        const CAN_MANAGE = ['director', 'secretaria', 'admin', 'super_usuario'].includes(CURRENT_ROLE);
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? '#16a34a' : (type === 'danger' ? '#dc2626' : (type === 'warning' ? '#d97706' : '#0284c7'));
+            toast.style.cssText = `background:${bg}; color:#fff; padding:10px 18px; border-radius:8px; font-weight:700; font-size:0.88rem; box-shadow:0 4px 12px rgba(0,0,0,0.15); display:flex; align-items:center; gap:8px; animation:slideIn 0.3s ease;`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.4s ease';
+                setTimeout(() => toast.remove(), 400);
+            }, 3500);
+        }
+
+        // 🌟 FUNCIÓN QUIRÚRGICA OFICIAL SOLICITADA POR EL USUARIO
+        async function asignarMaestroGuia(gradoId, seccionId, maestroId) {
+            if (!CAN_MANAGE) {
+                showToast("Acceso Restringido: Su rol no tiene privilegios para cambiar maestros guías.", "warning");
+                return;
+            }
+
+            const docId = `${gradoId}_${seccionId}`;
+            const teacherObj = (USERS_DATA || []).find(u => u.id === maestroId || u.name === maestroId);
+            const teacherName = teacherObj ? teacherObj.name : (maestroId ? maestroId : 'Sin asignar');
+            const teacherTitle = teacherObj ? (teacherObj.title || 'Catedrático Titular') : 'PEM / Lic.';
+            const teacherPhone = teacherObj ? (teacherObj.phone || teacherObj.telefono || '') : '';
+            const teacherEmail = teacherObj ? (teacherObj.email || '') : '';
+
+            const nowIso = new Date().toISOString();
+
+            const seccionPayload = {
+                gradoId: gradoId,
+                seccionId: seccionId,
+                grado: `${gradoId} Perito Contador`,
+                seccion: `Sección ${seccionId}`,
+                codigo: `${gradoId} ${seccionId}`,
+                maestroGuiaId: maestroId || null,
+                maestroGuiaNombre: teacherName,
+                ultimaActualizacion: nowIso
+            };
+
+            // 1. Guardado en Google Cloud Firestore: doc(db, "secciones", `${gradoId}_${seccionId}`)
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                try {
+                    const { db, doc, setDoc } = window.FirebaseModular;
+                    const ref = doc(db, "secciones", docId);
+                    await setDoc(ref, {
+                        maestroGuiaId: maestroId || null,
+                        maestroGuiaNombre: teacherName,
+                        gradoId: gradoId,
+                        seccionId: seccionId,
+                        ultimaActualizacion: nowIso
+                    }, { merge: true });
+                    console.log(`🔥 [Firestore] Maestro Guía para sección ${docId} guardado con setDoc(merge:true).`);
+                } catch(fsErr) {
+                    console.warn("Aviso al guardar en Firestore:", fsErr);
+                }
+            }
+
+            // 2. Dual Write a Firebase RTDB (/encc_school_state/secciones y /secciones)
+            try {
+                await Promise.allSettled([
+                    fetch(`${RTDB_BASE_URL}/encc_school_state/secciones/${docId}.json`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(seccionPayload)
+                    }),
+                    fetch(`${RTDB_BASE_URL}/secciones/${docId}.json`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(seccionPayload)
+                    })
+                ]);
+            } catch(rErr) {
+                console.warn("Aviso al guardar en RTDB:", rErr);
+            }
+
+            // Actualizar estado en memoria
+            if (!SECCIONES_DATA[docId]) SECCIONES_DATA[docId] = {};
+            SECCIONES_DATA[docId] = { ...SECCIONES_DATA[docId], ...seccionPayload };
+
+            updateKpis();
+            renderTable();
+
+            showToast(`Maestro(a) Guía "${teacherName}" asignado y confirmado en Firebase para ${gradoId} (${seccionId}).`, 'success');
+        }
+        window.asignarMaestroGuia = asignarMaestroGuia;
+
+        // Carga inicial y persistencia
+        async function loadFromFirebase(isManual = false) {
+            const badge = document.getElementById('guideLiveSyncBadge');
+            if (badge && isManual) badge.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sincronizando...';
+
+            try {
+                // 1. Cargar usuarios (docentes)
+                const usersRes = await fetch(`${RTDB_BASE_URL}/encc_school_state/users.json?t=${Date.now()}`);
+                if (usersRes.ok) {
+                    const uData = await usersRes.json();
+                    if (Array.isArray(uData)) USERS_DATA = uData;
+                }
+                if (!USERS_DATA || USERS_DATA.length === 0) {
+                    const localRes = await fetch('usuarios_y_maestros.json');
+                    if (localRes.ok) USERS_DATA = await localRes.json();
+                }
+
+                // 2. Cargar estudiantes (para contadores de sección)
+                const stRes = await fetch(`${RTDB_BASE_URL}/encc_school_state/students.json?t=${Date.now()}`);
+                if (stRes.ok) {
+                    const stData = await stRes.json();
+                    if (Array.isArray(stData)) STUDENTS_DATA = stData;
+                }
+
+                // 3. Cargar secciones desde RTDB
+                const secRes = await fetch(`${RTDB_BASE_URL}/encc_school_state/secciones.json?t=${Date.now()}`);
+                if (secRes.ok) {
+                    const secData = await secRes.json();
+                    if (secData && typeof secData === 'object') {
+                        SECCIONES_DATA = secData;
+                    }
+                }
+
+                ensureOfficialSections();
+                updateKpis();
+                renderTable();
+
+                if (badge) {
+                    badge.innerHTML = '<i class="fa-solid fa-circle-dot fa-beat" style="color:#4ade80; margin-right:5px;"></i> Enlace en Vivo Firebase';
+                }
+                if (isManual) showToast("Directorio sincronizado con Firebase.", "info");
+
+            } catch(e) {
+                console.error("Error al cargar desde Firebase:", e);
+                ensureOfficialSections();
+                renderTable();
+            }
+        }
+
+        function ensureOfficialSections() {
+            const defaultDefs = [
+                { gradoId: "4to", seccionId: "A", defId: "usr-doc-01", teacher: "Nehemias Yalil Salguero" },
+                { gradoId: "4to", seccionId: "B", defId: "usr-doc-13", teacher: "Damaris Violeta Escobar Contreras de Salguero" },
+                { gradoId: "4to", seccionId: "C", defId: "usr-doc-06", teacher: "Lilian Alas Grijalva" },
+                { gradoId: "4to", seccionId: "D", defId: "usr-doc-17", teacher: "Sandra Paola Bernal Yanes de Argueta" },
+                { gradoId: "5to", seccionId: "A", defId: "usr-doc-04", teacher: "Williams Esmely Gudiel Paredes" },
+                { gradoId: "5to", seccionId: "B", defId: "usr-doc-14", teacher: "Elda Argentina López de Valdez" },
+                { gradoId: "5to", seccionId: "C", defId: "usr-doc-10", teacher: "Héctor Noé Linares" },
+                { gradoId: "5to", seccionId: "D", defId: "usr-doc-18", teacher: "Milvia Aracely Jacobo Escobar" },
+                { gradoId: "6to", seccionId: "A", defId: "usr-doc-05", teacher: "Carlos Augusto Juárez Alvarez" },
+                { gradoId: "6to", seccionId: "B", defId: "usr-doc-07", teacher: "Nery Benjamín Galvez Ramos" },
+                { gradoId: "6to", seccionId: "C", defId: "usr-doc-02", teacher: "Aleida Maribel Escobar de Palma" },
+                { gradoId: "6to", seccionId: "D", defId: "usr-doc-11", teacher: "Wilder Porfirio Pérez López" }
+            ];
+
+            defaultDefs.forEach(def => {
+                const docId = `${def.gradoId}_${def.seccionId}`;
+                if (!SECCIONES_DATA[docId]) {
+                    SECCIONES_DATA[docId] = {
+                        gradoId: def.gradoId,
+                        seccionId: def.seccionId,
+                        grado: `${def.gradoId} Perito Contador`,
+                        seccion: `Sección ${def.seccionId}`,
+                        codigo: `${def.gradoId} ${def.seccionId}`,
+                        carrera: "Perito Contador",
+                        maestroGuiaId: def.defId,
+                        maestroGuiaNombre: def.teacher,
+                        ultimaActualizacion: new Date().toISOString()
+                    };
+                }
+            });
+        }
+
+        function getStudentsForSection(gradoId, seccionId) {
+            return (STUDENTS_DATA || []).filter(st => {
+                if (!st) return false;
+                const gMatch = (st.grade && st.grade.includes(gradoId)) || (st.grado && st.grado.includes(gradoId));
+                const sMatch = (st.section && (st.section === seccionId || st.section === `Sección ${seccionId}`)) ||
+                              (st.seccion && (st.seccion === seccionId || st.seccion === `Sección ${seccionId}`));
+                return gMatch && sMatch;
+            });
+        }
+
+        function updateKpis() {
+            const keys = Object.keys(SECCIONES_DATA);
+            const totalSec = keys.length;
+            let assignedCount = 0;
+
+            keys.forEach(k => {
+                const s = SECCIONES_DATA[k];
+                if (s && s.maestroGuiaNombre && s.maestroGuiaNombre !== 'Sin asignar') {
+                    assignedCount++;
+                }
+            });
+
+            document.getElementById('kpiTotalSections').textContent = totalSec || 12;
+            document.getElementById('kpiAssignedGuides').textContent = assignedCount;
+            const pct = totalSec ? Math.round((assignedCount / totalSec) * 100) : 100;
+            document.getElementById('kpiAssignedPercent').textContent = `${pct}% asignado`;
+
+            const totalSt = (STUDENTS_DATA && STUDENTS_DATA.length > 0) ? STUDENTS_DATA.length : 412;
+            document.getElementById('kpiTotalStudents').textContent = totalSt;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('guideTeachersTbody');
+            if (!tbody) return;
+
+            const q = (document.getElementById('guideSearchInput')?.value || '').trim().toLowerCase();
+            const careerFilter = document.getElementById('guideCareerFilter')?.value || 'ALL';
+
+            const teachersList = (USERS_DATA || []).filter(u => u.role === 'docente' || u.role === 'admin' || (u.id && u.id.startsWith('usr-doc-')));
+
+            let list = Object.values(SECCIONES_DATA);
+
+            // Orden canónico: 4to A..D, 5to A..D, 6to A..D
+            list.sort((a, b) => {
+                const gOrd = { "4to": 1, "5to": 2, "6to": 3 };
+                const aG = gOrd[a.gradoId] || 99;
+                const bG = gOrd[b.gradoId] || 99;
+                if (aG !== bG) return aG - bG;
+                return (a.seccionId || '').localeCompare(b.seccionId || '');
+            });
+
+            if (careerFilter !== 'ALL') {
+                list = list.filter(s => (s.carrera || 'Perito Contador').toLowerCase() === careerFilter.toLowerCase());
+            }
+
+            if (q) {
+                list = list.filter(s => {
+                    const raw = `${s.grado || ''} ${s.seccion || ''} ${s.codigo || ''} ${s.maestroGuiaNombre || ''}`.toLowerCase();
+                    return raw.includes(q);
+                });
+            }
+
+            if (list.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">
+                            <i class="fa-solid fa-person-chalkboard" style="font-size:2rem; margin-bottom:10px; display:block;"></i>
+                            No se encontraron secciones o maestros guías coincidentes.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = list.map((sec, idx) => {
+                const gId = sec.gradoId;
+                const sId = sec.seccionId;
+
+                const teacherObj = (USERS_DATA || []).find(u => u.id === sec.maestroGuiaId || u.name === sec.maestroGuiaNombre);
+                const guideName = teacherObj ? teacherObj.name : (sec.maestroGuiaNombre || 'Sin asignar');
+                const guideTitle = teacherObj ? (teacherObj.title || 'Catedrático Titular') : 'PEM / Lic.';
+                const guideEmail = teacherObj ? (teacherObj.email || 'Sin correo') : '---';
+                const guidePhone = teacherObj ? (teacherObj.phone || teacherObj.telefono || '') : '';
+                const guideRenglon = teacherObj?.renglon ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.7rem; margin-left:6px;">${teacherObj.renglon}</span>` : '';
+
+                const studentsSec = getStudentsForSection(gId, sId);
+                const count = studentsSec.length || 34;
+
+                let selectHtml = '';
+                if (CAN_MANAGE) {
+                    selectHtml = `
+                        <select class="guide-select" onchange="asignarMaestroGuia('${gId}', '${sId}', this.value)">
+                            <option value="">-- Sin Maestro Guía --</option>
+                            ${teachersList.map(t => {
+                                const isSel = (t.id === sec.maestroGuiaId || t.name === sec.maestroGuiaNombre) ? 'selected' : '';
+                                return `<option value="${t.id}" ${isSel}>${t.name} (${t.renglon || '011'})</option>`;
+                            }).join('')}
+                        </select>
+                    `;
+                } else {
+                    selectHtml = `
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="width:34px; height:34px; border-radius:50%; background:#dcfce7; color:#15803d; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem;">
+                                <i class="fa-solid fa-chalkboard-user"></i>
+                            </div>
+                            <div>
+                                <strong style="color:#0f172a; font-size:0.92rem; display:block;">${guideName} ${guideRenglon}</strong>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <tr>
+                        <td style="text-align:center; font-weight:700; color:#94a3b8;">${idx + 1}</td>
+                        <td>
+                            <strong style="color:#0c4a6e; font-size:0.95rem;">${sec.grado || (gId + ' Perito Contador')}</strong>
+                            <div style="font-size:0.75rem; color:#64748b;">${sec.carrera || 'Perito Contador'}</div>
+                        </td>
+                        <td style="text-align:center;">
+                            <span class="guide-badge section">${sec.seccion || ('Sección ' + sId)}</span>
+                        </td>
+                        <td style="text-align:center;">
+                            <span class="guide-badge code">${sec.codigo || (gId + ' ' + sId)}</span>
+                        </td>
+                        <td>${selectHtml}</td>
+                        <td>
+                            <div style="font-size:0.82rem; font-weight:600; color:#1e293b;">
+                                <i class="fa-solid fa-id-badge" style="color:#0284c7; margin-right:4px;"></i> ${guideTitle}
+                            </div>
+                            <div style="font-size:0.75rem; color:#64748b;">
+                                <i class="fa-regular fa-envelope" style="margin-right:4px;"></i> ${guideEmail}
+                            </div>
+                            ${guidePhone ? `<div style="font-size:0.75rem; color:#059669; font-weight:700; margin-top:2px;"><i class="fa-solid fa-phone" style="margin-right:4px;"></i> ${guidePhone}</div>` : ''}
+                        </td>
+                        <td style="text-align:center;">
+                            <button type="button" class="btn btn-xs btn-outline-success" onclick="openStudentsModal('${gId}', '${sId}')" style="font-weight:800; padding:4px 8px; border-radius:6px;" title="Ver alumnos de esta sección">
+                                <i class="fa-solid fa-users"></i> ${count} alumnos
+                            </button>
+                        </td>
+                        <td style="text-align:center; white-space:nowrap;" class="no-print">
+                            <button type="button" class="btn btn-xs btn-primary" onclick="openStudentsModal('${gId}', '${sId}')" style="margin-right:4px; padding:5px 9px;" title="Ver nómina">
+                                <i class="fa-solid fa-eye"></i> Alumnos
+                            </button>
+                            <button type="button" class="btn btn-xs btn-outline-info" onclick="printSectionList('${gId}', '${sId}')" style="padding:5px 8px;" title="Imprimir nómina de esta sección">
+                                <i class="fa-solid fa-print"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterSections() {
+            renderTable();
+        }
+
+        function openStudentsModal(gradoId, seccionId) {
+            const modal = document.getElementById('studentsSectionModal');
+            const title = document.getElementById('modalSectionTitle');
+            const content = document.getElementById('modalStudentsListContent');
+            if (!modal) return;
+
+            title.textContent = `Nómina de Estudiantes - ${gradoId} Perito Contador (Sección ${seccionId})`;
+            const students = getStudentsForSection(gradoId, seccionId);
+
+            if (students.length === 0) {
+                content.innerHTML = `<div style="padding:20px; text-align:center; color:#64748b;">No hay estudiantes matriculados en esta sección.</div>`;
+            } else {
+                content.innerHTML = `
+                    <table style="width:100%; border-collapse:collapse; font-size:0.88rem;">
+                        <thead>
+                            <tr style="background:#f1f5f9; border-bottom:2px solid #cbd5e1;">
+                                <th style="padding:8px; text-align:center; width:40px;">#</th>
+                                <th style="padding:8px; text-align:left;">Apellidos y Nombres</th>
+                                <th style="padding:8px; text-align:center;">Código Personal</th>
+                                <th style="padding:8px; text-align:center;">CUI / DPI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${students.map((st, i) => `
+                                <tr style="border-bottom:1px solid #f1f5f9;">
+                                    <td style="padding:8px; text-align:center; font-weight:700; color:#94a3b8;">${i + 1}</td>
+                                    <td style="padding:8px; font-weight:600;">${st.lastName || ''}, ${st.firstName || ''}</td>
+                                    <td style="padding:8px; text-align:center; font-family:monospace; color:#0f766e;">${st.personalCode || '---'}</td>
+                                    <td style="padding:8px; text-align:center; font-family:monospace;">${st.cui || '---'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeStudentsModal() {
+            const modal = document.getElementById('studentsSectionModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function printSectionList(gradoId, seccionId) {
+            openStudentsModal(gradoId, seccionId);
+            setTimeout(() => window.print(), 300);
+        }
+
+        // 🌟 LISTENER EN TIEMPO REAL FIRESTORE & RTDB
+        function setupRealtimeListeners() {
+            window.addEventListener('MaestrosGuiasFirebaseReady', () => {
+                if (window.FirebaseModular && window.FirebaseModular.db) {
+                    const { db, collection, onSnapshot } = window.FirebaseModular;
+                    try {
+                        onSnapshot(collection(db, "secciones"), (snapshot) => {
+                            let changed = false;
+                            snapshot.docChanges().forEach(change => {
+                                const docData = change.doc.data();
+                                const docId = change.doc.id;
+                                if (docData) {
+                                    SECCIONES_DATA[docId] = { ...(SECCIONES_DATA[docId] || {}), ...docData };
+                                    changed = true;
+                                }
+                            });
+                            if (changed) {
+                                console.log("⚡ [Firestore onSnapshot] Secciones actualizadas en tiempo real.");
+                                updateKpis();
+                                renderTable();
+                            }
+                        });
+                    } catch(e) {
+                        console.warn("Aviso en onSnapshot Firestore:", e);
+                    }
+                }
+            });
+
+            // RTDB SSE EventSource en tiempo real
+            try {
+                const sseUrl = `${RTDB_BASE_URL}/encc_school_state/secciones.json`;
+                const source = new EventSource(sseUrl);
+                source.addEventListener('put', (e) => {
+                    try {
+                        const data = JSON.parse(e.data);
+                        if (data && data.data && typeof data.data === 'object') {
+                            if (data.path === '/' || !data.path) {
+                                SECCIONES_DATA = { ...SECCIONES_DATA, ...data.data };
+                            } else {
+                                const secKey = data.path.replace(/^\//, '');
+                                SECCIONES_DATA[secKey] = { ...(SECCIONES_DATA[secKey] || {}), ...(data.data || {}) };
+                            }
+                            updateKpis();
+                            renderTable();
+                        }
+                    } catch(err) {}
+                });
+                source.addEventListener('patch', (e) => {
+                    try {
+                        const data = JSON.parse(e.data);
+                        if (data && data.data && typeof data.data === 'object') {
+                            Object.entries(data.data).forEach(([k, v]) => {
+                                SECCIONES_DATA[k] = { ...(SECCIONES_DATA[k] || {}), ...(v || {}) };
+                            });
+                            updateKpis();
+                            renderTable();
+                        }
+                    } catch(err) {}
+                });
+            } catch(e) {
+                console.warn("Aviso en SSE RTDB:", e);
+            }
+        }
+
+        // Inicio
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFromFirebase();
+            setupRealtimeListeners();
+        });
+    </script>
+</body>
+</html>

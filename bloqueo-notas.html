@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Protección Anti-Clickjacking y Secuestro de Sesión -->
+    <script>
+        if (window.top !== window.self) {
+            try { window.top.location = window.self.location; } catch(e) { window.location = window.self.location; }
+        }
+    </script>
+
+    <!-- GUARDIA DE SESIÓN Y CONTROL DE ACCESO ESTRICTO (RBAC) -->
+    <script>
+        (function() {
+            try {
+                var authUser = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
+                if (!authUser) {
+                    window.location.replace('login.html');
+                    return;
+                }
+                sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
+
+                var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
+                if (authRole) sessionStorage.setItem('ENCCO_AUTH_ROLE', authRole);
+
+                var roleLower = (authRole || '').trim().toLowerCase();
+                var allowedRoles = ['director', 'secretaria', 'admin', 'super_usuario'];
+
+                if (!allowedRoles.includes(roleLower)) {
+                    alert('ACCESO DENEGADO (403)\n\nEl módulo "Control de Bloqueo y Bimestre Activo" está reservado exclusivamente para la Dirección y Secretaría de la ENCCO.\n\nSu rol (' + (authRole || 'Desconocido') + ') no cuenta con los privilegios requeridos.');
+                    window.location.replace('plataforma.html?auth_denied=bloqueo_notas_restricted');
+                }
+            } catch(e) {
+                console.warn("Error en verificación de sesión:", e);
+            }
+        })();
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Control de Bloqueo y Bimestre Activo - ENCCO Jutiapa 1970 | MINEDUC</title>
+    <meta name="theme-color" content="#d97706">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:;">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <link rel="icon" type="image/png" href="logo.png">
+
+    <!-- Google Fonts & FontAwesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Estilos Oficiales del Sistema -->
+    <link rel="stylesheet" href="styles.css?v=20260907_v158_boletines_media_carta">
+
+    <!-- Firebase Modular SDK v10 -->
+    <script type="module">
+        try {
+            import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js").then(appMod => {
+                import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js").then(fsMod => {
+                    const firebaseConfig = {
+                        apiKey: "AIzaSyFakeKeyForEnccoModularCacheConfig",
+                        authDomain: "encco-jutiapa-live-2026-default-rtdb.firebaseio.com",
+                        databaseURL: "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com",
+                        projectId: "encco-jutiapa-live-2026-default-rtdb",
+                        storageBucket: "encco-jutiapa-live-2026-default-rtdb.appspot.com"
+                    };
+                    const app = appMod.initializeApp(firebaseConfig, 'bloqueoNotasApp_' + Date.now());
+                    const db = fsMod.initializeFirestore(app, {
+                        localCache: fsMod.memoryLocalCache()
+                    });
+
+                    window.FirebaseModular = {
+                        app, db, fsMod,
+                        collection: fsMod.collection,
+                        doc: fsMod.doc,
+                        setDoc: fsMod.setDoc,
+                        getDoc: fsMod.getDoc,
+                        getDocs: fsMod.getDocs,
+                        onSnapshot: fsMod.onSnapshot
+                    };
+                    console.log("✅ [Bloqueo Notas] Firebase Firestore SDK conectado en vivo.");
+                    window.dispatchEvent(new CustomEvent('BloqueoNotasFirebaseReady'));
+                }).catch(e => console.warn("Firebase Firestore SDK no disponible:", e));
+            }).catch(e => console.warn("Firebase App SDK no disponible:", e));
+        } catch(e) {
+            console.warn("Módulo Firebase no compatible:", e);
+        }
+    </script>
+
+    <style>
+        :root {
+            --lock-primary: #d97706;
+            --lock-navy: #b45309;
+            --lock-dark: #78350f;
+            --lock-green: #15803d;
+            --lock-red: #dc2626;
+            --lock-bg: #f8fafc;
+        }
+
+        body {
+            background-color: var(--lock-bg);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #1e293b;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .lock-topbar {
+            background: linear-gradient(135deg, #78350f 0%, #b45309 60%, #d97706 100%);
+            color: #ffffff;
+            padding: 12px 24px;
+            box-shadow: 0 4px 12px rgba(180, 83, 9, 0.25);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .lock-topbar-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .lock-brand-box {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .lock-logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #ffffff;
+            padding: 2px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            object-fit: contain;
+        }
+
+        .lock-brand-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lock-brand-subtitle {
+            font-size: 0.8rem;
+            opacity: 0.9;
+            margin: 0;
+            color: #fef3c7;
+        }
+
+        .lock-container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+            flex: 1;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .lock-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .lock-kpi-card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .lock-kpi-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        .lock-kpi-icon.amber { background: #fef3c7; color: #d97706; }
+        .lock-kpi-icon.green { background: #dcfce7; color: #16a34a; }
+        .lock-kpi-icon.red { background: #fee2e2; color: #dc2626; }
+        .lock-kpi-icon.blue { background: #e0f2fe; color: #0284c7; }
+
+        .lock-kpi-info h4 {
+            margin: 0;
+            font-size: 0.82rem;
+            color: #64748b;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .lock-kpi-info h2 {
+            margin: 2px 0;
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .lock-kpi-info p {
+            margin: 0;
+            font-size: 0.78rem;
+            color: #94a3b8;
+        }
+
+        .lock-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .lock-card {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .lock-card h3 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .lock-unit-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- BARRA SUPERIOR OFICIAL -->
+    <header class="lock-topbar">
+        <div class="lock-topbar-content">
+            <div class="lock-brand-box">
+                <img src="logo.png" alt="Logo ENCCO" class="lock-logo">
+                <div>
+                    <h1 class="lock-brand-title">
+                        <i class="fa-solid fa-lock"></i>
+                        Control de Bloqueo y Bimestre Activo 2026
+                    </h1>
+                    <p class="lock-brand-subtitle">Dirección y Secretaría Académica • ENCCO Jutiapa • MINEDUC</p>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <span id="lockSyncBadge" class="badge" style="background:#b45309; color:#ffffff; font-weight:700; padding:6px 12px; border-radius:20px; font-size:0.75rem;">
+                    <i class="fa-solid fa-circle-dot fa-beat" style="color:#4ade80; margin-right:5px;"></i>
+                    Firebase Conectado
+                </span>
+                <a href="plataforma.html" class="btn btn-sm btn-outline-light" style="font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; padding:6px 14px; border:1.5px solid #ffffff; border-radius:8px; color:#ffffff;">
+                    <i class="fa-solid fa-arrow-left"></i> Volver a Plataforma
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTENEDOR PRINCIPAL -->
+    <main class="lock-container">
+
+        <!-- RESUMEN / KPIS -->
+        <div class="lock-kpi-grid">
+            <div class="lock-kpi-card">
+                <div class="lock-kpi-icon amber"><i class="fa-solid fa-calendar-check"></i></div>
+                <div class="lock-kpi-info">
+                    <h4>Bimestre Principal</h4>
+                    <h2 id="kpiActiveBimestre">1er. Bimestre</h2>
+                    <p>Visualización oficial por defecto</p>
+                </div>
+            </div>
+            <div class="lock-kpi-card">
+                <div class="lock-kpi-icon blue"><i class="fa-solid fa-layer-group"></i></div>
+                <div class="lock-kpi-info">
+                    <h4>Unidades Habilitadas</h4>
+                    <h2 id="kpiActiveUnitsBadge">[U1]</h2>
+                    <p id="kpiActiveUnitsDesc">Carga de notas permitida</p>
+                </div>
+            </div>
+            <div class="lock-kpi-card">
+                <div class="lock-kpi-icon green" id="kpiLockStatusIcon"><i class="fa-solid fa-shield-check"></i></div>
+                <div class="lock-kpi-info">
+                    <h4>Bloqueo General</h4>
+                    <h2 id="kpiGlobalLockStatus">Habilitado</h2>
+                    <p id="kpiGlobalLockDesc">Carga permitida para maestros</p>
+                </div>
+            </div>
+            <div class="lock-kpi-card">
+                <div class="lock-kpi-icon amber"><i class="fa-solid fa-user-clock"></i></div>
+                <div class="lock-kpi-info">
+                    <h4>Solicitudes Pendientes</h4>
+                    <h2 id="kpiPendingRequests">0</h2>
+                    <p>Peticiones de catedráticos</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANELES DE CONTROL PRINCIPALES -->
+        <div class="lock-grid">
+
+            <!-- PANEL 1: CONTROL DE BIMESTRES Y UNIDADES ACTIVAS -->
+            <div class="lock-card" style="border-top:4px solid #16a34a;">
+                <h3><i class="fa-solid fa-calendar-days" style="color:#16a34a;"></i> Control de Bimestres y Unidades Activas</h3>
+                <p style="font-size:0.85rem; color:#64748b; margin-bottom:14px;">
+                    Configure el <strong>Bimestre Principal</strong> de visualización y habilite las <strong>Unidades específicas</strong> donde los catedráticos pueden ingresar o modificar calificaciones.
+                </p>
+
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label style="font-weight:700; font-size:0.9rem; margin-bottom:6px; display:block;">Bimestre Oficial Principal:</label>
+                    <select id="officialActiveBimestreSelect" class="form-control" style="font-weight:700; font-size:0.95rem; border-radius:8px; border:1.5px solid #cbd5e1;">
+                        <option value="1">1er. Bimestre (Unidad 1)</option>
+                        <option value="2">2do. Bimestre (Unidad 2)</option>
+                        <option value="3">3er. Bimestre (Unidad 3)</option>
+                        <option value="4">4to. Bimestre (Unidad 4)</option>
+                    </select>
+                </div>
+
+                <label style="font-weight:700; font-size:0.9rem; margin-bottom:6px; display:block;">Unidades Habilitadas para Carga de Notas:</label>
+                <div class="lock-unit-box">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:10px;">
+                        <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:700; font-size:0.9rem;">
+                            <input type="checkbox" id="checkActiveUnit1" value="1" style="width:18px; height:18px; accent-color:#16a34a;">
+                            <span>Unidad 1</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:700; font-size:0.9rem;">
+                            <input type="checkbox" id="checkActiveUnit2" value="2" style="width:18px; height:18px; accent-color:#16a34a;">
+                            <span>Unidad 2</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:700; font-size:0.9rem;">
+                            <input type="checkbox" id="checkActiveUnit3" value="3" style="width:18px; height:18px; accent-color:#16a34a;">
+                            <span>Unidad 3</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:8px; margin:0; cursor:pointer; font-weight:700; font-size:0.9rem;">
+                            <input type="checkbox" id="checkActiveUnit4" value="4" style="width:18px; height:18px; accent-color:#16a34a;">
+                            <span>Unidad 4</span>
+                        </label>
+                    </div>
+                    <div style="display:flex; gap:8px; margin-top:12px;">
+                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="setAllUnits(true)" style="font-size:0.75rem; padding:4px 10px; border-radius:6px;">
+                            <i class="fa-solid fa-check-double"></i> Habilitar Todas
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="setOnlyPrimaryUnit()" style="font-size:0.75rem; padding:4px 10px; border-radius:6px;">
+                            <i class="fa-solid fa-filter"></i> Solo Principal
+                        </button>
+                    </div>
+                </div>
+
+                <button id="btnFijarBimestre" class="btn btn-success btn-block" onclick="fijarBimestreEnFirebase()" style="font-weight:800; border-radius:8px; padding:10px; width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <i class="fa-solid fa-check-circle"></i> Fijar y Activar Bimestre para Maestros
+                </button>
+            </div>
+
+            <!-- PANEL 2: BLOQUEO GLOBAL DE CALIFICACIONES -->
+            <div class="lock-card" style="border-top:4px solid #ea580c;">
+                <h3><i class="fa-solid fa-shield-halved" style="color:#ea580c;"></i> Bloqueo Global de Calificaciones</h3>
+                <p style="font-size:0.85rem; color:#64748b; margin-bottom:14px;">
+                    Bloquea o desbloquea de forma inmediata el acceso a registrar o editar notas para todos los catedráticos en el sistema:
+                </p>
+
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:16px; display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+                    <div>
+                        <strong style="display:block; font-size:0.95rem;">Estado General del Sistema:</strong>
+                        <span id="globalLockBadge" class="badge badge-success" style="font-size:0.92rem; padding:6px 14px; border-radius:6px; margin-top:6px; display:inline-block;">
+                            Habilitado General
+                        </span>
+                    </div>
+                    <button class="btn btn-orange" id="btnToggleGlobalLock" onclick="toggleGlobalLock()" style="font-weight:700; border-radius:8px; padding:8px 16px;">
+                        <i class="fa-solid fa-arrows-rotate"></i> Cambiar Estado
+                    </button>
+                </div>
+
+                <div style="font-size:0.8rem; color:#64748b;">
+                    <i class="fa-solid fa-info-circle"></i> Dirección y Secretaría mantienen siempre acceso administrativo de edición aun cuando el sistema esté bloqueado globalmente.
+                </div>
+            </div>
+
+        </div>
+
+        <!-- PANEL 3: HABILITACIÓN INDIVIDUAL DE CATEDRÁTICOS (BYPASS) -->
+        <div class="lock-card" style="border-top:4px solid #0284c7; margin-bottom:20px;">
+            <h3><i class="fa-solid fa-user-check" style="color:#0284c7;"></i> Habilitación Individual de Catedráticos (Excepciones)</h3>
+            <p style="font-size:0.85rem; color:#64748b; margin-bottom:14px;">
+                Habilite docentes específicos para ingresar o modificar notas aun cuando el sistema se encuentre en estado bloqueado:
+            </p>
+            <div id="teacherBypassGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:12px;">
+                <!-- Poblado dinámicamente -->
+            </div>
+        </div>
+
+        <!-- PANEL 4: BANDEJA DE SOLICITUDES DE HABILITACIÓN -->
+        <div class="lock-card" style="border-top:4px solid #8b5cf6;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <h3 style="margin:0;"><i class="fa-solid fa-inbox" style="color:#8b5cf6;"></i> Bandeja de Solicitudes de Habilitación de Edición de Notas</h3>
+                    <p style="font-size:0.85rem; color:#64748b; margin:2px 0 0 0;">Solicitudes enviadas por catedráticos para modificar bimestres cerrados.</p>
+                </div>
+                <button type="button" class="btn btn-xs btn-outline-secondary" onclick="loadConfigFromFirebase(true)" style="font-weight:700;">
+                    <i class="fa-solid fa-arrows-rotate"></i> Refrescar Solicitudes
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="guide-table" id="gradeEditRequestsTable">
+                    <thead>
+                        <tr>
+                            <th style="width:40px; text-align:center;">#</th>
+                            <th>Catedrático</th>
+                            <th>Materia y Grado</th>
+                            <th style="text-align:center;">Unidad</th>
+                            <th>Motivo Explicado</th>
+                            <th style="text-align:center;">Estado</th>
+                            <th style="text-align:center; width:170px;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gradeEditRequestsTbody">
+                        <tr>
+                            <td colspan="7" style="text-align:center; padding:25px; color:#94a3b8;">
+                                No hay solicitudes de modificación de notas registradas.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" style="position:fixed; bottom:20px; right:20px; z-index:9999; display:flex; flex-direction:column; gap:8px;"></div>
+
+    <script>
+        const RTDB_BASE_URL = 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
+        let CONFIG_DATA = {
+            activeBimestre: 1,
+            bimestreActivoOficial: 1,
+            activeUnits: [1],
+            globalLocked: false,
+            teacherBypass: {}
+        };
+        let TEACHERS_LIST = [];
+        let GRADE_REQUESTS = [];
+
+        function showToast(msg, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? '#16a34a' : (type === 'danger' ? '#dc2626' : (type === 'warning' ? '#d97706' : '#0284c7'));
+            toast.style.cssText = `background:${bg}; color:#fff; padding:10px 18px; border-radius:8px; font-weight:700; font-size:0.88rem; box-shadow:0 4px 12px rgba(0,0,0,0.15); display:flex; align-items:center; gap:8px; animation:slideIn 0.3s ease;`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.4s ease';
+                setTimeout(() => toast.remove(), 400);
+            }, 3500);
+        }
+
+        async function loadConfigFromFirebase(isManual = false) {
+            try {
+                // 1. Cargar Configuración de RTDB
+                const cfgRes = await fetch(`${RTDB_BASE_URL}/encc_school_state/config.json?t=${Date.now()}`);
+                if (cfgRes.ok) {
+                    const c = await cfgRes.json();
+                    if (c) CONFIG_DATA = { ...CONFIG_DATA, ...c };
+                }
+
+                // 2. Cargar Docentes
+                const usersRes = await fetch(`${RTDB_BASE_URL}/encc_school_state/users.json?t=${Date.now()}`);
+                if (usersRes.ok) {
+                    const u = await usersRes.json();
+                    if (Array.isArray(u)) TEACHERS_LIST = u.filter(usr => usr.role === 'docente' || (usr.id && usr.id.startsWith('usr-doc-')));
+                }
+                if (TEACHERS_LIST.length === 0) {
+                    const locRes = await fetch('usuarios_y_maestros.json');
+                    if (locRes.ok) {
+                        const locU = await locRes.json();
+                        TEACHERS_LIST = locU.filter(usr => usr.role === 'docente' || (usr.id && usr.id.startsWith('usr-doc-')));
+                    }
+                }
+
+                // 3. Cargar Solicitudes de Edición de Notas
+                const reqRes = await fetch(`${RTDB_BASE_URL}/encc_school_state/gradeEditRequests.json?t=${Date.now()}`);
+                if (reqRes.ok) {
+                    const r = await reqRes.json();
+                    if (Array.isArray(r)) GRADE_REQUESTS = r;
+                    else if (r && typeof r === 'object') GRADE_REQUESTS = Object.values(r);
+                }
+
+                renderUI();
+                if (isManual) showToast("Configuración y solicitudes sincronizadas con Firebase.", "info");
+            } catch(e) {
+                console.error("Error al cargar config de Firebase:", e);
+                renderUI();
+            }
+        }
+
+        function renderUI() {
+            const activeBim = parseInt(CONFIG_DATA.activeBimestre || CONFIG_DATA.bimestreActivoOficial) || 1;
+            const activeUnits = (Array.isArray(CONFIG_DATA.activeUnits) && CONFIG_DATA.activeUnits.length > 0)
+                ? CONFIG_DATA.activeUnits.map(Number)
+                : [activeBim];
+            const isLocked = !!CONFIG_DATA.globalLocked;
+
+            // KPIs
+            const bRoman = ['I', 'II', 'III', 'IV'][activeBim - 1] || 'I';
+            document.getElementById('kpiActiveBimestre').textContent = `${activeBim}º Bimestre (${bRoman})`;
+            
+            const unitsStr = activeUnits.map(u => `U${u}`).join(', ');
+            document.getElementById('kpiActiveUnitsBadge').textContent = `[${unitsStr}]`;
+            document.getElementById('kpiActiveUnitsDesc').textContent = `${activeUnits.length} unidad(es) habilitada(s)`;
+
+            document.getElementById('kpiGlobalLockStatus').textContent = isLocked ? 'Bloqueado' : 'Habilitado';
+            document.getElementById('kpiGlobalLockStatus').style.color = isLocked ? '#dc2626' : '#16a34a';
+            document.getElementById('kpiGlobalLockDesc').textContent = isLocked ? 'Ingreso restringido a catedráticos' : 'Ingreso permitido para maestros';
+            
+            const iconBox = document.getElementById('kpiLockStatusIcon');
+            if (iconBox) {
+                iconBox.className = isLocked ? 'lock-kpi-icon red' : 'lock-kpi-icon green';
+                iconBox.innerHTML = isLocked ? '<i class="fa-solid fa-lock"></i>' : '<i class="fa-solid fa-shield-check"></i>';
+            }
+
+            // Selector y checkboxes
+            const select = document.getElementById('officialActiveBimestreSelect');
+            if (select) select.value = String(activeBim);
+
+            [1, 2, 3, 4].forEach(u => {
+                const chk = document.getElementById('checkActiveUnit' + u);
+                if (chk) chk.checked = activeUnits.includes(u);
+            });
+
+            // Badge de Bloqueo
+            const badge = document.getElementById('globalLockBadge');
+            if (badge) {
+                badge.className = isLocked ? 'badge badge-danger' : 'badge badge-success';
+                badge.textContent = isLocked ? 'Bloqueado General' : 'Habilitado General';
+                badge.style.background = isLocked ? '#dc2626' : '#16a34a';
+                badge.style.color = '#ffffff';
+            }
+
+            // Bypass list
+            renderTeacherBypass();
+
+            // Requests table
+            renderGradeEditRequests();
+        }
+
+        function setAllUnits(all) {
+            [1, 2, 3, 4].forEach(u => {
+                const chk = document.getElementById('checkActiveUnit' + u);
+                if (chk) chk.checked = !!all;
+            });
+        }
+
+        function setOnlyPrimaryUnit() {
+            const select = document.getElementById('officialActiveBimestreSelect');
+            const primary = select ? (parseInt(select.value) || 1) : 1;
+            [1, 2, 3, 4].forEach(u => {
+                const chk = document.getElementById('checkActiveUnit' + u);
+                if (chk) chk.checked = (u === primary);
+            });
+        }
+
+        async function fijarBimestreEnFirebase() {
+            const btn = document.getElementById('btnFijarBimestre');
+            const origText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+
+            const select = document.getElementById('officialActiveBimestreSelect');
+            const unitNum = select ? (parseInt(select.value) || 1) : 1;
+
+            let activeUnits = [];
+            [1, 2, 3, 4].forEach(u => {
+                const chk = document.getElementById('checkActiveUnit' + u);
+                if (chk && chk.checked) activeUnits.push(u);
+            });
+            if (activeUnits.length === 0) activeUnits = [unitNum];
+
+            const now = Date.now();
+            const nowIso = new Date().toISOString();
+
+            CONFIG_DATA.activeBimestre = unitNum;
+            CONFIG_DATA.bimestreActivoOficial = unitNum;
+            CONFIG_DATA.activeUnits = activeUnits;
+            CONFIG_DATA.lastModified = now;
+
+            const payload = {
+                activeBimestre: unitNum,
+                bimestreActivoOficial: unitNum,
+                activeUnits: activeUnits,
+                estadoBloqueoGlobal: "HABILITADO",
+                lastModified: now,
+                ultimaActualizacion: nowIso
+            };
+
+            // 1. RTDB Dual Write
+            try {
+                await Promise.allSettled([
+                    fetch(`${RTDB_BASE_URL}/encc_school_state/config.json`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }),
+                    fetch(`${RTDB_BASE_URL}/config.json`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    })
+                ]);
+            } catch(e) {
+                console.warn("Aviso al guardar config en RTDB:", e);
+            }
+
+            // 2. Firestore Write
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                try {
+                    const { db, doc, setDoc } = window.FirebaseModular;
+                    const sysRef = doc(db, "configuracion", "sistema");
+                    const bimRef = doc(db, "config", "bimestre_activo");
+                    await Promise.allSettled([
+                        setDoc(sysRef, payload, { merge: true }),
+                        setDoc(bimRef, payload, { merge: true })
+                    ]);
+                } catch(fsErr) {
+                    console.warn("Aviso al guardar en Firestore:", fsErr);
+                }
+            }
+
+            renderUI();
+            btn.disabled = false;
+            btn.innerHTML = origText;
+
+            const uNames = activeUnits.map(u => `U${u}`).join(', ');
+            showToast(`¡Bimestre Oficial ${unitNum}º guardado en Firebase! Unidades activas: [${uNames}].`, "success");
+        }
+
+        async function toggleGlobalLock() {
+            CONFIG_DATA.globalLocked = !CONFIG_DATA.globalLocked;
+            const isLocked = CONFIG_DATA.globalLocked;
+            const now = Date.now();
+
+            const payload = {
+                globalLocked: isLocked,
+                estadoBloqueoGlobal: isLocked ? "BLOQUEADO" : "HABILITADO",
+                lastModified: now
+            };
+
+            // 1. RTDB
+            try {
+                await Promise.allSettled([
+                    fetch(`${RTDB_BASE_URL}/encc_school_state/config.json`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }),
+                    fetch(`${RTDB_BASE_URL}/config.json`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    })
+                ]);
+            } catch(e) {}
+
+            // 2. Firestore
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                try {
+                    const { db, doc, setDoc } = window.FirebaseModular;
+                    await Promise.allSettled([
+                        setDoc(doc(db, "config", "control_bloqueo"), payload, { merge: true }),
+                        setDoc(doc(db, "configuracion", "sistema"), payload, { merge: true })
+                    ]);
+                } catch(e) {}
+            }
+
+            renderUI();
+            showToast(`Carga de notas ${isLocked ? 'BLOQUEADA' : 'HABILITADA'} globalmente.`, isLocked ? "warning" : "success");
+        }
+
+        async function toggleTeacherBypass(teacherId) {
+            if (!CONFIG_DATA.teacherBypass) CONFIG_DATA.teacherBypass = {};
+            CONFIG_DATA.teacherBypass[teacherId] = !CONFIG_DATA.teacherBypass[teacherId];
+            const now = Date.now();
+
+            const payload = {
+                teacherBypass: CONFIG_DATA.teacherBypass,
+                lastModified: now
+            };
+
+            // RTDB
+            try {
+                await Promise.allSettled([
+                    fetch(`${RTDB_BASE_URL}/encc_school_state/config.json`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }),
+                    fetch(`${RTDB_BASE_URL}/config.json`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    })
+                ]);
+            } catch(e) {}
+
+            // Firestore
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                try {
+                    const { db, doc, setDoc } = window.FirebaseModular;
+                    await setDoc(doc(db, "config", "control_bloqueo"), payload, { merge: true });
+                } catch(e) {}
+            }
+
+            renderTeacherBypass();
+            showToast("Excepción individual de catedrático actualizada.", "info");
+        }
+
+        function renderTeacherBypass() {
+            const grid = document.getElementById('teacherBypassGrid');
+            if (!grid) return;
+
+            if (TEACHERS_LIST.length === 0) {
+                grid.innerHTML = '<div style="color:#64748b; padding:10px;">Cargando catedráticos...</div>';
+                return;
+            }
+
+            grid.innerHTML = TEACHERS_LIST.map(t => {
+                const isBypassed = !!(CONFIG_DATA.teacherBypass && CONFIG_DATA.teacherBypass[t.id]);
+                return `
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0;">
+                        <div>
+                            <strong style="font-size:0.9rem; color:#0f172a; display:block;">${t.name}</strong>
+                            <small style="color:#64748b;">${t.title || 'Catedrático Titular'} • ${t.renglon || '011'}</small>
+                        </div>
+                        <button class="btn btn-sm ${isBypassed ? 'btn-success' : 'btn-secondary'}" onclick="toggleTeacherBypass('${t.id}')" style="font-weight:700; border-radius:6px; font-size:0.78rem;">
+                            ${isBypassed ? '<i class="fa-solid fa-lock-open"></i> Habilitado Individual' : '<i class="fa-solid fa-lock"></i> Bloqueado'}
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderGradeEditRequests() {
+            const tbody = document.getElementById('gradeEditRequestsTbody');
+            const kpiCount = document.getElementById('kpiPendingRequests');
+            if (!tbody) return;
+
+            const pending = (GRADE_REQUESTS || []).filter(r => r && r.status === 'PENDIENTE');
+            if (kpiCount) kpiCount.textContent = pending.length;
+
+            if (!GRADE_REQUESTS || GRADE_REQUESTS.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align:center; padding:25px; color:#94a3b8;">
+                            <i class="fa-solid fa-inbox" style="font-size:1.8rem; display:block; margin-bottom:8px;"></i>
+                            No hay solicitudes de modificación de notas registradas.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = GRADE_REQUESTS.map((r, idx) => {
+                const isPending = (r.status === 'PENDIENTE');
+                const badgeColor = isPending ? '#d97706' : (r.status === 'APROBADA' ? '#16a34a' : '#dc2626');
+                return `
+                    <tr>
+                        <td style="text-align:center; font-weight:700; color:#94a3b8;">${idx + 1}</td>
+                        <td><strong>${r.teacherName || r.teacherId || 'Catedrático'}</strong></td>
+                        <td>${r.subjectName || r.subjectId || '---'} <div style="font-size:0.75rem; color:#64748b;">${r.gradeCode || ''}</div></td>
+                        <td style="text-align:center;"><span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800;">U${r.unit || 1}</span></td>
+                        <td><small style="color:#334155;">${r.reason || 'Sin motivo especificado'}</small></td>
+                        <td style="text-align:center;">
+                            <span class="badge" style="background:${badgeColor}; color:#ffffff; font-weight:700;">${r.status || 'PENDIENTE'}</span>
+                        </td>
+                        <td style="text-align:center; white-space:nowrap;">
+                            ${isPending ? `
+                                <button class="btn btn-xs btn-success" onclick="resolveGradeRequest('${r.id}', 'APROBADA')" style="margin-right:4px; font-weight:700;">
+                                    <i class="fa-solid fa-check"></i> Aprobar
+                                </button>
+                                <button class="btn btn-xs btn-danger" onclick="resolveGradeRequest('${r.id}', 'RECHAZADA')" style="font-weight:700;">
+                                    <i class="fa-solid fa-xmark"></i> Rechazar
+                                </button>
+                            ` : `
+                                <small style="color:#94a3b8; font-weight:600;">Procesada</small>
+                            `}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function resolveGradeRequest(reqId, status) {
+            const req = (GRADE_REQUESTS || []).find(r => r.id === reqId);
+            if (!req) return;
+
+            req.status = status;
+            req.resolvedAt = new Date().toISOString();
+
+            try {
+                await fetch(`${RTDB_BASE_URL}/encc_school_state/gradeEditRequests/${reqId}.json`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(req)
+                });
+            } catch(e) {}
+
+            renderGradeEditRequests();
+            showToast(`Solicitud de modificación de notas ${status.toLowerCase()}.`, status === 'APROBADA' ? 'success' : 'warning');
+        }
+
+        function setupRealtime() {
+            try {
+                const source = new EventSource(`${RTDB_BASE_URL}/encc_school_state/config.json`);
+                source.addEventListener('put', (e) => {
+                    try {
+                        const data = JSON.parse(e.data);
+                        if (data && data.data && typeof data.data === 'object') {
+                            CONFIG_DATA = { ...CONFIG_DATA, ...data.data };
+                            renderUI();
+                        }
+                    } catch(err) {}
+                });
+                source.addEventListener('patch', (e) => {
+                    try {
+                        const data = JSON.parse(e.data);
+                        if (data && data.data && typeof data.data === 'object') {
+                            CONFIG_DATA = { ...CONFIG_DATA, ...data.data };
+                            renderUI();
+                        }
+                    } catch(err) {}
+                });
+            } catch(e) {}
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfigFromFirebase();
+            setupRealtime();
+        });
+    </script>
+</body>
+</html>
