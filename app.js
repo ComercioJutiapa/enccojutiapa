@@ -23968,8 +23968,20 @@ function renderPensumCatalogTable(searchQuery = '') {
         );
     }
 
-    // Ordenar por sortOrder o índice
-    list.sort((a, b) => (parseInt(a.sortOrder || a.order || 99) - parseInt(b.sortOrder || b.order || 99)));
+    // Ordenar por Grado numérico y luego por sortOrder o índice para coincidir con el orden oficial de SIRE
+    list.sort((a, b) => {
+        const getGradeNum = (item) => {
+            const raw = `${item.grade || ''} ${item.gradeCode || ''}`.toUpperCase();
+            if (raw.includes('4') || raw.includes('CUARTO') || raw.includes('4TO')) return 4;
+            if (raw.includes('5') || raw.includes('QUINTO') || raw.includes('5TO')) return 5;
+            if (raw.includes('6') || raw.includes('SEXTO') || raw.includes('6TO')) return 6;
+            return 99;
+        };
+        const gA = getGradeNum(a);
+        const gB = getGradeNum(b);
+        if (gA !== gB) return gA - gB;
+        return (parseInt(a.sortOrder || a.order || 99) - parseInt(b.sortOrder || b.order || 99));
+    });
 
     if (list.length === 0) {
         tbody.innerHTML = `
