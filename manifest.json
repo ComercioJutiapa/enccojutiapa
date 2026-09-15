@@ -1,0 +1,17 @@
+{
+  "name": "Plataforma Académica ENCCO Jutiapa 1970",
+  "short_name": "ENCCO Jutiapa",
+  "description": "Sistema de Gestión y Control Académico de la Escuela Nacional de Ciencias Comerciales",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#15803d",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

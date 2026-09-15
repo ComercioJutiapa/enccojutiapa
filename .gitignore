@@ -1,15 +1,36 @@
-# Logs y temporales
-*.log
+# ==============================================================================
+# ENCCO Jutiapa 1970 — Git Ignore Configuration
+# ==============================================================================
+
+# Dependencias de paquetes
+node_modules/
+package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 firebase-debug.log*
+
+# Logs y volcados del sistema
+*.log
+*.dump
+logs/
+*.pid
+
+# Archivos de sistema operativo y editores
 .DS_Store
 Thumbs.db
 desktop.ini
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*~
+*.tmp
 
-# Archivos de respaldo y datos locales
+# Archivos de respaldo y volcados locales
 *.bak
+*.old
 *.json.old
 backup/
 backups/
@@ -18,12 +39,20 @@ respaldos/
 seed/
 *.zip
 *.tar.gz
+*.rar
+*.7z
 
-# Variables de entorno y credenciales
+# Variables de entorno y credenciales sensibles
 .env
 .env.local
 .env.*.local
+*.pem
+*.key
+serviceAccountKey*.json
+*credentials*.json
 
 # Scratch y temporales de desarrollo
+scratch/
 scratch*
+.temp/
 
