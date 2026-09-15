@@ -1074,6 +1074,9 @@
                         if (pData) {
                             if (Array.isArray(pData)) _sirePensumCatalog = pData.filter(Boolean);
                             else if (typeof pData === 'object') _sirePensumCatalog = Object.keys(pData).map(k => ({ id: k, ...pData[k] }));
+                            if (Array.isArray(_sirePensumCatalog)) {
+                                _sirePensumCatalog.sort((a, b) => parseInt(a.sortOrder || a.order || 99) - parseInt(b.sortOrder || b.order || 99));
+                            }
                         }
                     }
                 } catch(e) {}
@@ -1118,7 +1121,10 @@
                     const pSnap = await fsMod.getDocs(fsMod.collection(db, 'pensumCatalog'));
                     const pList = [];
                     pSnap.forEach(d => pList.push({ id: d.id, ...d.data() }));
-                    if (pList.length > 0) _sirePensumCatalog = pList;
+                    if (pList.length > 0) {
+                        pList.sort((a, b) => parseInt(a.sortOrder || a.order || 99) - parseInt(b.sortOrder || b.order || 99));
+                        _sirePensumCatalog = pList;
+                    }
                 } catch(e) {}
 
                 const snap = await fsMod.getDocs(fsMod.collection(db, 'students'));
@@ -1145,7 +1151,7 @@
                     _sireStudents = window.opener.STATE.students;
                 }
                 if (Array.isArray(window.opener.STATE.pensumCatalog)) {
-                    _sirePensumCatalog = window.opener.STATE.pensumCatalog;
+                    _sirePensumCatalog = [...window.opener.STATE.pensumCatalog].sort((a, b) => parseInt(a.sortOrder || a.order || 99) - parseInt(b.sortOrder || b.order || 99));
                 }
                 applySireFilters();
             } else {
@@ -1216,6 +1222,8 @@
             'introduccion a la economia': '106',
             'ortografía y caligrafía': '107',
             'ortografia y caligrafia': '107',
+            'caligrafía y ortografía': '107',
+            'caligrafia y ortografia': '107',
             'administración y organización de oficina': '108',
             'administracion y organizacion de oficina': '108',
             'administración y organización de empresas': '108',
@@ -1321,7 +1329,26 @@
 
             // 1. Catálogo dinámico de pensum cargado de Firebase si existe
             if (typeof _sirePensumCatalog !== "undefined" && Array.isArray(_sirePensumCatalog) && _sirePensumCatalog.length > 0) {
-                const found = _sirePensumCatalog.find(p => (p.name || p.nombre || '').toLowerCase().trim() === norm);
+                let found = _sirePensumCatalog.find(p => (p.name || p.nombre || '').toLowerCase().trim() === norm);
+                if (!found) {
+                    found = _sirePensumCatalog.find(p => {
+                        const pNorm = (p.name || p.nombre || '').toLowerCase().trim();
+                        return pNorm.includes(norm) || norm.includes(pNorm);
+                    });
+                }
+                if (!found) {
+                    if (norm.includes('ortograf') || norm.includes('caligraf')) {
+                        found = _sirePensumCatalog.find(p => {
+                            const pNorm = (p.name || p.nombre || '').toLowerCase();
+                            return pNorm.includes('ortograf') || pNorm.includes('caligraf');
+                        });
+                    } else if (norm.includes('oficina') || norm.includes('empresas')) {
+                        found = _sirePensumCatalog.find(p => {
+                            const pNorm = (p.name || p.nombre || '').toLowerCase();
+                            return pNorm.includes('oficina') || pNorm.includes('empresas');
+                        });
+                    }
+                }
                 if (found && (found.codCurso || found.codigoCurso || found.code || found.codigo)) {
                     return String(found.codCurso || found.codigoCurso || found.code || found.codigo);
                 }
@@ -1363,17 +1390,19 @@
 
             // 1. Extraer del catálogo pensum de Firebase si corresponde al grado
             if (matchedGradeKey && Array.isArray(_sirePensumCatalog) && _sirePensumCatalog.length > 0) {
-                _sirePensumCatalog.forEach(p => {
+                const gradeCourses = _sirePensumCatalog.filter(p => {
                     const pGrade = (p.grado || p.grade || '').toLowerCase();
-                    if ((matchedGradeKey === '4to' && (pGrade.includes('4') || pGrade.includes('cuarto'))) ||
-                        (matchedGradeKey === '5to' && (pGrade.includes('5') || pGrade.includes('quinto'))) ||
-                        (matchedGradeKey === '6to' && (pGrade.includes('6') || pGrade.includes('sexto')))) {
-                        const name = p.nombre || p.name;
-                        if (name && !addedNames.has(name.toLowerCase().trim())) {
-                            addedNames.add(name.toLowerCase().trim());
-                            const code = p.codCurso || p.codigoCurso || p.code || resolveCourseSireCode(name);
-                            subjects.push({ name, code: code || null });
-                        }
+                    return (matchedGradeKey === '4to' && (pGrade.includes('4') || pGrade.includes('cuarto'))) ||
+                           (matchedGradeKey === '5to' && (pGrade.includes('5') || pGrade.includes('quinto'))) ||
+                           (matchedGradeKey === '6to' && (pGrade.includes('6') || pGrade.includes('sexto')));
+                });
+                gradeCourses.sort((a, b) => parseInt(a.sortOrder || a.order || 99) - parseInt(b.sortOrder || b.order || 99));
+                gradeCourses.forEach(p => {
+                    const name = p.nombre || p.name;
+                    if (name && !addedNames.has(name.toLowerCase().trim())) {
+                        addedNames.add(name.toLowerCase().trim());
+                        const code = p.codCurso || p.codigoCurso || p.code || resolveCourseSireCode(name);
+                        subjects.push({ name, code: code || null });
                     }
                 });
             }
@@ -1381,8 +1410,22 @@
             // 2. Pensum canónico oficial ENCCO 2026
             if (matchedGradeKey && CANONICAL_PENSUM_BY_GRADE[matchedGradeKey]) {
                 CANONICAL_PENSUM_BY_GRADE[matchedGradeKey].forEach(item => {
-                    if (!addedNames.has(item.name.toLowerCase().trim())) {
-                        addedNames.add(item.name.toLowerCase().trim());
+                    const normItem = item.name.toLowerCase().trim();
+                    const alreadyPresent = subjects.some(s => {
+                        const sNorm = s.name.toLowerCase().trim();
+                        if (sNorm === normItem) return true;
+                        const itemCode = resolveCourseSireCode(item.name) || item.code;
+                        const sCode = resolveCourseSireCode(s.name) || s.code;
+                        if (itemCode && sCode && String(itemCode) === String(sCode)) return true;
+                        if ((normItem.includes('ortograf') || normItem.includes('caligraf')) &&
+                            (sNorm.includes('ortograf') || sNorm.includes('caligraf'))) return true;
+                        if ((normItem.includes('oficina') || normItem.includes('empresas')) &&
+                            (sNorm.includes('oficina') || sNorm.includes('empresas'))) return true;
+                        if (normItem.includes('gubernamental') && sNorm.includes('gubernamental')) return true;
+                        return false;
+                    });
+                    if (!alreadyPresent && !addedNames.has(normItem)) {
+                        addedNames.add(normItem);
                         subjects.push({ name: item.name, code: item.code });
                     }
                 });
@@ -1397,9 +1440,14 @@
                         const isExisting = subjects.some(s => {
                             const sNorm = s.name.toLowerCase().trim();
                             if (sNorm === norm) return true;
-                            const sCode = s.code;
+                            const sCode = resolveCourseSireCode(s.name) || s.code;
                             const kCode = resolveCourseSireCode(k);
-                            return sCode && kCode && sCode === kCode;
+                            if (sCode && kCode && String(sCode) === String(kCode)) return true;
+                            if ((norm.includes('ortograf') || norm.includes('caligraf')) &&
+                                (sNorm.includes('ortograf') || sNorm.includes('caligraf'))) return true;
+                            if ((norm.includes('oficina') || norm.includes('empresas')) &&
+                                (sNorm.includes('oficina') || sNorm.includes('empresas'))) return true;
+                            return false;
                         });
 
                         if (!isExisting && !addedNames.has(norm)) {
@@ -1427,18 +1475,19 @@
         }
 
         // Obtiene la nota de una materia específica para un estudiante y período
-        function getStudentSubjectScore(student, subjectName, period) {
-            if (!student || !student.grades) return null;
-            const grades = student.grades;
+        function getStudentSubjectScore(student, subjectName, period, subjectCode) {
+            if (!student) return null;
+            const grades = (student.grades && Object.keys(student.grades).length > 0) ? student.grades : (student.gradebookDetails || {});
 
             // Coincidencia directa
             let entry = grades[subjectName];
 
-            // Coincidencia insensible a mayúsculas
+            // Coincidencia insensible a mayúsculas y acentos
             if (entry === undefined) {
-                const normTarget = subjectName.toLowerCase().trim();
+                const normTarget = subjectName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
                 for (const [k, val] of Object.entries(grades)) {
-                    if (k.toLowerCase().trim() === normTarget) {
+                    const normK = k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+                    if (normK === normTarget) {
                         entry = val;
                         break;
                     }
@@ -1447,16 +1496,46 @@
 
             // Coincidencia por código SIRE o similitud semántica
             if (entry === undefined) {
-                const targetCode = resolveCourseSireCode(subjectName);
+                const targetCode = subjectCode || resolveCourseSireCode(subjectName);
                 for (const [k, val] of Object.entries(grades)) {
                     const kCode = resolveCourseSireCode(k);
-                    if (targetCode && kCode && targetCode === kCode) {
+                    if (targetCode && kCode && String(targetCode) === String(kCode)) {
                         entry = val;
                         break;
                     }
-                    const normK = k.toLowerCase().trim();
-                    const normTarget = subjectName.toLowerCase().trim();
+                    const normK = k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+                    const normTarget = subjectName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
                     if (normK.includes(normTarget) || normTarget.includes(normK)) {
+                        entry = val;
+                        break;
+                    }
+                }
+            }
+
+            // Coincidencia por sinónimos comunes del pensum
+            if (entry === undefined) {
+                const normTarget = subjectName.toLowerCase();
+                for (const [k, val] of Object.entries(grades)) {
+                    const normK = k.toLowerCase();
+                    if ((normTarget.includes('ortograf') || normTarget.includes('caligraf')) &&
+                        (normK.includes('ortograf') || normK.includes('caligraf'))) {
+                        entry = val;
+                        break;
+                    }
+                    if ((normTarget.includes('oficina') || normTarget.includes('empresas')) &&
+                        (normK.includes('oficina') || normK.includes('empresas'))) {
+                        entry = val;
+                        break;
+                    }
+                    if (normTarget.includes('gubernamental') && normK.includes('gubernamental')) {
+                        entry = val;
+                        break;
+                    }
+                    if (normTarget.includes('fiscal') && normK.includes('fiscal')) {
+                        entry = val;
+                        break;
+                    }
+                    if (normTarget.includes('seminario') && normK.includes('seminario')) {
                         entry = val;
                         break;
                     }
@@ -1467,13 +1546,25 @@
 
             let score = null;
             if (Array.isArray(entry)) {
-                if (period === 'B1') score = entry[0];
-                else if (period === 'B2') score = entry[1];
-                else if (period === 'B3') score = entry[2];
-                else if (period === 'B4') score = entry[3];
-                else {
-                    const valid = entry.filter(x => typeof x === 'number' && x > 0);
-                    score = valid.length > 0 ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : null;
+                if (entry.length > 0 && typeof entry[0] === 'object' && entry[0] !== null) {
+                    const numArr = entry.map(x => (x && typeof x.total === 'number') ? x.total : 0);
+                    if (period === 'B1') score = numArr[0];
+                    else if (period === 'B2') score = numArr[1];
+                    else if (period === 'B3') score = numArr[2];
+                    else if (period === 'B4') score = numArr[3];
+                    else {
+                        const valid = numArr.filter(x => typeof x === 'number' && x > 0);
+                        score = valid.length > 0 ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : null;
+                    }
+                } else {
+                    if (period === 'B1') score = entry[0];
+                    else if (period === 'B2') score = entry[1];
+                    else if (period === 'B3') score = entry[2];
+                    else if (period === 'B4') score = entry[3];
+                    else {
+                        const valid = entry.filter(x => typeof x === 'number' && x > 0);
+                        score = valid.length > 0 ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : null;
+                    }
                 }
             } else if (typeof entry === 'object') {
                 if (period === 'B1') score = entry.b1 || entry['1'];
@@ -1495,7 +1586,7 @@
         function calculateStudentAverages(student, period) {
             if (!student) return { average: 0, passedCount: 0, failedCount: 0, totalSubjects: 0, isPromoted: false };
 
-            const gradesMap = student.grades || {};
+            const gradesMap = (student.grades && Object.keys(student.grades).length > 0) ? student.grades : (student.gradebookDetails || {});
             const subjectKeys = Object.keys(gradesMap);
             
             if (subjectKeys.length === 0) {
@@ -1512,17 +1603,24 @@
                 let score = 0;
 
                 if (Array.isArray(g)) {
-                    if (period === 'B1') score = g[0] || 0;
-                    else if (period === 'B2') score = g[1] || 0;
-                    else if (period === 'B3') score = g[2] || 0;
-                    else if (period === 'B4') score = g[3] || 0;
-                    else {
-                        const validScores = g.filter(v => typeof v === 'number' && v > 0);
-                        if (validScores.length > 0) {
-                            const sum = validScores.reduce((a, b) => a + b, 0);
-                            score = Math.round(sum / validScores.length);
-                        } else {
-                            score = 0;
+                    if (g.length > 0 && typeof g[0] === 'object' && g[0] !== null) {
+                        const numArr = g.map(x => (x && typeof x.total === 'number') ? x.total : 0);
+                        if (period === 'B1') score = numArr[0] || 0;
+                        else if (period === 'B2') score = numArr[1] || 0;
+                        else if (period === 'B3') score = numArr[2] || 0;
+                        else if (period === 'B4') score = numArr[3] || 0;
+                        else {
+                            const validScores = numArr.filter(v => typeof v === 'number' && v > 0);
+                            score = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : 0;
+                        }
+                    } else {
+                        if (period === 'B1') score = g[0] || 0;
+                        else if (period === 'B2') score = g[1] || 0;
+                        else if (period === 'B3') score = g[2] || 0;
+                        else if (period === 'B4') score = g[3] || 0;
+                        else {
+                            const validScores = g.filter(v => typeof v === 'number' && v > 0);
+                            score = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : 0;
                         }
                     }
                 } else if (typeof g === 'object' && g !== null) {
@@ -1648,23 +1746,49 @@
             let tbodyHtml = '';
             _filteredStudents.forEach((st, idx) => {
                 const stats = calculateStudentAverages(st, period);
-                const fullName = st.nombre || (st.apellidos ? st.apellidos + ', ' + st.nombres : 'Estudiante ' + (idx + 1));
-                const codPersonal = st.codigoPersonal || st.codigo || 'S/' + (1000 + idx);
-                const rawCui = (st.cui || st.dpi || '').trim();
-                const gradoSec = (st.grado || '4to Grado') + ' ' + (st.seccion || 'A');
+                
+                // Nombre completo dinámico de Firebase
+                let fullName = '';
+                if (st.lastName && st.firstName) {
+                    fullName = (st.lastName + ', ' + st.firstName).trim();
+                } else if (st.apellidos && st.nombres) {
+                    fullName = (st.apellidos + ', ' + st.nombres).trim();
+                } else if (st.name) {
+                    fullName = st.name.trim();
+                } else if (st.nombre) {
+                    fullName = st.nombre.trim();
+                } else {
+                    fullName = 'Estudiante ' + (idx + 1);
+                }
 
-                // Resaltado de advertencia CUI / DPI
+                // Código personal dinámico de Firebase
+                const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim() || ('S/' + (1000 + idx));
+                
+                // CUI / Documento oficial dinámico
+                const rawCui = (st.cui || st.dpi || st.docNumber || '').toString().trim();
+                const docType = (st.docType || '').toLowerCase().trim();
+                const isSpecialDoc = docType.includes('pasaporte') || 
+                                     docType.includes('acta') || 
+                                     (st.nationality && st.nationality.toLowerCase().includes('extranjero'));
+
                 let cuiHtml = '';
                 let hasCuiError = false;
                 if (!rawCui) {
                     hasCuiError = true;
                     cuiHtml = '<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #f87171; font-weight:700; padding:2px 8px; border-radius:4px; font-size:0.72rem;" title="ADVERTENCIA: Falta CUI/DPI requerido para SIRE"><i class="fa-solid fa-triangle-exclamation"></i> Sin CUI</span>';
+                } else if (isSpecialDoc) {
+                    const docLabel = (st.docType || 'Extranjero').toUpperCase();
+                    cuiHtml = '<span style="font-family:monospace; font-size:0.82rem; color:#0369a1; font-weight:600;" title="' + (st.docType || 'Documento Oficial Extranjero') + '"><i class="fa-solid fa-passport" style="color:#0284c7; font-size:0.75rem;"></i> ' + rawCui + ' <small style="font-size:0.68rem; color:#64748b;">(' + docLabel + ')</small></span>';
                 } else if (rawCui.replace(/[^0-9]/g, '').length !== 13) {
                     hasCuiError = true;
                     cuiHtml = '<span class="badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-weight:700; padding:2px 8px; border-radius:4px; font-size:0.72rem;" title="CUI incompleto (debe tener 13 dígitos)"><i class="fa-solid fa-triangle-exclamation"></i> ' + rawCui + '</span>';
                 } else {
                     cuiHtml = '<span style="font-family:monospace; font-size:0.82rem; color:#0369a1; font-weight:600;"><i class="fa-solid fa-check" style="color:#16a34a; font-size:0.7rem;"></i> ' + rawCui + '</span>';
                 }
+
+                const sGrade = (st.grade || st.grado || '4to Perito Contador').trim();
+                const sSec = (st.section || st.seccion || 'A').replace(/secci[oó]n/i, '').trim();
+                const gradoSec = sGrade + ' ' + sSec;
 
                 const gradeBadge = (gradeFilter === 'ALL')
                     ? ' <span class="badge" style="font-size:0.7rem; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; font-weight:600; padding:1px 6px; border-radius:4px;">' + gradoSec + '</span>'
@@ -1685,7 +1809,7 @@
 
                 // Celdas de calificación por materia en la matriz
                 subjects.forEach(subj => {
-                    const score = getStudentSubjectScore(st, subj.name, period);
+                    const score = getStudentSubjectScore(st, subj.name, period, subj.code);
                     if (score === null || score === undefined || score === 0) {
                         tbodyHtml += '<td style="text-align:center; color:#94a3b8; font-weight:600;">-</td>';
                     } else if (score >= 60) {
@@ -2078,12 +2202,14 @@
 
             _filteredStudents.forEach((st, idx) => {
                 const stats = calculateStudentAverages(st, period);
-                const fullName = st.nombre || (st.apellidos ? st.apellidos + ', ' + st.nombres : 'Estudiante');
-                const codPersonal = st.codigoPersonal || st.codigo || 'S/' + (1000 + idx);
-                const cui = st.cui || st.dpi || '';
-                const grado = st.grado || '4to Grado';
-                const seccion = st.seccion || 'A';
-                const carrera = st.carrera || 'Perito Contador';
+                const fullName = (st.lastName && st.firstName)
+                    ? (st.lastName + ', ' + st.firstName).trim()
+                    : (st.apellidos ? st.apellidos + ', ' + st.nombres : (st.name || st.nombre || ('Estudiante ' + (idx + 1))));
+                const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim() || ('S/' + (1000 + idx));
+                const cui = (st.cui || st.dpi || st.docNumber || '').toString().trim();
+                const grado = (st.grade || st.grado || '4to Perito Contador').trim();
+                const seccion = (st.section || st.seccion || 'A').replace(/secci[oó]n/i, '').trim();
+                const carrera = st.career || st.carrera || 'Perito Contador';
                 const estado = stats.isPromoted ? 'PROMOVIDO' : 'RECUPERACIÓN';
 
                 rows.push([
@@ -2112,10 +2238,12 @@
             const st = _filteredStudents[idx];
             if (!st) return;
 
-            const fullName = st.nombre || (st.apellidos ? st.apellidos + ', ' + st.nombres : 'Estudiante');
-            const codPersonal = st.codigoPersonal || st.codigo || 'N/A';
-            const grado = st.grado || '4to Grado';
-            const seccion = st.seccion || 'A';
+            const fullName = (st.lastName && st.firstName)
+                ? (st.lastName + ', ' + st.firstName).trim()
+                : (st.apellidos ? st.apellidos + ', ' + st.nombres : (st.name || st.nombre || 'Estudiante'));
+            const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim() || 'N/A';
+            const grado = (st.grade || st.grado || '4to Grado').trim();
+            const seccion = (st.section || st.seccion || 'A').replace(/secci[oó]n/i, '').trim();
 
             document.getElementById('modalStudentName').textContent = fullName;
             document.getElementById('modalStudentMeta').textContent = 'Código SIRE: ' + codPersonal + ' • Grado: ' + grado + ' • Sección: ' + seccion;
