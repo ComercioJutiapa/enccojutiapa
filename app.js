@@ -7411,6 +7411,7 @@ function applyIncomingCloudState(incomingState, force = false) {
     // Refrescar vistas activas en tiempo real
     try {
         if (typeof renderCurrentView === 'function') renderCurrentView();
+        if (typeof populateGradebookBimestreSelect === 'function') populateGradebookBimestreSelect();
         if (typeof renderAssignmentsTable === "function" && document.getElementById("assignmentsTableBody")) renderAssignmentsTable();
         if (typeof renderUsersTable === "function" && document.getElementById("usersTableBody")) renderUsersTable();
         if (typeof renderGradebookTable === "function" && document.getElementById("gradebookTable")) renderGradebookTable();
@@ -27206,6 +27207,13 @@ function initFirestoreModularLiveListeners() {
                     if (headerBadge) headerBadge.textContent = `${bNum}º Bimestre Activo`;
                     const officialSelect = document.getElementById('officialActiveBimestreSelect');
                     if (officialSelect && parseInt(officialSelect.value) !== bNum) officialSelect.value = String(bNum);
+                    if (Array.isArray(d.activeUnits) && d.activeUnits.length > 0) {
+                        STATE.config.activeUnits = d.activeUnits.map(Number);
+                    }
+                    [1, 2, 3, 4].forEach(u => {
+                        const chk = document.getElementById('checkActiveUnit' + u);
+                        if (chk) chk.checked = (STATE.config.activeUnits || [bNum]).includes(u);
+                    });
                     if (typeof populateGradebookBimestreSelect === 'function') populateGradebookBimestreSelect();
                     // ⚡ Reflejo instantáneo para los catedráticos sin recargar la página
                     if (STATE.activeView === 'gradebook' && typeof renderGradebookTable === 'function') {
