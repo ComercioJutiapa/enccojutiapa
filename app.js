@@ -5518,18 +5518,18 @@ function purifySchoolStructure() {
     ];
 
     const defaultGuides = {
-        "grd-4a": { teacher: "Nehemias Yalil Salguero", id: "usr-doc-01" },
-        "grd-4b": { teacher: "Damaris Violeta Escobar Contreras de Salguero", id: "usr-doc-13" },
-        "grd-4c": { teacher: "Lilian Alas Grijalva", id: "usr-doc-06" },
-        "grd-4d": { teacher: "Sandra Paola Bernal Yanes de Argueta", id: "usr-doc-17" },
-        "grd-5a": { teacher: "Williams Esmely Gudiel Paredes", id: "usr-doc-04" },
-        "grd-5b": { teacher: "Elda Argentina López de Valdez", id: "usr-doc-14" },
-        "grd-5c": { teacher: "Héctor Noé Linares", id: "usr-doc-10" },
-        "grd-5d": { teacher: "Milvia Aracely Jacobo Escobar", id: "usr-doc-18" },
-        "grd-6a": { teacher: "Carlos Augusto Juárez Alvarez", id: "usr-doc-05" },
-        "grd-6b": { teacher: "Nery Benjamín Galvez Ramos", id: "usr-doc-07" },
-        "grd-6c": { teacher: "Aleida Maribel Escobar de Palma", id: "usr-doc-02" },
-        "grd-6d": { teacher: "Wilder Porfirio Pérez López", id: "usr-doc-11" }
+        "grd-4a": { teacher: "Wiliams Esmely Gudiel Paredes", id: "usr-doc-04" },
+        "grd-4b": { teacher: "Roberto Alex Tobar Cermeño", id: "usr-doc-03" },
+        "grd-4c": { teacher: "Enma Leticia Macario Xúm de Ruano", id: "usr-doc-15" },
+        "grd-4d": { teacher: "Sandra Julissa Arana Lucero", id: "usr-doc-12" },
+        "grd-5a": { teacher: "Carlos Augusto Juárez Alvarez", id: "usr-doc-05" },
+        "grd-5b": { teacher: "Milvia Aracely Jacobo Escobar", id: "usr-doc-18" },
+        "grd-5c": { teacher: "Aleida Maribel Escobar de Palma", id: "usr-doc-02" },
+        "grd-5d": { teacher: "Héctor Noé Hernández Linares", id: "usr-doc-10" },
+        "grd-6a": { teacher: "Nehemias Yalil Salguero Sagastume", id: "usr-doc-01" },
+        "grd-6b": { teacher: "Carlos Vinicio Grijalva Cardona", id: "usr-doc-19" },
+        "grd-6c": { teacher: "María Jannete Salguero Mellado", id: "usr-doc-16" },
+        "grd-6d": { teacher: "Edvin Osvaldo López Recinos", id: "usr-doc-08" }
     };
     const existingMap = new Map();
     if (Array.isArray(STATE.gradesList)) {
