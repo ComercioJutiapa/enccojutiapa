@@ -3828,7 +3828,7 @@
                 </h3>
                 <button type="button" class="modal-close" onclick="closeRoleModal()" style="color:#fff; background:transparent; border:none; font-size:1.6rem; cursor:pointer;">&times;</button>
             </div>
-            <form onsubmit="saveRoleForm(event); return false;" id="roleForm">
+            <form onsubmit="guardarPermisosRol(event); return false;" id="roleForm">
                 <div class="modal-body" style="padding:22px; font-size:0.9rem; max-height:75vh; overflow-y:auto;">
                     
                     <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:0.85rem; color:#0369a1; display:flex; align-items:center; gap:8px;">
@@ -3896,7 +3896,7 @@
                 </div>
                 <div class="modal-footer" style="padding:14px 22px; background:#f8fafc; border-top:1.5px solid #e2e8f0; display:flex; justify-content:flex-end; gap:10px;">
                     <button type="button" class="btn btn-secondary" onclick="closeRoleModal()" style="padding:9px 20px; font-weight:700; border-radius:8px;">Cancelar</button>
-                    <button type="submit" id="roleSubmitBtn" class="btn btn-primary" style="padding:9px 24px; font-weight:800; border-radius:8px; background:#0284c7; border-color:#0369a1; color:#fff; display:inline-flex; align-items:center; gap:8px;">
+                    <button type="submit" id="btnGuardarPermisos" data-legacy-id="roleSubmitBtn" class="btn btn-primary" style="padding:9px 24px; font-weight:800; border-radius:8px; background:#0284c7; border-color:#0369a1; color:#fff; display:inline-flex; align-items:center; gap:8px;">
                         <i class="fa-solid fa-floppy-disk"></i> Guardar Configuración de Rol
                     </button>
                 </div>

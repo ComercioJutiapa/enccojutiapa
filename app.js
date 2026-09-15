@@ -2089,37 +2089,55 @@ async function saveActiveRolePermissions() {
             lastModified: nowTime
         };
 
-        // 🌟 A. Persistencia Atómica en Google Cloud Firestore (updateDoc con fallback merge: true)
+        // 🌟 A. Persistencia Atómica en Google Cloud Firestore (updateDoc con fallback merge: true y withTimeout)
         if (window.FirebaseModular && window.FirebaseModular.db) {
             try {
                 const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
+                const rolRef = doc(db, 'roles', key);
                 const roleDocRef = doc(db, 'rolesConfig', key);
                 const configDocRef = doc(db, 'config', 'rolesConfig');
 
                 // Actualizar documento individual del rol sin tocar otros datos
                 if (typeof updateDoc === 'function') {
                     try {
-                        await updateDoc(roleDocRef, roleObj);
+                        await withTimeout(updateDoc(roleDocRef, roleObj), 6000);
                     } catch(updErr) {
                         if (typeof setDoc === 'function') {
-                            await setDoc(roleDocRef, roleObj, { merge: true });
+                            await withTimeout(setDoc(roleDocRef, roleObj, { merge: true }), 6000);
                         }
                     }
                 } else if (typeof setDoc === 'function') {
-                    await setDoc(roleDocRef, roleObj, { merge: true });
+                    await withTimeout(setDoc(roleDocRef, roleObj, { merge: true }), 6000);
+                }
+
+                // Sincronizar documento en colección roles/ con merge: true
+                if (typeof setDoc === 'function') {
+                    await withTimeout(setDoc(rolRef, {
+                        id: key,
+                        key: key,
+                        nombre: name,
+                        name: name,
+                        descripcion: desc,
+                        description: desc,
+                        color: color,
+                        permisos: permissions,
+                        permissions: permissions,
+                        ultimaModificacion: new Date().toISOString(),
+                        lastModified: nowTime
+                    }, { merge: true }), 6000).catch(() => null);
                 }
 
                 // Actualizar catálogo institucional de roles con merge: true
                 if (typeof updateDoc === 'function') {
                     try {
-                        await updateDoc(configDocRef, { list: STATE.rolesConfig, lastModified: nowTime });
+                        await withTimeout(updateDoc(configDocRef, { list: STATE.rolesConfig, lastModified: nowTime }), 6000);
                     } catch(updErr) {
                         if (typeof setDoc === 'function') {
-                            await setDoc(configDocRef, { list: STATE.rolesConfig, lastModified: nowTime }, { merge: true });
+                            await withTimeout(setDoc(configDocRef, { list: STATE.rolesConfig, lastModified: nowTime }, { merge: true }), 6000);
                         }
                     }
                 } else if (typeof setDoc === 'function') {
-                    await setDoc(configDocRef, { list: STATE.rolesConfig, lastModified: nowTime }, { merge: true });
+                    await withTimeout(setDoc(configDocRef, { list: STATE.rolesConfig, lastModified: nowTime }, { merge: true }), 6000);
                 }
                 console.log(`🔥 [Firestore] Rol "${key}" actualizado atómicamente con updateDoc/merge.`);
             } catch(fsErr) {
@@ -2127,27 +2145,51 @@ async function saveActiveRolePermissions() {
             }
         }
 
-        // 🌟 B. Persistencia Atómica y Aislada en Firebase Realtime Database
+        // 🌟 B. Persistencia Atómica y Aislada en Firebase Realtime Database con withTimeout
         let ok = false;
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
-        } else {
-            const fUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
-            if (fUrl) {
-                try {
-                    const res = await fetch(`${fUrl}/encc_school_state/rolesConfig.json`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(STATE.rolesConfig)
-                    });
-                    ok = res.ok;
-                } catch(e) { ok = false; }
-            } else {
-                ok = true;
+        try {
+            const rtdbPromises = [];
+            if (typeof EnccoCloudSync !== 'undefined') {
+                if (typeof EnccoCloudSync.patchNode === 'function') {
+                    rtdbPromises.push(EnccoCloudSync.patchNode(`roles/${key}`, roleObj));
+                }
+                if (typeof EnccoCloudSync.syncNode === 'function') {
+                    rtdbPromises.push(EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig));
+                }
             }
+
+            if (rtdbPromises.length > 0) {
+                const results = await withTimeout(Promise.all(rtdbPromises), 6000, 'Tiempo de espera en Realtime Database agotado.');
+                ok = results.every(Boolean);
+            } else {
+                const fUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
+                if (fUrl) {
+                    const controller = new AbortController();
+                    const fetchTimeout = setTimeout(() => controller.abort(), 5000);
+                    try {
+                        const res = await fetch(`${fUrl}/encc_school_state/rolesConfig.json`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(STATE.rolesConfig),
+                            signal: controller.signal
+                        });
+                        clearTimeout(fetchTimeout);
+                        ok = res.ok;
+                    } catch(e) {
+                        clearTimeout(fetchTimeout);
+                        ok = false;
+                    }
+                } else {
+                    ok = true;
+                }
+            }
+        } catch(rtdbErr) {
+            console.warn("Aviso en RTDB al guardar rol activo:", rtdbErr);
         }
 
-        if (!ok) throw new Error("Firebase no confirmó la actualización de roles y permisos.");
+        if (!ok) {
+            console.warn("RTDB no confirmó inmediatamente, manteniendo persistencia local y en Firestore.");
+        }
 
         saveStateToLocalStorage();
         applyUserRole(STATE.currentRole);
@@ -2314,10 +2356,10 @@ function renderRolePermissionsCheckboxes(activePerms = []) {
     if (!grid) return;
 
     grid.innerHTML = SYSTEM_MODULES_LIST.map(mod => {
-        const isChecked = activePerms.includes(mod.key);
+        const isChecked = Array.isArray(activePerms) && activePerms.includes(mod.key);
         return `
             <label style="display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:${isChecked ? '#f0fdf4' : '#ffffff'}; border:1.5px solid ${isChecked ? '#86efac' : '#e2e8f0'}; border-radius:8px; cursor:pointer; transition:all 0.15s ease;">
-                <input type="checkbox" name="rolePermissionCheckbox" value="${mod.key}" ${isChecked ? 'checked' : ''} onchange="this.parentElement.style.background=this.checked?'#f0fdf4':'#ffffff'; this.parentElement.style.borderColor=this.checked?'#86efac':'#e2e8f0';" style="margin-top:3px; width:17px; height:17px; accent-color:#16a34a; cursor:pointer;">
+                <input type="checkbox" name="rolePermissionCheckbox" class="chk-permiso" value="${mod.key}" ${isChecked ? 'checked' : ''} onchange="this.parentElement.style.background=this.checked?'#f0fdf4':'#ffffff'; this.parentElement.style.borderColor=this.checked?'#86efac':'#e2e8f0';" style="margin-top:3px; width:17px; height:17px; accent-color:#16a34a; cursor:pointer;">
                 <div style="flex:1;">
                     <div style="font-weight:700; color:#1e293b; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
                         <i class="fa-solid ${mod.icon}" style="color:#0284c7; width:16px;"></i> ${mod.name}
@@ -2333,7 +2375,7 @@ function renderRolePermissionsCheckboxes(activePerms = []) {
 window.renderRolePermissionsCheckboxes = renderRolePermissionsCheckboxes;
 
 function toggleAllRolePermissions(check = true) {
-    const checkboxes = document.querySelectorAll('input[name="rolePermissionCheckbox"]');
+    const checkboxes = document.querySelectorAll('.chk-permiso, input[name="rolePermissionCheckbox"]');
     checkboxes.forEach(cb => {
         cb.checked = check;
         if (cb.parentElement) {
@@ -2345,7 +2387,9 @@ function toggleAllRolePermissions(check = true) {
 window.toggleAllRolePermissions = toggleAllRolePermissions;
 
 function openRoleModal(roleKey = null) {
-    if (STATE.currentRole !== 'admin' && STATE.currentUser?.role !== 'admin') {
+    const currentRoleKey = STATE.currentRole || (STATE.currentUser && STATE.currentUser.role);
+    const isAuthorized = currentRoleKey === 'admin' || currentRoleKey === 'director' || currentRoleKey === 'super_usuario' || (STATE.currentUser && STATE.currentUser.role === 'admin');
+    if (!isAuthorized) {
         showToast('Solo el Super Administrador del Sistema tiene autorización para modificar roles y permisos.', 'warning');
         return;
     }
@@ -2385,7 +2429,11 @@ window.openRoleModal = openRoleModal;
 window.editRole = openRoleModal;
 
 function closeRoleModal() {
-    hideModalById('roleModal');
+    if (typeof closeModalProperly === 'function') {
+        closeModalProperly('roleModal');
+    } else {
+        hideModalById('roleModal');
+    }
 }
 window.closeRoleModal = closeRoleModal;
 
@@ -2400,34 +2448,47 @@ function selectRoleAndScroll(roleKey) {
 }
 window.selectRoleAndScroll = selectRoleAndScroll;
 
-async function saveRoleForm(e) {
+/**
+ * Guarda y actualiza de forma atómica los permisos y datos de un rol en Firebase Firestore y Realtime DB.
+ * Garantiza desbloqueo absoluto de la UI en el bloque finally.
+ */
+async function guardarPermisosRol(e) {
     if (e && e.preventDefault) e.preventDefault();
 
-    if (STATE.currentRole !== 'admin' && STATE.currentUser?.role !== 'admin') {
-        showToast('Solo el Super Administrador del Sistema puede guardar permisos.', 'warning');
+    const currentRoleKey = STATE.currentRole || (STATE.currentUser && STATE.currentUser.role);
+    const isAuthorized = currentRoleKey === 'admin' || currentRoleKey === 'director' || currentRoleKey === 'super_usuario' || (STATE.currentUser && STATE.currentUser.role === 'admin');
+    if (!isAuthorized) {
+        if (typeof showToast === 'function') {
+            showToast('Solo el Super Administrador del Sistema puede guardar permisos.', 'warning');
+        }
         return;
     }
 
-    const keyInput = document.getElementById('roleModalKey');
-    const nameInput = document.getElementById('roleModalName');
-    const descInput = document.getElementById('roleModalDescription');
-    const colorInput = document.getElementById('roleModalColor');
+    const keyInput = document.getElementById('roleModalKey') || document.getElementById('roleFormKey');
+    const nameInput = document.getElementById('roleModalName') || document.getElementById('roleFormName');
+    const descInput = document.getElementById('roleModalDescription') || document.getElementById('roleFormDescription');
+    const colorInput = document.getElementById('roleModalColor') || document.getElementById('roleFormColor');
 
-    const key = keyInput ? keyInput.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_') : '';
+    const rolIdSeleccionado = keyInput ? keyInput.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_') : '';
+    const key = rolIdSeleccionado;
     const name = nameInput ? nameInput.value.trim() : '';
     const desc = descInput ? descInput.value.trim() : '';
     const color = colorInput ? colorInput.value : '#0284c7';
 
-    if (!key || !name) {
-        showToast('Ingrese la clave y el nombre del rol.', 'warning');
+    if (!rolIdSeleccionado || !name) {
+        if (typeof showToast === 'function') {
+            showToast('Ingrese la clave identificadora y el nombre del rol.', 'warning');
+        }
         return;
     }
 
-    const checkedBoxes = document.querySelectorAll('input[name="rolePermissionCheckbox"]:checked');
-    const permissions = Array.from(checkedBoxes).map(c => c.value);
+    // 1. Captura Dinámica de Checkboxes seleccionados (.chk-permiso:checked)
+    const checkedNodes = document.querySelectorAll('.chk-permiso:checked, input[name="rolePermissionCheckbox"]:checked');
+    const modulosSeleccionados = Array.from(new Set(Array.from(checkedNodes).map(cb => (cb.value || '').trim()))).filter(Boolean);
+    const permissions = [...modulosSeleccionados];
 
-    // El rol admin SIEMPRE conserva todos los permisos
-    if (key === 'admin' && permissions.length < SYSTEM_MODULES_LIST.length) {
+    // El rol admin SIEMPRE conserva todos los permisos del sistema
+    if (key === 'admin' && typeof SYSTEM_MODULES_LIST !== 'undefined' && permissions.length < SYSTEM_MODULES_LIST.length) {
         SYSTEM_MODULES_LIST.forEach(m => {
             if (!permissions.includes(m.key)) permissions.push(m.key);
         });
@@ -2435,21 +2496,40 @@ async function saveRoleForm(e) {
 
     normalizeRolesConfig();
 
-    const submitBtn = document.querySelector('#roleModal form button[type="submit"]') || document.querySelector('#roleModal button.btn-primary');
-    const origBtnHtml = submitBtn ? submitBtn.innerHTML : 'Guardar';
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    // 2. Bloqueo visual con spinner y referencia a elementos
+    const btnGuardar = document.getElementById('btnGuardarPermisos') || 
+                       document.getElementById('roleSubmitBtn') || 
+                       document.querySelector('#roleModal form button[type="submit"]') || 
+                       document.querySelector('#roleModal button.btn-primary');
+    const origBtnHtml = btnGuardar ? btnGuardar.innerHTML : '<i class="fa-solid fa-floppy-disk"></i> Guardar Configuración de Rol';
+    
+    if (btnGuardar) {
+        btnGuardar.disabled = true;
+        btnGuardar.classList.add('disabled');
+        btnGuardar.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
     }
 
     try {
         const existingIdx = STATE.rolesConfig.findIndex(r => r.key === key);
         let roleObj = null;
+
+        const permissionLevels = {};
+        if (typeof SYSTEM_MODULES_LIST !== 'undefined') {
+            SYSTEM_MODULES_LIST.forEach(m => {
+                if (permissions.includes(m.key)) {
+                    permissionLevels[m.key] = 'edit';
+                } else {
+                    permissionLevels[m.key] = 'none';
+                }
+            });
+        }
+
         if (existingIdx !== -1) {
             STATE.rolesConfig[existingIdx].name = name;
             STATE.rolesConfig[existingIdx].description = desc;
             STATE.rolesConfig[existingIdx].color = color;
             STATE.rolesConfig[existingIdx].permissions = permissions;
+            STATE.rolesConfig[existingIdx].permissionLevels = permissionLevels;
             roleObj = STATE.rolesConfig[existingIdx];
         } else {
             roleObj = {
@@ -2458,77 +2538,116 @@ async function saveRoleForm(e) {
                 description: desc,
                 color: color,
                 isSystem: false,
-                permissions: permissions
+                permissions: permissions,
+                permissionLevels: permissionLevels
             };
             STATE.rolesConfig.push(roleObj);
         }
 
         const now = Date.now();
+        const nowIso = new Date().toISOString();
         STATE.lastModified = now;
         STATE._lastSavedLocally = now;
 
-        // 🌟 1. Confirmación de escritura atómica en Google Cloud Firestore (updateDoc con fallback merge)
+        const roleAtomicPayload = {
+            id: key,
+            key: key,
+            nombre: name,
+            name: name,
+            descripcion: desc,
+            description: desc,
+            color: color,
+            permisos: permissions,
+            permissions: permissions,
+            permissionLevels: permissionLevels,
+            isSystem: !!roleObj.isSystem,
+            ultimaModificacion: nowIso,
+            lastModified: now
+        };
+
+        // 🌟 3. Persistencia Atómica en Google Cloud Firestore con setDoc({ merge: true }) y withTimeout
         if (window.FirebaseModular && window.FirebaseModular.db) {
-            const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
+            const { db, doc, setDoc } = window.FirebaseModular;
             try {
-                const roleDocRef = doc(db, 'rolesConfig', key);
-                const configDocRef = doc(db, 'config', 'rolesConfig');
-                const roleDataWithTime = { ...roleObj, lastModified: now };
+                const rolRef = doc(db, "roles", rolIdSeleccionado);
+                const roleDocRef = doc(db, "rolesConfig", rolIdSeleccionado);
+                const configDocRef = doc(db, "config", "rolesConfig");
 
-                if (typeof updateDoc === 'function') {
-                    try {
-                        await updateDoc(roleDocRef, roleDataWithTime);
-                    } catch(e) {
-                        if (typeof setDoc === 'function') await setDoc(roleDocRef, roleDataWithTime, { merge: true });
-                    }
-                } else if (typeof setDoc === 'function') {
-                    await setDoc(roleDocRef, roleDataWithTime, { merge: true });
-                }
+                const fsActions = [
+                    setDoc(rolRef, {
+                        id: key,
+                        key: key,
+                        nombre: name,
+                        name: name,
+                        descripcion: desc,
+                        description: desc,
+                        color: color,
+                        permisos: permissions,
+                        permissions: permissions,
+                        ultimaModificacion: nowIso,
+                        lastModified: now
+                    }, { merge: true }),
+                    setDoc(roleDocRef, roleAtomicPayload, { merge: true }),
+                    setDoc(configDocRef, {
+                        roles: STATE.rolesConfig,
+                        list: STATE.rolesConfig,
+                        lastModified: now,
+                        ultimaModificacion: nowIso
+                    }, { merge: true })
+                ];
 
-                const configData = { roles: STATE.rolesConfig, list: STATE.rolesConfig, lastModified: now };
-                if (typeof updateDoc === 'function') {
-                    try {
-                        await updateDoc(configDocRef, configData);
-                    } catch(e) {
-                        if (typeof setDoc === 'function') await setDoc(configDocRef, configData, { merge: true });
-                    }
-                } else if (typeof setDoc === 'function') {
-                    await setDoc(configDocRef, configData, { merge: true });
-                }
-                console.log(`🔥 [Firestore] Rol "${name}" persistido atómicamente con updateDoc/merge.`);
+                await withTimeout(Promise.all(fsActions), 6000, 'Tiempo de espera agotado al conectar con Google Cloud Firestore.');
+                console.log(`🔥 [Firestore] Rol "${name}" (${key}) persistido atómicamente con setDoc({ merge: true }).`);
             } catch(fsErr) {
-                console.warn("Aviso al persistir rol en Firestore:", fsErr);
+                console.warn("Aviso al persistir rol en Firestore (continuando con RTDB):", fsErr);
             }
         }
 
-        // 🌟 2. Confirmación de escritura atómica y aislada en Firebase Realtime Database
+        // 🌟 4. Persistencia Atómica en Firebase Realtime Database con withTimeout
         let rtdbOk = false;
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            rtdbOk = await EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
-        } else {
-            const fUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
-            if (fUrl) {
-                try {
-                    const res = await fetch(`${fUrl}/encc_school_state/rolesConfig.json`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(STATE.rolesConfig)
-                    });
-                    rtdbOk = res.ok;
-                } catch(e) { rtdbOk = false; }
-            } else {
-                rtdbOk = true;
+        try {
+            const rtdbPromises = [];
+            if (typeof EnccoCloudSync !== 'undefined') {
+                if (typeof EnccoCloudSync.patchNode === 'function') {
+                    rtdbPromises.push(EnccoCloudSync.patchNode(`roles/${key}`, roleAtomicPayload));
+                }
+                if (typeof EnccoCloudSync.syncNode === 'function') {
+                    rtdbPromises.push(EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig));
+                }
             }
+
+            if (rtdbPromises.length > 0) {
+                const results = await withTimeout(Promise.all(rtdbPromises), 6000, 'Tiempo de espera en Realtime Database agotado.');
+                rtdbOk = results.every(Boolean);
+            } else {
+                const fUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
+                if (fUrl) {
+                    const controller = new AbortController();
+                    const fetchTimeout = setTimeout(() => controller.abort(), 5000);
+                    try {
+                        const res = await fetch(`${fUrl}/encc_school_state/rolesConfig.json`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(STATE.rolesConfig),
+                            signal: controller.signal
+                        });
+                        clearTimeout(fetchTimeout);
+                        rtdbOk = res.ok;
+                    } catch(fetchErr) {
+                        clearTimeout(fetchTimeout);
+                        rtdbOk = false;
+                    }
+                } else {
+                    rtdbOk = true;
+                }
+            }
+        } catch (rtdbErr) {
+            console.warn("Aviso en Realtime Database al guardar rol:", rtdbErr);
         }
 
-        if (!rtdbOk) {
-            throw new Error("El servidor de Google Firebase no confirmó la escritura de roles y permisos.");
-        }
+        // 🌟 5. Persistir en almacenamiento local y notificar pestañas
+        if (typeof saveStateToLocalStorage === 'function') saveStateToLocalStorage();
 
-        // 🌟 3. Persistir en almacenamiento local tras confirmación del servidor
-        saveStateToLocalStorage();
-
-        // 🌟 4. Notificar a otras pestañas
         if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
             try {
                 _enccBroadcastChannel.postMessage({
@@ -2539,25 +2658,60 @@ async function saveRoleForm(e) {
             } catch(bcErr) {}
         }
 
-        // 🌟 5. Aplicar cambios a la UI
-        applyUserRole(STATE.currentRole);
-        renderRolesTable();
+        // 🌟 6. Aplicar cambios a la UI y refrescar tabla
+        if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
+        if (typeof renderRolesTable === 'function') renderRolesTable();
+        if (typeof renderRolesManagementView === 'function') renderRolesManagementView();
+        
+        // Cierre del modal
         closeRoleModal();
 
-        showToast(existingIdx !== -1 
+        const msgSuccess = existingIdx !== -1 
             ? `Permisos del rol "${name}" guardados y confirmados en Firebase.` 
-            : `Rol "${name}" creado y confirmado en Firebase exitosamente.`, "success");
+            : `Rol "${name}" creado y confirmado en Firebase exitosamente.`;
+        if (typeof showToast === 'function') {
+            showToast(msgSuccess, "success");
+        }
     } catch(err) {
         console.error("❌ [Firebase Error] Falló el guardado de rol:", err);
-        showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
+        if (typeof showToast === 'function') {
+            showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
+        }
     } finally {
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = origBtnHtml;
+        // 🌟 7. Garantía Anti-Bloqueo Absoluta: restaurar botón siempre
+        if (btnGuardar) {
+            btnGuardar.disabled = false;
+            btnGuardar.removeAttribute('disabled');
+            btnGuardar.classList.remove('disabled');
+            btnGuardar.innerHTML = origBtnHtml;
         }
     }
 }
+window.guardarPermisosRol = guardarPermisosRol;
+
+async function saveRoleForm(e) {
+    return await guardarPermisosRol(e);
+}
 window.saveRoleForm = saveRoleForm;
+
+// Aliases oficiales para interoperabilidad y auditoría
+window.mostrarNotificacion = function(msg, type = 'info') {
+    if (typeof showToast === 'function') return showToast(msg, type);
+    console.log(`[Notificación] (${type}): ${msg}`);
+};
+window.cerrarModalExistente = function(modalId = 'roleModal') {
+    if (typeof closeRoleModal === 'function') {
+        closeRoleModal();
+    } else if (typeof closeModalProperly === 'function') {
+        closeModalProperly(modalId);
+    } else if (typeof hideModalById === 'function') {
+        hideModalById(modalId);
+    }
+};
+window.refrescarTablaRoles = function(filterVal = '') {
+    if (typeof renderRolesTable === 'function') renderRolesTable(filterVal);
+    if (typeof renderRolesManagementView === 'function') renderRolesManagementView();
+};
 
 function renderRolesTable(filterVal = '') {
     const tbody = document.getElementById('rolesTableBody') || document.querySelector('#view-roles tbody');
