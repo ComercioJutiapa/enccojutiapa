@@ -462,6 +462,29 @@
         });
     }
 
+
+    // 8. LIMPIEZA DE CACHÉ EN MEMORIA Y RESINCRONIZACIÓN
+    async function cleanCacheAndResyncNow() {
+        if (typeof window.showToast === 'function') {
+            window.showToast("🧹 Purgando memoria volátil y resincronizando...", "info");
+        }
+        try {
+            if (typeof window.forcePullFromFirebaseNow === 'function') {
+                await window.forcePullFromFirebaseNow();
+            } else if (typeof window.pullStateFromFirebaseCloud === 'function') {
+                await window.pullStateFromFirebaseCloud(true);
+            }
+            if (typeof window.showToast === 'function') {
+                window.showToast("✅ Memoria purgada y datos resincronizados desde Firebase.", "success");
+            }
+        } catch(e) {
+            console.warn("Aviso al resincronizar:", e.message);
+            if (typeof window.showToast === 'function') {
+                window.showToast("Aviso al resincronizar: " + e.message, "warning");
+            }
+        }
+    }
+
     // Exportación Global
     const EnccoDB = {
         initFirestoreMemoryEngine,
@@ -472,6 +495,7 @@
         setOfficialActiveBimestre,
         saveAcademicExoneration,
         listenRealtimeCollection,
+        cleanCacheAndResyncNow,
         getFirebaseDatabaseUrl
     };
 
@@ -483,5 +507,6 @@
     window.saveAcademicExoneration = saveAcademicExoneration;
     window.getRtdbStudentIndex = getRtdbStudentIndex;
     window.getFirebaseDatabaseUrl = getFirebaseDatabaseUrl;
+    window.cleanCacheAndResyncNow = cleanCacheAndResyncNow;
 
 })(typeof window !== 'undefined' ? window : global);
