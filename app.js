@@ -878,10 +878,13 @@ const EnccoAuthStore = {
         document.querySelectorAll('.role-restricted, [data-perm]').forEach(el => {
             if (el.classList.contains('nav-item') || el.classList.contains('nav-section-label')) return;
 
+            const allowed = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim().toLowerCase()) : null;
             const permKey = el.dataset.perm || el.dataset.view;
 
             let hasPerm = false;
-            if (isSuper) {
+            if (allowed) {
+                hasPerm = allowed.includes(role.toLowerCase()) || (isSuper && allowed.includes('admin'));
+            } else if (isSuper) {
                 hasPerm = true;
             } else if (permKey) {
                 hasPerm = hasRolePermission(permKey, role);
@@ -6480,8 +6483,20 @@ function ensureMasterAccount() {
 
     // 1. Garantizar cuenta Administrador institucional
     let adminUser = STATE.users.find(u => u.role === 'admin' || u.id === 'usr-admin-01');
-    if (!adminUser && masterAccount) {
-        STATE.users.unshift(masterAccount);
+    if (!adminUser) {
+        adminUser = masterAccount || {
+            id: 'usr-admin-01',
+            username: 'admin',
+            name: 'Prof. Nehemias Yalil Salguero',
+            title: 'Super Administrador / Director',
+            role: 'admin',
+            roles: ['admin', 'director'],
+            email: 'nehemias.salguero1982@gmail.com',
+            secondaryEmail: '22-01-0014-14@mineduc.edu.gt',
+            phone: '502-5555-0101',
+            active: true
+        };
+        STATE.users.unshift(adminUser);
     } else if (adminUser) {
         if (!adminUser.email) adminUser.email = 'nehemias.salguero1982@gmail.com';
         if (!adminUser.secondaryEmail) adminUser.secondaryEmail = '22-01-0014-14@mineduc.edu.gt';
@@ -7206,36 +7221,114 @@ function logoutUser() {
 }
 
 
-function resetDemoData() {
-    if (confirm("¿Está seguro de limpiar toda la base de datos a su estado en blanco (conservando únicamente su Super Usuario Nehemias Salguero)?")) {
+/**
+ * 🛑 REINICIO TOTAL DE BASE DE DATOS (EXCLUSIVO ADMINISTRADOR)
+ * 1. Verificación estricta de rol 'admin' / 'super_usuario'.
+ * 2. Doble confirmación en pantalla antes de ejecutar.
+ * 3. Borrado atómico por lotes con writeBatch() de Firestore y reseteo en RTDB (/encc_school_state).
+ * 4. Purgado de colecciones: notas, clases, docentes, estudiantes, pensum, exoneraciones, bimestres.
+ * 5. Conservación intacta de la interfaz, listeners en tiempo real y memoria RAM (memoryLocalCache).
+ */
+async function reiniciarBaseDeDatosTotal() {
+    const role = (STATE && STATE.currentRole) || (STATE && STATE.currentUser && STATE.currentUser.role);
+    const isSuper = (role === 'admin' || role === 'super_usuario');
+
+    // 1. SEGURIDAD ESTRICTA: Exclusivo para rol Administrador
+    if (!isSuper) {
+        alert("⛔ ACCESO DENEGADO: El reinicio total de la base de datos es una función crítica exclusiva para el Administrador del sistema.");
+        return false;
+    }
+
+    // 2. DOBLE CONFIRMACIÓN EN PANTALLA
+    const confirmacion1 = window.confirm(
+        "⚠️ ADVERTENCIA DE SEGURIDAD - REINICIO TOTAL DE BASE DE DATOS\n\n" +
+        "¿Está completamente seguro de que desea REINICIAR la base de datos de Firebase en la nube?\n\n" +
+        "Esta acción eliminará de forma atómica todas las notas, clases, docentes, estudiantes, pensum, exoneraciones y bimestres.\n\n" +
+        "Presione ACEPTAR para continuar a la confirmación final."
+    );
+    if (!confirmacion1) return false;
+
+    const confirmacion2 = window.confirm(
+        "🛑 CONFIRMACIÓN FINAL IRREVERSIBLE\n\n" +
+        "Esta operación es definitiva y no se puede deshacer. Se ejecutarán operaciones por lotes (writeBatch) para purgar de forma inmediata los datos en la nube.\n\n" +
+        "¿Confirma DEFINITIVAMENTE el borrado y reinicio total de la base de datos escolar?"
+    );
+    if (!confirmacion2) return false;
+
+    // 3. INDICADOR VISUAL DE PROCESAMIENTO
+    const btnReset = document.getElementById('btnReinicioBaseDatos');
+    let originalBtnContent = '';
+    if (btnReset) {
+        originalBtnContent = btnReset.innerHTML;
+        btnReset.disabled = true;
+        btnReset.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Purgando datos en la nube...';
+    }
+    showToast("⏳ Iniciando purga atómica de base de datos con writeBatch()...", "info");
+
+    try {
+        // 4. BORRADO ATÓMICO TOTAL EN FIREBASE (FIRESTORE CON writeBatch + RTDB)
+        if (window.EnccoDB && typeof window.EnccoDB.reiniciarBaseDeDatosCloud === 'function') {
+            await window.EnccoDB.reiniciarBaseDeDatosCloud();
+        } else if (window.FirebaseModular && window.FirebaseModular.db && typeof window.FirebaseModular.writeBatch === 'function') {
+            const fbMod = window.FirebaseModular;
+            const collectionsToPurge = [
+                'calificaciones', 'grades', 'gradesList', 'notas',
+                'clases', 'secciones', 'grados_secciones', 'maestros_guias',
+                'docentes', 'estudiantes', 'students',
+                'pensum', 'pensumCatalog',
+                'exoneraciones',
+                'bimestres', 'bloqueos', 'gradeEditRequests'
+            ];
+
+            for (const col of collectionsToPurge) {
+                try {
+                    const snap = await fbMod.getDocs(fbMod.collection(fbMod.db, col));
+                    if (snap && !snap.empty) {
+                        let batch = fbMod.writeBatch(fbMod.db);
+                        let count = 0;
+                        for (const d of snap.docs) {
+                            batch.delete(d.ref);
+                            count++;
+                            if (count >= 400) {
+                                await batch.commit();
+                                batch = fbMod.writeBatch(fbMod.db);
+                                count = 0;
+                            }
+                        }
+                        if (count > 0) await batch.commit();
+                    }
+                } catch(e) {
+                    console.warn(`Aviso al purgar ${col}:`, e);
+                }
+            }
+        }
+
+        // 5. RESTABLECER ESTADO LOCAL EN MEMORIA (CONSERVANDO SUPER USUARIO)
         localStorage.removeItem(DB_STORAGE_KEY);
         loadDefaults();
         ensureMasterAccount();
-    // Garantizar permisos de supervisión de notas para Dirección y Secretaría
-    if (Array.isArray(STATE.rolesConfig)) {
-        STATE.rolesConfig.forEach(r => {
-            if ((r.key === 'director' || r.key === 'secretaria') && Array.isArray(r.permissions)) {
-                if (!r.permissions.includes('gradebook')) r.permissions.push('gradebook');
-            }
-        });
-    }
 
-
-    // 🏷️ Asegurar campos renglon (011/021) y gender (Masculino/Femenino) en todos los catedráticos
-    (STATE.users || []).forEach(u => {
-        if (!u.renglon) u.renglon = (u.id === 'usr-sec-01' || (u.name && (u.name.includes('Jhoana') || u.name.includes('Jarro') || u.name.includes('Williams') || u.name.includes('Nery') || u.name.includes('Gamaliel') || u.name.includes('Wilder') || u.name.includes('Bernal') || u.name.includes('Pereira')))) ? '021' : '011';
-        if (!u.gender) {
-            const nLower = (u.name || '').toLowerCase();
-            u.gender = (nLower.includes('licda.') || nLower.includes('profa.') || nLower.includes('maría') || nLower.includes('maria') || nLower.includes('sandra') || nLower.includes('enma') || nLower.includes('lilian') || nLower.includes('elda') || nLower.includes('milvia') || nLower.includes('aleida') || nLower.includes('damaris')) ? 'Femenino' : 'Masculino';
-        }
-    });
-
+        // 6. ACTUALIZAR INTERFAZ REACTIVAMENTE
         updateCareerSelects();
         updateLoginAccountSelect();
         renderCurrentView();
-        showToast("Base de datos en blanco lista para producción.", "success");
+        applyRoleBasedAccessControl();
+
+        showToast("✅ Base de datos reiniciada exitosamente en la nube con writeBatch(). Lista para producción.", "success");
+        return true;
+    } catch (err) {
+        console.error("Error al reiniciar base de datos:", err);
+        showToast("Error al reiniciar base de datos: " + err.message, "danger");
+        return false;
+    } finally {
+        if (btnReset) {
+            btnReset.disabled = false;
+            btnReset.innerHTML = originalBtnContent || '<i class="fa-solid fa-triangle-exclamation"></i> Reinicio Base de Datos';
+        }
     }
 }
+window.reiniciarBaseDeDatosTotal = reiniciarBaseDeDatosTotal;
+window.resetDemoData = reiniciarBaseDeDatosTotal;
 
 function loadDefaults(autoSave = false) {
     if (!Array.isArray(STATE.users)) STATE.users = [];
@@ -25434,10 +25527,13 @@ function applyUserRole(role = STATE.currentRole) {
     document.querySelectorAll('.role-restricted, [data-perm]').forEach(el => {
         if (el.classList.contains('nav-item') || el.classList.contains('nav-section-label')) return;
 
+        const allowed = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim().toLowerCase()) : null;
         const permKey = el.dataset.perm || el.dataset.view;
 
         let hasPerm = false;
-        if (isSuper) {
+        if (allowed) {
+            hasPerm = allowed.includes(role.toLowerCase()) || (isSuper && allowed.includes('admin'));
+        } else if (isSuper) {
             hasPerm = true;
         } else if (permKey) {
             hasPerm = hasRolePermission(permKey, role);

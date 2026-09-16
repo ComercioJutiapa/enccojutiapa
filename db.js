@@ -90,6 +90,7 @@
                 setDoc: fsMod.setDoc,
                 updateDoc: fsMod.updateDoc,
                 deleteDoc: fsMod.deleteDoc,
+                writeBatch: fsMod.writeBatch,
                 arrayUnion: fsMod.arrayUnion,
                 arrayRemove: fsMod.arrayRemove,
                 onSnapshot: fsMod.onSnapshot,
@@ -565,6 +566,141 @@
         return true;
     }
 
+    /**
+     * 🛑 REINICIO ATÓMICO TOTAL DE BASE DE DATOS EN LA NUBE (EXCLUSIVO ADMINISTRADOR)
+     * Utiliza operaciones por lotes (writeBatch()) en Firestore y actualiza atómicamente RTDB.
+     * Purgando: notas/calificaciones, clases/secciones, docentes, estudiantes, pensum, exoneraciones, bimestres.
+     * Conserva la cuenta Super Administrador para garantizar acceso ininterrumpido.
+     */
+    async function reiniciarBaseDeDatosCloud(adminUserOverride = null) {
+        const fbMod = (typeof window !== 'undefined' && window.FirebaseModular) || (typeof FirebaseModular !== 'undefined' ? FirebaseModular : null);
+        const report = { collectionsPurged: {}, rtdbReset: false, success: true };
+
+        const adminMaster = adminUserOverride || {
+            id: 'usr-admin-01',
+            username: 'admin',
+            name: 'Prof. Nehemias Yalil Salguero',
+            title: 'Super Administrador / Director',
+            role: 'admin',
+            roles: ['admin', 'director'],
+            email: 'nehemias.salguero1982@gmail.com',
+            secondaryEmail: '22-01-0014-14@mineduc.edu.gt',
+            active: true
+        };
+
+        // 1. Purga por lotes en Firestore con writeBatch()
+        if (fbMod && fbMod.db && typeof fbMod.writeBatch === 'function') {
+            const collectionsToPurge = [
+                'calificaciones', 'grades', 'gradesList', 'notas',
+                'clases', 'secciones', 'grados_secciones', 'maestros_guias',
+                'docentes', 'estudiantes', 'students',
+                'pensum', 'pensumCatalog',
+                'exoneraciones',
+                'bimestres', 'bloqueos', 'gradeEditRequests'
+            ];
+
+            for (const colName of collectionsToPurge) {
+                try {
+                    const colRef = fbMod.collection(fbMod.db, colName);
+                    const snap = await fbMod.getDocs(colRef);
+                    if (snap && !snap.empty) {
+                        let batch = fbMod.writeBatch(fbMod.db);
+                        let opCount = 0;
+                        let colDeleted = 0;
+
+                        for (const docSnap of snap.docs) {
+                            batch.delete(docSnap.ref);
+                            opCount++;
+                            colDeleted++;
+                            if (opCount >= 400) {
+                                await batch.commit();
+                                batch = fbMod.writeBatch(fbMod.db);
+                                opCount = 0;
+                            }
+                        }
+                        if (opCount > 0) {
+                            await batch.commit();
+                        }
+                        report.collectionsPurged[colName] = colDeleted;
+                    } else {
+                        report.collectionsPurged[colName] = 0;
+                    }
+                } catch (colErr) {
+                    console.warn(`Aviso al purgar ${colName} con writeBatch:`, colErr);
+                }
+            }
+
+            // Purgar users / usuarios preservando el Super Administrador
+            const userCollections = ['users', 'usuarios'];
+            for (const uCol of userCollections) {
+                try {
+                    const snap = await fbMod.getDocs(fbMod.collection(fbMod.db, uCol));
+                    if (snap && !snap.empty) {
+                        let batch = fbMod.writeBatch(fbMod.db);
+                        let opCount = 0;
+                        let uDeleted = 0;
+
+                        for (const docSnap of snap.docs) {
+                            const uData = (typeof docSnap.data === 'function') ? docSnap.data() : (docSnap.data || {});
+                            const isSuper = docSnap.id === 'usr-admin-01' || uData.role === 'admin' || (uData.roles && uData.roles.includes('admin'));
+                            if (isSuper) {
+                                continue; // Preservar super admin
+                            }
+                            batch.delete(docSnap.ref);
+                            opCount++;
+                            uDeleted++;
+                            if (opCount >= 400) {
+                                await batch.commit();
+                                batch = fbMod.writeBatch(fbMod.db);
+                                opCount = 0;
+                            }
+                        }
+                        if (opCount > 0) {
+                            await batch.commit();
+                        }
+                        report.collectionsPurged[uCol] = uDeleted;
+                    }
+                } catch (uErr) {
+                    console.warn(`Aviso al purgar ${uCol}:`, uErr);
+                }
+            }
+        }
+
+        // 2. Reseteo atómico en Realtime Database (/encc_school_state)
+        try {
+            const cleanStatePayload = {
+                calificaciones: {},
+                grades: {},
+                gradesList: [],
+                secciones: {},
+                docentes: {},
+                students: [],
+                pensum: [],
+                pensumCatalog: [],
+                exoneraciones: {},
+                gradeEditRequests: {},
+                config: {
+                    activeBimestre: 1,
+                    activeUnits: [1],
+                    globalLocked: false,
+                    minPassingScore: 60,
+                    teacherBypass: {},
+                    lastModified: Date.now()
+                },
+                users: [adminMaster],
+                lastModified: Date.now()
+            };
+
+            await rtdbRequest('/encc_school_state.json', 'PUT', cleanStatePayload);
+            report.rtdbReset = true;
+        } catch (rtdbErr) {
+            console.warn("Aviso al resetear RTDB /encc_school_state:", rtdbErr);
+            report.rtdbReset = false;
+        }
+
+        return report;
+    }
+
     // Exportación Global
     const EnccoDB = {
         initFirestoreMemoryEngine,
@@ -577,6 +713,7 @@
         listenRealtimeCollection,
         cleanCacheAndResyncNow,
         agregarRolAUsuario,
+        reiniciarBaseDeDatosCloud,
         getFirebaseDatabaseUrl
     };
 
@@ -590,5 +727,6 @@
     window.getFirebaseDatabaseUrl = getFirebaseDatabaseUrl;
     window.cleanCacheAndResyncNow = cleanCacheAndResyncNow;
     window.agregarRolAUsuario = agregarRolAUsuario;
+    window.reiniciarBaseDeDatosCloud = reiniciarBaseDeDatosCloud;
 
 })(typeof window !== 'undefined' ? window : global);

@@ -321,6 +321,18 @@ body {
 
 .theme-toggle-btn:hover, .reset-data-btn:hover, .logout-btn:hover { background: var(--brand-blue); }
 
+.btn-reset-db {
+    background: #dc2626 !important;
+    border: 1px solid #ef4444 !important;
+    color: #ffffff !important;
+    font-weight: 700;
+}
+.btn-reset-db:hover {
+    background: #b91c1c !important;
+    border-color: #f87171 !important;
+    box-shadow: 0 0 10px rgba(220, 38, 38, 0.4);
+}
+
 /* Sidebar */
 .app-layout { display: flex; min-height: calc(100vh - 46px); }
 
