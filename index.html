@@ -701,6 +701,15 @@
             border-bottom: 1px solid #f1f5f9;
         }
     </style>
+    <script>
+        // Blindaje contra retorno a páginas autenticadas mediante botón Atrás
+        if (window.history && window.history.pushState) {
+            window.history.pushState(null, '', window.location.href);
+            window.addEventListener('popstate', function() {
+                window.history.pushState(null, '', window.location.href);
+            });
+        }
+    </script>
 </head>
 <body>
 

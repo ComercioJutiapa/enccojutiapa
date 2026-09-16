@@ -8,21 +8,34 @@
         }
     </script>
 
-            <!-- GUARDIA DE SESIÓN ROBUSTA: Acceso fluido garantizado -->
+            <!-- GUARDIA DE SESIÓN ESTRICTA Y CONTROL DE NAVEGACIÓN (browserSessionPersistence) -->
     <script>
         (function() {
-            try {
-                var authUser = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
-                if (!authUser) {
-                    window.location.replace('login.html');
-                } else {
-                    sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
-                    var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
-                    if (authRole) sessionStorage.setItem('ENCCO_AUTH_ROLE', authRole);
+            function verifySession() {
+                try {
+                    var authUser = sessionStorage.getItem('ENCCO_AUTH_USER');
+                    if (!authUser) {
+                        window.location.replace('index.html');
+                        return false;
+                    }
+                    localStorage.removeItem('ENCCO_AUTH_USER');
+                    localStorage.removeItem('ENCCO_AUTH_ROLE');
+                    return true;
+                } catch(e) {
+                    window.location.replace('index.html');
+                    return false;
                 }
-            } catch(e) {
-                console.warn("Auth check error:", e);
             }
+
+            verifySession();
+
+            // Blindaje contra retroceso mediante el botón 'Atrás' del navegador
+            window.addEventListener('pageshow', function() {
+                verifySession();
+            });
+            window.addEventListener('popstate', function() {
+                verifySession();
+            });
         })();
     </script>
 
@@ -50,52 +63,73 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-        <!-- Firebase Modular SDK v10 para Gestión de Caché (memoryLocalCache exclusivo en RAM) -->
+        <!-- Firebase Modular SDK v10 para Gestión de Caché (memoryLocalCache exclusivo en RAM) y Auth (browserSessionPersistence) -->
     <script type="module">
         try {
             import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js").then(appMod => {
                 import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js").then(fsMod => {
-                    const firebaseConfig = {
-                        apiKey: "AIzaSyFakeKeyForEnccoModularCacheConfig",
-                        authDomain: "encco-jutiapa-live-2026-default-rtdb.firebaseapp.com",
-                        databaseURL: "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com",
-                        projectId: "encco-jutiapa-live-2026-default-rtdb",
-                        storageBucket: "encco-jutiapa-live-2026-default-rtdb.appspot.com"
-                    };
-                    const app = appMod.initializeApp(firebaseConfig, 'enccoOnlineApp_' + Date.now());
-                    
-                    // REGLA ESTRICTA 1: Exclusivamente memoria RAM ('memoryLocalCache'), sin persistencia IndexedDB local
-                    const cacheConfig = fsMod.memoryLocalCache();
-                    const db = fsMod.initializeFirestore(app, {
-                        localCache: cacheConfig
-                    });
+                    import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js").then(async authMod => {
+                        const firebaseConfig = {
+                            apiKey: "AIzaSyFakeKeyForEnccoModularCacheConfig",
+                            authDomain: "encco-jutiapa-live-2026-default-rtdb.firebaseapp.com",
+                            databaseURL: "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com",
+                            projectId: "encco-jutiapa-live-2026-default-rtdb",
+                            storageBucket: "encco-jutiapa-live-2026-default-rtdb.appspot.com"
+                        };
+                        const app = appMod.initializeApp(firebaseConfig, 'enccoOnlineApp_' + Date.now());
+                        
+                        // REGLA ESTRICTA 1: Exclusivamente memoria RAM ('memoryLocalCache'), sin persistencia IndexedDB local
+                        const cacheConfig = fsMod.memoryLocalCache();
+                        const db = fsMod.initializeFirestore(app, {
+                            localCache: cacheConfig
+                        });
 
-                    window.FirebaseModular = {
-                        app: app,
-                        db: db,
-                        fsMod: fsMod,
-                        initializeApp: appMod.initializeApp,
-                        initializeFirestore: fsMod.initializeFirestore,
-                        memoryLocalCache: fsMod.memoryLocalCache,
-                        collection: fsMod.collection,
-                        doc: fsMod.doc,
-                        getDoc: fsMod.getDoc,
-                        getDocs: fsMod.getDocs,
-                        setDoc: fsMod.setDoc,
-                        updateDoc: fsMod.updateDoc,
-                        deleteDoc: fsMod.deleteDoc,
-                        arrayUnion: fsMod.arrayUnion,
-                        arrayRemove: fsMod.arrayRemove,
-                        onSnapshot: fsMod.onSnapshot,
-                        query: fsMod.query,
-                        where: fsMod.where,
-                        initFirestoreWithCache: function() {
-                            return db;
+                        // 🔐 REGLA ESTRICTA: browserSessionPersistence exclusiva en Firebase Auth
+                        let auth = null;
+                        if (authMod && typeof authMod.getAuth === 'function') {
+                            try {
+                                auth = authMod.getAuth(app);
+                                if (authMod.browserSessionPersistence) {
+                                    await authMod.setPersistence(auth, authMod.browserSessionPersistence);
+                                    console.log("🔐 [Firebase Auth] browserSessionPersistence configurado en plataforma.html.");
+                                }
+                            } catch(aErr) {
+                                console.warn("Aviso al inicializar Auth:", aErr);
+                            }
                         }
-                    };
 
-                    console.log("✅ [Firebase Modular SDK] Firestore configurado exclusivamente con memoryLocalCache() en RAM. Persistencia local IndexedDB desactivada.");
-                    window.dispatchEvent(new CustomEvent('FirebaseModularReady'));
+                        window.FirebaseModular = {
+                            app: app,
+                            db: db,
+                            fsMod: fsMod,
+                            auth: auth,
+                            authMod: authMod,
+                            signOut: authMod ? authMod.signOut : null,
+                            setPersistence: authMod ? authMod.setPersistence : null,
+                            browserSessionPersistence: authMod ? authMod.browserSessionPersistence : 'SESSION',
+                            initializeApp: appMod.initializeApp,
+                            initializeFirestore: fsMod.initializeFirestore,
+                            memoryLocalCache: fsMod.memoryLocalCache,
+                            collection: fsMod.collection,
+                            doc: fsMod.doc,
+                            getDoc: fsMod.getDoc,
+                            getDocs: fsMod.getDocs,
+                            setDoc: fsMod.setDoc,
+                            updateDoc: fsMod.updateDoc,
+                            deleteDoc: fsMod.deleteDoc,
+                            arrayUnion: fsMod.arrayUnion,
+                            arrayRemove: fsMod.arrayRemove,
+                            onSnapshot: fsMod.onSnapshot,
+                            query: fsMod.query,
+                            where: fsMod.where,
+                            initFirestoreWithCache: function() {
+                                return db;
+                            }
+                        };
+
+                        console.log("✅ [Firebase Modular SDK] Firestore configurado con memoryLocalCache() y Auth con browserSessionPersistence.");
+                        window.dispatchEvent(new CustomEvent('FirebaseModularReady'));
+                    }).catch(e => console.warn("Firebase Auth SDK no cargado:", e));
                 }).catch(e => console.warn("Firebase Firestore SDK no cargado:", e));
             }).catch(e => console.warn("Firebase App SDK no cargado:", e));
         } catch(e) {

@@ -60,11 +60,29 @@
             _firestoreDb = db;
             _fsMod = fsMod;
 
+            // 🔐 REGLA ESTRICTA DE PERSISTENCIA: browserSessionPersistence exclusiva en Firebase Auth
+            let auth = null;
+            let authMod = null;
+            try {
+                authMod = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js");
+                auth = authMod.getAuth(app);
+                if (authMod.browserSessionPersistence) {
+                    await authMod.setPersistence(auth, authMod.browserSessionPersistence);
+                    console.log("🔐 [EnccoDB] Firebase Auth configurado exclusivamente con browserSessionPersistence.");
+                }
+            } catch(authErr) {
+                console.warn("Aviso Firebase Auth Modular en db.js:", authErr.message);
+            }
+
             window.FirebaseModular = {
-                app, db, fsMod,
+                app, db, fsMod, auth, authMod,
                 initializeApp: appMod.initializeApp,
                 initializeFirestore: fsMod.initializeFirestore,
                 memoryLocalCache: fsMod.memoryLocalCache,
+                getAuth: authMod ? authMod.getAuth : null,
+                setPersistence: authMod ? authMod.setPersistence : null,
+                browserSessionPersistence: authMod ? authMod.browserSessionPersistence : 'SESSION',
+                signOut: authMod ? authMod.signOut : null,
                 collection: fsMod.collection,
                 doc: fsMod.doc,
                 getDoc: fsMod.getDoc,
@@ -79,8 +97,8 @@
                 where: fsMod.where
             };
 
-            console.log("⚡ [EnccoDB] Firestore memoryLocalCache() inicializado.");
-            return { app, db, fsMod };
+            console.log("⚡ [EnccoDB] Firestore memoryLocalCache() y Auth browserSessionPersistence inicializados.");
+            return { app, db, fsMod, auth, authMod };
         } catch (e) {
             console.warn("⚠️ [EnccoDB] Firestore Modular SDK no disponible en entorno actual:", e.message);
             return null;

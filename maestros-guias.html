@@ -12,15 +12,16 @@
     <script>
         (function() {
             try {
-                var authUser = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
+                var authUser = sessionStorage.getItem('ENCCO_AUTH_USER');
                 if (!authUser) {
-                    window.location.replace('login.html');
+                    // Redirección obligatoria si no está autenticado a index.html (antiguo login.html)
+                    window.location.replace('index.html');
                     return;
                 }
-                sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
+                localStorage.removeItem('ENCCO_AUTH_USER');
+                localStorage.removeItem('ENCCO_AUTH_ROLE');
 
-                var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
-                if (authRole) sessionStorage.setItem('ENCCO_AUTH_ROLE', authRole);
+                var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE');
 
                 var roleLower = (authRole || '').trim().toLowerCase();
                 var allowedRoles = ['director', 'secretaria', 'admin', 'super_usuario', 'docente'];
@@ -32,6 +33,13 @@
             } catch(e) {
                 console.warn("Error en verificación de sesión:", e);
             }
+            // Blindaje contra retroceso mediante el botón 'Atrás'
+            window.addEventListener('pageshow', function() {
+                if (!sessionStorage.getItem('ENCCO_AUTH_USER')) window.location.replace('index.html');
+            });
+            window.addEventListener('popstate', function() {
+                if (!sessionStorage.getItem('ENCCO_AUTH_USER')) window.location.replace('index.html');
+            });
         })();
     </script>
 

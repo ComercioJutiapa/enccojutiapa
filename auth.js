@@ -58,7 +58,7 @@
             let currentUser = (typeof window.STATE !== 'undefined' && window.STATE && window.STATE.currentUser) ? window.STATE.currentUser : null;
             if (!currentUser) {
                 try {
-                    const stored = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
+                    const stored = sessionStorage.getItem('ENCCO_AUTH_USER');
                     if (stored) {
                         const parsed = JSON.parse(stored);
                         if (parsed && parsed.role) {
@@ -234,16 +234,25 @@
         return { success: false, error: 'Usuario no encontrado en la nómina de la institución.' };
     }
 
-    // 4. GESTIÓN DE SESIÓN
+    // 4. GESTIÓN DE SESIÓN (Persistencia Exclusiva por Navegador / browserSessionPersistence)
     function saveUserSession(user, role) {
         if (!user) return;
         try {
             const finalRole = role || user.role || 'admin';
             const userStr = JSON.stringify(user);
+            // Almacenar exclusivamente en sessionStorage para destrucción garantizada al cerrar la ventana/navegador
             sessionStorage.setItem('ENCCO_AUTH_USER', userStr);
             sessionStorage.setItem('ENCCO_AUTH_ROLE', finalRole);
-            localStorage.setItem('ENCCO_AUTH_USER', userStr);
-            localStorage.setItem('ENCCO_AUTH_ROLE', finalRole);
+            
+            // Purgar cualquier copia persistente previa en localStorage
+            localStorage.removeItem('ENCCO_AUTH_USER');
+            localStorage.removeItem('ENCCO_AUTH_ROLE');
+            localStorage.removeItem('ENCCO_AUTH_REMEMBER');
+
+            // Iniciar o reiniciar el temporizador de inactividad de 20 minutos
+            if (typeof EnccoInactivityTimer !== 'undefined' && typeof EnccoInactivityTimer.start === 'function') {
+                EnccoInactivityTimer.start();
+            }
         } catch(e) {
             console.error('Error guardando sesión:', e);
         }
@@ -251,8 +260,8 @@
 
     function getUserSession() {
         try {
-            const rawUser = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
-            const role = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE') || 'docente';
+            const rawUser = sessionStorage.getItem('ENCCO_AUTH_USER');
+            const role = sessionStorage.getItem('ENCCO_AUTH_ROLE') || 'docente';
             if (rawUser) {
                 return { user: JSON.parse(rawUser), role: role };
             }
@@ -262,10 +271,17 @@
 
     function clearUserSession() {
         try {
+            // Detener temporizador de inactividad
+            if (typeof EnccoInactivityTimer !== 'undefined' && typeof EnccoInactivityTimer.stop === 'function') {
+                EnccoInactivityTimer.stop();
+            }
+
             sessionStorage.removeItem('ENCCO_AUTH_USER');
             sessionStorage.removeItem('ENCCO_AUTH_ROLE');
+            sessionStorage.clear();
             localStorage.removeItem('ENCCO_AUTH_USER');
             localStorage.removeItem('ENCCO_AUTH_ROLE');
+            localStorage.removeItem('ENCCO_AUTH_REMEMBER');
         } catch(e) {}
     }
 
@@ -285,7 +301,7 @@
         }
 
         sessionStorage.setItem('ENCCO_AUTH_ROLE', targetRole);
-        localStorage.setItem('ENCCO_AUTH_ROLE', targetRole);
+        localStorage.removeItem('ENCCO_AUTH_ROLE');
         if (window.STATE) {
             window.STATE.currentRole = targetRole;
         }
@@ -316,13 +332,136 @@
         return true;
     }
 
+    // 6. GESTOR GLOBAL DE CIERRE AUTOMÁTICO POR INACTIVIDAD (20 MINUTOS = 1,200,000 MS)
+    const INACTIVITY_TIMEOUT_MS = 20 * 60 * 1000; // 1,200,000 ms (20 minutos)
+    let _inactivityTimer = null;
+    let _lastActivityTimestamp = Date.now();
+    let _activityListenersAttached = false;
+
+    const EnccoInactivityTimer = {
+        timeoutMs: INACTIVITY_TIMEOUT_MS,
+        isActive: false,
+
+        init(customTimeoutMs) {
+            if (customTimeoutMs && typeof customTimeoutMs === 'number') {
+                this.timeoutMs = customTimeoutMs;
+            }
+            this.attachEventListeners();
+            this.start();
+        },
+
+        start() {
+            this.stop();
+            this.attachEventListeners();
+            const session = getUserSession();
+            if (!session || !session.user) {
+                return;
+            }
+            this.isActive = true;
+            _lastActivityTimestamp = Date.now();
+            _inactivityTimer = setTimeout(() => {
+                this.onTimeout();
+            }, this.timeoutMs);
+        },
+
+        reset() {
+            if (!this.isActive) return;
+            _lastActivityTimestamp = Date.now();
+            if (_inactivityTimer) {
+                clearTimeout(_inactivityTimer);
+            }
+            _inactivityTimer = setTimeout(() => {
+                this.onTimeout();
+            }, this.timeoutMs);
+        },
+
+        stop() {
+            this.isActive = false;
+            if (_inactivityTimer) {
+                clearTimeout(_inactivityTimer);
+                _inactivityTimer = null;
+            }
+        },
+
+        attachEventListeners() {
+            if (_activityListenersAttached || typeof window === 'undefined' || typeof document === 'undefined') return;
+            _activityListenersAttached = true;
+
+            // Escucha los eventos del usuario requeridos: 'mousemove', 'keydown', 'click', 'scroll'
+            const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+            
+            const handleUserActivity = () => {
+                if (!this.isActive) return;
+                const now = Date.now();
+                // Throttle de 1 segundo para evitar saturar timers en mousemove/scroll frecuente
+                if (now - _lastActivityTimestamp >= 1000) {
+                    this.reset();
+                }
+            };
+
+            events.forEach(evtName => {
+                window.addEventListener(evtName, handleUserActivity, { passive: true, capture: true });
+            });
+        },
+
+        async onTimeout() {
+            console.warn("⏰ [Seguridad ENCCO] Cierre de sesión automático por inactividad (20 minutos transcurridos).");
+            this.stop();
+
+            // 1. Desconectar Firebase Auth de forma limpia si está disponible
+            try {
+                const fbModular = (typeof window !== 'undefined' && window.FirebaseModular) || (typeof FirebaseModular !== 'undefined' ? FirebaseModular : null);
+                if (fbModular && fbModular.auth) {
+                    const auth = fbModular.auth;
+                    const signOutFn = fbModular.signOut || (fbModular.authMod && fbModular.authMod.signOut);
+                    if (typeof signOutFn === 'function') {
+                        await signOutFn(auth);
+                        console.log("🔐 [Firebase Auth] signOut ejecutado exitosamente por inactividad.");
+                    }
+                }
+            } catch(authErr) {
+                console.warn("Aviso al cerrar Firebase Auth por inactividad:", authErr);
+            }
+
+            // 2. Ejecutar performLogout() si está disponible en app.js para desuscribir listeners y cerrar conexiones
+            if (typeof window.performLogout === 'function' && !window._isLoggingOut) {
+                try {
+                    await window.performLogout();
+                    return;
+                } catch(err) {
+                    console.warn("Aviso al ejecutar performLogout:", err);
+                }
+            }
+
+            // 3. Borrar cualquier estado y caché en memoria
+            clearUserSession();
+            if (window.STATE) {
+                window.STATE.currentUser = null;
+                window.STATE.currentRole = 'guest';
+                window.STATE.isLoggedIn = false;
+                window.STATE.impersonatorAdmin = null;
+            }
+
+            // 4. Redirigir inmediatamente y de forma limpia a 'index.html'
+            const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
+            window.location.replace(baseUrl + '/index.html');
+        }
+    };
+
     // Inicializar seguridad al cargar
     EnccoSecurityShield.showConsoleDefenseBanner();
     EnccoSecurityShield.preventFrameHijacking();
 
+    // Auto-arranque del temporizador de inactividad si ya hay sesión activa en el navegador
+    if (typeof window !== 'undefined' && getUserSession()) {
+        EnccoInactivityTimer.init();
+    }
+
     // Exportación
     const EnccoAuth = {
         EnccoSecurityShield,
+        EnccoInactivityTimer,
+        inactivityTimer: EnccoInactivityTimer,
         getLoginSecurityRecord,
         saveLoginSecurityRecord,
         checkLoginLockout,
@@ -337,6 +476,7 @@
     };
 
     window.EnccoAuth = EnccoAuth;
+    window.EnccoInactivityTimer = EnccoInactivityTimer;
     window.EnccoSecurityShield = EnccoSecurityShield;
     window.escapeHTML = EnccoSecurityShield.escapeHtml.bind(EnccoSecurityShield);
     window.sanitizeHTML = EnccoSecurityShield.sanitizeInput.bind(EnccoSecurityShield);
@@ -351,3 +491,4 @@
     window.impersonateUser = impersonateUser;
 
 })(typeof window !== 'undefined' ? window : global);
+

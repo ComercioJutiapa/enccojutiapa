@@ -12,15 +12,15 @@
     <script>
         (function() {
             try {
-                var authUser = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
+                var authUser = sessionStorage.getItem('ENCCO_AUTH_USER');
                 if (!authUser) {
-                    window.location.replace('login.html');
+                    window.location.replace('index.html');
                     return;
                 }
-                sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
+                localStorage.removeItem('ENCCO_AUTH_USER');
+                localStorage.removeItem('ENCCO_AUTH_ROLE');
 
-                var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
-                if (authRole) sessionStorage.setItem('ENCCO_AUTH_ROLE', authRole);
+                var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE');
 
                 var roleLower = (authRole || '').trim().toLowerCase();
                 var allowedRoles = ['director', 'secretaria', 'admin', 'super_usuario'];
@@ -33,6 +33,13 @@
             } catch(e) {
                 console.warn("Error en verificación de sesión:", e);
             }
+            // Blindaje contra retroceso mediante el botón 'Atrás'
+            window.addEventListener('pageshow', function() {
+                if (!sessionStorage.getItem('ENCCO_AUTH_USER')) window.location.replace('index.html');
+            });
+            window.addEventListener('popstate', function() {
+                if (!sessionStorage.getItem('ENCCO_AUTH_USER')) window.location.replace('index.html');
+            });
         })();
     </script>
 
@@ -2303,12 +2310,25 @@
             alert('🔄 Datos actualizados directamente desde Firebase (Lectura Estricta).');
         }
 
-        function handleLogout() {
+        async function handleLogout() {
             if (confirm('¿Desea cerrar la sesión del sistema ENCCO?')) {
+                if (window.EnccoInactivityTimer && typeof window.EnccoInactivityTimer.stop === 'function') {
+                    window.EnccoInactivityTimer.stop();
+                }
+                try {
+                    if (window.FirebaseModular && window.FirebaseModular.auth) {
+                        const auth = window.FirebaseModular.auth;
+                        const signOutFn = window.FirebaseModular.signOut || (window.FirebaseModular.authMod && window.FirebaseModular.authMod.signOut);
+                        if (typeof signOutFn === 'function') {
+                            await signOutFn(auth);
+                        }
+                    }
+                } catch(e) {}
                 sessionStorage.clear();
                 localStorage.removeItem('ENCCO_AUTH_USER');
                 localStorage.removeItem('ENCCO_AUTH_ROLE');
-                window.location.replace('login.html');
+                localStorage.removeItem('ENCCO_AUTH_REMEMBER');
+                window.location.replace('index.html');
             }
         }
     </script>

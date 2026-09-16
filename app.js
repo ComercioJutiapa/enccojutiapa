@@ -51,7 +51,7 @@ const EnccoSecurityShield = {
         let currentUser = (typeof STATE !== 'undefined' && STATE && STATE.currentUser) ? STATE.currentUser : null;
         if (!currentUser) {
             try {
-                const stored = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
+                const stored = sessionStorage.getItem('ENCCO_AUTH_USER');
                 if (stored) {
                     const parsed = JSON.parse(stored);
                     if (parsed && parsed.role) {
@@ -3256,8 +3256,8 @@ async function saveUserForm(e) {
                 try {
                     sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(STATE.currentUser));
                     sessionStorage.setItem('ENCCO_AUTH_ROLE', role);
-                    localStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(STATE.currentUser));
-                    localStorage.setItem('ENCCO_AUTH_ROLE', role);
+                    localStorage.removeItem('ENCCO_AUTH_USER');
+                    localStorage.removeItem('ENCCO_AUTH_ROLE');
                 } catch(err) {}
                 if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole || "admin");
             }
@@ -6387,12 +6387,12 @@ async function initApp() {
 
     // 6. Si estamos en plataforma.html, verificar sesión
     if (window.location.pathname.includes('plataforma.html') || window.location.href.includes('plataforma.html')) {
-        const authUserStr = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
-        const authRoleStr = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
+        const authUserStr = sessionStorage.getItem('ENCCO_AUTH_USER');
+        const authRoleStr = sessionStorage.getItem('ENCCO_AUTH_ROLE');
         
         if (!authUserStr) {
             const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
-            window.location.replace(baseUrl + '/login.html?v=' + Date.now());
+            window.location.replace(baseUrl + '/index.html');
             return;
         }
         try {
@@ -6406,10 +6406,17 @@ async function initApp() {
             STATE.currentRole = authRoleStr || freshUser.role || 'admin';
             STATE.isLoggedIn = true;
             sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(freshUser));
-            localStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(freshUser));
             if (authRoleStr) {
                 sessionStorage.setItem('ENCCO_AUTH_ROLE', authRoleStr);
-                localStorage.setItem('ENCCO_AUTH_ROLE', authRoleStr);
+            }
+            // Destruir rastro persistente en localStorage para asegurar browserSessionPersistence
+            localStorage.removeItem('ENCCO_AUTH_USER');
+            localStorage.removeItem('ENCCO_AUTH_ROLE');
+            localStorage.removeItem('ENCCO_AUTH_REMEMBER');
+
+            // Iniciar temporizador global de inactividad de 20 minutos (1,200,000 ms)
+            if (window.EnccoInactivityTimer && typeof window.EnccoInactivityTimer.init === 'function') {
+                window.EnccoInactivityTimer.init();
             }
 
             // Aplicar motor de caché según el rol (memoryLocalCache para docentes/estudiantes, persistentLocalCache para Súper Usuario)
@@ -6419,7 +6426,7 @@ async function initApp() {
         } catch(e) {
             console.error("Error al parsear credenciales:", e);
             if (window.EnccoAuthStore) window.EnccoAuthStore.setError(e);
-            window.location.replace('login.html');
+            window.location.replace('index.html');
             return;
         }
     }
@@ -7157,6 +7164,25 @@ async function performLogout() {
         window.EnccoAuthStore.setUnauthenticated();
     }
 
+    // 10. Cerrar sesión en Firebase Auth Modular si está presente
+    try {
+        if (window.FirebaseModular && window.FirebaseModular.auth) {
+            const auth = window.FirebaseModular.auth;
+            const signOutFn = window.FirebaseModular.signOut || (window.FirebaseModular.authMod && window.FirebaseModular.authMod.signOut);
+            if (typeof signOutFn === 'function') {
+                await signOutFn(auth);
+                console.log("🔐 [Firebase Auth] signOut ejecutado exitosamente en performLogout.");
+            }
+        }
+    } catch(authErr) {
+        console.warn("Aviso al ejecutar signOut en Firebase Auth:", authErr);
+    }
+
+    // 11. Detener temporizador de inactividad
+    if (window.EnccoInactivityTimer && typeof window.EnccoInactivityTimer.stop === 'function') {
+        window.EnccoInactivityTimer.stop();
+    }
+
     STATE.currentUser = null;
     STATE.currentRole = 'guest';
     STATE.isLoggedIn = false;
@@ -7169,8 +7195,9 @@ async function performLogout() {
         localStorage.removeItem('ENCCO_AUTH_REMEMBER');
     } catch(e) {}
     
+    // 12. Redirección limpia y directa a 'index.html' (sin posibilidad de volver atrás)
     const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
-    window.location.replace(baseUrl + '/login.html?v=' + Date.now());
+    window.location.replace(baseUrl + '/index.html');
 }
 window.performLogout = performLogout;
 
@@ -23768,8 +23795,12 @@ function handleLoginPageSubmit(e) {
     try {
         sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(matchedUser));
         sessionStorage.setItem('ENCCO_AUTH_ROLE', roleToAssign);
-        localStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(matchedUser));
-        localStorage.setItem('ENCCO_AUTH_ROLE', roleToAssign);
+        localStorage.removeItem('ENCCO_AUTH_USER');
+        localStorage.removeItem('ENCCO_AUTH_ROLE');
+        localStorage.removeItem('ENCCO_AUTH_REMEMBER');
+        if (window.EnccoInactivityTimer && typeof window.EnccoInactivityTimer.init === 'function') {
+            window.EnccoInactivityTimer.init();
+        }
     } catch(err) {
         console.error('Error al guardar sesión:', err);
     }
@@ -26914,19 +26945,21 @@ function initFirestoreModularLiveListeners() {
         const { app, db, collection, doc, onSnapshot, setDoc } = window.FirebaseModular;
         console.log("⚡ [Firestore onSnapshot] Activando sincronización bidireccional en tiempo real para Usuarios, Calificaciones, Roles y Maestros Guías...");
 
-        // 🔐 Configurar persistencia de autenticación local si está disponible el SDK de Auth
+        // 🔐 Configurar persistencia de autenticación por sesión de navegador ('browserSessionPersistence')
         if (app && !window.FirebaseModular.auth) {
             try {
-                import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js").then(authMod => {
+                import("https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js").then(async authMod => {
                     const auth = authMod.getAuth(app);
-                    if (authMod.browserLocalPersistence) {
-                        authMod.setPersistence(auth, authMod.browserLocalPersistence).catch(e => {
+                    if (authMod.browserSessionPersistence) {
+                        await authMod.setPersistence(auth, authMod.browserSessionPersistence).catch(e => {
                             console.warn("Aviso setPersistence en Auth:", e);
                         });
                     }
                     window.FirebaseModular.auth = auth;
                     window.FirebaseModular.authMod = authMod;
-                    console.log("🔐 [Firebase Auth] browserLocalPersistence configurado exitosamente en RAM/Storage.");
+                    window.FirebaseModular.signOut = authMod.signOut;
+                    window.FirebaseModular.browserSessionPersistence = authMod.browserSessionPersistence;
+                    console.log("🔐 [Firebase Auth] browserSessionPersistence configurado exitosamente en sesión de navegador.");
                 }).catch(e => {
                     console.warn("Aviso al cargar Firebase Auth Modular:", e);
                 });
