@@ -72,6 +72,8 @@
                 setDoc: fsMod.setDoc,
                 updateDoc: fsMod.updateDoc,
                 deleteDoc: fsMod.deleteDoc,
+                arrayUnion: fsMod.arrayUnion,
+                arrayRemove: fsMod.arrayRemove,
                 onSnapshot: fsMod.onSnapshot,
                 query: fsMod.query,
                 where: fsMod.where
@@ -485,6 +487,66 @@
         }
     }
 
+
+    // 9. AGREGAR ROL A USUARIO MEDIANTE ARRAYUNION (ATÓMICO Y SIN DUPLICADOS)
+    async function agregarRolAUsuario(userId, nuevoRol) {
+        if (!userId || !nuevoRol) return false;
+
+        const fEngine = await initFirestoreMemoryEngine();
+        if (fEngine && fEngine.db && fEngine.fsMod) {
+            const { db, fsMod } = fEngine;
+            const userRef = fsMod.doc(db, "usuarios", userId);
+            const arrayUnion = fsMod.arrayUnion;
+
+            try {
+                if (typeof arrayUnion === 'function') {
+                    // 'arrayUnion' añade el nuevo rol a la lista sin borrar los anteriores ni duplicar
+                    await fsMod.updateDoc(userRef, {
+                        roles: arrayUnion(nuevoRol)
+                    });
+                } else {
+                    await fsMod.setDoc(userRef, {
+                        roles: [nuevoRol]
+                    }, { merge: true });
+                }
+            } catch (err) {
+                // Si el documento aún no existe en Firestore, crearlo dinámicamente con merge: true
+                await fsMod.setDoc(userRef, {
+                    roles: (typeof arrayUnion === 'function') ? arrayUnion(nuevoRol) : [nuevoRol],
+                    lastModified: Date.now()
+                }, { merge: true });
+            }
+        }
+
+        // Actualizar en el estado local STATE.users
+        if (window.STATE && Array.isArray(window.STATE.users)) {
+            const user = window.STATE.users.find(u => u && (u.id === userId || u.username === userId));
+            if (user) {
+                user.roles = Array.isArray(user.roles) ? user.roles : (user.role ? [user.role] : []);
+                if (!user.roles.includes(nuevoRol)) {
+                    user.roles.push(nuevoRol);
+                }
+                user.lastModified = Date.now();
+            }
+        }
+
+        // Sincronizar en RTDB
+        try {
+            const usersList = (window.STATE && Array.isArray(window.STATE.users)) ? window.STATE.users : [];
+            const uIdx = usersList.findIndex(u => u && (u.id === userId || u.username === userId));
+            if (uIdx !== -1) {
+                const user = usersList[uIdx];
+                await rtdbRequest(`/encc_school_state/users/${uIdx}.json`, 'PATCH', { roles: user.roles });
+                await rtdbRequest(`/users/${uIdx}.json`, 'PATCH', { roles: user.roles });
+            }
+        } catch (re) {
+            console.warn("[EnccoDB] Aviso al sincronizar roles en RTDB:", re.message);
+        }
+
+        window.dispatchEvent(new CustomEvent('EnccoUserRoleUpdated', { detail: { userId, nuevoRol } }));
+        return true;
+    }
+
     // Exportación Global
     const EnccoDB = {
         initFirestoreMemoryEngine,
@@ -496,6 +558,7 @@
         saveAcademicExoneration,
         listenRealtimeCollection,
         cleanCacheAndResyncNow,
+        agregarRolAUsuario,
         getFirebaseDatabaseUrl
     };
 
@@ -508,5 +571,6 @@
     window.getRtdbStudentIndex = getRtdbStudentIndex;
     window.getFirebaseDatabaseUrl = getFirebaseDatabaseUrl;
     window.cleanCacheAndResyncNow = cleanCacheAndResyncNow;
+    window.agregarRolAUsuario = agregarRolAUsuario;
 
 })(typeof window !== 'undefined' ? window : global);
