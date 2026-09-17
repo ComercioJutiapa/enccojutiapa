@@ -16621,6 +16621,9 @@ window.getReportCardSubjectGrades = getReportCardSubjectGrades;
 
 function buildStudentReportCardInnerHtml(s) {
     if (!s) return "";
+    if (typeof cleanExoneratedStudentGrades === 'function') {
+        cleanExoneratedStudentGrades(s);
+    }
     const gradeObj = (STATE.gradesList || []).find(g => 
         (g.code && g.code === s.grade) ||
         (g.name === s.grade && (!s.section || g.section === s.section)) ||
@@ -16699,7 +16702,7 @@ function buildStudentReportCardInnerHtml(s) {
                         <div style="font-size:8.5px; font-weight:800; letter-spacing:0.7px; color:#1e293b; text-transform:uppercase;">MINISTERIO DE EDUCACIÓN — GUATEMALA</div>
                         <div style="font-size:12.5px; font-weight:900; color:#0369a1; margin:0; text-transform:uppercase; line-height:1.15; letter-spacing:0.2px;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES</div>
                         <div style="font-size:8px; font-weight:700; color:#475569; letter-spacing:0.2px;">JUTIAPA | FUNDADA EN 1970 — NIVEL MEDIO Y BÁSICO</div>
-                        <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:8.5px; font-weight:800; padding:1.5px 12px; border-radius:8px; margin-top:1px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">TARJETA OFICIAL DE CALIFICACIONES — CICLO LECTIVO ${STATE.activeCycle || "2026"}</div>
+                        <div style="display:inline-block; background:#0369a1; color:#ffffff; font-size:8.8px; font-weight:800; padding:2px 14px; border-radius:8px; margin-top:1px; letter-spacing:0.3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">BOLETÍN OFICIAL DE CALIFICACIONES — CICLO LECTIVO ${STATE.activeCycle || "2026"}</div>
                     </div>
                     <div style="width:46px; text-align:center; flex-shrink:0;">
                         <div style="background:#f0f9ff; border:1.5px solid #0284c7; border-radius:6px; padding:1.5px; text-align:center; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
