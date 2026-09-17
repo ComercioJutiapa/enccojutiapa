@@ -240,14 +240,13 @@
         try {
             const finalRole = role || user.role || 'admin';
             const userStr = JSON.stringify(user);
-            // Almacenar exclusivamente en sessionStorage para destrucción garantizada al cerrar la ventana/navegador
+            // Almacenar en sessionStorage y respaldar en localStorage para acceso entre pestañas y módulos autónomos
             sessionStorage.setItem('ENCCO_AUTH_USER', userStr);
             sessionStorage.setItem('ENCCO_AUTH_ROLE', finalRole);
-            
-            // Purgar cualquier copia persistente previa en localStorage
-            localStorage.removeItem('ENCCO_AUTH_USER');
-            localStorage.removeItem('ENCCO_AUTH_ROLE');
-            localStorage.removeItem('ENCCO_AUTH_REMEMBER');
+            try {
+                localStorage.setItem('ENCCO_AUTH_USER', userStr);
+                localStorage.setItem('ENCCO_AUTH_ROLE', finalRole);
+            } catch(lsErr) {}
 
             // Iniciar o reiniciar el temporizador de inactividad de 20 minutos
             if (typeof EnccoInactivityTimer !== 'undefined' && typeof EnccoInactivityTimer.start === 'function') {
@@ -260,8 +259,8 @@
 
     function getUserSession() {
         try {
-            const rawUser = sessionStorage.getItem('ENCCO_AUTH_USER');
-            const role = sessionStorage.getItem('ENCCO_AUTH_ROLE') || 'docente';
+            const rawUser = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
+            const role = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE') || 'docente';
             if (rawUser) {
                 return { user: JSON.parse(rawUser), role: role };
             }

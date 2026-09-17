@@ -12,22 +12,19 @@
     <script>
         (function() {
             try {
-                // 1. Resolver usuario y rol desde sessionStorage, puente seguro localStorage o window.opener
-                var authUser = sessionStorage.getItem('ENCCO_AUTH_USER');
-                var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE');
+                // 1. Resolver usuario y rol desde sessionStorage, localStorage, puente o window.opener
+                var authUser = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
+                var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
 
-                // Si no está en sessionStorage (típico en pestañas abiertas con target="_blank"), verificar puente seguro
+                // Si no está directamente, verificar puente seguro
                 if (!authUser) {
                     try {
                         var bridgeRaw = localStorage.getItem('ENCCO_AUTH_BRIDGE');
                         if (bridgeRaw) {
                             var bridge = JSON.parse(bridgeRaw);
-                            // Validar que el puente sea reciente (menos de 2 minutos)
-                            if (bridge && bridge.user && (Date.now() - (bridge.timestamp || 0) < 120000)) {
+                            if (bridge && bridge.user && (Date.now() - (bridge.timestamp || 0) < 300000)) {
                                 authUser = JSON.stringify(bridge.user);
                                 authRole = bridge.role || (bridge.user ? bridge.user.role : '');
-                                sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
-                                if (authRole) sessionStorage.setItem('ENCCO_AUTH_ROLE', authRole);
                             }
                         }
                     } catch(bErr) {
@@ -38,36 +35,30 @@
                 // Si aún no está, intentar leer de la ventana padre (window.opener)
                 if (!authUser && window.opener) {
                     try {
-                        var opUser = window.opener.sessionStorage.getItem('ENCCO_AUTH_USER');
-                        var opRole = window.opener.sessionStorage.getItem('ENCCO_AUTH_ROLE');
+                        var opUser = window.opener.sessionStorage.getItem('ENCCO_AUTH_USER') || window.opener.localStorage.getItem('ENCCO_AUTH_USER');
+                        var opRole = window.opener.sessionStorage.getItem('ENCCO_AUTH_ROLE') || window.opener.localStorage.getItem('ENCCO_AUTH_ROLE');
                         if (opUser) {
                             authUser = opUser;
                             authRole = opRole;
-                            sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
-                            if (authRole) sessionStorage.setItem('ENCCO_AUTH_ROLE', authRole);
                         }
                     } catch(opErr) {}
                 }
 
-                // Respaldo secundario por localStorage
-                if (!authUser) {
+                // Si se encontró sesión, conservarla en AMBOS almacenamientos
+                if (authUser) {
                     try {
-                        var lsUser = localStorage.getItem('ENCCO_AUTH_USER');
-                        var lsRole = localStorage.getItem('ENCCO_AUTH_ROLE');
-                        if (lsUser) {
-                            authUser = lsUser;
-                            authRole = lsRole;
-                            sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
-                            if (authRole) sessionStorage.setItem('ENCCO_AUTH_ROLE', authRole);
+                        sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
+                        localStorage.setItem('ENCCO_AUTH_USER', authUser);
+                        if (authRole) {
+                            sessionStorage.setItem('ENCCO_AUTH_ROLE', authRole);
+                            localStorage.setItem('ENCCO_AUTH_ROLE', authRole);
                         }
-                    } catch(lsErr) {}
+                    } catch(saveErr) {}
                 }
 
-                // Purgar puente de un solo uso por seguridad
+                // Limpiar solo el puente temporal
                 try {
                     localStorage.removeItem('ENCCO_AUTH_BRIDGE');
-                    localStorage.removeItem('ENCCO_AUTH_USER');
-                    localStorage.removeItem('ENCCO_AUTH_ROLE');
                 } catch(e) {}
 
                 // Si no se encuentra ninguna sesión, redirigir al index
@@ -84,8 +75,9 @@
                 } catch(e) {}
 
                 var roleLower = (authRole || parsedUser.role || parsedUser.rol || '').trim().toLowerCase();
-                var allowedRoles = ['director', 'secretaria', 'admin', 'super_usuario'];
-                var isAuthorized = allowedRoles.includes(roleLower);
+                var usernameLower = (parsedUser.username || '').trim().toLowerCase();
+                var allowedRoles = ['director', 'direccion', 'secretaria', 'admin', 'administrador', 'super_usuario'];
+                var isAuthorized = allowedRoles.includes(roleLower) || ['nehemias', 'director', 'admin', 'secretaria'].includes(usernameLower);
 
                 // Comprobar si tiene permiso granular específico de bloqueo de bimestres
                 if (!isAuthorized) {
@@ -113,12 +105,12 @@
 
             // Blindaje contra retroceso mediante el botón 'Atrás'
             window.addEventListener('pageshow', function() {
-                if (!sessionStorage.getItem('ENCCO_AUTH_USER') && !localStorage.getItem('ENCCO_AUTH_BRIDGE')) {
+                if (!sessionStorage.getItem('ENCCO_AUTH_USER') && !localStorage.getItem('ENCCO_AUTH_USER')) {
                     window.location.replace('index.html');
                 }
             });
             window.addEventListener('popstate', function() {
-                if (!sessionStorage.getItem('ENCCO_AUTH_USER') && !localStorage.getItem('ENCCO_AUTH_BRIDGE')) {
+                if (!sessionStorage.getItem('ENCCO_AUTH_USER') && !localStorage.getItem('ENCCO_AUTH_USER')) {
                     window.location.replace('index.html');
                 }
             });
