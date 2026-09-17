@@ -20613,9 +20613,6 @@ function exportAttendanceToCSV() { exportAttendanceOfficialExcel(); }
 function printAttendanceExcelSheet() { printAttendanceOfficialSheet(); }
 
 // ── HELPER: REPOBLAR SELECTOR DE MODALIDAD DEL CUADRO DE HONOR ─────────────────────────────
-// Función pública — puede llamarse desde cualquier onSnapshot (gradesList, careers, pensum)
-// sin necesidad de re-renderizar la tabla completa.  Siempre refleja el estado actual de
-// STATE.gradesList y STATE.careers; nunca guarda estado en dataset.loaded para evitar stale.
 function populateHonorRollSelect() {
     const select = document.getElementById('honorRollTypeSelect');
     if (!select) return;
@@ -20654,20 +20651,132 @@ function populateHonorRollSelect() {
     const normalizedOpts = opts.replace(/\s+/g, ' ').trim();
     const normalizedCurrent = (select._renderedOpts || '').replace(/\s+/g, ' ').trim();
 
-    // 🛡️ REGLA QUIRÚRGICA: Si las opciones ya están pobladas y no han cambiado, NO reconstruir innerHTML.
-    // Esto evita destruir el elemento en el DOM mientras el usuario interactúa o cambia de opción.
-    if (normalizedCurrent === normalizedOpts && select.options.length > 3) {
-        return;
+    if (normalizedCurrent !== normalizedOpts || select.options.length <= 3) {
+        select._renderedOpts = opts;
+        select.innerHTML = opts;
+        select.value = curVal;
+        if (!select.value) select.value = 'ALL_BALANCED';
     }
 
-    select._renderedOpts = opts;
-    select.innerHTML = opts;
-
-    // Restaurar la selección anterior (o volver al default si ya no existe)
-    select.value = curVal;
-    if (!select.value) select.value = 'ALL_BALANCED';
+    // Sincronizar el Menú Desplegable Personalizado en el DOM (100% fondo blanco y visible)
+    if (typeof renderHonorRollCustomDropdown === 'function') {
+        renderHonorRollCustomDropdown();
+    }
 }
 window.populateHonorRollSelect = populateHonorRollSelect;
+
+function renderHonorRollCustomDropdown() {
+    const select = document.getElementById('honorRollTypeSelect');
+    const menu = document.getElementById('honorRollCustomSelectMenu');
+    const textSpan = document.getElementById('honorRollCustomSelectText');
+    if (!select || !menu) return;
+
+    const curVal = select.value || 'ALL_BALANCED';
+    let html = '';
+
+    const makeItem = (val, icon, text) => {
+        const isSelected = (val === curVal);
+        const bg = isSelected ? '#eff6ff' : '#ffffff';
+        const color = isSelected ? '#1d4ed8' : '#0f172a';
+        const weight = isSelected ? '800' : '600';
+        const check = isSelected ? '<i class="fa-solid fa-check" style="color:#2563eb; margin-left:10px; font-size:0.95rem;"></i>' : '';
+        return `
+            <div class="custom-honor-opt ${isSelected ? 'selected' : ''}" 
+                 onclick="selectHonorRollOption('${val}')"
+                 onmouseover="if (!this.classList.contains('selected')) { this.style.background='#f1f5f9'; }"
+                 onmouseout="if (!this.classList.contains('selected')) { this.style.background='#ffffff'; }"
+                 style="padding:11px 16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; background:${bg}; color:${color}; font-weight:${weight}; font-size:0.88rem; border-bottom:1px solid #f1f5f9; transition:background 0.15s ease; user-select:none;">
+                <span style="display:flex; align-items:center; gap:8px;">${icon} ${text}</span>
+                ${check}
+            </div>
+        `;
+    };
+
+    // 1. Opciones generales
+    html += `<div style="padding:8px 14px; font-size:0.75rem; font-weight:800; color:#0369a1; background:#f0f9ff; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #e0f2fe;">🌟 Modalidades Oficiales</div>`;
+    html += makeItem('ALL_BALANCED', '🌟', 'Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)');
+    html += makeItem('GROUP_4TO_5TO', '🥇', 'Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)');
+    html += makeItem('GROUP_6TO', '🎓', 'Cuadro de Honor Oficial: 6to Grado (8 Clases B1/B2 — 10 Clases B3)');
+
+    // 2. Grados y Secciones
+    const grades = (STATE.gradesList || []).filter(g => g && g.code);
+    if (grades.length > 0) {
+        html += `<div style="padding:8px 14px; font-size:0.75rem; font-weight:800; color:#0369a1; background:#f0f9ff; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #e0f2fe; border-top:1px solid #e2e8f0;">📌 Por Grado y Sección</div>`;
+        grades.forEach(g => {
+            const label = [g.name, g.section].filter(Boolean).join(' — ');
+            html += makeItem(`GRADE_${g.code}`, '📘', label);
+        });
+    }
+
+    // 3. Carreras
+    const careers = (STATE.careers || []).filter(c => c && c.name);
+    if (careers.length > 0) {
+        html += `<div style="padding:8px 14px; font-size:0.75rem; font-weight:800; color:#0369a1; background:#f0f9ff; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #e0f2fe; border-top:1px solid #e2e8f0;">🎓 Por Carrera</div>`;
+        careers.forEach(c => {
+            html += makeItem(`CAREER_${c.name}`, '🏅', `Carrera: ${c.name}`);
+        });
+    }
+
+    menu.innerHTML = html;
+
+    // Actualizar texto en el botón
+    if (textSpan) {
+        let opt = (select.selectedIndex >= 0 && select.options[select.selectedIndex]) ? select.options[select.selectedIndex] : null;
+        if (!opt) {
+            opt = Array.from(select.options).find(o => o.value === curVal);
+        }
+        if (opt) {
+            textSpan.textContent = opt.textContent;
+        }
+    }
+}
+window.renderHonorRollCustomDropdown = renderHonorRollCustomDropdown;
+
+function toggleHonorRollCustomMenu(e) {
+    if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+    const menu = document.getElementById('honorRollCustomSelectMenu');
+    if (!menu) return;
+    const isVisible = menu.style.display === 'block';
+    if (isVisible) {
+        menu.style.display = 'none';
+    } else {
+        renderHonorRollCustomDropdown();
+        menu.style.display = 'block';
+    }
+}
+window.toggleHonorRollCustomMenu = toggleHonorRollCustomMenu;
+
+function selectHonorRollOption(val) {
+    const select = document.getElementById('honorRollTypeSelect');
+    const menu = document.getElementById('honorRollCustomSelectMenu');
+    if (select) {
+        select.value = val;
+    }
+    if (menu) {
+        menu.style.display = 'none';
+    }
+    renderHonorRollCustomDropdown();
+    if (typeof loadHonorRoll === 'function') {
+        loadHonorRoll();
+    }
+}
+window.selectHonorRollOption = selectHonorRollOption;
+
+// Cerrar el menú al hacer clic fuera
+if (typeof document !== 'undefined') {
+    document.addEventListener('click', function(e) {
+        const wrapper = document.getElementById('honorRollCustomSelectWrapper');
+        const menu = document.getElementById('honorRollCustomSelectMenu');
+        if (menu && menu.style.display === 'block') {
+            if (!wrapper || !wrapper.contains(e.target)) {
+                menu.style.display = 'none';
+            }
+        }
+    });
+}
 // ───────────────────────────────────────────────────────────────────────────────
 
 function loadHonorRoll() {

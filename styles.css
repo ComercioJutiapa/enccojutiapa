@@ -2042,49 +2042,62 @@ body.theme-dark .att-global-pct-bar {
     z-index: 100;
 }
 
-/* El select en sí */
-#honorRollTypeSelect {
+/* Custom Dropdown Cuadro de Honor — Blindaje contra bugs de ventanas oscuras del SO */
+#honorRollCustomSelectWrapper {
+    position: relative !important;
+    width: 100% !important;
+    z-index: 900 !important;
+}
+
+#honorRollCustomSelectBtn {
     background-color: #ffffff !important;
-    color: #1e293b !important;
+    color: #0f172a !important;
     border: 1.5px solid #0369a1 !important;
     font-weight: 700 !important;
     cursor: pointer !important;
-    pointer-events: auto !important;
-    /* Fuerza al navegador/OS a renderizar el popup nativo en modo claro */
-    color-scheme: light !important;
 }
 
-#honorRollTypeSelect:focus {
-    outline: 2px solid #0369a1 !important;
-    box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.25) !important;
+#honorRollCustomSelectBtn:hover {
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 3px rgba(3, 105, 161, 0.15) !important;
 }
 
-/* Optgroups y opciones — fondo blanco, texto oscuro */
-#honorRollTypeSelect option,
-#honorRollTypeSelect optgroup {
+#honorRollCustomSelectMenu {
     background-color: #ffffff !important;
-    color: #1e293b !important;
-    font-weight: 600 !important;
+    color: #0f172a !important;
+    border: 1.5px solid #0369a1 !important;
 }
 
-#honorRollTypeSelect optgroup {
-    font-style: normal !important;
+.custom-honor-opt {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+}
+
+.custom-honor-opt:hover {
+    background-color: #eff6ff !important;
+    color: #1d4ed8 !important;
+}
+
+.custom-honor-opt.selected {
+    background-color: #ecfdf5 !important;
+    color: #15803d !important;
     font-weight: 800 !important;
-    color: #0f4c81 !important;
 }
 
-/* Tema oscuro: el select sigue siendo claro para máxima legibilidad del dropdown nativo */
-body.theme-dark #honorRollTypeSelect {
+/* En tema oscuro, el selector de cuadro de honor se mantiene claro y nítido */
+body.theme-dark #honorRollCustomSelectBtn {
     background-color: #ffffff !important;
     color: #0f172a !important;
     border-color: #22c55e !important;
-    color-scheme: light !important;
-    cursor: pointer !important;
-    pointer-events: auto !important;
 }
 
-body.theme-dark #honorRollTypeSelect option,
-body.theme-dark #honorRollTypeSelect optgroup {
+body.theme-dark #honorRollCustomSelectMenu {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #22c55e !important;
+}
+
+body.theme-dark .custom-honor-opt {
     background-color: #ffffff !important;
     color: #0f172a !important;
 }

@@ -138,7 +138,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="styles.css?v=20260916_v160_honor_select_selectable">
+    <link rel="stylesheet" href="styles.css?v=20260916_v161_honor_select_custom_dropdown">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -2009,12 +2009,23 @@
                     <div class="section-toolbar" style="flex-wrap:wrap; gap:12px;">
                         <div class="toolbar-filters" style="flex:1; min-width:280px;">
                             <label style="font-weight:700; color:#0369a1;"><i class="fa-solid fa-trophy"></i> Seleccionar Modalidad de Cuadro de Honor:</label>
-                            <select id="honorRollTypeSelect" class="form-control" onchange="loadHonorRoll()" style="width:100%; max-width:100%; font-weight:700; color-scheme:light; background-color:#ffffff; color:#1e293b; cursor:pointer; pointer-events:auto;">
+                            <!-- Select nativo en segundo plano para persistencia y API standard -->
+                            <select id="honorRollTypeSelect" style="display:none;" onchange="loadHonorRoll()">
                                 <option value="ALL_BALANCED">🌟 Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)</option>
                                 <option value="GROUP_4TO_5TO">🥇 Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)</option>
                                 <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (8 Clases B1/B2 - 10 Clases B3)</option>
-                                <!-- Optgroups dinámicos: "📌 Por Grado y Sección" y "🎓 Por Carrera" se añaden en tiempo real desde populateHonorRollSelect() en app.js -->
                             </select>
+
+                            <!-- Menú Desplegable Personalizado 100% visible, fondo blanco y libre de bugs nativos de Windows -->
+                            <div id="honorRollCustomSelectWrapper" style="position:relative; width:100%; z-index:900;">
+                                <button type="button" id="honorRollCustomSelectBtn" onclick="toggleHonorRollCustomMenu(event)" style="width:100%; display:flex; align-items:center; justify-content:space-between; background:#ffffff; color:#0f172a; border:1.5px solid #0369a1; border-radius:8px; padding:10px 14px; font-weight:700; font-size:0.92rem; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,0.06); text-align:left; outline:none;">
+                                    <span id="honorRollCustomSelectText" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;">🌟 Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)</span>
+                                    <i class="fa-solid fa-chevron-down" style="color:#0369a1; margin-left:10px; font-size:0.85rem; flex-shrink:0;"></i>
+                                </button>
+                                <div id="honorRollCustomSelectMenu" style="display:none; position:absolute; top:calc(100% + 5px); left:0; width:100%; max-height:380px; overflow-y:auto; background:#ffffff; border:1.5px solid #0369a1; border-radius:8px; box-shadow:0 14px 35px rgba(0,0,0,0.22); z-index:999999;">
+                                    <!-- Las opciones se inyectan dinámicamente con fondo blanco y texto oscuro impecable -->
+                                </div>
+                            </div>
                         </div>
                         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                             <label style="font-weight:700; color:#166534; font-size:0.88rem; display:flex; align-items:center; gap:6px; cursor:pointer; background:#f0fdf4; padding:6px 12px; border:1px solid #86efac; border-radius:6px;">
