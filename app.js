@@ -20612,38 +20612,61 @@ function exportAttendanceOfficialExcel() {
 function exportAttendanceToCSV() { exportAttendanceOfficialExcel(); }
 function printAttendanceExcelSheet() { printAttendanceOfficialSheet(); }
 
+// ── HELPER: REPOBLAR SELECTOR DE MODALIDAD DEL CUADRO DE HONOR ─────────────────────────────
+// Función pública — puede llamarse desde cualquier onSnapshot (gradesList, careers, pensum)
+// sin necesidad de re-renderizar la tabla completa.  Siempre refleja el estado actual de
+// STATE.gradesList y STATE.careers; nunca guarda estado en dataset.loaded para evitar stale.
+function populateHonorRollSelect() {
+    const select = document.getElementById('honorRollTypeSelect');
+    if (!select) return;
+
+    const curVal = select.value || 'ALL_BALANCED';
+
+    // ── Opciones estáticas generales ───────────────────────────────────────────
+    let opts = `
+        <option value="ALL_BALANCED">🌟 Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)</option>
+        <option value="GROUP_4TO_5TO">🥇 Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)</option>
+        <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (8 Clases B1/B2 — 10 Clases B3)</option>
+    `;
+
+    // ── Optgroup dinámico: Por Grado y Sección (desde STATE.gradesList) ────────
+    const grades = (STATE.gradesList || []).filter(g => g && g.code);
+    if (grades.length > 0) {
+        opts += `<optgroup label="📌 Por Grado y Sección">`;
+        grades.forEach(g => {
+            const label = [g.name, g.section].filter(Boolean).join(' — ');
+            opts += `<option value="GRADE_${g.code}">📘 ${label}</option>`;
+        });
+        opts += `</optgroup>`;
+    }
+
+    // ── Optgroup dinámico: Por Carrera (desde STATE.careers) ──────────────────
+    const careers = (STATE.careers || []).filter(c => c && c.name);
+    if (careers.length > 0) {
+        opts += `<optgroup label="🎓 Por Carrera">`;
+        careers.forEach(c => {
+            opts += `<option value="CAREER_${c.name}">🏅 ${c.name}</option>`;
+        });
+        opts += `</optgroup>`;
+    }
+
+    select.innerHTML = opts;
+
+    // Restaurar la selección anterior (o volver al default si ya no existe)
+    select.value = curVal;
+    if (!select.value) select.value = 'ALL_BALANCED';
+}
+window.populateHonorRollSelect = populateHonorRollSelect;
+// ───────────────────────────────────────────────────────────────────────────────
+
 function loadHonorRoll() {
     const select = document.getElementById('honorRollTypeSelect');
     const tbody = document.getElementById('honorRollTableBody');
     const titleText = document.getElementById('honorRollTitleText');
     if (!tbody || !select) return;
 
-    // Poblar el selector dinámicamente con las opciones de Cuadro de Honor
-    const curVal = select.value || 'ALL_BALANCED';
-    
-    let opts = `
-        <option value="ALL_BALANCED">🏆 Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)</option>
-        <option value="GROUP_4TO_5TO">🥈 Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)</option>
-        <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (8 Clases B1/B2 - 10 Clases B3)</option>
-    `;
-
-    opts += `<optgroup label="📌 Cuadros de Honor por Grado y Sección">`;
-    (STATE.gradesList || []).forEach(g => {
-        opts += `<option value="GRADE_${g.code}">📘 ${g.name} (${g.section})</option>`;
-    });
-    opts += `</optgroup>`;
-
-    opts += `<optgroup label="🎓 Cuadros de Honor por Carrera">`;
-    (STATE.careers || []).forEach(c => {
-        opts += `<option value="CAREER_${c.name}">🏅 Carrera: ${c.name}</option>`;
-    });
-    opts += `</optgroup>`;
-
-    if (!select.dataset || select.dataset.loaded !== 'true' || (select.options && select.options.length !== (3 + (STATE.gradesList?.length || 0) + (STATE.careers?.length || 0)))) {
-        select.innerHTML = opts;
-        select.value = curVal;
-        if (select.dataset) select.dataset.loaded = 'true';
-    }
+    // Repoblar siempre el selector con las opciones actualizadas de Firestore
+    populateHonorRollSelect();
 
     const type = select.value;
     const onlyEligible = document.getElementById('honorRollOnlyEligibleCheck') ? document.getElementById('honorRollOnlyEligibleCheck').checked : true;
@@ -27436,6 +27459,7 @@ function initFirestoreModularLiveListeners() {
                 if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
                 if (typeof renderGradesTable === 'function') renderGradesTable();
                 if (typeof updateGradeSelects === 'function') updateGradeSelects();
+                if (typeof populateHonorRollSelect === 'function') populateHonorRollSelect();
                 if (typeof renderCurrentView === 'function' && (STATE.activeView === 'grades' || STATE.activeView === 'guide-teachers')) renderCurrentView();
             }, err => console.warn('Aviso en onSnapshot gradesList:', err));
 

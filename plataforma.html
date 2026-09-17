@@ -2007,12 +2007,13 @@
                 <!-- 9. CUADROS DE HONOR MÚLTIPLES -->
                 <section class="app-view" id="view-honor-roll">
                     <div class="section-toolbar" style="flex-wrap:wrap; gap:12px;">
-                        <div class="toolbar-filters" style="flex:1; min-width:320px;">
+                        <div class="toolbar-filters" style="flex:1; min-width:280px;">
                             <label style="font-weight:700; color:#0369a1;"><i class="fa-solid fa-trophy"></i> Seleccionar Modalidad de Cuadro de Honor:</label>
-                            <select id="honorRollTypeSelect" class="form-control" onchange="loadHonorRoll()" style="min-width:320px; font-weight:700;">
+                            <select id="honorRollTypeSelect" class="form-control" onchange="loadHonorRoll()" style="width:100%; max-width:100%; font-weight:700; text-overflow:ellipsis; white-space:nowrap; overflow:hidden;">
                                 <option value="ALL_BALANCED">🌟 Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)</option>
                                 <option value="GROUP_4TO_5TO">🥇 Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)</option>
                                 <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (8 Clases B1/B2 - 10 Clases B3)</option>
+                                <!-- Optgroups dinámicos: "📌 Por Grado y Sección" y "🎓 Por Carrera" se añaden en tiempo real desde populateHonorRollSelect() en app.js -->
                             </select>
                         </div>
                         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
