@@ -8,36 +8,119 @@
         }
     </script>
 
-    <!-- GUARDIA DE SESIÓN Y CONTROL DE ACCESO ESTRICTO (RBAC) -->
+    <!-- GUARDIA DE SESIÓN Y CONTROL DE ACCESO ESTRICTO (RBAC) CON PUENTE MULTI-VENTANA -->
     <script>
         (function() {
             try {
+                // 1. Resolver usuario y rol desde sessionStorage, puente seguro localStorage o window.opener
                 var authUser = sessionStorage.getItem('ENCCO_AUTH_USER');
+                var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE');
+
+                // Si no está en sessionStorage (típico en pestañas abiertas con target="_blank"), verificar puente seguro
                 if (!authUser) {
+                    try {
+                        var bridgeRaw = localStorage.getItem('ENCCO_AUTH_BRIDGE');
+                        if (bridgeRaw) {
+                            var bridge = JSON.parse(bridgeRaw);
+                            // Validar que el puente sea reciente (menos de 2 minutos)
+                            if (bridge && bridge.user && (Date.now() - (bridge.timestamp || 0) < 120000)) {
+                                authUser = JSON.stringify(bridge.user);
+                                authRole = bridge.role || (bridge.user ? bridge.user.role : '');
+                                sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
+                                if (authRole) sessionStorage.setItem('ENCCO_AUTH_ROLE', authRole);
+                            }
+                        }
+                    } catch(bErr) {
+                        console.warn("Aviso al procesar puente de autenticación:", bErr);
+                    }
+                }
+
+                // Si aún no está, intentar leer de la ventana padre (window.opener)
+                if (!authUser && window.opener) {
+                    try {
+                        var opUser = window.opener.sessionStorage.getItem('ENCCO_AUTH_USER');
+                        var opRole = window.opener.sessionStorage.getItem('ENCCO_AUTH_ROLE');
+                        if (opUser) {
+                            authUser = opUser;
+                            authRole = opRole;
+                            sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
+                            if (authRole) sessionStorage.setItem('ENCCO_AUTH_ROLE', authRole);
+                        }
+                    } catch(opErr) {}
+                }
+
+                // Respaldo secundario por localStorage
+                if (!authUser) {
+                    try {
+                        var lsUser = localStorage.getItem('ENCCO_AUTH_USER');
+                        var lsRole = localStorage.getItem('ENCCO_AUTH_ROLE');
+                        if (lsUser) {
+                            authUser = lsUser;
+                            authRole = lsRole;
+                            sessionStorage.setItem('ENCCO_AUTH_USER', authUser);
+                            if (authRole) sessionStorage.setItem('ENCCO_AUTH_ROLE', authRole);
+                        }
+                    } catch(lsErr) {}
+                }
+
+                // Purgar puente de un solo uso por seguridad
+                try {
+                    localStorage.removeItem('ENCCO_AUTH_BRIDGE');
+                    localStorage.removeItem('ENCCO_AUTH_USER');
+                    localStorage.removeItem('ENCCO_AUTH_ROLE');
+                } catch(e) {}
+
+                // Si no se encuentra ninguna sesión, redirigir al index
+                if (!authUser) {
+                    console.warn("[Seguridad] Acceso sin sesión autenticada. Redirigiendo a index.html");
                     window.location.replace('index.html');
                     return;
                 }
-                localStorage.removeItem('ENCCO_AUTH_USER');
-                localStorage.removeItem('ENCCO_AUTH_ROLE');
 
-                var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE');
+                // 2. Extraer objeto de usuario y validar rol / permisos
+                var parsedUser = {};
+                try {
+                    parsedUser = JSON.parse(authUser);
+                } catch(e) {}
 
-                var roleLower = (authRole || '').trim().toLowerCase();
+                var roleLower = (authRole || parsedUser.role || parsedUser.rol || '').trim().toLowerCase();
                 var allowedRoles = ['director', 'secretaria', 'admin', 'super_usuario'];
+                var isAuthorized = allowedRoles.includes(roleLower);
 
-                if (!allowedRoles.includes(roleLower)) {
-                    alert('ACCESO DENEGADO (403)\n\nEl módulo "Control de Bloqueo y Bimestre Activo" está reservado exclusivamente para la Dirección y Secretaría de la ENCCO.\n\nSu rol (' + (authRole || 'Desconocido') + ') no cuenta con los privilegios requeridos.');
-                    window.location.replace('plataforma.html?auth_denied=bloqueo_notas_restricted');
+                // Comprobar si tiene permiso granular específico de bloqueo de bimestres
+                if (!isAuthorized) {
+                    if (parsedUser.permissions && Array.isArray(parsedUser.permissions)) {
+                        isAuthorized = parsedUser.permissions.includes('grade-lock') || parsedUser.permissions.includes('grade_lock');
+                    }
+                    if (!isAuthorized && parsedUser.permissionLevels && typeof parsedUser.permissionLevels === 'object') {
+                        var lvl = parsedUser.permissionLevels['grade-lock'] || parsedUser.permissionLevels['grade_lock'];
+                        isAuthorized = (lvl === 'edit' || lvl === 'view');
+                    }
                 }
+
+                if (!isAuthorized) {
+                    alert('ACCESO DENEGADO (403)\n\nEl usuario actual (' + (parsedUser.name || parsedUser.username || 'Usuario') + ') con rol [' + (roleLower || 'Desconocido') + '] no cuenta con los privilegios requeridos para el módulo de Bloqueo de Bimestres.');
+                    window.location.replace('plataforma.html?auth_denied=bloqueo_notas_restricted');
+                    return;
+                }
+
+                window.__ENCCO_CURRENT_USER = parsedUser;
+                window.__ENCCO_CURRENT_ROLE = roleLower;
+
             } catch(e) {
                 console.warn("Error en verificación de sesión:", e);
             }
+
             // Blindaje contra retroceso mediante el botón 'Atrás'
             window.addEventListener('pageshow', function() {
-                if (!sessionStorage.getItem('ENCCO_AUTH_USER')) window.location.replace('index.html');
+                if (!sessionStorage.getItem('ENCCO_AUTH_USER') && !localStorage.getItem('ENCCO_AUTH_BRIDGE')) {
+                    window.location.replace('index.html');
+                }
             });
             window.addEventListener('popstate', function() {
-                if (!sessionStorage.getItem('ENCCO_AUTH_USER')) window.location.replace('index.html');
+                if (!sessionStorage.getItem('ENCCO_AUTH_USER') && !localStorage.getItem('ENCCO_AUTH_BRIDGE')) {
+                    window.location.replace('index.html');
+                }
             });
         })();
     </script>
@@ -287,7 +370,11 @@
                     <p class="lock-brand-subtitle">Dirección y Secretaría Académica • ENCCO Jutiapa • MINEDUC</p>
                 </div>
             </div>
-            <div style="display:flex; align-items:center; gap:12px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <span id="lockActiveUserBadge" class="badge" style="background:rgba(255,255,255,0.18); color:#ffffff; font-weight:700; padding:6px 14px; border-radius:20px; font-size:0.78rem; border:1px solid rgba(255,255,255,0.3); display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <span id="lockActiveUserName">Usuario Habilitado</span>
+                </span>
                 <span id="lockSyncBadge" class="badge" style="background:#b45309; color:#ffffff; font-weight:700; padding:6px 12px; border-radius:20px; font-size:0.75rem;">
                     <i class="fa-solid fa-circle-dot fa-beat" style="color:#4ade80; margin-right:5px;"></i>
                     Firebase Conectado
@@ -962,7 +1049,21 @@
             }
         }
 
+        function renderActiveUserBadge() {
+            try {
+                const badgeText = document.getElementById('lockActiveUserName');
+                if (!badgeText) return;
+                const user = window.__ENCCO_CURRENT_USER || (function() {
+                    try { return JSON.parse(sessionStorage.getItem('ENCCO_AUTH_USER') || '{}'); } catch(e) { return {}; }
+                })();
+                const role = (window.__ENCCO_CURRENT_ROLE || sessionStorage.getItem('ENCCO_AUTH_ROLE') || user.role || 'Usuario').toUpperCase();
+                const displayName = user.name || user.username || user.id || 'Usuario Habilitado';
+                badgeText.textContent = `${displayName} (${role})`;
+            } catch(e) {}
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            renderActiveUserBadge();
             loadConfigFromFirebase();
             setupRealtime();
         });

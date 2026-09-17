@@ -13842,6 +13842,97 @@ function onPrimaryBimestreSelectChange(val) {
 }
 window.onPrimaryBimestreSelectChange = onPrimaryBimestreSelectChange;
 
+function openAutonomousLockModule(event) {
+    if (event && event.preventDefault) event.preventDefault();
+
+    // 1. Obtener usuario y rol activo en la plataforma
+    let user = null;
+    let role = null;
+
+    if (window.STATE && window.STATE.currentUser) {
+        user = window.STATE.currentUser;
+        role = window.STATE.currentRole || user.role;
+    }
+
+    if (!user) {
+        try {
+            const rawUser = sessionStorage.getItem('ENCCO_AUTH_USER');
+            if (rawUser) user = JSON.parse(rawUser);
+            role = sessionStorage.getItem('ENCCO_AUTH_ROLE') || (user ? user.role : null);
+        } catch(err) {}
+    }
+
+    if (!user) {
+        if (typeof showToast === 'function') {
+            showToast('Debe iniciar sesión para ingresar a este módulo.', 'warning');
+        } else {
+            alert('Debe iniciar sesión para ingresar a este módulo.');
+        }
+        window.location.replace('index.html');
+        return false;
+    }
+
+    const normRole = (role || user.role || '').toLowerCase().trim();
+
+    // 2. Verificar que el usuario tenga habilitado el módulo de Bloqueo de Bimestres
+    const masterRoles = ['director', 'secretaria', 'admin', 'super_usuario'];
+    let isAuthorized = masterRoles.includes(normRole);
+
+    if (!isAuthorized) {
+        if (typeof hasRolePermission === 'function') {
+            isAuthorized = hasRolePermission(normRole, 'grade-lock');
+        } else if (typeof hasPermission === 'function') {
+            isAuthorized = hasPermission('grade-lock');
+        }
+        if (!isAuthorized && typeof getModulePermissionLevel === 'function') {
+            const lvl = getModulePermissionLevel('grade-lock');
+            isAuthorized = (lvl === 'edit' || lvl === 'view');
+        }
+        if (!isAuthorized && user.permissions && Array.isArray(user.permissions)) {
+            isAuthorized = user.permissions.includes('grade-lock') || user.permissions.includes('grade_lock');
+        }
+    }
+
+    if (!isAuthorized) {
+        const msg = `ACCESO RESTRINGIDO (403)\n\nEl usuario actual (${user.name || user.username || 'Usuario'}) con rol [${normRole}] no tiene habilitado el módulo de Bloqueo de Bimestres.\n\nEste módulo está reservado para la Dirección, Secretaría y roles con permisos autorizados.`;
+        if (typeof showToast === 'function') {
+            showToast(msg, 'danger');
+        } else {
+            alert(msg);
+        }
+        return false;
+    }
+
+    // 3. Crear puente seguro de autenticación (1 solo uso, vigencia 2 minutos)
+    const bridgePayload = {
+        user: user,
+        role: normRole,
+        timestamp: Date.now()
+    };
+
+    try {
+        localStorage.setItem('ENCCO_AUTH_BRIDGE', JSON.stringify(bridgePayload));
+        sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(user));
+        sessionStorage.setItem('ENCCO_AUTH_ROLE', normRole);
+    } catch(err) {
+        console.warn('Aviso preparando puente de autenticación:', err);
+    }
+
+    // 4. Abrir la ventana autónoma transfiriendo contexto
+    const newWin = window.open('bloqueo-notas.html', '_blank');
+    if (newWin) {
+        try {
+            newWin.sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(user));
+            newWin.sessionStorage.setItem('ENCCO_AUTH_ROLE', normRole);
+        } catch(e) {}
+    } else {
+        window.location.href = 'bloqueo-notas.html';
+    }
+
+    return false;
+}
+window.openAutonomousLockModule = openAutonomousLockModule;
+
 async function loadLockStatus() {
     const list = document.getElementById('teacherLockList');
     const select = document.getElementById('officialActiveBimestreSelect') || document.getElementById('selectBimestre');
