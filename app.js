@@ -23580,6 +23580,8 @@ async function handleGradebookExcelImport(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
 
+    const fileInputEl = e.target;
+
     const courseSelect = document.getElementById('teacherCourseSelect');
     const selectedCourseId = courseSelect ? courseSelect.value : null;
     let targetPensum = (STATE.pensum || []).find(p => p.id === selectedCourseId);
@@ -23595,30 +23597,45 @@ async function handleGradebookExcelImport(e) {
 
     const currentUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
 
-    const editCheck = isGradebookEditableForUser(targetPensum?.id, currentUnit);
-    if (!editCheck.editable) {
-        showToast("Importación Bloqueada: " + (editCheck.message || "El bimestre seleccionado está cerrado para edición directa."), "danger");
-        if (e && e.target) e.target.value = '';
-        return;
-    }
+    showToast("Analizando y validando archivo de calificaciones...", "info");
 
-    if (window.XLSX) {
+    const xlsxLib = (typeof window !== 'undefined' && window.XLSX) ? window.XLSX : (typeof XLSX !== 'undefined' ? XLSX : null);
+
+    if (xlsxLib) {
         const reader = new FileReader();
         reader.onload = function(evt) {
             try {
                 const data = new Uint8Array(evt.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rawRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
-                processGradebookImportRows(rawRows, targetPensum, currentUnit);
+                const workbook = xlsxLib.read(data, { type: 'array' });
+                
+                // Buscar la hoja más adecuada con datos de calificaciones
+                let chosenSheet = null;
+                let chosenRawRows = [];
+                for (const sName of workbook.SheetNames) {
+                    const sheet = workbook.Sheets[sName];
+                    const rows = xlsxLib.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                    if (rows && rows.length > 5) {
+                        chosenSheet = sName;
+                        chosenRawRows = rows;
+                        break;
+                    }
+                }
+                if (!chosenRawRows || chosenRawRows.length === 0) {
+                    chosenRawRows = xlsxLib.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: '' });
+                }
+
+                processGradebookImportRows(chosenRawRows, targetPensum, currentUnit, file.name);
             } catch (err) {
                 console.warn("Error leyendo con SheetJS, usando fallback de texto:", err);
                 fallbackTextGradebookRead(file, targetPensum, currentUnit);
+            } finally {
+                if (fileInputEl) fileInputEl.value = '';
             }
         };
         reader.readAsArrayBuffer(file);
     } else {
         fallbackTextGradebookRead(file, targetPensum, currentUnit);
+        if (fileInputEl) fileInputEl.value = '';
     }
 }
 window.handleGradebookExcelImport = handleGradebookExcelImport;
@@ -23629,29 +23646,84 @@ function fallbackTextGradebookRead(file, targetPensum, currentUnit) {
         const text = evt.target.result;
         const rawLines = parseImportFileRows(text);
         const rawRows = rawLines.map(line => line.split(/,|;|\t/).map(c => c.replace(/^["']|["']$/g, '').trim()));
-        processGradebookImportRows(rawRows, targetPensum, currentUnit);
+        processGradebookImportRows(rawRows, targetPensum, currentUnit, file ? file.name : '');
     };
     reader.readAsText(file);
 }
 
-async function processGradebookImportRows(rawRows, targetPensum, fallbackUnit) {
+async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit, fileName) {
     if (!rawRows || rawRows.length === 0) {
         showToast("El archivo de calificaciones está vacío.", "warning");
         return;
     }
 
-    let headerRowIdx = -1;
-    let detectedSubject = '';
-    let detectedUnit = fallbackUnit;
+    const cleanStr = s => (s || '').toString().toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, '');
 
+    let detectedSubject = '';
+    let detectedGrade = '';
+    let detectedSection = '';
+    let detectedUnit = fallbackUnit || 1;
+    let detectedFormat = 'Plantilla Estándar';
+    let headerRowIdx = -1;
+    let actsRowIdx = -1;
+    let zonaValInHeader = 0;
+    let examValInHeader = 0;
+
+    // 1. Escaneo inteligente de metadatos en las primeras 12 filas
     for (let r = 0; r < Math.min(rawRows.length, 12); r++) {
-        const row = rawRows[r];
+        const row = rawRows[r] || [];
         if (!Array.isArray(row)) continue;
         const rowStr = row.map(c => String(c).toLowerCase()).join(' ');
+
+        // Reconocimiento de Modelo A: Plantilla Oficial ENCCO
+        if (rowStr.includes('cuadro oficial') || rowStr.includes('catedra:') || rowStr.includes('cátedra:')) {
+            detectedFormat = 'Plantilla Oficial ENCCO';
+        }
 
         if (rowStr.includes('catedra:') || rowStr.includes('cátedra:')) {
             const idxC = row.findIndex(c => String(c).toLowerCase().includes('catedra'));
             if (idxC !== -1 && row[idxC + 1]) detectedSubject = String(row[idxC + 1]).trim();
+        }
+
+        if (rowStr.includes('grado:')) {
+            const idxG = row.findIndex(c => String(c).toLowerCase().includes('grado:'));
+            if (idxG !== -1 && row[idxG + 1]) detectedGrade = String(row[idxG + 1]).trim();
+        }
+
+        if (rowStr.includes('seccion:') || rowStr.includes('sección:')) {
+            const idxS = row.findIndex(c => String(c).toLowerCase().includes('seccion:') || String(c).toLowerCase().includes('sección:'));
+            if (idxS !== -1 && row[idxS + 1]) detectedSection = String(row[idxS + 1]).trim();
+        }
+
+        // Reconocimiento de Modelo B: Modelo de Cuadro Docente (Fila 1: Materia en B2, Grado en G2, Sección en I2, Bimestre en K2)
+        if (r === 1 && row[1] && !rowStr.includes('catedra:')) {
+            const candidateSubj = String(row[1]).trim();
+            const cleanCand = cleanStr(candidateSubj);
+            const foundInPensum = (STATE.pensum || []).find(p => cleanStr(p.subject) === cleanCand || cleanCand.includes(cleanStr(p.subject)) || cleanStr(p.subject).includes(cleanCand));
+            if (foundInPensum) {
+                detectedSubject = foundInPensum.subject;
+                detectedFormat = 'Modelo de Cuadro Docente';
+                if (row[6] !== undefined && row[6] !== '') {
+                    const gNum = parseInt(row[6]);
+                    if (gNum === 4) detectedGrade = '4to Perito Contador';
+                    else if (gNum === 5) detectedGrade = '5to Perito Contador';
+                    else if (gNum === 6) detectedGrade = '6to Perito Contador';
+                }
+                if (row[8]) {
+                    detectedSection = `Sección ${String(row[8]).trim()}`;
+                }
+                if (row[10]) {
+                    const bNum = parseInt(row[10]);
+                    if (bNum >= 1 && bNum <= 4) detectedUnit = bNum;
+                }
+                if (row[14]) zonaValInHeader = parseInt(row[14]) || 0;
+            }
+        }
+
+        if (r === 2 && row[14] && detectedFormat === 'Modelo de Cuadro Docente') {
+            examValInHeader = parseInt(row[14]) || 0;
         }
 
         const bimMatch = rowStr.match(/(\d+)\s*(?:o\.|o|er|do|to|er\.)?\s*bimestre/i);
@@ -23659,95 +23731,266 @@ async function processGradebookImportRows(rawRows, targetPensum, fallbackUnit) {
 
         if (rowStr.includes('clave') || rowStr.includes('no.') || (rowStr.includes('codigo') && rowStr.includes('estudiante')) || rowStr.includes('apellidos y nombres')) {
             headerRowIdx = r;
-            break;
         }
     }
 
-    if (headerRowIdx === -1) headerRowIdx = 6;
-    if (headerRowIdx >= rawRows.length) headerRowIdx = 0;
-
-    const headers = (rawRows[headerRowIdx] || []).map(c => String(c).trim().toLowerCase());
-    const colIdxClave = headers.findIndex(h => h === 'no.' || h === 'no' || h === 'clave' || h === '#');
-    const colIdxCode = headers.findIndex(h => h.includes('codigo') || h.includes('personal') || h.includes('carne'));
-    const colIdxCui = headers.findIndex(h => h.includes('cui') || h.includes('dpi'));
-    const colIdxName = headers.findIndex(h => h.includes('nombre') || h.includes('estudiante') || h.includes('apellidos'));
-
-    const actColIndices = [];
-    for (let i = 1; i <= 10; i++) {
-        const idxAct = headers.findIndex(h => h.startsWith(`act ${i}:`) || h.startsWith(`act ${i} `) || h.startsWith(`act.${i}`) || h.startsWith(`actividad ${i}`));
-        actColIndices.push(idxAct);
+    // Complementar con pistas del nombre de archivo si fuera necesario
+    if (fileName) {
+        const fNorm = cleanStr(fileName);
+        if (!detectedGrade) {
+            if (fNorm.includes('4a') || fNorm.includes('4b') || fNorm.includes('4c') || fNorm.includes('4d') || fNorm.includes('4to')) detectedGrade = '4to Perito Contador';
+            else if (fNorm.includes('5a') || fNorm.includes('5b') || fNorm.includes('5c') || fNorm.includes('5d') || fNorm.includes('5to')) detectedGrade = '5to Perito Contador';
+            else if (fNorm.includes('6a') || fNorm.includes('6b') || fNorm.includes('6c') || fNorm.includes('6d') || fNorm.includes('6to')) detectedGrade = '6to Perito Contador';
+        }
+        if (!detectedSection) {
+            if (fNorm.includes('5a') || fNorm.includes('6a') || fNorm.includes('4a')) detectedSection = 'Sección A';
+            else if (fNorm.includes('5b') || fNorm.includes('6b') || fNorm.includes('4b')) detectedSection = 'Sección B';
+            else if (fNorm.includes('5c') || fNorm.includes('6c') || fNorm.includes('4c')) detectedSection = 'Sección C';
+            else if (fNorm.includes('5d') || fNorm.includes('6d') || fNorm.includes('4d')) detectedSection = 'Sección D';
+        }
+        if (!detectedSubject) {
+            if (fNorm.includes('compu2')) detectedSubject = 'Computación II';
+            else if (fNorm.includes('compu3')) detectedSubject = 'Computación III';
+            else if (fNorm.includes('calculo')) detectedSubject = 'Cálculo Mercantil y Financiero';
+        }
+        const bimFMatch = fNorm.match(/(\d+)(?:o|er|do|to)?bim/);
+        if (bimFMatch) detectedUnit = parseInt(bimFMatch[1]);
     }
 
-    const colIdxZona = headers.findIndex(h => h.includes('total zona') || h === 'zona');
-    const colIdxExam = headers.findIndex(h => h.includes('examen') || h.includes('evaluacion') || h.includes('evaluación') || h === 'prueba');
-    const colIdxTotal = headers.findIndex(h => h.includes('total bimestre') || h === 'total' || h.includes('nota final'));
+    const cleanTargetSubj = cleanStr(detectedSubject);
+    const cleanG = cleanStr(detectedGrade);
+    const cleanSec = cleanStr(detectedSection);
 
-    const effectiveSubject = detectedSubject || (targetPensum ? targetPensum.subject : 'Computacion III');
-    const effectiveUnit = detectedUnit || fallbackUnit || 2;
+    // 2. Localizar clase exacta en el pensum institucional
+    let targetPensum = (STATE.pensum || []).find(p => {
+        const sMatch = cleanStr(p.subject) === cleanTargetSubj || cleanStr(p.subject).includes(cleanTargetSubj) || cleanTargetSubj.includes(cleanStr(p.subject));
+        const gMatch = !cleanG || cleanStr(p.grade) === cleanG || cleanStr(p.grade).includes(cleanG) || cleanG.includes(cleanStr(p.grade));
+        const secMatch = !cleanSec || cleanStr(p.section) === cleanSec || cleanStr(p.section).includes(cleanSec) || cleanSec.includes(cleanStr(p.section));
+        return sMatch && gMatch && secMatch;
+    });
+
+    if (!targetPensum && cleanTargetSubj) {
+        targetPensum = (STATE.pensum || []).find(p => cleanStr(p.subject) === cleanTargetSubj);
+    }
+    if (!targetPensum) {
+        targetPensum = fallbackPensum || (STATE.pensum || [])[0];
+    }
+
+    const effectiveSubject = targetPensum ? targetPensum.subject : (detectedSubject || 'Materia');
+    const effectiveUnit = detectedUnit || fallbackUnit || 1;
+
+    // 3. Verificación de permisos y bloqueo de edición para la clase y bimestre detectados
+    const editCheck = isGradebookEditableForUser(targetPensum?.id, effectiveUnit);
+    if (!editCheck.editable) {
+        showToast(`Importación Bloqueada para ${effectiveSubject} (Bimestre ${effectiveUnit}): ${editCheck.message || "El bimestre seleccionado está cerrado para edición."}`, "danger");
+        return;
+    }
+
+    // 4. Sincronización automática de selectores en la interfaz si difieren del archivo
+    const courseSel = document.getElementById('teacherCourseSelect');
+    const bimSel = document.getElementById('gradebookBimestreSelect');
+    if (courseSel && targetPensum && courseSel.value !== targetPensum.id) {
+        courseSel.value = targetPensum.id;
+    }
+    if (bimSel && bimSel.value !== String(effectiveUnit)) {
+        bimSel.value = String(effectiveUnit);
+    }
+
+    // 5. Identificación de columnas según formato
+    if (headerRowIdx === -1) headerRowIdx = 4;
+    let actColumns = [];
+    let colIdxClave = -1, colIdxCode = -1, colIdxCui = -1, colIdxName = -1, colIdxZona = -1, colIdxExam = -1, colIdxTotal = -1;
+    let dataStartRow = headerRowIdx + 1;
+
+    if (detectedFormat === 'Modelo de Cuadro Docente') {
+        actsRowIdx = headerRowIdx + 1; // fila 5
+        dataStartRow = actsRowIdx + 1; // fila 6
+        const actsRow = rawRows[actsRowIdx] || [];
+        const hdrRow = rawRows[headerRowIdx] || [];
+
+        colIdxClave = hdrRow.findIndex(h => cleanStr(h) === 'clave' || cleanStr(h) === 'no');
+        if (colIdxClave === -1) colIdxClave = 0;
+        colIdxName = hdrRow.findIndex(h => cleanStr(h).includes('alumno') || cleanStr(h).includes('estudiante') || cleanStr(h).includes('nombre'));
+        if (colIdxName === -1) colIdxName = 1;
+
+        colIdxZona = hdrRow.findIndex(h => cleanStr(h) === 'zona' || cleanStr(h).includes('totalzona'));
+        if (colIdxZona === -1) colIdxZona = 9;
+        colIdxExam = hdrRow.findIndex(h => cleanStr(h).includes('prueba') || cleanStr(h).includes('examen'));
+        if (colIdxExam === -1) colIdxExam = 10;
+        colIdxTotal = hdrRow.findIndex(h => cleanStr(h) === 'total' || cleanStr(h).includes('totalbimestre'));
+        if (colIdxTotal === -1) colIdxTotal = 11;
+
+        const endActCol = colIdxZona !== -1 ? colIdxZona : 9;
+        for (let c = 2; c < endActCol; c++) {
+            const actTitle = String(actsRow[c] || '').trim();
+            if (actTitle && !cleanStr(actTitle).includes('observacion')) {
+                const ptsMatch = actTitle.match(/(\d+)\s*(?:pts|puntos)?/i);
+                const maxPts = ptsMatch ? parseInt(ptsMatch[1]) : 0;
+                actColumns.push({ colIdx: c, name: actTitle, max: maxPts, maxPoints: maxPts });
+            }
+        }
+    } else {
+        const hdrRow = (rawRows[headerRowIdx] || []).map(c => String(c).trim());
+        colIdxClave = hdrRow.findIndex(h => cleanStr(h) === 'no' || cleanStr(h) === 'clave' || cleanStr(h) === '');
+        colIdxCode = hdrRow.findIndex(h => cleanStr(h).includes('codigo') || cleanStr(h).includes('personal') || cleanStr(h).includes('carne'));
+        colIdxCui = hdrRow.findIndex(h => cleanStr(h).includes('cui') || cleanStr(h).includes('dpi'));
+        colIdxName = hdrRow.findIndex(h => cleanStr(h).includes('nombre') || cleanStr(h).includes('estudiante') || cleanStr(h).includes('alumno') || cleanStr(h).includes('apellidos'));
+        colIdxZona = hdrRow.findIndex(h => cleanStr(h).includes('totalzona') || cleanStr(h) === 'zona');
+        colIdxExam = hdrRow.findIndex(h => cleanStr(h).includes('examen') || cleanStr(h).includes('evaluacion') || cleanStr(h).includes('prueba'));
+        colIdxTotal = hdrRow.findIndex(h => cleanStr(h).includes('totalbimestre') || cleanStr(h) === 'total' || cleanStr(h).includes('notafinal'));
+
+        for (let c = 0; c < hdrRow.length; c++) {
+            const h = hdrRow[c];
+            const cH = cleanStr(h);
+            if (cH.startsWith('act') || cH.startsWith('actividad') || cH.startsWith('tarea') || cH.startsWith('ejercicio') || cH.startsWith('laboratorio') || cH.startsWith('folder')) {
+                if (c !== colIdxZona && c !== colIdxExam && c !== colIdxTotal) {
+                    const ptsMatch = h.match(/(\d+)\s*(?:pts|puntos)?/i);
+                    const maxPts = ptsMatch ? parseInt(ptsMatch[1]) : 0;
+                    actColumns.push({ colIdx: c, name: h, max: maxPts, maxPoints: maxPts });
+                }
+            }
+        }
+    }
+
+    // 6. Actualización y sincronización de Ponderación si el archivo especifica actividades
+    if (actColumns.length > 0 && targetPensum) {
+        const sumActsMax = actColumns.reduce((acc, a) => acc + (a.max || 0), 0);
+        const configuredZonaMax = sumActsMax > 0 ? sumActsMax : (zonaValInHeader || 50);
+        const configuredExamMax = (100 - configuredZonaMax > 0) ? (100 - configuredZonaMax) : (examValInHeader || 50);
+
+        const normalizedActivities = [];
+        for (let i = 0; i < 10; i++) {
+            if (i < actColumns.length) {
+                normalizedActivities.push({
+                    name: actColumns[i].name || `Actividad ${i+1}`,
+                    max: actColumns[i].max || 0,
+                    maxPoints: actColumns[i].max || 0
+                });
+            } else {
+                normalizedActivities.push({
+                    name: `Act. ${i+1}`,
+                    max: 0,
+                    maxPoints: 0
+                });
+            }
+        }
+
+        const currentUser = STATE.currentUser || (STATE.users || []).find(u => u.role === 'docente');
+        const configObj = {
+            zonaMax: configuredZonaMax,
+            examMax: configuredExamMax,
+            activities: normalizedActivities,
+            updatedAt: new Date().toISOString(),
+            updatedBy: (currentUser ? currentUser.name : 'Docente')
+        };
+
+        if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
+        const cfgKey = `${targetPensum.id}_b${effectiveUnit}`;
+        STATE.gradingConfigs[cfgKey] = configObj;
+        STATE.gradingConfigs[targetPensum.id] = STATE.gradingConfigs[targetPensum.id] || {};
+        STATE.gradingConfigs[targetPensum.id][`b${effectiveUnit}`] = configObj;
+
+        if (!targetPensum.gradingConfig) targetPensum.gradingConfig = {};
+        targetPensum.gradingConfig[`b${effectiveUnit}`] = configObj;
+
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+            EnccoCloudSync.patchNode('gradingConfigs', {
+                [cfgKey]: configObj,
+                [targetPensum.id]: targetPensum.gradingConfig
+            });
+        }
+    }
+
+    // 7. Filtrado estricto de alumnos de la sección para evitar colisiones entre secciones
+    const courseStudents = (STATE.students || []).filter(s => {
+        if (!s) return false;
+        const gMatch = (s.grade === targetPensum.grade || (s.gradeLabel && s.gradeLabel.includes(targetPensum.grade.split(' ')[0])));
+        const sMatch = (s.section === targetPensum.section || (s.section && s.section.includes(targetPensum.section.replace('Sección ', ''))));
+        return gMatch && sMatch;
+    });
 
     let updatedCount = 0;
 
-    for (let r = headerRowIdx + 1; r < rawRows.length; r++) {
+    for (let r = dataStartRow; r < rawRows.length; r++) {
         const row = rawRows[r];
-        if (!Array.isArray(row) || row.length === 0) continue;
+        if (!row || !Array.isArray(row) || row.length === 0) continue;
 
-        const claveVal = colIdxClave !== -1 ? row[colIdxClave] : null;
-        const codeVal = colIdxCode !== -1 ? String(row[colIdxCode]).trim() : '';
-        const cuiVal = colIdxCui !== -1 ? String(row[colIdxCui]).replace(/[^0-9]/g, '') : '';
-        const nameVal = colIdxName !== -1 ? String(row[colIdxName]).trim().toLowerCase() : '';
+        const claveVal = colIdxClave !== -1 && row[colIdxClave] !== undefined ? row[colIdxClave] : null;
+        const codeVal = colIdxCode !== -1 && row[colIdxCode] ? String(row[colIdxCode]).trim() : '';
+        const cuiVal = colIdxCui !== -1 && row[colIdxCui] ? String(row[colIdxCui]).replace(/[^0-9]/g, '') : '';
+        const nameVal = colIdxName !== -1 && row[colIdxName] ? String(row[colIdxName]).trim() : '';
 
         if (!nameVal && !codeVal && !cuiVal) continue;
-        if (nameVal.includes('promedio') || nameVal.includes('total')) continue;
+        const cName = cleanStr(nameVal);
+        if (cName.includes('promedio') || cName.includes('totalgeneral') || cName.includes('observaciones')) continue;
+        if (typeof claveVal === 'number' && claveVal > 100) continue;
 
-        // Buscar coincidencia en la base de estudiantes
-        const matched = (STATE.students || []).find(s => {
-            if (cuiVal && s.cui && s.cui.replace(/[^0-9]/g, '') === cuiVal) return true;
-            if (codeVal && ((s.personalCode && s.personalCode.toLowerCase() === codeVal.toLowerCase()) || (s.carne && s.carne.toLowerCase() === codeVal.toLowerCase()))) return true;
-            if (nameVal) {
-                const sFull = `${s.lastName || ''}, ${s.firstName || ''}`.trim().toLowerCase();
-                const sName = (s.name || '').trim().toLowerCase();
-                if (sFull === nameVal || sName === nameVal || nameVal.includes(s.lastName?.toLowerCase() || '___')) return true;
+        // Búsqueda precisa de coincidencia dentro del grado y sección
+        let matched = null;
+        if (cuiVal) matched = courseStudents.find(s => s.cui && s.cui.replace(/[^0-9]/g, '') === cuiVal);
+        if (!matched && codeVal) matched = courseStudents.find(s => (s.personalCode && cleanStr(s.personalCode) === cleanStr(codeVal)) || (s.carne && cleanStr(s.carne) === cleanStr(codeVal)));
+        if (!matched && claveVal) {
+            const byClave = courseStudents.find(s => Number(s.clave) === Number(claveVal));
+            if (byClave) {
+                if (cName.length >= 3) {
+                    const sLast = cleanStr(byClave.lastName || '');
+                    const sFirst = cleanStr(byClave.firstName || '');
+                    const sFull = cleanStr(byClave.name || '');
+                    if (cName.includes(sLast) || sFull.includes(cName) || cName.includes(sFirst)) {
+                        matched = byClave;
+                    }
+                } else {
+                    matched = byClave;
+                }
             }
-            if (claveVal && s.clave && Number(s.clave) === Number(claveVal)) return true;
-            return false;
-        });
+        }
+        if (!matched && cName) {
+            matched = courseStudents.find(s => {
+                const sFull = cleanStr(`${s.lastName || ''} ${s.firstName || ''}`);
+                const sRev = cleanStr(`${s.firstName || ''} ${s.lastName || ''}`);
+                const sSimple = cleanStr(s.name || '');
+                return sFull === cName || sRev === cName || sSimple === cName || cName.includes(sFull);
+            });
+        }
 
         if (!matched) continue;
 
         ensureStudentGradebookStructure(matched, effectiveSubject);
         const gDetail = matched.gradebookDetails[effectiveSubject][effectiveUnit];
 
+        // Extracción de actividades
         let sumZona = 0;
         let hasActValues = false;
-        const newActs = [];
+        const newActs = [0,0,0,0,0,0,0,0,0,0];
 
-        for (let a = 0; a < 10; a++) {
-            const cIdx = actColIndices[a];
-            if (cIdx !== -1 && row[cIdx] !== undefined && row[cIdx] !== '' && !isNaN(row[cIdx])) {
-                const actScore = Math.max(0, Number(row[cIdx]));
-                newActs.push(actScore);
-                sumZona += actScore;
+        actColumns.forEach((act, actIdx) => {
+            if (actIdx < 10 && act.colIdx !== -1 && row[act.colIdx] !== undefined && row[act.colIdx] !== '' && !isNaN(row[act.colIdx])) {
+                const score = Math.max(0, Number(row[act.colIdx]));
+                newActs[actIdx] = score;
+                sumZona += score;
                 hasActValues = true;
-            } else {
-                newActs.push(0);
             }
-        }
+        });
 
         let examScore = 0;
         if (colIdxExam !== -1 && row[colIdxExam] !== undefined && row[colIdxExam] !== '' && !isNaN(row[colIdxExam])) {
             examScore = Math.max(0, Number(row[colIdxExam]));
         }
 
-        if (hasActValues) {
-            gDetail.activities = newActs;
-            gDetail.zona = sumZona;
-        } else if (colIdxZona !== -1 && row[colIdxZona] !== undefined && row[colIdxZona] !== '' && !isNaN(row[colIdxZona])) {
-            gDetail.zona = Math.max(0, Number(row[colIdxZona]));
-            sumZona = gDetail.zona;
+        let finalZona = sumZona;
+        if (!hasActValues && colIdxZona !== -1 && row[colIdxZona] !== undefined && row[colIdxZona] !== '' && !isNaN(row[colIdxZona])) {
+            finalZona = Math.max(0, Number(row[colIdxZona]));
         }
 
+        let finalTotal = finalZona + examScore;
+        if (colIdxTotal !== -1 && row[colIdxTotal] !== undefined && row[colIdxTotal] !== '' && !isNaN(row[colIdxTotal])) {
+            const tVal = Number(row[colIdxTotal]);
+            if (tVal > 0) finalTotal = tVal;
+        }
+
+        gDetail.activities = newActs;
+        gDetail.zona = finalZona;
         gDetail.exam = examScore;
-        const finalTotal = sumZona + examScore;
         gDetail.total = finalTotal;
         matched.grades[effectiveSubject][effectiveUnit - 1] = finalTotal;
 
@@ -23755,25 +23998,28 @@ async function processGradebookImportRows(rawRows, targetPensum, fallbackUnit) {
     }
 
     if (updatedCount === 0) {
-        showToast("No se encontraron estudiantes coincidentes en el archivo para actualizar.", "warning");
+        showToast(`No se encontraron calificaciones de estudiantes en el archivo para ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}). Verifique que el cuadro contenga notas ingresadas.`, "warning");
         return;
     }
 
-    // 0ms Optimistic UI: Persistencia inmediata en caché local y actualización de vista
+    // 8. Actualización optimista de interfaz a 0ms
     saveStateToLocalStorage();
     if (typeof loadTeacherGradebook === 'function') {
         loadTeacherGradebook();
+    } else if (typeof renderGradebookTable === 'function') {
+        renderGradebookTable();
     }
-    showToast(`¡Notas importadas exitosamente! Se actualizaron ${updatedCount} estudiantes para ${effectiveSubject} (Bimestre ${effectiveUnit}).`, "success");
 
-    // 🌟 Sincronización atómica por lotes en segundo plano sin congelar la interfaz
+    showToast(`¡Notas importadas con éxito (${detectedFormat})! Se actualizaron ${updatedCount} estudiantes en ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}, Bimestre ${effectiveUnit}).`, "success");
+
+    // 9. Sincronización atómica en la nube en segundo plano
     if (typeof saveBulkStudentGradesAtomic === 'function') {
-        saveBulkStudentGradesAtomic(STATE.students || [], effectiveSubject, effectiveUnit).catch(err => {
+        saveBulkStudentGradesAtomic(courseStudents, effectiveSubject, effectiveUnit).catch(err => {
             console.warn("Aviso en guardado atómico por lotes tras importación:", err);
         });
     } else if (typeof saveStudentSubjectGradeAtomic === 'function') {
         (async () => {
-            for (const stu of (STATE.students || [])) {
+            for (const stu of courseStudents) {
                 if (stu && stu.grades && stu.grades[effectiveSubject]) {
                     try {
                         await saveStudentSubjectGradeAtomic(stu, effectiveSubject, effectiveUnit);
