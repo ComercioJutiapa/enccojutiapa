@@ -23957,9 +23957,9 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             continue;
         }
 
-        // 1. Por Clave / No. de lista CON verificación obligatoria de nombre coincidente
+        // 1. Por No. de lista SIRE / Clave CON verificación obligatoria de nombre coincidente
         if (claveVal !== null && claveVal !== undefined && claveVal !== '') {
-            const byClave = courseStudents.find(s => Number(s.clave !== undefined ? s.clave : s.no) === Number(claveVal));
+            const byClave = courseStudents.find(s => Number(s.no !== undefined ? s.no : s.clave) === Number(claveVal));
             if (byClave && areNamesMatching(nameVal, byClave)) {
                 matched = byClave;
             }
