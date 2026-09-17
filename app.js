@@ -11761,6 +11761,7 @@ function generateOfficialPrintList(opts = null) {
                 : null;
 
             const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
+            const isExonerated = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, finalSubjectName, bNum);
 
             let actCells = '';
             let zonaVal = '';
@@ -11772,6 +11773,11 @@ function generateOfficialPrintList(opts = null) {
                 zonaVal = '-';
                 examVal = '-';
                 totalVal = `<span style="color:#94a3b8; font-size:6.5px; font-weight:700;">${s.status.toUpperCase()}</span>`;
+            } else if (isExonerated) {
+                actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#0284c7; font-size:${rowFontSize};">-</td>`).join('');
+                zonaVal = '-';
+                examVal = '-';
+                totalVal = `<span style="color:#0284c7; font-size:7px; font-weight:800;">EXONERADO</span>`;
             } else if (uData) {
                 const acts = uData.activities || [];
                 let sumZona = 0;
@@ -16344,7 +16350,7 @@ window.getReportCardSubjects = getReportCardSubjects;
 
 function getReportCardSubjectGrades(student, subject) {
     let b1 = 0, b2 = 0, b3 = 0, b4 = 0;
-    if (!student) return { b1, b2, b3, b4, avg: 0 };
+    if (!student) return { b1, b2, b3, b4, avg: 0, isExon1: false, isExon2: false, isExon3: false, isExon4: false, isFullyExon: false };
 
     const cleanStr = s => (s || '').toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -16401,10 +16407,28 @@ function getReportCardSubjectGrades(student, subject) {
         }
     }
 
-    const activeVals = [b1, b2, b3, b4].filter(v => v > 0);
+    // 🌟 VALIDACIÓN ESTRICTA DE EXONERACIONES:
+    // Los alumnos que tienen exoneraciones: las notas de ese bimestre NO deben tomarse en cuenta y NO deben aparecer
+    const isExon1 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, subject, 1);
+    const isExon2 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, subject, 2);
+    const isExon3 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, subject, 3);
+    const isExon4 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, subject, 4);
+
+    if (isExon1) b1 = 0;
+    if (isExon2) b2 = 0;
+    if (isExon3) b3 = 0;
+    if (isExon4) b4 = 0;
+
+    const activeVals = [];
+    if (!isExon1 && b1 > 0) activeVals.push(b1);
+    if (!isExon2 && b2 > 0) activeVals.push(b2);
+    if (!isExon3 && b3 > 0) activeVals.push(b3);
+    if (!isExon4 && b4 > 0) activeVals.push(b4);
+
+    const isFullyExon = (isExon1 && isExon2 && isExon3 && isExon4);
     const avg = activeVals.length > 0 ? Math.round(activeVals.reduce((a, b) => a + b, 0) / activeVals.length) : 0;
     // 3. Pura LECTURA: jamás mutar student.grades ni student.gradebookDetails
-    return { b1, b2, b3, b4, avg };
+    return { b1, b2, b3, b4, avg, isExon1, isExon2, isExon3, isExon4, isFullyExon };
 }
 window.getReportCardSubjectGrades = getReportCardSubjectGrades;
 
@@ -16429,24 +16453,41 @@ function buildStudentReportCardInnerHtml(s) {
             totalAvgSum += g.avg;
             subjectCount++;
         }
-        const isB1Fail = (g.b1 > 0 && g.b1 < 60);
-        const isB2Fail = (g.b2 > 0 && g.b2 < 60);
-        const isB3Fail = (g.b3 > 0 && g.b3 < 60);
-        const isB4Fail = (g.b4 > 0 && g.b4 < 60);
-        const isAvgFail = (g.avg > 0 && g.avg < 60);
+        const isB1Fail = (!g.isExon1 && g.b1 > 0 && g.b1 < 60);
+        const isB2Fail = (!g.isExon2 && g.b2 > 0 && g.b2 < 60);
+        const isB3Fail = (!g.isExon3 && g.b3 > 0 && g.b3 < 60);
+        const isB4Fail = (!g.isExon4 && g.b4 > 0 && g.b4 < 60);
+        const isAvgFail = (!g.isFullyExon && g.avg > 0 && g.avg < 60);
 
-        const resultText = g.avg >= 60 ? "APROBADO" : (g.avg > 0 ? "REPROBADO" : "PENDIENTE");
-        const resultColor = g.avg >= 60 ? "#15803d" : (g.avg > 0 ? "#dc2626" : "#64748b");
+        let resultText = "PENDIENTE";
+        let resultColor = "#64748b";
+        if (g.isFullyExon) {
+            resultText = "EXONERADO";
+            resultColor = "#0369a1";
+        } else if (g.avg >= 60) {
+            resultText = "APROBADO";
+            resultColor = "#15803d";
+        } else if (g.avg > 0) {
+            resultText = "REPROBADO";
+            resultColor = "#dc2626";
+        }
+
+        const formatBimCell = (score, isFail, isExon) => {
+            if (isExon) {
+                return `<td style="text-align:center; font-size:7.5px; font-weight:800; color:#0369a1; border:1px solid #000000; width:34px;">—</td>`;
+            }
+            return `<td style="text-align:center; font-size:8px; font-weight:${isFail ? "800" : "700"}; color:${isFail ? "#dc2626" : (score > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${score > 0 ? score : "—"}</td>`;
+        };
 
         return `
             <tr>
                 <td style="text-align:center; font-weight:700; width:22px; border:1px solid #000000; padding:1px 2px; font-size:7.2px;">${idx + 1}</td>
                 <td style="font-weight:700; padding:1px 5px; text-align:left; border:1px solid #000000; font-size:7.6px; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sub}</td>
-                <td style="text-align:center; font-size:8px; font-weight:${isB1Fail ? "800" : "700"}; color:${isB1Fail ? "#dc2626" : (g.b1 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b1 > 0 ? g.b1 : "—"}</td>
-                <td style="text-align:center; font-size:8px; font-weight:${isB2Fail ? "800" : "700"}; color:${isB2Fail ? "#dc2626" : (g.b2 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b2 > 0 ? g.b2 : "—"}</td>
-                <td style="text-align:center; font-size:8px; font-weight:${isB3Fail ? "800" : "700"}; color:${isB3Fail ? "#dc2626" : (g.b3 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b3 > 0 ? g.b3 : "—"}</td>
-                <td style="text-align:center; font-size:8px; font-weight:${isB4Fail ? "800" : "700"}; color:${isB4Fail ? "#dc2626" : (g.b4 > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:34px;">${g.b4 > 0 ? g.b4 : "—"}</td>
-                <td style="text-align:center; font-weight:800; font-size:8.5px; border:1px solid #000000; width:40px; ${isAvgFail ? "color:#dc2626; background:#fee2e2;" : "color:#0369a1; background:#f0f9ff;"}">${g.avg > 0 ? g.avg : "—"}</td>
+                ${formatBimCell(g.b1, isB1Fail, g.isExon1)}
+                ${formatBimCell(g.b2, isB2Fail, g.isExon2)}
+                ${formatBimCell(g.b3, isB3Fail, g.isExon3)}
+                ${formatBimCell(g.b4, isB4Fail, g.isExon4)}
+                <td style="text-align:center; font-weight:800; font-size:8.5px; border:1px solid #000000; width:40px; ${isAvgFail ? "color:#dc2626; background:#fee2e2;" : "color:#0369a1; background:#f0f9ff;"}">${g.avg > 0 ? g.avg : (g.isFullyExon ? "Exon." : "—")}</td>
                 <td style="text-align:center; font-weight:800; font-size:7.2px; border:1px solid #000000; width:64px; color:${resultColor};">${resultText}</td>
             </tr>
         `;
@@ -19758,8 +19799,9 @@ function loadTeacherGradebook() {
             const uData = s.gradebookDetails[subjectName][currentUnit];
             const acts = uData.activities || [0,0,0,0,0,0,0,0,0,0];
             const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
-            const zonaSum = isInactive ? 0 : acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
-            if (!isInactive && zonaSum > cfg.zonaMax) hasOverLimit = true;
+            const isExon = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, currentUnit);
+            const zonaSum = (isInactive || isExon) ? 0 : acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
+            if (!isInactive && !isExon && zonaSum > cfg.zonaMax) hasOverLimit = true;
 
             const studentFullName = `${s.lastName || ''}, ${s.firstName || ''}`.toUpperCase().trim();
 
@@ -19770,6 +19812,28 @@ function loadTeacherGradebook() {
                 statusTag = `<span class="badge" style="font-size:0.7rem; margin-left:6px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-weight:700;" title="Ausente / Desertor: ${escapeHtml(s.retireReason || 'Inasistencia prolongada')}"><i class="fa-solid fa-user-xmark"></i> Ausente</span>`;
             } else if (s.status === 'Inactivo') {
                 statusTag = `<span class="badge badge-secondary" style="font-size:0.7rem; margin-left:6px;">Inactivo</span>`;
+            } else if (isExon) {
+                statusTag = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.7rem; margin-left:6px; font-weight:700;"><i class="fa-solid fa-shield-check"></i> Exonerado</span>`;
+            }
+
+            if (isExon) {
+                const exonActInputs = acts.map(() => `
+                    <td style="text-align:center; padding:4px;">
+                        <input type="text" class="grade-box-input" value="—" disabled readonly 
+                            style="background:#f0f9ff; color:#0284c7; border:1px dashed #bae6fd; cursor:not-allowed;" 
+                            title="Estudiante Exonerado en este bimestre: Calificación no aplica">
+                    </td>
+                `).join('');
+                return `
+                    <tr data-student-id="${s.id}" style="background:rgba(240,249,255,0.6);">
+                        <td style="text-align:center;"><input type="checkbox" disabled></td>
+                        <td><strong>${idx + 1}. ${studentFullName}</strong>${statusTag}</td>
+                        <td style="text-align:center; background:#f0f9ff; font-weight:800; font-size:0.85rem; color:#0369a1;" class="zona-sum-cell" id="zonaSum_${s.id}">
+                            Exon.
+                        </td>
+                        ${exonActInputs}
+                    </tr>
+                `;
             }
 
             const actInputs = acts.map((val, actIdx) => {
@@ -19820,10 +19884,11 @@ function loadTeacherGradebook() {
             const uData = s.gradebookDetails[subjectName][currentUnit];
             const acts = uData.activities || [0,0,0,0,0,0,0,0,0,0];
             const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
-            const zonaSum = isInactive ? 0 : acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
-            const exam = isInactive ? 0 : (parseInt(uData.exam) || 0);
+            const isExon = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, currentUnit);
+            const zonaSum = (isInactive || isExon) ? 0 : acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
+            const exam = (isInactive || isExon) ? 0 : (parseInt(uData.exam) || 0);
             const total = zonaSum + exam;
-            if (!isInactive && (exam > cfg.examMax || total > 100)) hasOverLimit = true;
+            if (!isInactive && !isExon && (exam > cfg.examMax || total > 100)) hasOverLimit = true;
 
             const studentFullName = `${s.lastName || ''}, ${s.firstName || ''}`.toUpperCase().trim();
 
@@ -19834,6 +19899,46 @@ function loadTeacherGradebook() {
                 statusTag = `<span class="badge" style="font-size:0.7rem; margin-left:6px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-weight:700;"><i class="fa-solid fa-user-xmark"></i> Ausente</span>`;
             } else if (s.status === 'Inactivo') {
                 statusTag = `<span class="badge badge-secondary" style="font-size:0.7rem; margin-left:6px;">Inactivo</span>`;
+            } else if (isExon) {
+                statusTag = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.7rem; margin-left:6px; font-weight:700;"><i class="fa-solid fa-shield-check"></i> Exonerado</span>`;
+            }
+
+            if (isExon) {
+                // Calcular acumulado sin tomar en cuenta el bimestre exonerado
+                const gList = s.grades[subjectName] || [0, 0, 0, 0];
+                let validUnits = 0;
+                let sumGrades = 0;
+                for (let u = 1; u <= currentUnit; u++) {
+                    if (!isSubjectBimestreExonerated(s, subjectName, u)) {
+                        const val = parseInt(gList[u - 1]) || 0;
+                        if (val > 0) {
+                            sumGrades += val;
+                            validUnits++;
+                        }
+                    }
+                }
+                const acumulado = validUnits > 0 ? (sumGrades / validUnits).toFixed(2) : '—';
+
+                return `
+                    <tr data-student-id="${s.id}" style="background:rgba(240,249,255,0.6);">
+                        <td style="text-align:center;"><input type="checkbox" disabled></td>
+                        <td><strong>${idx + 1}. ${studentFullName}</strong>${statusTag}</td>
+                        <td style="text-align:center; font-weight:700;">
+                            <input type="text" class="grade-box-input-exam" value="—" disabled readonly style="background:#f0f9ff; color:#0284c7; border:1.5px dashed #bae6fd; cursor:not-allowed; text-align:center; width:65px;" title="Zona Exonerada">
+                        </td>
+                        <td style="text-align:center;">
+                            <input type="text" class="grade-box-input-exam" value="—" disabled readonly style="background:#f0f9ff; color:#0284c7; border:1px dashed #bae6fd; cursor:not-allowed; text-align:center; width:65px;" title="Examen Exonerado">
+                        </td>
+                        <td style="text-align:center;">
+                            <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.85rem; padding:4px 10px; font-weight:800;" title="Exoneración autorizada: La nota no se toma en cuenta">
+                                <i class="fa-solid fa-shield-check"></i> Exon.
+                            </span>
+                        </td>
+                        <td style="text-align:center; font-weight:800; color:#0369a1; font-size:0.95rem;">
+                            ${acumulado}
+                        </td>
+                    </tr>
+                `;
             }
 
             // Calcular acumulado
@@ -19895,9 +20000,28 @@ function loadTeacherGradebook() {
             const n2 = parseInt(g[1]) || 0;
             const n3 = parseInt(g[2]) || 0;
             const n4 = parseInt(g[3]) || 0;
-            
-            // Nota final como promedio de las 4 notas (o redondeado)
-            const notaFinal = Math.round((n1 + n2 + n3 + n4) / 4);
+
+            const isEx1 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 1);
+            const isEx2 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 2);
+            const isEx3 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 3);
+            const isEx4 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 4);
+
+            const renderAvgCell = (n, isEx) => {
+                if (isEx) {
+                    return `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; padding:2px 6px; border-radius:4px;" title="Bimestre Exonerado"><i class="fa-solid fa-shield-check"></i> Exon.</span>`;
+                }
+                if (isInactive) return '—';
+                return n > 0 ? n : '—';
+            };
+
+            const validNotes = [];
+            if (!isEx1 && n1 > 0) validNotes.push(n1);
+            if (!isEx2 && n2 > 0) validNotes.push(n2);
+            if (!isEx3 && n3 > 0) validNotes.push(n3);
+            if (!isEx4 && n4 > 0) validNotes.push(n4);
+
+            const isFullyExon = (isEx1 && isEx2 && isEx3 && isEx4);
+            const notaFinal = validNotes.length > 0 ? Math.round(validNotes.reduce((a, b) => a + b, 0) / validNotes.length) : 0;
 
             let statusTag = '';
             if (s.status === 'Retirado') {
@@ -19912,12 +20036,12 @@ function loadTeacherGradebook() {
                 <tr data-student-id="${s.id}" style="${isInactive ? 'background:rgba(241,245,249,0.6); opacity:0.85;' : ''}">
                     <td style="text-align:center;"><input type="checkbox" ${isInactive ? 'disabled' : ''}></td>
                     <td><strong>${idx + 1}. ${studentFullName}</strong>${statusTag}</td>
-                    <td style="text-align:center;" class="${isInactive ? '' : (n1 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${isInactive ? '—' : n1}</td>
-                    <td style="text-align:center;" class="${isInactive ? '' : (n2 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${isInactive ? '—' : n2}</td>
-                    <td style="text-align:center;" class="${isInactive ? '' : (n3 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${isInactive ? '—' : n3}</td>
-                    <td style="text-align:center;" class="${isInactive ? '' : (n4 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${isInactive ? '—' : n4}</td>
-                    <td style="text-align:center; font-weight:800; font-size:1.05rem; background:${isInactive ? '#f1f5f9' : 'rgba(34,197,94,0.06)'};" class="${isInactive ? '' : (notaFinal < 60 ? 'grade-score-fail' : 'grade-score-pass')}">
-                        ${isInactive ? `<span class="badge ${s.status === 'Retirado' ? 'badge-danger' : 'badge-warning'}" style="font-size:0.75rem;">${s.status}</span>` : notaFinal}
+                    <td style="text-align:center;" class="${isInactive || isEx1 ? '' : (n1 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n1, isEx1)}</td>
+                    <td style="text-align:center;" class="${isInactive || isEx2 ? '' : (n2 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n2, isEx2)}</td>
+                    <td style="text-align:center;" class="${isInactive || isEx3 ? '' : (n3 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n3, isEx3)}</td>
+                    <td style="text-align:center;" class="${isInactive || isEx4 ? '' : (n4 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n4, isEx4)}</td>
+                    <td style="text-align:center; font-weight:800; font-size:1.05rem; background:${isInactive ? '#f1f5f9' : 'rgba(34,197,94,0.06)'};" class="${isInactive || isFullyExon ? '' : (notaFinal < 60 ? 'grade-score-fail' : 'grade-score-pass')}">
+                        ${isInactive ? `<span class="badge ${s.status === 'Retirado' ? 'badge-danger' : 'badge-warning'}" style="font-size:0.75rem;">${s.status}</span>` : (isFullyExon ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem;">Exon.</span>` : (notaFinal > 0 ? notaFinal : '—'))}
                     </td>
                 </tr>
             `;
@@ -19946,6 +20070,11 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit) 
 
     const student = (STATE.students || []).find(s => s.id === studentId);
     if (!student) return;
+    if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, subjectName, unit)) {
+        showToast("Estudiante Exonerado: Las notas de este bimestre no se registran ni aplican.", "warning");
+        loadTeacherGradebook();
+        return;
+    }
     ensureStudentGradebookStructure(student, subjectName);
     const cfg = getGradingConfig(targetPensum, unit);
 
@@ -19993,16 +20122,19 @@ function handleDirectZonaChange(studentId, value, subjectName, unit) {
 
     const student = (STATE.students || []).find(s => s.id === studentId);
     if (!student) return;
+    if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, subjectName, unit)) {
+        showToast("Estudiante Exonerado: Las notas de este bimestre no se registran ni aplican.", "warning");
+        loadTeacherGradebook();
+        return;
+    }
     ensureStudentGradebookStructure(student, subjectName);
     const cfg = getGradingConfig(targetPensum, unit);
 
     if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.add(studentId);
-    const valNum = Math.max(0, parseInt(value) || 0);
+    const valNum = Math.max(0, Math.min(cfg.zonaMax || 60, parseInt(value) || 0));
     student.gradebookDetails[subjectName][unit].zona = valNum;
 
-    // Asignar a la actividad 1 como base
-    student.gradebookDetails[subjectName][unit].activities = [valNum, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-
+    // Recalcular nota total
     const exam = parseInt(student.gradebookDetails[subjectName][unit].exam) || 0;
     const total = valNum + exam;
     student.gradebookDetails[subjectName][unit].total = total;
@@ -20032,6 +20164,11 @@ function handleExamScoreChange(studentId, value, subjectName, unit) {
 
     const student = (STATE.students || []).find(s => s.id === studentId);
     if (!student) return;
+    if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, subjectName, unit)) {
+        showToast("Estudiante Exonerado: Las notas de este bimestre no se registran ni aplican.", "warning");
+        loadTeacherGradebook();
+        return;
+    }
     ensureStudentGradebookStructure(student, subjectName);
     const cfg = getGradingConfig(targetPensum, unit);
 
