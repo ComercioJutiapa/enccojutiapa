@@ -14572,7 +14572,11 @@ async function submitGradeEditRequest(event) {
 
         saveStateToLocalStorage();
         closeGradeEditRequestModal();
-        renderGradebook();
+        if (typeof loadTeacherGradebook === 'function') {
+            loadTeacherGradebook();
+        } else if (typeof renderGradebookTable === 'function') {
+            renderGradebookTable();
+        }
         if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
 
         showToast("Solicitud enviada a Dirección y confirmada en Firebase con éxito.", "success");
@@ -18990,15 +18994,38 @@ function getGradingConfig(targetPensum, bimestre) {
     const key = getGradingConfigKey(targetPensum, bimestre);
     if (STATE.gradingConfigs[key]) {
         const saved = STATE.gradingConfigs[key];
-        const acts = Array.isArray(saved.activities) ? [...saved.activities] : [];
+        const acts = (Array.isArray(saved.activities) ? [...saved.activities] : []).map((a, i) => ({
+            name: a.name || `Act. ${i + 1}`,
+            max: a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0),
+            maxPoints: a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0)
+        }));
         while (acts.length < 10) {
-            acts.push({ name: `Act. ${acts.length + 1}`, max: 0 });
+            acts.push({ name: `Act. ${acts.length + 1}`, max: 0, maxPoints: 0 });
         }
         return {
             zonaMax: parseInt(saved.zonaMax) !== undefined && !isNaN(parseInt(saved.zonaMax)) ? parseInt(saved.zonaMax) : 60,
             examMax: parseInt(saved.examMax) !== undefined && !isNaN(parseInt(saved.examMax)) ? parseInt(saved.examMax) : 40,
             activities: acts
         };
+    }
+    const b = parseInt(bimestre) || 1;
+    if (targetPensum && targetPensum.gradingConfig) {
+        const pCfg = targetPensum.gradingConfig[`b${b}`] || targetPensum.gradingConfig[b];
+        if (pCfg) {
+            const acts = (Array.isArray(pCfg.activities) ? [...pCfg.activities] : []).map((a, i) => ({
+                name: a.name || `Act. ${i + 1}`,
+                max: a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0),
+                maxPoints: a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0)
+            }));
+            while (acts.length < 10) {
+                acts.push({ name: `Act. ${acts.length + 1}`, max: 0, maxPoints: 0 });
+            }
+            return {
+                zonaMax: parseInt(pCfg.zonaMax) !== undefined && !isNaN(parseInt(pCfg.zonaMax)) ? parseInt(pCfg.zonaMax) : 60,
+                examMax: parseInt(pCfg.examMax) !== undefined && !isNaN(parseInt(pCfg.examMax)) ? parseInt(pCfg.examMax) : 40,
+                activities: acts
+            };
+        }
     }
     return getDefaultGradingConfig();
 }
@@ -19196,20 +19223,27 @@ async function saveGradingConfigForm(e) {
             const nm = inp.value.trim();
             const p = parseInt(ptsInputs[idx]?.value) || 0;
             if (nm) {
-                acts.push({ name: nm, maxPoints: p });
+                acts.push({ name: nm, max: p, maxPoints: p });
             }
         });
 
         if (!targetPensum.gradingConfig) targetPensum.gradingConfig = {};
         if (!targetPensum.gradingConfig[`b${currentUnit}`]) targetPensum.gradingConfig[`b${currentUnit}`] = {};
 
-        targetPensum.gradingConfig[`b${currentUnit}`] = {
+        const configObj = {
             zonaMax: zVal,
             examMax: eVal,
             activities: acts,
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser ? currentUser.name : 'Docente'
         };
+
+        targetPensum.gradingConfig[`b${currentUnit}`] = configObj;
+
+        if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
+        const cfgKey = `${targetPensum.id}_b${currentUnit}`;
+        STATE.gradingConfigs[cfgKey] = configObj;
+        STATE.gradingConfigs[targetPensum.id] = targetPensum.gradingConfig;
 
         const nowTime = Date.now();
         STATE.lastModified = nowTime;
@@ -19229,6 +19263,7 @@ async function saveGradingConfigForm(e) {
                 await withTimeout(
                     modular.setDoc(modular.doc(modular.db, 'config_ponderaciones', targetPensum.id), {
                         [targetPensum.id]: targetPensum.gradingConfig,
+                        [cfgKey]: configObj,
                         lastModified: nowTime
                     }, { merge: true }),
                     8000,
@@ -19246,7 +19281,10 @@ async function saveGradingConfigForm(e) {
                 ok = await withTimeout(EnccoCloudSync.syncNode('pensum', STATE.pensum), 8000, 'Tiempo de espera en Realtime Database agotado.');
             }
             if (EnccoCloudSync.patchNode) {
-                EnccoCloudSync.patchNode('gradingConfigs', { [targetPensum.id]: targetPensum.gradingConfig });
+                EnccoCloudSync.patchNode('gradingConfigs', {
+                    [cfgKey]: configObj,
+                    [targetPensum.id]: targetPensum.gradingConfig
+                });
             }
         } else {
             ok = true;
@@ -19258,7 +19296,11 @@ async function saveGradingConfigForm(e) {
 
         saveStateToLocalStorage();
         closeGradingConfigModal();
-        renderGradebook();
+        if (typeof loadTeacherGradebook === 'function') {
+            loadTeacherGradebook();
+        } else if (typeof renderGradebookTable === 'function') {
+            renderGradebookTable();
+        }
 
         showToast(`Ponderación del Bimestre ${currentUnit} guardada y confirmada en Firebase con éxito.`, "success");
     } catch(err) {
@@ -19284,6 +19326,17 @@ function unsubscribeCurrentGradebookListener() {
     }
 }
 window.unsubscribeCurrentGradebookListener = unsubscribeCurrentGradebookListener;
+
+// Aliases y funciones globales para refrescar el libro de calificaciones
+function renderGradebookTable() {
+    if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
+}
+window.renderGradebookTable = renderGradebookTable;
+
+function renderGradebook() {
+    if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
+}
+window.renderGradebook = renderGradebook;
 
 function loadTeacherGradebook() {
     // 🔌 Des-suscribir inmediatamente cualquier listener del bimestre anterior para evitar colisiones
@@ -28516,6 +28569,9 @@ if (typeof window !== 'undefined') {
     window.saveFirebaseDatabaseConfig = saveFirebaseDatabaseConfig;
     window.handlePasswordRecovery = handlePasswordRecovery;
     window.initGlobalSaveDelegation = initGlobalSaveDelegation;
+    window.loadTeacherGradebook = loadTeacherGradebook;
+    window.renderGradebook = renderGradebook;
+    window.renderGradebookTable = renderGradebookTable;
 
     if (typeof document !== 'undefined') {
         if (document.readyState === 'loading') {
