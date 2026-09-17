@@ -604,9 +604,11 @@
 
         async function fijarBimestreEnFirebase() {
             const btn = document.getElementById('btnFijarBimestre');
-            const origText = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+            const origText = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+            }
 
             const select = document.getElementById('officialActiveBimestreSelect');
             const unitNum = select ? (parseInt(select.value) || 1) : 1;
@@ -635,42 +637,64 @@
                 ultimaActualizacion: nowIso
             };
 
-            // 1. RTDB Dual Write
+            // 0. Difusión instantánea local
             try {
-                await Promise.allSettled([
-                    fetch(`${RTDB_BASE_URL}/encc_school_state/config.json`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    }),
-                    fetch(`${RTDB_BASE_URL}/config.json`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    })
-                ]);
-            } catch(e) {
-                console.warn("Aviso al guardar config en RTDB:", e);
-            }
+                if (typeof BroadcastChannel !== 'undefined') {
+                    const bc = new BroadcastChannel('encc_state_sync');
+                    bc.postMessage({ type: 'NODE_UPDATED', node: 'config', data: payload });
+                    bc.postMessage({ type: 'BIMESTRE_CHANGED', bimestre: unitNum, activeUnits: activeUnits, config: payload });
+                }
+            } catch(e) {}
 
-            // 2. Firestore Write
-            if (window.FirebaseModular && window.FirebaseModular.db) {
+            try {
+                // 1. RTDB Dual Write con AbortController (timeout 4s)
+                const ctl = new AbortController();
+                const timeoutId = setTimeout(() => ctl.abort(), 4000);
                 try {
-                    const { db, doc, setDoc } = window.FirebaseModular;
-                    const sysRef = doc(db, "configuracion", "sistema");
-                    const bimRef = doc(db, "config", "bimestre_activo");
                     await Promise.allSettled([
-                        setDoc(sysRef, payload, { merge: true }),
-                        setDoc(bimRef, payload, { merge: true })
+                        fetch(`${RTDB_BASE_URL}/encc_school_state/config.json`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload),
+                            signal: ctl.signal
+                        }),
+                        fetch(`${RTDB_BASE_URL}/config.json`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload),
+                            signal: ctl.signal
+                        })
                     ]);
-                } catch(fsErr) {
-                    console.warn("Aviso al guardar en Firestore:", fsErr);
+                } finally {
+                    clearTimeout(timeoutId);
+                }
+
+                // 2. Firestore Write a todas las rutas canónicas con timeout
+                if (window.FirebaseModular && window.FirebaseModular.db) {
+                    try {
+                        const { db, doc, setDoc } = window.FirebaseModular;
+                        const fsTimeout = new Promise(resolve => setTimeout(resolve, 4000));
+                        const fsWrite = Promise.allSettled([
+                            setDoc(doc(db, "configuracion", "sistema"), payload, { merge: true }),
+                            setDoc(doc(db, "config", "bimestre_activo"), payload, { merge: true }),
+                            setDoc(doc(db, "configuracion", "bimestreActivo"), payload, { merge: true }),
+                            setDoc(doc(db, "config", "general"), payload, { merge: true }),
+                            setDoc(doc(db, "configuracion_sistema", "global"), payload, { merge: true })
+                        ]);
+                        await Promise.race([fsWrite, fsTimeout]);
+                    } catch(fsErr) {
+                        console.warn("Aviso al guardar en Firestore:", fsErr);
+                    }
+                }
+            } catch(e) {
+                console.warn("Aviso en sincronización de bimestre:", e);
+            } finally {
+                renderUI();
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = origText;
                 }
             }
-
-            renderUI();
-            btn.disabled = false;
-            btn.innerHTML = origText;
 
             const uNames = activeUnits.map(u => `U${u}`).join(', ');
             showToast(`¡Bimestre Oficial ${unitNum}º guardado en Firebase! Unidades activas: [${uNames}].`, "success");
@@ -687,30 +711,48 @@
                 lastModified: now
             };
 
-            // 1. RTDB
+            // 0. Difusión instantánea local
+            try {
+                if (typeof BroadcastChannel !== 'undefined') {
+                    const bc = new BroadcastChannel('encc_state_sync');
+                    bc.postMessage({ type: 'NODE_UPDATED', node: 'config', data: payload });
+                    bc.postMessage({ type: 'BIMESTRE_CHANGED', globalLocked: isLocked, config: payload });
+                }
+            } catch(e) {}
+
+            // 1. RTDB con timeout
+            const ctl = new AbortController();
+            const timeoutId = setTimeout(() => ctl.abort(), 4000);
             try {
                 await Promise.allSettled([
                     fetch(`${RTDB_BASE_URL}/encc_school_state/config.json`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(payload),
+                        signal: ctl.signal
                     }),
                     fetch(`${RTDB_BASE_URL}/config.json`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(payload),
+                        signal: ctl.signal
                     })
                 ]);
-            } catch(e) {}
+            } catch(e) {} finally {
+                clearTimeout(timeoutId);
+            }
 
             // 2. Firestore
             if (window.FirebaseModular && window.FirebaseModular.db) {
                 try {
                     const { db, doc, setDoc } = window.FirebaseModular;
-                    await Promise.allSettled([
+                    const fsTimeout = new Promise(resolve => setTimeout(resolve, 4000));
+                    const fsWrite = Promise.allSettled([
                         setDoc(doc(db, "config", "control_bloqueo"), payload, { merge: true }),
-                        setDoc(doc(db, "configuracion", "sistema"), payload, { merge: true })
+                        setDoc(doc(db, "configuracion", "sistema"), payload, { merge: true }),
+                        setDoc(doc(db, "configuracion_sistema", "global"), payload, { merge: true })
                     ]);
+                    await Promise.race([fsWrite, fsTimeout]);
                 } catch(e) {}
             }
 
@@ -728,27 +770,46 @@
                 lastModified: now
             };
 
+            // 0. Difusión instantánea local
+            try {
+                if (typeof BroadcastChannel !== 'undefined') {
+                    const bc = new BroadcastChannel('encc_state_sync');
+                    bc.postMessage({ type: 'NODE_UPDATED', node: 'config', data: payload });
+                }
+            } catch(e) {}
+
             // RTDB
+            const ctl = new AbortController();
+            const timeoutId = setTimeout(() => ctl.abort(), 4000);
             try {
                 await Promise.allSettled([
                     fetch(`${RTDB_BASE_URL}/encc_school_state/config.json`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(payload),
+                        signal: ctl.signal
                     }),
                     fetch(`${RTDB_BASE_URL}/config.json`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify(payload),
+                        signal: ctl.signal
                     })
                 ]);
-            } catch(e) {}
+            } catch(e) {} finally {
+                clearTimeout(timeoutId);
+            }
 
             // Firestore
             if (window.FirebaseModular && window.FirebaseModular.db) {
                 try {
                     const { db, doc, setDoc } = window.FirebaseModular;
-                    await setDoc(doc(db, "config", "control_bloqueo"), payload, { merge: true });
+                    const fsTimeout = new Promise(resolve => setTimeout(resolve, 4000));
+                    const fsWrite = Promise.allSettled([
+                        setDoc(doc(db, "config", "control_bloqueo"), payload, { merge: true }),
+                        setDoc(doc(db, "configuracion", "sistema"), payload, { merge: true })
+                    ]);
+                    await Promise.race([fsWrite, fsTimeout]);
                 } catch(e) {}
             }
 
@@ -872,6 +933,33 @@
                     } catch(err) {}
                 });
             } catch(e) {}
+
+            // Escucha inmediata entre pestañas locales vía BroadcastChannel
+            if (typeof BroadcastChannel !== 'undefined') {
+                try {
+                    const bc = new BroadcastChannel('encc_state_sync');
+                    bc.onmessage = (e) => {
+                        if (!e || !e.data) return;
+                        if (e.data.type === 'NODE_UPDATED' && e.data.node === 'config') {
+                            if (e.data.data) {
+                                CONFIG_DATA = { ...CONFIG_DATA, ...e.data.data };
+                                renderUI();
+                            }
+                        } else if (e.data.type === 'BIMESTRE_CHANGED') {
+                            if (e.data.config) {
+                                CONFIG_DATA = { ...CONFIG_DATA, ...e.data.config };
+                            } else {
+                                if (e.data.bimestre) {
+                                    CONFIG_DATA.activeBimestre = e.data.bimestre;
+                                    CONFIG_DATA.bimestreActivoOficial = e.data.bimestre;
+                                }
+                                if (e.data.activeUnits) CONFIG_DATA.activeUnits = e.data.activeUnits;
+                            }
+                            renderUI();
+                        }
+                    };
+                } catch(e) {}
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
