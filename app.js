@@ -2030,18 +2030,40 @@ function loadRoleIntoPermissionsPanel(roleKey) {
     const descInput = document.getElementById('activeRoleDesc');
     const colorInput = document.getElementById('activeRoleColor');
 
-    const isSystemRole = (r.isSystem || ['admin','director','secretaria','profesor_auxiliar','docente'].includes(r.key));
+    const SYSTEM_ROLE_KEYS = (typeof window.SYSTEM_ROLE_KEYS !== 'undefined') 
+        ? window.SYSTEM_ROLE_KEYS 
+        : ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente', 'estudiante'];
+    const isSystemRole = (r.isSystem || SYSTEM_ROLE_KEYS.includes(r.key));
 
-    if (keyInput) { keyInput.value = r.key; keyInput.readOnly = isSystemRole; }
-    if (nameInput) nameInput.value = r.name;
-    if (descInput) descInput.value = r.description || '';
-    if (colorInput) colorInput.value = r.color || '#0284c7';
+    if (keyInput) { 
+        keyInput.value = r.key; 
+        keyInput.readOnly = isSystemRole; 
+        keyInput.style.backgroundColor = isSystemRole ? '#f1f5f9' : '#ffffff';
+        keyInput.style.cursor = isSystemRole ? 'not-allowed' : 'text';
+    }
+    if (nameInput) {
+        nameInput.value = r.name;
+        nameInput.readOnly = isSystemRole;
+        nameInput.style.backgroundColor = isSystemRole ? '#f1f5f9' : '#ffffff';
+        nameInput.style.cursor = isSystemRole ? 'not-allowed' : 'text';
+    }
+    if (descInput) {
+        descInput.value = r.description || '';
+        descInput.readOnly = isSystemRole;
+        descInput.style.backgroundColor = isSystemRole ? '#f1f5f9' : '#ffffff';
+        descInput.style.cursor = isSystemRole ? 'not-allowed' : 'text';
+    }
+    if (colorInput) {
+        colorInput.value = r.color || '#0284c7';
+        colorInput.disabled = isSystemRole;
+        colorInput.style.cursor = isSystemRole ? 'not-allowed' : 'pointer';
+    }
 
     renderActiveRolePermissionsGrid(r.permissions || []);
 
     const delBtn = document.getElementById('btnDeleteActiveRole');
     if (delBtn) {
-        if (r.key === 'admin') {
+        if (isSystemRole) {
             delBtn.style.display = 'none';
         } else {
             delBtn.style.display = 'inline-flex';
@@ -2097,35 +2119,54 @@ async function saveActiveRolePermissions() {
     normalizeRolesConfig();
 
     try {
+        const SYSTEM_ROLE_KEYS = (typeof window.SYSTEM_ROLE_KEYS !== 'undefined') 
+            ? window.SYSTEM_ROLE_KEYS 
+            : ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente', 'estudiante'];
+        const isSystemRole = (key === 'admin' || SYSTEM_ROLE_KEYS.includes(key));
+
         const existingIdx = STATE.rolesConfig.findIndex(r => r.key === key);
         if (existingIdx !== -1) {
-            STATE.rolesConfig[existingIdx].name = name;
-            STATE.rolesConfig[existingIdx].description = desc;
-            STATE.rolesConfig[existingIdx].color = color;
-            STATE.rolesConfig[existingIdx].permissions = permissions;
-            STATE.rolesConfig[existingIdx].permissionLevels = permissionLevels;
+            if (isSystemRole) {
+                STATE.rolesConfig[existingIdx].isSystem = true;
+                STATE.rolesConfig[existingIdx].permissions = permissions;
+                STATE.rolesConfig[existingIdx].permissionLevels = permissionLevels;
+                if (desc) STATE.rolesConfig[existingIdx].description = desc;
+            } else {
+                STATE.rolesConfig[existingIdx].name = name;
+                STATE.rolesConfig[existingIdx].description = desc;
+                STATE.rolesConfig[existingIdx].color = color;
+                STATE.rolesConfig[existingIdx].permissions = permissions;
+                STATE.rolesConfig[existingIdx].permissionLevels = permissionLevels;
+            }
         } else {
             STATE.rolesConfig.push({
                 key: key,
                 name: name,
                 description: desc,
                 color: color,
-                isSystem: false,
+                isSystem: isSystemRole,
                 permissions: permissions,
                 permissionLevels: permissionLevels
             });
         }
+
+        normalizeRolesConfig();
         _selectedRoleKeyForEditing = key;
 
-        // CONFIRMACIÓN DE ESCRITURA ATÓMICA EN FIREBASE (AISLAMIENTO TOTAL DE ROLES)
-        const nowTime = Date.now();
-        const roleObj = {
+        const roleObjInState = STATE.rolesConfig.find(r => r.key === key) || {
             key: key,
             name: name,
             description: desc,
             color: color,
+            isSystem: isSystemRole,
             permissions: permissions,
-            permissionLevels: permissionLevels,
+            permissionLevels: permissionLevels
+        };
+
+        // CONFIRMACIÓN DE ESCRITURA ATÓMICA EN FIREBASE (AISLAMIENTO TOTAL DE ROLES)
+        const nowTime = Date.now();
+        const roleObj = {
+            ...roleObjInState,
             lastModified: nowTime
         };
 
@@ -2134,7 +2175,7 @@ async function saveActiveRolePermissions() {
         saveStateToLocalStorage();
         applyUserRole(STATE.currentRole);
         renderRolesManagementView();
-        showToast(`Permisos del rol "${name}" guardados exitosamente.`, 'success');
+        showToast(`Permisos del rol "${roleObjInState.name}" guardados exitosamente.`, 'success');
 
         // 🌟 Persistencia atómica en Firestore y RTDB en segundo plano
         (async () => {
@@ -2148,11 +2189,11 @@ async function saveActiveRolePermissions() {
                     const rolPayload = {
                         id: key,
                         key: key,
-                        nombre: name,
-                        name: name,
-                        descripcion: desc,
-                        description: desc,
-                        color: color,
+                        nombre: roleObjInState.name,
+                        name: roleObjInState.name,
+                        descripcion: roleObjInState.description,
+                        description: roleObjInState.description,
+                        color: roleObjInState.color,
                         permisos: permissions,
                         permissions: permissions,
                         ultimaModificacion: new Date().toISOString(),
@@ -2163,14 +2204,26 @@ async function saveActiveRolePermissions() {
                         const batch = writeBatch(db);
                         batch.set(roleDocRef, roleObj, { merge: true });
                         batch.set(rolRef, rolPayload, { merge: true });
-                        batch.set(configDocRef, { list: STATE.rolesConfig, lastModified: nowTime }, { merge: true });
+                        // Persistir todos los roles del sistema en rolesConfig para asegurar que Firestore tenga todos los docs
+                        (STATE.rolesConfig || []).forEach(r => {
+                            if (r && r.key) {
+                                batch.set(doc(db, 'rolesConfig', r.key), r, { merge: true });
+                            }
+                        });
+                        batch.set(configDocRef, { list: STATE.rolesConfig, roles: STATE.rolesConfig, lastModified: nowTime }, { merge: true });
                         await withTimeout(batch.commit(), 6000, 'Tiempo de espera en batch de roles en Firestore');
                     } else if (typeof setDoc === 'function') {
-                        await Promise.all([
+                        const promises = [
                             setDoc(roleDocRef, roleObj, { merge: true }),
                             setDoc(rolRef, rolPayload, { merge: true }),
-                            setDoc(configDocRef, { list: STATE.rolesConfig, lastModified: nowTime }, { merge: true })
-                        ]);
+                            setDoc(configDocRef, { list: STATE.rolesConfig, roles: STATE.rolesConfig, lastModified: nowTime }, { merge: true })
+                        ];
+                        (STATE.rolesConfig || []).forEach(r => {
+                            if (r && r.key && r.key !== key) {
+                                promises.push(setDoc(doc(db, 'rolesConfig', r.key), r, { merge: true }));
+                            }
+                        });
+                        await Promise.all(promises);
                     }
                 } catch(fsErr) {
                     console.warn("Aviso al persistir roles en Firestore:", fsErr);
@@ -2289,29 +2342,54 @@ function initDefaultRolesConfig() {
 }
 window.initDefaultRolesConfig = initDefaultRolesConfig;
 
+const SYSTEM_ROLE_KEYS = ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente', 'estudiante'];
+window.SYSTEM_ROLE_KEYS = SYSTEM_ROLE_KEYS;
+
 function normalizeRolesConfig() {
-    if (!Array.isArray(STATE.rolesConfig) || STATE.rolesConfig.length === 0) {
-        STATE.rolesConfig = initDefaultRolesConfig();
-    }
-
     const defaultRoles = initDefaultRolesConfig();
-    
-    // Asegurar únicamente que el rol maestro 'admin' siempre exista para evitar bloqueos
-    const adminFound = STATE.rolesConfig.find(r => r.key === 'admin');
-    if (!adminFound) {
-        const defAdmin = defaultRoles.find(d => d.key === 'admin') || {
-            key: 'admin',
-            name: 'Super Administrador',
-            description: 'Acceso total y configuración del sistema',
-            color: '#0284c7',
-            isSystem: true,
-            permissions: SYSTEM_MODULES_LIST.map(m => m.key)
-        };
-        STATE.rolesConfig.unshift(defAdmin);
+
+    if (STATE.rolesConfig && !Array.isArray(STATE.rolesConfig) && typeof STATE.rolesConfig === 'object') {
+        STATE.rolesConfig = Object.keys(STATE.rolesConfig).map(k => ({
+            ...STATE.rolesConfig[k],
+            key: STATE.rolesConfig[k].key || k
+        }));
     }
 
-    // Normalizar todos los roles (base y personalizados)
+    if (!Array.isArray(STATE.rolesConfig) || STATE.rolesConfig.length === 0) {
+        STATE.rolesConfig = defaultRoles.map(r => ({ ...r }));
+    }
+
+    // 1. Garantizar que TODOS los 6 roles oficiales del sistema existan de manera permanente
+    defaultRoles.forEach(defRole => {
+        const existing = STATE.rolesConfig.find(r => r && (r.key === defRole.key || r.id === defRole.key));
+        if (!existing) {
+            // El rol oficial faltaba: restaurarlo inmediatamente
+            STATE.rolesConfig.push({ ...defRole, isSystem: true });
+        } else {
+            // El rol oficial existe: blindar sus propiedades estructurales permanentes
+            existing.key = defRole.key;
+            existing.isSystem = true;
+            if (!existing.name) existing.name = defRole.name;
+            if (!existing.description) existing.description = defRole.description;
+            if (!existing.color) existing.color = defRole.color;
+        }
+    });
+
+    // 2. Ordenar roles: los 6 oficiales primero en su orden canónico, seguidos de los personalizados
+    const systemOrder = { 'admin': 1, 'director': 2, 'secretaria': 3, 'profesor_auxiliar': 4, 'docente': 5, 'estudiante': 6 };
+    STATE.rolesConfig.sort((a, b) => {
+        const orderA = systemOrder[a.key] || 99;
+        const orderB = systemOrder[b.key] || 99;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.name || '').localeCompare(b.name || '');
+    });
+
+    // 3. Normalizar permisos y matrices de 3 niveles para cada rol
     STATE.rolesConfig.forEach(roleObj => {
+        if (SYSTEM_ROLE_KEYS.includes(roleObj.key)) {
+            roleObj.isSystem = true;
+        }
+
         if (!Array.isArray(roleObj.permissions)) {
             const defMatch = defaultRoles.find(d => d.key === roleObj.key);
             roleObj.permissions = defMatch ? [...defMatch.permissions] : [];
@@ -2324,6 +2402,9 @@ function normalizeRolesConfig() {
         SYSTEM_MODULES_LIST.forEach(m => {
             if (roleObj.key === 'admin') {
                 roleObj.permissionLevels[m.key] = 'edit';
+                if (!roleObj.permissions.includes(m.key)) roleObj.permissions.push(m.key);
+                if (!roleObj.permissions.includes(m.key + '_edit')) roleObj.permissions.push(m.key + '_edit');
+                if (!roleObj.permissions.includes(m.key + '_view')) roleObj.permissions.push(m.key + '_view');
             } else if (typeof roleObj.permissionLevels[m.key] === 'undefined') {
                 // Si aún no se ha definido el nivel explícito para este módulo, derivarlo de permissions
                 if (roleObj.permissions.includes(m.key + '_edit')) {
@@ -2405,18 +2486,57 @@ function openRoleModal(roleKey = null) {
         const r = (STATE.rolesConfig || []).find(x => x.key === roleKey);
         if (!r) return;
 
-        if (keyInput) { keyInput.value = r.key; keyInput.readOnly = true; }
-        if (nameInput) nameInput.value = r.name;
-        if (descInput) descInput.value = r.description || '';
-        if (colorInput) colorInput.value = r.color || '#0284c7';
-        if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-user-pen"></i> Editar Rol y Permisos: ${r.name}`;
+        const SYSTEM_ROLE_KEYS = (typeof window.SYSTEM_ROLE_KEYS !== 'undefined') 
+            ? window.SYSTEM_ROLE_KEYS 
+            : ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente', 'estudiante'];
+        const isSystemRole = (r.isSystem || SYSTEM_ROLE_KEYS.includes(r.key));
+
+        if (keyInput) { 
+            keyInput.value = r.key; 
+            keyInput.readOnly = true; 
+            keyInput.style.backgroundColor = '#f1f5f9';
+        }
+        if (nameInput) { 
+            nameInput.value = r.name; 
+            nameInput.readOnly = isSystemRole; 
+            nameInput.style.backgroundColor = isSystemRole ? '#f1f5f9' : '#ffffff';
+        }
+        if (descInput) { 
+            descInput.value = r.description || ''; 
+            descInput.readOnly = isSystemRole; 
+            descInput.style.backgroundColor = isSystemRole ? '#f1f5f9' : '#ffffff';
+        }
+        if (colorInput) { 
+            colorInput.value = r.color || '#0284c7'; 
+            colorInput.disabled = isSystemRole; 
+        }
+        if (titleEl) {
+            titleEl.innerHTML = isSystemRole 
+                ? `<i class="fa-solid fa-lock" style="color:#0284c7;"></i> Configurar Permisos del Rol Permanente: ${r.name}`
+                : `<i class="fa-solid fa-user-pen"></i> Editar Rol y Permisos: ${r.name}`;
+        }
 
         renderRolePermissionsCheckboxes(r.permissions || []);
     } else {
-        if (keyInput) { keyInput.value = ''; keyInput.readOnly = false; }
-        if (nameInput) nameInput.value = '';
-        if (descInput) descInput.value = '';
-        if (colorInput) colorInput.value = '#0284c7';
+        if (keyInput) { 
+            keyInput.value = ''; 
+            keyInput.readOnly = false; 
+            keyInput.style.backgroundColor = '#ffffff';
+        }
+        if (nameInput) { 
+            nameInput.value = ''; 
+            nameInput.readOnly = false; 
+            nameInput.style.backgroundColor = '#ffffff';
+        }
+        if (descInput) { 
+            descInput.value = ''; 
+            descInput.readOnly = false; 
+            descInput.style.backgroundColor = '#ffffff';
+        }
+        if (colorInput) { 
+            colorInput.value = '#0284c7'; 
+            colorInput.disabled = false; 
+        }
         if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-plus-circle"></i> Crear Nuevo Rol Institucional`;
 
         renderRolePermissionsCheckboxes(['dashboard']);
@@ -2509,6 +2629,11 @@ async function guardarPermisosRol(e) {
     }
 
     try {
+        const SYSTEM_ROLE_KEYS = (typeof window.SYSTEM_ROLE_KEYS !== 'undefined') 
+            ? window.SYSTEM_ROLE_KEYS 
+            : ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente', 'estudiante'];
+        const isSystemRole = (key === 'admin' || SYSTEM_ROLE_KEYS.includes(key));
+
         const existingIdx = STATE.rolesConfig.findIndex(r => r.key === key);
         let roleObj = null;
 
@@ -2524,11 +2649,18 @@ async function guardarPermisosRol(e) {
         }
 
         if (existingIdx !== -1) {
-            STATE.rolesConfig[existingIdx].name = name;
-            STATE.rolesConfig[existingIdx].description = desc;
-            STATE.rolesConfig[existingIdx].color = color;
-            STATE.rolesConfig[existingIdx].permissions = permissions;
-            STATE.rolesConfig[existingIdx].permissionLevels = permissionLevels;
+            if (isSystemRole) {
+                STATE.rolesConfig[existingIdx].isSystem = true;
+                STATE.rolesConfig[existingIdx].permissions = permissions;
+                STATE.rolesConfig[existingIdx].permissionLevels = permissionLevels;
+                if (desc) STATE.rolesConfig[existingIdx].description = desc;
+            } else {
+                STATE.rolesConfig[existingIdx].name = name;
+                STATE.rolesConfig[existingIdx].description = desc;
+                STATE.rolesConfig[existingIdx].color = color;
+                STATE.rolesConfig[existingIdx].permissions = permissions;
+                STATE.rolesConfig[existingIdx].permissionLevels = permissionLevels;
+            }
             roleObj = STATE.rolesConfig[existingIdx];
         } else {
             roleObj = {
@@ -2536,12 +2668,14 @@ async function guardarPermisosRol(e) {
                 name: name,
                 description: desc,
                 color: color,
-                isSystem: false,
+                isSystem: isSystemRole,
                 permissions: permissions,
                 permissionLevels: permissionLevels
             };
             STATE.rolesConfig.push(roleObj);
         }
+
+        normalizeRolesConfig();
 
         const now = Date.now();
         const nowIso = new Date().toISOString();
@@ -2622,6 +2756,12 @@ async function guardarPermisosRol(e) {
                             ultimaModificacion: nowIso
                         }, { merge: true })
                     ];
+
+                    (STATE.rolesConfig || []).forEach(r => {
+                        if (r && r.key && r.key !== key) {
+                            fsActions.push(setDoc(doc(db, "rolesConfig", r.key), r, { merge: true }));
+                        }
+                    });
 
                     await withTimeout(Promise.all(fsActions), 6000, 'Tiempo de espera agotado al conectar con Google Cloud Firestore.');
                     console.log(`🔥 [Firestore] Rol "${name}" (${key}) persistido atómicamente con setDoc({ merge: true }).`);
@@ -2722,7 +2862,10 @@ function renderRolesTable(filterVal = '') {
         const assignedUsers = (STATE.users || []).filter(u => u.role === r.key);
         const permCount = Array.isArray(r.permissions) ? r.permissions.length : 0;
         const totalModules = SYSTEM_MODULES_LIST.length;
-        const isMasterAdmin = (r.key === 'admin');
+        const SYSTEM_ROLE_KEYS = (typeof window.SYSTEM_ROLE_KEYS !== 'undefined') 
+            ? window.SYSTEM_ROLE_KEYS 
+            : ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente', 'estudiante'];
+        const isSystemRole = (r.isSystem || SYSTEM_ROLE_KEYS.includes(r.key));
 
         // Badges de permisos principales
         const permBadges = (r.permissions || []).slice(0, 5).map(pk => {
@@ -2761,19 +2904,19 @@ function renderRolesTable(filterVal = '') {
                 </td>
                 <td style="text-align:center;">
                     <div style="display:inline-flex; gap:6px; flex-wrap:wrap; justify-content:center; align-items:center;">
+                        <button type="button" class="btn btn-primary btn-xs" onclick="selectRoleAndScroll('${r.key}')" title="Configurar Matriz Detallada de Permisos (Modificar / Solo Ver / Bloquear)" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; background:#0284c7; border-color:#0284c7; color:#fff; border-radius:6px;">
+                            <i class="fa-solid fa-sliders"></i> Permisos
+                        </button>
+                        ${!isSystemRole ? `
                         <button type="button" class="btn btn-outline-primary btn-xs" onclick="openRoleModal('${r.key}')" title="Editar Nombre, Descripción, Color y Módulos del Rol" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; border-radius:6px;">
                             <i class="fa-solid fa-pen-to-square"></i> Editar
                         </button>
-                        <button type="button" class="btn btn-primary btn-xs" onclick="selectRoleAndScroll('${r.key}')" title="Configurar Matriz Detallada de Permisos (Modificar / Solo Ver / Bloquear)" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; background:#16a34a; border-color:#15803d; color:#fff; border-radius:6px;">
-                            <i class="fa-solid fa-sliders"></i> Permisos
-                        </button>
-                        ${!isMasterAdmin ? `
-                        <button type="button" class="btn btn-outline-danger btn-xs" onclick="deleteRole('${r.key}')" title="Eliminar Rol del Sistema" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; border-radius:6px; color:#dc2626; border-color:#fca5a5;">
+                        <button type="button" class="btn btn-outline-danger btn-xs" onclick="deleteRole('${r.key}')" title="Eliminar Rol Personalizado" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; border-radius:6px; color:#dc2626; border-color:#fca5a5;">
                             <i class="fa-solid fa-trash-can"></i> Eliminar
                         </button>
                         ` : `
-                        <span class="badge" style="background:#f1f5f9; color:#94a3b8; border:1px solid #cbd5e1; font-size:0.75rem; padding:4px 8px; border-radius:6px;" title="El rol principal de Super Administrador está protegido contra eliminación">
-                            <i class="fa-solid fa-lock"></i> Protegido
+                        <span class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1; font-size:0.75rem; padding:4px 8px; border-radius:6px;" title="Rol oficial permanente del sistema — solo se pueden configurar sus permisos">
+                            <i class="fa-solid fa-lock"></i> Permanente
                         </span>
                         `}
                     </div>
@@ -2790,12 +2933,21 @@ function deleteRole(roleKey) {
         return;
     }
 
-    if (roleKey === 'admin') {
-        showToast('El rol principal de Super Administrador está protegido y no puede ser eliminado.', 'warning');
+    const SYSTEM_ROLE_KEYS = (typeof window.SYSTEM_ROLE_KEYS !== 'undefined') 
+        ? window.SYSTEM_ROLE_KEYS 
+        : ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente', 'estudiante'];
+
+    if (SYSTEM_ROLE_KEYS.includes(roleKey)) {
+        showToast('Los roles oficiales del sistema son permanentes y no pueden ser eliminados. Solo puede configurar sus permisos.', 'warning');
         return;
     }
 
     const roleObj = (STATE.rolesConfig || []).find(r => r.key === roleKey);
+    if (roleObj && roleObj.isSystem) {
+        showToast('Este rol del sistema está protegido contra eliminación.', 'warning');
+        return;
+    }
+
     const roleName = roleObj ? roleObj.name : roleKey;
 
     const assignedUsers = (STATE.users || []).filter(u => u.role === roleKey);
@@ -2813,6 +2965,7 @@ function deleteRole(roleKey) {
     }
 
     STATE.rolesConfig = (STATE.rolesConfig || []).filter(r => r.key !== roleKey);
+    normalizeRolesConfig();
     const nowTime = Date.now();
     STATE.lastModified = nowTime;
     saveStateToLocalStorage();
@@ -4074,8 +4227,20 @@ function initFirebaseRealtimeConnection() {
                             if (typeof renderDisciplineTable === 'function') renderDisciplineTable();
                         }
                     } else if (cleanPath === 'rolesConfig') {
-                        if (Array.isArray(nodeData)) {
-                            STATE.rolesConfig = nodeData;
+                        if (Array.isArray(nodeData) && nodeData.length > 0) {
+                            if (!Array.isArray(STATE.rolesConfig) || STATE.rolesConfig.length === 0) {
+                                STATE.rolesConfig = (typeof initDefaultRolesConfig === 'function') ? initDefaultRolesConfig() : [];
+                            }
+                            nodeData.forEach(inRole => {
+                                if (!inRole || !inRole.key) return;
+                                const idx = STATE.rolesConfig.findIndex(r => r && (r.key === inRole.key || r.id === inRole.key));
+                                if (idx !== -1) {
+                                    STATE.rolesConfig[idx] = { ...STATE.rolesConfig[idx], ...inRole };
+                                } else {
+                                    STATE.rolesConfig.push(inRole);
+                                }
+                            });
+                            normalizeRolesConfig();
                             if (typeof renderRolesTable === 'function') renderRolesTable();
                             if (typeof renderRoleSelectorTabs === 'function') renderRoleSelectorTabs();
                         }
@@ -6045,6 +6210,7 @@ async function initApp() {
                             STATE.rolesConfig = rData;
                         }
                     }
+                    if (typeof normalizeRolesConfig === 'function') normalizeRolesConfig();
                 }
             } catch(e) {
                 console.warn("Aviso en consulta de usuarios desde Firebase en login:", e);
@@ -6060,6 +6226,7 @@ async function initApp() {
 
     if (window.SecurityEngine) window.SecurityEngine.initInactivityGuard();
     if (typeof normalizeSchoolAcademicData === "function") normalizeSchoolAcademicData(STATE);
+    if (typeof normalizeRolesConfig === "function") normalizeRolesConfig();
     // 🌟 Sincronización Inicial de Estado desde Firebase para configuracion/sistema
     if (window.FirebaseModular && window.FirebaseModular.db) {
         try {
@@ -27537,16 +27704,24 @@ function initFirestoreModularLiveListeners() {
         try {
             const unsubRoles = onSnapshot(collection(db, 'rolesConfig'), (snap) => {
                 if (!snap || snap.empty) return;
-                // Snapshot listener activo sin bloqueos locales
-                const roles = [];
-                snap.forEach(d => roles.push({ key: d.id, ...d.data() }));
-                if (roles.length > 0) {
-                    STATE.rolesConfig = roles;
-                    if (typeof renderRolesTable === 'function') renderRolesTable();
-                    if (typeof renderRoleSelectorTabs === 'function') renderRoleSelectorTabs();
-                    if (typeof updateUserRoleSelectOptions === 'function') updateUserRoleSelectOptions();
-                    if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
+                // Snapshot listener activo con fusión inteligente sin borrar roles permanentes
+                if (!Array.isArray(STATE.rolesConfig) || STATE.rolesConfig.length === 0) {
+                    STATE.rolesConfig = (typeof initDefaultRolesConfig === 'function') ? initDefaultRolesConfig() : [];
                 }
+                snap.forEach(d => {
+                    const rData = { key: d.id, id: d.id, ...d.data() };
+                    const idx = STATE.rolesConfig.findIndex(r => r && (r.key === d.id || r.id === d.id));
+                    if (idx !== -1) {
+                        STATE.rolesConfig[idx] = { ...STATE.rolesConfig[idx], ...rData };
+                    } else {
+                        STATE.rolesConfig.push(rData);
+                    }
+                });
+                normalizeRolesConfig();
+                if (typeof renderRolesTable === 'function') renderRolesTable();
+                if (typeof renderRoleSelectorTabs === 'function') renderRoleSelectorTabs();
+                if (typeof updateUserRoleSelectOptions === 'function') updateUserRoleSelectOptions();
+                if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
             }, err => console.warn('Aviso en onSnapshot rolesConfig:', err));
             if (typeof unsubRoles === 'function') _firestoreModularUnsubscribers.push(unsubRoles);
         } catch(e) {}
@@ -27555,10 +27730,22 @@ function initFirestoreModularLiveListeners() {
         try {
             const unsubRolesDoc = onSnapshot(doc(db, 'config', 'rolesConfig'), (snap) => {
                 if (!snap || !snap.exists()) return;
-                // Snapshot listener activo sin bloqueos locales
                 const d = snap.data();
-                if (d && Array.isArray(d.roles)) {
-                    STATE.rolesConfig = d.roles;
+                const incomingList = (d && (Array.isArray(d.roles) ? d.roles : (Array.isArray(d.list) ? d.list : null)));
+                if (Array.isArray(incomingList) && incomingList.length > 0) {
+                    if (!Array.isArray(STATE.rolesConfig) || STATE.rolesConfig.length === 0) {
+                        STATE.rolesConfig = (typeof initDefaultRolesConfig === 'function') ? initDefaultRolesConfig() : [];
+                    }
+                    incomingList.forEach(inRole => {
+                        if (!inRole || !inRole.key) return;
+                        const idx = STATE.rolesConfig.findIndex(r => r && (r.key === inRole.key || r.id === inRole.key));
+                        if (idx !== -1) {
+                            STATE.rolesConfig[idx] = { ...STATE.rolesConfig[idx], ...inRole };
+                        } else {
+                            STATE.rolesConfig.push(inRole);
+                        }
+                    });
+                    normalizeRolesConfig();
                     if (typeof renderRolesTable === 'function') renderRolesTable();
                     if (typeof renderRoleSelectorTabs === 'function') renderRoleSelectorTabs();
                     if (typeof updateUserRoleSelectOptions === 'function') updateUserRoleSelectOptions();
