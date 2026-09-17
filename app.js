@@ -9868,6 +9868,13 @@ function getStudentAcademicInfo(student) {
         }
     }
 
+    // Helper local para identificar materias especiales de graduación de 6to (Práctica Supervisada y Seminario)
+    const _cleanForMatch = s => (s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+    const _isMateriaEspecial6to = subName => {
+        const c = _cleanForMatch(subName);
+        return c.includes('practica') || c.includes('seminario');
+    };
+
     if (subjects.length > 0) {
         subjects.forEach(sub => {
             let gradesObj = null;
@@ -9875,6 +9882,70 @@ function getStudentAcademicInfo(student) {
                 gradesObj = getReportCardSubjectGrades(student, sub);
             }
 
+            // ─── REGLA ESTRICTA: 6to Grado, 3er Bimestre ───────────────────────────
+            // Para el Cuadro de Honor del B3, se usa ÚNICAMENTE la nota puntual del
+            // bimestre activo (no el promedio histórico acumulado B1+B2+B3).
+            //   • 8 materias ordinarias  → nota directa b3 (Zona+Examen ya consolidados)
+            //   • 2 materias especiales  → suma explícita zona+examen del B3 desde gradebookDetails
+            // ────────────────────────────────────────────────────────────────────────
+            if (is6to && activeBimestre >= 3) {
+                // Verificar exoneración individual en esta materia para el B3
+                const isExoneratedSubject = (typeof isSubjectBimestreExonerated === 'function')
+                    ? isSubjectBimestreExonerated(student, sub, activeBimestre)
+                    : false;
+
+                let scoreB3 = 0;
+
+                if (_isMateriaEspecial6to(sub)) {
+                    // Materias especiales: extraer Zona + Examen del B3 desde gradebookDetails
+                    const details = student.gradebookDetails || {};
+                    let bDetail = null;
+                    if (details[sub] && (details[sub][3] || details[sub]['3'])) {
+                        bDetail = details[sub][3] || details[sub]['3'];
+                    } else {
+                        // Buscar con limpieza de nombre
+                        const cSub = _cleanForMatch(sub);
+                        for (const k of Object.keys(details)) {
+                            if (_cleanForMatch(k) === cSub) {
+                                bDetail = details[k][3] || details[k]['3'] || null;
+                                break;
+                            }
+                        }
+                    }
+                    if (bDetail) {
+                        scoreB3 = (parseInt(bDetail.zona) || 0) + (parseInt(bDetail.exam) || 0);
+                        // Si total es 0 pero hay "total" registrado, usarlo
+                        if (scoreB3 === 0 && bDetail.total !== undefined && bDetail.total !== '') {
+                            scoreB3 = parseInt(bDetail.total) || 0;
+                        }
+                    }
+                    // Fallback: si gradebookDetails no tiene el B3, leer desde gradesObj.b3
+                    if (scoreB3 === 0 && gradesObj) {
+                        scoreB3 = gradesObj[`b${activeBimestre}`] || 0;
+                    }
+                } else {
+                    // Materias ordinarias: nota directa del bimestre activo
+                    scoreB3 = gradesObj ? (gradesObj[`b${activeBimestre}`] || 0) : 0;
+                }
+
+                if (isExoneratedSubject) {
+                    // Materia exonerada en B3: omitir del cálculo (divisor efectivo se reduce)
+                    exoneratedCount++;
+                    return; // siguiente materia
+                }
+
+                if (scoreB3 > 0) {
+                    if (scoreB3 < 60) {
+                        hasFailedGrade = true;
+                        failedSubjectsList.push(`${sub} (B${activeBimestre}: ${scoreB3} pts)`);
+                    }
+                    sumCourseAverages += scoreB3;
+                    gradedCount++;
+                }
+                return; // procesado — saltar lógica histórica
+            }
+
+            // ─── LÓGICA HISTÓRICA para B1, B2 y para 4to/5to ────────────────────────
             let validScores = [];
             if (gradesObj) {
                 for (let b = 1; b <= activeBimestre; b++) {
@@ -9951,8 +10022,10 @@ function getStudentAcademicInfo(student) {
     // REGLAS ESTRICTAS DE CUADRO DE HONOR Y PROMEDIO EQUITATIVO:
     // 1. Debe tener al menos una clase calificada (gradedCount > 0)
     // 2. NO debe tener ninguna clase perdida (hasFailedGrade === false)
-    // 3. NO debe ser un alumno exonerado (isStudentExonerated === false)
-    const isEligible = (gradedCount > 0) && (!hasFailedGrade) && (!isStudentExonerated);
+    // 3. Exoneraciones de materia individual en 6to B3: reducen divisor pero NO excluyen del Cuadro
+    //    Solo excluye si el estudiante tiene exoneración GLOBAL (student.isExonerated / student.exonerated)
+    const hasGlobalExoneration = (student.isExonerated === true || student.exonerated === true);
+    const isEligible = (gradedCount > 0) && (!hasFailedGrade) && (!hasGlobalExoneration);
 
     if (gradedCount > 0) {
         // Promedio académico fiel basado únicamente en las notas actualizadas de las materias evaluadas
@@ -20639,6 +20712,31 @@ function loadHonorRoll() {
         return infoB.average - infoA.average;
     });
 
+    // ── CAMBIO 4: PERSISTENCIA ATÓMICA DEL PUESTO (honorRank.bX) ────────────────
+    // Guarda el puesto y promedio de cada estudiante elegible en Firestore,
+    // vinculado unívocamente a (estudianteId + bimestre activo) via setDoc merge.
+    // Operación fire-and-forget en background — nunca bloquea la UI.
+    (async () => {
+        if (!window.FirebaseModular?.db) return;
+        const { db, doc, setDoc } = window.FirebaseModular;
+        const bim = parseInt(STATE.config?.activeBimestre) || 1;
+        let eligibleRank = 0;
+        for (let i = 0; i < evaluatedList.length; i++) {
+            const s = evaluatedList[i];
+            const info = getStudentAcademicInfo(s);
+            if (!info.eligibleForHonorRoll) continue;
+            eligibleRank++;
+            const rankPayload = {
+                honorRank:    { [`b${bim}`]: eligibleRank },
+                honorAverage: { [`b${bim}`]: info.average },
+                lastHonorUpdate: new Date().toISOString()
+            };
+            setDoc(doc(db, 'students', s.id), rankPayload, { merge: true })
+                .catch(e => console.warn('[Honor] Error al persistir puesto:', e));
+        }
+    })();
+    // ─────────────────────────────────────────────────────────────────────────────
+
     tbody.innerHTML = evaluatedList.map((s, idx) => {
         const info = getStudentAcademicInfo(s);
         let badgeHtml = '';
@@ -27274,6 +27372,11 @@ function initFirestoreModularLiveListeners() {
                 if (typeof loadTeacherGradebook === 'function' && STATE.activeView === 'gradebook') loadTeacherGradebook();
                 if (typeof renderStudentsTable === 'function') renderStudentsTable();
                 if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+                // Recalcular Cuadro de Honor en tiempo real al ingresar o editar notas
+                if (typeof loadHonorRoll === 'function' &&
+                    (STATE.activeView === 'honor-roll' || STATE.activeView === 'reports')) {
+                    loadHonorRoll();
+                }
             }, err => console.warn('Aviso en onSnapshot students:', err));
             if (typeof unsubStudents === 'function') _firestoreModularUnsubscribers.push(unsubStudents);
         } catch(e) {}
