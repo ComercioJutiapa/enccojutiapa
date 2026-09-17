@@ -158,18 +158,22 @@
         }
     }
 
-    // Helper para obtener el índice real del estudiante en RTDB
+    // Helper para obtener el índice real del estudiante en RTDB (Optimizado: resolución en memoria en 0ms)
     async function getRtdbStudentIndex(studentId) {
         if (!studentId) return -1;
+        // 1. Búsqueda instantánea en memoria (0ms, sin peticiones de red)
+        const localStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+        const localIdx = localStudents.findIndex(s => s && (s.id === studentId || s.personalCode === studentId || s.carne === studentId));
+        if (localIdx !== -1) {
+            return localIdx;
+        }
+        // Fallback de red solo si no se encuentra en memoria local
         try {
             const shallow = await rtdbRequest('/encc_school_state/students.json?shallow=true');
-            if (!shallow) return -1;
-            
-            // Buscar por id directo
-            const localStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
-            const localIdx = localStudents.findIndex(s => s && s.id === studentId);
-            if (localIdx !== -1) {
-                return localIdx;
+            if (shallow && typeof shallow === 'object') {
+                const keys = Object.keys(shallow);
+                const kIdx = keys.indexOf(String(studentId));
+                if (kIdx !== -1) return kIdx;
             }
         } catch (e) {}
         return -1;
@@ -308,6 +312,176 @@
 
         window.dispatchEvent(new CustomEvent('EnccoGradeUpdated', {
             detail: { studentId: student.id, subject: effectiveSubject, unit: effectiveUnit, total: totalScore }
+        }));
+
+        return true;
+    }
+
+    // 3.1 GUARDADO MASIVO ATÓMICO CON WRITEBATCH Y MULTI-PATH PATCH
+    async function saveBulkStudentGradesAtomic(studentsList, subjectIdentifier, unit) {
+        if (window.STATE && window.STATE.isLocalReadOnlyMode) {
+            if (typeof window.showToast === 'function') {
+                window.showToast("⚠️ Acción Bloqueada: Modo Solo Lectura.", "warning");
+            }
+            return false;
+        }
+
+        if (!Array.isArray(studentsList) || studentsList.length === 0) return true;
+
+        const effectiveUnit = parseInt(unit) || 1;
+        const effectiveSubject = (subjectIdentifier || '').toString().trim();
+        const cleanStr = s => (s || '').toString().toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]/g, '');
+        const cleanSubj = cleanStr(effectiveSubject);
+        const now = Date.now();
+        const updatedBy = (window.STATE && window.STATE.currentUser) ? window.STATE.currentUser.id : 'sistema';
+
+        const gradeRecords = [];
+        const localStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+
+        for (const item of studentsList) {
+            if (!item) continue;
+            let student = item;
+            if (typeof item === 'string') {
+                const targetClean = cleanStr(item);
+                student = localStudents.find(s => {
+                    if (!s) return false;
+                    if (s.id && s.id === item) return true;
+                    if (s.personalCode && s.personalCode === item) return true;
+                    if (s.carne && s.carne === item) return true;
+                    const fullName = cleanStr(`${s.lastName || ''} ${s.firstName || ''}`);
+                    const fullNameRev = cleanStr(`${s.firstName || ''} ${s.lastName || ''}`);
+                    const singleName = cleanStr(s.name || '');
+                    return targetClean === fullName || targetClean === fullNameRev || targetClean === singleName;
+                });
+            }
+            if (!student || !student.id) continue;
+
+            const compositeGradeKey = `${student.id}_${cleanSubj}_b${effectiveUnit}`;
+            const currentData = (student.gradebookDetails && student.gradebookDetails[effectiveSubject] && student.gradebookDetails[effectiveSubject][effectiveUnit]) ? student.gradebookDetails[effectiveSubject][effectiveUnit] : {
+                activities: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                zona: 0,
+                exam: 0,
+                total: 0
+            };
+
+            const activitiesArr = Array.isArray(currentData.activities) ? currentData.activities.slice(0, 10) : [0,0,0,0,0,0,0,0,0,0];
+            while (activitiesArr.length < 10) activitiesArr.push(0);
+
+            const calculatedZona = activitiesArr.reduce((a, b) => a + (parseInt(b) || 0), 0);
+            const examScore = parseInt(currentData.exam) || 0;
+            const totalScore = calculatedZona + examScore;
+
+            const gradePayload = {
+                id: compositeGradeKey,
+                estudianteId: student.id,
+                personalCode: student.personalCode || '',
+                claseNombre: effectiveSubject,
+                claseClean: cleanSubj,
+                bimestre: effectiveUnit,
+                activities: activitiesArr,
+                zona: calculatedZona,
+                exam: examScore,
+                total: totalScore,
+                exonerado: currentData.exonerado || false,
+                updatedAt: new Date().toISOString(),
+                updatedBy: updatedBy
+            };
+
+            // 1. Sincronizar en memoria en el objeto student
+            student.gradebookDetails = student.gradebookDetails || {};
+            student.gradebookDetails[effectiveSubject] = student.gradebookDetails[effectiveSubject] || [null, null, null, null, null];
+            student.gradebookDetails[effectiveSubject][effectiveUnit] = {
+                activities: activitiesArr,
+                zona: calculatedZona,
+                exam: examScore,
+                total: totalScore,
+                exonerado: currentData.exonerado || false
+            };
+
+            student.grades = student.grades || {};
+            student.grades[effectiveSubject] = student.grades[effectiveSubject] || [0, 0, 0, 0];
+            student.grades[effectiveSubject][effectiveUnit - 1] = totalScore;
+
+            const rtdbIdx = localStudents.findIndex(s => s && s.id === student.id);
+
+            gradeRecords.push({
+                student,
+                compositeGradeKey,
+                gradePayload,
+                totalScore,
+                rtdbIdx
+            });
+        }
+
+        if (gradeRecords.length === 0) return true;
+
+        // 2. Persistencia Atómica en Firestore con writeBatch y { merge: true }
+        try {
+            const fEngine = await initFirestoreMemoryEngine();
+            if (fEngine && fEngine.db && fEngine.fsMod) {
+                const { db, fsMod } = fEngine;
+                if (typeof fsMod.writeBatch === 'function') {
+                    // Firestore limita batches a 500 operaciones. Procesamos en chunks seguros de 200 alumnos (400 ops)
+                    const chunkSize = 200;
+                    for (let i = 0; i < gradeRecords.length; i += chunkSize) {
+                        const chunk = gradeRecords.slice(i, i + chunkSize);
+                        const batch = fsMod.writeBatch(db);
+                        for (const item of chunk) {
+                            const gradeDocRef = fsMod.doc(db, "calificaciones", item.compositeGradeKey);
+                            batch.set(gradeDocRef, item.gradePayload, { merge: true });
+
+                            const studentDocRef = fsMod.doc(db, "estudiantes", item.student.id);
+                            batch.set(studentDocRef, {
+                                [`grades.${effectiveSubject}`]: item.student.grades[effectiveSubject],
+                                [`gradebookDetails.${effectiveSubject}.${effectiveUnit}`]: item.student.gradebookDetails[effectiveSubject][effectiveUnit],
+                                lastModified: now
+                            }, { merge: true });
+                        }
+                        await batch.commit();
+                    }
+                } else {
+                    // Fallback concurrente con setDoc merge: true directo sin lecturas previas
+                    await Promise.all(gradeRecords.map(item => {
+                        const gradeDocRef = fsMod.doc(db, "calificaciones", item.compositeGradeKey);
+                        const studentDocRef = fsMod.doc(db, "estudiantes", item.student.id);
+                        return Promise.all([
+                            fsMod.setDoc(gradeDocRef, item.gradePayload, { merge: true }),
+                            fsMod.setDoc(studentDocRef, {
+                                [`grades.${effectiveSubject}`]: item.student.grades[effectiveSubject],
+                                [`gradebookDetails.${effectiveSubject}.${effectiveUnit}`]: item.student.gradebookDetails[effectiveSubject][effectiveUnit],
+                                lastModified: now
+                            }, { merge: true })
+                        ]);
+                    }));
+                }
+            }
+        } catch (fe) {
+            console.warn("[EnccoDB] Advertencia al persistir lote en Firestore (continuando con RTDB):", fe.message);
+        }
+
+        // 3. Persistencia Atómica Dual en Firebase RTDB con Multi-Path PATCH en una sola petición
+        try {
+            const multiPathPayload = {};
+            for (const item of gradeRecords) {
+                multiPathPayload[`calificaciones/${item.compositeGradeKey}`] = item.gradePayload;
+                if (item.rtdbIdx !== -1) {
+                    multiPathPayload[`students/${item.rtdbIdx}/gradebookDetails/${effectiveSubject}/${effectiveUnit}`] = item.student.gradebookDetails[effectiveSubject][effectiveUnit];
+                    multiPathPayload[`students/${item.rtdbIdx}/grades/${effectiveSubject}/${effectiveUnit - 1}`] = item.totalScore;
+                }
+            }
+            multiPathPayload['config/lastModified'] = now;
+
+            // Dual write: /encc_school_state/ y raíz
+            await rtdbRequest('/encc_school_state.json', 'PATCH', multiPathPayload);
+            await rtdbRequest('/.json', 'PATCH', multiPathPayload);
+        } catch (re) {
+            console.warn("[EnccoDB] Advertencia al persistir lote en RTDB:", re.message);
+        }
+
+        window.dispatchEvent(new CustomEvent('EnccoGradesBulkUpdated', {
+            detail: { count: gradeRecords.length, subject: effectiveSubject, unit: effectiveUnit }
         }));
 
         return true;
@@ -518,22 +692,13 @@
             const arrayUnion = fsMod.arrayUnion;
 
             try {
-                if (typeof arrayUnion === 'function') {
-                    // 'arrayUnion' añade el nuevo rol a la lista sin borrar los anteriores ni duplicar
-                    await fsMod.updateDoc(userRef, {
-                        roles: arrayUnion(nuevoRol)
-                    });
-                } else {
-                    await fsMod.setDoc(userRef, {
-                        roles: [nuevoRol]
-                    }, { merge: true });
-                }
-            } catch (err) {
-                // Si el documento aún no existe en Firestore, crearlo dinámicamente con merge: true
+                // Escritura directa y atómica en un solo paso con setDoc y merge: true (sin lecturas ni excepciones de updateDoc)
                 await fsMod.setDoc(userRef, {
                     roles: (typeof arrayUnion === 'function') ? arrayUnion(nuevoRol) : [nuevoRol],
                     lastModified: Date.now()
                 }, { merge: true });
+            } catch (err) {
+                console.warn("[EnccoDB] Advertencia al persistir rol en Firestore:", err.message);
             }
         }
 
@@ -707,6 +872,7 @@
         rtdbRequest,
         getRtdbStudentIndex,
         saveStudentSubjectGradeAtomic,
+        saveBulkStudentGradesAtomic,
         asignarMaestroGuia,
         setOfficialActiveBimestre,
         saveAcademicExoneration,
@@ -720,6 +886,7 @@
     window.EnccoDB = EnccoDB;
     window.initFirestoreMemoryEngine = initFirestoreMemoryEngine;
     window.saveStudentSubjectGradeAtomic = saveStudentSubjectGradeAtomic;
+    window.saveBulkStudentGradesAtomic = saveBulkStudentGradesAtomic;
     window.asignarMaestroGuia = asignarMaestroGuia;
     window.setOfficialActiveBimestre = setOfficialActiveBimestre;
     window.saveAcademicExoneration = saveAcademicExoneration;

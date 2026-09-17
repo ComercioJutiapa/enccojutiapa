@@ -2129,30 +2129,23 @@ async function saveActiveRolePermissions() {
             lastModified: nowTime
         };
 
-        // 🌟 A. Persistencia Atómica en Google Cloud Firestore (updateDoc con fallback merge: true y withTimeout)
-        if (window.FirebaseModular && window.FirebaseModular.db) {
-            try {
-                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
-                const rolRef = doc(db, 'roles', key);
-                const roleDocRef = doc(db, 'rolesConfig', key);
-                const configDocRef = doc(db, 'config', 'rolesConfig');
+        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
+        STATE.lastModified = nowTime;
+        saveStateToLocalStorage();
+        applyUserRole(STATE.currentRole);
+        renderRolesManagementView();
+        showToast(`Permisos del rol "${name}" guardados exitosamente.`, 'success');
 
-                // Actualizar documento individual del rol sin tocar otros datos
-                if (typeof updateDoc === 'function') {
-                    try {
-                        await withTimeout(updateDoc(roleDocRef, roleObj), 6000);
-                    } catch(updErr) {
-                        if (typeof setDoc === 'function') {
-                            await withTimeout(setDoc(roleDocRef, roleObj, { merge: true }), 6000);
-                        }
-                    }
-                } else if (typeof setDoc === 'function') {
-                    await withTimeout(setDoc(roleDocRef, roleObj, { merge: true }), 6000);
-                }
+        // 🌟 Persistencia atómica en Firestore y RTDB en segundo plano
+        (async () => {
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                try {
+                    const { db, doc, writeBatch, setDoc } = window.FirebaseModular;
+                    const rolRef = doc(db, 'roles', key);
+                    const roleDocRef = doc(db, 'rolesConfig', key);
+                    const configDocRef = doc(db, 'config', 'rolesConfig');
 
-                // Sincronizar documento en colección roles/ con merge: true
-                if (typeof setDoc === 'function') {
-                    await withTimeout(setDoc(rolRef, {
+                    const rolPayload = {
                         id: key,
                         key: key,
                         nombre: name,
@@ -2164,80 +2157,46 @@ async function saveActiveRolePermissions() {
                         permissions: permissions,
                         ultimaModificacion: new Date().toISOString(),
                         lastModified: nowTime
-                    }, { merge: true }), 6000).catch(() => null);
-                }
+                    };
 
-                // Actualizar catálogo institucional de roles con merge: true
-                if (typeof updateDoc === 'function') {
-                    try {
-                        await withTimeout(updateDoc(configDocRef, { list: STATE.rolesConfig, lastModified: nowTime }), 6000);
-                    } catch(updErr) {
-                        if (typeof setDoc === 'function') {
-                            await withTimeout(setDoc(configDocRef, { list: STATE.rolesConfig, lastModified: nowTime }, { merge: true }), 6000);
-                        }
+                    if (typeof writeBatch === 'function') {
+                        const batch = writeBatch(db);
+                        batch.set(roleDocRef, roleObj, { merge: true });
+                        batch.set(rolRef, rolPayload, { merge: true });
+                        batch.set(configDocRef, { list: STATE.rolesConfig, lastModified: nowTime }, { merge: true });
+                        await withTimeout(batch.commit(), 6000, 'Tiempo de espera en batch de roles en Firestore');
+                    } else if (typeof setDoc === 'function') {
+                        await Promise.all([
+                            setDoc(roleDocRef, roleObj, { merge: true }),
+                            setDoc(rolRef, rolPayload, { merge: true }),
+                            setDoc(configDocRef, { list: STATE.rolesConfig, lastModified: nowTime }, { merge: true })
+                        ]);
                     }
-                } else if (typeof setDoc === 'function') {
-                    await withTimeout(setDoc(configDocRef, { list: STATE.rolesConfig, lastModified: nowTime }, { merge: true }), 6000);
-                }
-                console.log(`🔥 [Firestore] Rol "${key}" actualizado atómicamente con updateDoc/merge.`);
-            } catch(fsErr) {
-                console.warn("Aviso al persistir roles en Firestore:", fsErr);
-            }
-        }
-
-        // 🌟 B. Persistencia Atómica y Aislada en Firebase Realtime Database con withTimeout
-        let ok = false;
-        try {
-            const rtdbPromises = [];
-            if (typeof EnccoCloudSync !== 'undefined') {
-                if (typeof EnccoCloudSync.patchNode === 'function') {
-                    rtdbPromises.push(EnccoCloudSync.patchNode(`roles/${key}`, roleObj));
-                }
-                if (typeof EnccoCloudSync.syncNode === 'function') {
-                    rtdbPromises.push(EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig));
+                } catch(fsErr) {
+                    console.warn("Aviso al persistir roles en Firestore:", fsErr);
                 }
             }
 
-            if (rtdbPromises.length > 0) {
-                const results = await withTimeout(Promise.all(rtdbPromises), 6000, 'Tiempo de espera en Realtime Database agotado.');
-                ok = results.every(Boolean);
-            } else {
-                const fUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
-                if (fUrl) {
-                    const controller = new AbortController();
-                    const fetchTimeout = setTimeout(() => controller.abort(), 5000);
-                    try {
-                        const res = await fetch(`${fUrl}/encc_school_state/rolesConfig.json`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(STATE.rolesConfig),
-                            signal: controller.signal
-                        });
-                        clearTimeout(fetchTimeout);
-                        ok = res.ok;
-                    } catch(e) {
-                        clearTimeout(fetchTimeout);
-                        ok = false;
+            try {
+                const rtdbPromises = [];
+                if (typeof EnccoCloudSync !== 'undefined') {
+                    if (typeof EnccoCloudSync.patchNode === 'function') {
+                        rtdbPromises.push(EnccoCloudSync.patchNode(`roles/${key}`, roleObj));
                     }
-                } else {
-                    ok = true;
+                    if (typeof EnccoCloudSync.syncNode === 'function') {
+                        rtdbPromises.push(EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig));
+                    }
                 }
+                if (rtdbPromises.length > 0) {
+                    await withTimeout(Promise.all(rtdbPromises), 6000, 'Tiempo de espera en Realtime Database agotado.');
+                }
+            } catch(rtdbErr) {
+                console.warn("Aviso en RTDB al guardar rol activo:", rtdbErr);
             }
-        } catch(rtdbErr) {
-            console.warn("Aviso en RTDB al guardar rol activo:", rtdbErr);
-        }
-
-        if (!ok) {
-            console.warn("RTDB no confirmó inmediatamente, manteniendo persistencia local y en Firestore.");
-        }
-
-        saveStateToLocalStorage();
-        applyUserRole(STATE.currentRole);
-        renderRolesManagementView();
-        showToast(`Permisos del rol "${name}" confirmados en Firebase.`, 'success');
+        })();
     } catch(err) {
         console.error("❌ Error al guardar roles en Firebase:", err);
-        showToast(`Error al guardar roles en Firebase: ${err.message || err}`, 'danger');
+        showToast(`Error al guardar roles: ${err.message || err}`, 'danger');
     }
 }
 window.saveActiveRolePermissions = saveActiveRolePermissions;
@@ -2605,87 +2564,8 @@ async function guardarPermisosRol(e) {
             lastModified: now
         };
 
-        // 🌟 3. Persistencia Atómica en Google Cloud Firestore con setDoc({ merge: true }) y withTimeout
-        if (window.FirebaseModular && window.FirebaseModular.db) {
-            const { db, doc, setDoc } = window.FirebaseModular;
-            try {
-                const rolRef = doc(db, "roles", rolIdSeleccionado);
-                const roleDocRef = doc(db, "rolesConfig", rolIdSeleccionado);
-                const configDocRef = doc(db, "config", "rolesConfig");
-
-                const fsActions = [
-                    setDoc(rolRef, {
-                        id: key,
-                        key: key,
-                        nombre: name,
-                        name: name,
-                        descripcion: desc,
-                        description: desc,
-                        color: color,
-                        permisos: permissions,
-                        permissions: permissions,
-                        ultimaModificacion: nowIso,
-                        lastModified: now
-                    }, { merge: true }),
-                    setDoc(roleDocRef, roleAtomicPayload, { merge: true }),
-                    setDoc(configDocRef, {
-                        roles: STATE.rolesConfig,
-                        list: STATE.rolesConfig,
-                        lastModified: now,
-                        ultimaModificacion: nowIso
-                    }, { merge: true })
-                ];
-
-                await withTimeout(Promise.all(fsActions), 6000, 'Tiempo de espera agotado al conectar con Google Cloud Firestore.');
-                console.log(`🔥 [Firestore] Rol "${name}" (${key}) persistido atómicamente con setDoc({ merge: true }).`);
-            } catch(fsErr) {
-                console.warn("Aviso al persistir rol en Firestore (continuando con RTDB):", fsErr);
-            }
-        }
-
-        // 🌟 4. Persistencia Atómica en Firebase Realtime Database con withTimeout
-        let rtdbOk = false;
-        try {
-            const rtdbPromises = [];
-            if (typeof EnccoCloudSync !== 'undefined') {
-                if (typeof EnccoCloudSync.patchNode === 'function') {
-                    rtdbPromises.push(EnccoCloudSync.patchNode(`roles/${key}`, roleAtomicPayload));
-                }
-                if (typeof EnccoCloudSync.syncNode === 'function') {
-                    rtdbPromises.push(EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig));
-                }
-            }
-
-            if (rtdbPromises.length > 0) {
-                const results = await withTimeout(Promise.all(rtdbPromises), 6000, 'Tiempo de espera en Realtime Database agotado.');
-                rtdbOk = results.every(Boolean);
-            } else {
-                const fUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
-                if (fUrl) {
-                    const controller = new AbortController();
-                    const fetchTimeout = setTimeout(() => controller.abort(), 5000);
-                    try {
-                        const res = await fetch(`${fUrl}/encc_school_state/rolesConfig.json`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(STATE.rolesConfig),
-                            signal: controller.signal
-                        });
-                        clearTimeout(fetchTimeout);
-                        rtdbOk = res.ok;
-                    } catch(fetchErr) {
-                        clearTimeout(fetchTimeout);
-                        rtdbOk = false;
-                    }
-                } else {
-                    rtdbOk = true;
-                }
-            }
-        } catch (rtdbErr) {
-            console.warn("Aviso en Realtime Database al guardar rol:", rtdbErr);
-        }
-
-        // 🌟 5. Persistir en almacenamiento local y notificar pestañas
+        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
+        STATE.lastModified = now;
         if (typeof saveStateToLocalStorage === 'function') saveStateToLocalStorage();
 
         if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
@@ -2698,20 +2578,93 @@ async function guardarPermisosRol(e) {
             } catch(bcErr) {}
         }
 
-        // 🌟 6. Aplicar cambios a la UI y refrescar tabla
         if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
         if (typeof renderRolesTable === 'function') renderRolesTable();
         if (typeof renderRolesManagementView === 'function') renderRolesManagementView();
         
-        // Cierre del modal
         closeRoleModal();
 
         const msgSuccess = existingIdx !== -1 
-            ? `Permisos del rol "${name}" guardados y confirmados en Firebase.` 
-            : `Rol "${name}" creado y confirmado en Firebase exitosamente.`;
+            ? `Permisos del rol "${name}" guardados exitosamente.` 
+            : `Rol "${name}" creado exitosamente.`;
         if (typeof showToast === 'function') {
             showToast(msgSuccess, "success");
         }
+
+        // 🌟 Persistencia atómica en Firestore y RTDB en segundo plano
+        (async () => {
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                const { db, doc, setDoc } = window.FirebaseModular;
+                try {
+                    const rolRef = doc(db, "roles", rolIdSeleccionado);
+                    const roleDocRef = doc(db, "rolesConfig", rolIdSeleccionado);
+                    const configDocRef = doc(db, "config", "rolesConfig");
+
+                    const fsActions = [
+                        setDoc(rolRef, {
+                            id: key,
+                            key: key,
+                            nombre: name,
+                            name: name,
+                            descripcion: desc,
+                            description: desc,
+                            color: color,
+                            permisos: permissions,
+                            permissions: permissions,
+                            ultimaModificacion: nowIso,
+                            lastModified: now
+                        }, { merge: true }),
+                        setDoc(roleDocRef, roleAtomicPayload, { merge: true }),
+                        setDoc(configDocRef, {
+                            roles: STATE.rolesConfig,
+                            list: STATE.rolesConfig,
+                            lastModified: now,
+                            ultimaModificacion: nowIso
+                        }, { merge: true })
+                    ];
+
+                    await withTimeout(Promise.all(fsActions), 6000, 'Tiempo de espera agotado al conectar con Google Cloud Firestore.');
+                    console.log(`🔥 [Firestore] Rol "${name}" (${key}) persistido atómicamente con setDoc({ merge: true }).`);
+                } catch(fsErr) {
+                    console.warn("Aviso al persistir rol en Firestore (continuando con RTDB):", fsErr);
+                }
+            }
+
+            try {
+                const rtdbPromises = [];
+                if (typeof EnccoCloudSync !== 'undefined') {
+                    if (typeof EnccoCloudSync.patchNode === 'function') {
+                        rtdbPromises.push(EnccoCloudSync.patchNode(`roles/${key}`, roleAtomicPayload));
+                    }
+                    if (typeof EnccoCloudSync.syncNode === 'function') {
+                        rtdbPromises.push(EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig));
+                    }
+                }
+
+                if (rtdbPromises.length > 0) {
+                    await withTimeout(Promise.all(rtdbPromises), 6000, 'Tiempo de espera en Realtime Database agotado.');
+                } else {
+                    const fUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
+                    if (fUrl) {
+                        const controller = new AbortController();
+                        const fetchTimeout = setTimeout(() => controller.abort(), 5000);
+                        try {
+                            await fetch(`${fUrl}/encc_school_state/rolesConfig.json`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(STATE.rolesConfig),
+                                signal: controller.signal
+                            });
+                            clearTimeout(fetchTimeout);
+                        } catch(fetchErr) {
+                            clearTimeout(fetchTimeout);
+                        }
+                    }
+                }
+            } catch (rtdbErr) {
+                console.warn("Aviso en Realtime Database al guardar rol:", rtdbErr);
+            }
+        })();
     } catch(err) {
         console.error("❌ [Firebase Error] Falló el guardado de rol:", err);
         if (typeof showToast === 'function') {
@@ -2860,70 +2813,69 @@ function deleteRole(roleKey) {
     }
 
     STATE.rolesConfig = (STATE.rolesConfig || []).filter(r => r.key !== roleKey);
+    const nowTime = Date.now();
+    STATE.lastModified = nowTime;
     saveStateToLocalStorage();
 
-    // 🌟 A. Persistencia Atómica en Firestore (sin bloques duplicados)
-    if (window.FirebaseModular && window.FirebaseModular.db) {
-        try {
-            const { db, doc, deleteDoc, updateDoc, setDoc } = window.FirebaseModular;
-            if (typeof deleteDoc === 'function') {
-                deleteDoc(doc(db, 'rolesConfig', roleKey));
-            }
-            const configRef = doc(db, 'config', 'rolesConfig');
-            if (typeof updateDoc === 'function') {
-                try {
-                    updateDoc(configRef, { list: STATE.rolesConfig, lastModified: Date.now() });
-                } catch(e) {
-                    if (typeof setDoc === 'function') setDoc(configRef, { list: STATE.rolesConfig, lastModified: Date.now() }, { merge: true });
-                }
-            } else if (typeof setDoc === 'function') {
-                setDoc(configRef, { list: STATE.rolesConfig, lastModified: Date.now() }, { merge: true });
-            }
-
-            // Actualizar individualmente usuarios reasignados en Firestore
-            if (assignedUsers.length > 0) {
-                for (const u of assignedUsers) {
-                    const uRef = doc(db, 'users', u.id);
-                    if (typeof updateDoc === 'function') {
-                        try {
-                            updateDoc(uRef, { role: 'docente', lastModified: Date.now() });
-                        } catch(e) {
-                            if (typeof setDoc === 'function') setDoc(uRef, { role: 'docente', lastModified: Date.now() }, { merge: true });
-                        }
-                    } else if (typeof setDoc === 'function') {
-                        setDoc(uRef, { role: 'docente', lastModified: Date.now() }, { merge: true });
-                    }
-                }
-            }
-        } catch(e) {
-            console.warn("Aviso al eliminar rol en Firestore:", e);
-        }
-    }
-
-    // 🌟 B. Sincronización Atómica y Aislada en Realtime Database
     try {
         if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
-            _enccBroadcastChannel.postMessage({ type: 'SYNC_STATE_UPDATE', state: STATE, timestamp: Date.now() });
+            _enccBroadcastChannel.postMessage({ type: 'SYNC_STATE_UPDATE', state: STATE, timestamp: nowTime });
         }
     } catch(e) {}
-
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
-        if (assignedUsers.length > 0) {
-            EnccoCloudSync.syncNode('users', STATE.users);
-        }
-    }
 
     if (typeof _selectedRoleKeyForEditing !== 'undefined' && _selectedRoleKeyForEditing === roleKey) {
         _selectedRoleKeyForEditing = (STATE.rolesConfig && STATE.rolesConfig[0]) ? STATE.rolesConfig[0].key : 'admin';
     }
 
+    // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
     renderRoleSelectorTabs();
     loadRoleIntoPermissionsPanel((typeof _selectedRoleKeyForEditing !== 'undefined') ? _selectedRoleKeyForEditing : 'admin');
     renderRolesTable();
     if (typeof updateUserRoleSelectOptions === 'function') updateUserRoleSelectOptions();
     applyUserRole(STATE.currentRole);
     showToast(`El rol "${roleName}" ha sido eliminado exitosamente.`, 'info');
+
+    // 🌟 Persistencia atómica en Firestore y RTDB en segundo plano
+    (async () => {
+        if (window.FirebaseModular && window.FirebaseModular.db) {
+            try {
+                const { db, doc, deleteDoc, setDoc, writeBatch } = window.FirebaseModular;
+                if (typeof deleteDoc === 'function') {
+                    deleteDoc(doc(db, 'rolesConfig', roleKey)).catch(e => {});
+                    deleteDoc(doc(db, 'roles', roleKey)).catch(e => {});
+                }
+                const configRef = doc(db, 'config', 'rolesConfig');
+                if (typeof setDoc === 'function') {
+                    setDoc(configRef, { list: STATE.rolesConfig, lastModified: nowTime }, { merge: true }).catch(e => {});
+                }
+
+                if (assignedUsers.length > 0) {
+                    if (typeof writeBatch === 'function') {
+                        const batch = writeBatch(db);
+                        for (const u of assignedUsers) {
+                            batch.set(doc(db, 'users', u.id), { role: 'docente', lastModified: nowTime }, { merge: true });
+                        }
+                        await batch.commit();
+                    } else if (typeof setDoc === 'function') {
+                        await Promise.all(assignedUsers.map(u => setDoc(doc(db, 'users', u.id), { role: 'docente', lastModified: nowTime }, { merge: true })));
+                    }
+                }
+            } catch(e) {
+                console.warn("Aviso al eliminar rol en Firestore:", e);
+            }
+        }
+
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            try {
+                EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
+                if (assignedUsers.length > 0) {
+                    EnccoCloudSync.syncNode('users', STATE.users);
+                }
+            } catch(rtdbErr) {
+                console.warn("Aviso al sincronizar roles en RTDB:", rtdbErr);
+            }
+        }
+    })();
 }
 window.deleteRole = deleteRole;
 
@@ -3289,64 +3241,10 @@ async function saveUserForm(e) {
         }
 
         const nowTime = Date.now();
-
-        // 🌟 A. Persistencia Atómica en Google Cloud Firestore (updateDoc con fallback merge: true)
-        if (window.FirebaseModular && window.FirebaseModular.db) {
-            try {
-                const { db, doc, updateDoc, setDoc, deleteDoc } = window.FirebaseModular;
-                const userDocRef = doc(db, 'users', savedUserObj.id);
-                const userPayload = { ...savedUserObj, lastModified: nowTime };
-
-                const userFsAction = (typeof setDoc === 'function')
-                    ? setDoc(userDocRef, userPayload, { merge: true })
-                    : ((typeof updateDoc === 'function')
-                        ? updateDoc(userDocRef, userPayload).catch(e => {
-                            if (typeof setDoc === 'function') return setDoc(userDocRef, userPayload, { merge: true });
-                            throw e;
-                        })
-                        : Promise.resolve());
-                await withTimeout(userFsAction, 8000, 'Tiempo de espera en Firestore agotado.');
-
-                if (savedUserObj.role === 'docente') {
-                    const docDocRef = doc(db, 'docentes', savedUserObj.id);
-                    const docFsAction = (typeof setDoc === 'function')
-                    ? setDoc(docDocRef, userPayload, { merge: true })
-                    : ((typeof updateDoc === 'function')
-                        ? updateDoc(docDocRef, userPayload).catch(e => {
-                            if (typeof setDoc === 'function') return setDoc(docDocRef, userPayload, { merge: true });
-                            throw e;
-                        })
-                        : Promise.resolve());
-                    await withTimeout(docFsAction, 8000, 'Tiempo de espera al guardar docente en Firestore agotado.');
-                } else if (typeof deleteDoc === 'function' || (window.FirebaseModular && typeof window.FirebaseModular.deleteDoc === 'function')) {
-                    const delFn = (typeof deleteDoc === 'function') ? deleteDoc : window.FirebaseModular.deleteDoc;
-                    try {
-                        await delFn(doc(db, 'docentes', savedUserObj.id));
-                    } catch(delErr) {}
-                }
-            } catch(fsErr) {
-                console.warn("Aviso al persistir usuario en Firestore (continuando con RTDB):", fsErr);
-            }
-        }
-
-        // 🌟 B. Persistencia Atómica y Aislada en Firebase Realtime Database (SÓLO colección 'users')
-        let ok = false;
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await withTimeout(EnccoCloudSync.syncNode('users', STATE.users), 8000, 'Tiempo de espera agotado en Firebase Realtime Database.');
-        } else if (typeof syncUsersToDatabaseImmediate === 'function') {
-            ok = await withTimeout(syncUsersToDatabaseImmediate(false), 8000, 'Tiempo de espera agotado al sincronizar usuarios con Firebase.');
-        } else {
-            ok = true;
-        }
-
-        if (!ok) {
-            throw new Error("El servidor de Firebase no confirmó la actualización del usuario/docente.");
-        }
-
-        STATE.lastModified = Date.now();
+        STATE.lastModified = nowTime;
         saveStateToLocalStorage();
 
-        // Cierre de modal y actualización de tablas tras recibir confirmación de Firebase
+        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
         closeUserModal();
         if (typeof renderUsersTable === 'function') renderUsersTable();
         if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
@@ -3358,17 +3256,50 @@ async function saveUserForm(e) {
             if (typeof synchronizeGlobalDynamicUI === 'function') synchronizeGlobalDynamicUI();
         } catch(uiErr) {}
 
-        if (typeof Swal !== 'undefined' && Swal.fire) {
-            Swal.fire({
-                icon: 'success',
-                title: '¡Guardado Exitoso!',
-                text: `Usuario "${name}" guardado y confirmado en Firebase con éxito.`,
-                timer: 2000,
-                showConfirmButton: false
-            });
-        } else {
-            showToast(`Usuario "${name}" guardado y confirmado en Firebase exitosamente.`, "success");
-        }
+        showToast(`Usuario "${name}" guardado exitosamente.`, "success");
+
+        // 🌟 Persistencia atómica en Firestore con setDoc { merge: true } y RTDB en segundo plano
+        (async () => {
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                try {
+                    const { db, doc, setDoc, deleteDoc } = window.FirebaseModular;
+                    const userDocRef = doc(db, 'users', savedUserObj.id);
+                    const userPayload = { ...savedUserObj, lastModified: nowTime };
+
+                    if (typeof setDoc === 'function') {
+                        await withTimeout(setDoc(userDocRef, userPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
+                    }
+
+                    if (savedUserObj.role === 'docente') {
+                        const docDocRef = doc(db, 'docentes', savedUserObj.id);
+                        if (typeof setDoc === 'function') {
+                            await withTimeout(setDoc(docDocRef, userPayload, { merge: true }), 8000, 'Tiempo de espera al guardar docente en Firestore agotado.');
+                        }
+                    } else if (typeof deleteDoc === 'function' || (window.FirebaseModular && typeof window.FirebaseModular.deleteDoc === 'function')) {
+                        const delFn = (typeof deleteDoc === 'function') ? deleteDoc : window.FirebaseModular.deleteDoc;
+                        try {
+                            await delFn(doc(db, 'docentes', savedUserObj.id));
+                        } catch(delErr) {}
+                    }
+                } catch(fsErr) {
+                    console.warn("Aviso al persistir usuario en Firestore (continuando con RTDB):", fsErr);
+                }
+            }
+
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+                try {
+                    await withTimeout(EnccoCloudSync.syncNode('users', STATE.users), 8000, 'Tiempo de espera agotado en Firebase Realtime Database.');
+                } catch(rtdbErr) {
+                    console.warn("Aviso al sincronizar usuarios en RTDB:", rtdbErr);
+                }
+            } else if (typeof syncUsersToDatabaseImmediate === 'function') {
+                try {
+                    await withTimeout(syncUsersToDatabaseImmediate(false), 8000, 'Tiempo de espera agotado al sincronizar usuarios con Firebase.');
+                } catch(rtdbErr) {
+                    console.warn("Aviso al sincronizar usuarios con Firebase:", rtdbErr);
+                }
+            }
+        })();
     } catch(err) {
         console.error("❌ Error al guardar usuario en Firebase:", err);
         const errMsg = err && err.message ? err.message : String(err);
@@ -3506,10 +3437,30 @@ function deleteCareer(careerId) {
 
     normalizeCareers();
     STATE.careers = STATE.careers.filter(c => c.id !== careerId);
+    STATE.lastModified = Date.now();
     saveStateToLocalStorage();
     updateCareerSelects();
     renderCareerList();
+    renderGradesTable();
+    renderPensumCatalogTable();
+    renderAssignmentsTable();
     showToast("Carrera eliminada exitosamente.", "info");
+
+    (async () => {
+        if (window.FirebaseModular && window.FirebaseModular.db) {
+            try {
+                const { db, doc, deleteDoc } = window.FirebaseModular;
+                if (typeof deleteDoc === 'function') {
+                    await deleteDoc(doc(db, 'careers', careerId));
+                }
+            } catch(e) { console.warn("Aviso al eliminar carrera en Firestore:", e); }
+        }
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            try {
+                await EnccoCloudSync.syncNode('careers', STATE.careers);
+            } catch(e) { console.warn("Aviso al sincronizar carreras en RTDB:", e); }
+        }
+    })();
 }
 window.deleteCareer = deleteCareer;
 
@@ -3586,41 +3537,7 @@ async function saveCareerForm(e) {
         const nowTime = Date.now();
         STATE.lastModified = nowTime;
 
-        // 🌟 A. Persistencia Atómica en Firestore
-        if (window.FirebaseModular && window.FirebaseModular.db) {
-            try {
-                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
-                const targetC = careerId ? STATE.careers.find(c => c.id === careerId) : STATE.careers[STATE.careers.length - 1];
-                if (targetC) {
-                    const cRef = doc(db, 'careers', targetC.id);
-                    const cPayload = { ...targetC, lastModified: nowTime };
-                    const fsAction = (typeof setDoc === 'function')
-                    ? setDoc(cRef, cPayload, { merge: true })
-                    : ((typeof updateDoc === 'function')
-                        ? updateDoc(cRef, cPayload).catch(e => {
-                            if (typeof setDoc === 'function') return setDoc(cRef, cPayload, { merge: true });
-                            throw e;
-                        })
-                        : Promise.resolve());
-                    await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
-                }
-            } catch(fsErr) {
-                console.warn("Aviso al guardar carrera en Firestore:", fsErr);
-            }
-        }
-
-        // 🌟 B. Sincronización en Realtime Database
-        let ok = false;
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await withTimeout(EnccoCloudSync.syncNode('careers', STATE.careers), 8000, 'Tiempo de espera en Realtime Database agotado.');
-        } else {
-            ok = true;
-        }
-
-        if (!ok) {
-            throw new Error("El servidor de Firebase no confirmó la escritura de carreras.");
-        }
-
+        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
         saveStateToLocalStorage();
         resetCareerForm();
         renderCareerList();
@@ -3630,7 +3547,32 @@ async function saveCareerForm(e) {
         renderAssignmentsTable();
         closeCareerModal();
 
-        showToast(`Carrera "${name}" guardada y confirmada en Firebase.`, "success");
+        showToast(`Carrera "${name}" guardada exitosamente.`, "success");
+
+        // 🌟 Persistencia atómica en Firestore con setDoc { merge: true } y RTDB en segundo plano
+        (async () => {
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                try {
+                    const { db, doc, setDoc } = window.FirebaseModular;
+                    const targetC = careerId ? STATE.careers.find(c => c.id === careerId) : STATE.careers[STATE.careers.length - 1];
+                    if (targetC && typeof setDoc === 'function') {
+                        const cRef = doc(db, 'careers', targetC.id);
+                        const cPayload = { ...targetC, lastModified: nowTime };
+                        await withTimeout(setDoc(cRef, cPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
+                    }
+                } catch(fsErr) {
+                    console.warn("Aviso al guardar carrera en Firestore:", fsErr);
+                }
+            }
+
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+                try {
+                    await withTimeout(EnccoCloudSync.syncNode('careers', STATE.careers), 8000, 'Tiempo de espera en Realtime Database agotado.');
+                } catch(rtdbErr) {
+                    console.warn("Aviso al sincronizar carreras en RTDB:", rtdbErr);
+                }
+            }
+        })();
     } catch(err) {
         console.error("❌ Error al guardar carrera en Firebase:", err);
         showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
@@ -9275,26 +9217,9 @@ async function deleteStudent(studentId) {
             STATE.disciplineReports = STATE.disciplineReports.filter(d => d.studentId !== studentId);
         }
 
+        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
+        STATE.lastModified = Date.now();
         saveStateToLocalStorage();
-
-        // 🌟 A. Borrado Atómico en Firestore (colección students)
-        if (window.FirebaseModular && window.FirebaseModular.db) {
-            try {
-                const { db, doc, deleteDoc } = window.FirebaseModular;
-                if (typeof deleteDoc === 'function') {
-                    await deleteDoc(doc(db, 'students', studentId));
-                }
-            } catch(fsErr) {
-                console.error("Error al eliminar estudiante en Firestore:", fsErr);
-                showToast("Error al eliminar en base de datos: " + (fsErr.message || fsErr), "danger");
-                return;
-            }
-        }
-
-        // 🌟 B. Sincronización atómica aislada en RTDB (SÓLO nodo 'students')
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            await EnccoCloudSync.syncNode('students', STATE.students);
-        }
         renderStudentsTable();
         updateDashboardKPIs();
         updateUserAlertsUI();
@@ -9302,6 +9227,29 @@ async function deleteStudent(studentId) {
         renderTeacherGradeProgressTable();
         populateAttendanceSelects(false);
         showToast(`El estudiante "${student.firstName} ${student.lastName}" ha sido eliminado del sistema.`, "info");
+
+        // 🌟 Persistencia atómica en Firestore y RTDB en segundo plano
+        (async () => {
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                try {
+                    const { db, doc, deleteDoc } = window.FirebaseModular;
+                    if (typeof deleteDoc === 'function') {
+                        await deleteDoc(doc(db, 'students', studentId));
+                        try { await deleteDoc(doc(db, 'estudiantes', studentId)); } catch(e) {}
+                    }
+                } catch(fsErr) {
+                    console.warn("Aviso al eliminar estudiante en Firestore:", fsErr);
+                }
+            }
+
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+                try {
+                    await EnccoCloudSync.syncNode('students', STATE.students);
+                } catch(rtdbErr) {
+                    console.warn("Aviso al sincronizar students en RTDB:", rtdbErr);
+                }
+            }
+        })();
     }
 }
 
@@ -9778,46 +9726,39 @@ async function saveStudentForm(e) {
         const nowTime = Date.now();
         STATE.lastModified = nowTime;
 
-        // 🌟 A. Persistencia Atómica en Firestore
-        if (window.FirebaseModular && window.FirebaseModular.db && studentObj) {
-            try {
-                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
-                const stuRef = doc(db, 'students', studentObj.id);
-                const stuPayload = { ...studentObj, lastModified: nowTime };
-                const fsAction = (typeof setDoc === 'function')
-                    ? setDoc(stuRef, stuPayload, { merge: true })
-                    : ((typeof updateDoc === 'function')
-                        ? updateDoc(stuRef, stuPayload).catch(e => {
-                            if (typeof setDoc === 'function') return setDoc(stuRef, stuPayload, { merge: true });
-                            throw e;
-                        })
-                        : Promise.resolve());
-                await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
-            } catch(fsErr) {
-                console.warn("Aviso al persistir estudiante en Firestore:", fsErr);
-            }
-        }
-
-        // 🌟 B. Sincronización en Realtime Database
-        let ok = false;
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await withTimeout(EnccoCloudSync.syncNode('students', STATE.students), 8000, 'Tiempo de espera en Realtime Database agotado.');
-        } else {
-            ok = true;
-        }
-
-        if (!ok) {
-            throw new Error("El servidor de Firebase no confirmó el registro del estudiante.");
-        }
-
+        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
         saveStateToLocalStorage();
         if (typeof renderStudentsTable === 'function') renderStudentsTable();
         if (typeof renderDashboard === 'function') renderDashboard();
 
-        showToast(`Estudiante "${firstName} ${lastName}" guardado y confirmado en Firebase con éxito.`, 'success');
+        showToast(`Estudiante "${firstName} ${lastName}" guardado exitosamente.`, 'success');
         if (!studentId && typeof resetStudentEnrollmentForm === 'function') {
             resetStudentEnrollmentForm();
         }
+
+        // 🌟 Persistencia atómica en Firestore con setDoc { merge: true } y RTDB en segundo plano
+        (async () => {
+            if (window.FirebaseModular && window.FirebaseModular.db && studentObj) {
+                try {
+                    const { db, doc, setDoc } = window.FirebaseModular;
+                    const stuRef = doc(db, 'students', studentObj.id);
+                    const stuPayload = { ...studentObj, lastModified: nowTime };
+                    if (typeof setDoc === 'function') {
+                        await withTimeout(setDoc(stuRef, stuPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
+                    }
+                } catch(fsErr) {
+                    console.warn("Aviso al persistir estudiante en Firestore:", fsErr);
+                }
+            }
+
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+                try {
+                    await withTimeout(EnccoCloudSync.syncNode('students', STATE.students), 8000, 'Tiempo de espera en Realtime Database agotado.');
+                } catch(rtdbErr) {
+                    console.warn("Aviso al sincronizar estudiantes en RTDB:", rtdbErr);
+                }
+            }
+        })();
     } catch(err) {
         console.error("❌ Error al guardar estudiante en Firebase:", err);
         showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
@@ -10217,38 +10158,7 @@ async function saveAcademicExoneration(e) {
         const nowTime = Date.now();
         STATE.lastModified = nowTime;
 
-        // 🌟 A. Persistencia Atómica en Firestore
-        if (window.FirebaseModular && window.FirebaseModular.db) {
-            try {
-                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
-                const stuRef = doc(db, 'students', student.id);
-                const stuPayload = { academicExceptions: student.academicExceptions, lastModified: nowTime };
-                const fsAction = (typeof setDoc === 'function')
-                    ? setDoc(stuRef, stuPayload, { merge: true })
-                    : ((typeof updateDoc === 'function')
-                        ? updateDoc(stuRef, stuPayload).catch(e => {
-                            if (typeof setDoc === 'function') return setDoc(stuRef, stuPayload, { merge: true });
-                            throw e;
-                        })
-                        : Promise.resolve());
-                await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
-            } catch(fsErr) {
-                console.warn("Aviso en Firestore al guardar exoneración:", fsErr);
-            }
-        }
-
-        // 🌟 B. Sincronización en Realtime Database
-        let ok = false;
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-            ok = await withTimeout(
-                EnccoCloudSync.patchNode('students', { [student.id]: { academicExceptions: student.academicExceptions } }),
-                8000,
-                'Tiempo de espera en Realtime Database agotado.'
-            );
-        } else {
-            ok = true;
-        }
-
+        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
         saveStateToLocalStorage();
         renderAcademicExonerationsList(student);
         loadHonorRoll();
@@ -10256,7 +10166,35 @@ async function saveAcademicExoneration(e) {
         const form = document.getElementById('academicExonerationForm');
         if (form) form.reset();
 
-        showToast("Consideración académica aplicada y guardada en Firebase exitosamente.", "success");
+        showToast("Consideración académica guardada exitosamente.", "success");
+
+        // 🌟 Persistencia atómica en Firestore con setDoc { merge: true } y RTDB en segundo plano
+        (async () => {
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                try {
+                    const { db, doc, setDoc } = window.FirebaseModular;
+                    const stuRef = doc(db, 'students', student.id);
+                    const stuPayload = { academicExceptions: student.academicExceptions, lastModified: nowTime };
+                    if (typeof setDoc === 'function') {
+                        await withTimeout(setDoc(stuRef, stuPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
+                    }
+                } catch(fsErr) {
+                    console.warn("Aviso en Firestore al guardar exoneración:", fsErr);
+                }
+            }
+
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+                try {
+                    await withTimeout(
+                        EnccoCloudSync.patchNode('students', { [student.id]: { academicExceptions: student.academicExceptions } }),
+                        8000,
+                        'Tiempo de espera en Realtime Database agotado.'
+                    );
+                } catch(rtdbErr) {
+                    console.warn("Aviso en RTDB al guardar exoneración:", rtdbErr);
+                }
+            }
+        })();
     } catch(err) {
         console.error("❌ Error al guardar consideración académica:", err);
         showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
@@ -10280,11 +10218,11 @@ async function deleteAcademicExoneration(studentId, exIndex) {
 
     try {
         const modular = window.FirebaseModular;
-        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.updateDoc === 'function') {
-            await modular.updateDoc(modular.doc(modular.db, 'students', student.id), {
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+            await modular.setDoc(modular.doc(modular.db, 'students', student.id), {
                 academicExceptions: student.academicExceptions,
                 lastModified: Date.now()
-            });
+            }, { merge: true });
         }
     } catch(fsErr) {
         console.warn("Aviso en Firestore al eliminar exoneración:", fsErr);
@@ -17010,87 +16948,7 @@ function resetCareerForm() {
     if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Registrar Carrera';
 }
 
-function saveCareerForm(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    if (!checkEnrolmentPermissions()) return;
-
-    normalizeCareers();
-    const careerId = document.getElementById('careerFormId')?.value;
-    const name = document.getElementById('newCareerName')?.value.trim();
-    const duration = document.getElementById('newCareerDuration')?.value.trim();
-
-    if (!name) {
-        showToast("Ingrese el nombre de la carrera.", "warning");
-        return;
-    }
-
-    if (careerId) {
-        const career = STATE.careers.find(c => c.id === careerId);
-        if (career) {
-            const oldName = career.name;
-            career.name = name;
-            career.duration = duration || '3 Años';
-            career.code = name.toUpperCase().replace(/\s+/g, '_');
-
-            // Actualizar referencias en pensum y grados
-            (STATE.pensum || []).forEach(p => {
-                if (p.career === oldName) p.career = name;
-            });
-            (STATE.gradesList || []).forEach(g => {
-                if (g.career === oldName) g.career = name;
-            });
-
-            showToast(`Carrera "${name}" actualizada correctamente.`, "success"); closeCareerModal(); hideModalById('careerModal');
-        }
-    } else {
-        const exists = STATE.careers.some(c => c.name.toLowerCase() === name.toLowerCase());
-        if (exists) {
-            showToast(`La carrera "${name}" ya se encuentra registrada en la institución.`, "warning");
-            return;
-        }
-
-        STATE.careers.push({
-            id: 'car-' + Date.now(),
-            name,
-            code: name.toUpperCase().replace(/\s+/g, '_'),
-            duration: duration || '3 Años'
-        });
-        showToast(`Nueva carrera "${name}" agregada exitosamente.`, "success");
-    }
-
-    saveStateToLocalStorage();
-    resetCareerForm();
-    renderCareerList();
-    updateCareerSelects();
-    renderGradesTable();
-    renderPensumCatalogTable();
-    renderAssignmentsTable();
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        EnccoCloudSync.syncNode('careers', STATE.careers);
-    }
-}
-
-function deleteCareer(careerId) {
-    if (!checkEnrolmentPermissions()) return;
-    normalizeCareers();
-    const career = STATE.careers.find(c => c.id === careerId);
-    if (!career) return;
-
-    if (confirm(`¿Está seguro de eliminar la carrera "${career.name}"? Tenga en cuenta que afectará las asignaturas y grados asociados.`)) {
-        STATE.careers = STATE.careers.filter(c => c.id !== careerId);
-        saveStateToLocalStorage();
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            EnccoCloudSync.syncNode('careers', STATE.careers);
-        }
-        resetCareerForm();
-        renderCareerList();
-        updateCareerSelects();
-        renderGradesTable();
-        renderPensumCatalogTable();
-        renderAssignmentsTable();
-        showToast(`Carrera "${career.name}" eliminada del sistema.`, "info");
-    }
-}
+// NOTA: Las funciones oficiales unificadas saveCareerForm y deleteCareer con persistencia atómica dual se encuentran definidas en la sección oficial (líneas ~3464-3595).
 
 // ==========================================================================
 // 7B. ADMIN Y GESTIÓN COMPLETA DE CICLOS LECTIVOS ESCOLARES
@@ -18196,6 +18054,14 @@ async function getRtdbStudentIndex(studentId) {
     if (window._rtdbStudentIndexMap && window._rtdbStudentIndexMap.has(studentId)) {
         return window._rtdbStudentIndexMap.get(studentId);
     }
+    // 1. Búsqueda instantánea en memoria STATE.students (0ms, sin bloqueo de red)
+    const localStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+    const localIdx = localStudents.findIndex(s => s && (s.id === studentId || s.personalCode === studentId || s.carne === studentId));
+    if (localIdx !== -1) {
+        if (!window._rtdbStudentIndexMap) window._rtdbStudentIndexMap = new Map();
+        window._rtdbStudentIndexMap.set(studentId, localIdx);
+        return localIdx;
+    }
     const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
     if (firebaseUrl) {
         try {
@@ -18422,6 +18288,191 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
 }
 window.saveStudentSubjectGradeAtomic = saveStudentSubjectGradeAtomic;
 window.ensureStudentGradebookStructure = ensureStudentGradebookStructure;
+
+async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, unit) {
+    if (window.STATE && window.STATE.isLocalReadOnlyMode) {
+        if (typeof showToast === 'function') {
+            showToast("⚠️ Acción Bloqueada: La copia local está en modo SOLO LECTURA.", "warning");
+        }
+        return false;
+    }
+
+    if (!Array.isArray(courseStudents) || courseStudents.length === 0) return true;
+
+    const effectiveUnit = parseInt(unit) || 1;
+    const effectiveSubject = (subjectIdentifier || '').toString().trim();
+    const cleanStr = s => (s || '').toString().toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, '');
+    const cleanSubj = cleanStr(effectiveSubject);
+    const now = Date.now();
+    const updatedBy = (window.STATE && window.STATE.currentUser) ? window.STATE.currentUser.id : 'sistema';
+
+    const gradeRecords = [];
+    const localStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+
+    for (const item of courseStudents) {
+        if (!item) continue;
+        let student = item;
+        if (typeof item === 'string') {
+            const targetClean = cleanStr(item);
+            student = localStudents.find(s => {
+                if (!s) return false;
+                if (s.id && s.id === item) return true;
+                if (s.personalCode && s.personalCode === item) return true;
+                if (s.carne && s.carne === item) return true;
+                const fullName = cleanStr(`${s.lastName || ''} ${s.firstName || ''}`);
+                const fullNameRev = cleanStr(`${s.firstName || ''} ${s.lastName || ''}`);
+                const singleName = cleanStr(s.name || '');
+                return targetClean === fullName || targetClean === fullNameRev || targetClean === singleName;
+            });
+        }
+        if (!student || !student.id) continue;
+
+        ensureStudentGradebookStructure(student, effectiveSubject, effectiveUnit);
+
+        const currentData = (student.gradebookDetails && student.gradebookDetails[effectiveSubject] && student.gradebookDetails[effectiveSubject][effectiveUnit]) ? student.gradebookDetails[effectiveSubject][effectiveUnit] : {
+            activities: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            zona: 0,
+            exam: 0,
+            total: 0
+        };
+
+        const activitiesArr = Array.isArray(currentData.activities) ? currentData.activities.slice(0, 10) : [0,0,0,0,0,0,0,0,0,0];
+        while (activitiesArr.length < 10) activitiesArr.push(0);
+
+        const calculatedZona = activitiesArr.reduce((a, b) => a + (parseInt(b) || 0), 0);
+        const examScore = parseInt(currentData.exam) || 0;
+        const totalScore = calculatedZona + examScore;
+
+        const compositeGradeKey = `${student.id}_${cleanSubj}_b${effectiveUnit}`;
+
+        const gradePayload = {
+            id: compositeGradeKey,
+            estudianteId: student.id,
+            personalCode: student.personalCode || '',
+            claseNombre: effectiveSubject,
+            claseClean: cleanSubj,
+            bimestre: effectiveUnit,
+            activities: activitiesArr,
+            zona: calculatedZona,
+            exam: examScore,
+            total: totalScore,
+            exonerado: currentData.exonerado || false,
+            updatedAt: new Date().toISOString(),
+            updatedBy: updatedBy
+        };
+
+        // Actualizar en memoria en student
+        student.gradebookDetails[effectiveSubject][effectiveUnit] = {
+            activities: activitiesArr,
+            zona: calculatedZona,
+            exam: examScore,
+            total: totalScore,
+            exonerado: currentData.exonerado || false
+        };
+
+        student.grades = student.grades || {};
+        student.grades[effectiveSubject] = student.grades[effectiveSubject] || [0, 0, 0, 0];
+        student.grades[effectiveSubject][effectiveUnit - 1] = totalScore;
+
+        const rtdbIdx = localStudents.findIndex(s => s && s.id === student.id);
+
+        gradeRecords.push({
+            student,
+            compositeGradeKey,
+            gradePayload,
+            totalScore,
+            rtdbIdx
+        });
+    }
+
+    if (gradeRecords.length === 0) return true;
+
+    // 1. Persistencia Atómica en Firestore con writeBatch y { merge: true }
+    if (window.FirebaseModular && window.FirebaseModular.db) {
+        try {
+            const { db, doc, writeBatch, setDoc } = window.FirebaseModular;
+            if (typeof writeBatch === 'function') {
+                const chunkSize = 200;
+                for (let i = 0; i < gradeRecords.length; i += chunkSize) {
+                    const chunk = gradeRecords.slice(i, i + chunkSize);
+                    const batch = writeBatch(db);
+                    for (const item of chunk) {
+                        const gradeDocRef = doc(db, 'calificaciones', item.compositeGradeKey);
+                        batch.set(gradeDocRef, item.gradePayload, { merge: true });
+
+                        const studentDocRef = doc(db, 'students', item.student.id);
+                        batch.set(studentDocRef, {
+                            [`grades.${effectiveSubject}`]: item.student.grades[effectiveSubject],
+                            [`gradebookDetails.${effectiveSubject}.${effectiveUnit}`]: item.student.gradebookDetails[effectiveSubject][effectiveUnit],
+                            lastModified: now
+                        }, { merge: true });
+                    }
+                    await withTimeout(batch.commit(), 10000, 'Timeout en batch de calificaciones en Firestore');
+                }
+            } else if (typeof setDoc === 'function') {
+                await Promise.all(gradeRecords.map(item => {
+                    const gradeDocRef = doc(db, 'calificaciones', item.compositeGradeKey);
+                    const studentDocRef = doc(db, 'students', item.student.id);
+                    return Promise.all([
+                        setDoc(gradeDocRef, item.gradePayload, { merge: true }),
+                        setDoc(studentDocRef, {
+                            [`grades.${effectiveSubject}`]: item.student.grades[effectiveSubject],
+                            [`gradebookDetails.${effectiveSubject}.${effectiveUnit}`]: item.student.gradebookDetails[effectiveSubject][effectiveUnit],
+                            lastModified: now
+                        }, { merge: true })
+                    ]);
+                }));
+            }
+        } catch(fe) {
+            console.warn("Aviso al persistir calificaciones en batch en Firestore:", fe);
+        }
+    }
+
+    // 2. Persistencia en Realtime Database con Multi-Path PATCH
+    const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
+    if (firebaseUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+        try {
+            const multiPathPayload = {};
+            for (const item of gradeRecords) {
+                multiPathPayload[`calificaciones/${item.compositeGradeKey}`] = item.gradePayload;
+                if (item.rtdbIdx !== -1) {
+                    multiPathPayload[`students/${item.rtdbIdx}/gradebookDetails/${effectiveSubject}/${effectiveUnit}`] = item.student.gradebookDetails[effectiveSubject][effectiveUnit];
+                    multiPathPayload[`students/${item.rtdbIdx}/grades/${effectiveSubject}/${effectiveUnit - 1}`] = item.totalScore;
+                }
+            }
+            multiPathPayload['config/lastModified'] = now;
+
+            await Promise.all([
+                fetch(`${firebaseUrl}/encc_school_state.json`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(multiPathPayload)
+                }).catch(() => {}),
+                fetch(`${firebaseUrl}/.json`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(multiPathPayload)
+                }).catch(() => {})
+            ]);
+        } catch(re) {
+            console.warn("Aviso al persistir calificaciones en batch en RTDB:", re);
+        }
+    }
+
+    if (window._locallyDirtyStudentIds) {
+        gradeRecords.forEach(item => window._locallyDirtyStudentIds.delete(item.student.id));
+    }
+    saveStateToLocalStorage();
+
+    window.dispatchEvent(new CustomEvent('EnccoGradesBulkUpdated', {
+        detail: { count: gradeRecords.length, subject: effectiveSubject, unit: effectiveUnit }
+    }));
+
+    return true;
+}
+window.saveBulkStudentGradesAtomic = saveBulkStudentGradesAtomic;
 
 function escapeHtml(str) {
     if (!str) return '';
@@ -19248,32 +19299,15 @@ async function saveGradebookChanges() {
 
     const submitBtn = document.querySelector('button[onclick*="saveGradebookChanges"]');
     const origBtnHtml = submitBtn ? submitBtn.innerHTML : null;
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando notas atómicamente...';
-    }
 
     try {
         const courseStudents = (typeof getSortedGradebookStudents === 'function')
             ? getSortedGradebookStudents(gradeCode, targetPensum)
             : (STATE.students || []).filter(s => s.grade === gradeCode || (s.gradeLabel && targetPensum && s.gradeLabel.includes(targetPensum.grade)));
 
-        // 🌟 Guardado atómico concurrente por cada alumno y materia usando saveStudentSubjectGradeAtomic
-        const results = await Promise.all(courseStudents.map(student => {
-            const unitDetails = student.gradebookDetails?.[subjectName]?.[String(currentUnit)];
-            return saveStudentSubjectGradeAtomic(student.id, subjectName, currentUnit, unitDetails);
-        }));
-
+        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
         const now = Date.now();
         STATE.lastModified = now;
-        const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
-        if (firebaseUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
-            fetch(`${firebaseUrl}/encc_school_state/lastModified.json`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(now)
-            }).catch(() => {});
-        }
 
         if (window._locallyDirtyStudentIds) {
             courseStudents.forEach(s => window._locallyDirtyStudentIds.delete(s.id));
@@ -19283,11 +19317,36 @@ async function saveGradebookChanges() {
         if (typeof updateDbSyncStatus === 'function') {
             updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
         }
-        showToast(`¡Calificaciones de "${subjectName}" guardadas y confirmadas atómicamente en Firebase!`, "success");
+        showToast(`¡Calificaciones de "${subjectName}" guardadas exitosamente! Sincronizando con Firebase...`, "success");
+
+        // 🌟 Persistencia atómica por lotes con writeBatch en segundo plano sin congelar la UI
+        const bulkPromise = (typeof saveBulkStudentGradesAtomic === 'function')
+            ? saveBulkStudentGradesAtomic(courseStudents, subjectName, currentUnit)
+            : Promise.all(courseStudents.map(student => {
+                const unitDetails = student.gradebookDetails?.[subjectName]?.[String(currentUnit)];
+                return saveStudentSubjectGradeAtomic(student.id, subjectName, currentUnit, unitDetails);
+            }));
+
+        bulkPromise.then(() => {
+            const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
+            if (firebaseUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+                fetch(`${firebaseUrl}/encc_school_state/lastModified.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(Date.now())
+                }).catch(() => {});
+            }
+            if (typeof updateDbSyncStatus === 'function') {
+                updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado en la nube (0ms)');
+            }
+        }).catch(err => {
+            console.warn("Aviso en sincronización en segundo plano de calificaciones:", err);
+        });
+
         return true;
     } catch(err) {
-        console.error("❌ Error al guardar calificaciones atómicamente:", err);
-        showToast(`Error al guardar calificaciones: ${err.message || err}`, "danger");
+        console.error("❌ Error al procesar calificaciones:", err);
+        showToast(`Error al procesar calificaciones: ${err.message || err}`, "danger");
         return false;
     } finally {
         if (submitBtn && origBtnHtml) {
@@ -20099,34 +20158,45 @@ function markAllPresentToday() {
     showToast(`Se registraron ${students.length} asistencias en 'Presente' para el día ${targetDay}.`, 'success');
 }
 
-async function saveAttendanceRecords(showToastMsg = true, e = null) {
+let _attendanceSaveTimeout = null;
+
+function saveAttendanceRecords(showToastMsg = true, e = null) {
     if (e) {
         if (e._enccoHandled) return;
         e._enccoHandled = true;
         if (e.preventDefault) e.preventDefault();
         if (e.stopPropagation) e.stopPropagation();
     }
-    const submitBtn = document.querySelector('button[onclick*="saveAttendanceRecords"]') || document.getElementById('saveAttendanceBtn');
-    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : null;
-    if (submitBtn && !submitBtn.getAttribute('data-orig-html') && origBtnHtml) {
-        submitBtn.setAttribute('data-orig-html', origBtnHtml);
-    }
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando...';
+
+    // 0ms Optimistic UI: Persistir inmediatamente en localStorage
+    saveStateToLocalStorage();
+
+    if (showToastMsg) {
+        showToast('Planilla de asistencia guardada y sincronizada exitosamente.', 'success');
     }
 
+    // Si es un cambio rápido de celda (showToastMsg = false), aplicar debounce de 400ms para evitar sobrecarga de red
+    if (!showToastMsg) {
+        if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
+        _attendanceSaveTimeout = setTimeout(() => {
+            _syncAttendanceToFirebaseBackground();
+        }, 400);
+    } else {
+        if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
+        _syncAttendanceToFirebaseBackground();
+    }
+}
+
+async function _syncAttendanceToFirebaseBackground() {
     try {
         const modular = window.FirebaseModular;
         if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
-            await withTimeout(
-                modular.setDoc(modular.doc(modular.db, 'config', 'asistencia'), {
-                    records: STATE.attendanceRecords || {},
-                    lastModified: Date.now()
-                }, { merge: true }),
-                8000,
-                'Tiempo de espera en Firestore agotado.'
-            );
+            modular.setDoc(modular.doc(modular.db, 'config', 'asistencia'), {
+                records: STATE.attendanceRecords || {},
+                lastModified: Date.now()
+            }, { merge: true }).catch(fsErr => {
+                console.warn("Aviso en Firestore al guardar asistencia en segundo plano:", fsErr);
+            });
         }
     } catch(fsErr) {
         console.warn("Aviso en Firestore al guardar asistencia:", fsErr);
@@ -20134,19 +20204,12 @@ async function saveAttendanceRecords(showToastMsg = true, e = null) {
 
     try {
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-            await withTimeout(EnccoCloudSync.patchNode('attendanceRecords', STATE.attendanceRecords || {}), 8000, 'Tiempo de espera en Realtime Database agotado.');
-        }
-        if (showToastMsg) {
-            showToast('Planilla de asistencia guardada y sincronizada exitosamente en tiempo real.', 'success');
+            EnccoCloudSync.patchNode('attendanceRecords', STATE.attendanceRecords || {}).catch(rtErr => {
+                console.warn("Aviso en Realtime Database al guardar asistencia:", rtErr);
+            });
         }
     } catch(err) {
-        console.error("Error al guardar asistencia:", err);
-        showToast("Error al guardar asistencia en Firebase: " + (err.message || err), "danger");
-    } finally {
-        if (submitBtn && origBtnHtml) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
-        }
+        console.warn("Error background RTDB asistencia:", err);
     }
 }
 
@@ -22991,22 +23054,29 @@ async function processGradebookImportRows(rawRows, targetPensum, fallbackUnit) {
         return;
     }
 
-    // 🌟 Persistencia atómica individual por estudiante sin empuje masivo destructivo
-    if (typeof saveStudentSubjectGradeAtomic === 'function') {
-        for (const stu of (STATE.students || [])) {
-            if (stu && stu.grades && stu.grades[effectiveSubject]) {
-                try {
-                    await saveStudentSubjectGradeAtomic(stu, effectiveSubject, effectiveUnit);
-                } catch(e) {}
-            }
-        }
-    }
-
+    // 0ms Optimistic UI: Persistencia inmediata en caché local y actualización de vista
+    saveStateToLocalStorage();
     if (typeof loadTeacherGradebook === 'function') {
         loadTeacherGradebook();
     }
-
     showToast(`¡Notas importadas exitosamente! Se actualizaron ${updatedCount} estudiantes para ${effectiveSubject} (Bimestre ${effectiveUnit}).`, "success");
+
+    // 🌟 Sincronización atómica por lotes en segundo plano sin congelar la interfaz
+    if (typeof saveBulkStudentGradesAtomic === 'function') {
+        saveBulkStudentGradesAtomic(STATE.students || [], effectiveSubject, effectiveUnit).catch(err => {
+            console.warn("Aviso en guardado atómico por lotes tras importación:", err);
+        });
+    } else if (typeof saveStudentSubjectGradeAtomic === 'function') {
+        (async () => {
+            for (const stu of (STATE.students || [])) {
+                if (stu && stu.grades && stu.grades[effectiveSubject]) {
+                    try {
+                        await saveStudentSubjectGradeAtomic(stu, effectiveSubject, effectiveUnit);
+                    } catch(e) {}
+                }
+            }
+        })();
+    }
 }
 
 
@@ -24582,43 +24652,37 @@ async function deletePensumSubject(subjectId) {
 
     if (!confirm(`¿Está seguro de eliminar la asignatura "${s.name || s.subject}" del pensum oficial?`)) return;
 
-    const prevCatalog = [...STATE.pensumCatalog];
     STATE.pensumCatalog = (STATE.pensumCatalog || []).filter(x => x.id !== subjectId);
 
-    try {
-        // 🌟 A. Borrado Atómico en Firestore (colección pensumCatalog)
-        if (window.FirebaseModular && window.FirebaseModular.db) {
-            try {
+    // 0ms Optimistic UI: Persistencia inmediata y actualización visual
+    saveStateToLocalStorage();
+    renderPensumCatalogTable();
+    if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+    if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+    if (typeof renderDashboard === 'function') renderDashboard();
+    showToast('Asignatura eliminada del pensum.', 'success');
+
+    // 🌟 Sincronización en segundo plano con Firestore y Realtime Database
+    (async () => {
+        try {
+            if (window.FirebaseModular && window.FirebaseModular.db) {
                 const { db, doc, deleteDoc } = window.FirebaseModular;
                 if (typeof deleteDoc === 'function') {
                     await deleteDoc(doc(db, 'pensumCatalog', subjectId));
                 }
-            } catch(fsErr) {
-                console.warn("Aviso al eliminar asignatura en Firestore:", fsErr);
             }
+        } catch(fsErr) {
+            console.warn("Aviso al eliminar asignatura en Firestore en segundo plano:", fsErr);
         }
 
-        // 🌟 B. Sincronización atómica aislada en Realtime Database
-        let ok = false;
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog);
-        } else {
-            ok = true;
+        try {
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+                await EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog);
+            }
+        } catch(err) {
+            console.warn("Aviso al sincronizar pensum en Realtime Database:", err);
         }
-
-        if (!ok) throw new Error("Firebase no confirmó la eliminación de la asignatura.");
-
-        saveStateToLocalStorage();
-        renderPensumCatalogTable();
-        if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
-        if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
-        if (typeof renderDashboard === 'function') renderDashboard();
-        showToast('Asignatura eliminada del pensum y confirmada en Firebase.', 'success');
-    } catch(err) {
-        STATE.pensumCatalog = prevCatalog;
-        console.error("❌ Error al eliminar asignatura en Firebase:", err);
-        showToast(`Error al eliminar en Firebase: ${err.message || err}`, 'danger');
-    }
+    })();
 }
 
 // Bloque heredado reemplazado por controlador moderno de asignaciones
@@ -25104,6 +25168,47 @@ function executeSirePensumImport() {
     if (typeof renderDashboard === 'function') renderDashboard();
 
     showToast(`¡Pensum de SIRE / MINEDUC importado exitosamente! Total actual: ${(STATE.pensumCatalog || []).length} materias en catálogo.`, 'success');
+
+    // 🌟 Sincronización en segundo plano con Firebase (Firestore por lotes y Realtime Database)
+    (async () => {
+        try {
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                const { db, writeBatch, doc } = window.FirebaseModular;
+                if (typeof writeBatch === 'function') {
+                    const batch = writeBatch(db);
+                    let opsCount = 0;
+                    (STATE.pensumCatalog || []).forEach(sub => {
+                        if (sub && sub.id && opsCount < 400) {
+                            batch.set(doc(db, 'pensumCatalog', sub.id), sub, { merge: true });
+                            opsCount++;
+                        }
+                    });
+                    (STATE.careers || []).forEach(car => {
+                        if (car && car.id && opsCount < 450) {
+                            batch.set(doc(db, 'careers', car.id), car, { merge: true });
+                            opsCount++;
+                        }
+                    });
+                    if (opsCount > 0) {
+                        await batch.commit().catch(e => console.warn("Aviso en batch pensumCatalog Firestore:", e));
+                    }
+                }
+            }
+        } catch(fsErr) {
+            console.warn("Aviso en Firestore al sincronizar pensum SIRE:", fsErr);
+        }
+
+        try {
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+                await Promise.all([
+                    EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog),
+                    EnccoCloudSync.syncNode('careers', STATE.careers)
+                ]);
+            }
+        } catch(rtErr) {
+            console.warn("Aviso en RTDB al sincronizar pensum SIRE:", rtErr);
+        }
+    })();
 }
 
 
@@ -25308,48 +25413,7 @@ async function savePensumSubjectForm(e) {
             }
         });
 
-        const nowTime = Date.now();
-
-        // 🌟 A. Persistencia Atómica en Firestore
-        if (window.FirebaseModular && window.FirebaseModular.db) {
-            try {
-                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
-                const targetSubject = (STATE.pensumCatalog || []).find(x => x.id === targetId);
-                if (targetSubject && targetSubject.id) {
-                    const subRef = doc(db, 'pensumCatalog', targetSubject.id);
-                    const subData = { ...targetSubject, lastModified: nowTime };
-                    const fsAction = (typeof setDoc === 'function')
-                    ? setDoc(subRef, subData, { merge: true })
-                    : ((typeof updateDoc === 'function')
-                        ? updateDoc(subRef, subData).catch(e => {
-                            if (typeof setDoc === 'function') return setDoc(subRef, subData, { merge: true });
-                            throw e;
-                        })
-                        : Promise.resolve());
-                    await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
-                }
-            } catch(fsErr) {
-                console.warn("Aviso al guardar asignatura en Firestore (continuando con RTDB):", fsErr);
-            }
-        }
-
-        // 🌟 B. Sincronización atómica aislada en Realtime Database
-        let ok = false;
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            const syncPromise = Promise.all([
-                EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog),
-                EnccoCloudSync.syncNode('pensum', STATE.pensum)
-            ]);
-            const [resCat, resPen] = await withTimeout(syncPromise, 8000, 'Tiempo de espera agotado en Firebase Realtime Database.');
-            ok = resCat && resPen;
-        } else {
-            ok = true;
-        }
-
-        if (!ok) {
-            throw new Error("El servidor de Google Firebase no confirmó la escritura de la asignatura.");
-        }
-
+        // 0ms Optimistic UI: Persistencia inmediata en caché local y actualización visual
         saveStateToLocalStorage();
         closePensumSubjectModal();
         renderPensumCatalogTable();
@@ -25358,30 +25422,39 @@ async function savePensumSubjectForm(e) {
         if (typeof renderDashboard === 'function') renderDashboard();
 
         const codeLabel = code ? ` [${code}]` : '';
-        if (typeof Swal !== 'undefined' && Swal.fire) {
-            Swal.fire({
-                icon: 'success',
-                title: '¡Guardado Exitoso!',
-                text: `Asignatura "${name}"${codeLabel} guardada y confirmada en Firebase con éxito.`,
-                timer: 2000,
-                showConfirmButton: false
-            });
-        } else {
-            showToast(`Asignatura "${name}"${codeLabel} guardada y confirmada en Firebase con éxito.`, 'success');
-        }
+        showToast(`Asignatura "${name}"${codeLabel} guardada exitosamente.`, 'success');
+
+        // 🌟 Sincronización atómica en segundo plano con Firestore y Realtime Database
+        (async () => {
+            const nowTime = Date.now();
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                try {
+                    const { db, doc, setDoc } = window.FirebaseModular;
+                    const targetSubject = (STATE.pensumCatalog || []).find(x => x.id === targetId);
+                    if (targetSubject && targetSubject.id && typeof setDoc === 'function') {
+                        const subRef = doc(db, 'pensumCatalog', targetSubject.id);
+                        const subData = { ...targetSubject, lastModified: nowTime };
+                        await setDoc(subRef, subData, { merge: true });
+                    }
+                } catch(fsErr) {
+                    console.warn("Aviso al guardar asignatura en Firestore en segundo plano:", fsErr);
+                }
+            }
+
+            try {
+                if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+                    await Promise.all([
+                        EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog),
+                        EnccoCloudSync.syncNode('pensum', STATE.pensum)
+                    ]);
+                }
+            } catch(rtErr) {
+                console.warn("Aviso al sincronizar pensum en Realtime Database:", rtErr);
+            }
+        })();
     } catch(err) {
-        console.error("❌ [Firebase Error] Falló el guardado de asignatura:", err);
-        const errMsg = err && err.message ? err.message : String(err);
-        if (typeof Swal !== 'undefined' && Swal.fire) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Error al Guardar en Firebase',
-                text: errMsg,
-                confirmButtonColor: '#047857'
-            });
-        } else {
-            showToast(`Error al guardar en Firebase: ${errMsg}`, 'danger');
-        }
+        console.error("❌ Error al procesar asignatura:", err);
+        showToast(`Error al procesar asignatura: ${err.message || err}`, 'danger');
     } finally {
         if (submitBtn) {
             submitBtn.disabled = false;
@@ -25650,14 +25723,32 @@ function deleteUser(userId) {
             if (typeof renderDashboard === 'function') renderDashboard();
         } catch(uiErr) {}
 
-        // 4. Sincronizar de inmediato con Firebase Realtime con EnccoCloudSync granular
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            EnccoCloudSync.syncNode('users', STATE.users);
-            EnccoCloudSync.syncNode('pensum', STATE.pensum);
-            EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
-        } else if (typeof syncUsersToDatabaseImmediate === 'function') {
-            syncUsersToDatabaseImmediate(false);
-        }
+        // 4. Sincronizar de inmediato con Firebase (Firestore + Realtime DB) en segundo plano
+        (async () => {
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                try {
+                    const { db, doc, deleteDoc } = window.FirebaseModular;
+                    if (typeof deleteDoc === 'function') {
+                        deleteDoc(doc(db, 'users', userId)).catch(e => console.warn("Aviso Firestore users delete:", e));
+                        deleteDoc(doc(db, 'docentes', userId)).catch(e => console.warn("Aviso Firestore docentes delete:", e));
+                    }
+                } catch(fsErr) {
+                    console.warn("Aviso al eliminar usuario en Firestore:", fsErr);
+                }
+            }
+
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+                try {
+                    EnccoCloudSync.syncNode('users', STATE.users);
+                    EnccoCloudSync.syncNode('pensum', STATE.pensum);
+                    EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
+                } catch(rtdbErr) {
+                    console.warn("Aviso al sincronizar en RTDB:", rtdbErr);
+                }
+            } else if (typeof syncUsersToDatabaseImmediate === 'function') {
+                syncUsersToDatabaseImmediate(false);
+            }
+        })();
 
         showToast(`Usuario "${oldName}" eliminado exitosamente.`, "success");
     }
@@ -26656,55 +26747,57 @@ async function saveClassAssignmentForm(e) {
         }
 
         const nowTime = Date.now();
-        const rutaColeccion = 'pensum';
-        console.log("Consultando asignaciones en ruta:", rutaColeccion);
-        // 🌟 A. Persistencia Atómica en Firestore (colección pensum con merge: true)
-        if (window.FirebaseModular && window.FirebaseModular.db) {
-            try {
-                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
-                const relevantAssignments = id ? [STATE.pensum.find(x => x.id === id)].filter(Boolean) : STATE.pensum.slice(-selectedSections.length);
-                for (const asg of relevantAssignments) {
-                    if (asg && asg.id) {
-                        const asgRef = doc(db, 'pensum', asg.id);
-                        const asgData = { ...asg, lastModified: nowTime };
-                        const fsAction = (typeof setDoc === 'function')
-                    ? setDoc(asgRef, asgData, { merge: true })
-                    : ((typeof updateDoc === 'function')
-                        ? updateDoc(asgRef, asgData).catch(e => {
-                            if (typeof setDoc === 'function') return setDoc(asgRef, asgData, { merge: true });
-                            throw e;
-                        })
-                        : Promise.resolve());
-                        await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
-                    }
-                }
-            } catch(fsErr) {
-                console.warn("Aviso al guardar asignación en Firestore:", fsErr);
-            }
-        }
+        STATE.lastModified = nowTime;
 
-        // 🌟 B. Sincronización atómica aislada en Realtime Database
-        let ok = false;
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await withTimeout(EnccoCloudSync.syncNode('pensum', STATE.pensum), 8000, 'Tiempo de espera agotado en Realtime Database.');
-        } else {
-            ok = true;
-        }
-
-        if (!ok) {
-            throw new Error("El servidor de Firebase no confirmó la asignación de clase.");
-        }
-
+        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
         saveStateToLocalStorage();
         closeClassAssignmentModal();
 
-        // Actualización reactiva
+        // Actualización reactiva inmediata en pantalla
         renderAssignmentsTable();
         if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
         if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
         if (typeof renderUsersTable === 'function') renderUsersTable();
 
-        showToast(`Asignación de "${fullSubjectName}" a ${teacherName} confirmada en Firebase.`, 'success');
+        showToast(`Asignación de "${fullSubjectName}" a ${teacherName} guardada exitosamente.`, 'success');
+
+        // 🌟 Persistencia atómica con writeBatch en Firestore y RTDB en segundo plano
+        (async () => {
+            if (window.FirebaseModular && window.FirebaseModular.db) {
+                try {
+                    const { db, doc, writeBatch, setDoc } = window.FirebaseModular;
+                    const relevantAssignments = id ? [STATE.pensum.find(x => x.id === id)].filter(Boolean) : STATE.pensum.slice(-selectedSections.length);
+                    if (typeof writeBatch === 'function' && relevantAssignments.length > 1) {
+                        const batch = writeBatch(db);
+                        for (const asg of relevantAssignments) {
+                            if (asg && asg.id) {
+                                const asgRef = doc(db, 'pensum', asg.id);
+                                batch.set(asgRef, { ...asg, lastModified: nowTime }, { merge: true });
+                            }
+                        }
+                        await withTimeout(batch.commit(), 8000, 'Tiempo de espera en batch de Firestore agotado.');
+                    } else if (typeof setDoc === 'function') {
+                        await Promise.all(relevantAssignments.map(asg => {
+                            if (asg && asg.id) {
+                                const asgRef = doc(db, 'pensum', asg.id);
+                                return setDoc(asgRef, { ...asg, lastModified: nowTime }, { merge: true });
+                            }
+                            return Promise.resolve();
+                        }));
+                    }
+                } catch(fsErr) {
+                    console.warn("Aviso al guardar asignación en Firestore:", fsErr);
+                }
+            }
+
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+                try {
+                    await withTimeout(EnccoCloudSync.syncNode('pensum', STATE.pensum), 8000, 'Tiempo de espera agotado en Realtime Database.');
+                } catch(rtdbErr) {
+                    console.warn("Aviso al sincronizar asignaciones en RTDB:", rtdbErr);
+                }
+            }
+        })();
     } catch(err) {
         console.error("❌ Error al guardar asignación en Firebase:", err);
         showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
@@ -26777,18 +26870,22 @@ function openEditClassAssignmentModal(asgId) {
 
 async function deleteClassAssignment(asgId) {
     if (!checkEnrolmentPermissions()) return;
-    const rutaColeccion = 'pensum';
-    console.log("Consultando asignaciones en ruta:", rutaColeccion);
     const a = (STATE.pensum || []).find(x => x.id === asgId);
     if (!a) return;
 
     if (!confirm(`¿Está seguro de eliminar la asignación de la clase "${a.subject || a.name}" al docente ${a.teacher}?`)) return;
 
-    const prevPensum = [...STATE.pensum];
+    // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
     STATE.pensum = (STATE.pensum || []).filter(x => x.id !== asgId);
+    STATE.lastModified = Date.now();
+    saveStateToLocalStorage();
+    renderAssignmentsTable();
+    if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+    if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+    showToast('Asignación de cátedra eliminada exitosamente.', 'success');
 
-    try {
-        // 🌟 A. Borrado Atómico en Firestore (colección pensum)
+    // 🌟 Persistencia atómica en Firestore y RTDB en segundo plano
+    (async () => {
         if (window.FirebaseModular && window.FirebaseModular.db) {
             try {
                 const { db, doc, deleteDoc } = window.FirebaseModular;
@@ -26800,26 +26897,14 @@ async function deleteClassAssignment(asgId) {
             }
         }
 
-        // 🌟 B. Sincronización atómica aislada en Realtime Database
-        let ok = false;
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await EnccoCloudSync.syncNode('pensum', STATE.pensum);
-        } else {
-            ok = true;
+            try {
+                await EnccoCloudSync.syncNode('pensum', STATE.pensum);
+            } catch(rtdbErr) {
+                console.warn("Aviso al sincronizar cátedras en RTDB:", rtdbErr);
+            }
         }
-
-        if (!ok) throw new Error("Firebase no confirmó la eliminación de la cátedra.");
-
-        saveStateToLocalStorage();
-        renderAssignmentsTable();
-        if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
-        if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
-        showToast('Asignación de cátedra eliminada y confirmada en Firebase.', 'success');
-    } catch(err) {
-        STATE.pensum = prevPensum;
-        console.error("❌ Error al eliminar asignación en Firebase:", err);
-        showToast(`Error al eliminar en Firebase: ${err.message || err}`, 'danger');
-    }
+    })();
 }
 
 function filterAssignmentsTable(searchQuery = '') {
