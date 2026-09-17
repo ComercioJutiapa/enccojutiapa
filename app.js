@@ -10073,15 +10073,21 @@ async function saveStudentForm(e) {
 }
 
 function isSubjectBimestreExonerated(student, subjectName, bimestreNum) {
-    if (!student || !student.academicExceptions || !Array.isArray(student.academicExceptions)) return false;
+    if (!student) return false;
+    if (student.isExonerated === true || student.exonerated === true) return true;
+    if (!student.academicExceptions || !Array.isArray(student.academicExceptions) || student.academicExceptions.length === 0) return false;
     const b = parseInt(bimestreNum) || 0;
+    const cleanSubj = (subjectName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
     return student.academicExceptions.some(ex => {
-        const matchSubject = (!ex.subject || ex.subject === 'ALL' || ex.subject.toLowerCase() === (subjectName || '').toLowerCase());
-        const matchBimestre = (!ex.bimestre || ex.bimestre === 'ALL' || parseInt(ex.bimestre) === b);
-        const isActive = (ex.type === 'EXONERADO' || ex.type === 'JUSTIFICADO');
+        const exSubj = (ex.subject || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+        const matchSubject = (!ex.subject || ex.subject === 'ALL' || exSubj === 'all' || (cleanSubj && exSubj && (exSubj === cleanSubj || cleanSubj.includes(exSubj) || exSubj.includes(cleanSubj))));
+        const matchBimestre = (!ex.bimestre || ex.bimestre === 'ALL' || String(ex.bimestre).toUpperCase() === 'ALL' || parseInt(ex.bimestre) === b);
+        const isActive = (!ex.type || ex.type === 'EXONERADO' || ex.type === 'JUSTIFICADO');
         return matchSubject && matchBimestre && isActive;
     });
 }
+window.isSubjectBimestreExonerated = isSubjectBimestreExonerated;
+
 
 function getStudentAcademicInfo(student) {
     if (!student) {
@@ -10251,6 +10257,10 @@ function getStudentAcademicInfo(student) {
             let validScores = [];
             if (gradesObj) {
                 for (let b = 1; b <= activeBimestre; b++) {
+                    if (isSubjectBimestreExonerated(student, sub, b)) {
+                        exoneratedCount++;
+                        continue;
+                    }
                     const sc = gradesObj[`b${b}`] || 0;
                     if (sc > 0) {
                         if (sc < 60) {
@@ -10281,6 +10291,10 @@ function getStudentAcademicInfo(student) {
                 if (Array.isArray(bGrades)) {
                     let validScores = [];
                     for (let b = 1; b <= activeBimestre; b++) {
+                        if (isSubjectBimestreExonerated(student, cName, b)) {
+                            exoneratedCount++;
+                            continue;
+                        }
                         const score = parseInt(bGrades[b - 1]) || 0;
                         if (score > 0) {
                             if (score < 60) {
@@ -10305,6 +10319,7 @@ function getStudentAcademicInfo(student) {
         const courses = Object.keys(student.gradebookDetails);
         courses.forEach(cName => {
             for (let b = 1; b <= activeBimestre; b++) {
+                if (isSubjectBimestreExonerated(student, cName, b)) continue;
                 const bDetail = student.gradebookDetails[cName] && student.gradebookDetails[cName][b];
                 if (bDetail) {
                     const totalScore = (parseInt(bDetail.zona) || 0) + (parseInt(bDetail.exam) || 0);
@@ -10439,6 +10454,20 @@ function closeAcademicExonerationModal() {
 }
 
 function renderAcademicExonerationsList(student) {
+    const badgeEl = document.getElementById('exonModalStatusBadge');
+    const exceptions = student.academicExceptions || [];
+    if (badgeEl) {
+        if (exceptions.length > 0) {
+            badgeEl.textContent = `${exceptions.length} Consideración(es) Activa(s)`;
+            badgeEl.style.background = '#fef3c7';
+            badgeEl.style.color = '#92400e';
+        } else {
+            badgeEl.textContent = 'Sin Exoneraciones';
+            badgeEl.style.background = '#ccfbf1';
+            badgeEl.style.color = '#115e59';
+        }
+    }
+
     const container = document.getElementById('exonListContainer');
     if (!container) return;
 
@@ -10459,7 +10488,7 @@ function renderAcademicExonerationsList(student) {
         const typeLabel = ex.type === 'EXONERADO' ? 'Exoneración Oficial' : 'Justificación de Fuerza Mayor';
 
         return `
-            <div style="background:#ffffff; border:1px solid #cbd5e1; border-left:4px solid #0d9488; border-radius:4px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+            <div style="background:#ffffff; border:1px solid #cbd5e1; border-left:4px solid #0d9488; border-radius:4px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px;">
                 <div>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <strong style="color:#0f766e; font-size:0.9rem;">${escapeHtml(subLabel)}</strong>
@@ -10489,7 +10518,7 @@ async function saveAcademicExoneration(e) {
         return;
     }
 
-    const student = (STATE.students || []).find(s => s.id === studentId);
+    const student = (STATE.students || []).find(s => String(s.id) === String(studentId));
     if (!student) {
         showToast("Estudiante no encontrado en nómina.", "warning");
         return;
@@ -10498,11 +10527,9 @@ async function saveAcademicExoneration(e) {
     const subject = document.getElementById('exonFormSubject')?.value || 'ALL';
     const bimestre = document.getElementById('exonFormBimestre')?.value || '2';
     const type = document.getElementById('exonFormType')?.value || 'EXONERADO';
-    const reason = (document.getElementById('exonFormReason')?.value || '').trim();
-
+    let reason = (document.getElementById('exonFormReason')?.value || '').trim();
     if (!reason) {
-        showToast("Ingrese el motivo o dictamen de la exoneración/consideración.", "warning");
-        return;
+        reason = 'Exoneración Oficial Autorizada por Dirección';
     }
 
     const submitBtn = document.getElementById('academicExonerationSubmitBtn') || document.querySelector('#academicExonerationForm button[type="submit"]');
@@ -10513,7 +10540,7 @@ async function saveAcademicExoneration(e) {
 
     if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando...';
     }
 
     try {
@@ -10536,7 +10563,12 @@ async function saveAcademicExoneration(e) {
         // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
         saveStateToLocalStorage();
         renderAcademicExonerationsList(student);
-        loadHonorRoll();
+        if (typeof renderStudentProfileGrades === 'function') {
+            renderStudentProfileGrades(student);
+        }
+        if (typeof loadHonorRoll === 'function') {
+            loadHonorRoll();
+        }
 
         const form = document.getElementById('academicExonerationForm');
         if (form) form.reset();
@@ -10560,11 +10592,20 @@ async function saveAcademicExoneration(e) {
 
             if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
                 try {
-                    await withTimeout(
-                        EnccoCloudSync.patchNode('students', { [student.id]: { academicExceptions: student.academicExceptions } }),
-                        8000,
-                        'Tiempo de espera en Realtime Database agotado.'
-                    );
+                    const studentIndex = (STATE.students || []).findIndex(s => String(s.id) === String(student.id));
+                    if (studentIndex !== -1) {
+                        await withTimeout(
+                            EnccoCloudSync.patchNode('students', { [studentIndex]: { academicExceptions: student.academicExceptions } }),
+                            8000,
+                            'Tiempo de espera en Realtime Database agotado.'
+                        );
+                    } else {
+                        await withTimeout(
+                            EnccoCloudSync.patchNode('students', { [student.id]: { academicExceptions: student.academicExceptions } }),
+                            8000,
+                            'Tiempo de espera en Realtime Database agotado.'
+                        );
+                    }
                 } catch(rtdbErr) {
                     console.warn("Aviso en RTDB al guardar exoneración:", rtdbErr);
                 }
@@ -10582,7 +10623,7 @@ async function saveAcademicExoneration(e) {
 }
 
 async function deleteAcademicExoneration(studentId, exIndex) {
-    const student = (STATE.students || []).find(s => s.id === studentId);
+    const student = (STATE.students || []).find(s => String(s.id) === String(studentId));
     if (!student || !student.academicExceptions) return;
 
     if (!confirm("¿Desea eliminar esta exoneración? La nota regular volverá a ser evaluada en el Cuadro de Honor.")) {
@@ -10590,13 +10631,25 @@ async function deleteAcademicExoneration(studentId, exIndex) {
     }
 
     student.academicExceptions.splice(exIndex, 1);
+    const nowTime = Date.now();
+    STATE.lastModified = nowTime;
+
+    saveStateToLocalStorage();
+    renderAcademicExonerationsList(student);
+    if (typeof renderStudentProfileGrades === 'function') {
+        renderStudentProfileGrades(student);
+    }
+    if (typeof loadHonorRoll === 'function') {
+        loadHonorRoll();
+    }
+    showToast("Exoneración eliminada del expediente del alumno.", "info");
 
     try {
         const modular = window.FirebaseModular;
         if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
             await modular.setDoc(modular.doc(modular.db, 'students', student.id), {
                 academicExceptions: student.academicExceptions,
-                lastModified: Date.now()
+                lastModified: nowTime
             }, { merge: true });
         }
     } catch(fsErr) {
@@ -10604,12 +10657,13 @@ async function deleteAcademicExoneration(studentId, exIndex) {
     }
 
     if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-        EnccoCloudSync.patchNode('students', { [student.id]: { academicExceptions: student.academicExceptions } });
+        const studentIndex = (STATE.students || []).findIndex(s => String(s.id) === String(student.id));
+        if (studentIndex !== -1) {
+            EnccoCloudSync.patchNode('students', { [studentIndex]: { academicExceptions: student.academicExceptions } });
+        } else {
+            EnccoCloudSync.patchNode('students', { [student.id]: { academicExceptions: student.academicExceptions } });
+        }
     }
-
-    renderAcademicExonerationsList(student);
-    loadHonorRoll();
-    showToast("Exoneración eliminada del expediente del alumno.", "info");
 }
 
 function calculateStudentAvg(student) {
@@ -10874,7 +10928,19 @@ function renderStudentProfileGrades(student) {
         const g2 = grades[1] || 0;
         const g3 = grades[2] || 0;
         const g4 = grades[3] || 0;
-        const activeVals = [g1, g2, g3, g4].filter(v => v > 0);
+
+        const isExon1 = (typeof isSubjectBimestreExonerated === 'function') ? isSubjectBimestreExonerated(student, sub, 1) : false;
+        const isExon2 = (typeof isSubjectBimestreExonerated === 'function') ? isSubjectBimestreExonerated(student, sub, 2) : false;
+        const isExon3 = (typeof isSubjectBimestreExonerated === 'function') ? isSubjectBimestreExonerated(student, sub, 3) : false;
+        const isExon4 = (typeof isSubjectBimestreExonerated === 'function') ? isSubjectBimestreExonerated(student, sub, 4) : false;
+
+        const activeVals = [];
+        if (!isExon1 && g1 > 0) activeVals.push(g1);
+        if (!isExon2 && g2 > 0) activeVals.push(g2);
+        if (!isExon3 && g3 > 0) activeVals.push(g3);
+        if (!isExon4 && g4 > 0) activeVals.push(g4);
+
+        const isFullyExon = (isExon1 && isExon2 && isExon3 && isExon4);
         const finalAvg = activeVals.length > 0 ? Math.round(activeVals.reduce((a, b) => a + b, 0) / activeVals.length) : 0;
 
         if (finalAvg > 0) {
@@ -10886,18 +10952,34 @@ function renderStudentProfileGrades(student) {
 
         const isFail = (finalAvg > 0 && finalAvg < 60);
 
+        const formatGradeCell = (val, isExon) => {
+            if (isExon) {
+                return '<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; padding:2px 6px; border-radius:4px;" title="Materia Exonerada en este bimestre"><i class="fa-solid fa-shield-check"></i> Exon.</span>';
+            }
+            return val > 0 ? val : '<span style="color:#94a3b8;">—</span>';
+        };
+
+        let statusBadge = '';
+        if (isFullyExon) {
+            statusBadge = `<span class="badge" style="font-size:0.78rem; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;"><i class="fa-solid fa-shield-check"></i> Exonerada</span>`;
+        } else if (finalAvg >= 60) {
+            statusBadge = `<span class="badge badge-success" style="font-size:0.78rem;">Aprobada</span>`;
+        } else if (finalAvg > 0) {
+            statusBadge = `<span class="badge badge-danger" style="font-size:0.78rem;">Reprobada</span>`;
+        } else {
+            statusBadge = `<span class="badge badge-secondary" style="font-size:0.78rem;">Pendiente</span>`;
+        }
+
         return `
             <tr>
                 <td style="font-weight:700; text-align:left; padding:8px 12px; color:#1e293b;">${sub}</td>
-                <td style="text-align:center; font-weight:600;">${g1 > 0 ? g1 : '<span style="color:#94a3b8;">—</span>'}</td>
-                <td style="text-align:center; font-weight:600;">${g2 > 0 ? g2 : '<span style="color:#94a3b8;">—</span>'}</td>
-                <td style="text-align:center; font-weight:600;">${g3 > 0 ? g3 : '<span style="color:#94a3b8;">—</span>'}</td>
-                <td style="text-align:center; font-weight:600;">${g4 > 0 ? g4 : '<span style="color:#94a3b8;">—</span>'}</td>
-                <td style="text-align:center; font-weight:800; font-size:0.95rem; ${isFail ? 'color:#b91c1c; background:#fee2e2;' : (finalAvg >= 60 ? 'color:#15803d; background:#dcfce7;' : 'color:#0369a1;')}">${finalAvg > 0 ? finalAvg : '—'}</td>
+                <td style="text-align:center; font-weight:600;">${formatGradeCell(g1, isExon1)}</td>
+                <td style="text-align:center; font-weight:600;">${formatGradeCell(g2, isExon2)}</td>
+                <td style="text-align:center; font-weight:600;">${formatGradeCell(g3, isExon3)}</td>
+                <td style="text-align:center; font-weight:600;">${formatGradeCell(g4, isExon4)}</td>
+                <td style="text-align:center; font-weight:800; font-size:0.95rem; ${isFail ? 'color:#b91c1c; background:#fee2e2;' : (finalAvg >= 60 ? 'color:#15803d; background:#dcfce7;' : (isFullyExon ? 'color:#0369a1; background:#f0f9ff;' : 'color:#0369a1;'))}">${finalAvg > 0 ? finalAvg : (isFullyExon ? 'Exon.' : '—')}</td>
                 <td style="text-align:center;">
-                    <span class="badge ${isFail ? 'badge-danger' : (finalAvg >= 60 ? 'badge-success' : 'badge-secondary')}" style="font-size:0.78rem;">
-                        ${finalAvg >= 60 ? 'Aprobada' : (finalAvg > 0 ? 'Reprobada' : 'Pendiente')}
-                    </span>
+                    ${statusBadge}
                 </td>
             </tr>
         `;

@@ -3481,20 +3481,20 @@
                 </div>
 
                 <!-- FORMULARIO PARA REGISTRAR NUEVA EXONERACIÓN -->
-                <form id="academicExonerationForm" onsubmit="saveAcademicExoneration(event)" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:6px; padding:14px; margin-bottom:16px;">
+                <form id="academicExonerationForm" onsubmit="saveAcademicExoneration(event)" novalidate style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:6px; padding:14px; margin-bottom:16px;">
                     <h4 style="margin:0 0 10px 0; font-size:0.95rem; color:#0f172a; font-weight:800;">
                         <i class="fa-solid fa-circle-plus" style="color:#0d9488;"></i> Registrar Nueva Consideración / Exoneración
                     </h4>
                     <div class="form-row">
                         <div class="form-group" style="flex:1.5;">
                             <label style="font-weight:700;">Asignatura / Cátedra *</label>
-                            <select id="exonFormSubject" class="form-control" required style="font-weight:600;">
+                            <select id="exonFormSubject" class="form-control" style="font-weight:600;">
                                 <option value="ALL">🌟 Todas las Asignaturas (Bimestre Completo)</option>
                             </select>
                         </div>
                         <div class="form-group" style="flex:1;">
                             <label style="font-weight:700;">Bimestre *</label>
-                            <select id="exonFormBimestre" class="form-control" required style="font-weight:600;">
+                            <select id="exonFormBimestre" class="form-control" style="font-weight:600;">
                                 <option value="1">1º Bimestre</option>
                                 <option value="2" selected>2º Bimestre</option>
                                 <option value="3">3º Bimestre</option>
@@ -3506,14 +3506,14 @@
                     <div class="form-row">
                         <div class="form-group" style="flex:1.3;">
                             <label style="font-weight:700;">Tipo de Consideración *</label>
-                            <select id="exonFormType" class="form-control" required style="font-weight:600;">
+                            <select id="exonFormType" class="form-control" style="font-weight:600;">
                                 <option value="EXONERADO">Exoneración Oficial (No Penaliza Promedio ni Descalifica)</option>
                                 <option value="JUSTIFICADO">Justificación Médica / Fuerza Mayor</option>
                             </select>
                         </div>
                         <div class="form-group" style="flex:1.7;">
-                            <label style="font-weight:700;">Motivo / Dictamen / Justificación *</label>
-                            <input type="text" id="exonFormReason" class="form-control" required placeholder="Ej: Dictamen Médico No. 12-2026 - Reposo por cirugía">
+                            <label style="font-weight:700;">Motivo / Dictamen / Justificación</label>
+                            <input type="text" id="exonFormReason" class="form-control" placeholder="Ej: Dictamen Médico No. 12-2026 - Reposo por cirugía">
                         </div>
                     </div>
                     <div style="text-align:right;">
