@@ -23909,7 +23909,30 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         return gMatch && sMatch;
     });
 
+    // Función de coincidencia estricta de nombres para no colocar nada si no coincide el nombre
+    const normalizeTokens = str => (str || '').toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter(t => t.length > 1 && !['de', 'del', 'la', 'las', 'los', 'san', 'santa', 'y'].includes(t));
+
+    const areNamesMatching = (rowName, studentObj) => {
+        if (!rowName || !studentObj) return false;
+        const fullTarget = `${studentObj.lastName || ''} ${studentObj.firstName || ''} ${studentObj.name || ''}`;
+        const tokensRow = normalizeTokens(rowName);
+        const tokensTarget = normalizeTokens(fullTarget);
+        if (tokensRow.length === 0 || tokensTarget.length === 0) return false;
+
+        const common = tokensRow.filter(t => tokensTarget.includes(t));
+        const minTokens = Math.min(tokensRow.length, tokensTarget.length);
+        if (minTokens <= 2) {
+            return common.length >= minTokens;
+        }
+        return common.length >= 2 && (common.length / minTokens >= 0.5);
+    };
+
     let updatedCount = 0;
+    let omittedCount = 0;
 
     for (let r = dataStartRow; r < rawRows.length; r++) {
         const row = rawRows[r];
@@ -23925,35 +23948,49 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         if (cName.includes('promedio') || cName.includes('totalgeneral') || cName.includes('observaciones')) continue;
         if (typeof claveVal === 'number' && claveVal > 100) continue;
 
-        // Búsqueda precisa de coincidencia dentro del grado y sección
+        // Búsqueda quirúrgica con confirmación obligatoria de nombre coincidente
         let matched = null;
-        if (cuiVal) matched = courseStudents.find(s => s.cui && s.cui.replace(/[^0-9]/g, '') === cuiVal);
-        if (!matched && codeVal) matched = courseStudents.find(s => (s.personalCode && cleanStr(s.personalCode) === cleanStr(codeVal)) || (s.carne && cleanStr(s.carne) === cleanStr(codeVal)));
-        if (!matched && claveVal) {
-            const byClave = courseStudents.find(s => Number(s.clave) === Number(claveVal));
-            if (byClave) {
-                if (cName.length >= 3) {
-                    const sLast = cleanStr(byClave.lastName || '');
-                    const sFirst = cleanStr(byClave.firstName || '');
-                    const sFull = cleanStr(byClave.name || '');
-                    if (cName.includes(sLast) || sFull.includes(cName) || cName.includes(sFirst)) {
-                        matched = byClave;
-                    }
-                } else {
-                    matched = byClave;
-                }
-            }
-        }
-        if (!matched && cName) {
-            matched = courseStudents.find(s => {
-                const sFull = cleanStr(`${s.lastName || ''} ${s.firstName || ''}`);
-                const sRev = cleanStr(`${s.firstName || ''} ${s.lastName || ''}`);
-                const sSimple = cleanStr(s.name || '');
-                return sFull === cName || sRev === cName || sSimple === cName || cName.includes(sFull);
-            });
+
+        // Si no se proporciona un nombre válido en la fila, no colocar nada
+        if (!nameVal || nameVal.replace(/[^a-zA-Z]/g, '').length < 3) {
+            omittedCount++;
+            continue;
         }
 
-        if (!matched) continue;
+        // 1. Por Clave / No. de lista CON verificación obligatoria de nombre coincidente
+        if (claveVal !== null && claveVal !== undefined && claveVal !== '') {
+            const byClave = courseStudents.find(s => Number(s.clave !== undefined ? s.clave : s.no) === Number(claveVal));
+            if (byClave && areNamesMatching(nameVal, byClave)) {
+                matched = byClave;
+            }
+        }
+
+        // 2. Por coincidencia fonética y de tokens de Nombre completo si no coincidió clave
+        if (!matched) {
+            matched = courseStudents.find(s => areNamesMatching(nameVal, s));
+        }
+
+        // 3. Por CUI / DPI verificando también coincidencia estricta de nombre
+        if (!matched && cuiVal) {
+            const byCui = courseStudents.find(s => s.cui && s.cui.replace(/[^0-9]/g, '') === cuiVal);
+            if (byCui && areNamesMatching(nameVal, byCui)) {
+                matched = byCui;
+            }
+        }
+
+        // 4. Por Código Personal / Carné verificando también coincidencia estricta de nombre
+        if (!matched && codeVal) {
+            const byCode = courseStudents.find(s => (s.personalCode && cleanStr(s.personalCode) === cleanStr(codeVal)) || (s.carne && cleanStr(s.carne) === cleanStr(codeVal)));
+            if (byCode && areNamesMatching(nameVal, byCode)) {
+                matched = byCode;
+            }
+        }
+
+        // Si no hay nombres coincidentes, no colocar nada (se omite la fila)
+        if (!matched) {
+            omittedCount++;
+            continue;
+        }
 
         ensureStudentGradebookStructure(matched, effectiveSubject);
         const gDetail = matched.gradebookDetails[effectiveSubject][effectiveUnit];
@@ -23998,7 +24035,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     }
 
     if (updatedCount === 0) {
-        showToast(`No se encontraron calificaciones de estudiantes en el archivo para ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}). Verifique que el cuadro contenga notas ingresadas.`, "warning");
+        showToast(`No se encontraron estudiantes coincidentes por nombre para ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}). No se modificó ninguna nota.`, "warning");
         return;
     }
 
@@ -24010,7 +24047,8 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         renderGradebookTable();
     }
 
-    showToast(`¡Notas importadas con éxito (${detectedFormat})! Se actualizaron ${updatedCount} estudiantes en ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}, Bimestre ${effectiveUnit}).`, "success");
+    const omittedMsg = omittedCount > 0 ? ` (${omittedCount} fila(s) omitida(s) por no coincidir el nombre)` : '';
+    showToast(`¡Notas importadas con éxito (${detectedFormat})! Se actualizaron ${updatedCount} estudiantes en ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}, Bimestre ${effectiveUnit})${omittedMsg}.`, "success");
 
     // 9. Sincronización atómica en la nube en segundo plano
     if (typeof saveBulkStudentGradesAtomic === 'function') {
