@@ -2023,9 +2023,61 @@
                                     <i class="fa-solid fa-chevron-down" style="color:#0369a1; margin-left:10px; font-size:0.85rem; flex-shrink:0;"></i>
                                 </button>
                                 <div id="honorRollCustomSelectMenu" style="display:none; position:absolute; top:calc(100% + 5px); left:0; width:100%; max-height:380px; overflow-y:auto; background:#ffffff; border:1.5px solid #0369a1; border-radius:8px; box-shadow:0 14px 35px rgba(0,0,0,0.22); z-index:999999;">
-                                    <!-- Las opciones se inyectan dinámicamente con fondo blanco y texto oscuro impecable -->
+                                    <div style="padding:8px 14px; font-size:0.75rem; font-weight:800; color:#0369a1; background:#f0f9ff; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #e0f2fe;">🌟 Modalidades Oficiales</div>
+                                    <div class="custom-honor-opt selected" onclick="selectHonorRollOption('ALL_BALANCED')" style="padding:11px 16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; background:#eff6ff; color:#1d4ed8; font-weight:800; font-size:0.88rem; border-bottom:1px solid #f1f5f9; transition:background 0.15s ease; user-select:none;">
+                                        <span style="display:flex; align-items:center; gap:8px;">🌟 Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)</span>
+                                        <i class="fa-solid fa-check" style="color:#2563eb; margin-left:10px; font-size:0.95rem;"></i>
+                                    </div>
+                                    <div class="custom-honor-opt" onclick="selectHonorRollOption('GROUP_4TO_5TO')" style="padding:11px 16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; background:#ffffff; color:#0f172a; font-weight:600; font-size:0.88rem; border-bottom:1px solid #f1f5f9; transition:background 0.15s ease; user-select:none;">
+                                        <span style="display:flex; align-items:center; gap:8px;">🥇 Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)</span>
+                                    </div>
+                                    <div class="custom-honor-opt" onclick="selectHonorRollOption('GROUP_6TO')" style="padding:11px 16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; background:#ffffff; color:#0f172a; font-weight:600; font-size:0.88rem; border-bottom:1px solid #f1f5f9; transition:background 0.15s ease; user-select:none;">
+                                        <span style="display:flex; align-items:center; gap:8px;">🎓 Cuadro de Honor Oficial: 6to Grado (8 Clases B1/B2 — 10 Clases B3)</span>
+                                    </div>
                                 </div>
                             </div>
+                            <script>
+                                function toggleHonorRollCustomMenu(e) {
+                                    if (e) { e.stopPropagation(); e.preventDefault(); }
+                                    var menu = document.getElementById('honorRollCustomSelectMenu');
+                                    if (!menu) return;
+                                    var isVisible = (menu.style.display === 'block');
+                                    if (isVisible) {
+                                        menu.style.display = 'none';
+                                    } else {
+                                        if (typeof renderHonorRollCustomDropdown === 'function') {
+                                            renderHonorRollCustomDropdown();
+                                        }
+                                        menu.style.display = 'block';
+                                    }
+                                }
+                                function selectHonorRollOption(val) {
+                                    var select = document.getElementById('honorRollTypeSelect');
+                                    var menu = document.getElementById('honorRollCustomSelectMenu');
+                                    if (select) { select.value = val; }
+                                    if (menu) { menu.style.display = 'none'; }
+                                    if (typeof renderHonorRollCustomDropdown === 'function') {
+                                        renderHonorRollCustomDropdown();
+                                    } else {
+                                        var textSpan = document.getElementById('honorRollCustomSelectText');
+                                        if (textSpan && select && select.options[select.selectedIndex]) {
+                                            textSpan.textContent = select.options[select.selectedIndex].textContent;
+                                        }
+                                    }
+                                    if (typeof loadHonorRoll === 'function') {
+                                        loadHonorRoll();
+                                    }
+                                }
+                                document.addEventListener('click', function(e) {
+                                    var wrapper = document.getElementById('honorRollCustomSelectWrapper');
+                                    var menu = document.getElementById('honorRollCustomSelectMenu');
+                                    if (menu && menu.style.display === 'block') {
+                                        if (!wrapper || !wrapper.contains(e.target)) {
+                                            menu.style.display = 'none';
+                                        }
+                                    }
+                                });
+                            </script>
                         </div>
                         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                             <label style="font-weight:700; color:#166534; font-size:0.88rem; display:flex; align-items:center; gap:6px; cursor:pointer; background:#f0fdf4; padding:6px 12px; border:1px solid #86efac; border-radius:6px;">
@@ -3735,7 +3787,7 @@
     <script src="db.js"></script>
     <script src="ui.js"></script>
     <script src="sire.js"></script>
-    <script src="app.js?v=2026.09.11.v199_clases_y_calificaciones_oficiales_cnb"></script>
+    <script src="app.js?v=2026.09.16.v202_custom_honor_dropdown"></script>
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre
         window.addEventListener('load', function() {
