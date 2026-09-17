@@ -138,7 +138,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="styles.css?v=20260916_v159_honor_select_fix">
+    <link rel="stylesheet" href="styles.css?v=20260916_v160_honor_select_selectable">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -2009,7 +2009,7 @@
                     <div class="section-toolbar" style="flex-wrap:wrap; gap:12px;">
                         <div class="toolbar-filters" style="flex:1; min-width:280px;">
                             <label style="font-weight:700; color:#0369a1;"><i class="fa-solid fa-trophy"></i> Seleccionar Modalidad de Cuadro de Honor:</label>
-                            <select id="honorRollTypeSelect" class="form-control" onchange="loadHonorRoll()" style="width:100%; max-width:100%; font-weight:700; color-scheme:light; background-color:#ffffff; color:#1e293b;">
+                            <select id="honorRollTypeSelect" class="form-control" onchange="loadHonorRoll()" style="width:100%; max-width:100%; font-weight:700; color-scheme:light; background-color:#ffffff; color:#1e293b; cursor:pointer; pointer-events:auto;">
                                 <option value="ALL_BALANCED">🌟 Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)</option>
                                 <option value="GROUP_4TO_5TO">🥇 Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)</option>
                                 <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (8 Clases B1/B2 - 10 Clases B3)</option>

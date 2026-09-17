@@ -20650,6 +20650,17 @@ function populateHonorRollSelect() {
         opts += `</optgroup>`;
     }
 
+    // Normalizar texto para comparación sin espacios superfluos
+    const normalizedOpts = opts.replace(/\s+/g, ' ').trim();
+    const normalizedCurrent = (select._renderedOpts || '').replace(/\s+/g, ' ').trim();
+
+    // 🛡️ REGLA QUIRÚRGICA: Si las opciones ya están pobladas y no han cambiado, NO reconstruir innerHTML.
+    // Esto evita destruir el elemento en el DOM mientras el usuario interactúa o cambia de opción.
+    if (normalizedCurrent === normalizedOpts && select.options.length > 3) {
+        return;
+    }
+
+    select._renderedOpts = opts;
     select.innerHTML = opts;
 
     // Restaurar la selección anterior (o volver al default si ya no existe)
@@ -20738,7 +20749,7 @@ function loadHonorRoll() {
     // ── CAMBIO 4: PERSISTENCIA ATÓMICA DEL PUESTO (honorRank.bX) ────────────────
     // Guarda el puesto y promedio de cada estudiante elegible en Firestore,
     // vinculado unívocamente a (estudianteId + bimestre activo) via setDoc merge.
-    // Operación fire-and-forget en background — nunca bloquea la UI.
+    // Solo persiste si de verdad cambió el valor, evitando bucles con onSnapshot.
     (async () => {
         if (!window.FirebaseModular?.db) return;
         const { db, doc, setDoc } = window.FirebaseModular;
@@ -20749,10 +20760,19 @@ function loadHonorRoll() {
             const info = getStudentAcademicInfo(s);
             if (!info.eligibleForHonorRoll) continue;
             eligibleRank++;
+            const curRank = s.honorRank ? s.honorRank[`b${bim}`] : null;
+            const curAvg = s.honorAverage ? s.honorAverage[`b${bim}`] : null;
+            if (curRank === eligibleRank && curAvg === info.average) {
+                continue; // Ya sincronizado, omitir escritura
+            }
+            if (!s.honorRank) s.honorRank = {};
+            s.honorRank[`b${bim}`] = eligibleRank;
+            if (!s.honorAverage) s.honorAverage = {};
+            s.honorAverage[`b${bim}`] = info.average;
+
             const rankPayload = {
                 honorRank:    { [`b${bim}`]: eligibleRank },
-                honorAverage: { [`b${bim}`]: info.average },
-                lastHonorUpdate: new Date().toISOString()
+                honorAverage: { [`b${bim}`]: info.average }
             };
             setDoc(doc(db, 'students', s.id), rankPayload, { merge: true })
                 .catch(e => console.warn('[Honor] Error al persistir puesto:', e));
