@@ -8518,6 +8518,17 @@ function renderDashboard() {
 }
 
 function openGradebookForCourse(courseId) {
+    try {
+        sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', courseId);
+        localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', courseId);
+        const p = (STATE.pensum || []).find(x => x.id === courseId);
+        if (p && p.grade) {
+            sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_GRADE', p.grade);
+            localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_GRADE', p.grade);
+            STATE.selectedGradebookGrade = p.grade;
+        }
+    } catch(e) {}
+    STATE.selectedGradebookCourseId = courseId;
     navigateTo('gradebook');
     const select = document.getElementById('teacherCourseSelect');
     if (select) {
@@ -17772,38 +17783,115 @@ window.syncPensumTeachersWithUsers = syncPensumTeachersWithUsers;
 
 // 8. LIBRO DE CALIFICACIONES SEGÚN LA CLASE DEL DOCENTE O ADMINISTRADOR
 // ==========================================================================
-function populateTeacherCourseSelect() {
+function populateTeacherCourseSelect(preferredCourseId = null) {
     const select = document.getElementById('teacherCourseSelect');
     if (!select) return;
+
+    // 🔒 Preservar y fijar la clase y grado previamente seleccionados para evitar cambios no deseados
+    const prevCourseId = preferredCourseId ||
+        (select.value && select.value !== '' ? select.value : null) ||
+        sessionStorage.getItem('ENCCO_SELECTED_GRADEBOOK_COURSE') ||
+        localStorage.getItem('ENCCO_SELECTED_GRADEBOOK_COURSE') ||
+        STATE.selectedGradebookCourseId;
+
+    const prevGrade = sessionStorage.getItem('ENCCO_SELECTED_GRADEBOOK_GRADE') ||
+        localStorage.getItem('ENCCO_SELECTED_GRADEBOOK_GRADE') ||
+        STATE.selectedGradebookGrade;
 
     const currentUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente') || STATE.users[0];
     const isDocente = (STATE.currentRole === 'docente');
 
     let html = '';
+    const gradeOrder = ['4to Perito Contador', '5to Perito Contador', '6to Perito Contador'];
 
     if (isDocente && currentUser) {
         // Los maestros SOLO pueden ver las clases a las que están asignados
         const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
 
         if (myClasses.length > 0) {
-            html += `<optgroup label="⭐ Mis Clases y Secciones Asignadas (${currentUser.name})">`;
+            // Agrupar ordenadamente por grado para mayor claridad
+            const grouped = {};
             myClasses.forEach(p => {
-                html += `<option value="${p.id}">${p.subject} — ${p.grade} (${p.section}) [${p.career}]</option>`;
+                const g = p.grade || 'Otras Cátedras';
+                if (!grouped[g]) grouped[g] = [];
+                grouped[g].push(p);
             });
-            html += `</optgroup>`;
+
+            const sortedGrades = Object.keys(grouped).sort((a, b) => {
+                const ia = gradeOrder.indexOf(a), ib = gradeOrder.indexOf(b);
+                if (ia !== -1 && ib !== -1) return ia - ib;
+                return a.localeCompare(b);
+            });
+
+            sortedGrades.forEach(g => {
+                html += `<optgroup label="🎓 ${g} — Asignadas (${currentUser.name})">`;
+                grouped[g].forEach(p => {
+                    html += `<option value="${p.id}">${p.subject} — ${p.grade} (${p.section}) [${p.career}]</option>`;
+                });
+                html += `</optgroup>`;
+            });
         } else {
             html += `<optgroup label="⭐ Mis Clases Asignadas (${currentUser.name})"><option value="">-- Sin clases asignadas a su cuenta --</option></optgroup>`;
         }
     } else {
-        // ADMIN / DIRECTOR / SECRETARIA PUEDE VER Y EDITAR CUALQUIER ASIGNATURA Y SECCIÓN
-        html += `<optgroup label="🛡️ Acceso Administrativo — Todas las Clases y Secciones de la Escuela">`;
+        // ADMIN / DIRECTOR / SECRETARIA / AUDITORÍA: Ver y editar cualquier cátedra agrupada ordenadamente por Grado
+        const grouped = {};
         (STATE.pensum || []).forEach(p => {
-            html += `<option value="${p.id}">${p.subject} — ${p.grade} (${p.section}) — Catedrático: ${p.teacher} [${p.career}]</option>`;
+            const g = p.grade || 'Otras Clases';
+            if (!grouped[g]) grouped[g] = [];
+            grouped[g].push(p);
         });
-        html += `</optgroup>`;
+
+        const sortedGrades = Object.keys(grouped).sort((a, b) => {
+            const ia = gradeOrder.indexOf(a), ib = gradeOrder.indexOf(b);
+            if (ia !== -1 && ib !== -1) return ia - ib;
+            return a.localeCompare(b);
+        });
+
+        sortedGrades.forEach(g => {
+            html += `<optgroup label="🎓 ${g} — Clases y Secciones Oficiales">`;
+            grouped[g].forEach(p => {
+                html += `<option value="${p.id}">${p.subject} — ${p.grade} (${p.section}) — Catedrático: ${p.teacher} [${p.career}]</option>`;
+            });
+            html += `</optgroup>`;
+        });
     }
 
     select.innerHTML = html;
+
+    // 🔒 Restauración estricta y fijación del curso/grado seleccionado
+    let targetVal = null;
+    if (prevCourseId && Array.from(select.options).some(o => o.value === prevCourseId)) {
+        targetVal = prevCourseId;
+    } else if (prevGrade) {
+        const matchOpt = Array.from(select.options).find(o => {
+            const p = (STATE.pensum || []).find(x => x.id === o.value);
+            return p && (p.grade === prevGrade || (p.gradeCode && p.gradeCode.includes(prevGrade)));
+        });
+        if (matchOpt) targetVal = matchOpt.value;
+    }
+
+    if (targetVal) {
+        select.value = targetVal;
+    } else if (select.options.length > 0 && !select.value) {
+        select.selectedIndex = 0;
+    }
+
+    if (select.value) {
+        try {
+            sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', select.value);
+            localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', select.value);
+        } catch(e) {}
+        STATE.selectedGradebookCourseId = select.value;
+        const pObj = (STATE.pensum || []).find(p => p.id === select.value);
+        if (pObj && pObj.grade) {
+            try {
+                sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_GRADE', pObj.grade);
+                localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_GRADE', pObj.grade);
+            } catch(e) {}
+            STATE.selectedGradebookGrade = pObj.grade;
+        }
+    }
 }
 
 function populateGradebookBimestreSelect(forceOfficial = false) {
@@ -17825,7 +17913,8 @@ function populateGradebookBimestreSelect(forceOfficial = false) {
     };
 
     // Si se fuerza el bimestre oficial (ej: cambio remoto por Dirección) o no hay selección válida, usar activeB
-    const prevVal = select.value ? parseInt(select.value) : null;
+    const savedBim = parseInt(sessionStorage.getItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE') || localStorage.getItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE'));
+    const prevVal = select.value ? parseInt(select.value) : (savedBim || null);
     let selectedBim = activeB;
     if (!forceOfficial && prevVal && prevVal >= 1 && prevVal <= 4 && (activeUnits.includes(prevVal) || prevVal === activeB)) {
         selectedBim = prevVal;
@@ -17846,6 +17935,10 @@ function populateGradebookBimestreSelect(forceOfficial = false) {
 
     select.innerHTML = optionsHtml;
     select.value = selectedBim.toString();
+    try {
+        sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', selectedBim.toString());
+        localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', selectedBim.toString());
+    } catch(e) {}
     select.disabled = false;
     select.style.backgroundColor = '#ffffff';
     select.style.cursor = 'pointer';
@@ -18074,9 +18167,27 @@ function renderTeacherGradeProgressTable() {
         // Métricas de resumen general
         const summaryStatus = [1, 2, 3, 4].map(b => calculateTeacherAllClassesBimesterMetrics(teacherCourses, b));
 
+        // 🔒 Recuperar persistencia de selección previa para este docente
+        const savedTeacherClass = sessionStorage.getItem('ENCCO_TEACHER_AUDIT_CLASS_' + teacher.id) || 'ALL';
+        const hasSelectedClass = savedTeacherClass !== 'ALL' && teacherCourses.some(c => c.id === savedTeacherClass);
+        const activeClassChoice = hasSelectedClass ? savedTeacherClass : 'ALL';
+
+        let cellStatus;
+        let btnAuditText = '<i class="fa-solid fa-magnifying-glass-chart"></i> Auditar Notas';
+        let btnAuditBg = '#0284c7';
+
+        if (activeClassChoice !== 'ALL') {
+            const chosenCourse = teacherCourses.find(c => c.id === activeClassChoice);
+            cellStatus = [1, 2, 3, 4].map(b => calculateClassBimesterMetrics(chosenCourse, b));
+            btnAuditText = `<i class="fa-solid fa-file-pen"></i> Auditar ${chosenCourse.subject.slice(0, 12)}...`;
+            btnAuditBg = '#15803d';
+        } else {
+            cellStatus = summaryStatus;
+        }
+
         // Selector de clases asignadas para auditar cada una
         const optionsHtml = teacherCourses.map(c => `
-            <option value="${c.id}">📚 ${c.subject} - ${c.grade} (${c.section || 'A'})</option>
+            <option value="${c.id}" ${activeClassChoice === c.id ? 'selected' : ''}>📚 ${c.subject} - ${c.grade} (${c.section || 'A'})</option>
         `).join('');
 
         rowsHtml += `
@@ -18100,17 +18211,17 @@ function renderTeacherGradeProgressTable() {
                         </button>
                     </div>
                     <select id="teacherClassSelect_${teacher.id}" class="form-select form-select-sm" onchange="onTeacherClassSelectChange('${teacher.id}', this.value)" style="width:100%; font-size:0.78rem; font-weight:700; border:1.5px solid #0284c7; border-radius:6px; background:#f0f9ff; color:#0369a1; padding:3px 6px;">
-                        <option value="ALL">⭐ Resumen Total (${courseCount} Cátedras)</option>
+                        <option value="ALL" ${activeClassChoice === 'ALL' ? 'selected' : ''}>⭐ Resumen Total (${courseCount} Cátedras)</option>
                         ${optionsHtml}
                     </select>
                 </td>
-                <td id="b1_cell_${teacher.id}" style="text-align:center; padding:10px;">${summaryStatus[0].label}</td>
-                <td id="b2_cell_${teacher.id}" style="text-align:center; padding:10px;">${summaryStatus[1].label}</td>
-                <td id="b3_cell_${teacher.id}" style="text-align:center; padding:10px;">${summaryStatus[2].label}</td>
-                <td id="b4_cell_${teacher.id}" style="text-align:center; padding:10px;">${summaryStatus[3].label}</td>
+                <td id="b1_cell_${teacher.id}" style="text-align:center; padding:10px;">${cellStatus[0].label}</td>
+                <td id="b2_cell_${teacher.id}" style="text-align:center; padding:10px;">${cellStatus[1].label}</td>
+                <td id="b3_cell_${teacher.id}" style="text-align:center; padding:10px;">${cellStatus[2].label}</td>
+                <td id="b4_cell_${teacher.id}" style="text-align:center; padding:10px;">${cellStatus[3].label}</td>
                 <td style="text-align:center; padding:10px; white-space:nowrap;">
-                    <button type="button" class="btn btn-sm btn-primary" id="btnAudit_${teacher.id}" onclick="auditSelectedTeacherClass('${teacher.id}')" title="Auditar ingreso de notas de la clase seleccionada" style="font-weight:700; font-size:0.76rem; padding:5px 11px; border-radius:6px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(0,0,0,0.15); background:#0284c7; border:none;">
-                        <i class="fa-solid fa-magnifying-glass-chart"></i> Auditar Notas
+                    <button type="button" class="btn btn-sm btn-primary" id="btnAudit_${teacher.id}" onclick="auditSelectedTeacherClass('${teacher.id}')" title="Auditar ingreso de notas de la clase seleccionada" style="font-weight:700; font-size:0.76rem; padding:5px 11px; border-radius:6px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(0,0,0,0.15); background:${btnAuditBg}; border:none;">
+                        ${btnAuditText}
                     </button>
                 </td>
             </tr>
@@ -18173,6 +18284,10 @@ function renderTeacherGradeProgressTable() {
 
 // Al cambiar la opción en el selector individual de cada docente
 function onTeacherClassSelectChange(teacherId, selectedVal) {
+    try {
+        sessionStorage.setItem('ENCCO_TEACHER_AUDIT_CLASS_' + teacherId, selectedVal);
+    } catch(e) {}
+
     const teacherCourses = (STATE.pensum || []).filter(p => 
         p.teacherId === teacherId || 
         (p.teacher && p.teacher.toLowerCase() === teacherId.toLowerCase()) ||
@@ -18233,7 +18348,7 @@ function toggleTeacherCoursesBreakdown(teacherId) {
 // Auditar la clase actualmente seleccionada en el dropdown del docente
 function auditSelectedTeacherClass(teacherId) {
     const selectEl = document.getElementById(`teacherClassSelect_${teacherId}`);
-    const selectedVal = selectEl ? selectEl.value : 'ALL';
+    let selectedVal = selectEl ? selectEl.value : (sessionStorage.getItem('ENCCO_TEACHER_AUDIT_CLASS_' + teacherId) || 'ALL');
 
     if (selectedVal && selectedVal !== 'ALL') {
         inspectTeacherClassDirectly(teacherId, selectedVal);
@@ -18254,6 +18369,21 @@ function inspectTeacherClassDirectly(teacherId, courseId) {
     const teacher = (STATE.users || []).find(u => u.id === teacherId);
     const course = (STATE.pensum || []).find(p => p.id === courseId);
     if (!course) return;
+
+    // 🔒 Fijar de forma inmediata el curso y grado en la memoria y persistencia
+    STATE.selectedGradebookCourseId = course.id;
+    try {
+        sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', course.id);
+        localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', course.id);
+        if (course.grade) {
+            sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_GRADE', course.grade);
+            localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_GRADE', course.grade);
+            STATE.selectedGradebookGrade = course.grade;
+        }
+        if (teacherId) {
+            sessionStorage.setItem('ENCCO_TEACHER_AUDIT_CLASS_' + teacherId, course.id);
+        }
+    } catch(e) {}
 
     // 1. Asegurar que el selector de cursos del libro de notas tenga la opción seleccionada
     const select = document.getElementById('teacherCourseSelect');
@@ -19341,17 +19471,54 @@ window.renderGradebook = renderGradebook;
 function loadTeacherGradebook() {
     // 🔌 Des-suscribir inmediatamente cualquier listener del bimestre anterior para evitar colisiones
     unsubscribeCurrentGradebookListener();
-    const selectedId = document.getElementById('teacherCourseSelect') ? document.getElementById('teacherCourseSelect').value : null;
+    const courseSelect = document.getElementById('teacherCourseSelect');
+    let selectedId = courseSelect ? courseSelect.value : null;
+
+    // 🔒 Recuperar memoria y persistencia de curso y grado para evitar saltos indeseados
+    const savedCourseId = sessionStorage.getItem('ENCCO_SELECTED_GRADEBOOK_COURSE') || localStorage.getItem('ENCCO_SELECTED_GRADEBOOK_COURSE') || STATE.selectedGradebookCourseId;
+    const savedGrade = sessionStorage.getItem('ENCCO_SELECTED_GRADEBOOK_GRADE') || localStorage.getItem('ENCCO_SELECTED_GRADEBOOK_GRADE') || STATE.selectedGradebookGrade;
+
+    if (!selectedId && savedCourseId) {
+        selectedId = savedCourseId;
+    }
+
     let targetPensum = (STATE.pensum || []).find(p => p.id === selectedId);
 
     const isDocente = (STATE.currentRole === 'docente');
     const currentUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente') || STATE.users[0];
 
-    // Para docentes, si no hay clase seleccionada, buscar la primera clase asignada a este docente
+    // Para docentes, si no hay clase seleccionada, buscar la primera clase asignada a este docente respetando el grado guardado
     if (isDocente && currentUser && !targetPensum) {
-        targetPensum = (STATE.pensum || []).find(p => isCourseAssignedToTeacher(p, currentUser));
+        if (savedGrade) {
+            targetPensum = (STATE.pensum || []).find(p => isCourseAssignedToTeacher(p, currentUser) && (p.grade === savedGrade || (p.gradeCode && p.gradeCode.includes(savedGrade))));
+        }
+        if (!targetPensum) {
+            targetPensum = (STATE.pensum || []).find(p => isCourseAssignedToTeacher(p, currentUser));
+        }
     } else if (!targetPensum) {
-        targetPensum = (STATE.pensum || [])[0];
+        if (savedGrade) {
+            targetPensum = (STATE.pensum || []).find(p => p.grade === savedGrade || (p.gradeCode && p.gradeCode.includes(savedGrade)));
+        }
+        if (!targetPensum) {
+            targetPensum = (STATE.pensum || [])[0];
+        }
+    }
+
+    // 🔒 Fijar y sincronizar curso y grado activo en almacenamiento local/sesión y en el select
+    if (targetPensum) {
+        STATE.selectedGradebookCourseId = targetPensum.id;
+        try {
+            sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', targetPensum.id);
+            localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', targetPensum.id);
+            if (targetPensum.grade) {
+                sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_GRADE', targetPensum.grade);
+                localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_GRADE', targetPensum.grade);
+                STATE.selectedGradebookGrade = targetPensum.grade;
+            }
+        } catch(e) {}
+        if (courseSelect && courseSelect.value !== targetPensum.id) {
+            courseSelect.value = targetPensum.id;
+        }
     }
 
     if (!targetPensum) {
@@ -19366,7 +19533,18 @@ function loadTeacherGradebook() {
     const subjectName = targetPensum.subject;
     
     // El bimestre activo para calificar/visualizar se lee dinámicamente del select o configuración
-    const currentUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+    const bSelect = document.getElementById('gradebookBimestreSelect');
+    const savedBimestre = sessionStorage.getItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE') || localStorage.getItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE');
+    if (bSelect && !bSelect.value && savedBimestre) {
+        bSelect.value = savedBimestre;
+    }
+    const currentUnit = parseInt(bSelect?.value) || parseInt(savedBimestre) || parseInt(STATE.config?.activeBimestre) || 1;
+    if (bSelect && bSelect.value) {
+        try {
+            sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', bSelect.value);
+            localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', bSelect.value);
+        } catch(e) {}
+    }
 
     // Obtener la configuración de ponderación de Zona y Examen para este curso y bimestre
     const cfg = getGradingConfig(targetPensum, currentUnit);
