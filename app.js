@@ -6114,11 +6114,116 @@ function resolveOfficialCanonicalSubject(rawName, gradeNum) {
     return null;
 }
 
+function isLegacyPredefinedActivityName(name) {
+    if (!name || typeof name !== 'string') return false;
+    const clean = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (!clean) return false;
+    // Nombres predeterminados obsoletos especificados por el usuario:
+    // folder, proyecto, pruebat, aniversario (y clases del modelo antiguo)
+    return clean.includes('folder') ||
+           clean.includes('aniversario') ||
+           clean.includes('aniv') ||
+           clean.includes('pruebat') ||
+           clean.includes('proyecto') ||
+           clean === 'clases' ||
+           clean.includes('folder capacitate') ||
+           clean.includes('dtk') ||
+           clean.includes('data king') ||
+           clean.includes('classroom') ||
+           clean.includes('examen zona');
+}
+window.isLegacyPredefinedActivityName = isLegacyPredefinedActivityName;
+
+function stateHasGradesInActivity(st, pensumId, unitNum, actIdx) {
+    const targetState = st || (typeof STATE !== 'undefined' ? STATE : null);
+    if (!targetState || !Array.isArray(targetState.students)) return false;
+    let targetSubj = null;
+    if (pensumId && Array.isArray(targetState.pensum)) {
+        const p = targetState.pensum.find(x => x.id === pensumId || x.pensumId === pensumId);
+        if (p) targetSubj = p.subject;
+    }
+    const b = parseInt(unitNum) || 1;
+    return targetState.students.some(s => {
+        if (!s || !s.gradebookDetails) return false;
+        if (targetSubj) {
+            const u = s.gradebookDetails[targetSubj] && s.gradebookDetails[targetSubj][b];
+            return u && Array.isArray(u.activities) && u.activities[actIdx] > 0;
+        }
+        return Object.values(s.gradebookDetails).some(bims => {
+            const u = bims && bims[b];
+            return u && Array.isArray(u.activities) && u.activities[actIdx] > 0;
+        });
+    });
+}
+window.stateHasGradesInActivity = stateHasGradesInActivity;
+
+function sanitizeGradingConfigsInState(st) {
+    if (!st || typeof st !== 'object') return;
+    const sanitizeSingleConfig = (cfg, pensumId, unitNum) => {
+        if (!cfg || typeof cfg !== 'object') return;
+        if (Array.isArray(cfg.activities)) {
+            let hadLegacy = false;
+            cfg.activities.forEach((act, idx) => {
+                if (act && act.name && isLegacyPredefinedActivityName(act.name)) {
+                    act.name = `Act. ${idx + 1}`;
+                    const hasNotes = stateHasGradesInActivity(st, pensumId, unitNum, idx);
+                    if (!hasNotes) {
+                        act.max = 0;
+                        act.maxPoints = 0;
+                    }
+                    hadLegacy = true;
+                }
+            });
+            if (hadLegacy && cfg.zonaMax === 60 && cfg.examMax === 40) {
+                cfg.zonaMax = 40;
+                cfg.examMax = 60;
+            }
+        }
+    };
+
+    if (st.gradingConfigs && typeof st.gradingConfigs === 'object') {
+        Object.keys(st.gradingConfigs).forEach(k => {
+            const cfg = st.gradingConfigs[k];
+            if (cfg && typeof cfg === 'object') {
+                if (Array.isArray(cfg.activities)) {
+                    // Extract pensumId and unit from key like 'pen-cnb-009_b3'
+                    const parts = k.split('_');
+                    const pensumId = parts[0];
+                    const uNum = parts[1] ? parts[1].replace(/\D/g, '') : null;
+                    sanitizeSingleConfig(cfg, pensumId, uNum);
+                } else {
+                    Object.keys(cfg).forEach(subK => {
+                        if (cfg[subK] && typeof cfg[subK] === 'object' && Array.isArray(cfg[subK].activities)) {
+                            const uNum = subK.replace(/\D/g, '');
+                            sanitizeSingleConfig(cfg[subK], k, uNum);
+                        }
+                    });
+                }
+            }
+        });
+    }
+    if (Array.isArray(st.pensum)) {
+        st.pensum.forEach(p => {
+            if (p && p.gradingConfig && typeof p.gradingConfig === 'object') {
+                Object.keys(p.gradingConfig).forEach(bk => {
+                    const uNum = bk.replace(/\D/g, '');
+                    sanitizeSingleConfig(p.gradingConfig[bk], p.id, uNum);
+                });
+            }
+        });
+    }
+}
+window.sanitizeGradingConfigsInState = sanitizeGradingConfigsInState;
+
 function normalizeSchoolAcademicData(targetState) {
     const sState = targetState || (typeof STATE !== 'undefined' ? STATE : null);
     if (!sState) return;
 
     let modified = false;
+
+    // 0. Normalizar ponderaciones por defecto: Eliminar encabezados obsoletos (Folder, Pruebat, Clases, Proyecto, Aniversario)
+    // Encabezados deben ser Act. 1 .. Act. 10 y tener valor 0, preservando al 100% las notas de los alumnos
+    sanitizeGradingConfigsInState(sState);
 
     // 1. Normalizar asignaciones de cátedras en pensum
     (sState.pensum || []).forEach(p => {
@@ -6333,120 +6438,8 @@ async function initApp() {
         }
     });
 
-    // 4. Normalizar Ciclos lectivos
-    // 4. Configurar ponderaciones oficiales y nombres de actividades para el 1er Bimestre
-    if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
-    (STATE.pensum || []).forEach(p => {
-        if (!p) return;
-        const subj = (p.subject || '').trim();
-        const pKey1 = `${p.id}_B1`;
-        if (subj === 'Computación II') {
-            if (!STATE.gradingConfigs[pKey1]) STATE.gradingConfigs[pKey1] = {
-                zonaMax: 60,
-                examMax: 40,
-                activities: [
-                    { name: 'DTK', max: 10 },
-                    { name: 'Folder', max: 15 },
-                    { name: 'Classroom', max: 15 },
-                    { name: 'Examen Zona', max: 20 },
-                    { name: 'Act. 5', max: 0 },
-                    { name: 'Act. 6', max: 0 },
-                    { name: 'Act. 7', max: 0 },
-                    { name: 'Act. 8', max: 0 },
-                    { name: 'Act. 9', max: 0 },
-                    { name: 'Act. 10', max: 0 }
-                ]
-            };
-        } else if (subj === 'Computación III') {
-            if (!STATE.gradingConfigs[pKey1]) STATE.gradingConfigs[pKey1] = {
-                zonaMax: 60,
-                examMax: 40,
-                activities: [
-                    { name: 'Trabajo PruébaT', max: 20 },
-                    { name: 'Classroom', max: 25 },
-                    { name: 'Examen PruébaT', max: 15 },
-                    { name: 'Act. 4', max: 0 },
-                    { name: 'Act. 5', max: 0 },
-                    { name: 'Act. 6', max: 0 },
-                    { name: 'Act. 7', max: 0 },
-                    { name: 'Act. 8', max: 0 },
-                    { name: 'Act. 9', max: 0 },
-                    { name: 'Act. 10', max: 0 }
-                ]
-            };
-        } else if (subj === 'Cálculo Mercantil y Financiero') {
-            if (!STATE.gradingConfigs[pKey1]) STATE.gradingConfigs[pKey1] = {
-                zonaMax: 40,
-                examMax: 60,
-                activities: [
-                    { name: 'Tareas', max: 20 },
-                    { name: 'Laboratorio', max: 10 },
-                    { name: 'Hoja de Trabajo', max: 10 },
-                    { name: 'Act. 4', max: 0 },
-                    { name: 'Act. 5', max: 0 },
-                    { name: 'Act. 6', max: 0 },
-                    { name: 'Act. 7', max: 0 },
-                    { name: 'Act. 8', max: 0 },
-                    { name: 'Act. 9', max: 0 },
-                    { name: 'Act. 10', max: 0 }
-                ]
-            };
-        }
-
-        const pKey2 = `${p.id}_B2`;
-        if (subj === 'Computación II') {
-            if (!STATE.gradingConfigs[pKey2]) STATE.gradingConfigs[pKey2] = {
-                zonaMax: 70,
-                examMax: 30,
-                activities: [
-                    { name: 'Folder capacitate', max: 10 },
-                    { name: 'Data king', max: 15 },
-                    { name: 'Proyecto', max: 20 },
-                    { name: 'Ejercicios de Clase', max: 5 },
-                    { name: 'Act. 5', max: 0 },
-                    { name: 'Act. 6', max: 0 },
-                    { name: 'Aniversario', max: 20 },
-                    { name: 'Act. 8', max: 0 },
-                    { name: 'Act. 9', max: 0 },
-                    { name: 'Act. 10', max: 0 }
-                ]
-            };
-        } else if (subj === 'Computación III') {
-            if (!STATE.gradingConfigs[pKey2]) STATE.gradingConfigs[pKey2] = {
-                zonaMax: 70,
-                examMax: 30,
-                activities: [
-                    { name: 'Folder', max: 10 },
-                    { name: 'Pruebat', max: 15 },
-                    { name: 'Clases', max: 5 },
-                    { name: 'Proyecto', max: 20 },
-                    { name: 'Act. 5', max: 0 },
-                    { name: 'Act. 6', max: 0 },
-                    { name: 'Aniversario', max: 20 },
-                    { name: 'Act. 8', max: 0 },
-                    { name: 'Act. 9', max: 0 },
-                    { name: 'Act. 10', max: 0 }
-                ]
-            };
-        } else if (subj === 'Cálculo Mercantil y Financiero') {
-            if (!STATE.gradingConfigs[pKey2]) STATE.gradingConfigs[pKey2] = {
-                zonaMax: 50,
-                examMax: 50,
-                activities: [
-                    { name: 'Tarea 1', max: 10 },
-                    { name: 'Tarea 2', max: 10 },
-                    { name: 'Tarea 3', max: 10 },
-                    { name: 'Act. 4', max: 0 },
-                    { name: 'Act. 5', max: 0 },
-                    { name: 'Act. 6', max: 0 },
-                    { name: 'Aniversario', max: 20 },
-                    { name: 'Act. 8', max: 0 },
-                    { name: 'Act. 9', max: 0 },
-                    { name: 'Act. 10', max: 0 }
-                ]
-            };
-        }
-    });
+    // 4. Normalizar ponderaciones por defecto: Zona: 40 pts, Examen: 60 pts, actividades rotuladas como Act. 1 .. Act. 10 (con valor 0 pts)
+    sanitizeGradingConfigsInState(STATE);
     ensureOfficialCycles();
 
     // 5. Guardias de guardado al recargar o cerrar pestaña (SOLO en plataforma.html, NUNCA en login.html ni durante logout)
@@ -7708,6 +7701,12 @@ function applyIncomingCloudState(incomingState, force = false) {
 
     // 4. Asignación de Cátedras y Pensum (Protección anti-sobreescritura por arreglos vacíos)
     if (Array.isArray(incomingState.pensum) && (incomingState.pensum.length > 0 || !STATE.pensum || STATE.pensum.length === 0)) STATE.pensum = incomingState.pensum;
+    if (incomingState.gradingConfigs && typeof incomingState.gradingConfigs === 'object') {
+        STATE.gradingConfigs = incomingState.gradingConfigs;
+    }
+    if (typeof sanitizeGradingConfigsInState === 'function') {
+        sanitizeGradingConfigsInState(STATE);
+    }
     if (Array.isArray(incomingState.pensumCatalog) && (incomingState.pensumCatalog.length > 0 || !STATE.pensumCatalog || STATE.pensumCatalog.length === 0)) STATE.pensumCatalog = incomingState.pensumCatalog;
     // Blindaje de Grados y Secciones: el colegio opera exclusivamente con las 12 secciones oficiales
     if (Array.isArray(incomingState.gradesList) && incomingState.gradesList.length >= 12) {
@@ -8272,7 +8271,7 @@ function navigateTo(viewName, event = null) {
 
     const titles = {
         'dashboard': STATE.currentRole === 'docente' ? { title: 'Mis Clases Asignadas', sub: 'Cursos y cátedras a su cargo para el ciclo lectivo por grado y sección' } : { title: 'Panel Principal', sub: 'Escuela Nacional de Ciencias Comerciales Jutiapa (1970)' },
-        'gradebook': { title: 'Ingreso de Calificaciones', sub: 'Registro oficial de zonas (60 pts) y evaluaciones bimestrales (40 pts)' },
+        'gradebook': { title: 'Ingreso de Calificaciones', sub: 'Registro oficial de zonas (40 pts) y evaluaciones bimestrales (60 pts)' },
         'attendance': { title: 'Control de Asistencia Diaria', sub: 'Registro y seguimiento de asistencia por grado y sección' },
         'excel-import': { title: 'Impresión de Listas y Formatos Oficiales', sub: 'Generación de listados de estudiantes con encabezado institucional' },
         'discipline': { title: 'Reportes de Disciplina y Conducta', sub: 'Registro de llamadas de atención y citaciones' },
@@ -11887,13 +11886,13 @@ function generateOfficialPrintList(opts = null) {
 
     // Determinación dinámica de actividades de zona
     let activitiesList = [];
-    let cfgZonaMax = 60;
-    let cfgExamMax = 40;
+    let cfgZonaMax = 40;
+    let cfgExamMax = 60;
 
     if (targetPensum && typeof getGradingConfig === 'function') {
         const cfg = getGradingConfig(targetPensum, bNum);
-        cfgZonaMax = cfg.zonaMax || 60;
-        cfgExamMax = cfg.examMax || 40;
+        cfgZonaMax = cfg.zonaMax || 40;
+        cfgExamMax = cfg.examMax || 60;
         if (Array.isArray(cfg.activities)) {
             const assignedActs = cfg.activities.filter(act => {
                 const maxPts = parseFloat(act.max) || 0;
@@ -11912,17 +11911,6 @@ function generateOfficialPrintList(opts = null) {
         }
     }
 
-    if (activitiesList.length === 0) {
-        // Fallback estándar a 5 actividades
-        activitiesList = [
-            { num: 1, label: 'Actividad 1', shortLabel: 'Act 1', pts: 10 },
-            { num: 2, label: 'Actividad 2', shortLabel: 'Act 2', pts: 10 },
-            { num: 3, label: 'Actividad 3', shortLabel: 'Act 3', pts: 15 },
-            { num: 4, label: 'Actividad 4', shortLabel: 'Act 4', pts: 15 },
-            { num: 5, label: 'Actividad 5', shortLabel: 'Act 5', pts: 10 }
-        ];
-    }
-
     // Obtener estudiantes de la cátedra
     let students = (typeof getSortedGradebookStudents === 'function') ? getSortedGradebookStudents(gradeCode, targetPensum) : [];
     if (!students || students.length === 0) {
@@ -11933,6 +11921,29 @@ function generateOfficialPrintList(opts = null) {
             const tg = `${rawGradeName} ${rawSection}`.toLowerCase();
             return sg.includes(tg);
         });
+    }
+
+    if (activitiesList.length === 0) {
+        let maxActIndex = -1;
+        students.forEach(s => {
+            const uData = (s.gradebookDetails && s.gradebookDetails[finalSubjectName] && s.gradebookDetails[finalSubjectName][bNum])
+                ? s.gradebookDetails[finalSubjectName][bNum]
+                : null;
+            if (uData && Array.isArray(uData.activities)) {
+                uData.activities.forEach((v, i) => {
+                    if (v !== undefined && v !== null && v !== '' && parseFloat(v) > 0 && i > maxActIndex) {
+                        maxActIndex = i;
+                    }
+                });
+            }
+        });
+        const count = Math.max(4, Math.min(10, maxActIndex + 1));
+        activitiesList = Array.from({ length: count }, (_, i) => ({
+            num: i + 1,
+            label: `Act. ${i + 1}`,
+            shortLabel: `Act ${i + 1}`,
+            pts: 0
+        }));
     }
 
     // Ordenar alfabéticamente por apellidos
@@ -12285,10 +12296,10 @@ function downloadStudentTemplate() {
     const h = STATE.schoolHeader || getInitialData().schoolHeader;
     
     const sampleStudents = [
-        { clave: 1, name: 'CHACON LÉMUS, ASTRID YAMILETH', personalCode: 'A123BCD', cui: '2340 56789 2201', carne: 'ENCCO-2026-101', phone: '5555-1111', tutor: 'Maria Lemus', acts: [10, 15, 5, 20, 0, 0, 10, 0, 0, 0], zona: 60, exam: 25, total: 85 },
-        { clave: 2, name: 'CHACON LÉMUS, JACKELINE YAMILETH', personalCode: 'B456CDE', cui: '2340 98765 2201', carne: 'ENCCO-2026-102', phone: '5555-2222', tutor: 'Carlos Chacon', acts: [10, 12, 5, 18, 0, 0, 10, 0, 0, 0], zona: 55, exam: 24, total: 79 },
-        { clave: 3, name: 'CINTO MONZÓN, ROSELIN DANIELA', personalCode: 'C789EFG', cui: '2340 34567 2201', carne: 'ENCCO-2026-103', phone: '5555-3333', tutor: 'Elena Monzon', acts: [10, 15, 5, 20, 0, 0, 10, 0, 0, 0], zona: 60, exam: 30, total: 90 },
-        { clave: 4, name: 'CRÚZ MARTINEZ, ILEANA JIREH', personalCode: 'D012FGH', cui: '2340 12345 2201', carne: 'ENCCO-2026-104', phone: '5555-4444', tutor: 'Roberto Cruz', acts: [8, 14, 4, 16, 0, 0, 8, 0, 0, 0], zona: 50, exam: 22, total: 72 }
+        { clave: 1, name: 'CHACON LÉMUS, ASTRID YAMILETH', personalCode: 'A123BCD', cui: '2340 56789 2201', carne: 'ENCCO-2026-101', phone: '5555-1111', tutor: 'Maria Lemus', acts: [10, 10, 10, 10, 0, 0, 0, 0, 0, 0], zona: 40, exam: 45, total: 85 },
+        { clave: 2, name: 'CHACON LÉMUS, JACKELINE YAMILETH', personalCode: 'B456CDE', cui: '2340 98765 2201', carne: 'ENCCO-2026-102', phone: '5555-2222', tutor: 'Carlos Chacon', acts: [10, 8, 10, 9, 0, 0, 0, 0, 0, 0], zona: 37, exam: 42, total: 79 },
+        { clave: 3, name: 'CINTO MONZÓN, ROSELIN DANIELA', personalCode: 'C789EFG', cui: '2340 34567 2201', carne: 'ENCCO-2026-103', phone: '5555-3333', tutor: 'Elena Monzon', acts: [10, 10, 10, 10, 0, 0, 0, 0, 0, 0], zona: 40, exam: 50, total: 90 },
+        { clave: 4, name: 'CRÚZ MARTINEZ, ILEANA JIREH', personalCode: 'D012FGH', cui: '2340 12345 2201', carne: 'ENCCO-2026-104', phone: '5555-4444', tutor: 'Roberto Cruz', acts: [8, 9, 7, 8, 0, 0, 0, 0, 0, 0], zona: 32, exam: 40, total: 72 }
     ];
 
     const rowsHtml = sampleStudents.map(s => {
@@ -12350,22 +12361,22 @@ function downloadStudentTemplate() {
                 <th rowspan="2" class="th-blue" style="width:90px;">Carné</th>
                 <th rowspan="2" class="th-blue" style="width:85px;">Teléfono</th>
                 <th rowspan="2" class="th-blue" style="width:180px;">Encargado / Tutor</th>
-                <th colspan="10" class="th-blue">10 Actividades de Zona (Ponderación 60 pts)</th>
-                <th rowspan="2" class="th-zona" style="width:50px;">Zona (60)</th>
-                <th rowspan="2" class="th-prueba" style="width:50px;">Prueba (40)</th>
+                <th colspan="10" class="th-blue">10 Actividades de Zona (Ponderación 40 pts)</th>
+                <th rowspan="2" class="th-zona" style="width:50px;">Zona (40)</th>
+                <th rowspan="2" class="th-prueba" style="width:50px;">Prueba (60)</th>
                 <th rowspan="2" class="th-total" style="width:55px;">Total (100)</th>
             </tr>
             <tr>
-                <th class="th-sub" style="width:32px;">Folder<br>10</th>
-                <th class="th-sub" style="width:32px;">Prueba<br>15</th>
-                <th class="th-sub" style="width:32px;">Clases<br>5</th>
-                <th class="th-sub" style="width:32px;">Proyecto<br>20</th>
-                <th class="th-sub" style="width:30px;">Act. 5<br>-</th>
-                <th class="th-sub" style="width:30px;">Act. 6<br>-</th>
-                <th class="th-sub" style="width:32px;">Aniv.<br>10</th>
-                <th class="th-sub" style="width:30px;">Act. 8<br>-</th>
-                <th class="th-sub" style="width:30px;">Act. 9<br>-</th>
-                <th class="th-sub" style="width:30px;">Act. 10<br>-</th>
+                <th class="th-sub" style="width:32px;">Act. 1<br>0</th>
+                <th class="th-sub" style="width:32px;">Act. 2<br>0</th>
+                <th class="th-sub" style="width:32px;">Act. 3<br>0</th>
+                <th class="th-sub" style="width:32px;">Act. 4<br>0</th>
+                <th class="th-sub" style="width:30px;">Act. 5<br>0</th>
+                <th class="th-sub" style="width:30px;">Act. 6<br>0</th>
+                <th class="th-sub" style="width:30px;">Act. 7<br>0</th>
+                <th class="th-sub" style="width:30px;">Act. 8<br>0</th>
+                <th class="th-sub" style="width:30px;">Act. 9<br>0</th>
+                <th class="th-sub" style="width:30px;">Act. 10<br>0</th>
             </tr>
             ${rowsHtml}
         </table>
@@ -12950,16 +12961,16 @@ function previewStudentImport(e) {
         let colIdxEncargado = headerCols.findIndex(c => c.includes('encargado') || c.includes('tutor') || c.includes('padre'));
 
         // Índices para las 10 actividades de zona
-        let colIdxFolder = headerCols.findIndex(c => c.includes('folder') || c === 'act1' || c === 'act 1' || c === '1');
-        let colIdxPruebat = headerCols.findIndex(c => c.includes('pruebat') || c === 'act2' || c === 'act 2' || c === '2');
-        let colIdxClases = headerCols.findIndex(c => c.includes('clases') || c === 'act3' || c === 'act 3' || c === '3');
-        let colIdxProyecto = headerCols.findIndex(c => c.includes('proyecto') || c === 'act4' || c === 'act 4' || c === '4');
-        let colIdxAct5 = headerCols.findIndex(c => c.includes('act5') || c.includes('act 5') || c.includes('act. 5') || c === '5');
-        let colIdxAct6 = headerCols.findIndex(c => c.includes('act6') || c.includes('act 6') || c.includes('act. 6') || c === '6');
-        let colIdxAniv = headerCols.findIndex(c => c.includes('aniversario') || c.includes('aniv') || c === 'act7' || c === 'act 7' || c === '7');
-        let colIdxAct8 = headerCols.findIndex(c => c.includes('act8') || c.includes('act 8') || c.includes('act. 8') || c === '8');
-        let colIdxAct9 = headerCols.findIndex(c => c.includes('act9') || c.includes('act 9') || c.includes('act. 9') || c === '9');
-        let colIdxAct10 = headerCols.findIndex(c => c.includes('act10') || c.includes('act 10') || c.includes('act. 10') || c === '10');
+        let colIdxAct1 = headerCols.findIndex(c => c === 'act1' || c === 'act 1' || c === '1' || c.includes('act. 1') || c.includes('actividad 1') || c.includes('folder'));
+        let colIdxAct2 = headerCols.findIndex(c => c === 'act2' || c === 'act 2' || c === '2' || c.includes('act. 2') || c.includes('actividad 2') || c.includes('pruebat'));
+        let colIdxAct3 = headerCols.findIndex(c => c === 'act3' || c === 'act 3' || c === '3' || c.includes('act. 3') || c.includes('actividad 3') || c.includes('clases'));
+        let colIdxAct4 = headerCols.findIndex(c => c === 'act4' || c === 'act 4' || c === '4' || c.includes('act. 4') || c.includes('actividad 4') || c.includes('proyecto'));
+        let colIdxAct5 = headerCols.findIndex(c => c === 'act5' || c === 'act 5' || c === '5' || c.includes('act. 5') || c.includes('actividad 5'));
+        let colIdxAct6 = headerCols.findIndex(c => c === 'act6' || c === 'act 6' || c === '6' || c.includes('act. 6') || c.includes('actividad 6'));
+        let colIdxAct7 = headerCols.findIndex(c => c === 'act7' || c === 'act 7' || c === '7' || c.includes('act. 7') || c.includes('actividad 7') || c.includes('aniversario') || c.includes('aniv'));
+        let colIdxAct8 = headerCols.findIndex(c => c === 'act8' || c === 'act 8' || c === '8' || c.includes('act. 8') || c.includes('actividad 8'));
+        let colIdxAct9 = headerCols.findIndex(c => c === 'act9' || c === 'act 9' || c === '9' || c.includes('act. 9') || c.includes('actividad 9'));
+        let colIdxAct10 = headerCols.findIndex(c => c === 'act10' || c === 'act 10' || c === '10' || c.includes('act. 10') || c.includes('actividad 10'));
 
         let colIdxZona = headerCols.findIndex(c => c === 'zona' || c.includes('total zona'));
         let colIdxPrueba = headerCols.findIndex(c => c.includes('prueba') || c.includes('examen') || c.includes('evaluacion') || c.includes('evaluación'));
@@ -12974,13 +12985,13 @@ function previewStudentImport(e) {
         if (colIdxTelefono === -1) colIdxTelefono = 5;
         if (colIdxEncargado === -1) colIdxEncargado = 6;
 
-        if (colIdxFolder === -1) colIdxFolder = 7;
-        if (colIdxPruebat === -1) colIdxPruebat = 8;
-        if (colIdxClases === -1) colIdxClases = 9;
-        if (colIdxProyecto === -1) colIdxProyecto = 10;
+        if (colIdxAct1 === -1) colIdxAct1 = 7;
+        if (colIdxAct2 === -1) colIdxAct2 = 8;
+        if (colIdxAct3 === -1) colIdxAct3 = 9;
+        if (colIdxAct4 === -1) colIdxAct4 = 10;
         if (colIdxAct5 === -1) colIdxAct5 = 11;
         if (colIdxAct6 === -1) colIdxAct6 = 12;
-        if (colIdxAniv === -1) colIdxAniv = 13;
+        if (colIdxAct7 === -1) colIdxAct7 = 13;
         if (colIdxAct8 === -1) colIdxAct8 = 14;
         if (colIdxAct9 === -1) colIdxAct9 = 15;
         if (colIdxAct10 === -1) colIdxAct10 = 16;
@@ -13050,13 +13061,13 @@ function previewStudentImport(e) {
             const tutorPhone = phone || 'Sin tel.';
 
             // Extraer las 10 calificaciones de actividades de zona
-            const a1 = parseInt(cols[colIdxFolder]) || 0;
-            const a2 = parseInt(cols[colIdxPruebat]) || 0;
-            const a3 = parseInt(cols[colIdxClases]) || 0;
-            const a4 = parseInt(cols[colIdxProyecto]) || 0;
+            const a1 = parseInt(cols[colIdxAct1]) || 0;
+            const a2 = parseInt(cols[colIdxAct2]) || 0;
+            const a3 = parseInt(cols[colIdxAct3]) || 0;
+            const a4 = parseInt(cols[colIdxAct4]) || 0;
             const a5 = parseInt(cols[colIdxAct5]) || 0;
             const a6 = parseInt(cols[colIdxAct6]) || 0;
-            const a7 = parseInt(cols[colIdxAniv]) || 0;
+            const a7 = parseInt(cols[colIdxAct7]) || 0;
             const a8 = parseInt(cols[colIdxAct8]) || 0;
             const a9 = parseInt(cols[colIdxAct9]) || 0;
             const a10 = parseInt(cols[colIdxAct10]) || 0;
@@ -15486,7 +15497,7 @@ function getUserAlerts() {
                 type: 'success',
                 icon: 'fa-lock-open',
                 title: `${activeBimestre}° Bimestre Activo y Habilitado`,
-                message: `El sistema está abierto para el registro de ponderaciones de zona (60 pts) y evaluaciones (40 pts).`,
+                message: `El sistema está abierto para el registro de ponderaciones de zona (40 pts) y evaluaciones (60 pts).`,
                 action: "navigateTo('gradebook')",
                 actionLabel: 'Ingresar Notas'
             });
@@ -19436,19 +19447,19 @@ function escapeHtml(str) {
 
 function getDefaultGradingConfig() {
     return {
-        zonaMax: 60,
-        examMax: 40,
+        zonaMax: 40,
+        examMax: 60,
         activities: [
-            { name: 'Folder', max: 10 },
-            { name: 'Pruebat', max: 15 },
-            { name: 'Clases', max: 5 },
-            { name: 'Proyecto', max: 20 },
-            { name: 'Act. 5', max: 0 },
-            { name: 'Act. 6', max: 0 },
-            { name: 'Aniversario', max: 10 },
-            { name: 'Act. 8', max: 0 },
-            { name: 'Act. 9', max: 0 },
-            { name: 'Act. 10', max: 0 }
+            { name: 'Act. 1', max: 0, maxPoints: 0 },
+            { name: 'Act. 2', max: 0, maxPoints: 0 },
+            { name: 'Act. 3', max: 0, maxPoints: 0 },
+            { name: 'Act. 4', max: 0, maxPoints: 0 },
+            { name: 'Act. 5', max: 0, maxPoints: 0 },
+            { name: 'Act. 6', max: 0, maxPoints: 0 },
+            { name: 'Act. 7', max: 0, maxPoints: 0 },
+            { name: 'Act. 8', max: 0, maxPoints: 0 },
+            { name: 'Act. 9', max: 0, maxPoints: 0 },
+            { name: 'Act. 10', max: 0, maxPoints: 0 }
         ]
     };
 }
@@ -19462,38 +19473,77 @@ function getGradingConfigKey(targetPensum, bimestre) {
 
 function getGradingConfig(targetPensum, bimestre) {
     if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
+    const b = parseInt(bimestre) || 1;
     const key = getGradingConfigKey(targetPensum, bimestre);
-    if (STATE.gradingConfigs[key]) {
-        const saved = STATE.gradingConfigs[key];
-        const acts = (Array.isArray(saved.activities) ? [...saved.activities] : []).map((a, i) => ({
-            name: a.name || `Act. ${i + 1}`,
-            max: a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0),
-            maxPoints: a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0)
-        }));
+
+    let saved = STATE.gradingConfigs[key] || STATE.gradingConfigs[key.toLowerCase()] || STATE.gradingConfigs[key.toUpperCase()];
+    if (!saved && targetPensum && STATE.gradingConfigs[targetPensum.id]) {
+        const nested = STATE.gradingConfigs[targetPensum.id];
+        saved = nested[`b${b}`] || nested[`B${b}`] || nested[b];
+    }
+    if (saved) {
+        const acts = (Array.isArray(saved.activities) ? [...saved.activities] : []).map((a, i) => {
+            let actName = (a.name || `Act. ${i + 1}`).trim();
+            let actMax = a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0);
+            if (isLegacyPredefinedActivityName(actName)) {
+                actName = `Act. ${i + 1}`;
+                const hasNotes = stateHasGradesInActivity(STATE, targetPensum?.id, b, i);
+                if (!hasNotes) {
+                    actMax = 0;
+                }
+            }
+            return {
+                name: actName,
+                max: actMax,
+                maxPoints: actMax
+            };
+        });
         while (acts.length < 10) {
             acts.push({ name: `Act. ${acts.length + 1}`, max: 0, maxPoints: 0 });
         }
+        let zMax = parseInt(saved.zonaMax);
+        let eMax = parseInt(saved.examMax);
+        if (isNaN(zMax) || isNaN(eMax) || (zMax === 60 && eMax === 40)) {
+            zMax = 40;
+            eMax = 60;
+        }
         return {
-            zonaMax: parseInt(saved.zonaMax) !== undefined && !isNaN(parseInt(saved.zonaMax)) ? parseInt(saved.zonaMax) : 60,
-            examMax: parseInt(saved.examMax) !== undefined && !isNaN(parseInt(saved.examMax)) ? parseInt(saved.examMax) : 40,
+            zonaMax: zMax,
+            examMax: eMax,
             activities: acts
         };
     }
-    const b = parseInt(bimestre) || 1;
     if (targetPensum && targetPensum.gradingConfig) {
-        const pCfg = targetPensum.gradingConfig[`b${b}`] || targetPensum.gradingConfig[b];
+        const pCfg = targetPensum.gradingConfig[`b${b}`] || targetPensum.gradingConfig[`B${b}`] || targetPensum.gradingConfig[b];
         if (pCfg) {
-            const acts = (Array.isArray(pCfg.activities) ? [...pCfg.activities] : []).map((a, i) => ({
-                name: a.name || `Act. ${i + 1}`,
-                max: a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0),
-                maxPoints: a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0)
-            }));
+            const acts = (Array.isArray(pCfg.activities) ? [...pCfg.activities] : []).map((a, i) => {
+                let actName = (a.name || `Act. ${i + 1}`).trim();
+                let actMax = a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0);
+                if (isLegacyPredefinedActivityName(actName)) {
+                    actName = `Act. ${i + 1}`;
+                    const hasNotes = stateHasGradesInActivity(STATE, targetPensum?.id, b, i);
+                    if (!hasNotes) {
+                        actMax = 0;
+                    }
+                }
+                return {
+                    name: actName,
+                    max: actMax,
+                    maxPoints: actMax
+                };
+            });
             while (acts.length < 10) {
                 acts.push({ name: `Act. ${acts.length + 1}`, max: 0, maxPoints: 0 });
             }
+            let zMax = parseInt(pCfg.zonaMax);
+            let eMax = parseInt(pCfg.examMax);
+            if (isNaN(zMax) || isNaN(eMax) || (zMax === 60 && eMax === 40)) {
+                zMax = 40;
+                eMax = 60;
+            }
             return {
-                zonaMax: parseInt(pCfg.zonaMax) !== undefined && !isNaN(parseInt(pCfg.zonaMax)) ? parseInt(pCfg.zonaMax) : 60,
-                examMax: parseInt(pCfg.examMax) !== undefined && !isNaN(parseInt(pCfg.examMax)) ? parseInt(pCfg.examMax) : 40,
+                zonaMax: zMax,
+                examMax: eMax,
                 activities: acts
             };
         }
@@ -19634,7 +19684,7 @@ function resetGradingConfigToDefaults() {
 
     onGradingConfigGeneralChange();
     onGradingConfigActivitiesChange();
-    showToast("Valores restablecidos al modelo estándar institucional (Zona: 60 pts, Examen: 40 pts).", "info");
+    showToast("Valores restablecidos al modelo estándar institucional (Zona: 40 pts, Examen: 60 pts).", "info");
 }
 
 async function saveGradingConfigForm(e) {
@@ -19712,8 +19762,10 @@ async function saveGradingConfigForm(e) {
         targetPensum.gradingConfig[`b${currentUnit}`] = configObj;
 
         if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
-        const cfgKey = `${targetPensum.id}_b${currentUnit}`;
+        const cfgKey = getGradingConfigKey(targetPensum, currentUnit);
         STATE.gradingConfigs[cfgKey] = configObj;
+        STATE.gradingConfigs[`${targetPensum.id}_b${currentUnit}`] = configObj;
+        STATE.gradingConfigs[`${targetPensum.id}_B${currentUnit}`] = configObj;
         STATE.gradingConfigs[targetPensum.id] = targetPensum.gradingConfig;
 
         const nowTime = Date.now();
@@ -20354,7 +20406,7 @@ function handleDirectZonaChange(studentId, value, subjectName, unit) {
     const cfg = getGradingConfig(targetPensum, unit);
 
     if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.add(studentId);
-    const valNum = Math.max(0, Math.min(cfg.zonaMax || 60, parseInt(value) || 0));
+    const valNum = Math.max(0, Math.min(cfg.zonaMax || 40, parseInt(value) || 0));
     student.gradebookDetails[subjectName][unit].zona = valNum;
 
     // Recalcular nota total
@@ -20396,7 +20448,7 @@ function handleExamScoreChange(studentId, value, subjectName, unit) {
     const cfg = getGradingConfig(targetPensum, unit);
 
     if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.add(studentId);
-    const examVal = Math.max(0, Math.min(cfg.examMax || 40, parseInt(value) || 0));
+    const examVal = Math.max(0, Math.min(cfg.examMax || 60, parseInt(value) || 0));
     student.gradebookDetails[subjectName][unit].exam = examVal;
 
     // Obtener la zona sumada exactamente de las actividades
@@ -23970,7 +24022,7 @@ function exportGradebookOfficialExcel() {
     const cycle = STATE.activeCycle || '2026';
     const cfg = (typeof getGradingConfig === 'function') 
         ? getGradingConfig(targetPensum, currentUnit) 
-        : { zonaMax: 60, examMax: 40, activities: [] };
+        : { zonaMax: 40, examMax: 60, activities: [] };
 
     // Formatear actividades (hasta 10)
     let actsConfig = (cfg.activities && Array.isArray(cfg.activities)) ? cfg.activities : [];
@@ -24007,8 +24059,8 @@ function exportGradebookOfficialExcel() {
                 ],
                 [
                     'Ponderacion Oficial:',
-                    `Zona Maxima: ${cfg.zonaMax || 60} pts`,
-                    `Examen / Evaluacion: ${cfg.examMax || 40} pts`,
+                    `Zona Maxima: ${cfg.zonaMax || 40} pts`,
+                    `Examen / Evaluacion: ${cfg.examMax || 60} pts`,
                     'Total Oficial: 100 pts'
                 ],
                 []
@@ -24143,7 +24195,12 @@ function exportGradebookHtmlExcelFallback(targetPensum, unit, students, actsConf
             <td colspan="4"><strong>Grado y Sección:</strong> ${escapeHtml(targetPensum.grade)} "${escapeHtml(targetPensum.section || 'A')}"</td>
             <td colspan="5"><strong>Bimestre:</strong> ${unit}o. Bimestre</td>
         </tr>
-        <tr></tr>
+        <tr>
+            <td colspan="3"><strong>Ponderación Oficial:</strong></td>
+            <td colspan="6">Zona: ${cfg ? (cfg.zonaMax || 40) : 40} pts</td>
+            <td colspan="4">Examen / Evaluación: ${cfg ? (cfg.examMax || 60) : 60} pts</td>
+            <td colspan="5">Total: 100 pts</td>
+        </tr>
         <tr>
             <th>No.</th><th>Código Personal</th><th>CUI / DPI</th><th>Apellidos y Nombres</th>
             ${actsConfig.map((a, i) => `<th>Act ${i+1}: ${escapeHtml(a.name)} (${a.max} pts)</th>`).join('')}
@@ -24475,16 +24532,22 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     // 6. Actualización y sincronización de Ponderación si el archivo especifica actividades
     if (actColumns.length > 0 && targetPensum) {
         const sumActsMax = actColumns.reduce((acc, a) => acc + (a.max || 0), 0);
-        const configuredZonaMax = sumActsMax > 0 ? sumActsMax : (zonaValInHeader || 50);
-        const configuredExamMax = (100 - configuredZonaMax > 0) ? (100 - configuredZonaMax) : (examValInHeader || 50);
+        const configuredZonaMax = sumActsMax > 0 ? sumActsMax : (zonaValInHeader || 40);
+        const configuredExamMax = (100 - configuredZonaMax > 0) ? (100 - configuredZonaMax) : (examValInHeader || 60);
 
         const normalizedActivities = [];
         for (let i = 0; i < 10; i++) {
             if (i < actColumns.length) {
+                let actName = (actColumns[i].name || `Act. ${i+1}`).trim();
+                let actMax = actColumns[i].max || 0;
+                if (isLegacyPredefinedActivityName(actName)) {
+                    actName = `Act. ${i+1}`;
+                    actMax = 0;
+                }
                 normalizedActivities.push({
-                    name: actColumns[i].name || `Actividad ${i+1}`,
-                    max: actColumns[i].max || 0,
-                    maxPoints: actColumns[i].max || 0
+                    name: actName,
+                    max: actMax,
+                    maxPoints: actMax
                 });
             } else {
                 normalizedActivities.push({
