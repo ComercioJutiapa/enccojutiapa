@@ -8188,6 +8188,10 @@ function exitImpersonation() {
 function navigateTo(viewName, event = null) {
     if (event) event.preventDefault();
 
+    // ENCCO: Preservar posición de scroll del sidebar al navegar entre secciones
+    var _sidebarEl = document.getElementById('sidebar');
+    var _sidebarScrollTop = _sidebarEl ? _sidebarEl.scrollTop : 0;
+
     // Redirección oficial al módulo independiente "Datos para Sire"
     if (viewName === 'datos-sire') {
         const allowed = ['director', 'secretaria', 'admin', 'super_usuario'];
@@ -8248,6 +8252,13 @@ function navigateTo(viewName, event = null) {
         const backdrop = document.getElementById('sidebarBackdrop');
         if (sidebar) sidebar.classList.remove('active');
         if (backdrop) backdrop.classList.remove('active');
+    }
+
+    // ENCCO: Restaurar posición de scroll del sidebar tras actualización de estado
+    if (_sidebarEl) {
+        requestAnimationFrame(function() {
+            _sidebarEl.scrollTop = _sidebarScrollTop;
+        });
     }
 
     const titles = {
