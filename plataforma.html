@@ -3855,7 +3855,7 @@
     <script src="db.js"></script>
     <script src="ui.js"></script>
     <script src="sire.js"></script>
-    <script src="app.js?v=2026.09.18.v210_zero_activities_clean"></script>
+    <script src="app.js?v=2026.09.18.v211_promedios_finales_oficiales"></script>
 
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre
@@ -4304,99 +4304,161 @@
         </div>
     </div>
 
-<!-- VISTA: PROMEDIOS Y ESTADÍSTICAS POR GRADO/SECCIÓN -->
+<!-- VISTA: PROMEDIOS Y ESTADÍSTICAS POR GRADO/SECCIÓN (OFICIAL ENCCO) -->
 <section class="app-view" id="view-grade-stats">
-    <div class="section-toolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px; background:#fff; padding:12px 18px; border-radius:8px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+    <!-- BARRA DE CONTROL Y FILTROS DINÁMICOS (NO VISIBLE AL IMPRIMIR) -->
+    <div class="section-toolbar no-print" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px; background:#fff; padding:14px 20px; border-radius:10px; border:1px solid #e2e8f0; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
         <div class="toolbar-filters" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-            <span style="font-weight:800; color:#0369a1; font-size:1.05rem; display:flex; align-items:center; gap:8px;">
-                <i class="fa-solid fa-chart-bar" style="color:#0284c7;"></i> Promedios y Estadísticas
+            <span style="font-weight:800; color:#0369a1; font-size:1.1rem; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-chart-column" style="color:#0284c7;"></i> Promedios Finales y Estadísticas Oficiales
             </span>
-            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                <select id="gradeStatsBimestreSelect" class="form-control" onchange="renderGradeStatsView()" style="min-width:130px; font-weight:600; padding:6px 10px; height:auto;">
-                    <option value="0">Bimestre 1</option>
-                    <option value="1">Bimestre 2</option>
-                    <option value="2">Bimestre 3</option>
-                    <option value="3">Bimestre 4</option>
-                </select>
-                <select id="gradeStatsGradeFilter" class="form-control" onchange="renderGradeStatsView()" style="min-width:160px; font-weight:600; padding:6px 10px; height:auto;">
-                    <option value="">Todos los Grados</option>
-                    <option value="4">4to Perito Contador</option>
-                    <option value="5">5to Perito Contador</option>
-                    <option value="6">6to Perito Contador</option>
-                </select>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <div>
+                    <label style="font-size:0.75rem; font-weight:700; color:#64748b; margin-bottom:2px; display:block;">Período / Bimestre:</label>
+                    <select id="gradeStatsBimestreSelect" class="form-control form-control-sm" onchange="renderGradeStatsView()" style="min-width:180px; font-weight:700; padding:6px 10px; height:auto; border-color:#cbd5e1;">
+                        <option value="FINAL" selected>Promedios Finales (Acumulado)</option>
+                        <option value="3">3er Bimestre (Unidad 3)</option>
+                        <option value="2">2do Bimestre (Unidad 2)</option>
+                        <option value="1">1er Bimestre (Unidad 1)</option>
+                        <option value="4">4to Bimestre (Unidad 4)</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; font-weight:700; color:#64748b; margin-bottom:2px; display:block;">Grado:</label>
+                    <select id="gradeStatsGradeFilter" class="form-control form-control-sm" onchange="onGradeStatsGradeChange()" style="min-width:170px; font-weight:700; padding:6px 10px; height:auto; border-color:#cbd5e1;">
+                        <option value="6" selected>6to Perito Contador</option>
+                        <option value="5">5to Perito Contador</option>
+                        <option value="4">4to Perito Contador</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem; font-weight:700; color:#64748b; margin-bottom:2px; display:block;">Sección:</label>
+                    <select id="gradeStatsSectionFilter" class="form-control form-control-sm" onchange="renderGradeStatsView()" style="min-width:160px; font-weight:700; padding:6px 10px; height:auto; border-color:#cbd5e1;">
+                        <option value="ALL" selected>Todas las Secciones</option>
+                        <option value="A">Sección A</option>
+                        <option value="B">Sección B</option>
+                        <option value="C">Sección C</option>
+                        <option value="D">Sección D</option>
+                        <option value="E">Sección E</option>
+                    </select>
+                </div>
             </div>
         </div>
         <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-            <button type="button" class="btn btn-outline-secondary" onclick="printGradeStatsReport('sections')" style="font-weight:700; font-size:0.85rem; padding:7px 14px; border:1.5px solid #0284c7; color:#0284c7; background:#ffffff; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
-                <i class="fa-solid fa-print"></i> Imprimir por Secciones
+            <button type="button" class="btn btn-outline-secondary" onclick="exportGradeStatsOfficialExcel()" style="font-weight:700; font-size:0.85rem; padding:8px 16px; border:1.5px solid #16a34a; color:#16a34a; background:#ffffff; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                <i class="fa-solid fa-file-excel"></i> Exportar a Excel
             </button>
-            <button type="button" class="btn btn-primary" onclick="printGradeStatsReport('grades')" style="font-weight:700; font-size:0.85rem; padding:7px 14px; background:#0284c7; border:1.5px solid #0284c7; color:#ffffff; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
-                <i class="fa-solid fa-file-invoice"></i> Imprimir por Grados
+            <button type="button" class="btn btn-primary" onclick="window.print()" style="font-weight:700; font-size:0.85rem; padding:8px 16px; background:#0284c7; border:1.5px solid #0284c7; color:#ffffff; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 4px rgba(2,132,199,0.25);">
+                <i class="fa-solid fa-print"></i> Imprimir Acta Oficial
             </button>
         </div>
     </div>
 
-    <!-- TARJETAS DE MÉTRICAS KPI -->
-    <div id="gradeStatsKpiRow" style="display:flex; gap:14px; flex-wrap:wrap; margin:16px 0;"></div>
-
-    <!-- CUADRO 1: DETALLE POR SECCIONES -->
-    <div style="margin-top:20px; background:#ffffff; border-radius:8px; border:1px solid #e2e8f0; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1.5px solid #f1f5f9; padding-bottom:8px;">
-            <h3 style="font-size:0.98rem; font-weight:800; color:#1e293b; margin:0; display:flex; align-items:center; gap:8px;">
-                <i class="fa-solid fa-list-check" style="color:#0284c7;"></i> Detalle de Rendimiento por Sección
-            </h3>
-            <span style="font-size:0.75rem; color:#64748b; font-weight:600;">Aprobado: Promedio &ge; 60 pts</span>
-        </div>
-        <div class="table-responsive">
-            <table class="data-table" style="width:100%;">
-                <thead>
-                    <tr>
-                        <th>Grado</th><th>Sección</th><th>Total</th>
-                        <th>Promedio Gral.</th>
-                        <th>Aprobados</th><th>% Aprobados</th>
-                        <th>Reprobados</th><th>% Reprobados</th>
-                    </tr>
-                </thead>
-                <tbody id="gradeStatsTableBody">
-                    <tr><td colspan="8" style="text-align:center; color:#94a3b8;">Cargando estadísticas...</td></tr>
-                </tbody>
-            </table>
+    <!-- CONTENEDOR DINÁMICO DE DOCUMENTOS OFICIALES (IDÉNTICO AL PDF DE LA ENCCO) -->
+    <div id="gradeStatsDocumentContainer">
+        <div style="text-align:center; padding:40px; color:#64748b;">
+            <i class="fa-solid fa-circle-notch fa-spin fa-2x"></i>
+            <p style="margin-top:10px; font-weight:600;">Cargando Promedios Finales y Estadísticas Oficiales...</p>
         </div>
     </div>
 
-    <!-- CUADRO 2: CONSOLIDADO GENERAL POR GRADOS -->
-    <div style="margin-top:24px; background:#ffffff; border-radius:8px; border:1.5px solid #0284c7; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1.5px solid #e0f2fe; padding-bottom:8px;">
-            <h3 style="font-size:0.98rem; font-weight:800; color:#0369a1; margin:0; display:flex; align-items:center; gap:8px;">
-                <i class="fa-solid fa-graduation-cap" style="color:#0369a1;"></i> Cuadro Consolidado de Promedios por Grados
-            </h3>
-            <span style="font-size:0.75rem; color:#0284c7; font-weight:700; background:#e0f2fe; padding:3px 8px; border-radius:4px;">Resumen Institucional</span>
-        </div>
-        <div class="table-responsive">
-            <table class="data-table" style="width:100%;">
-                <thead>
-                    <tr style="background:#f0f9ff;">
-                        <th>Grado y Carrera</th>
-                        <th style="text-align:center;">Secciones</th>
-                        <th style="text-align:center;">Total Alumnos</th>
-                        <th style="text-align:center;">Promedio General</th>
-                        <th style="text-align:center;">Total Aprobados</th>
-                        <th style="text-align:center;">% Aprobados</th>
-                        <th style="text-align:center;">Total Reprobados</th>
-                        <th style="text-align:center;">% Reprobados</th>
-                    </tr>
-                </thead>
-                <tbody id="gradeStatsGradesTableBody">
-                    <tr><td colspan="8" style="text-align:center; color:#94a3b8;">Cargando consolidado por grado...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+    <style>
+        /* ESTILOS DE ACTA INSTITUCIONAL ENCCO */
+        .encco-doc-page {
+            background: #ffffff;
+            color: #000000;
+            font-family: 'Arial', 'Segoe UI', Tahoma, sans-serif;
+            margin: 0 auto 30px auto;
+            padding: 35px 40px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            max-width: 1080px;
+        }
 
-    <p style="font-size:0.78rem; color:#94a3b8; margin-top:14px;">
-        <i class="fa-solid fa-circle-info"></i>
-        Nota: Alumnos evaluados en base a notas activas del bimestre seleccionado. 6to Grado B3 incluye asignaturas disponibles.
-    </p>
+        .encco-official-table {
+            width: 100%;
+            border-collapse: collapse !important;
+            font-size: 0.86rem;
+            color: #000000;
+            margin-bottom: 24px;
+        }
+
+        .encco-official-table th, 
+        .encco-official-table td {
+            border: 1.5px solid #000000 !important;
+            padding: 5px 6px;
+            vertical-align: middle;
+        }
+
+        .encco-official-table thead th {
+            background-color: #dbeafe !important;
+            color: #000000 !important;
+            font-weight: 800;
+            text-align: center;
+        }
+
+        .encco-th-pink {
+            background-color: #ffe4e6 !important;
+            color: #000000 !important;
+            font-weight: 800;
+            text-align: center;
+        }
+
+        .encco-td-pink {
+            background-color: #fff1f2 !important;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .encco-score-danger {
+            color: #dc2626 !important;
+            font-weight: 800 !important;
+        }
+
+        @media print {
+            body * {
+                visibility: hidden !important;
+            }
+            #view-grade-stats, #view-grade-stats * {
+                visibility: visible !important;
+            }
+            #view-grade-stats {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .encco-doc-page {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 10px 15px !important;
+                margin: 0 !important;
+                max-width: 100% !important;
+                border-radius: 0 !important;
+            }
+            .page-break {
+                page-break-after: always !important;
+                break-after: page !important;
+            }
+            table {
+                page-break-inside: auto;
+            }
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+            thead {
+                display: table-header-group;
+            }
+        }
+    </style>
 </section>
 
 </body>

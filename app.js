@@ -1158,9 +1158,9 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
         return 'edit';
     }
 
-    // 🛡️ BLINDAJE RBAC: "Promedios y Estadísticas" solo para Dirección, Secretaría y Admin
+    // 🛡️ BLINDAJE RBAC: "Promedios y Estadísticas" para Dirección, Secretaría, Admin y Docentes
     if (key === 'grade-stats') {
-        const allowedStats = ['director', 'secretaria', 'admin', 'super_usuario'];
+        const allowedStats = ['director', 'secretaria', 'admin', 'super_usuario', 'docente', 'catedratico'];
         if (!allowedStats.includes(roleKey)) return 'none';
         return 'view';
     }
@@ -28951,6 +28951,10 @@ function initFirestoreModularLiveListeners() {
                     (STATE.activeView === 'honor-roll' || STATE.activeView === 'reports')) {
                     loadHonorRoll();
                 }
+                // Actualizar en tiempo real el módulo de Promedios Finales y Estadísticas
+                if (typeof renderGradeStatsView === 'function' && STATE.activeView === 'grade-stats') {
+                    renderGradeStatsView();
+                }
             }, err => console.warn('Aviso en onSnapshot students:', err));
             if (typeof unsubStudents === 'function') _firestoreModularUnsubscribers.push(unsubStudents);
         } catch(e) {}
@@ -29550,231 +29554,647 @@ if (typeof window !== 'undefined') {
 }
 
 // ==========================================================================
-// MÓDULO: PROMEDIOS Y ESTADÍSTICAS POR GRADO/SECCIÓN (v209)
+// MÓDULO: PROMEDIOS FINALES Y ESTADÍSTICAS OFICIALES ENCCO (v211)
+// Recreación exacta del Acta Oficial "Promedios Finales Sexto.pdf"
 // ==========================================================================
 window._lastGradeStatsReportData = null;
+
+function onGradeStatsGradeChange() {
+    const gradeSelect = document.getElementById('gradeStatsGradeFilter');
+    const secSelect = document.getElementById('gradeStatsSectionFilter');
+    if (!gradeSelect || !secSelect) return;
+
+    const gVal = gradeSelect.value || '6';
+    const students = STATE.students || [];
+
+    // Buscar secciones existentes para este grado
+    const gStudents = students.filter(s => {
+        const g = String(s.grade || s.gradeLevel || '').toLowerCase();
+        return g.includes(`${gVal}to`) || (gVal === '6' && (g.includes('6to') || g.includes('sexto'))) ||
+               (gVal === '5' && (g.includes('5to') || g.includes('quinto'))) ||
+               (gVal === '4' && (g.includes('4to') || g.includes('cuarto')));
+    });
+
+    const uniqueSecs = new Set();
+    gStudents.forEach(s => {
+        const rawSec = (s.section || s.sectionId || '').replace(/^secci[oó]n\s*/i, '').trim().toUpperCase();
+        if (rawSec) uniqueSecs.add(rawSec);
+    });
+
+    // Para 6to siempre incluir al menos A, B, C, D, E como en el acta oficial
+    if (gVal === '6') {
+        ['A', 'B', 'C', 'D', 'E'].forEach(s => uniqueSecs.add(s));
+    }
+
+    const sortedSecs = Array.from(uniqueSecs).sort();
+    let optHtml = '<option value="ALL" selected>Todas las Secciones (Consolidado)</option>';
+    sortedSecs.forEach(sec => {
+        optHtml += `<option value="${sec}">Sección ${sec}</option>`;
+    });
+    secSelect.innerHTML = optHtml;
+
+    renderGradeStatsView();
+}
+window.onGradeStatsGradeChange = onGradeStatsGradeChange;
 
 function renderGradeStatsView() {
     if (!hasRolePermission('grade-stats', STATE.currentRole)) return;
 
+    const container = document.getElementById('gradeStatsDocumentContainer');
+    if (!container) return;
+
     const bimSelect = document.getElementById('gradeStatsBimestreSelect');
     const gradeSelect = document.getElementById('gradeStatsGradeFilter');
-    const tbody = document.getElementById('gradeStatsTableBody');
-    const gradesTbody = document.getElementById('gradeStatsGradesTableBody');
-    const kpiRow = document.getElementById('gradeStatsKpiRow');
-    if (!tbody || !kpiRow) return;
+    const secSelect = document.getElementById('gradeStatsSectionFilter');
 
-    const bimIdx = parseInt(bimSelect ? bimSelect.value : '0', 10);
-    const gradeFilter = gradeSelect ? gradeSelect.value : '';
-    const bimLabel = bimSelect && bimSelect.options[bimSelect.selectedIndex] ? bimSelect.options[bimSelect.selectedIndex].text : `Bimestre ${bimIdx + 1}`;
-    const gradeFilterLabel = gradeSelect && gradeSelect.options[gradeSelect.selectedIndex] ? gradeSelect.options[gradeSelect.selectedIndex].text : 'Todos los Grados';
+    const period = bimSelect ? bimSelect.value : 'FINAL';
+    const gradeVal = gradeSelect ? gradeSelect.value : '6';
+    const selectedSection = secSelect ? secSelect.value : 'ALL';
 
-    // Deduplicar y filtrar alumnos
-    const seen = new Set();
-    const alumnos = (STATE.students || []).filter(s => {
-        if (!s || seen.has(s.id)) return false;
-        seen.add(s.id);
-        if (!s.grades) return false;
-        if (gradeFilter) {
-            const g = String(s.grade || s.gradeLevel || '');
-            if (gradeFilter === '4' && !/4to|cuarto/i.test(g)) return false;
-            if (gradeFilter === '5' && !/5to|quinto/i.test(g)) return false;
-            if (gradeFilter === '6' && !/6to|sexto/i.test(g)) return false;
-        }
-        return true;
-    });
+    const gradeLabelMap = { '6': '6to Perito Contador', '5': '5to Perito Contador', '4': '4to Perito Contador' };
+    const gradeTitle = gradeLabelMap[gradeVal] || `${gradeVal}to Grado`;
 
-    // Calcular promedio de un alumno en el bimestre dado
-    function getStudentAvg(student, bIdx) {
-        const g = student.grades;
-        if (!g || typeof g !== 'object') return null;
-        const vals = Object.values(g)
-            .map(arr => (Array.isArray(arr) ? Number(arr[bIdx] ?? 0) : 0))
-            .filter(v => v > 0);
-        if (!vals.length) return null;
-        return vals.reduce((a, b) => a + b, 0) / vals.length;
+    const students = STATE.students || [];
+    const pensum = STATE.pensum || [];
+
+    function cleanStr(s) {
+        return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
     }
 
-    // 1. Agrupar por grado + sección
-    const sectionGroups = {};
-    // 2. Agrupar por grado
-    const gradeGroups = {};
-
-    alumnos.forEach(s => {
-        const gradeLabel = s.grade || s.gradeLevel || 'Sin grado';
-        const sectionLabel = s.section || s.sectionId || 'Sin sección';
-        const secKey = `${gradeLabel}|||${sectionLabel}`;
-
-        if (!sectionGroups[secKey]) {
-            sectionGroups[secKey] = { grade: gradeLabel, section: sectionLabel, avgs: [] };
+    // 1. Obtener lista oficial de asignaturas para el grado
+    function getOfficialSubjectsForGrade(gVal) {
+        if (gVal === '6') {
+            // Secuencia oficial exacta del documento físico de 6to Perito Contador
+            return [
+                'Contabilidad Bancaria',
+                'Contabilidad Gubernamental Integrada',
+                'Estadística Comercial',
+                'Organización de Empresas',
+                'Ética Profesional y Relaciones Humanas',
+                'Práctica Supervisada',
+                'Auditoría',
+                'Derecho Mercantil y Nociones del Derecho Laboral',
+                'Computación III',
+                'Seminario Sobre Problemas Socioeconómicos de Guatemala'
+            ];
         }
-        if (!gradeGroups[gradeLabel]) {
-            gradeGroups[gradeLabel] = { grade: gradeLabel, sectionsSet: new Set(), avgs: [] };
+
+        const pList = pensum.filter(p => {
+            const pg = String(p.grade || '').toLowerCase();
+            return pg.includes(`${gVal}to`) || (gVal === '5' && pg.includes('5to')) || (gVal === '4' && pg.includes('4to'));
+        });
+
+        const unique = [];
+        const seen = new Set();
+        pList.forEach(p => {
+            if (p.subject && !seen.has(p.subject)) {
+                seen.add(p.subject);
+                unique.push(p.subject);
+            }
+        });
+        return unique.length ? unique : [
+            'Matemática Comercial', 'Contabilidad de Sociedades', 'Introducción a la Economía',
+            'Computación I', 'Inglés Comercial I', 'Fundamentos de Derecho'
+        ];
+    }
+
+    const officialSubjects = getOfficialSubjectsForGrade(gradeVal);
+
+    // 2. Resolver secciones del grado
+    let sectionCols = ['A', 'B', 'C', 'D', 'E'];
+    if (gradeVal !== '6') {
+        const foundSecs = new Set();
+        students.filter(s => {
+            const g = String(s.grade || s.gradeLevel || '').toLowerCase();
+            return g.includes(`${gradeVal}to`);
+        }).forEach(s => {
+            const rawSec = (s.section || '').replace(/^secci[oó]n\s*/i, '').trim().toUpperCase();
+            if (rawSec) foundSecs.add(rawSec);
+        });
+        if (foundSecs.size > 0) sectionCols = Array.from(foundSecs).sort();
+    }
+
+    // 3. Resolución flexible de nota de una asignatura para un estudiante
+    function getStudentSubjectScore(student, targetSubject, per) {
+        if (!student) return { score: null, evaluated: false };
+        const cleanTarget = cleanStr(targetSubject);
+
+        function matchKey(dict) {
+            if (!dict || typeof dict !== 'object') return null;
+            for (const k of Object.keys(dict)) {
+                const cK = cleanStr(k);
+                if (cK.includes(cleanTarget) || cleanTarget.includes(cK) ||
+                    (cleanTarget.includes('gubernamental') && cK.includes('gubernamental')) ||
+                    (cleanTarget.includes('organizacion') && cK.includes('organizacion')) ||
+                    (cleanTarget.includes('derecho') && cK.includes('derecho')) ||
+                    (cleanTarget.includes('seminario') && cK.includes('seminario')) ||
+                    (cleanTarget.includes('practica') && cK.includes('practica')) ||
+                    (cleanTarget.includes('auditoria') && cK.includes('auditoria')) ||
+                    (cleanTarget.includes('etica') && cK.includes('etica')) ||
+                    (cleanTarget.includes('estadistica') && cK.includes('estadistica')) ||
+                    (cleanTarget.includes('bancaria') && cK.includes('bancaria')) ||
+                    (cleanTarget.includes('computacion') && cK.includes('computacion')) ||
+                    (cleanTarget.includes('costos') && cK.includes('costos')) ||
+                    (cleanTarget.includes('sociedades') && cK.includes('sociedades')) ||
+                    (cleanTarget.includes('mecanografia') && cK.includes('mecanografia')) ||
+                    (cleanTarget.includes('archivo') && cK.includes('archivo')) ||
+                    (cleanTarget.includes('fiscal') && cK.includes('fiscal')) ||
+                    (cleanTarget.includes('finanzas') && cK.includes('finanzas')) ||
+                    (cleanTarget.includes('geografia') && cK.includes('geografia')) ||
+                    (cleanTarget.includes('ingles') && cK.includes('ingles')) ||
+                    (cleanTarget.includes('redaccion') && cK.includes('redaccion')) ||
+                    (cleanTarget.includes('caligrafia') && cK.includes('caligrafia')) ||
+                    (cleanTarget.includes('economia') && cK.includes('economia')) ||
+                    (cleanTarget.includes('matematica') && cK.includes('matematica'))) {
+                    return k;
+                }
+            }
+            return null;
         }
 
-        const avg = getStudentAvg(s, bimIdx);
-        if (avg !== null) {
-            sectionGroups[secKey].avgs.push(avg);
-            gradeGroups[gradeLabel].avgs.push(avg);
-            gradeGroups[gradeLabel].sectionsSet.add(sectionLabel);
+        const matchedKey = matchKey(student.gradebookDetails) || matchKey(student.grades);
+
+        function getUnitVal(u) {
+            if (matchedKey && student.gradebookDetails && student.gradebookDetails[matchedKey]) {
+                const uData = student.gradebookDetails[matchedKey][u];
+                if (uData && (uData.total > 0 || uData.zona > 0 || uData.exam > 0 || (Array.isArray(uData.activities) && uData.activities.some(a => a > 0)))) {
+                    return uData.total !== undefined ? Number(uData.total) : (Number(uData.zona || 0) + Number(uData.exam || 0));
+                }
+            }
+            if (matchedKey && student.grades && student.grades[matchedKey]) {
+                const arr = student.grades[matchedKey];
+                const val = Array.isArray(arr) ? Number(arr[u - 1] ?? 0) : 0;
+                if (val > 0) return val;
+            }
+            return null;
         }
+
+        if (per === 'FINAL') {
+            const scores = [];
+            const maxB = parseInt(STATE.config?.activeBimestre) || 3;
+            for (let u = 1; u <= maxB; u++) {
+                const sVal = getUnitVal(u);
+                if (sVal !== null) scores.push(sVal);
+            }
+            if (!scores.length) return { score: null, evaluated: false };
+            const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+            return { score: avg, evaluated: true };
+        } else {
+            const u = parseInt(per) || 1;
+            const sVal = getUnitVal(u);
+            if (sVal !== null) return { score: sVal, evaluated: true };
+            return { score: null, evaluated: false };
+        }
+    }
+
+    // 4. Procesar alumnos por sección
+    const sectionData = {};
+    const failedByClass = {};
+    officialSubjects.forEach(s => {
+        failedByClass[s] = { Total: 0 };
+        sectionCols.forEach(sec => failedByClass[s][sec] = 0);
+    });
+
+    sectionCols.forEach(sec => {
+        const secStudents = students.filter(s => {
+            const g = String(s.grade || s.gradeLevel || '').toLowerCase();
+            const matchesGrade = g.includes(`${gradeVal}to`) || (gradeVal === '6' && (g.includes('6to') || g.includes('sexto'))) ||
+                                 (gradeVal === '5' && (g.includes('5to') || g.includes('quinto'))) ||
+                                 (gradeVal === '4' && (g.includes('4to') || g.includes('cuarto')));
+            if (!matchesGrade) return false;
+            const sSec = (s.section || '').replace(/^secci[oó]n\s*/i, '').trim().toUpperCase();
+            return sSec === sec;
+        }).sort((a, b) => {
+            const nameA = (a.name || `${a.lastName || ''} ${a.firstName || ''}`).toUpperCase().trim();
+            const nameB = (b.name || `${b.lastName || ''} ${b.firstName || ''}`).toUpperCase().trim();
+            return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+        });
+
+        let aprobados = 0, recuperacion = 0, reprobados = 0, retirados = 0;
+        const processedStudents = [];
+
+        secStudents.forEach((st, idx) => {
+            const isRetirado = (st.status === 'Retirado' || st.status === 'Inactivo' || st.status === 'Ausente');
+            if (isRetirado) {
+                retirados++;
+            }
+
+            const subjectScores = [];
+            let lostCount = 0;
+
+            officialSubjects.forEach(subj => {
+                const res = getStudentSubjectScore(st, subj, period);
+                subjectScores.push(res);
+                if (!isRetirado && res.evaluated && res.score !== null) {
+                    if (res.score < 60) {
+                        lostCount++;
+                        failedByClass[subj][sec]++;
+                        failedByClass[subj].Total++;
+                    }
+                }
+            });
+
+            const evalList = subjectScores.filter(s => s.evaluated && s.score !== null);
+            const genAvg = evalList.length ? (evalList.reduce((acc, x) => acc + x.score, 0) / evalList.length) : 0;
+
+            if (!isRetirado) {
+                if (lostCount === 0 && genAvg >= 60) {
+                    aprobados++;
+                } else if (lostCount >= 1 && lostCount <= 3) {
+                    recuperacion++;
+                } else if (lostCount > 3 || (evalList.length > 0 && genAvg < 60)) {
+                    reprobados++;
+                }
+            }
+
+            processedStudents.push({
+                clave: idx + 1,
+                student: st,
+                name: (st.name || `${st.lastName || ''}, ${st.firstName || ''}`).toUpperCase().trim(),
+                scores: subjectScores,
+                average: genAvg,
+                lostCount: lostCount,
+                isRetirado: isRetirado
+            });
+        });
+
+        sectionData[sec] = {
+            total: secStudents.length,
+            aprobados,
+            recuperacion,
+            reprobados,
+            retirados,
+            students: processedStudents
+        };
     });
 
     // Totales globales
-    let totalApproved = 0, totalFailed = 0, totalStudents = 0, sumWeighted = 0, countWeighted = 0;
-
-    // Renderizar Cuadro de Secciones
-    const sectionRows = Object.values(sectionGroups).sort((a, b) =>
-        a.grade.localeCompare(b.grade) || a.section.localeCompare(b.section)
-    );
-
-    let secHtml = '';
-    const reportSectionRows = [];
-
-    sectionRows.forEach(g => {
-        const n = g.avgs.length;
-        if (!n) {
-            secHtml += `<tr><td style="font-weight:700">${g.grade}</td><td>${g.section}</td><td style="text-align:center">0</td><td colspan="5" style="text-align:center; color:#94a3b8">Sin datos para este bimestre</td></tr>`;
-            return;
-        }
-        const avg = g.avgs.reduce((a, b) => a + b, 0) / n;
-        const approved = g.avgs.filter(v => v >= 60).length;
-        const failed = n - approved;
-        totalApproved += approved;
-        totalFailed += failed;
-        totalStudents += n;
-        sumWeighted += avg * n;
-        countWeighted += n;
-        const pctA = ((approved / n) * 100).toFixed(1);
-        const pctF = ((failed / n) * 100).toFixed(1);
-        const avgColor = avg >= 60 ? '#16a34a' : '#dc2626';
-
-        reportSectionRows.push({
-            grade: g.grade,
-            section: g.section,
-            total: n,
-            avg: avg.toFixed(1),
-            approved: approved,
-            pctApproved: pctA,
-            failed: failed,
-            pctFailed: pctF
-        });
-
-        secHtml += `<tr>
-            <td style="font-weight:700">${g.grade}</td>
-            <td>${g.section}</td>
-            <td style="text-align:center">${n}</td>
-            <td style="text-align:center; font-weight:800; color:${avgColor}">${avg.toFixed(1)}</td>
-            <td style="text-align:center; color:#16a34a; font-weight:700">${approved}</td>
-            <td style="text-align:center; color:#16a34a">${pctA}%</td>
-            <td style="text-align:center; color:#dc2626; font-weight:700">${failed}</td>
-            <td style="text-align:center; color:#dc2626">${pctF}%</td>
-        </tr>`;
+    let totAprobados = 0, totRecup = 0, totReprob = 0, totRetir = 0, totTotal = 0;
+    sectionCols.forEach(sec => {
+        totAprobados += sectionData[sec].aprobados;
+        totRecup += sectionData[sec].recuperacion;
+        totReprob += sectionData[sec].reprobados;
+        totRetir += sectionData[sec].retirados;
+        totTotal += sectionData[sec].total;
     });
 
-    tbody.innerHTML = secHtml || '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Sin datos para este bimestre.</td></tr>';
+    const now = new Date();
+    const dateFormattedLong = now.toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const timeFormatted = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const footerTimestamp = `${now.toLocaleDateString('es-GT')} ${timeFormatted}`;
 
-    // Renderizar Cuadro Consolidado por Grados
-    const gradeRows = Object.values(gradeGroups).sort((a, b) => a.grade.localeCompare(b.grade));
-    let gradeHtml = '';
-    const reportGradeRows = [];
+    let html = '';
 
-    gradeRows.forEach(gr => {
-        const n = gr.avgs.length;
-        if (!n) return;
-        const avg = gr.avgs.reduce((a, b) => a + b, 0) / n;
-        const approved = gr.avgs.filter(v => v >= 60).length;
-        const failed = n - approved;
-        const pctA = ((approved / n) * 100).toFixed(1);
-        const pctF = ((failed / n) * 100).toFixed(1);
-        const avgColor = avg >= 60 ? '#16a34a' : '#dc2626';
-        const sectionsList = Array.from(gr.sectionsSet).sort().join(', ');
+    // =========================================================================
+    // PÁGINA 1: RESUMEN GENERAL INSTITUCIONAL (TABLA 1 Y TABLA 2)
+    // =========================================================================
+    if (selectedSection === 'ALL') {
+        html += `
+        <div class="encco-doc-page">
+            <!-- ENCABEZADO INSTITUCIONAL CON ESCUDO -->
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
+                <div style="width:90px; text-align:left;">
+                    <img src="logo.png" alt="Escudo ENCCO" style="height:82px; width:auto; object-fit:contain;" onerror="this.style.display='none'">
+                </div>
+                <div style="flex:1; text-align:center; padding:0 15px;">
+                    <div style="display:inline-block; border:1.5px solid #000; padding:6px 25px; border-radius:4px; background:#fef3c7; margin-bottom:8px;">
+                        <h2 style="margin:0; font-size:1.45rem; font-weight:900; color:#000; letter-spacing:0.5px; font-family:'Arial', sans-serif;">
+                            Escuela Nacional de Ciencias Comerciales
+                        </h2>
+                    </div>
+                    <div style="border-bottom:2px solid #000; padding-bottom:6px; margin-top:2px;">
+                        <h3 style="margin:0; font-size:1.35rem; font-weight:800; color:#000; font-family:'Arial', sans-serif;">
+                            Resumen de Promedios Finales ${gradeVal}to Grado
+                        </h3>
+                    </div>
+                </div>
+                <div style="width:180px; text-align:right; font-size:0.85rem; font-weight:600; color:#334155; padding-top:4px;">
+                    ${dateFormattedLong}
+                </div>
+            </div>
 
-        reportGradeRows.push({
-            grade: gr.grade,
-            sections: sectionsList || '—',
-            total: n,
-            avg: avg.toFixed(1),
-            approved: approved,
-            pctApproved: pctA,
-            failed: failed,
-            pctFailed: pctF
-        });
+            <!-- TABLA 1: RESUMEN ESTADÍSTICO POR SECCIÓN -->
+            <table class="encco-official-table" style="margin-top:14px; margin-bottom:30px;">
+                <thead>
+                    <tr>
+                        <th style="width:36%; background:#ffffff !important; border-top:1.5px solid #000; border-left:1.5px solid #000;"></th>
+                        ${sectionCols.map(s => `<th style="width:${52 / sectionCols.length}%;">${gradeVal}to ${s}</th>`).join('')}
+                        <th style="width:12%; background:#e0f2fe !important;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="font-weight:bold; font-size:0.95rem; padding-left:12px;">Aprobados</td>
+                        ${sectionCols.map(s => `<td style="text-align:center; font-weight:bold; font-size:1rem;">${sectionData[s].aprobados}</td>`).join('')}
+                        <td style="text-align:center; font-weight:bold; font-size:1.05rem; background:#f8fafc;">${totAprobados}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:bold; font-size:0.95rem; padding-left:12px;">Derecho a Recuperación</td>
+                        ${sectionCols.map(s => `<td style="text-align:center; font-weight:bold; font-size:1rem;">${sectionData[s].recuperacion}</td>`).join('')}
+                        <td style="text-align:center; font-weight:bold; font-size:1.05rem; background:#f8fafc;">${totRecup}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:bold; font-size:0.95rem; padding-left:12px; color:${totReprob > 0 ? '#dc2626' : '#000'};">Reprobados</td>
+                        ${sectionCols.map(s => `<td style="text-align:center; font-weight:bold; font-size:1rem; color:${sectionData[s].reprobados > 0 ? '#dc2626' : '#000'};">${sectionData[s].reprobados}</td>`).join('')}
+                        <td style="text-align:center; font-weight:bold; font-size:1.05rem; background:#f8fafc; color:${totReprob > 0 ? '#dc2626' : '#000'};">${totReprob}</td>
+                    </tr>
+                    <tr style="${totRetir > 0 ? 'background:#fee2e2;' : ''}">
+                        <td style="font-weight:bold; font-size:0.95rem; padding-left:12px; color:${totRetir > 0 ? '#b91c1c' : '#000'};">Retirados</td>
+                        ${sectionCols.map(s => `<td style="text-align:center; font-weight:bold; font-size:1rem; color:${sectionData[s].retirados > 0 ? '#b91c1c' : '#000'};">${sectionData[s].retirados}</td>`).join('')}
+                        <td style="text-align:center; font-weight:bold; font-size:1.05rem; background:#f8fafc; color:${totRetir > 0 ? '#b91c1c' : '#000'};">${totRetir}</td>
+                    </tr>
+                    <tr style="background:#f1f5f9; border-top:2px solid #000;">
+                        <td style="font-weight:900; font-size:1rem; padding-left:12px;">Total de Estudiantes</td>
+                        ${sectionCols.map(s => `<td style="text-align:center; font-weight:900; font-size:1.05rem;">${sectionData[s].total}</td>`).join('')}
+                        <td style="text-align:center; font-weight:900; font-size:1.15rem; background:#e2e8f0;">${totTotal}</td>
+                    </tr>
+                </tbody>
+            </table>
 
-        gradeHtml += `<tr>
-            <td style="font-weight:800; color:#0369a1;">${gr.grade}</td>
-            <td style="text-align:center; font-weight:600; color:#475569;">${sectionsList || '—'}</td>
-            <td style="text-align:center; font-weight:700;">${n}</td>
-            <td style="text-align:center; font-weight:800; color:${avgColor}; font-size:1.05rem;">${avg.toFixed(1)}</td>
-            <td style="text-align:center; color:#16a34a; font-weight:700;">${approved}</td>
-            <td style="text-align:center; color:#16a34a; font-weight:600;">${pctA}%</td>
-            <td style="text-align:center; color:#dc2626; font-weight:700;">${failed}</td>
-            <td style="text-align:center; color:#dc2626; font-weight:600;">${pctF}%</td>
-        </tr>`;
-    });
-
-    const schoolAvg = countWeighted ? (sumWeighted / countWeighted).toFixed(1) : '—';
-    const totalPctA = totalStudents ? ((totalApproved / totalStudents) * 100).toFixed(1) : '0';
-    const totalPctF = totalStudents ? ((totalFailed / totalStudents) * 100).toFixed(1) : '0';
-
-    if (gradesTbody) {
-        if (gradeHtml) {
-            gradeHtml += `<tr style="background:#f8fafc; border-top:2px solid #0284c7;">
-                <td style="font-weight:900; color:#0f172a; text-transform:uppercase;">TOTAL ESCUELA (CONSOLIDADO)</td>
-                <td style="text-align:center; font-weight:700; color:#0f172a;">Todas</td>
-                <td style="text-align:center; font-weight:900; font-size:1.05rem;">${totalStudents}</td>
-                <td style="text-align:center; font-weight:900; color:#0369a1; font-size:1.15rem;">${schoolAvg}</td>
-                <td style="text-align:center; color:#16a34a; font-weight:900; font-size:1.05rem;">${totalApproved}</td>
-                <td style="text-align:center; color:#16a34a; font-weight:800;">${totalPctA}%</td>
-                <td style="text-align:center; color:#dc2626; font-weight:900; font-size:1.05rem;">${totalFailed}</td>
-                <td style="text-align:center; color:#dc2626; font-weight:800;">${totalPctF}%</td>
-            </tr>`;
-            gradesTbody.innerHTML = gradeHtml;
-        } else {
-            gradesTbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Sin datos consolidados para este filtro.</td></tr>';
-        }
+            <!-- TABLA 2: CONTEO DE REPROBADOS POR CLASE -->
+            <table class="encco-official-table">
+                <thead>
+                    <tr>
+                        <th style="width:36%; text-align:left; padding-left:12px;">Reprobados por Clase</th>
+                        ${sectionCols.map(s => `<th style="width:${52 / sectionCols.length}%;">${gradeVal}to ${s}</th>`).join('')}
+                        <th style="width:12%; background:#e0f2fe !important;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${officialSubjects.map(subj => {
+                        const rowTot = failedByClass[subj].Total;
+                        return `
+                        <tr>
+                            <td style="padding-left:12px; font-weight:600; font-size:0.88rem;">${escapeHtml(subj)}</td>
+                            ${sectionCols.map(s => {
+                                const cVal = failedByClass[subj][s];
+                                return `<td style="text-align:center; font-weight:${cVal > 0 ? '800' : '500'}; color:${cVal > 0 ? '#dc2626' : '#000'};">${cVal}</td>`;
+                            }).join('')}
+                            <td style="text-align:center; font-weight:900; font-size:0.95rem; background:#f8fafc; color:${rowTot > 0 ? '#dc2626' : '#000'};">${rowTot}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
+        <div class="page-break"></div>`;
     }
 
-    // KPI cards
-    kpiRow.innerHTML = `
-        <div style="flex:1; min-width:160px; background:#f0f9ff; border:1.5px solid #0369a1; border-radius:10px; padding:16px 18px; text-align:center;">
-            <div style="font-size:1.8rem; font-weight:900; color:#0369a1">${schoolAvg}</div>
-            <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Promedio General Escuela</div>
-        </div>
-        <div style="flex:1; min-width:160px; background:#f0fdf4; border:1.5px solid #16a34a; border-radius:10px; padding:16px 18px; text-align:center;">
-            <div style="font-size:1.8rem; font-weight:900; color:#16a34a">${totalApproved} <span style="font-size:1rem;">(${totalPctA}%)</span></div>
-            <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Total Aprobados</div>
-        </div>
-        <div style="flex:1; min-width:160px; background:#fff1f2; border:1.5px solid #dc2626; border-radius:10px; padding:16px 18px; text-align:center;">
-            <div style="font-size:1.8rem; font-weight:900; color:#dc2626">${totalFailed} <span style="font-size:1rem;">(${totalPctF}%)</span></div>
-            <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Total Reprobados</div>
-        </div>
-        <div style="flex:1; min-width:160px; background:#fafafa; border:1.5px solid #64748b; border-radius:10px; padding:16px 18px; text-align:center;">
-            <div style="font-size:1.8rem; font-weight:900; color:#334155">${totalStudents}</div>
-            <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Alumnos Evaluados</div>
-        </div>`;
+    // =========================================================================
+    // PÁGINA 2 EN ADELANTE: SÁBANA DE NOTAS INDIVIDUALES POR ALUMNO (TABLA 3)
+    // =========================================================================
+    const sectionsToRender = (selectedSection === 'ALL') ? sectionCols : [selectedSection];
 
-    // Guardar estado en memoria para impresión
+    sectionsToRender.forEach((sec, sIdx) => {
+        const secInfo = sectionData[sec] || { students: [] };
+        const stList = secInfo.students || [];
+
+        // Generar filas para alumnos reales
+        let rowsHtml = '';
+        stList.forEach(item => {
+            const lostClass = item.lostCount > 0 ? 'encco-score-danger' : '';
+            rowsHtml += `
+                <tr>
+                    <td style="text-align:center; font-weight:700; font-size:0.85rem;">${item.clave}</td>
+                    <td style="font-weight:700; font-size:0.82rem; padding-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${escapeHtml(item.name)}
+                        ${item.isRetirado ? ' <span style="font-size:0.7rem; color:#b91c1c; font-weight:800;">(RETIRADO)</span>' : ''}
+                    </td>
+                    ${item.scores.map(sObj => {
+                        if (!sObj.evaluated || sObj.score === null) {
+                            return `<td style="text-align:center; font-size:0.82rem; color:#94a3b8;"></td>`;
+                        }
+                        const isFail = sObj.score < 60;
+                        return `<td style="text-align:center; font-size:0.85rem; font-weight:${isFail ? '800' : '600'}; color:${isFail ? '#dc2626' : '#000'};">${sObj.score}</td>`;
+                    }).join('')}
+                    <td class="encco-td-pink" style="font-size:0.88rem; color:${item.average < 60 && item.average > 0 ? '#dc2626' : '#000'};">
+                        ${item.average > 0 ? item.average.toFixed(2) : '0.00'}
+                    </td>
+                    <td class="encco-td-pink ${lostClass}" style="font-size:0.95rem;">
+                        ${item.lostCount}
+                    </td>
+                </tr>`;
+        });
+
+        // Completar visualmente con filas vacías si la sección tiene menos de 52 renglones como en el formato original
+        const targetRowCount = Math.max(stList.length, 36);
+        for (let i = stList.length + 1; i <= targetRowCount; i++) {
+            rowsHtml += `
+                <tr style="height:21px;">
+                    <td style="text-align:center; color:#94a3b8; font-size:0.75rem;">${i}</td>
+                    <td style="text-align:left; color:#94a3b8; font-size:0.75rem; padding-left:6px;">0</td>
+                    ${officialSubjects.map(() => `<td style="text-align:center;"></td>`).join('')}
+                    <td class="encco-td-pink"></td>
+                    <td class="encco-td-pink"></td>
+                </tr>`;
+        }
+
+        html += `
+        <div class="encco-doc-page" style="margin-top:10px;">
+            <!-- ENCABEZADO OFICIAL DE LA SÁBANA -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <div style="flex:1; text-align:center;">
+                    <h3 style="margin:0; font-size:1.15rem; font-weight:800; text-transform:uppercase; font-family:'Arial', sans-serif;">
+                        ESCUELA NACIONAL EN CIENCIAS COMERCIALES, JUTIAPA
+                    </h3>
+                    <h2 style="margin:2px 0 0 0; font-size:1.55rem; font-weight:900; font-family:'Arial', sans-serif; letter-spacing:0.5px;">
+                        Promedios Finales
+                    </h2>
+                </div>
+                <div style="width:140px; text-align:right;">
+                    <table style="border-collapse:collapse; border:2px solid #000; font-size:0.9rem; font-weight:bold; margin-left:auto;">
+                        <tr>
+                            <td style="border:1.5px solid #000; padding:4px 8px; background:#f1f5f9;">Grado</td>
+                            <td style="border:1.5px solid #000; padding:4px 12px; font-size:1.1rem; text-align:center; font-weight:900;">${gradeVal}</td>
+                            <td style="border:1.5px solid #000; padding:4px 8px; background:#f1f5f9;">Seccion</td>
+                            <td style="border:1.5px solid #000; padding:4px 12px; font-size:1.1rem; text-align:center; font-weight:900;">${sec}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TABLA 3: SÁBANA DE NOTAS INDIVIDUALES POR ALUMNO -->
+            <table class="encco-official-table" style="font-size:0.8rem; margin-bottom:8px;">
+                <thead>
+                    <tr style="height:95px;">
+                        <th style="width:38px; vertical-align:middle; text-align:center;">Clave</th>
+                        <th style="min-width:230px; vertical-align:middle; text-align:center;">Alumno</th>
+                        ${officialSubjects.map(s => {
+                            // Partir el nombre en palabras para encabezados verticales legibles
+                            const words = s.split(' ');
+                            const formatted = (words.length > 2) ? `${words.slice(0, 2).join(' ')}<br>${words.slice(2).join(' ')}` : s;
+                            return `<th style="width:54px; font-size:0.72rem; vertical-align:middle; text-align:center; line-height:1.15; padding:4px 2px;">${formatted}</th>`;
+                        }).join('')}
+                        <th class="encco-th-pink" style="width:68px; font-size:0.75rem; vertical-align:middle; line-height:1.2;">
+                            Promedios<br>Generales
+                        </th>
+                        <th class="encco-th-pink" style="width:58px; font-size:0.75rem; vertical-align:middle; line-height:1.2;">
+                            Catedras<br>Perdidas
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+
+            <!-- PIE DE PÁGINA OFICIAL -->
+            <div style="display:flex; justify-content:flex-end; font-size:0.78rem; font-weight:700; color:#475569; margin-top:6px;">
+                ${gradeVal}${sec} ${footerTimestamp}
+            </div>
+        </div>
+        ${sIdx < sectionsToRender.length - 1 ? '<div class="page-break"></div>' : ''}`;
+    });
+
+    container.innerHTML = html;
+
+    // Guardar referencia en memoria para exportar a Excel
     window._lastGradeStatsReportData = {
-        bimLabel: bimLabel,
-        bimIdx: bimIdx,
-        gradeFilterLabel: gradeFilterLabel,
-        sectionRows: reportSectionRows,
-        gradeRows: reportGradeRows,
-        schoolAvg: schoolAvg,
-        totalStudents: totalStudents,
-        totalApproved: totalApproved,
-        totalPctApproved: totalPctA,
-        totalFailed: totalFailed,
-        totalPctFailed: totalPctF
+        gradeVal,
+        gradeTitle,
+        period,
+        selectedSection,
+        sectionCols,
+        officialSubjects,
+        sectionData,
+        failedByClass,
+        totAprobados,
+        totRecup,
+        totReprob,
+        totRetir,
+        totTotal,
+        dateFormattedLong
     };
 }
 window.renderGradeStatsView = renderGradeStatsView;
 
 // ==========================================================================
-// FUNCIÓN OFICIAL DE IMPRESIÓN DE PROMEDIOS (SIN FIRMAS)
+// EXPORTACIÓN OFICIAL DE PROMEDIOS FINALES A EXCEL (.XLSX)
 // ==========================================================================
-function printGradeStatsReport(reportType = 'grades') {
+function exportGradeStatsOfficialExcel() {
+    if (!window._lastGradeStatsReportData) {
+        renderGradeStatsView();
+    }
+    const d = window._lastGradeStatsReportData;
+    if (!d) {
+        showToast("No hay datos cargados para exportar.", "warning");
+        return;
+    }
+
+    let excelContent = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+            <meta charset="utf-8">
+            <!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Promedios Finales ENCCO</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+            <style>
+                body { font-family: Arial, sans-serif; font-size: 10pt; }
+                .title { font-size: 14pt; font-weight: bold; text-align: center; }
+                .subtitle { font-size: 12pt; font-weight: bold; text-align: center; }
+                th { background-color: #dbeafe; border: 1pt solid #000; font-weight: bold; text-align: center; }
+                td { border: 0.5pt solid #000; vertical-align: middle; }
+                .pink { background-color: #ffe4e6; font-weight: bold; text-align: center; }
+                .red { color: #dc2626; font-weight: bold; }
+                .total-row { background-color: #f1f5f9; font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <table>
+                <tr><td colspan="${d.officialSubjects.length + 4}" class="title">ESCUELA NACIONAL EN CIENCIAS COMERCIALES, JUTIAPA</td></tr>
+                <tr><td colspan="${d.officialSubjects.length + 4}" class="subtitle">Resumen de Promedios Finales - ${escapeHtml(d.gradeTitle)}</td></tr>
+                <tr><td colspan="${d.officialSubjects.length + 4}" style="text-align:right;">Emisión: ${escapeHtml(d.dateFormattedLong)}</td></tr>
+                <tr></tr>
+                <!-- TABLA 1 -->
+                <tr><th colspan="${d.sectionCols.length + 2}" style="text-align:left; background:#cbe2f8;">1. RESUMEN ESTADÍSTICO POR SECCIÓN</th></tr>
+                <tr>
+                    <th style="text-align:left;">Concepto</th>
+                    ${d.sectionCols.map(s => `<th>${d.gradeVal}to ${s}</th>`).join('')}
+                    <th>Total</th>
+                </tr>
+                <tr>
+                    <td><strong>Aprobados</strong></td>
+                    ${d.sectionCols.map(s => `<td style="text-align:center;">${d.sectionData[s].aprobados}</td>`).join('')}
+                    <td style="text-align:center; font-weight:bold;">${d.totAprobados}</td>
+                </tr>
+                <tr>
+                    <td><strong>Derecho a Recuperación</strong></td>
+                    ${d.sectionCols.map(s => `<td style="text-align:center;">${d.sectionData[s].recuperacion}</td>`).join('')}
+                    <td style="text-align:center; font-weight:bold;">${d.totRecup}</td>
+                </tr>
+                <tr>
+                    <td><strong>Reprobados</strong></td>
+                    ${d.sectionCols.map(s => `<td style="text-align:center; ${d.sectionData[s].reprobados > 0 ? 'color:#dc2626; font-weight:bold;' : ''}">${d.sectionData[s].reprobados}</td>`).join('')}
+                    <td style="text-align:center; font-weight:bold; ${d.totReprob > 0 ? 'color:#dc2626;' : ''}">${d.totReprob}</td>
+                </tr>
+                <tr>
+                    <td><strong>Retirados</strong></td>
+                    ${d.sectionCols.map(s => `<td style="text-align:center; ${d.sectionData[s].retirados > 0 ? 'color:#b91c1c;' : ''}">${d.sectionData[s].retirados}</td>`).join('')}
+                    <td style="text-align:center; font-weight:bold; ${d.totRetir > 0 ? 'color:#b91c1c;' : ''}">${d.totRetir}</td>
+                </tr>
+                <tr class="total-row">
+                    <td><strong>Total de Estudiantes</strong></td>
+                    ${d.sectionCols.map(s => `<td style="text-align:center; font-weight:bold;">${d.sectionData[s].total}</td>`).join('')}
+                    <td style="text-align:center; font-weight:bold;">${d.totTotal}</td>
+                </tr>
+                <tr></tr>
+                <!-- TABLA 2 -->
+                <tr><th colspan="${d.sectionCols.length + 2}" style="text-align:left; background:#cbe2f8;">2. CONTEO DE REPROBADOS POR CLASE</th></tr>
+                <tr>
+                    <th style="text-align:left;">Asignatura</th>
+                    ${d.sectionCols.map(s => `<th>${d.gradeVal}to ${s}</th>`).join('')}
+                    <th>Total</th>
+                </tr>
+                ${d.officialSubjects.map(subj => `
+                    <tr>
+                        <td>${escapeHtml(subj)}</td>
+                        ${d.sectionCols.map(s => `<td style="text-align:center; ${d.failedByClass[subj][s] > 0 ? 'color:#dc2626; font-weight:bold;' : ''}">${d.failedByClass[subj][s]}</td>`).join('')}
+                        <td style="text-align:center; font-weight:bold; ${d.failedByClass[subj].Total > 0 ? 'color:#dc2626;' : ''}">${d.failedByClass[subj].Total}</td>
+                    </tr>
+                `).join('')}
+                <tr></tr>
+                <!-- TABLA 3 -->
+                <tr><th colspan="${d.officialSubjects.length + 4}" style="text-align:left; background:#cbe2f8;">3. SÁBANA DE NOTAS INDIVIDUALES POR ALUMNO</th></tr>
+            `;
+
+    d.sectionCols.forEach(sec => {
+        const sInfo = d.sectionData[sec];
+        if (!sInfo || !sInfo.students || !sInfo.students.length) return;
+
+        excelContent += `
+            <tr><td colspan="${d.officialSubjects.length + 4}" style="background:#e0f2fe; font-weight:bold; font-size:11pt;">GRADO: ${d.gradeVal}to &nbsp;&nbsp; SECCIÓN: ${sec}</td></tr>
+            <tr>
+                <th style="width:40px;">Clave</th>
+                <th style="width:250px; text-align:left;">Alumno</th>
+                ${d.officialSubjects.map(s => `<th>${escapeHtml(s)}</th>`).join('')}
+                <th class="pink">Promedio General</th>
+                <th class="pink">Cátedras Perdidas</th>
+            </tr>
+        `;
+
+        sInfo.students.forEach(item => {
+            excelContent += `
+                <tr>
+                    <td style="text-align:center;">${item.clave}</td>
+                    <td>${escapeHtml(item.name)}</td>
+                    ${item.scores.map(sc => `<td style="text-align:center; ${sc.evaluated && sc.score < 60 ? 'color:#dc2626; font-weight:bold;' : ''}">${sc.evaluated && sc.score !== null ? sc.score : ''}</td>`).join('')}
+                    <td class="pink">${item.average.toFixed(2)}</td>
+                    <td class="pink ${item.lostCount > 0 ? 'red' : ''}">${item.lostCount}</td>
+                </tr>
+            `;
+        });
+        excelContent += `<tr></tr>`;
+    });
+
+    excelContent += `
+            </table>
+        </body>
+        </html>
+    `;
+
+    downloadFormattedExcelWorkbook(excelContent, `promedios_finales_${d.gradeVal}to_encc.xlsx`);
+    showToast("Acta Oficial de Promedios Finales exportada en Microsoft Excel (.xlsx).", "info");
+}
+window.exportGradeStatsOfficialExcel = exportGradeStatsOfficialExcel;
+
+function printGradeStatsReport(reportType = 'section') {
     if (!hasRolePermission('grade-stats', STATE.currentRole)) {
         if (typeof showToast === 'function') showToast('No tiene permisos para imprimir este informe.', 'warning');
         return;
