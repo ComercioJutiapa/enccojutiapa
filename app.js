@@ -8286,6 +8286,7 @@ function navigateTo(viewName, event = null) {
         'enrollment': { title: 'Inscripción de Estudiantes', sub: 'Ficha de matrícula y registro de alumnos' },
         'students': { title: 'Nómina Oficial de Estudiantes', sub: 'Listado general y consulta de expedientes' },
         'grade-lock': { title: 'Control de Bloqueo y Bimestre Activo', sub: 'Configuración del bimestre oficial para docentes' },
+        'grade-stats': { title: 'Promedios y Estadísticas por Grado y Sección', sub: 'Rendimiento académico consolidado, cuadros por grado y reportes oficiales de promedios' },
     };
     const t = titles[viewName];
     if (t) {
@@ -29486,19 +29487,24 @@ if (typeof window !== 'undefined') {
 }
 
 // ==========================================================================
-// MÓDULO: PROMEDIOS Y ESTADÍSTICAS POR GRADO/SECCIÓN (v208)
+// MÓDULO: PROMEDIOS Y ESTADÍSTICAS POR GRADO/SECCIÓN (v209)
 // ==========================================================================
+window._lastGradeStatsReportData = null;
+
 function renderGradeStatsView() {
     if (!hasRolePermission('grade-stats', STATE.currentRole)) return;
 
     const bimSelect = document.getElementById('gradeStatsBimestreSelect');
     const gradeSelect = document.getElementById('gradeStatsGradeFilter');
     const tbody = document.getElementById('gradeStatsTableBody');
+    const gradesTbody = document.getElementById('gradeStatsGradesTableBody');
     const kpiRow = document.getElementById('gradeStatsKpiRow');
     if (!tbody || !kpiRow) return;
 
     const bimIdx = parseInt(bimSelect ? bimSelect.value : '0', 10);
     const gradeFilter = gradeSelect ? gradeSelect.value : '';
+    const bimLabel = bimSelect && bimSelect.options[bimSelect.selectedIndex] ? bimSelect.options[bimSelect.selectedIndex].text : `Bimestre ${bimIdx + 1}`;
+    const gradeFilterLabel = gradeSelect && gradeSelect.options[gradeSelect.selectedIndex] ? gradeSelect.options[gradeSelect.selectedIndex].text : 'Todos los Grados';
 
     // Deduplicar y filtrar alumnos
     const seen = new Set();
@@ -29526,29 +29532,46 @@ function renderGradeStatsView() {
         return vals.reduce((a, b) => a + b, 0) / vals.length;
     }
 
-    // Agrupar por grado + sección
-    const groups = {};
+    // 1. Agrupar por grado + sección
+    const sectionGroups = {};
+    // 2. Agrupar por grado
+    const gradeGroups = {};
+
     alumnos.forEach(s => {
         const gradeLabel = s.grade || s.gradeLevel || 'Sin grado';
         const sectionLabel = s.section || s.sectionId || 'Sin sección';
-        const key = `${gradeLabel}|||${sectionLabel}`;
-        if (!groups[key]) groups[key] = { grade: gradeLabel, section: sectionLabel, avgs: [] };
+        const secKey = `${gradeLabel}|||${sectionLabel}`;
+
+        if (!sectionGroups[secKey]) {
+            sectionGroups[secKey] = { grade: gradeLabel, section: sectionLabel, avgs: [] };
+        }
+        if (!gradeGroups[gradeLabel]) {
+            gradeGroups[gradeLabel] = { grade: gradeLabel, sectionsSet: new Set(), avgs: [] };
+        }
+
         const avg = getStudentAvg(s, bimIdx);
-        if (avg !== null) groups[key].avgs.push(avg);
+        if (avg !== null) {
+            sectionGroups[secKey].avgs.push(avg);
+            gradeGroups[gradeLabel].avgs.push(avg);
+            gradeGroups[gradeLabel].sectionsSet.add(sectionLabel);
+        }
     });
 
     // Totales globales
     let totalApproved = 0, totalFailed = 0, totalStudents = 0, sumWeighted = 0, countWeighted = 0;
 
-    const rows = Object.values(groups).sort((a, b) =>
+    // Renderizar Cuadro de Secciones
+    const sectionRows = Object.values(sectionGroups).sort((a, b) =>
         a.grade.localeCompare(b.grade) || a.section.localeCompare(b.section)
     );
 
-    let html = '';
-    rows.forEach(g => {
+    let secHtml = '';
+    const reportSectionRows = [];
+
+    sectionRows.forEach(g => {
         const n = g.avgs.length;
         if (!n) {
-            html += `<tr><td style="font-weight:700">${g.grade}</td><td>${g.section}</td><td style="text-align:center">0</td><td colspan="5" style="text-align:center; color:#94a3b8">Sin datos para este bimestre</td></tr>`;
+            secHtml += `<tr><td style="font-weight:700">${g.grade}</td><td>${g.section}</td><td style="text-align:center">0</td><td colspan="5" style="text-align:center; color:#94a3b8">Sin datos para este bimestre</td></tr>`;
             return;
         }
         const avg = g.avgs.reduce((a, b) => a + b, 0) / n;
@@ -29562,7 +29585,19 @@ function renderGradeStatsView() {
         const pctA = ((approved / n) * 100).toFixed(1);
         const pctF = ((failed / n) * 100).toFixed(1);
         const avgColor = avg >= 60 ? '#16a34a' : '#dc2626';
-        html += `<tr>
+
+        reportSectionRows.push({
+            grade: g.grade,
+            section: g.section,
+            total: n,
+            avg: avg.toFixed(1),
+            approved: approved,
+            pctApproved: pctA,
+            failed: failed,
+            pctFailed: pctF
+        });
+
+        secHtml += `<tr>
             <td style="font-weight:700">${g.grade}</td>
             <td>${g.section}</td>
             <td style="text-align:center">${n}</td>
@@ -29574,28 +29609,447 @@ function renderGradeStatsView() {
         </tr>`;
     });
 
-    tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Sin datos para este bimestre.</td></tr>';
+    tbody.innerHTML = secHtml || '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Sin datos para este bimestre.</td></tr>';
+
+    // Renderizar Cuadro Consolidado por Grados
+    const gradeRows = Object.values(gradeGroups).sort((a, b) => a.grade.localeCompare(b.grade));
+    let gradeHtml = '';
+    const reportGradeRows = [];
+
+    gradeRows.forEach(gr => {
+        const n = gr.avgs.length;
+        if (!n) return;
+        const avg = gr.avgs.reduce((a, b) => a + b, 0) / n;
+        const approved = gr.avgs.filter(v => v >= 60).length;
+        const failed = n - approved;
+        const pctA = ((approved / n) * 100).toFixed(1);
+        const pctF = ((failed / n) * 100).toFixed(1);
+        const avgColor = avg >= 60 ? '#16a34a' : '#dc2626';
+        const sectionsList = Array.from(gr.sectionsSet).sort().join(', ');
+
+        reportGradeRows.push({
+            grade: gr.grade,
+            sections: sectionsList || '—',
+            total: n,
+            avg: avg.toFixed(1),
+            approved: approved,
+            pctApproved: pctA,
+            failed: failed,
+            pctFailed: pctF
+        });
+
+        gradeHtml += `<tr>
+            <td style="font-weight:800; color:#0369a1;">${gr.grade}</td>
+            <td style="text-align:center; font-weight:600; color:#475569;">${sectionsList || '—'}</td>
+            <td style="text-align:center; font-weight:700;">${n}</td>
+            <td style="text-align:center; font-weight:800; color:${avgColor}; font-size:1.05rem;">${avg.toFixed(1)}</td>
+            <td style="text-align:center; color:#16a34a; font-weight:700;">${approved}</td>
+            <td style="text-align:center; color:#16a34a; font-weight:600;">${pctA}%</td>
+            <td style="text-align:center; color:#dc2626; font-weight:700;">${failed}</td>
+            <td style="text-align:center; color:#dc2626; font-weight:600;">${pctF}%</td>
+        </tr>`;
+    });
+
+    const schoolAvg = countWeighted ? (sumWeighted / countWeighted).toFixed(1) : '—';
+    const totalPctA = totalStudents ? ((totalApproved / totalStudents) * 100).toFixed(1) : '0';
+    const totalPctF = totalStudents ? ((totalFailed / totalStudents) * 100).toFixed(1) : '0';
+
+    if (gradesTbody) {
+        if (gradeHtml) {
+            gradeHtml += `<tr style="background:#f8fafc; border-top:2px solid #0284c7;">
+                <td style="font-weight:900; color:#0f172a; text-transform:uppercase;">TOTAL ESCUELA (CONSOLIDADO)</td>
+                <td style="text-align:center; font-weight:700; color:#0f172a;">Todas</td>
+                <td style="text-align:center; font-weight:900; font-size:1.05rem;">${totalStudents}</td>
+                <td style="text-align:center; font-weight:900; color:#0369a1; font-size:1.15rem;">${schoolAvg}</td>
+                <td style="text-align:center; color:#16a34a; font-weight:900; font-size:1.05rem;">${totalApproved}</td>
+                <td style="text-align:center; color:#16a34a; font-weight:800;">${totalPctA}%</td>
+                <td style="text-align:center; color:#dc2626; font-weight:900; font-size:1.05rem;">${totalFailed}</td>
+                <td style="text-align:center; color:#dc2626; font-weight:800;">${totalPctF}%</td>
+            </tr>`;
+            gradesTbody.innerHTML = gradeHtml;
+        } else {
+            gradesTbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Sin datos consolidados para este filtro.</td></tr>';
+        }
+    }
 
     // KPI cards
-    const schoolAvg = countWeighted ? (sumWeighted / countWeighted).toFixed(1) : '—';
-    const pctA = totalStudents ? ((totalApproved / totalStudents) * 100).toFixed(1) : '0';
-    const pctF = totalStudents ? ((totalFailed / totalStudents) * 100).toFixed(1) : '0';
     kpiRow.innerHTML = `
         <div style="flex:1; min-width:160px; background:#f0f9ff; border:1.5px solid #0369a1; border-radius:10px; padding:16px 18px; text-align:center;">
             <div style="font-size:1.8rem; font-weight:900; color:#0369a1">${schoolAvg}</div>
             <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Promedio General Escuela</div>
         </div>
         <div style="flex:1; min-width:160px; background:#f0fdf4; border:1.5px solid #16a34a; border-radius:10px; padding:16px 18px; text-align:center;">
-            <div style="font-size:1.8rem; font-weight:900; color:#16a34a">${totalApproved} <span style="font-size:1rem;">(${pctA}%)</span></div>
+            <div style="font-size:1.8rem; font-weight:900; color:#16a34a">${totalApproved} <span style="font-size:1rem;">(${totalPctA}%)</span></div>
             <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Total Aprobados</div>
         </div>
         <div style="flex:1; min-width:160px; background:#fff1f2; border:1.5px solid #dc2626; border-radius:10px; padding:16px 18px; text-align:center;">
-            <div style="font-size:1.8rem; font-weight:900; color:#dc2626">${totalFailed} <span style="font-size:1rem;">(${pctF}%)</span></div>
+            <div style="font-size:1.8rem; font-weight:900; color:#dc2626">${totalFailed} <span style="font-size:1rem;">(${totalPctF}%)</span></div>
             <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Total Reprobados</div>
         </div>
         <div style="flex:1; min-width:160px; background:#fafafa; border:1.5px solid #64748b; border-radius:10px; padding:16px 18px; text-align:center;">
             <div style="font-size:1.8rem; font-weight:900; color:#334155">${totalStudents}</div>
-            <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Alumnos con Datos</div>
+            <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Alumnos Evaluados</div>
         </div>`;
+
+    // Guardar estado en memoria para impresión
+    window._lastGradeStatsReportData = {
+        bimLabel: bimLabel,
+        bimIdx: bimIdx,
+        gradeFilterLabel: gradeFilterLabel,
+        sectionRows: reportSectionRows,
+        gradeRows: reportGradeRows,
+        schoolAvg: schoolAvg,
+        totalStudents: totalStudents,
+        totalApproved: totalApproved,
+        totalPctApproved: totalPctA,
+        totalFailed: totalFailed,
+        totalPctFailed: totalPctF
+    };
 }
 window.renderGradeStatsView = renderGradeStatsView;
+
+// ==========================================================================
+// FUNCIÓN OFICIAL DE IMPRESIÓN DE PROMEDIOS (SIN FIRMAS)
+// ==========================================================================
+function printGradeStatsReport(reportType = 'grades') {
+    if (!hasRolePermission('grade-stats', STATE.currentRole)) {
+        if (typeof showToast === 'function') showToast('No tiene permisos para imprimir este informe.', 'warning');
+        return;
+    }
+
+    if (!window._lastGradeStatsReportData) {
+        renderGradeStatsView();
+    }
+
+    const data = window._lastGradeStatsReportData;
+    if (!data) {
+        if (typeof showToast === 'function') showToast('No hay datos estadísticos para generar el documento.', 'warning');
+        return;
+    }
+
+    const h = STATE.schoolHeaderConfig || {};
+    const schoolName = h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES';
+    const schoolCode = h.mineducCode || h.schoolCode || '22-01-0014-46';
+    const logoUrl = h.logoUrl || 'logo.png';
+    const cycle = STATE.currentAcademicCycle || h.schoolCycle || '2026';
+    const capDate = new Date().toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const isByGrades = reportType === 'grades';
+    const reportTitle = isByGrades ? 'CUADRO CONSOLIDADO DE PROMEDIOS POR GRADO' : 'INFORME ESTADÍSTICO DE PROMEDIOS POR SECCIÓN';
+
+    let tableHeaders = '';
+    let tableBodyRows = '';
+
+    if (isByGrades) {
+        tableHeaders = `
+            <tr>
+                <th style="width:40px;">No.</th>
+                <th>Grado y Carrera</th>
+                <th style="width:120px; text-align:center;">Secciones</th>
+                <th style="width:90px; text-align:center;">Total Alumnos</th>
+                <th style="width:100px; text-align:center;">Promedio Gral.</th>
+                <th style="width:90px; text-align:center;">Aprobados</th>
+                <th style="width:90px; text-align:center;">% Aprobados</th>
+                <th style="width:90px; text-align:center;">Reprobados</th>
+                <th style="width:90px; text-align:center;">% Reprobados</th>
+            </tr>`;
+
+        data.gradeRows.forEach((r, idx) => {
+            tableBodyRows += `
+                <tr>
+                    <td style="text-align:center; font-weight:bold;">${idx + 1}</td>
+                    <td style="font-weight:bold;">${escapeHtml(r.grade)}</td>
+                    <td style="text-align:center;">${escapeHtml(r.sections)}</td>
+                    <td style="text-align:center; font-weight:bold;">${r.total}</td>
+                    <td style="text-align:center; font-weight:bold; font-size:11px;">${r.avg}</td>
+                    <td style="text-align:center; color:#166534; font-weight:bold;">${r.approved}</td>
+                    <td style="text-align:center;">${r.pctApproved}%</td>
+                    <td style="text-align:center; color:#991b1b; font-weight:bold;">${r.failed}</td>
+                    <td style="text-align:center;">${r.pctFailed}%</td>
+                </tr>`;
+        });
+
+        tableBodyRows += `
+            <tr style="background-color:#f1f5f9; font-weight:bold;">
+                <td colspan="3" style="text-align:right; text-transform:uppercase; padding-right:12px; font-weight:bold;">TOTAL INSTITUCIONAL:</td>
+                <td style="text-align:center; font-weight:bold;">${data.totalStudents}</td>
+                <td style="text-align:center; font-weight:bold; font-size:11px;">${data.schoolAvg}</td>
+                <td style="text-align:center; color:#166534; font-weight:bold;">${data.totalApproved}</td>
+                <td style="text-align:center; font-weight:bold;">${data.totalPctApproved}%</td>
+                <td style="text-align:center; color:#991b1b; font-weight:bold;">${data.totalFailed}</td>
+                <td style="text-align:center; font-weight:bold;">${data.totalPctFailed}%</td>
+            </tr>`;
+    } else {
+        tableHeaders = `
+            <tr>
+                <th style="width:40px;">No.</th>
+                <th>Grado y Carrera</th>
+                <th style="width:80px; text-align:center;">Sección</th>
+                <th style="width:90px; text-align:center;">Total Alumnos</th>
+                <th style="width:100px; text-align:center;">Promedio Gral.</th>
+                <th style="width:90px; text-align:center;">Aprobados</th>
+                <th style="width:90px; text-align:center;">% Aprobados</th>
+                <th style="width:90px; text-align:center;">Reprobados</th>
+                <th style="width:90px; text-align:center;">% Reprobados</th>
+            </tr>`;
+
+        data.sectionRows.forEach((r, idx) => {
+            tableBodyRows += `
+                <tr>
+                    <td style="text-align:center; font-weight:bold;">${idx + 1}</td>
+                    <td style="font-weight:bold;">${escapeHtml(r.grade)}</td>
+                    <td style="text-align:center; font-weight:bold;">${escapeHtml(r.section)}</td>
+                    <td style="text-align:center;">${r.total}</td>
+                    <td style="text-align:center; font-weight:bold;">${r.avg}</td>
+                    <td style="text-align:center; color:#166534;">${r.approved}</td>
+                    <td style="text-align:center;">${r.pctApproved}%</td>
+                    <td style="text-align:center; color:#991b1b;">${r.failed}</td>
+                    <td style="text-align:center;">${r.pctFailed}%</td>
+                </tr>`;
+        });
+
+        tableBodyRows += `
+            <tr style="background-color:#f1f5f9; font-weight:bold;">
+                <td colspan="3" style="text-align:right; text-transform:uppercase; padding-right:12px; font-weight:bold;">TOTAL EVALUADOS:</td>
+                <td style="text-align:center; font-weight:bold;">${data.totalStudents}</td>
+                <td style="text-align:center; font-weight:bold; font-size:11px;">${data.schoolAvg}</td>
+                <td style="text-align:center; color:#166534; font-weight:bold;">${data.totalApproved}</td>
+                <td style="text-align:center; font-weight:bold;">${data.totalPctApproved}%</td>
+                <td style="text-align:center; color:#991b1b; font-weight:bold;">${data.totalFailed}</td>
+                <td style="text-align:center; font-weight:bold;">${data.totalPctFailed}%</td>
+            </tr>`;
+    }
+
+    const printWin = window.open('', '_blank', 'width=950,height=800');
+    if (!printWin) {
+        alert("Por favor permita las ventanas emergentes (pop-ups) en su navegador para imprimir el reporte.");
+        return;
+    }
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>${escapeHtml(reportTitle)} - ENCCO Jutiapa</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 24px;
+            color: #000;
+            background: #fff;
+            font-size: 11px;
+        }
+        .print-btn-bar {
+            text-align: right;
+            margin-bottom: 16px;
+        }
+        .btn-print-now {
+            background: #0284c7;
+            color: #fff;
+            padding: 8px 16px;
+            border: none;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn-close-now {
+            background: #64748b;
+            color: #fff;
+            padding: 8px 14px;
+            border: none;
+            font-size: 11px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 6px;
+        }
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 8px;
+        }
+        .header-logo {
+            width: 70px;
+            vertical-align: middle;
+            text-align: center;
+        }
+        .header-logo img {
+            max-width: 60px;
+            max-height: 60px;
+            object-fit: contain;
+        }
+        .header-text {
+            vertical-align: middle;
+            text-align: center;
+            padding-left: 10px;
+        }
+        .line-mineduc {
+            font-size: 9.5px;
+            font-weight: bold;
+            color: #333;
+            letter-spacing: 0.5px;
+        }
+        .line-school {
+            font-size: 13px;
+            font-weight: 900;
+            color: #000;
+            margin: 2px 0;
+        }
+        .line-title {
+            font-size: 11.5px;
+            font-weight: 800;
+            color: #000;
+            text-decoration: underline;
+            margin: 3px 0;
+        }
+        .line-meta {
+            font-size: 9px;
+            color: #444;
+            font-weight: bold;
+        }
+        .simple-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 10.5px;
+        }
+        .simple-table th {
+            background-color: #f1f5f9;
+            border: 1px solid #000;
+            padding: 6px 4px;
+            font-size: 9.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            text-align: center;
+        }
+        .simple-table td {
+            border: 1px solid #000;
+            padding: 5px 6px;
+            vertical-align: middle;
+        }
+        .summary-box {
+            margin-top: 14px;
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+        }
+        .summary-item {
+            flex: 1;
+            border: 1px solid #000;
+            padding: 6px 10px;
+            text-align: center;
+            background: #fafafa;
+        }
+        .summary-item .num {
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .summary-item .lbl {
+            font-size: 8.5px;
+            font-weight: bold;
+            color: #444;
+            text-transform: uppercase;
+        }
+        .footer-note {
+            margin-top: 24px;
+            font-size: 8.5px;
+            color: #555;
+            text-align: right;
+            border-top: 1px dashed #999;
+            padding-top: 6px;
+        }
+        @media print {
+            .print-btn-bar { display: none !important; }
+            body { padding: 0 !important; margin: 10mm !important; }
+            @page { margin: 10mm; }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-btn-bar">
+        <button class="btn-print-now" onclick="window.print()">🖨️ Imprimir Documento</button>
+        <button class="btn-close-now" onclick="window.close()">✖ Cerrar</button>
+    </div>
+
+    <table class="header-table">
+        <tr>
+            <td class="header-logo">
+                <img src="${escapeHtml(logoUrl)}" alt="Logo ENCCO" onerror="this.style.display='none'">
+            </td>
+            <td class="header-text">
+                <div class="line-mineduc">MINISTERIO DE EDUCACIÓN &bull; DIRECCIÓN DEPARTAMENTAL DE EDUCACIÓN DE JUTIAPA</div>
+                <div class="line-school">${escapeHtml(schoolName)}</div>
+                <div class="line-title">${escapeHtml(reportTitle)}</div>
+                <div class="line-meta">
+                    ${escapeHtml(data.bimLabel.toUpperCase())} &bull; ${escapeHtml(data.gradeFilterLabel.toUpperCase())} &bull; CICLO ESCOLAR ${escapeHtml(cycle)} &bull; JORNADA VESPERTINA &bull; CÓDIGO: ${escapeHtml(schoolCode)}
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="simple-table">
+        <thead>
+            ${tableHeaders}
+        </thead>
+        <tbody>
+            ${tableBodyRows}
+        </tbody>
+    </table>
+
+    <div class="summary-box">
+        <div class="summary-item">
+            <div class="num">${data.schoolAvg}</div>
+            <div class="lbl">Promedio General</div>
+        </div>
+        <div class="summary-item">
+            <div class="num" style="color:#166534;">${data.totalApproved} (${data.totalPctApproved}%)</div>
+            <div class="lbl">Total Aprobados</div>
+        </div>
+        <div class="summary-item">
+            <div class="num" style="color:#991b1b;">${data.totalFailed} (${data.totalPctFailed}%)</div>
+            <div class="lbl">Total Reprobados</div>
+        </div>
+        <div class="summary-item">
+            <div class="num">${data.totalStudents}</div>
+            <div class="lbl">Total Alumnos Evaluados</div>
+        </div>
+    </div>
+
+    <div class="footer-note">
+        Documento Estadístico e Informativo Institucional &bull; Fecha de emisión: ${escapeHtml(capDate)} &bull; ENCCO Jutiapa
+    </div>
+</body>
+</html>`;
+
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
+
+    const triggerPrint = () => {
+        try {
+            printWin.focus();
+            printWin.print();
+        } catch (e) {
+            console.error("Error al imprimir reporte:", e);
+        }
+    };
+
+    const imgEl = printWin.document.querySelector('img');
+    if (imgEl) {
+        if (imgEl.complete) {
+            setTimeout(triggerPrint, 250);
+        } else {
+            imgEl.onload = () => setTimeout(triggerPrint, 200);
+            imgEl.onerror = () => setTimeout(triggerPrint, 200);
+            setTimeout(triggerPrint, 1000);
+        }
+    } else {
+        setTimeout(triggerPrint, 300);
+    }
+}
+window.printGradeStatsReport = printGradeStatsReport;
+
