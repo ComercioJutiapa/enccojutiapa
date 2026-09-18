@@ -29920,6 +29920,22 @@ function renderGradeStatsView() {
     const isFilteredSection = (selectedSection !== 'ALL');
     const colsForSummary = isFilteredSection ? [selectedSection] : sectionCols;
 
+    // Paleta de colores pastel distintivos para separar visualmente cada columna de clase en la sábana
+    const CLASS_COLUMN_PALETTE = [
+        { headerBg: '#dbeafe', cellBg: '#f8fafc', border: '#93c5fd' }, // Azul cielo
+        { headerBg: '#fef3c7', cellBg: '#fffdf5', border: '#fcd34d' }, // Ámbar / Crema
+        { headerBg: '#dcfce7', cellBg: '#f6fef9', border: '#86efac' }, // Verde menta
+        { headerBg: '#f3e8ff', cellBg: '#fbf7ff', border: '#d8b4fe' }, // Púrpura lavanda
+        { headerBg: '#ffedd5', cellBg: '#fffaf5', border: '#fdba74' }, // Melocotón / Naranja
+        { headerBg: '#cffafe', cellBg: '#f2feff', border: '#67e8f9' }, // Cian / Aqua
+        { headerBg: '#fce7f3', cellBg: '#fdf4f8', border: '#f9a8d4' }, // Rosa pastel
+        { headerBg: '#e0e7ff', cellBg: '#f5f7ff', border: '#a5b4fc' }, // Índigo / Celeste
+        { headerBg: '#ccfbf1', cellBg: '#f3fdfb', border: '#5eead4' }, // Menta suave
+        { headerBg: '#ede9fe', cellBg: '#f8f6ff', border: '#c4b5fd' }, // Violeta suave
+        { headerBg: '#fef9c3', cellBg: '#fffef0', border: '#fde047' }, // Amarillo pastel
+        { headerBg: '#e2e8f0', cellBg: '#f8fafc', border: '#cbd5e1' }  // Pizarra claro
+    ];
+
     html += `
     <div class="encco-doc-page encco-doc-summary-page">
         <!-- ENCABEZADO INSTITUCIONAL CON ESCUDO -->
@@ -29929,12 +29945,12 @@ function renderGradeStatsView() {
             </div>
             <div style="flex:1; text-align:center; padding:0 8px;">
                 <div style="display:inline-block; border:1.5px solid #000; padding:3px 16px; border-radius:4px; background:#fef3c7; margin-bottom:4px;">
-                    <h2 style="margin:0; font-size:1.1rem; font-weight:900; color:#000; letter-spacing:0.3px; font-family:'Arial', sans-serif;">
+                    <h2 style="margin:0; font-size:1.05rem; font-weight:900; color:#000; letter-spacing:0.3px; font-family:'Arial', sans-serif;">
                         Escuela Nacional de Ciencias Comerciales
                     </h2>
                 </div>
                 <div style="border-bottom:1.5px solid #000; padding-bottom:3px; margin-top:2px;">
-                    <h3 style="margin:0; font-size:1.0rem; font-weight:800; color:#000; font-family:'Arial', sans-serif;">
+                    <h3 style="margin:0; font-size:0.95rem; font-weight:800; color:#000; font-family:'Arial', sans-serif;">
                         Resumen de ${periodTitle} ${gradeVal}to Grado ${isFilteredSection ? `(Sección ${selectedSection})` : ''}
                     </h3>
                 </div>
@@ -29949,49 +29965,56 @@ function renderGradeStatsView() {
         <table class="encco-official-table">
             <thead>
                 <tr>
-                    <th style="width:38%; background:#ffffff !important; border-top:1px solid #000; border-left:1px solid #000;"></th>
-                    ${colsForSummary.map(s => `<th>${gradeVal}to ${s}</th>`).join('')}
-                    ${!isFilteredSection ? '<th style="width:14%; background:#e0f2fe !important;">Total</th>' : ''}
+                    <th style="width:38%; background:#ffffff !important; border-top:1px solid #000; border-left:1px solid #000; font-size:0.82rem;"></th>
+                    ${colsForSummary.map(s => `<th style="font-size:0.82rem;">${gradeVal}to ${s}</th>`).join('')}
+                    ${!isFilteredSection ? '<th style="width:14%; background:#e0f2fe !important; font-size:0.82rem;">Total</th>' : ''}
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td style="font-weight:bold; font-size:0.82rem; padding-left:8px;">Aprobados</td>
-                    ${colsForSummary.map(s => `<td style="text-align:center; font-weight:bold; font-size:0.85rem;">${sectionData[s] ? sectionData[s].aprobados : 0}</td>`).join('')}
-                    ${!isFilteredSection ? `<td style="text-align:center; font-weight:bold; font-size:0.9rem; background:#f8fafc;">${totAprobados}</td>` : ''}
+                    ${colsForSummary.map(s => `<td style="text-align:center; font-weight:bold; font-size:0.82rem;">${sectionData[s] ? sectionData[s].aprobados : 0}</td>`).join('')}
+                    ${!isFilteredSection ? `<td style="text-align:center; font-weight:bold; font-size:0.82rem; background:#f8fafc;">${totAprobados}</td>` : ''}
                 </tr>
                 <tr>
                     <td style="font-weight:bold; font-size:0.82rem; padding-left:8px;">Derecho a Recuperación</td>
-                    ${colsForSummary.map(s => `<td style="text-align:center; font-weight:bold; font-size:0.85rem;">${sectionData[s] ? sectionData[s].recuperacion : 0}</td>`).join('')}
-                    ${!isFilteredSection ? `<td style="text-align:center; font-weight:bold; font-size:0.9rem; background:#f8fafc;">${totRecup}</td>` : ''}
+                    ${colsForSummary.map(s => `<td style="text-align:center; font-weight:bold; font-size:0.82rem;">${sectionData[s] ? sectionData[s].recuperacion : 0}</td>`).join('')}
+                    ${!isFilteredSection ? `<td style="text-align:center; font-weight:bold; font-size:0.82rem; background:#f8fafc;">${totRecup}</td>` : ''}
                 </tr>
-                <tr>
-                    <td style="font-weight:bold; font-size:0.82rem; padding-left:8px; color:${totReprob > 0 ? '#dc2626' : '#000'};">Reprobados</td>
-                    ${colsForSummary.map(s => `<td style="text-align:center; font-weight:bold; font-size:0.85rem; color:${(sectionData[s] && sectionData[s].reprobados > 0) ? '#dc2626' : '#000'};">${sectionData[s] ? sectionData[s].reprobados : 0}</td>`).join('')}
-                    ${!isFilteredSection ? `<td style="text-align:center; font-weight:bold; font-size:0.9rem; background:#f8fafc; color:${totReprob > 0 ? '#dc2626' : '#000'};">${totReprob}</td>` : ''}
+                <tr style="${totReprob > 0 ? 'background:#fff1f2;' : ''}">
+                    <td style="font-weight:bold; font-size:0.82rem; padding-left:8px; color:${totReprob > 0 ? '#b91c1c' : '#000'};">Reprobados</td>
+                    ${colsForSummary.map(s => {
+                        const rCount = sectionData[s] ? sectionData[s].reprobados : 0;
+                        const hasFails = rCount > 0;
+                        return `<td style="text-align:center; font-weight:bold; font-size:0.82rem; ${hasFails ? 'background:#fee2e2; color:#b91c1c; border:1.5px solid #ef4444;' : 'color:#000;'}">${rCount}</td>`;
+                    }).join('')}
+                    ${!isFilteredSection ? `<td style="text-align:center; font-weight:bold; font-size:0.82rem; ${totReprob > 0 ? 'background:#fecdd3; color:#9f1239; border:1.5px solid #f43f5e;' : 'background:#f8fafc; color:#000;'}">${totReprob}</td>` : ''}
                 </tr>
-                <tr style="${totRetir > 0 ? 'background:#fee2e2;' : ''}">
-                    <td style="font-weight:bold; font-size:0.82rem; padding-left:8px; color:${totRetir > 0 ? '#b91c1c' : '#000'};">Retirados</td>
-                    ${colsForSummary.map(s => `<td style="text-align:center; font-weight:bold; font-size:0.85rem; color:${(sectionData[s] && sectionData[s].retirados > 0) ? '#b91c1c' : '#000'};">${sectionData[s] ? sectionData[s].retirados : 0}</td>`).join('')}
-                    ${!isFilteredSection ? `<td style="text-align:center; font-weight:bold; font-size:0.9rem; background:#f8fafc; color:${totRetir > 0 ? '#b91c1c' : '#000'};">${totRetir}</td>` : ''}
+                <tr style="${totRetir > 0 ? 'background:#fff7ed;' : ''}">
+                    <td style="font-weight:bold; font-size:0.82rem; padding-left:8px; color:${totRetir > 0 ? '#c2410c' : '#000'};">Retirados</td>
+                    ${colsForSummary.map(s => {
+                        const retCount = sectionData[s] ? sectionData[s].retirados : 0;
+                        return `<td style="text-align:center; font-weight:bold; font-size:0.82rem; color:${retCount > 0 ? '#c2410c' : '#000'};">${retCount}</td>`;
+                    }).join('')}
+                    ${!isFilteredSection ? `<td style="text-align:center; font-weight:bold; font-size:0.82rem; background:#f8fafc; color:${totRetir > 0 ? '#c2410c' : '#000'};">${totRetir}</td>` : ''}
                 </tr>
                 <tr style="background:#f1f5f9; border-top:1.5px solid #000;">
-                    <td style="font-weight:900; font-size:0.85rem; padding-left:8px;">Total de Estudiantes</td>
-                    ${colsForSummary.map(s => `<td style="text-align:center; font-weight:900; font-size:0.9rem;">${sectionData[s] ? sectionData[s].total : 0}</td>`).join('')}
-                    ${!isFilteredSection ? `<td style="text-align:center; font-weight:900; font-size:0.95rem; background:#e2e8f0;">${totTotal}</td>` : ''}
+                    <td style="font-weight:900; font-size:0.82rem; padding-left:8px;">Total de Estudiantes</td>
+                    ${colsForSummary.map(s => `<td style="text-align:center; font-weight:900; font-size:0.82rem;">${sectionData[s] ? sectionData[s].total : 0}</td>`).join('')}
+                    ${!isFilteredSection ? `<td style="text-align:center; font-weight:900; font-size:0.82rem; background:#e2e8f0;">${totTotal}</td>` : ''}
                 </tr>
             </tbody>
         </table>
         </div>
 
-        <!-- TABLA 2: CONTEO DE REPROBADOS POR CLASE -->
+        <!-- TABLA 2: CONTEO DE REPROBADOS POR CLASE (RESALTADO VISUAL CLARO) -->
         <div style="overflow-x:auto; width:100%; margin-bottom:8px;">
         <table class="encco-official-table">
             <thead>
                 <tr>
-                    <th style="width:38%; text-align:left; padding-left:8px;">Reprobados por Clase</th>
-                    ${colsForSummary.map(s => `<th>${gradeVal}to ${s}</th>`).join('')}
-                    ${!isFilteredSection ? '<th style="width:14%; background:#e0f2fe !important;">Total</th>' : ''}
+                    <th style="width:38%; text-align:left; padding-left:8px; font-size:0.80rem;">Reprobados por Clase</th>
+                    ${colsForSummary.map(s => `<th style="font-size:0.80rem;">${gradeVal}to ${s}</th>`).join('')}
+                    ${!isFilteredSection ? '<th style="width:14%; background:#e0f2fe !important; font-size:0.80rem;">Total</th>' : ''}
                 </tr>
             </thead>
             <tbody>
@@ -29999,19 +30022,19 @@ function renderGradeStatsView() {
                     const rowTot = failedByClass[subj].Total;
                     return `
                     <tr>
-                        <td style="padding-left:8px; font-weight:600; font-size:0.78rem;">${escapeHtml(subj)}</td>
+                        <td style="padding-left:8px; font-weight:600; font-size:0.80rem;">${escapeHtml(subj)}</td>
                         ${colsForSummary.map(s => {
                             const cVal = failedByClass[subj][s] || 0;
-                            return `<td style="text-align:center; font-weight:${cVal > 0 ? 'bold' : 'normal'}; color:${cVal > 0 ? '#dc2626' : '#000'};">${cVal}</td>`;
+                            const isFail = cVal > 0;
+                            return `<td style="text-align:center; font-weight:${isFail ? 'bold' : 'normal'}; font-size:0.80rem; ${isFail ? 'background-color:#fee2e2; color:#b91c1c; border:1.2px solid #ef4444;' : 'color:#000;'}">${cVal}</td>`;
                         }).join('')}
-                        ${!isFilteredSection ? `<td style="text-align:center; font-weight:bold; font-size:0.82rem; background:#f8fafc; color:${rowTot > 0 ? '#dc2626' : '#000'};">${rowTot}</td>` : ''}
+                        ${!isFilteredSection ? `<td style="text-align:center; font-weight:bold; font-size:0.80rem; ${rowTot > 0 ? 'background-color:#fecdd3; color:#9f1239; border:1.2px solid #f43f5e;' : 'background-color:#f8fafc; color:#000;'}">${rowTot}</td>` : ''}
                     </tr>`;
                 }).join('')}
             </tbody>
         </table>
         </div>
-    </div>
-    <div class="page-break"></div>`;
+    </div>`;
 
     // =========================================================================
     // PÁGINA 2 EN ADELANTE: SÁBANA DE NOTAS INDIVIDUALES POR ALUMNO (TABLA 3)
@@ -30026,25 +30049,33 @@ function renderGradeStatsView() {
         // Generar filas para alumnos reales
         let rowsHtml = '';
         stList.forEach(item => {
-            const lostClass = item.lostCount > 0 ? 'encco-score-danger' : '';
+            const hasLost = item.lostCount > 0;
+            const lostCellClass = hasLost ? 'encco-lost-highlight' : '';
+            const rowStyle = hasLost ? 'background-color:#fff9f9;' : '';
+
             rowsHtml += `
-                <tr>
-                    <td style="text-align:center; font-weight:bold;">${item.clave}</td>
-                    <td style="font-weight:bold; padding-left:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                <tr style="${rowStyle}">
+                    <td style="text-align:center; font-weight:bold; font-size:0.72rem;">${item.clave}</td>
+                    <td style="font-weight:bold; font-size:0.72rem; padding-left:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; ${hasLost ? 'color:#9f1239;' : ''}">
                         ${escapeHtml(item.name)}
-                        ${item.isRetirado ? ' <span style="font-size:0.72rem; color:#b91c1c; font-weight:bold;">(RETIRADO)</span>' : ''}
+                        ${item.isRetirado ? ' <span style="font-size:0.68rem; color:#b91c1c; font-weight:bold;">(RETIRADO)</span>' : ''}
+                        ${hasLost ? ` <span style="display:inline-block; font-size:0.65rem; background:#fee2e2; color:#b91c1c; padding:0 3px; border-radius:3px; border:1px solid #fca5a5; font-weight:bold;">${item.lostCount} ${item.lostCount === 1 ? 'perdida' : 'perdidas'}</span>` : ''}
                     </td>
-                    ${item.scores.map(sObj => {
+                    ${item.scores.map((sObj, cIdx) => {
+                        const colTheme = CLASS_COLUMN_PALETTE[cIdx % CLASS_COLUMN_PALETTE.length];
                         if (!sObj.evaluated || sObj.score === null) {
-                            return `<td style="text-align:center; color:#94a3b8;"></td>`;
+                            return `<td style="text-align:center; font-size:0.72rem; background-color:${colTheme.cellBg}; border-left:1px solid ${colTheme.border}; border-right:1px solid ${colTheme.border};"></td>`;
                         }
                         const isFail = sObj.score < 60;
-                        return `<td style="text-align:center; font-weight:bold; color:${isFail ? '#dc2626' : '#000'};">${Math.round(sObj.score)}</td>`;
+                        if (isFail) {
+                            return `<td style="text-align:center; font-weight:900; font-size:0.72rem; background-color:#fee2e2 !important; color:#b91c1c !important; border:1.5px solid #ef4444 !important;">${Math.round(sObj.score)}</td>`;
+                        }
+                        return `<td style="text-align:center; font-weight:bold; font-size:0.72rem; background-color:${colTheme.cellBg}; color:#000; border-left:1px solid ${colTheme.border}; border-right:1px solid ${colTheme.border};">${Math.round(sObj.score)}</td>`;
                     }).join('')}
-                    <td class="encco-td-pink" style="font-weight:bold; color:${item.average < 60 && item.average > 0 ? '#dc2626' : '#000'};">
+                    <td class="encco-td-pink" style="font-weight:bold; font-size:0.72rem; color:${item.average < 60 && item.average > 0 ? '#b91c1c' : '#000'}; ${item.average < 60 && item.average > 0 ? 'background-color:#fee2e2 !important; font-weight:900;' : ''}">
                         ${item.average > 0 ? Number(item.average).toFixed(2) : '0.00'}
                     </td>
-                    <td class="encco-td-pink ${lostClass}" style="font-weight:bold;">
+                    <td class="encco-td-pink ${lostCellClass}" style="font-weight:bold; font-size:0.72rem; ${hasLost ? 'background-color:#fecdd3 !important; color:#9f1239 !important; font-weight:900 !important; border:1.5px solid #f43f5e !important;' : ''}">
                         ${item.lostCount}
                     </td>
                 </tr>`;
@@ -30055,16 +30086,19 @@ function renderGradeStatsView() {
         for (let i = stList.length + 1; i <= targetRowCount; i++) {
             rowsHtml += `
                 <tr style="height:18px;">
-                    <td style="text-align:center; color:#cbd5e1;">${i}</td>
-                    <td style="text-align:left; color:#cbd5e1; padding-left:4px;"></td>
-                    ${officialSubjects.map(() => `<td style="text-align:center;"></td>`).join('')}
-                    <td class="encco-td-pink"></td>
-                    <td class="encco-td-pink"></td>
+                    <td style="text-align:center; color:#cbd5e1; font-size:0.72rem;">${i}</td>
+                    <td style="text-align:left; color:#cbd5e1; padding-left:4px; font-size:0.72rem;"></td>
+                    ${officialSubjects.map((_, cIdx) => {
+                        const colTheme = CLASS_COLUMN_PALETTE[cIdx % CLASS_COLUMN_PALETTE.length];
+                        return `<td style="text-align:center; font-size:0.72rem; background-color:${colTheme.cellBg}; border-left:1px solid ${colTheme.border}; border-right:1px solid ${colTheme.border};"></td>`;
+                    }).join('')}
+                    <td class="encco-td-pink" style="font-size:0.72rem;"></td>
+                    <td class="encco-td-pink" style="font-size:0.72rem;"></td>
                 </tr>`;
         }
 
         html += `
-        <div class="encco-doc-page encco-doc-sabana-page" style="margin-top:10px;">
+        <div class="encco-doc-page encco-doc-sabana-page">
             <!-- ENCABEZADO OFICIAL DE LA SÁBANA (EXACTO A LA FOTO OFICIAL) -->
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                 <div style="flex:1; text-align:center; padding-left:70px;">
@@ -30087,20 +30121,21 @@ function renderGradeStatsView() {
                 </div>
             </div>
 
-            <!-- TABLA 3: SÁBANA DE NOTAS INDIVIDUALES POR ALUMNO -->
+            <!-- TABLA 3: SÁBANA DE NOTAS INDIVIDUALES POR ALUMNO CON COLORES DE SEPARACIÓN POR COLUMNA DE CLASE -->
             <div style="overflow-x:auto; width:100%;">
             <table class="encco-official-table encco-sabana-table" style="margin-bottom:4px;">
                 <thead>
                     <tr style="min-height:48px;">
-                        <th style="width:34px; vertical-align:middle; text-align:center;">Clave</th>
-                        <th style="min-width:170px; vertical-align:middle; text-align:center;">Alumno</th>
-                        ${officialSubjects.map(s => {
-                            return `<th style="vertical-align:middle; text-align:center; line-height:1.12; padding:3px 2px; word-break:break-word;">${escapeHtml(s)}</th>`;
+                        <th style="width:34px; vertical-align:middle; text-align:center; font-size:0.72rem; background:#f1f5f9 !important;">Clave</th>
+                        <th style="min-width:170px; vertical-align:middle; text-align:center; font-size:0.72rem; background:#f1f5f9 !important;">Alumno</th>
+                        ${officialSubjects.map((s, cIdx) => {
+                            const colTheme = CLASS_COLUMN_PALETTE[cIdx % CLASS_COLUMN_PALETTE.length];
+                            return `<th style="vertical-align:middle; text-align:center; line-height:1.15; padding:3px 2px; word-break:break-word; font-size:0.72rem; background-color:${colTheme.headerBg} !important; border-left:1.5px solid ${colTheme.border} !important; border-right:1.5px solid ${colTheme.border} !important;">${escapeHtml(s)}</th>`;
                         }).join('')}
-                        <th class="encco-th-pink" style="min-width:60px; vertical-align:middle; line-height:1.12;">
+                        <th class="encco-th-pink" style="min-width:60px; vertical-align:middle; line-height:1.12; font-size:0.72rem;">
                             Promedios<br>Generales
                         </th>
-                        <th class="encco-th-pink" style="min-width:55px; vertical-align:middle; line-height:1.12;">
+                        <th class="encco-th-pink" style="min-width:55px; vertical-align:middle; line-height:1.12; font-size:0.72rem;">
                             Cátedras<br>Perdidas
                         </th>
                     </tr>
@@ -30115,8 +30150,7 @@ function renderGradeStatsView() {
             <div style="display:flex; justify-content:flex-end; font-size:8px; font-weight:bold; color:#475569; margin-top:4px;">
                 ${gradeVal}${sec} &bull; ${footerTimestamp}
             </div>
-        </div>
-        ${sIdx < sectionsToRender.length - 1 ? '<div class="page-break"></div>' : ''}`;
+        </div>`;
     });
 
     container.innerHTML = html;

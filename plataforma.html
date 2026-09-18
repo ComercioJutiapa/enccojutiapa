@@ -2599,6 +2599,13 @@
                             font-weight: bold !important;
                         }
 
+                        .encco-lost-highlight {
+                            background-color: #fecdd3 !important;
+                            color: #9f1239 !important;
+                            font-weight: 900 !important;
+                            border: 1.5px solid #f43f5e !important;
+                        }
+
                         @page {
                             size: 8.5in 13in;
                             margin: 0.25in 0.35in;
@@ -2643,7 +2650,7 @@
                                 padding: 0 !important;
                                 width: 100% !important;
                             }
-                            /* CADA SECCIÓN Y RESUMEN EN UNA SOLA PÁGINA (OFICIO 8.5 x 13 PULGADAS) */
+                            /* CADA SECCIÓN Y RESUMEN EN UNA SOLA PÁGINA (OFICIO 8.5 x 13 PULGADAS) SIN HOJAS EN BLANCO */
                             .encco-doc-page {
                                 box-shadow: none !important;
                                 border: none !important;
@@ -2655,7 +2662,7 @@
                                 border-radius: 0 !important;
                                 page-break-inside: avoid !important;
                                 break-inside: avoid !important;
-                                page-break-after: always !important;
+                                page-break-after: page !important;
                                 break-after: page !important;
                                 box-sizing: border-box !important;
                             }
@@ -2664,13 +2671,13 @@
                                 break-after: auto !important;
                             }
                             .encco-official-table {
-                                font-size: 8.2pt !important;
+                                font-size: 8pt !important;
                                 page-break-inside: avoid !important;
                                 break-inside: avoid !important;
                                 width: 100% !important;
                             }
                             .encco-sabana-table {
-                                font-size: 7.2pt !important;
+                                font-size: 7pt !important;
                                 page-break-inside: avoid !important;
                                 break-inside: avoid !important;
                                 width: 100% !important;
@@ -2678,19 +2685,19 @@
                             .encco-official-table th, 
                             .encco-official-table td {
                                 padding: 2.5px 3px !important;
+                                font-size: 8pt !important;
                                 font-variant-numeric: tabular-nums !important;
                                 vertical-align: middle !important;
                             }
                             .encco-sabana-table th, 
                             .encco-sabana-table td {
                                 padding: 1.8px 1.5px !important;
+                                font-size: 7pt !important;
                                 font-variant-numeric: tabular-nums !important;
                                 vertical-align: middle !important;
                             }
                             .page-break {
-                                display: block !important;
-                                page-break-after: always !important;
-                                break-after: page !important;
+                                display: none !important;
                                 height: 0 !important;
                                 margin: 0 !important;
                                 padding: 0 !important;
@@ -4083,7 +4090,7 @@
     <script src="db.js"></script>
     <script src="ui.js"></script>
     <script src="sire.js"></script>
-    <script src="app.js?v=2026.09.18.v214_oficio_8_5x13_y_seccion_por_pagina"></script>
+    <script src="app.js?v=2026.09.18.v215_normalizar_textos_colores_clases_reprobados_sin_blanco"></script>
 
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre
