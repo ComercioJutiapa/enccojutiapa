@@ -30056,10 +30056,9 @@ function renderGradeStatsView() {
             rowsHtml += `
                 <tr style="${rowStyle}">
                     <td style="text-align:center; font-weight:bold; font-size:0.72rem;">${item.clave}</td>
-                    <td style="font-weight:bold; font-size:0.72rem; padding-left:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; ${hasLost ? 'color:#9f1239;' : ''}">
+                    <td style="font-weight:bold; font-size:0.72rem; padding-left:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#000;">
                         ${escapeHtml(item.name)}
                         ${item.isRetirado ? ' <span style="font-size:0.68rem; color:#b91c1c; font-weight:bold;">(RETIRADO)</span>' : ''}
-                        ${hasLost ? ` <span style="display:inline-block; font-size:0.65rem; background:#fee2e2; color:#b91c1c; padding:0 3px; border-radius:3px; border:1px solid #fca5a5; font-weight:bold;">${item.lostCount} ${item.lostCount === 1 ? 'perdida' : 'perdidas'}</span>` : ''}
                     </td>
                     ${item.scores.map((sObj, cIdx) => {
                         const colTheme = CLASS_COLUMN_PALETTE[cIdx % CLASS_COLUMN_PALETTE.length];
