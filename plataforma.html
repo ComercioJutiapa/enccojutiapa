@@ -582,7 +582,7 @@
                 </a>
 
                 <!-- SECCIÓN REPORTES Y CUADRO DE HONOR -->
-                <div class="nav-section-label" data-perm="honor-roll,reports">REPORTES Y CUADRO DE HONOR</div>
+                <div class="nav-section-label" data-perm="honor-roll,reports,grade-stats">REPORTES Y CUADRO DE HONOR</div>
                 <a href="#" class="nav-item" data-view="honor-roll" data-perm="honor-roll" onclick="navigateTo('honor-roll', event)">
                     <i class="fa-solid fa-award"></i>
                     <span>Cuadros de Honor</span>
@@ -590,6 +590,10 @@
                 <a href="#" class="nav-item" data-view="reports" data-perm="reports" onclick="navigateTo('reports', event)">
                     <i class="fa-solid fa-print"></i>
                     <span>Boletín de Calificaciones</span>
+                </a>
+                <a href="#" class="nav-item" data-view="grade-stats" data-perm="grade-stats" onclick="navigateTo('grade-stats', event)">
+                    <i class="fa-solid fa-chart-bar"></i>
+                    <span>Promedios y Estadísticas</span>
                 </a>
             </nav>
 
@@ -3851,7 +3855,7 @@
     <script src="db.js"></script>
     <script src="ui.js"></script>
     <script src="sire.js"></script>
-    <script src="app.js?v=2026.09.17.v207_sidebar_scroll_fix"></script>
+    <script src="app.js?v=2026.09.17.v208_grade_stats"></script>
 
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre
@@ -4299,5 +4303,49 @@
             </form>
         </div>
     </div>
+
+<!-- VISTA: PROMEDIOS Y ESTADÍSTICAS POR GRADO/SECCIÓN -->
+<section class="app-view" id="view-grade-stats">
+    <div class="section-toolbar" style="flex-wrap:wrap; gap:12px;">
+        <div class="toolbar-filters" style="flex:1; min-width:280px;">
+            <label style="font-weight:700; color:#0369a1;"><i class="fa-solid fa-chart-bar"></i> Promedios y Estadísticas por Grado y Sección</label>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <select id="gradeStatsBimestreSelect" class="form-control" onchange="renderGradeStatsView()" style="min-width:140px; font-weight:600;">
+                <option value="0">Bimestre 1</option>
+                <option value="1">Bimestre 2</option>
+                <option value="2">Bimestre 3</option>
+                <option value="3">Bimestre 4</option>
+            </select>
+            <select id="gradeStatsGradeFilter" class="form-control" onchange="renderGradeStatsView()" style="min-width:140px; font-weight:600;">
+                <option value="">Todos los Grados</option>
+                <option value="4">4to Perito Contador</option>
+                <option value="5">5to Perito Contador</option>
+                <option value="6">6to Perito Contador</option>
+            </select>
+        </div>
+    </div>
+    <div id="gradeStatsKpiRow" style="display:flex; gap:14px; flex-wrap:wrap; margin:16px 0;"></div>
+    <div class="table-responsive">
+        <table class="data-table" style="width:100%;">
+            <thead>
+                <tr>
+                    <th>Grado</th><th>Sección</th><th>Total</th>
+                    <th>Promedio Gral.</th>
+                    <th>Aprobados</th><th>% Aprobados</th>
+                    <th>Reprobados</th><th>% Reprobados</th>
+                </tr>
+            </thead>
+            <tbody id="gradeStatsTableBody">
+                <tr><td colspan="8" style="text-align:center; color:#94a3b8;">Cargando estadísticas...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <p style="font-size:0.78rem; color:#94a3b8; margin-top:10px;">
+        <i class="fa-solid fa-circle-info"></i>
+        Aprobado: promedio ≥ 60. 6to Grado B3: incluye materias disponibles en ese bimestre.
+    </p>
+</section>
+
 </body>
 </html>

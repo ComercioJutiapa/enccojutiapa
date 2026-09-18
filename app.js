@@ -1140,6 +1140,7 @@ function normalizePermKey(key) {
     if (k === 'honor_roll') return 'honor-roll';
     if (k === 'class_assignments') return 'class-assignments';
     if (k === 'boletin' || k === 'boletines' || k === 'boletin_calificaciones' || k === 'boletin-calificaciones' || k === 'report_card' || k === 'report-card') return 'reports';
+    if (k === 'grade_stats' || k === 'grade-stats' || k === 'estadisticas' || k === 'promedios' || k === 'grade_statistics') return 'grade-stats';
     return k;
 }
 
@@ -1155,6 +1156,13 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
         const allowedSire = ['director', 'secretaria', 'admin', 'super_usuario'];
         if (!allowedSire.includes(roleKey)) return 'none';
         return 'edit';
+    }
+
+    // 🛡️ BLINDAJE RBAC: "Promedios y Estadísticas" solo para Dirección, Secretaría y Admin
+    if (key === 'grade-stats') {
+        const allowedStats = ['director', 'secretaria', 'admin', 'super_usuario'];
+        if (!allowedStats.includes(roleKey)) return 'none';
+        return 'view';
     }
 
     if (typeof normalizeRolesConfig === 'function') normalizeRolesConfig();
@@ -2278,7 +2286,8 @@ var SYSTEM_MODULES_LIST = [
     { key: 'reports', name: 'Boletín de Calificaciones', icon: 'fa-print', category: 'Calificaciones', desc: 'Generación, consulta e impresión de tarjetas y boletines oficiales de notas por estudiante.' },
     { key: 'roles', name: 'Gestor de Roles y Permisos', icon: 'fa-user-shield', category: 'Administración', desc: 'Configuración de permisos por módulo (Solo Administrador).' },
     { key: 'careers', name: 'Gestor de Carreras', icon: 'fa-graduation-cap', category: 'Académico', desc: 'Creación y edición de carreras escolares.' },
-    { key: 'cycles', name: 'Gestor de Ciclos Escolares', icon: 'fa-calendar-days', category: 'Académico', desc: 'Habilitación de ciclos lectivos y promociones.' }
+    { key: 'cycles', name: 'Gestor de Ciclos Escolares', icon: 'fa-calendar-days', category: 'Académico', desc: 'Habilitación de ciclos lectivos y promociones.' },
+    { key: 'grade-stats', name: 'Promedios y Estadísticas', icon: 'fa-chart-bar', category: 'Académico', desc: 'Estadísticas de promedios, aprobados y reprobados por grado y sección.' }
 ];
 window.SYSTEM_MODULES_LIST = SYSTEM_MODULES_LIST;
 
@@ -8308,6 +8317,7 @@ function renderCurrentView() {
         case 'users': renderUsersTable(); break;
         case 'roles': renderRolesManagementView(); break;
         case 'reports': populateReportStudentSelect(); break;
+        case 'grade-stats': renderGradeStatsView(); break;
     }
 }
 
@@ -29474,3 +29484,118 @@ if (typeof window !== 'undefined') {
         }
     }
 }
+
+// ==========================================================================
+// MÓDULO: PROMEDIOS Y ESTADÍSTICAS POR GRADO/SECCIÓN (v208)
+// ==========================================================================
+function renderGradeStatsView() {
+    if (!hasRolePermission('grade-stats', STATE.currentRole)) return;
+
+    const bimSelect = document.getElementById('gradeStatsBimestreSelect');
+    const gradeSelect = document.getElementById('gradeStatsGradeFilter');
+    const tbody = document.getElementById('gradeStatsTableBody');
+    const kpiRow = document.getElementById('gradeStatsKpiRow');
+    if (!tbody || !kpiRow) return;
+
+    const bimIdx = parseInt(bimSelect ? bimSelect.value : '0', 10);
+    const gradeFilter = gradeSelect ? gradeSelect.value : '';
+
+    // Deduplicar y filtrar alumnos
+    const seen = new Set();
+    const alumnos = (STATE.students || []).filter(s => {
+        if (!s || seen.has(s.id)) return false;
+        seen.add(s.id);
+        if (!s.grades) return false;
+        if (gradeFilter) {
+            const g = String(s.grade || s.gradeLevel || '');
+            if (gradeFilter === '4' && !/4to|cuarto/i.test(g)) return false;
+            if (gradeFilter === '5' && !/5to|quinto/i.test(g)) return false;
+            if (gradeFilter === '6' && !/6to|sexto/i.test(g)) return false;
+        }
+        return true;
+    });
+
+    // Calcular promedio de un alumno en el bimestre dado
+    function getStudentAvg(student, bIdx) {
+        const g = student.grades;
+        if (!g || typeof g !== 'object') return null;
+        const vals = Object.values(g)
+            .map(arr => (Array.isArray(arr) ? Number(arr[bIdx] ?? 0) : 0))
+            .filter(v => v > 0);
+        if (!vals.length) return null;
+        return vals.reduce((a, b) => a + b, 0) / vals.length;
+    }
+
+    // Agrupar por grado + sección
+    const groups = {};
+    alumnos.forEach(s => {
+        const gradeLabel = s.grade || s.gradeLevel || 'Sin grado';
+        const sectionLabel = s.section || s.sectionId || 'Sin sección';
+        const key = `${gradeLabel}|||${sectionLabel}`;
+        if (!groups[key]) groups[key] = { grade: gradeLabel, section: sectionLabel, avgs: [] };
+        const avg = getStudentAvg(s, bimIdx);
+        if (avg !== null) groups[key].avgs.push(avg);
+    });
+
+    // Totales globales
+    let totalApproved = 0, totalFailed = 0, totalStudents = 0, sumWeighted = 0, countWeighted = 0;
+
+    const rows = Object.values(groups).sort((a, b) =>
+        a.grade.localeCompare(b.grade) || a.section.localeCompare(b.section)
+    );
+
+    let html = '';
+    rows.forEach(g => {
+        const n = g.avgs.length;
+        if (!n) {
+            html += `<tr><td style="font-weight:700">${g.grade}</td><td>${g.section}</td><td style="text-align:center">0</td><td colspan="5" style="text-align:center; color:#94a3b8">Sin datos para este bimestre</td></tr>`;
+            return;
+        }
+        const avg = g.avgs.reduce((a, b) => a + b, 0) / n;
+        const approved = g.avgs.filter(v => v >= 60).length;
+        const failed = n - approved;
+        totalApproved += approved;
+        totalFailed += failed;
+        totalStudents += n;
+        sumWeighted += avg * n;
+        countWeighted += n;
+        const pctA = ((approved / n) * 100).toFixed(1);
+        const pctF = ((failed / n) * 100).toFixed(1);
+        const avgColor = avg >= 60 ? '#16a34a' : '#dc2626';
+        html += `<tr>
+            <td style="font-weight:700">${g.grade}</td>
+            <td>${g.section}</td>
+            <td style="text-align:center">${n}</td>
+            <td style="text-align:center; font-weight:800; color:${avgColor}">${avg.toFixed(1)}</td>
+            <td style="text-align:center; color:#16a34a; font-weight:700">${approved}</td>
+            <td style="text-align:center; color:#16a34a">${pctA}%</td>
+            <td style="text-align:center; color:#dc2626; font-weight:700">${failed}</td>
+            <td style="text-align:center; color:#dc2626">${pctF}%</td>
+        </tr>`;
+    });
+
+    tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center; color:#94a3b8;">Sin datos para este bimestre.</td></tr>';
+
+    // KPI cards
+    const schoolAvg = countWeighted ? (sumWeighted / countWeighted).toFixed(1) : '—';
+    const pctA = totalStudents ? ((totalApproved / totalStudents) * 100).toFixed(1) : '0';
+    const pctF = totalStudents ? ((totalFailed / totalStudents) * 100).toFixed(1) : '0';
+    kpiRow.innerHTML = `
+        <div style="flex:1; min-width:160px; background:#f0f9ff; border:1.5px solid #0369a1; border-radius:10px; padding:16px 18px; text-align:center;">
+            <div style="font-size:1.8rem; font-weight:900; color:#0369a1">${schoolAvg}</div>
+            <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Promedio General Escuela</div>
+        </div>
+        <div style="flex:1; min-width:160px; background:#f0fdf4; border:1.5px solid #16a34a; border-radius:10px; padding:16px 18px; text-align:center;">
+            <div style="font-size:1.8rem; font-weight:900; color:#16a34a">${totalApproved} <span style="font-size:1rem;">(${pctA}%)</span></div>
+            <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Total Aprobados</div>
+        </div>
+        <div style="flex:1; min-width:160px; background:#fff1f2; border:1.5px solid #dc2626; border-radius:10px; padding:16px 18px; text-align:center;">
+            <div style="font-size:1.8rem; font-weight:900; color:#dc2626">${totalFailed} <span style="font-size:1rem;">(${pctF}%)</span></div>
+            <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Total Reprobados</div>
+        </div>
+        <div style="flex:1; min-width:160px; background:#fafafa; border:1.5px solid #64748b; border-radius:10px; padding:16px 18px; text-align:center;">
+            <div style="font-size:1.8rem; font-weight:900; color:#334155">${totalStudents}</div>
+            <div style="font-size:0.78rem; color:#64748b; font-weight:600;">Alumnos con Datos</div>
+        </div>`;
+}
+window.renderGradeStatsView = renderGradeStatsView;
