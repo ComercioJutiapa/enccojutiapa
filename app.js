@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.11.v199_clases_y_calificaciones_oficiales_cnb';
+const ENCCO_BUILD_VERSION = '2026.09.18.v213_pensum_dinamico_y_ajuste_espacio_completo';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 const withTimeout = (promise, ms = 8000, errorMsg = 'Tiempo de espera agotado al conectar con Firebase.') => {
     return Promise.race([
@@ -29625,7 +29625,7 @@ function renderGradeStatsView() {
             promptMsg = `Grado <strong>${gradeVal}to Perito Contador</strong> seleccionado. Ahora elija una <strong>Sección</strong> para visualizar el documento.`;
         }
         container.innerHTML = `
-            <div class="no-print" style="text-align:center; padding:55px 20px; background:#ffffff; border-radius:10px; border:2px dashed #cbd5e1; width:8in; max-width:8in; box-sizing:border-box; margin:30px auto; color:#64748b;">
+            <div class="no-print" style="text-align:center; padding:55px 20px; background:#ffffff; border-radius:10px; border:2px dashed #cbd5e1; width:100%; max-width:100%; box-sizing:border-box; margin:16px 0; color:#64748b;">
                 <i class="fa-solid fa-file-invoice" style="font-size:3.2rem; color:#0284c7; margin-bottom:14px; display:block;"></i>
                 <h3 style="font-size:1.18rem; font-weight:800; color:#1e293b; margin-bottom:8px;">Seleccione los Parámetros del Reporte</h3>
                 <p style="font-size:0.92rem; margin:0 auto; color:#64748b; max-width:440px; line-height:1.5;">
@@ -29656,66 +29656,72 @@ function renderGradeStatsView() {
         return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
     }
 
-    // 1. Obtener lista oficial de asignaturas para el grado
+    // 1. Obtener lista oficial de asignaturas directamente desde el PENSUM
     function getOfficialSubjectsForGrade(gVal) {
-        if (gVal === '4') {
-            return [
-                'Matemática Comercial',
-                'Introducción a la Economía',
-                'Administración y Organización de Empresas',
-                'Redacción y Correspondencia Mercantil',
-                'Contabilidad de Sociedades',
-                'Inglés Comercial I',
-                'Fundamentos de Derecho',
-                'Computación I',
-                'Caligrafía y Ortografía'
-            ];
-        }
-        if (gVal === '5') {
-            return [
-                'Contabilidad de Costos',
-                'Cálculo Mercantil y Financiero',
-                'Derecho Mercantil y Laboral',
-                'Legislación Fiscal y Aduanal',
-                'Finanzas Públicas',
-                'Geografía Económica',
-                'Catalogación y Archivo',
-                'Computación II',
-                'Inglés Comercial II'
-            ];
-        }
-        if (gVal === '6') {
-            return [
-                'Contabilidad Bancaria',
-                'Contabilidad Gubernamental Integrada',
-                'Estadística Comercial',
-                'Organización de Empresas',
-                'Ética Profesional y Relaciones Humanas',
-                'Práctica Supervisada',
-                'Auditoría',
-                'Derecho Mercantil y Nociones del Derecho Laboral',
-                'Computación III',
-                'Seminario Sobre Problemas Socioeconómicos de Guatemala'
-            ];
-        }
+        const dummyStudent = { grade: `${gVal}to`, gradeLabel: `${gVal}to Perito Contador`, gradeCode: `${gVal}to` };
+        let subs = [];
 
-        const pList = pensum.filter(p => {
-            const pg = String(p.grade || '').toLowerCase();
-            return pg.includes(`${gVal}to`);
-        });
-
-        const unique = [];
-        const seen = new Set();
-        pList.forEach(p => {
-            if (p.subject && !seen.has(p.subject)) {
-                seen.add(p.subject);
-                unique.push(p.subject);
+        // Prioridad 1: Obtener usando getReportCardSubjects (que lee STATE.pensumCatalog ordenado oficialmente)
+        if (typeof getReportCardSubjects === 'function') {
+            try {
+                const res = getReportCardSubjects(dummyStudent);
+                if (Array.isArray(res) && res.length > 0) {
+                    subs = res;
+                }
+            } catch (err) {
+                console.warn("[GradeStats] Error al consultar getReportCardSubjects:", err);
             }
-        });
-        return unique.length ? unique : [
-            'Matemática Comercial', 'Contabilidad de Sociedades', 'Introducción a la Economía',
-            'Computación I', 'Inglés Comercial I', 'Fundamentos de Derecho'
-        ];
+        }
+
+        // Prioridad 2: Si no vino de getReportCardSubjects, buscar en STATE.pensumCatalog
+        if (!subs || subs.length === 0) {
+            const cleanTarget = cleanStr(`${gVal}to`);
+            const catalog = (STATE.pensumCatalog || []).filter(p => {
+                const pG = cleanStr(p.grade || p.gradeCode || '');
+                return pG && (pG.includes(cleanTarget) || cleanTarget.includes(pG) || pG.includes(gVal));
+            });
+            const unique = [];
+            catalog.forEach(c => {
+                const name = (c.name || c.subject || '').trim();
+                if (name && !unique.includes(name)) unique.push(name);
+            });
+            if (unique.length > 0) {
+                if (typeof getPensumCatalogOrder === 'function') {
+                    unique.sort((a, b) => getPensumCatalogOrder(a, `${gVal}to`) - getPensumCatalogOrder(b, `${gVal}to`));
+                }
+                subs = unique;
+            }
+        }
+
+        // Prioridad 3: Buscar en STATE.pensum (asignaciones activas)
+        if (!subs || subs.length === 0) {
+            const cleanTarget = cleanStr(`${gVal}to`);
+            const pList = (STATE.pensum || []).filter(p => {
+                const pG = cleanStr(p.grade || p.gradeCode || '');
+                return pG && (pG.includes(cleanTarget) || cleanTarget.includes(pG) || pG.includes(gVal));
+            });
+            const unique = [];
+            pList.forEach(p => {
+                const name = (p.subject || p.name || '').trim();
+                if (name && !unique.includes(name)) unique.push(name);
+            });
+            if (unique.length > 0) {
+                if (typeof getPensumCatalogOrder === 'function') {
+                    unique.sort((a, b) => getPensumCatalogOrder(a, `${gVal}to`) - getPensumCatalogOrder(b, `${gVal}to`));
+                }
+                subs = unique;
+            }
+        }
+
+        // Prioridad 4: Respaldo canónico oficial de 28 materias del CNB
+        if (!subs || subs.length === 0) {
+            if (typeof CANONICAL_CNB_28_DICTIONARY !== 'undefined') {
+                const gNum = parseInt(gVal) || 6;
+                subs = CANONICAL_CNB_28_DICTIONARY.filter(c => c.grade === gNum).map(c => c.full);
+            }
+        }
+
+        return (subs && subs.length > 0) ? subs : [];
     }
 
     const officialSubjects = getOfficialSubjectsForGrade(gradeVal);
@@ -29939,7 +29945,8 @@ function renderGradeStatsView() {
         </div>
 
         <!-- TABLA 1: RESUMEN ESTADÍSTICO POR SECCIÓN -->
-        <table class="encco-official-table" style="margin-top:10px; margin-bottom:20px;">
+        <div style="overflow-x:auto; width:100%; margin-top:10px; margin-bottom:20px;">
+        <table class="encco-official-table">
             <thead>
                 <tr>
                     <th style="width:38%; background:#ffffff !important; border-top:1px solid #000; border-left:1px solid #000;"></th>
@@ -29975,8 +29982,10 @@ function renderGradeStatsView() {
                 </tr>
             </tbody>
         </table>
+        </div>
 
         <!-- TABLA 2: CONTEO DE REPROBADOS POR CLASE -->
+        <div style="overflow-x:auto; width:100%; margin-bottom:14px;">
         <table class="encco-official-table">
             <thead>
                 <tr>
@@ -29990,16 +29999,17 @@ function renderGradeStatsView() {
                     const rowTot = failedByClass[subj].Total;
                     return `
                     <tr>
-                        <td style="padding-left:8px; font-weight:600; font-size:0.75rem;">${escapeHtml(subj)}</td>
+                        <td style="padding-left:8px; font-weight:600; font-size:0.78rem;">${escapeHtml(subj)}</td>
                         ${colsForSummary.map(s => {
                             const cVal = failedByClass[subj][s] || 0;
                             return `<td style="text-align:center; font-weight:${cVal > 0 ? 'bold' : 'normal'}; color:${cVal > 0 ? '#dc2626' : '#000'};">${cVal}</td>`;
                         }).join('')}
-                        ${!isFilteredSection ? `<td style="text-align:center; font-weight:bold; font-size:0.8rem; background:#f8fafc; color:${rowTot > 0 ? '#dc2626' : '#000'};">${rowTot}</td>` : ''}
+                        ${!isFilteredSection ? `<td style="text-align:center; font-weight:bold; font-size:0.82rem; background:#f8fafc; color:${rowTot > 0 ? '#dc2626' : '#000'};">${rowTot}</td>` : ''}
                     </tr>`;
                 }).join('')}
             </tbody>
         </table>
+        </div>
     </div>
     <div class="page-break"></div>`;
 
@@ -30019,34 +30029,34 @@ function renderGradeStatsView() {
             const lostClass = item.lostCount > 0 ? 'encco-score-danger' : '';
             rowsHtml += `
                 <tr>
-                    <td style="text-align:center; font-weight:bold; font-size:8px;">${item.clave}</td>
-                    <td style="font-weight:bold; font-size:7.5px; padding-left:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                    <td style="text-align:center; font-weight:bold;">${item.clave}</td>
+                    <td style="font-weight:bold; padding-left:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                         ${escapeHtml(item.name)}
-                        ${item.isRetirado ? ' <span style="font-size:7px; color:#b91c1c; font-weight:bold;">(RETIRADO)</span>' : ''}
+                        ${item.isRetirado ? ' <span style="font-size:0.75rem; color:#b91c1c; font-weight:bold;">(RETIRADO)</span>' : ''}
                     </td>
                     ${item.scores.map(sObj => {
                         if (!sObj.evaluated || sObj.score === null) {
-                            return `<td style="text-align:center; font-size:8px; color:#94a3b8;"></td>`;
+                            return `<td style="text-align:center; color:#94a3b8;"></td>`;
                         }
                         const isFail = sObj.score < 60;
-                        return `<td style="text-align:center; font-size:8.5px; font-weight:bold; color:${isFail ? '#dc2626' : '#000'};">${sObj.score}</td>`;
+                        return `<td style="text-align:center; font-weight:bold; color:${isFail ? '#dc2626' : '#000'};">${sObj.score}</td>`;
                     }).join('')}
-                    <td class="encco-td-pink" style="font-size:8.5px; color:${item.average < 60 && item.average > 0 ? '#dc2626' : '#000'};">
+                    <td class="encco-td-pink" style="font-weight:bold; color:${item.average < 60 && item.average > 0 ? '#dc2626' : '#000'};">
                         ${item.average > 0 ? item.average.toFixed(2) : '0.00'}
                     </td>
-                    <td class="encco-td-pink ${lostClass}" style="font-size:8.5px;">
+                    <td class="encco-td-pink ${lostClass}" style="font-weight:bold;">
                         ${item.lostCount}
                     </td>
                 </tr>`;
         });
 
-        // Completar visualmente filas si la sección tiene pocos alumnos (mínimo 30)
+        // Completar visualmente filas si la sección tiene pocos alumnos (mínimo 28)
         const targetRowCount = Math.max(stList.length, 28);
         for (let i = stList.length + 1; i <= targetRowCount; i++) {
             rowsHtml += `
-                <tr style="height:18px;">
-                    <td style="text-align:center; color:#cbd5e1; font-size:7.5px;">${i}</td>
-                    <td style="text-align:left; color:#cbd5e1; font-size:7.5px; padding-left:4px;"></td>
+                <tr style="height:20px;">
+                    <td style="text-align:center; color:#cbd5e1;">${i}</td>
+                    <td style="text-align:left; color:#cbd5e1; padding-left:4px;"></td>
                     ${officialSubjects.map(() => `<td style="text-align:center;"></td>`).join('')}
                     <td class="encco-td-pink"></td>
                     <td class="encco-td-pink"></td>
@@ -30056,41 +30066,42 @@ function renderGradeStatsView() {
         html += `
         <div class="encco-doc-page" style="margin-top:10px;">
             <!-- ENCABEZADO OFICIAL DE LA SÁBANA (EXACTO A LA FOTO OFICIAL) -->
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
                 <div style="flex:1; text-align:center; padding-left:70px;">
-                    <div style="margin:0; font-size:12px; font-weight:900; text-transform:uppercase; font-family:Arial, sans-serif; letter-spacing:0.3px; color:#000;">
+                    <div style="margin:0; font-size:13px; font-weight:900; text-transform:uppercase; font-family:Arial, sans-serif; letter-spacing:0.3px; color:#000;">
                         ESCUELA NACIONAL EN CIENCIAS COMERCIALES, JUTIAPA
                     </div>
-                    <div style="margin:2px 0 0 0; font-size:12px; font-weight:900; font-family:Arial, sans-serif; color:#000;">
+                    <div style="margin:2px 0 0 0; font-size:13px; font-weight:900; font-family:Arial, sans-serif; color:#000;">
                         ${periodTitle}
                     </div>
                 </div>
                 <div style="flex-shrink:0;">
-                    <table style="border-collapse:collapse; border:1.5px solid #000; font-size:10px; font-weight:bold;">
+                    <table style="border-collapse:collapse; border:1.5px solid #000; font-size:11px; font-weight:bold;">
                         <tr>
-                            <td style="border:1.5px solid #000; padding:2px 6px; text-transform:none;">Grado</td>
-                            <td style="border:1.5px solid #000; padding:2px 6px; text-align:center;">${gradeVal}</td>
-                            <td style="border:1.5px solid #000; padding:2px 6px; text-transform:none;">Seccion</td>
-                            <td style="border:1.5px solid #000; padding:2px 6px; text-align:center;">${sec}</td>
+                            <td style="border:1.5px solid #000; padding:3px 8px; text-transform:none;">Grado</td>
+                            <td style="border:1.5px solid #000; padding:3px 8px; text-align:center;">${gradeVal}</td>
+                            <td style="border:1.5px solid #000; padding:3px 8px; text-transform:none;">Seccion</td>
+                            <td style="border:1.5px solid #000; padding:3px 8px; text-align:center;">${sec}</td>
                         </tr>
                     </table>
                 </div>
             </div>
 
             <!-- TABLA 3: SÁBANA DE NOTAS INDIVIDUALES POR ALUMNO -->
-            <table class="encco-official-table" style="font-size:7.5px; margin-bottom:6px;">
+            <div style="overflow-x:auto; width:100%;">
+            <table class="encco-official-table encco-sabana-table" style="margin-bottom:6px;">
                 <thead>
-                    <tr style="height:72px;">
-                        <th style="width:26px; vertical-align:middle; text-align:center;">Clave</th>
-                        <th style="width:154px; vertical-align:middle; text-align:center;">Alumno</th>
+                    <tr style="min-height:55px;">
+                        <th style="width:38px; vertical-align:middle; text-align:center;">Clave</th>
+                        <th style="min-width:180px; vertical-align:middle; text-align:center;">Alumno</th>
                         ${officialSubjects.map(s => {
-                            return `<th style="vertical-align:middle; text-align:center; line-height:1.08; padding:2px 1px; font-size:7px; word-break:break-word;">${escapeHtml(s)}</th>`;
+                            return `<th style="vertical-align:middle; text-align:center; line-height:1.15; padding:4px 3px; word-break:break-word;">${escapeHtml(s)}</th>`;
                         }).join('')}
-                        <th class="encco-th-pink" style="width:48px; font-size:7px; vertical-align:middle; line-height:1.1;">
+                        <th class="encco-th-pink" style="min-width:65px; vertical-align:middle; line-height:1.15;">
                             Promedios<br>Generales
                         </th>
-                        <th class="encco-th-pink" style="width:42px; font-size:7px; vertical-align:middle; line-height:1.1;">
-                            Catedras<br>Perdidas
+                        <th class="encco-th-pink" style="min-width:60px; vertical-align:middle; line-height:1.15;">
+                            Cátedras<br>Perdidas
                         </th>
                     </tr>
                 </thead>
@@ -30098,9 +30109,10 @@ function renderGradeStatsView() {
                     ${rowsHtml}
                 </tbody>
             </table>
+            </div>
 
             <!-- PIE DE PÁGINA OFICIAL -->
-            <div style="display:flex; justify-content:flex-end; font-size:7.5px; font-weight:bold; color:#475569; margin-top:4px;">
+            <div style="display:flex; justify-content:flex-end; font-size:8px; font-weight:bold; color:#475569; margin-top:6px;">
                 ${gradeVal}${sec} &bull; ${footerTimestamp}
             </div>
         </div>
