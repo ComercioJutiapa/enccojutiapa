@@ -2599,7 +2599,23 @@
                             font-weight: bold !important;
                         }
 
+                        @page {
+                            size: 8.5in 13in;
+                            margin: 0.25in 0.35in;
+                        }
+
                         @media print {
+                            @page {
+                                size: 8.5in 13in;
+                                margin: 0.25in 0.35in;
+                            }
+                            html, body {
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                background: #ffffff !important;
+                                -webkit-print-color-adjust: exact !important;
+                                print-color-adjust: exact !important;
+                            }
                             body * {
                                 visibility: hidden !important;
                             }
@@ -2615,6 +2631,9 @@
                                 margin: 0 !important;
                                 padding: 0 !important;
                                 background: #ffffff !important;
+                                font-family: Arial, Helvetica, sans-serif !important;
+                                -webkit-font-smoothing: antialiased !important;
+                                text-rendering: optimizeLegibility !important;
                             }
                             .no-print {
                                 display: none !important;
@@ -2624,37 +2643,68 @@
                                 padding: 0 !important;
                                 width: 100% !important;
                             }
-                            /* AL IMPRIMIR SE AJUSTA ESTRICTAMENTE A 8 PULGADAS */
+                            /* CADA SECCIÓN Y RESUMEN EN UNA SOLA PÁGINA (OFICIO 8.5 x 13 PULGADAS) */
                             .encco-doc-page {
                                 box-shadow: none !important;
                                 border: none !important;
-                                padding: 0.15in 0.2in !important;
+                                padding: 0.08in 0.1in !important;
                                 margin: 0 auto !important;
-                                width: 8in !important;
-                                max-width: 8in !important;
-                                min-width: 8in !important;
+                                width: 100% !important;
+                                max-width: 100% !important;
+                                min-width: 0 !important;
                                 border-radius: 0 !important;
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
+                                page-break-after: always !important;
+                                break-after: page !important;
+                                box-sizing: border-box !important;
+                            }
+                            .encco-doc-page:last-child {
+                                page-break-after: auto !important;
+                                break-after: auto !important;
                             }
                             .encco-official-table {
-                                font-size: 7.5px !important;
+                                font-size: 8.2pt !important;
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
+                                width: 100% !important;
+                            }
+                            .encco-sabana-table {
+                                font-size: 7.2pt !important;
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
+                                width: 100% !important;
                             }
                             .encco-official-table th, 
                             .encco-official-table td {
-                                padding: 2px 1px !important;
+                                padding: 2.5px 3px !important;
+                                font-variant-numeric: tabular-nums !important;
+                                vertical-align: middle !important;
+                            }
+                            .encco-sabana-table th, 
+                            .encco-sabana-table td {
+                                padding: 1.8px 1.5px !important;
+                                font-variant-numeric: tabular-nums !important;
+                                vertical-align: middle !important;
                             }
                             .page-break {
+                                display: block !important;
                                 page-break-after: always !important;
                                 break-after: page !important;
+                                height: 0 !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
                             }
                             table {
-                                page-break-inside: auto;
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
                             }
                             tr {
-                                page-break-inside: avoid;
-                                page-break-after: auto;
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
                             }
                             thead {
-                                display: table-header-group;
+                                display: table-header-group !important;
                             }
                         }
                     </style>
@@ -4033,7 +4083,7 @@
     <script src="db.js"></script>
     <script src="ui.js"></script>
     <script src="sire.js"></script>
-    <script src="app.js?v=2026.09.18.v213_pensum_dinamico_y_ajuste_espacio_completo"></script>
+    <script src="app.js?v=2026.09.18.v214_oficio_8_5x13_y_seccion_por_pagina"></script>
 
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre

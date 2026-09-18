@@ -107,7 +107,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.18.v213_pensum_dinamico_y_ajuste_espacio_completo';
+const ENCCO_BUILD_VERSION = '2026.09.18.v214_oficio_8_5x13_y_seccion_por_pagina';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 const withTimeout = (promise, ms = 8000, errorMsg = 'Tiempo de espera agotado al conectar con Firebase.') => {
     return Promise.race([
@@ -29921,31 +29921,31 @@ function renderGradeStatsView() {
     const colsForSummary = isFilteredSection ? [selectedSection] : sectionCols;
 
     html += `
-    <div class="encco-doc-page">
+    <div class="encco-doc-page encco-doc-summary-page">
         <!-- ENCABEZADO INSTITUCIONAL CON ESCUDO -->
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
-            <div style="width:70px; text-align:left;">
-                <img src="logo.png" alt="Escudo ENCCO" style="height:65px; width:auto; object-fit:contain;" onerror="this.style.display='none'">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+            <div style="width:65px; text-align:left;">
+                <img src="logo.png" alt="Escudo ENCCO" style="height:55px; width:auto; object-fit:contain;" onerror="this.style.display='none'">
             </div>
-            <div style="flex:1; text-align:center; padding:0 10px;">
-                <div style="display:inline-block; border:1.5px solid #000; padding:4px 18px; border-radius:4px; background:#fef3c7; margin-bottom:6px;">
-                    <h2 style="margin:0; font-size:1.15rem; font-weight:900; color:#000; letter-spacing:0.4px; font-family:'Arial', sans-serif;">
+            <div style="flex:1; text-align:center; padding:0 8px;">
+                <div style="display:inline-block; border:1.5px solid #000; padding:3px 16px; border-radius:4px; background:#fef3c7; margin-bottom:4px;">
+                    <h2 style="margin:0; font-size:1.1rem; font-weight:900; color:#000; letter-spacing:0.3px; font-family:'Arial', sans-serif;">
                         Escuela Nacional de Ciencias Comerciales
                     </h2>
                 </div>
-                <div style="border-bottom:1.5px solid #000; padding-bottom:4px; margin-top:2px;">
-                    <h3 style="margin:0; font-size:1.05rem; font-weight:800; color:#000; font-family:'Arial', sans-serif;">
+                <div style="border-bottom:1.5px solid #000; padding-bottom:3px; margin-top:2px;">
+                    <h3 style="margin:0; font-size:1.0rem; font-weight:800; color:#000; font-family:'Arial', sans-serif;">
                         Resumen de ${periodTitle} ${gradeVal}to Grado ${isFilteredSection ? `(Sección ${selectedSection})` : ''}
                     </h3>
                 </div>
             </div>
-            <div style="width:140px; text-align:right; font-size:0.75rem; font-weight:600; color:#334155; padding-top:4px;">
+            <div style="width:140px; text-align:right; font-size:0.75rem; font-weight:600; color:#334155; padding-top:2px;">
                 ${dateFormattedLong}
             </div>
         </div>
 
         <!-- TABLA 1: RESUMEN ESTADÍSTICO POR SECCIÓN -->
-        <div style="overflow-x:auto; width:100%; margin-top:10px; margin-bottom:20px;">
+        <div style="overflow-x:auto; width:100%; margin-top:6px; margin-bottom:12px;">
         <table class="encco-official-table">
             <thead>
                 <tr>
@@ -29985,7 +29985,7 @@ function renderGradeStatsView() {
         </div>
 
         <!-- TABLA 2: CONTEO DE REPROBADOS POR CLASE -->
-        <div style="overflow-x:auto; width:100%; margin-bottom:14px;">
+        <div style="overflow-x:auto; width:100%; margin-bottom:8px;">
         <table class="encco-official-table">
             <thead>
                 <tr>
@@ -30032,17 +30032,17 @@ function renderGradeStatsView() {
                     <td style="text-align:center; font-weight:bold;">${item.clave}</td>
                     <td style="font-weight:bold; padding-left:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                         ${escapeHtml(item.name)}
-                        ${item.isRetirado ? ' <span style="font-size:0.75rem; color:#b91c1c; font-weight:bold;">(RETIRADO)</span>' : ''}
+                        ${item.isRetirado ? ' <span style="font-size:0.72rem; color:#b91c1c; font-weight:bold;">(RETIRADO)</span>' : ''}
                     </td>
                     ${item.scores.map(sObj => {
                         if (!sObj.evaluated || sObj.score === null) {
                             return `<td style="text-align:center; color:#94a3b8;"></td>`;
                         }
                         const isFail = sObj.score < 60;
-                        return `<td style="text-align:center; font-weight:bold; color:${isFail ? '#dc2626' : '#000'};">${sObj.score}</td>`;
+                        return `<td style="text-align:center; font-weight:bold; color:${isFail ? '#dc2626' : '#000'};">${Math.round(sObj.score)}</td>`;
                     }).join('')}
                     <td class="encco-td-pink" style="font-weight:bold; color:${item.average < 60 && item.average > 0 ? '#dc2626' : '#000'};">
-                        ${item.average > 0 ? item.average.toFixed(2) : '0.00'}
+                        ${item.average > 0 ? Number(item.average).toFixed(2) : '0.00'}
                     </td>
                     <td class="encco-td-pink ${lostClass}" style="font-weight:bold;">
                         ${item.lostCount}
@@ -30050,11 +30050,11 @@ function renderGradeStatsView() {
                 </tr>`;
         });
 
-        // Completar visualmente filas si la sección tiene pocos alumnos (mínimo 28)
-        const targetRowCount = Math.max(stList.length, 28);
+        // Completar visualmente filas si la sección tiene pocos alumnos (mínimo 25 para no saturar hoja)
+        const targetRowCount = Math.max(stList.length, 25);
         for (let i = stList.length + 1; i <= targetRowCount; i++) {
             rowsHtml += `
-                <tr style="height:20px;">
+                <tr style="height:18px;">
                     <td style="text-align:center; color:#cbd5e1;">${i}</td>
                     <td style="text-align:left; color:#cbd5e1; padding-left:4px;"></td>
                     ${officialSubjects.map(() => `<td style="text-align:center;"></td>`).join('')}
@@ -30064,24 +30064,24 @@ function renderGradeStatsView() {
         }
 
         html += `
-        <div class="encco-doc-page" style="margin-top:10px;">
+        <div class="encco-doc-page encco-doc-sabana-page" style="margin-top:10px;">
             <!-- ENCABEZADO OFICIAL DE LA SÁBANA (EXACTO A LA FOTO OFICIAL) -->
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
                 <div style="flex:1; text-align:center; padding-left:70px;">
-                    <div style="margin:0; font-size:13px; font-weight:900; text-transform:uppercase; font-family:Arial, sans-serif; letter-spacing:0.3px; color:#000;">
+                    <div style="margin:0; font-size:12px; font-weight:900; text-transform:uppercase; font-family:Arial, sans-serif; letter-spacing:0.3px; color:#000;">
                         ESCUELA NACIONAL EN CIENCIAS COMERCIALES, JUTIAPA
                     </div>
-                    <div style="margin:2px 0 0 0; font-size:13px; font-weight:900; font-family:Arial, sans-serif; color:#000;">
+                    <div style="margin:2px 0 0 0; font-size:12px; font-weight:900; font-family:Arial, sans-serif; color:#000;">
                         ${periodTitle}
                     </div>
                 </div>
                 <div style="flex-shrink:0;">
                     <table style="border-collapse:collapse; border:1.5px solid #000; font-size:11px; font-weight:bold;">
                         <tr>
-                            <td style="border:1.5px solid #000; padding:3px 8px; text-transform:none;">Grado</td>
-                            <td style="border:1.5px solid #000; padding:3px 8px; text-align:center;">${gradeVal}</td>
-                            <td style="border:1.5px solid #000; padding:3px 8px; text-transform:none;">Seccion</td>
-                            <td style="border:1.5px solid #000; padding:3px 8px; text-align:center;">${sec}</td>
+                            <td style="border:1.5px solid #000; padding:2px 7px; text-transform:none;">Grado</td>
+                            <td style="border:1.5px solid #000; padding:2px 7px; text-align:center;">${gradeVal}</td>
+                            <td style="border:1.5px solid #000; padding:2px 7px; text-transform:none;">Seccion</td>
+                            <td style="border:1.5px solid #000; padding:2px 7px; text-align:center;">${sec}</td>
                         </tr>
                     </table>
                 </div>
@@ -30089,18 +30089,18 @@ function renderGradeStatsView() {
 
             <!-- TABLA 3: SÁBANA DE NOTAS INDIVIDUALES POR ALUMNO -->
             <div style="overflow-x:auto; width:100%;">
-            <table class="encco-official-table encco-sabana-table" style="margin-bottom:6px;">
+            <table class="encco-official-table encco-sabana-table" style="margin-bottom:4px;">
                 <thead>
-                    <tr style="min-height:55px;">
-                        <th style="width:38px; vertical-align:middle; text-align:center;">Clave</th>
-                        <th style="min-width:180px; vertical-align:middle; text-align:center;">Alumno</th>
+                    <tr style="min-height:48px;">
+                        <th style="width:34px; vertical-align:middle; text-align:center;">Clave</th>
+                        <th style="min-width:170px; vertical-align:middle; text-align:center;">Alumno</th>
                         ${officialSubjects.map(s => {
-                            return `<th style="vertical-align:middle; text-align:center; line-height:1.15; padding:4px 3px; word-break:break-word;">${escapeHtml(s)}</th>`;
+                            return `<th style="vertical-align:middle; text-align:center; line-height:1.12; padding:3px 2px; word-break:break-word;">${escapeHtml(s)}</th>`;
                         }).join('')}
-                        <th class="encco-th-pink" style="min-width:65px; vertical-align:middle; line-height:1.15;">
+                        <th class="encco-th-pink" style="min-width:60px; vertical-align:middle; line-height:1.12;">
                             Promedios<br>Generales
                         </th>
-                        <th class="encco-th-pink" style="min-width:60px; vertical-align:middle; line-height:1.15;">
+                        <th class="encco-th-pink" style="min-width:55px; vertical-align:middle; line-height:1.12;">
                             Cátedras<br>Perdidas
                         </th>
                     </tr>
@@ -30112,7 +30112,7 @@ function renderGradeStatsView() {
             </div>
 
             <!-- PIE DE PÁGINA OFICIAL -->
-            <div style="display:flex; justify-content:flex-end; font-size:8px; font-weight:bold; color:#475569; margin-top:6px;">
+            <div style="display:flex; justify-content:flex-end; font-size:8px; font-weight:bold; color:#475569; margin-top:4px;">
                 ${gradeVal}${sec} &bull; ${footerTimestamp}
             </div>
         </div>
