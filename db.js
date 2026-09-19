@@ -742,14 +742,15 @@
         const report = { collectionsPurged: {}, rtdbReset: false, success: true };
 
         const adminMaster = adminUserOverride || {
-            id: 'usr-admin-01',
-            username: 'admin',
-            name: 'Prof. Nehemias Yalil Salguero',
-            title: 'Super Administrador / Director',
+            id: 'usr-aux-01',
+            username: 'nehemias',
+            name: 'Nehemias Yalil Salguero',
+            title: 'Super Administrador del Sistema',
             role: 'admin',
-            roles: ['admin', 'director'],
+            roles: ['admin'],
             email: 'nehemias.salguero1982@gmail.com',
             secondaryEmail: '22-01-0014-14@mineduc.edu.gt',
+            classes: '',
             active: true
         };
 
