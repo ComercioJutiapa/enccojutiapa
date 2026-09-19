@@ -9,8 +9,11 @@
     "password": "C@rolina1",
     "renglon": "011",
     "role": "admin",
+    "roles": [
+      "admin"
+    ],
     "telefono": "",
-    "title": "Super Administrador del Sistema / Catedrático Titular",
+    "title": "Super Administrador del Sistema",
     "username": "nehemias"
   },
   {
@@ -28,14 +31,15 @@
   },
   {
     "active": true,
-    "email": "secretaria@comercio.edu.gt",
-    "gender": "Masculino",
+    "email": "jhoanajarro@gmail.com",
+    "gender": "Femenino",
     "id": "usr-sec-01",
-    "name": "Secretaría Académica",
-    "password": "admin",
+    "name": "Sara Jhoana Najarro Corado",
+    "password": "Sara1",
     "renglon": "011",
     "role": "secretaria",
     "telefono": "",
+    "title": "Secretaría Académica",
     "username": "secretaria"
   },
   {
@@ -44,13 +48,13 @@
     "email": "yalilsag@gmail.com",
     "gender": "Masculino",
     "id": "usr-doc-01",
-    "name": "Nehemias Yalil Salguero",
-    "password": "Nehemias1",
+    "name": "Nehemias Yalil Salguero Sagastume",
+    "password": "Nehemias12",
     "renglon": "021",
     "role": "docente",
     "telefono": "",
     "title": "PEM / Catedrático Titular",
-    "username": "nehemias"
+    "username": "nehemias.doc"
   },
   {
     "active": true,

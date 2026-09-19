@@ -412,7 +412,7 @@
     <script src="auth.js"></script>
     <script src="db.js"></script>
     <script src="ui.js"></script>
-    <script src="app.js?v=2026.09.19.v222_fix_pensum_assignments_and_grades_protection"></script>
+    <script src="app.js?v=2026.09.19.v223_strict_auth_admin_zero_classes"></script>
     <script>
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');
@@ -461,11 +461,20 @@
 
             // Sanitizar cuentas oficiales en STATE
             if (window.STATE && Array.isArray(window.STATE.users)) {
+                const adminN = window.STATE.users.find(u => u.id === 'usr-aux-01' || u.role === 'admin');
+                if (adminN) {
+                    adminN.email = 'nehemias.salguero1982@gmail.com';
+                    adminN.password = 'C@rolina1';
+                    adminN.role = 'admin';
+                    adminN.roles = ['admin'];
+                    adminN.classes = '';
+                    adminN.title = 'Super Administrador del Sistema';
+                }
                 const docN = window.STATE.users.find(u => u.id === 'usr-doc-01' || u.username === 'nehemias.doc');
                 if (docN) {
-                    if (!docN.email) docN.email = atob('eWFsaWxzYWdAZ21haWwuY29t');
-                    if (!docN.password) docN.password = atob('TmVoZW1pYXMx');
-                    if (!docN.secondaryEmail) docN.secondaryEmail = atob('bmVoZW1pYXMuc2FsZ3Vlcm8xOTgyQGdtYWlsLmNvbQ==');
+                    if (!docN.email) docN.email = 'yalilsag@gmail.com';
+                    if (!docN.password) docN.password = 'Nehemias12';
+                    docN.secondaryEmail = '';
                 }
             }
 

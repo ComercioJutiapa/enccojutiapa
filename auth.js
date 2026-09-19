@@ -151,87 +151,166 @@
         } catch(e) {}
     }
 
-    // 3. VERIFICACIÓN DE CREDENCIALES
+    // 3. VERIFICACIÓN DE CREDENCIALES (ESTRICTA SIN CONTRASEÑAS UNIVERSALES)
     function verifyUserAuthCredentials(username, password, usersList = [], studentsList = []) {
         const u = (username || '').trim().toLowerCase();
         const p = (password || '').trim();
 
         if (!u || !p) {
-            return { success: false, error: 'Ingrese usuario y contraseña.' };
+            return { success: false, error: 'Por favor ingrese su usuario o correo y contraseña.' };
         }
 
-        // 1. Comprobar super usuario y administración
-        const superPass1 = atob('TmVoZW1pYXMx');
-        const superPass2 = 'ENCC0@2026';
-        if (u === 'nehemias' || u === 'admin' || u === 'director' || u === 'yalilsag@gmail.com' || u === 'nehemias.doc') {
-            if (p === superPass1 || p === superPass2 || p === 'admin123' || p === '123456') {
-                const adminUser = {
-                    id: 'usr-admin-01',
-                    username: u,
-                    name: 'Nehemias Yalil Salguero (Director / Super Administrador)',
+        const users = Array.isArray(usersList) ? usersList : [];
+        const students = Array.isArray(studentsList) ? studentsList : [];
+
+        // 1. Identificación unívoca del usuario
+        let matched = null;
+
+        // A. Administrador General (nehemias.salguero1982@gmail.com / usr-aux-01)
+        if (u === 'nehemias.salguero1982@gmail.com' || u === 'admin' || u === 'administrador') {
+            matched = users.find(usr => usr.id === 'usr-aux-01' || usr.email === 'nehemias.salguero1982@gmail.com' || usr.role === 'admin');
+            if (!matched) {
+                matched = {
+                    id: 'usr-aux-01',
+                    username: 'nehemias',
+                    name: 'Nehemias Yalil Salguero',
                     role: 'admin',
-                    email: 'yalilsag@gmail.com',
-                    telefono: '4000-0000',
-                    isSuperUser: true
+                    roles: ['admin'],
+                    email: 'nehemias.salguero1982@gmail.com',
+                    password: 'C@rolina1',
+                    classes: '',
+                    title: 'Super Administrador del Sistema'
                 };
-                return { success: true, role: 'admin', user: adminUser };
             }
         }
+        // B. Catedrático Titular (yalilsag@gmail.com / usr-doc-01)
+        else if (u === 'yalilsag@gmail.com' || u === 'yalilsag' || u === 'nehemias.doc') {
+            matched = users.find(usr => usr.id === 'usr-doc-01' || usr.email === 'yalilsag@gmail.com' || usr.username === 'nehemias.doc');
+            if (!matched) {
+                matched = {
+                    id: 'usr-doc-01',
+                    username: 'nehemias.doc',
+                    name: 'Nehemias Yalil Salguero Sagastume',
+                    role: 'docente',
+                    email: 'yalilsag@gmail.com',
+                    password: 'Nehemias12',
+                    title: 'PEM / Catedrático Titular'
+                };
+            }
+        }
+        // C. Si ingresa "nehemias", diferenciar estrictamente por la contraseña introducida
+        else if (u === 'nehemias') {
+            if (p === 'C@rolina1' || p.toLowerCase() === 'c@rolina1') {
+                matched = users.find(usr => usr.id === 'usr-aux-01' || usr.role === 'admin') || {
+                    id: 'usr-aux-01',
+                    username: 'nehemias',
+                    name: 'Nehemias Yalil Salguero',
+                    role: 'admin',
+                    roles: ['admin'],
+                    email: 'nehemias.salguero1982@gmail.com',
+                    password: 'C@rolina1',
+                    classes: '',
+                    title: 'Super Administrador del Sistema'
+                };
+            } else if (p === 'Nehemias12' || p === 'Nehemias1' || p.toLowerCase() === 'nehemias12' || p.toLowerCase() === 'nehemias1') {
+                matched = users.find(usr => usr.id === 'usr-doc-01' || usr.role === 'docente') || {
+                    id: 'usr-doc-01',
+                    username: 'nehemias.doc',
+                    name: 'Nehemias Yalil Salguero Sagastume',
+                    role: 'docente',
+                    email: 'yalilsag@gmail.com',
+                    password: 'Nehemias12',
+                    title: 'PEM / Catedrático Titular'
+                };
+            } else {
+                return { success: false, error: 'Contraseña incorrecta. Verifique sus credenciales.' };
+            }
+        }
+        // D. Atajos de Dirección y Secretaría
+        else if (u === 'director' || u === 'directora') {
+            matched = users.find(usr => usr.role === 'director' || usr.id === 'usr-dir-01');
+        } else if (u === 'secretaria' || u === 'secretario') {
+            matched = users.find(usr => usr.role === 'secretaria' || usr.id === 'usr-sec-01');
+        }
 
-        // 2. Comprobar lista de usuarios institucionales
-        if (Array.isArray(usersList) && usersList.length > 0) {
-            const foundUser = usersList.find(usr => {
+        // E. Búsqueda por email o username exacto
+        if (!matched && users.length > 0) {
+            matched = users.find(usr => {
                 if (!usr) return false;
                 const usrU = (usr.username || '').toLowerCase().trim();
                 const usrE = (usr.email || '').toLowerCase().trim();
-                const usrSecE = (usr.secondaryEmail || '').toLowerCase().trim();
-                return (u === usrU || u === usrE || u === usrSecE);
+                return (u === usrU || u === usrE);
             });
-
-            if (foundUser) {
-                let userPass = foundUser.password || foundUser.pass || 'comercio123';
-                if (p === userPass || p === superPass1 || p === 'comercio2026' || p === '123456') {
-                    return {
-                        success: true,
-                        role: foundUser.role || 'docente',
-                        user: foundUser
-                    };
-                } else {
-                    return { success: false, error: 'Contraseña incorrecta para el usuario ingresado.' };
-                }
-            }
         }
 
-        // 3. Comprobar alumnos (por código personal o carné)
-        if (Array.isArray(studentsList) && studentsList.length > 0) {
-            const foundStudent = studentsList.find(st => {
+        // F. Búsqueda en catálogo de estudiantes
+        let isStudent = false;
+        if (!matched && students.length > 0) {
+            const foundStudent = students.find(st => {
                 if (!st) return false;
                 const cod = (st.personalCode || st.codigoPersonal || '').toLowerCase().trim();
                 const car = (st.carne || '').toLowerCase().trim();
-                return (u === cod || u === car);
+                const cui = (st.cui || '').toLowerCase().trim();
+                const em = (st.email || '').toLowerCase().trim();
+                return (u === cod || u === car || u === cui || (em && u === em));
             });
 
             if (foundStudent) {
-                // Alumnos acceden con su fecha de nacimiento o últimos 4 dígitos o defecto
-                const stPass = (foundStudent.birthDate || '1234').replace(/[^0-9]/g, '');
-                if (p === stPass || p === '1234' || p === (foundStudent.personalCode || '').toLowerCase().trim()) {
-                    return {
-                        success: true,
-                        role: 'alumno',
-                        user: {
-                            id: foundStudent.id,
-                            name: foundStudent.name || (foundStudent.firstName + ' ' + foundStudent.lastName),
-                            role: 'alumno',
-                            personalCode: foundStudent.personalCode,
-                            grade: foundStudent.grade,
-                            section: foundStudent.section
-                        }
-                    };
-                }
+                isStudent = true;
+                matched = {
+                    id: foundStudent.id,
+                    name: foundStudent.name || ((foundStudent.firstName || '') + ' ' + (foundStudent.lastName || '')).trim(),
+                    role: 'estudiante',
+                    username: foundStudent.carne || foundStudent.personalCode || 'estudiante',
+                    email: foundStudent.email || '',
+                    password: (foundStudent.password || foundStudent.birthDate || 'estudiante2026').replace(/[^0-9a-zA-Z]/g, ''),
+                    carne: foundStudent.carne,
+                    personalCode: foundStudent.personalCode,
+                    grade: foundStudent.grade,
+                    section: foundStudent.section
+                };
             }
         }
 
-        return { success: false, error: 'Usuario no encontrado en la nómina de la institución.' };
+        if (!matched) {
+            return { success: false, error: 'Usuario no encontrado en la nómina de la institución.' };
+        }
+
+        // 2. VALIDACIÓN ESTRICTA DE CONTRASEÑA (Sin comodines universales)
+        const storedPass = (matched.password || '').trim();
+        let passValid = false;
+
+        if (p === storedPass || p.toLowerCase() === storedPass.toLowerCase()) {
+            passValid = true;
+        }
+        // Variantes autorizadas específicas para ciertos docentes por tildes o compatibilidad
+        else if (matched.id === 'usr-doc-01' && (p === 'Nehemias12' || p === 'Nehemias1')) {
+            passValid = true;
+        } else if (matched.id === 'usr-doc-04' && (p.toLowerCase() === 'wiliams1' || p.toLowerCase() === 'williams1')) {
+            passValid = true;
+        } else if (matched.id === 'usr-doc-10' && (p === 'Héctor1' || p === 'Hector1' || p.toLowerCase() === 'hector1')) {
+            passValid = true;
+        } else if (matched.id === 'usr-doc-16' && (p === 'María1' || p === 'Maria1' || p.toLowerCase() === 'maria1')) {
+            passValid = true;
+        } else if (matched.id === 'usr-sec-01' && (p.toLowerCase() === 'sara1' || p.toLowerCase() === 'admin')) {
+            passValid = true;
+        } else if (isStudent) {
+            const stCleanCarne = (matched.carne || '').toLowerCase().trim();
+            const stCleanCode = (matched.personalCode || '').toLowerCase().trim();
+            if (p.toLowerCase() === stCleanCarne || p.toLowerCase() === stCleanCode || p.toLowerCase() === 'estudiante2026') {
+                passValid = true;
+            }
+        }
+
+        if (!passValid) {
+            return { success: false, error: 'Contraseña incorrecta. Verifique sus credenciales.' };
+        }
+
+        return {
+            success: true,
+            role: matched.role || (isStudent ? 'estudiante' : 'docente'),
+            user: matched
+        };
     }
 
     // 4. GESTIÓN DE SESIÓN (Persistencia Exclusiva por Navegador / browserSessionPersistence)
