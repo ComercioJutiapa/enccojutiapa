@@ -1158,9 +1158,9 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
         return 'edit';
     }
 
-    // 🛡️ BLINDAJE RBAC: "Promedios y Estadísticas" para Dirección, Secretaría, Admin y Docentes
+    // 🛡️ BLINDAJE RBAC ESTRICTO: "Promedios y Estadísticas" exclusivo para Dirección, Secretaría, Admin y Superusuario (Docentes NO pueden verlo)
     if (key === 'grade-stats') {
-        const allowedStats = ['director', 'secretaria', 'admin', 'super_usuario', 'docente', 'catedratico'];
+        const allowedStats = ['director', 'secretaria', 'admin', 'super_usuario'];
         if (!allowedStats.includes(roleKey)) return 'none';
         return 'view';
     }
@@ -1200,6 +1200,12 @@ function hasRolePermission(permKey, role = null) {
     if (testKey === 'datos-sire') {
         const allowedSire = ['director', 'secretaria', 'admin', 'super_usuario'];
         return allowedSire.includes(targetRole);
+    }
+
+    // 🛡️ BLINDAJE RBAC ESTRICTO: "Promedios y Estadísticas" denegado terminantemente a docentes y otros roles
+    if (testKey === 'grade-stats') {
+        const allowedStats = ['director', 'secretaria', 'admin', 'super_usuario'];
+        return allowedStats.includes(targetRole);
     }
 
     try {
