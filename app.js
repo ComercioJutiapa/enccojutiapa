@@ -5989,10 +5989,8 @@ function ensureOfficialPensumAssignments() {
         });
     }
 
-    // Si STATE.pensum ya tiene cátedras, PRESERVARLAS AL 100%.
-    // No sobreescribir con CANONICAL_MAP para permitir que las asignaciones del usuario y de Firebase manden.
-    if (Array.isArray(STATE.pensum) && STATE.pensum.length > 0) {
-        // Limpiar únicamente posibles entradas duplicadas exactas (mismo grado, sección y materia)
+    // Si STATE.pensum ya tiene cátedras completas (>= 28), PRESERVARLAS AL 100%.
+    if (Array.isArray(STATE.pensum) && STATE.pensum.length >= 28) {
         const seen = new Set();
         STATE.pensum = STATE.pensum.filter(p => {
             if (!p) return false;
@@ -6006,10 +6004,20 @@ function ensureOfficialPensumAssignments() {
         return;
     }
 
-    // Si el pensum está vacío, consultar rutas oficiales de Firebase
-    if (!Array.isArray(STATE.pensum) || STATE.pensum.length === 0) {
-        const rutaColeccion = 'encc_school_state/pensum';
-        console.log("Consultando asignaciones en ruta:", rutaColeccion);
+    // Intentar recuperar de caché local de respaldo si está disponible
+    try {
+        const cached = localStorage.getItem('encco_pensum_backup');
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length >= 28) {
+                STATE.pensum = parsed;
+                console.log(`✅ [Pensum 2026] ${parsed.length} cátedras recuperadas desde caché local.`);
+            }
+        }
+    } catch(e) {}
+
+    // Si el pensum está vacío o incompleto (< 28), consultar rutas oficiales de Firebase
+    if (!Array.isArray(STATE.pensum) || STATE.pensum.length < 28) {
         if (typeof loadPensumFromCloudFallback === 'function') {
             loadPensumFromCloudFallback();
         }
@@ -6018,26 +6026,42 @@ function ensureOfficialPensumAssignments() {
 window.ensureOfficialPensumAssignments = ensureOfficialPensumAssignments;
 
 async function loadPensumFromCloudFallback() {
-    const rutaColeccion = 'encc_school_state/pensum';
-    console.log("Consultando asignaciones en ruta:", rutaColeccion);
     try {
         const fbUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
-        const res = await fetch(`${fbUrl}/encc_school_state/pensum.json?t=${Date.now()}`);
-        if (res.ok) {
-            const data = await res.json();
-            const items = Array.isArray(data) ? data : (data && typeof data === 'object' ? Object.values(data) : []);
-            if (items.length > 0) {
-                STATE.pensum = items;
-                console.log(`✅ [Pensum 2026] ${items.length} asignaciones vinculadas exitosamente desde ${rutaColeccion}`);
-                if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
-                if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
-                if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
-                if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
-                return items;
+        // Probar en orden: pensum_2026 (respaldo canónico 112 cátedras), pensum y encc_school_state/pensum
+        const endpoints = [
+            `${fbUrl}/pensum_2026.json?t=${Date.now()}`,
+            `${fbUrl}/pensum.json?t=${Date.now()}`,
+            `${fbUrl}/encc_school_state/pensum.json?t=${Date.now()}`
+        ];
+
+        for (const ep of endpoints) {
+            try {
+                const res = await fetch(ep);
+                if (res.ok) {
+                    const data = await res.json();
+                    const items = Array.isArray(data) ? data : (data && typeof data === 'object' ? Object.values(data) : []);
+                    if (items.length >= 28) {
+                        STATE.pensum = items;
+                        try {
+                            localStorage.setItem('encco_pensum_backup', JSON.stringify(items));
+                        } catch(e) {}
+                        console.log(`✅ [Pensum 2026] ${items.length} asignaciones vinculadas exitosamente desde ${ep}`);
+                        if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
+                        if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
+                        if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+                        if (typeof updateClassAssignmentSelects === 'function') updateClassAssignmentSelects();
+                        if (typeof populateTeacherCourseSelect === 'function') populateTeacherCourseSelect();
+                        if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
+                        return items;
+                    }
+                }
+            } catch(subErr) {
+                console.warn("Intento de carga de pensum en:", ep, subErr);
             }
         }
     } catch(e) {
-        console.warn("Aviso al consultar asignaciones en ruta:", rutaColeccion, e);
+        console.warn("Aviso al consultar asignaciones en ruta oficial:", e);
     }
     return [];
 }
@@ -7708,8 +7732,14 @@ function applyIncomingCloudState(incomingState, force = false) {
         }
     }
 
-    // 4. Asignación de Cátedras y Pensum (Protección anti-sobreescritura por arreglos vacíos)
-    if (Array.isArray(incomingState.pensum) && (incomingState.pensum.length > 0 || !STATE.pensum || STATE.pensum.length === 0)) STATE.pensum = incomingState.pensum;
+    // 4. Asignación de Cátedras y Pensum (Blindaje estricto anti-sobreescritura por arreglos incompletos o vacíos)
+    if (Array.isArray(incomingState.pensum) && incomingState.pensum.length >= 28) {
+        STATE.pensum = incomingState.pensum;
+    } else if (Array.isArray(incomingState.pensum) && incomingState.pensum.length > 0 && (!STATE.pensum || STATE.pensum.length === 0)) {
+        STATE.pensum = incomingState.pensum;
+    } else if (!STATE.pensum || STATE.pensum.length < 28) {
+        if (typeof ensureOfficialPensumAssignments === 'function') ensureOfficialPensumAssignments();
+    }
     if (incomingState.gradingConfigs && typeof incomingState.gradingConfigs === 'object') {
         STATE.gradingConfigs = incomingState.gradingConfigs;
     }
@@ -18078,23 +18108,44 @@ function deleteCycle(cycleId) {
 // ==========================================================================
 function isCourseAssignedToTeacher(p, user) {
     if (!p || !user) return false;
-    if (p.teacherId && p.teacherId === user.id) return true;
-    if (!p.teacher || !user.name) return false;
-    const cleanStr = s => s.toLowerCase()
+    // 1. Coincidencia directa por ID
+    if (p.teacherId && user.id) {
+        if (p.teacherId === user.id) return true;
+        // Reconciliación cruzada de usuario auxiliar/admin y docente titular de Nehemias
+        if ((p.teacherId === 'usr-aux-01' || p.teacherId === 'usr-doc-01') && 
+            (user.id === 'usr-aux-01' || user.id === 'usr-doc-01')) {
+            return true;
+        }
+    }
+
+    // 2. Extracción de nombres a comparar
+    const courseTeacher = p.teacher || p.teacherName || '';
+    const userName = user.name || user.username || '';
+    if (!courseTeacher || !userName) return false;
+
+    const cleanStr = s => String(s).toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/^(licda\.|lic\.|pem\.|prof\.|profesor|profesora|ma\.|ing\.|dr\.|dra\.)\s*/gi, "")
         .replace(/[\.,]/g, "")
+        .replace(/\s+/g, " ")
         .trim();
-    const cleanCourseTeacher = cleanStr(p.teacher);
-    const cleanUserName = cleanStr(user.name);
+
+    const cleanCourseTeacher = cleanStr(courseTeacher);
+    const cleanUserName = cleanStr(userName);
     if (!cleanCourseTeacher || !cleanUserName) return false;
     if (cleanCourseTeacher === cleanUserName) return true;
-    if (cleanCourseTeacher.includes(cleanUserName) || cleanUserName.includes(cleanCourseTeacher)) return true;
     
+    // Inclusión bidireccional
+    if (cleanCourseTeacher.includes(cleanUserName) || cleanUserName.includes(cleanCourseTeacher)) return true;
+
+    // Coincidencia por palabras clave
     const wordsCourse = cleanCourseTeacher.split(/\s+/).filter(w => w.length > 2);
     const wordsUser = cleanUserName.split(/\s+/).filter(w => w.length > 2);
     const matched = wordsCourse.filter(w => wordsUser.includes(w));
-    return matched.length >= 2;
+    if (matched.length >= 2) return true;
+    if (wordsCourse.length === 1 && wordsUser.includes(wordsCourse[0])) return true;
+
+    return false;
 }
 window.isCourseAssignedToTeacher = isCourseAssignedToTeacher;
 
@@ -18175,6 +18226,13 @@ function populateTeacherCourseSelect(preferredCourseId = null) {
 
     const currentUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente') || STATE.users[0];
     const isDocente = (STATE.currentRole === 'docente');
+
+    // Si STATE.pensum está incompleto o ausente, restaurar inmediatamente desde respaldo canónico
+    if (!Array.isArray(STATE.pensum) || STATE.pensum.length < 28) {
+        if (typeof ensureOfficialPensumAssignments === 'function') {
+            ensureOfficialPensumAssignments();
+        }
+    }
 
     let html = '';
     const gradeOrder = ['4to Perito Contador', '5to Perito Contador', '6to Perito Contador'];
@@ -19755,7 +19813,7 @@ async function saveGradingConfigAtomic(targetPensum, unit, configObj) {
                 [targetPensum.id]: targetPensum.gradingConfig
             });
         }
-        if (EnccoCloudSync.syncNode) {
+        if (EnccoCloudSync.syncNode && Array.isArray(STATE.pensum) && STATE.pensum.length >= 28) {
             EnccoCloudSync.syncNode('pensum', STATE.pensum);
         }
     }
