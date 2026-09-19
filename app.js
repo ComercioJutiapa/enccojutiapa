@@ -6124,19 +6124,17 @@ function isLegacyPredefinedActivityName(name) {
     if (!name || typeof name !== 'string') return false;
     const clean = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     if (!clean) return false;
-    // Nombres predeterminados obsoletos especificados por el usuario:
-    // folder, proyecto, pruebat, aniversario (y clases del modelo antiguo)
-    return clean.includes('folder') ||
-           clean.includes('aniversario') ||
-           clean.includes('aniv') ||
-           clean.includes('pruebat') ||
-           clean.includes('proyecto') ||
-           clean === 'clases' ||
-           clean.includes('folder capacitate') ||
-           clean.includes('dtk') ||
-           clean.includes('data king') ||
-           clean.includes('classroom') ||
-           clean.includes('examen zona');
+    // Solo encabezados estrictamente obsoletos del modelo antiguo de 2025:
+    // Nunca incluir palabras comunes y legítimas como 'proyecto', 'clases', 'tarea', etc.
+    return clean === 'folder capacitate' ||
+           clean === 'folder' ||
+           clean === 'pruebat' ||
+           clean === 'aniversario encco' ||
+           clean === 'aniversario' ||
+           clean === 'aniv' ||
+           clean === 'data king' ||
+           clean === 'dtk' ||
+           clean === 'examen zona';
 }
 window.isLegacyPredefinedActivityName = isLegacyPredefinedActivityName;
 
@@ -6167,9 +6165,14 @@ function sanitizeGradingConfigsInState(st) {
     if (!st || typeof st !== 'object') return;
     const sanitizeSingleConfig = (cfg, pensumId, unitNum) => {
         if (!cfg || typeof cfg !== 'object') return;
-        if (Array.isArray(cfg.activities)) {
+        // Si la configuración ya fue guardada/editada por el usuario o importada (tiene updatedAt o updatedBy), NUNCA sobrescribir nombres ni ponderaciones
+        if (cfg.updatedAt || cfg.updatedBy) return;
+        const acts = Array.isArray(cfg.activities)
+            ? cfg.activities
+            : (cfg.activities && typeof cfg.activities === 'object' ? Object.values(cfg.activities) : null);
+        if (Array.isArray(acts)) {
             let hadLegacy = false;
-            cfg.activities.forEach((act, idx) => {
+            acts.forEach((act, idx) => {
                 if (act && act.name && isLegacyPredefinedActivityName(act.name)) {
                     act.name = `Act. ${idx + 1}`;
                     const hasNotes = stateHasGradesInActivity(st, pensumId, unitNum, idx);
@@ -19485,7 +19488,7 @@ function getDefaultGradingConfig() {
 }
 
 function getGradingConfigKey(targetPensum, bimestre) {
-    const b = parseInt(bimestre) || 2;
+    const b = parseInt(bimestre) || 1;
     if (!targetPensum) return `DEFAULT_B${b}`;
     const pKey = targetPensum.id || `${targetPensum.gradeCode || targetPensum.grade}_${targetPensum.subject}`;
     return `${pKey}_B${b}`;
@@ -19502,10 +19505,13 @@ function getGradingConfig(targetPensum, bimestre) {
         saved = nested[`b${b}`] || nested[`B${b}`] || nested[b];
     }
     if (saved) {
-        const acts = (Array.isArray(saved.activities) ? [...saved.activities] : []).map((a, i) => {
-            let actName = (a.name || `Act. ${i + 1}`).trim();
-            let actMax = a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0);
-            if (!saved.updatedAt && isLegacyPredefinedActivityName(actName)) {
+        const rawActs = Array.isArray(saved.activities)
+            ? saved.activities
+            : (saved.activities && typeof saved.activities === 'object' ? Object.values(saved.activities) : []);
+        const acts = rawActs.map((a, i) => {
+            let actName = (a && a.name ? String(a.name) : `Act. ${i + 1}`).trim();
+            let actMax = (a && a.max !== undefined) ? a.max : ((a && a.maxPoints !== undefined) ? a.maxPoints : 0);
+            if (!saved.updatedAt && !saved.updatedBy && isLegacyPredefinedActivityName(actName)) {
                 actName = `Act. ${i + 1}`;
                 const hasNotes = stateHasGradesInActivity(STATE, targetPensum?.id, b, i);
                 if (!hasNotes) {
@@ -19530,16 +19536,21 @@ function getGradingConfig(targetPensum, bimestre) {
         return {
             zonaMax: zMax,
             examMax: eMax,
-            activities: acts
+            activities: acts,
+            updatedAt: saved.updatedAt || null,
+            updatedBy: saved.updatedBy || null
         };
     }
     if (targetPensum && targetPensum.gradingConfig) {
         const pCfg = targetPensum.gradingConfig[`b${b}`] || targetPensum.gradingConfig[`B${b}`] || targetPensum.gradingConfig[b];
         if (pCfg) {
-            const acts = (Array.isArray(pCfg.activities) ? [...pCfg.activities] : []).map((a, i) => {
-                let actName = (a.name || `Act. ${i + 1}`).trim();
-                let actMax = a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0);
-                if (!pCfg.updatedAt && isLegacyPredefinedActivityName(actName)) {
+            const rawActs = Array.isArray(pCfg.activities)
+                ? pCfg.activities
+                : (pCfg.activities && typeof pCfg.activities === 'object' ? Object.values(pCfg.activities) : []);
+            const acts = rawActs.map((a, i) => {
+                let actName = (a && a.name ? String(a.name) : `Act. ${i + 1}`).trim();
+                let actMax = (a && a.max !== undefined) ? a.max : ((a && a.maxPoints !== undefined) ? a.maxPoints : 0);
+                if (!pCfg.updatedAt && !pCfg.updatedBy && isLegacyPredefinedActivityName(actName)) {
                     actName = `Act. ${i + 1}`;
                     const hasNotes = stateHasGradesInActivity(STATE, targetPensum?.id, b, i);
                     if (!hasNotes) {
@@ -19564,7 +19575,9 @@ function getGradingConfig(targetPensum, bimestre) {
             return {
                 zonaMax: zMax,
                 examMax: eMax,
-                activities: acts
+                activities: acts,
+                updatedAt: pCfg.updatedAt || null,
+                updatedBy: pCfg.updatedBy || null
             };
         }
     }
@@ -19657,12 +19670,15 @@ window.setGradingAutoSaveStatus = setGradingAutoSaveStatus;
 function updateGradebookTableHeadersFast(cfg, unit) {
     if (!cfg) return;
     const theadAct = document.querySelector('#gradebookActivitiesTable thead tr');
-    if (theadAct && Array.isArray(cfg.activities)) {
+    const rawActs = Array.isArray(cfg.activities)
+        ? cfg.activities
+        : (cfg.activities && typeof cfg.activities === 'object' ? Object.values(cfg.activities) : []);
+    if (theadAct && rawActs.length > 0) {
         theadAct.innerHTML = `
             <th style="width:36px; text-align:center;"><input type="checkbox" id="selectAllActivities" onchange="toggleSelectAllGradebook(this, 'activities')"></th>
             <th style="min-width:240px; cursor:pointer;" onclick="toggleGradebookStudentSort()">Estudiante <i class="fa-solid fa-arrow-up" id="sortArrowActivities"></i></th>
             <th style="width:70px; text-align:center; background:rgba(34,197,94,0.15); font-weight:800;" title="Total de Zona (Máximo ${cfg.zonaMax} pts)">Zona (${cfg.zonaMax})</th>
-            ${cfg.activities.map((act, i) => `
+            ${rawActs.map((act, i) => `
                 <th style="width:52px; text-align:center;" title="Actividad ${i+1}: ${escapeHtml(act.name || `Act. ${i+1}`)} (${act.max || 0} pts)">
                     ${i+1}<br><small style="font-weight:normal; font-size:0.7rem;">${escapeHtml(act.name || `Act. ${i+1}`)} (${act.max || 0})</small>
                 </th>
@@ -19690,6 +19706,12 @@ async function saveGradingConfigAtomic(targetPensum, unit, configObj) {
     if (!configObj.updatedAt) configObj.updatedAt = new Date().toISOString();
     if (!targetPensum.gradingConfig) targetPensum.gradingConfig = {};
     targetPensum.gradingConfig[`b${currentUnit}`] = configObj;
+
+    const matchedPensum = (STATE.pensum || []).find(p => p && (p.id === targetPensum.id || (p.subject === targetPensum.subject && p.grade === targetPensum.grade && p.section === targetPensum.section)));
+    if (matchedPensum) {
+        if (!matchedPensum.gradingConfig) matchedPensum.gradingConfig = {};
+        matchedPensum.gradingConfig[`b${currentUnit}`] = configObj;
+    }
 
     if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
     const cfgKey = getGradingConfigKey(targetPensum, currentUnit);
@@ -19787,7 +19809,8 @@ function triggerGradingConfigAutoSave(immediate = false) {
     const ptsInputs = document.querySelectorAll('.cfg-act-pts');
     const acts = [];
     nameInputs.forEach((inp, idx) => {
-        const nm = inp.value.trim() || `Act. ${idx + 1}`;
+        const rawVal = (inp.value || '').trim();
+        const nm = rawVal || `Act. ${idx + 1}`;
         const p = parseInt(ptsInputs[idx]?.value) || 0;
         acts.push({ name: nm, max: p, maxPoints: p });
     });
@@ -19803,6 +19826,12 @@ function triggerGradingConfigAutoSave(immediate = false) {
     // Actualización inmediata local (0ms)
     if (!targetPensum.gradingConfig) targetPensum.gradingConfig = {};
     targetPensum.gradingConfig[`b${currentUnit}`] = configObj;
+
+    const matchedPensum = (STATE.pensum || []).find(p => p && (p.id === targetPensum.id || (p.subject === targetPensum.subject && p.grade === targetPensum.grade && p.section === targetPensum.section)));
+    if (matchedPensum) {
+        if (!matchedPensum.gradingConfig) matchedPensum.gradingConfig = {};
+        matchedPensum.gradingConfig[`b${currentUnit}`] = configObj;
+    }
 
     if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
     const cfgKey = getGradingConfigKey(targetPensum, currentUnit);
@@ -19965,7 +19994,8 @@ async function saveGradingConfigForm(e) {
         const ptsInputs = document.querySelectorAll('.cfg-act-pts');
         const acts = [];
         nameInputs.forEach((inp, idx) => {
-            const nm = inp.value.trim() || `Act. ${idx + 1}`;
+            const rawVal = (inp.value || '').trim();
+            const nm = rawVal || `Act. ${idx + 1}`;
             const p = parseInt(ptsInputs[idx]?.value) || 0;
             acts.push({ name: nm, max: p, maxPoints: p });
         });
@@ -20191,12 +20221,15 @@ function loadTeacherGradebook() {
 
     // Actualizar encabezados dinámicos de la tabla de 10 actividades
     const theadAct = document.querySelector('#gradebookActivitiesTable thead tr');
-    if (theadAct) {
+    const rawActs = Array.isArray(cfg.activities)
+        ? cfg.activities
+        : (cfg.activities && typeof cfg.activities === 'object' ? Object.values(cfg.activities) : []);
+    if (theadAct && rawActs.length > 0) {
         theadAct.innerHTML = `
             <th style="width:36px; text-align:center;"><input type="checkbox" id="selectAllActivities" onchange="toggleSelectAllGradebook(this, 'activities')"></th>
             <th style="min-width:240px; cursor:pointer;" onclick="toggleGradebookStudentSort()">Estudiante <i class="fa-solid fa-arrow-up" id="sortArrowActivities"></i></th>
             <th style="width:70px; text-align:center; background:rgba(34,197,94,0.15); font-weight:800;" title="Total de Zona (Máximo ${cfg.zonaMax} pts)">Zona (${cfg.zonaMax})</th>
-            ${cfg.activities.map((act, i) => `
+            ${rawActs.map((act, i) => `
                 <th style="width:52px; text-align:center;" title="Actividad ${i+1}: ${escapeHtml(act.name || `Act. ${i+1}`)} (${act.max || 0} pts)">
                     ${i+1}<br><small style="font-weight:normal; font-size:0.7rem;">${escapeHtml(act.name || `Act. ${i+1}`)} (${act.max || 0})</small>
                 </th>
