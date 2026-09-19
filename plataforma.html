@@ -3252,8 +3252,13 @@
                             <h4 style="margin:0; font-size:0.95rem; color:#0f172a; font-weight:800;">
                                 <i class="fa-solid fa-list-ol" style="color:#0284c7;"></i> 2. Distribución de las 10 Actividades de Zona
                             </h4>
-                            <div id="cfgActivitiesSumBadge" class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800;">
-                                Suma Actividades: 0 / 40 pts
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span id="cfgAutoSaveStatus" style="font-size:0.75rem; font-weight:700; color:#16a34a; display:none; align-items:center; gap:4px;">
+                                    <i class="fa-solid fa-circle-check"></i> Guardado en Firebase
+                                </span>
+                                <div id="cfgActivitiesSumBadge" class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800;">
+                                    Suma Actividades: 0 / 40 pts
+                                </div>
                             </div>
                         </div>
                         <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:12px;">
@@ -4090,7 +4095,7 @@
     <script src="db.js"></script>
     <script src="ui.js"></script>
     <script src="sire.js"></script>
-    <script src="app.js?v=2026.09.18.v219_grade_stats_solo_admin_director_secretaria"></script>
+    <script src="app.js?v=2026.09.18.v220_auto_save_ponderacion_import_headers"></script>
 
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre

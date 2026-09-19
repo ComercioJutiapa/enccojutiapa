@@ -19505,7 +19505,7 @@ function getGradingConfig(targetPensum, bimestre) {
         const acts = (Array.isArray(saved.activities) ? [...saved.activities] : []).map((a, i) => {
             let actName = (a.name || `Act. ${i + 1}`).trim();
             let actMax = a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0);
-            if (isLegacyPredefinedActivityName(actName)) {
+            if (!saved.updatedAt && isLegacyPredefinedActivityName(actName)) {
                 actName = `Act. ${i + 1}`;
                 const hasNotes = stateHasGradesInActivity(STATE, targetPensum?.id, b, i);
                 if (!hasNotes) {
@@ -19539,7 +19539,7 @@ function getGradingConfig(targetPensum, bimestre) {
             const acts = (Array.isArray(pCfg.activities) ? [...pCfg.activities] : []).map((a, i) => {
                 let actName = (a.name || `Act. ${i + 1}`).trim();
                 let actMax = a.max !== undefined ? a.max : (a.maxPoints !== undefined ? a.maxPoints : 0);
-                if (isLegacyPredefinedActivityName(actName)) {
+                if (!pCfg.updatedAt && isLegacyPredefinedActivityName(actName)) {
                     actName = `Act. ${i + 1}`;
                     const hasNotes = stateHasGradesInActivity(STATE, targetPensum?.id, b, i);
                     if (!hasNotes) {
@@ -19614,15 +19614,16 @@ function openGradingConfigModal() {
                     <span style="font-size:0.75rem; color:#64748b; font-weight:700;">Casilla #${i + 1}</span>
                 </div>
                 <div style="display:flex; gap:6px;">
-                    <input type="text" class="form-control form-control-sm cfg-act-name" value="${escapeHtml(act.name || `Act. ${i+1}`)}" placeholder="Nombre de actividad" style="font-size:0.82rem; flex:2;">
-                    <input type="number" min="0" max="100" class="form-control form-control-sm cfg-act-pts" value="${act.max || 0}" oninput="onGradingConfigActivitiesChange()" placeholder="Pts" style="width:70px; font-weight:800; text-align:center; color:#15803d;">
+                    <input type="text" class="form-control form-control-sm cfg-act-name" value="${escapeHtml(act.name || `Act. ${i+1}`)}" placeholder="Nombre de actividad" style="font-size:0.82rem; flex:2;" oninput="onGradingConfigActivitiesChange(true)" onchange="onGradingConfigActivitiesChange(true)">
+                    <input type="number" min="0" max="100" class="form-control form-control-sm cfg-act-pts" value="${act.max || 0}" oninput="onGradingConfigActivitiesChange(true)" onchange="onGradingConfigActivitiesChange(true)" placeholder="Pts" style="width:70px; font-weight:800; text-align:center; color:#15803d;">
                 </div>
             </div>
         `).join('');
     }
 
-    onGradingConfigGeneralChange();
-    onGradingConfigActivitiesChange();
+    setGradingAutoSaveStatus('saved');
+    onGradingConfigGeneralChange(false);
+    onGradingConfigActivitiesChange(false);
 
     const modal = document.getElementById('gradingConfigModal');
     if (modal) showModalById(modal.id || 'careerModal');
@@ -19636,7 +19637,205 @@ function closeGradingConfigModal() {
     }
 }
 
-function onGradingConfigGeneralChange() {
+function setGradingAutoSaveStatus(status) {
+    const el = document.getElementById('cfgAutoSaveStatus');
+    if (!el) return;
+    el.style.display = 'inline-flex';
+    if (status === 'saving') {
+        el.style.color = '#0284c7';
+        el.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    } else if (status === 'saved') {
+        el.style.color = '#16a34a';
+        el.innerHTML = '<i class="fa-solid fa-circle-check"></i> Guardado en Firebase';
+    } else if (status === 'error') {
+        el.style.color = '#dc2626';
+        el.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> Error al guardar';
+    }
+}
+window.setGradingAutoSaveStatus = setGradingAutoSaveStatus;
+
+function updateGradebookTableHeadersFast(cfg, unit) {
+    if (!cfg) return;
+    const theadAct = document.querySelector('#gradebookActivitiesTable thead tr');
+    if (theadAct && Array.isArray(cfg.activities)) {
+        theadAct.innerHTML = `
+            <th style="width:36px; text-align:center;"><input type="checkbox" id="selectAllActivities" onchange="toggleSelectAllGradebook(this, 'activities')"></th>
+            <th style="min-width:240px; cursor:pointer;" onclick="toggleGradebookStudentSort()">Estudiante <i class="fa-solid fa-arrow-up" id="sortArrowActivities"></i></th>
+            <th style="width:70px; text-align:center; background:rgba(34,197,94,0.15); font-weight:800;" title="Total de Zona (Máximo ${cfg.zonaMax} pts)">Zona (${cfg.zonaMax})</th>
+            ${cfg.activities.map((act, i) => `
+                <th style="width:52px; text-align:center;" title="Actividad ${i+1}: ${escapeHtml(act.name || `Act. ${i+1}`)} (${act.max || 0} pts)">
+                    ${i+1}<br><small style="font-weight:normal; font-size:0.7rem;">${escapeHtml(act.name || `Act. ${i+1}`)} (${act.max || 0})</small>
+                </th>
+            `).join('')}
+        `;
+    }
+    const badgeZ = document.getElementById('badgeZonaMaxDisplay');
+    const badgeE = document.getElementById('badgeExamMaxDisplay');
+    if (badgeZ) badgeZ.textContent = `Zona: ${cfg.zonaMax} pts`;
+    if (badgeE) badgeE.textContent = `Examen / Evaluación: ${cfg.examMax} pts`;
+
+    const hz = document.getElementById('headerZonaLabel');
+    const he = document.getElementById('headerExamenLabel');
+    if (hz) hz.textContent = `Zona ${unit} (${cfg.zonaMax} pts)`;
+    if (he) he.textContent = `Examen ${unit} (${cfg.examMax} pts)`;
+}
+window.updateGradebookTableHeadersFast = updateGradebookTableHeadersFast;
+
+async function saveGradingConfigAtomic(targetPensum, unit, configObj) {
+    if (!targetPensum || !targetPensum.id) return false;
+    const currentUnit = parseInt(unit) || 1;
+    const nowTime = Date.now();
+    STATE.lastModified = nowTime;
+
+    if (!configObj.updatedAt) configObj.updatedAt = new Date().toISOString();
+    if (!targetPensum.gradingConfig) targetPensum.gradingConfig = {};
+    targetPensum.gradingConfig[`b${currentUnit}`] = configObj;
+
+    if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
+    const cfgKey = getGradingConfigKey(targetPensum, currentUnit);
+    STATE.gradingConfigs[cfgKey] = configObj;
+    STATE.gradingConfigs[`${targetPensum.id}_b${currentUnit}`] = configObj;
+    STATE.gradingConfigs[`${targetPensum.id}_B${currentUnit}`] = configObj;
+    STATE.gradingConfigs[targetPensum.id] = targetPensum.gradingConfig;
+
+    saveStateToLocalStorage();
+    updateGradebookTableHeadersFast(configObj, currentUnit);
+
+    // 🌟 A. Persistencia Atómica en Firestore
+    const modular = window.FirebaseModular;
+    if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+        try {
+            const pRef = modular.doc(modular.db, 'pensum', targetPensum.id);
+            const pData = { gradingConfig: targetPensum.gradingConfig, lastModified: nowTime };
+            const fsAction = (typeof modular.updateDoc === 'function')
+                ? modular.updateDoc(pRef, pData).catch(() => modular.setDoc(pRef, pData, { merge: true }))
+                : modular.setDoc(pRef, pData, { merge: true });
+            await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
+            await withTimeout(
+                modular.setDoc(modular.doc(modular.db, 'config_ponderaciones', targetPensum.id), {
+                    [targetPensum.id]: targetPensum.gradingConfig,
+                    [cfgKey]: configObj,
+                    lastModified: nowTime
+                }, { merge: true }),
+                8000,
+                'Tiempo de espera en Firestore agotado.'
+            );
+        } catch(fsErr) {
+            console.warn("Aviso en Firestore saveGradingConfigAtomic:", fsErr);
+        }
+    }
+
+    // 🌟 B. Sincronización en Realtime Database
+    if (typeof EnccoCloudSync !== 'undefined') {
+        if (EnccoCloudSync.patchNode) {
+            EnccoCloudSync.patchNode('gradingConfigs', {
+                [cfgKey]: configObj,
+                [targetPensum.id]: targetPensum.gradingConfig
+            });
+        }
+        if (EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('pensum', STATE.pensum);
+        }
+    }
+
+    const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
+    if (firebaseUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+        const patchPayload = {
+            [`gradingConfigs/${cfgKey}`]: configObj,
+            [`gradingConfigs/${targetPensum.id}`]: targetPensum.gradingConfig,
+            'config/lastModified': nowTime
+        };
+        Promise.all([
+            fetch(`${firebaseUrl}/encc_school_state.json`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(patchPayload)
+            }).catch(() => {}),
+            fetch(`${firebaseUrl}/.json`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(patchPayload)
+            }).catch(() => {})
+        ]);
+    }
+
+    return true;
+}
+window.saveGradingConfigAtomic = saveGradingConfigAtomic;
+
+let _gradingConfigDebounceTimer = null;
+
+function triggerGradingConfigAutoSave(immediate = false) {
+    const selectedId = document.getElementById('teacherCourseSelect') ? document.getElementById('teacherCourseSelect').value : null;
+    let targetPensum = (STATE.pensum || []).find(p => p.id === selectedId);
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentUser = STATE.currentUser || (STATE.users || []).find(u => u.role === 'docente') || STATE.users[0];
+
+    if (isDocente && currentUser && !targetPensum) {
+        targetPensum = (STATE.pensum || []).find(p => isCourseAssignedToTeacher(p, currentUser));
+    } else if (!targetPensum) {
+        targetPensum = (STATE.pensum || [])[0];
+    }
+    if (!targetPensum || !targetPensum.id) return;
+
+    const currentUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+
+    const zVal = parseInt(document.getElementById('cfgFormZonaMax')?.value) || 0;
+    const eVal = parseInt(document.getElementById('cfgFormExamMax')?.value) || 0;
+
+    const nameInputs = document.querySelectorAll('.cfg-act-name');
+    const ptsInputs = document.querySelectorAll('.cfg-act-pts');
+    const acts = [];
+    nameInputs.forEach((inp, idx) => {
+        const nm = inp.value.trim() || `Act. ${idx + 1}`;
+        const p = parseInt(ptsInputs[idx]?.value) || 0;
+        acts.push({ name: nm, max: p, maxPoints: p });
+    });
+
+    const configObj = {
+        zonaMax: zVal,
+        examMax: eVal,
+        activities: acts,
+        updatedAt: new Date().toISOString(),
+        updatedBy: currentUser ? currentUser.name : 'Docente'
+    };
+
+    // Actualización inmediata local (0ms)
+    if (!targetPensum.gradingConfig) targetPensum.gradingConfig = {};
+    targetPensum.gradingConfig[`b${currentUnit}`] = configObj;
+
+    if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
+    const cfgKey = getGradingConfigKey(targetPensum, currentUnit);
+    STATE.gradingConfigs[cfgKey] = configObj;
+    STATE.gradingConfigs[`${targetPensum.id}_b${currentUnit}`] = configObj;
+    STATE.gradingConfigs[`${targetPensum.id}_B${currentUnit}`] = configObj;
+    STATE.gradingConfigs[targetPensum.id] = targetPensum.gradingConfig;
+    saveStateToLocalStorage();
+
+    updateGradebookTableHeadersFast(configObj, currentUnit);
+    setGradingAutoSaveStatus('saving');
+
+    if (_gradingConfigDebounceTimer) clearTimeout(_gradingConfigDebounceTimer);
+
+    const executeSave = async () => {
+        try {
+            await saveGradingConfigAtomic(targetPensum, currentUnit, configObj);
+            setGradingAutoSaveStatus('saved');
+        } catch(err) {
+            console.warn("Aviso al autoguardar ponderación en Firebase:", err);
+            setGradingAutoSaveStatus('error');
+        }
+    };
+
+    if (immediate) {
+        executeSave();
+    } else {
+        _gradingConfigDebounceTimer = setTimeout(executeSave, 400);
+    }
+}
+window.triggerGradingConfigAutoSave = triggerGradingConfigAutoSave;
+
+function onGradingConfigGeneralChange(autoSave = true) {
     const zInput = document.getElementById('cfgFormZonaMax');
     const eInput = document.getElementById('cfgFormExamMax');
     const totalBadge = document.getElementById('cfgFormTotalBadge');
@@ -19659,10 +19858,10 @@ function onGradingConfigGeneralChange() {
         }
     }
 
-    onGradingConfigActivitiesChange();
+    onGradingConfigActivitiesChange(autoSave);
 }
 
-function onGradingConfigActivitiesChange() {
+function onGradingConfigActivitiesChange(autoSave = true) {
     const zInput = document.getElementById('cfgFormZonaMax');
     const z = parseInt(zInput?.value) || 0;
     const ptsInputs = document.querySelectorAll('.cfg-act-pts');
@@ -19685,6 +19884,10 @@ function onGradingConfigActivitiesChange() {
             badge.style.color = '#0369a1';
         }
     }
+
+    if (autoSave) {
+        triggerGradingConfigAutoSave();
+    }
 }
 
 function resetGradingConfigToDefaults() {
@@ -19702,9 +19905,10 @@ function resetGradingConfigToDefaults() {
         if (ptsInputs[i]) ptsInputs[i].value = act.max;
     });
 
-    onGradingConfigGeneralChange();
-    onGradingConfigActivitiesChange();
-    showToast("Valores restablecidos al modelo estándar institucional (Zona: 40 pts, Examen: 60 pts).", "info");
+    onGradingConfigGeneralChange(false);
+    onGradingConfigActivitiesChange(false);
+    triggerGradingConfigAutoSave(true);
+    showToast("Valores restablecidos al modelo estándar institucional (Zona: 40 pts, Examen: 60 pts) y guardados en Firebase.", "info");
 }
 
 async function saveGradingConfigForm(e) {
@@ -19761,15 +19965,10 @@ async function saveGradingConfigForm(e) {
         const ptsInputs = document.querySelectorAll('.cfg-act-pts');
         const acts = [];
         nameInputs.forEach((inp, idx) => {
-            const nm = inp.value.trim();
+            const nm = inp.value.trim() || `Act. ${idx + 1}`;
             const p = parseInt(ptsInputs[idx]?.value) || 0;
-            if (nm) {
-                acts.push({ name: nm, max: p, maxPoints: p });
-            }
+            acts.push({ name: nm, max: p, maxPoints: p });
         });
-
-        if (!targetPensum.gradingConfig) targetPensum.gradingConfig = {};
-        if (!targetPensum.gradingConfig[`b${currentUnit}`]) targetPensum.gradingConfig[`b${currentUnit}`] = {};
 
         const configObj = {
             zonaMax: zVal,
@@ -19779,65 +19978,8 @@ async function saveGradingConfigForm(e) {
             updatedBy: currentUser ? currentUser.name : 'Docente'
         };
 
-        targetPensum.gradingConfig[`b${currentUnit}`] = configObj;
+        await saveGradingConfigAtomic(targetPensum, currentUnit, configObj);
 
-        if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
-        const cfgKey = getGradingConfigKey(targetPensum, currentUnit);
-        STATE.gradingConfigs[cfgKey] = configObj;
-        STATE.gradingConfigs[`${targetPensum.id}_b${currentUnit}`] = configObj;
-        STATE.gradingConfigs[`${targetPensum.id}_B${currentUnit}`] = configObj;
-        STATE.gradingConfigs[targetPensum.id] = targetPensum.gradingConfig;
-
-        const nowTime = Date.now();
-        STATE.lastModified = nowTime;
-
-        // 🌟 A. Persistencia Atómica en Firestore
-        const modular = window.FirebaseModular;
-        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
-            try {
-                const pRef = modular.doc(modular.db, 'pensum', targetPensum.id);
-                const pData = { gradingConfig: targetPensum.gradingConfig, lastModified: nowTime };
-                const fsAction = (typeof modular.updateDoc === 'function')
-                    ? modular.updateDoc(pRef, pData).catch(e => {
-                        return modular.setDoc(pRef, pData, { merge: true });
-                    })
-                    : modular.setDoc(pRef, pData, { merge: true });
-                await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
-                await withTimeout(
-                    modular.setDoc(modular.doc(modular.db, 'config_ponderaciones', targetPensum.id), {
-                        [targetPensum.id]: targetPensum.gradingConfig,
-                        [cfgKey]: configObj,
-                        lastModified: nowTime
-                    }, { merge: true }),
-                    8000,
-                    'Tiempo de espera en Firestore agotado.'
-                );
-            } catch(fsErr) {
-                console.warn("Aviso al guardar ponderación en Firestore:", fsErr);
-            }
-        }
-
-        // 🌟 B. Sincronización en Realtime Database
-        let ok = false;
-        if (typeof EnccoCloudSync !== 'undefined') {
-            if (EnccoCloudSync.syncNode) {
-                ok = await withTimeout(EnccoCloudSync.syncNode('pensum', STATE.pensum), 8000, 'Tiempo de espera en Realtime Database agotado.');
-            }
-            if (EnccoCloudSync.patchNode) {
-                EnccoCloudSync.patchNode('gradingConfigs', {
-                    [cfgKey]: configObj,
-                    [targetPensum.id]: targetPensum.gradingConfig
-                });
-            }
-        } else {
-            ok = true;
-        }
-
-        if (!ok) {
-            throw new Error("El servidor de Firebase no confirmó la actualización de la ponderación.");
-        }
-
-        saveStateToLocalStorage();
         closeGradingConfigModal();
         if (typeof loadTeacherGradebook === 'function') {
             loadTeacherGradebook();
@@ -24521,9 +24663,13 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         for (let c = 2; c < endActCol; c++) {
             const actTitle = String(actsRow[c] || '').trim();
             if (actTitle && !cleanStr(actTitle).includes('observacion')) {
-                const ptsMatch = actTitle.match(/(\d+)\s*(?:pts|puntos)?/i);
-                const maxPts = ptsMatch ? parseInt(ptsMatch[1]) : 0;
-                actColumns.push({ colIdx: c, name: actTitle, max: maxPts, maxPoints: maxPts });
+                if (actColumns.length < 10) {
+                    const ptsMatch = actTitle.match(/\((\d+)\s*(?:pts|puntos)?\)/i) || actTitle.match(/(\d+)\s*(?:pts|puntos)?\s*$/i) || actTitle.match(/(\d+)/);
+                    const maxPts = ptsMatch ? parseInt(ptsMatch[1]) : 0;
+                    let cleanName = actTitle.replace(/^Act(?:ividad)?\s*\d+[\s:\-–.]*/i, '').replace(/\s*\(\s*\d+\s*(?:pts|puntos)?\s*\)\s*$/i, '').trim();
+                    if (!cleanName) cleanName = actTitle.trim() || `Act. ${actColumns.length + 1}`;
+                    actColumns.push({ colIdx: c, name: cleanName, rawHeader: actTitle, max: maxPts, maxPoints: maxPts });
+                }
             }
         }
     } else {
@@ -24536,14 +24682,24 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         colIdxExam = hdrRow.findIndex(h => cleanStr(h).includes('examen') || cleanStr(h).includes('evaluacion') || cleanStr(h).includes('prueba'));
         colIdxTotal = hdrRow.findIndex(h => cleanStr(h).includes('totalbimestre') || cleanStr(h) === 'total' || cleanStr(h).includes('notafinal'));
 
+        const endActCol = (colIdxZona !== -1) ? colIdxZona : ((colIdxExam !== -1) ? colIdxExam : ((colIdxTotal !== -1) ? colIdxTotal : hdrRow.length));
         for (let c = 0; c < hdrRow.length; c++) {
             const h = hdrRow[c];
+            if (!h) continue;
             const cH = cleanStr(h);
-            if (cH.startsWith('act') || cH.startsWith('actividad') || cH.startsWith('tarea') || cH.startsWith('ejercicio') || cH.startsWith('laboratorio') || cH.startsWith('folder')) {
-                if (c !== colIdxZona && c !== colIdxExam && c !== colIdxTotal) {
-                    const ptsMatch = h.match(/(\d+)\s*(?:pts|puntos)?/i);
+            if (c === colIdxClave || c === colIdxCode || c === colIdxCui || c === colIdxName || c === colIdxZona || c === colIdxExam || c === colIdxTotal) continue;
+            if (cH.includes('resultado') || cH.includes('observaci') || cH.includes('promedio') || cH.includes('estado')) continue;
+
+            const isActKeyword = cH.startsWith('act') || cH.startsWith('tarea') || cH.startsWith('ejercicio') || cH.startsWith('laboratorio') || cH.startsWith('folder') || cH.startsWith('proyecto') || cH.startsWith('investig') || cH.startsWith('taller') || cH.startsWith('guia') || cH.startsWith('practica') || cH.startsWith('cuestionario') || cH.startsWith('ensayo') || cH.startsWith('glosario') || cH.startsWith('exposic') || cH.startsWith('evaluac');
+            const isBetweenInfoAndSummary = (colIdxName !== -1 && c > colIdxName && c < endActCol);
+
+            if (isActKeyword || isBetweenInfoAndSummary) {
+                if (actColumns.length < 10) {
+                    const ptsMatch = h.match(/\((\d+)\s*(?:pts|puntos)?\)/i) || h.match(/(\d+)\s*(?:pts|puntos)?\s*$/i) || h.match(/(\d+)/);
                     const maxPts = ptsMatch ? parseInt(ptsMatch[1]) : 0;
-                    actColumns.push({ colIdx: c, name: h, max: maxPts, maxPoints: maxPts });
+                    let cleanName = h.replace(/^Act(?:ividad)?\s*\d+[\s:\-–.]*/i, '').replace(/\s*\(\s*\d+\s*(?:pts|puntos)?\s*\)\s*$/i, '').trim();
+                    if (!cleanName) cleanName = h.trim() || `Act. ${actColumns.length + 1}`;
+                    actColumns.push({ colIdx: c, name: cleanName, rawHeader: h, max: maxPts, maxPoints: maxPts });
                 }
             }
         }
@@ -24560,10 +24716,6 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             if (i < actColumns.length) {
                 let actName = (actColumns[i].name || `Act. ${i+1}`).trim();
                 let actMax = actColumns[i].max || 0;
-                if (isLegacyPredefinedActivityName(actName)) {
-                    actName = `Act. ${i+1}`;
-                    actMax = 0;
-                }
                 normalizedActivities.push({
                     name: actName,
                     max: actMax,
@@ -24584,23 +24736,28 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             examMax: configuredExamMax,
             activities: normalizedActivities,
             updatedAt: new Date().toISOString(),
-            updatedBy: (currentUser ? currentUser.name : 'Docente')
+            updatedBy: (currentUser ? currentUser.name : 'Docente (Importación)')
         };
 
-        if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
-        const cfgKey = `${targetPensum.id}_b${effectiveUnit}`;
-        STATE.gradingConfigs[cfgKey] = configObj;
-        STATE.gradingConfigs[targetPensum.id] = STATE.gradingConfigs[targetPensum.id] || {};
-        STATE.gradingConfigs[targetPensum.id][`b${effectiveUnit}`] = configObj;
+        if (typeof saveGradingConfigAtomic === 'function') {
+            await saveGradingConfigAtomic(targetPensum, effectiveUnit, configObj);
+        } else {
+            if (!STATE.gradingConfigs) STATE.gradingConfigs = {};
+            const cfgKey = (typeof getGradingConfigKey === 'function') ? getGradingConfigKey(targetPensum, effectiveUnit) : `${targetPensum.id}_b${effectiveUnit}`;
+            STATE.gradingConfigs[cfgKey] = configObj;
+            STATE.gradingConfigs[targetPensum.id] = STATE.gradingConfigs[targetPensum.id] || {};
+            STATE.gradingConfigs[targetPensum.id][`b${effectiveUnit}`] = configObj;
 
-        if (!targetPensum.gradingConfig) targetPensum.gradingConfig = {};
-        targetPensum.gradingConfig[`b${effectiveUnit}`] = configObj;
+            if (!targetPensum.gradingConfig) targetPensum.gradingConfig = {};
+            targetPensum.gradingConfig[`b${effectiveUnit}`] = configObj;
 
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-            EnccoCloudSync.patchNode('gradingConfigs', {
-                [cfgKey]: configObj,
-                [targetPensum.id]: targetPensum.gradingConfig
-            });
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+                EnccoCloudSync.patchNode('gradingConfigs', {
+                    [cfgKey]: configObj,
+                    [targetPensum.id]: targetPensum.gradingConfig
+                });
+            }
+            saveStateToLocalStorage();
         }
     }
 
