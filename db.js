@@ -42,11 +42,12 @@
             const fsMod = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
 
             const firebaseConfig = {
-                apiKey: "AIzaSyFakeKeyForEnccoModularCacheConfig",
-                authDomain: "encco-jutiapa-live-2026-default-rtdb.firebaseapp.com",
+                apiKey: "AIzaSyA4opbbWkkK5FnFuzMyZ934hIZiuQpGe0Q",
+                authDomain: "encco-jutiapa-live-2026.firebaseapp.com",
                 databaseURL: ENCCO_OFFICIAL_FIREBASE_URL,
-                projectId: "encco-jutiapa-live-2026-default-rtdb",
-                storageBucket: "encco-jutiapa-live-2026-default-rtdb.appspot.com"
+                projectId: "encco-jutiapa-live-2026",
+                storageBucket: "encco-jutiapa-live-2026.firebasestorage.app",
+                appId: "1:511250190229:web:a7bc5e9acfcaa6c605709c"
             };
 
             const app = appMod.initializeApp(firebaseConfig, 'enccoDbEngine_' + Date.now());

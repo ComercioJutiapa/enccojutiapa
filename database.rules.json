@@ -1,35 +1,43 @@
 {
   "rules": {
     ".read": true,
-    ".write": true,
+    ".write": "newData.exists()",
     "encc_school_state": {
       ".read": true,
-      ".write": true,
+      ".write": "newData.exists()",
       ".indexOn": [
         "lastModified",
         "activeCycle"
       ],
       "rolesConfig": {
         ".read": true,
-        ".write": true
+        ".write": "newData.exists()"
       },
       "users": {
         ".read": true,
-        ".write": true
+        ".write": "newData.exists()"
       },
       "pensum": {
         ".read": true,
-        ".write": true
+        ".write": "newData.exists()"
       },
       "pensumCatalog": {
         ".read": true,
-        ".write": true
+        ".write": "newData.exists()"
       },
       "students": {
         ".read": true,
-        ".write": true
+        ".write": "newData.exists()"
       },
       "gradesList": {
+        ".read": true,
+        ".write": "newData.exists()"
+      },
+      "activityAuditLog": {
+        ".read": true,
+        ".write": "newData.exists()"
+      },
+      "lockoutRecords": {
         ".read": true,
         ".write": true
       }

@@ -409,10 +409,10 @@
     </div>
 
     <script src="xlsx.full.min.js"></script>
-    <script src="auth.js?v=2026.09.19.v223_strict_auth_admin_zero_classes"></script>
-    <script src="db.js?v=2026.09.19.v223_strict_auth_admin_zero_classes"></script>
-    <script src="ui.js?v=2026.09.19.v223_strict_auth_admin_zero_classes"></script>
-    <script src="app.js?v=2026.09.19.v223_strict_auth_admin_zero_classes"></script>
+    <script src="auth.js?v=2026.09.21.v224_signed_session_and_security_shield"></script>
+    <script src="db.js?v=2026.09.21.v224_signed_session_and_security_shield"></script>
+    <script src="ui.js?v=2026.09.21.v224_signed_session_and_security_shield"></script>
+    <script src="app.js?v=2026.09.21.v224_signed_session_and_security_shield"></script>
     <script>
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');
@@ -603,10 +603,20 @@
             if (!user) return;
             try {
                 const sessionRole = role || user.role || 'admin';
-                sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(user));
-                sessionStorage.setItem('ENCCO_AUTH_ROLE', sessionRole);
-                localStorage.removeItem('ENCCO_AUTH_USER');
-                localStorage.removeItem('ENCCO_AUTH_ROLE');
+                if (typeof saveUserSession === 'function') {
+                    saveUserSession(user, sessionRole);
+                } else {
+                    sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(user));
+                    sessionStorage.setItem('ENCCO_AUTH_ROLE', sessionRole);
+                }
+
+                if (typeof generateInstitutionalAuthToken === 'function') {
+                    const token = generateInstitutionalAuthToken(user, sessionRole);
+                    if (token) {
+                        sessionStorage.setItem('ENCCO_AUTH_TOKEN', token);
+                        try { localStorage.setItem('ENCCO_AUTH_TOKEN', token); } catch(e) {}
+                    }
+                }
                 localStorage.removeItem('ENCCO_AUTH_REMEMBER');
             } catch(e) {
                 console.error('Error al guardar credenciales en sesión:', e);

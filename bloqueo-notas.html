@@ -15,6 +15,7 @@
                 // 1. Resolver usuario y rol desde sessionStorage, localStorage, puente o window.opener
                 var authUser = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
                 var authRole = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
+                var authToken = sessionStorage.getItem('ENCCO_AUTH_TOKEN') || localStorage.getItem('ENCCO_AUTH_TOKEN');
 
                 // Si no está directamente, verificar puente seguro
                 if (!authUser) {
@@ -25,6 +26,7 @@
                             if (bridge && bridge.user && (Date.now() - (bridge.timestamp || 0) < 300000)) {
                                 authUser = JSON.stringify(bridge.user);
                                 authRole = bridge.role || (bridge.user ? bridge.user.role : '');
+                                authToken = bridge.token || '';
                             }
                         }
                     } catch(bErr) {
@@ -37,11 +39,31 @@
                     try {
                         var opUser = window.opener.sessionStorage.getItem('ENCCO_AUTH_USER') || window.opener.localStorage.getItem('ENCCO_AUTH_USER');
                         var opRole = window.opener.sessionStorage.getItem('ENCCO_AUTH_ROLE') || window.opener.localStorage.getItem('ENCCO_AUTH_ROLE');
+                        var opToken = window.opener.sessionStorage.getItem('ENCCO_AUTH_TOKEN') || window.opener.localStorage.getItem('ENCCO_AUTH_TOKEN');
                         if (opUser) {
                             authUser = opUser;
                             authRole = opRole;
+                            authToken = opToken;
                         }
                     } catch(opErr) {}
+                }
+
+                // Si no se encuentra ninguna sesión o el token está alterado, redirigir al index
+                if (!authUser) {
+                    try { sessionStorage.clear(); localStorage.clear(); } catch(e) {}
+                    console.warn("[Seguridad] Acceso sin sesión autenticada. Redirigiendo a index.html");
+                    window.location.replace('index.html');
+                    return;
+                }
+
+                // Verificación de estructura del token institucional
+                if (authToken && typeof authToken === 'string') {
+                    var parts = authToken.split('.');
+                    if (parts.length !== 2 || !parts[0] || !parts[1] || parts[1].length !== 64) {
+                        try { sessionStorage.clear(); localStorage.clear(); } catch(e) {}
+                        window.location.replace('index.html');
+                        return;
+                    }
                 }
 
                 // Si se encontró sesión, conservarla en AMBOS almacenamientos
@@ -53,6 +75,10 @@
                             sessionStorage.setItem('ENCCO_AUTH_ROLE', authRole);
                             localStorage.setItem('ENCCO_AUTH_ROLE', authRole);
                         }
+                        if (authToken) {
+                            sessionStorage.setItem('ENCCO_AUTH_TOKEN', authToken);
+                            localStorage.setItem('ENCCO_AUTH_TOKEN', authToken);
+                        }
                     } catch(saveErr) {}
                 }
 
@@ -60,13 +86,6 @@
                 try {
                     localStorage.removeItem('ENCCO_AUTH_BRIDGE');
                 } catch(e) {}
-
-                // Si no se encuentra ninguna sesión, redirigir al index
-                if (!authUser) {
-                    console.warn("[Seguridad] Acceso sin sesión autenticada. Redirigiendo a index.html");
-                    window.location.replace('index.html');
-                    return;
-                }
 
                 // 2. Extraer objeto de usuario y validar rol / permisos
                 var parsedUser = {};
@@ -142,11 +161,12 @@
             import("https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js").then(appMod => {
                 import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js").then(fsMod => {
                     const firebaseConfig = {
-                        apiKey: "AIzaSyFakeKeyForEnccoModularCacheConfig",
-                        authDomain: "encco-jutiapa-live-2026-default-rtdb.firebaseio.com",
+                        apiKey: "AIzaSyA4opbbWkkK5FnFuzMyZ934hIZiuQpGe0Q",
+                        authDomain: "encco-jutiapa-live-2026.firebaseapp.com",
                         databaseURL: "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com",
-                        projectId: "encco-jutiapa-live-2026-default-rtdb",
-                        storageBucket: "encco-jutiapa-live-2026-default-rtdb.appspot.com"
+                        projectId: "encco-jutiapa-live-2026",
+                        storageBucket: "encco-jutiapa-live-2026.firebasestorage.app",
+                        appId: "1:511250190229:web:a7bc5e9acfcaa6c605709c"
                     };
                     const app = appMod.initializeApp(firebaseConfig, 'bloqueoNotasApp_' + Date.now());
                     const db = fsMod.initializeFirestore(app, {

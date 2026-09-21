@@ -313,18 +313,197 @@
         };
     }
 
-    // 4. GESTIÓN DE SESIÓN (Persistencia Exclusiva por Navegador / browserSessionPersistence)
+    // 4. MOTOR CRIPTOGRÁFICO INSTITUCIONAL Y FIRMA DIGITAL HMAC-SHA256
+    const ENCCO_VAULT_SALT = 'ENCCO_JUTIAPA_1970_SECURE_INSTITUTIONAL_KEY_@2026';
+
+    function enccoUtf8Encode(str) {
+        try {
+            return unescape(encodeURIComponent(str));
+        } catch(e) {
+            return String(str);
+        }
+    }
+
+    function enccoSha256(input) {
+        const ascii = enccoUtf8Encode(input);
+        function rightRotate(value, amount) {
+            return (value >>> amount) | (value << (32 - amount));
+        }
+        const mathPow = Math.pow;
+        const maxWord = mathPow(2, 32);
+        let i, j;
+        let result = '';
+        const words = [];
+        const asciiBitLength = ascii.length * 8;
+        let hash = [];
+        let k = [];
+        let primeCounter = 0;
+
+        const isComposite = {};
+        for (let candidate = 2; primeCounter < 64; candidate++) {
+            if (!isComposite[candidate]) {
+                for (i = candidate * candidate; i < 312; i += candidate) {
+                    isComposite[i] = true;
+                }
+                hash[primeCounter] = (mathPow(candidate, .5) * maxWord) | 0;
+                k[primeCounter++] = (mathPow(candidate, 1/3) * maxWord) | 0;
+            }
+        }
+        hash = hash.slice(0, 8);
+
+        let s = ascii + '\x80';
+        while (s.length % 64 - 56) s += '\x00';
+        for (i = 0; i < s.length; i++) {
+            const charCode = s.charCodeAt(i);
+            words[i >> 2] |= charCode << ((3 - i % 4) * 8);
+        }
+        words[words.length] = ((asciiBitLength / maxWord) | 0);
+        words[words.length] = (asciiBitLength) | 0;
+
+        for (j = 0; j < words.length;) {
+            const w = words.slice(j, j += 16);
+            const oldHash = hash;
+            hash = hash.slice(0, 8);
+
+            for (i = 0; i < 64; i++) {
+                const w15 = w[i - 15], w2 = w[i - 2];
+                const s0 = rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3);
+                const s1 = rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10);
+                const ch = (hash[4] & hash[5]) ^ (~hash[4] & hash[6]);
+                const maj = (hash[0] & hash[1]) ^ (hash[0] & hash[2]) ^ (hash[1] & hash[2]);
+                const sigma0 = rightRotate(hash[0], 2) ^ rightRotate(hash[0], 13) ^ rightRotate(hash[0], 22);
+                const sigma1 = rightRotate(hash[4], 6) ^ rightRotate(hash[4], 11) ^ rightRotate(hash[4], 25);
+
+                const temp1 = hash[7] + sigma1 + ch + k[i] + (w[i] = (i < 16) ? (w[i] || 0) : (w[i - 16] + s0 + w[i - 7] + s1) | 0);
+                const temp2 = sigma0 + maj;
+
+                hash = [(temp1 + temp2) | 0].concat(hash);
+                hash[4] = (hash[4] + temp1) | 0;
+            }
+
+            for (i = 0; i < 8; i++) {
+                hash[i] = (hash[i] + oldHash[i]) | 0;
+            }
+        }
+
+        for (i = 0; i < 8; i++) {
+            for (j = 3; j + 1; j--) {
+                const b = (hash[i] >> (j * 8)) & 255;
+                result += ((b < 16) ? 0 : '') + b.toString(16);
+            }
+        }
+        return result;
+    }
+
+    function safeBtoa(str) {
+        try {
+            if (typeof btoa === 'function') {
+                return btoa(unescape(encodeURIComponent(str)));
+            }
+        } catch(e) {}
+        try {
+            if (typeof Buffer !== 'undefined') {
+                return Buffer.from(str, 'utf8').toString('base64');
+            }
+        } catch(e) {}
+        return '';
+    }
+
+    function safeAtob(b64) {
+        try {
+            if (typeof atob === 'function') {
+                return decodeURIComponent(escape(atob(b64)));
+            }
+        } catch(e) {}
+        try {
+            if (typeof Buffer !== 'undefined') {
+                return Buffer.from(b64, 'base64').toString('utf8');
+            }
+        } catch(e) {}
+        return '';
+    }
+
+    function generateInstitutionalAuthToken(user, role) {
+        if (!user || !user.id) return null;
+        const finalRole = role || user.role || 'docente';
+        const payload = {
+            uid: String(user.id),
+            role: finalRole,
+            email: user.email || '',
+            name: user.name || user.username || '',
+            iat: Date.now(),
+            exp: Date.now() + (24 * 60 * 60 * 1000) // 24 horas de vigencia
+        };
+        const jsonStr = JSON.stringify(payload);
+        const b64 = safeBtoa(jsonStr);
+        if (!b64) return null;
+        const signature = enccoSha256(b64 + '::' + ENCCO_VAULT_SALT);
+        return b64 + '.' + signature;
+    }
+
+    function verifyInstitutionalAuthToken(tokenStr, registeredUsersList = []) {
+        if (!tokenStr || typeof tokenStr !== 'string') {
+            return { valid: false, reason: 'Token institucional ausente o inválido' };
+        }
+        const parts = tokenStr.split('.');
+        if (parts.length !== 2) {
+            return { valid: false, reason: 'Estructura criptográfica de token alterada' };
+        }
+        const [b64, signature] = parts;
+        const expectedSig = enccoSha256(b64 + '::' + ENCCO_VAULT_SALT);
+        if (signature !== expectedSig) {
+            return { valid: false, reason: 'Firma de token inválida: Intento de suplantación detectado' };
+        }
+        let payload;
+        try {
+            payload = JSON.parse(safeAtob(b64));
+        } catch(e) {
+            return { valid: false, reason: 'Carga de token ilegible o corrupta' };
+        }
+        if (!payload || !payload.uid || !payload.role) {
+            return { valid: false, reason: 'Datos de identidad incompletos en el token' };
+        }
+        if (payload.exp && Date.now() > payload.exp) {
+            return { valid: false, reason: 'El token ha expirado. Por favor inicie sesión nuevamente.' };
+        }
+        if (Array.isArray(registeredUsersList) && registeredUsersList.length > 0) {
+            const found = registeredUsersList.some(u => u && (u.id === payload.uid || u.email === payload.email || u.username === payload.uid));
+            if (!found && payload.role !== 'estudiante') {
+                return { valid: false, reason: 'El usuario no figura en la nómina institucional activa' };
+            }
+        }
+        return { valid: true, payload: payload };
+    }
+
+    function isSessionValid(registeredUsersList = []) {
+        const session = getUserSession();
+        if (!session || !session.user || !session.user.id) return false;
+        const token = sessionStorage.getItem('ENCCO_AUTH_TOKEN') || localStorage.getItem('ENCCO_AUTH_TOKEN');
+        if (!token) return false;
+        const verification = verifyInstitutionalAuthToken(token, registeredUsersList);
+        return verification.valid;
+    }
+
+    // 5. GESTIÓN DE SESIÓN (Persistencia Exclusiva por Navegador con Token Firmado)
     function saveUserSession(user, role) {
         if (!user) return;
         try {
             const finalRole = role || user.role || 'admin';
             const userStr = JSON.stringify(user);
-            // Almacenar en sessionStorage y respaldar en localStorage para acceso entre pestañas y módulos autónomos
+            const token = generateInstitutionalAuthToken(user, finalRole);
+
             sessionStorage.setItem('ENCCO_AUTH_USER', userStr);
             sessionStorage.setItem('ENCCO_AUTH_ROLE', finalRole);
+            if (token) {
+                sessionStorage.setItem('ENCCO_AUTH_TOKEN', token);
+            }
+
             try {
                 localStorage.setItem('ENCCO_AUTH_USER', userStr);
                 localStorage.setItem('ENCCO_AUTH_ROLE', finalRole);
+                if (token) {
+                    localStorage.setItem('ENCCO_AUTH_TOKEN', token);
+                }
             } catch(lsErr) {}
 
             // Iniciar o reiniciar el temporizador de inactividad de 20 minutos
@@ -340,8 +519,27 @@
         try {
             const rawUser = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
             const role = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE') || 'docente';
+            const token = sessionStorage.getItem('ENCCO_AUTH_TOKEN') || localStorage.getItem('ENCCO_AUTH_TOKEN');
             if (rawUser) {
-                return { user: JSON.parse(rawUser), role: role };
+                const user = JSON.parse(rawUser);
+                if (token) {
+                    const check = verifyInstitutionalAuthToken(token);
+                    if (!check.valid) {
+                        console.warn('🛡️ [Seguridad ENCCO] Token de sesión inválido:', check.reason);
+                        clearUserSession();
+                        return null;
+                    }
+                } else if (user && user.id) {
+                    // Generación retrocompatible si la sesión existía previamente sin token
+                    const genToken = generateInstitutionalAuthToken(user, role);
+                    if (genToken) {
+                        try {
+                            sessionStorage.setItem('ENCCO_AUTH_TOKEN', genToken);
+                            localStorage.setItem('ENCCO_AUTH_TOKEN', genToken);
+                        } catch(e) {}
+                    }
+                }
+                return { user: user, role: role, token: token };
             }
         } catch(e) {}
         return null;
@@ -356,14 +554,16 @@
 
             sessionStorage.removeItem('ENCCO_AUTH_USER');
             sessionStorage.removeItem('ENCCO_AUTH_ROLE');
+            sessionStorage.removeItem('ENCCO_AUTH_TOKEN');
             sessionStorage.clear();
             localStorage.removeItem('ENCCO_AUTH_USER');
             localStorage.removeItem('ENCCO_AUTH_ROLE');
+            localStorage.removeItem('ENCCO_AUTH_TOKEN');
             localStorage.removeItem('ENCCO_AUTH_REMEMBER');
         } catch(e) {}
     }
 
-    // 5. CAMBIO DE ROL E IMPERSONACIÓN
+    // 6. CAMBIO DE ROL E IMPERSONACIÓN
     function switchRole(newRole) {
         if (!newRole) return;
         const targetRole = newRole.toLowerCase().trim();
@@ -378,8 +578,15 @@
             return false;
         }
 
-        sessionStorage.setItem('ENCCO_AUTH_ROLE', targetRole);
-        localStorage.removeItem('ENCCO_AUTH_ROLE');
+        try { sessionStorage.setItem('ENCCO_AUTH_ROLE', targetRole); } catch(e) {}
+        try { localStorage.removeItem('ENCCO_AUTH_ROLE'); } catch(e) {}
+        if (currentSession && currentSession.user) {
+            const updatedToken = generateInstitutionalAuthToken(currentSession.user, targetRole);
+            if (updatedToken) {
+                try { sessionStorage.setItem('ENCCO_AUTH_TOKEN', updatedToken); } catch(e) {}
+                try { localStorage.setItem('ENCCO_AUTH_TOKEN', updatedToken); } catch(e) {}
+            }
+        }
         if (window.STATE) {
             window.STATE.currentRole = targetRole;
         }
@@ -550,8 +757,48 @@
         getUserSession,
         clearUserSession,
         switchRole,
-        impersonateUser
+        impersonateUser,
+        enccoSha256,
+        generateInstitutionalAuthToken,
+        verifyInstitutionalAuthToken,
+        isSessionValid
     };
+
+    // 7. PROTECCIÓN ACTIVA DE RUTA INSTITUCIONAL
+    function enforceInstitutionalRouteGuard() {
+        if (typeof window === 'undefined' || !window.location) return;
+        const path = (window.location.pathname || '').toLowerCase();
+        // Páginas públicas
+        if (path.endsWith('index.html') || path.endsWith('login.html') || path.endsWith('/') || path === '') {
+            return;
+        }
+
+        // Si es una página protegida (plataforma.html, bloqueo-notas.html, datos-sire.html, maestros-guias.html)
+        const session = getUserSession();
+        if (!session || !session.user || !session.user.id) {
+            console.warn('🛡️ [Seguridad ENCCO] Acceso interceptado: No se detectó sesión auténtica válida.');
+            clearUserSession();
+            const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
+            window.location.replace(baseUrl + '/index.html');
+            return;
+        }
+
+        const token = sessionStorage.getItem('ENCCO_AUTH_TOKEN') || localStorage.getItem('ENCCO_AUTH_TOKEN');
+        const tokenCheck = verifyInstitutionalAuthToken(token);
+        if (!tokenCheck.valid) {
+            console.warn('🛡️ [Seguridad ENCCO] Intento de manipulación de sesión detectado:', tokenCheck.reason);
+            clearUserSession();
+            const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
+            window.location.replace(baseUrl + '/index.html');
+            return;
+        }
+    }
+
+    try {
+        enforceInstitutionalRouteGuard();
+    } catch(guardErr) {
+        console.warn('Aviso en chequeo de ruta:', guardErr);
+    }
 
     window.EnccoAuth = EnccoAuth;
     window.EnccoInactivityTimer = EnccoInactivityTimer;
@@ -567,6 +814,10 @@
     window.clearUserSession = clearUserSession;
     window.switchRole = switchRole;
     window.impersonateUser = impersonateUser;
+    window.enccoSha256 = enccoSha256;
+    window.generateInstitutionalAuthToken = generateInstitutionalAuthToken;
+    window.verifyInstitutionalAuthToken = verifyInstitutionalAuthToken;
+    window.isSessionValid = isSessionValid;
 
 })(typeof window !== 'undefined' ? window : global);
 
