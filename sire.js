@@ -232,13 +232,182 @@
         return headerXml + recordsXml + footerXml;
     }
 
+    // 5. BÚSQUEDA INTELIGENTE Y AUTO-LLENADO DE EXPEDIENTE POR CÓDIGO PERSONAL (SIRE)
+    function searchAndAutoFillByPersonalCode(codeToSearch = null) {
+        let code = (codeToSearch || 
+                   document.getElementById('quickSireSearchCode')?.value || 
+                   document.getElementById('studentFormPersonalCode')?.value || '').trim();
+
+        if (!code) {
+            if (typeof window.showToast === 'function') {
+                window.showToast('Por favor ingrese un Código Personal o CUI para buscar.', 'warning');
+            } else {
+                alert('Por favor ingrese un Código Personal o CUI para buscar.');
+            }
+            const inputQuick = document.getElementById('quickSireSearchCode');
+            if (inputQuick) inputQuick.focus();
+            return null;
+        }
+
+        const normCode = code.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const studentsList = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+
+        // Buscar por código personal, CUI, carné o ID
+        const found = studentsList.find(st => {
+            if (!st) return false;
+            const pCode = (st.personalCode || st.codigoPersonal || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const cui = (st.cui || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const carne = (st.carne || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const id = (st.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+            return (pCode && pCode === normCode) || 
+                   (cui && cui === normCode) || 
+                   (carne && carne === normCode) ||
+                   (id && id === normCode);
+        });
+
+        const banner = document.getElementById('quickSireSearchResultBanner');
+
+        if (found) {
+            // Dividir nombres si no están desglosados
+            let fName = (found.firstName || '').trim();
+            let lName = (found.lastName || '').trim();
+            if (!fName && !lName && found.name) {
+                const parts = found.name.trim().split(/\s+/);
+                if (parts.length >= 4) {
+                    fName = parts.slice(0, 2).join(' ');
+                    lName = parts.slice(2).join(' ');
+                } else if (parts.length === 3) {
+                    fName = parts[0];
+                    lName = parts.slice(1).join(' ');
+                } else {
+                    fName = parts[0] || '';
+                    lName = parts[1] || '';
+                }
+            }
+
+            // Asignar a los campos del formulario
+            const setVal = (id, val) => {
+                const el = document.getElementById(id);
+                if (el && val !== undefined && val !== null) el.value = val;
+            };
+
+            setVal('studentFormFirstName', fName);
+            setVal('studentFormLastName', lName);
+            setVal('studentFormPersonalCode', found.personalCode || found.codigoPersonal || code.toUpperCase());
+            setVal('studentFormCui', found.cui || '');
+            setVal('studentFormBirthDate', found.birthDate || '');
+            if (typeof window.calculateStudentAge === 'function') window.calculateStudentAge();
+            if (found.gender) setVal('studentFormGender', found.gender);
+            setVal('studentFormPhone', found.phone || '');
+            setVal('studentFormEmail', found.email || '');
+            setVal('studentFormAddress', found.address || '');
+
+            // Encargados
+            setVal('studentFormGuardianName', found.guardianName || found.tutorName || '');
+            setVal('studentFormGuardianPhone1', found.guardianPhone || found.tutorPhone || '');
+            setVal('studentFormGuardianDpi', found.guardianDpi || found.tutorDpi || '');
+
+            // Foto si existe
+            if (found.photo) {
+                const preview = document.getElementById('studentFormPhotoPreview');
+                if (preview) preview.src = found.photo;
+            }
+
+            // Sugerencia inteligente de grado (Promoción de 4to -> 5to, 5to -> 6to)
+            const gradeEl = document.getElementById('studentFormGrade');
+            if (gradeEl && gradeEl.options) {
+                const prevGrade = (found.grade || '').toString().trim();
+                let nextGrade = prevGrade;
+                if (prevGrade === '4') nextGrade = '5';
+                else if (prevGrade === '5') nextGrade = '6';
+
+                // Buscar opción que coincida con el grado sugerido
+                for (let i = 0; i < gradeEl.options.length; i++) {
+                    const opt = gradeEl.options[i];
+                    if (opt.value && opt.value.startsWith(nextGrade)) {
+                        gradeEl.selectedIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            // Sincronizar campo de búsqueda rápida
+            const qInput = document.getElementById('quickSireSearchCode');
+            if (qInput) qInput.value = (found.personalCode || found.codigoPersonal || code).toUpperCase();
+
+            // Mostrar Banner de Éxito
+            if (banner) {
+                banner.style.display = 'block';
+                banner.style.background = '#f0fdf4';
+                banner.style.border = '1.5px solid #86efac';
+                banner.style.color = '#15803d';
+                banner.innerHTML = `
+                    <div style="font-weight:800; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-circle-check"></i> Alumno Identificado en Archivo Escolar
+                    </div>
+                    <div style="font-size:0.80rem; margin-top:3px; line-height:1.35;">
+                        <strong>${found.name || (fName + ' ' + lName)}</strong><br>
+                        Código Personal: <span style="font-family:monospace; font-weight:800; color:#0f5127;">${found.personalCode || code}</span> | Cátedra previa: ${found.grade || ''}° "${found.section || ''}"<br>
+                        <span style="color:#0369a1; font-weight:700;">Grado sugerido para nuevo ciclo: ${gradeEl ? (gradeEl.options[gradeEl.selectedIndex]?.text || '') : ''}</span>
+                    </div>
+                `;
+            }
+
+            if (typeof window.showToast === 'function') {
+                window.showToast(`✅ Expediente cargado: ${found.name || fName}. Verifique el grado y guarde.`, 'success');
+            }
+
+            // Desplazar suavemente a los datos del formulario
+            const formCard = document.getElementById('mainEnrollmentForm');
+            if (formCard) formCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            return found;
+        } else {
+            // No encontrado en el archivo activo: preparar como registro nuevo
+            const pCodeEl = document.getElementById('studentFormPersonalCode');
+            if (pCodeEl) {
+                pCodeEl.value = code.toUpperCase();
+            }
+
+            const qInput = document.getElementById('quickSireSearchCode');
+            if (qInput) qInput.value = code.toUpperCase();
+
+            if (banner) {
+                banner.style.display = 'block';
+                banner.style.background = '#fffbeb';
+                banner.style.border = '1.5px solid #fde047';
+                banner.style.color = '#854d0e';
+                banner.innerHTML = `
+                    <div style="font-weight:800; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-user-plus"></i> Código Personal Listo para Nuevo Registro
+                    </div>
+                    <div style="font-size:0.80rem; margin-top:3px; line-height:1.35;">
+                        El código <span style="font-family:monospace; font-weight:800; color:#b45309;">${code.toUpperCase()}</span> fue asignado al formulario.<br>
+                        Complete nombres, apellidos y asigne grado para guardarlo en la nómina.
+                    </div>
+                `;
+            }
+
+            const fNameEl = document.getElementById('studentFormFirstName');
+            if (fNameEl) fNameEl.focus();
+
+            if (typeof window.showToast === 'function') {
+                window.showToast(`Código ${code.toUpperCase()} asignado. Complete los datos para matricular.`, 'info');
+            }
+
+            return null;
+        }
+    }
+
     // Exportación Global
     const EnccoSire = {
         SIRE_COURSE_CODES,
         getSireCourseCode,
         ensureStudentPersonalCode,
         calculateSireFinalGrades,
-        generateSireXmlDataSet
+        generateSireXmlDataSet,
+        searchAndAutoFillByPersonalCode
     };
 
     window.EnccoSire = EnccoSire;
@@ -247,5 +416,6 @@
     window.ensureStudentPersonalCode = ensureStudentPersonalCode;
     window.calculateSireFinalGrades = calculateSireFinalGrades;
     window.generateSireXmlDataSet = generateSireXmlDataSet;
+    window.searchAndAutoFillByPersonalCode = searchAndAutoFillByPersonalCode;
 
 })(typeof window !== 'undefined' ? window : global);

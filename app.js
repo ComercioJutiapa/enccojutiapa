@@ -9747,6 +9747,11 @@ function resetStudentEnrollmentForm(showNotification = true) {
     const warn = document.getElementById('studentDuplicateWarning');
     if (warn) warn.style.display = 'none';
 
+    const qSire = document.getElementById('quickSireSearchCode');
+    if (qSire) qSire.value = '';
+    const qBanner = document.getElementById('quickSireSearchResultBanner');
+    if (qBanner) qBanner.style.display = 'none';
+
     if (showNotification) {
         showToast("Formulario de inscripción listo para un nuevo estudiante.", "info");
     }
