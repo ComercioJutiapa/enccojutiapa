@@ -89,6 +89,32 @@ assert(!stBack.includes('SELLO OFICIAL'), 'No debe tener la frase SELLO OFICIAL'
 assert(stBack.includes('Dirección ENCCO Jutiapa'), 'Debe incluir firma de dirección');
 console.log('✅ TEST 3: Carné Estudiantil (Reverso) contiene código 22-01-0014-46 y sin sello oficial');
 
+// 3.1 Probar Fallback automático a los padres si no hay encargado titular
+const stWithoutGuardianMother = {
+    ...st,
+    guardian: '',
+    guardianName: '',
+    guardianPhone: '',
+    motherName: 'Carmen Alicia Castillo',
+    motherPhone1: '5987-1234'
+};
+const backMotherFallback = EnccoCarnets.renderStudentCardBackHtml(stWithoutGuardianMother);
+assert(backMotherFallback.includes('Carmen Alicia Castillo'), 'Debe colocar a la madre como encargada si no hay titular');
+assert(backMotherFallback.includes('5987-1234'), 'Debe colocar el teléfono de la madre');
+
+const stWithoutGuardianFather = {
+    ...st,
+    guardian: 'No asignado',
+    guardianName: 'N/A',
+    guardianPhone: '',
+    fatherName: 'Rigoberto Morales Donis',
+    fatherPhone1: '4567-8901'
+};
+const backFatherFallback = EnccoCarnets.renderStudentCardBackHtml(stWithoutGuardianFather);
+assert(backFatherFallback.includes('Rigoberto Morales Donis'), 'Debe colocar al padre si titular es "No asignado"');
+assert(backFatherFallback.includes('4567-8901'), 'Debe colocar el teléfono del padre');
+console.log('✅ TEST 3.1: Fallback a padre/madre ingresado cuando no hay encargado titular verificado al 100%');
+
 // 4. Probar Carné Docente Vertical (Frente)
 const doc = mockWindow.STATE.users[0];
 const docFront = EnccoCarnets.renderTeacherCardFrontHtml(doc);

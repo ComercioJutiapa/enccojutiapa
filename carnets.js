@@ -278,6 +278,73 @@
         },
 
         /**
+         * Resuelve el nombre y teléfono del encargado o padre de familia para el carné.
+         * Si no hay encargado titular, coloca el de algún padre ingresado (Madre o Padre).
+         */
+        resolveStudentGuardian(student) {
+            if (!student) return { name: 'Padre de Familia', phone: 'No reg.' };
+
+            const clean = (val) => {
+                if (!val || typeof val !== 'string') return '';
+                const trimmed = val.trim();
+                const lower = trimmed.toLowerCase();
+                if (['', 'n/a', 'na', 'no asignado', 'no registrado', 'no registra', 'ninguno', '-', '--', 'null', 'undefined'].includes(lower)) {
+                    return '';
+                }
+                return trimmed;
+            };
+
+            // 1. Encargado / Tutor titular
+            const titularName = clean(student.guardianName) || clean(student.guardian) || clean(student.tutor) || clean(student.encargado);
+            const titularPhone = clean(student.guardianPhone1) || clean(student.guardianPhone) || clean(student.guardianPhone2) || clean(student.tutorPhone);
+
+            if (titularName) {
+                return {
+                    name: titularName,
+                    phone: titularPhone || clean(student.phone) || clean(student.telefono) || 'No reg.'
+                };
+            }
+
+            // 2. Si no hay encargado titular, colocar el de algún padre ingresado
+            const motherName = clean(student.motherName) || clean(student.madre);
+            const motherPhone = clean(student.motherPhone1) || clean(student.motherPhone) || clean(student.motherPhone2);
+
+            const fatherName = clean(student.fatherName) || clean(student.padre);
+            const fatherPhone = clean(student.fatherPhone1) || clean(student.fatherPhone) || clean(student.fatherPhone2);
+
+            // Si ambos padres están registrados, priorizar el que tenga teléfono disponible
+            if (motherName && fatherName) {
+                if (motherPhone && !fatherPhone) {
+                    return { name: motherName, phone: motherPhone };
+                }
+                if (fatherPhone && !motherPhone) {
+                    return { name: fatherName, phone: fatherPhone };
+                }
+                return { name: motherName, phone: motherPhone || fatherPhone || clean(student.phone) || clean(student.telefono) || 'No reg.' };
+            }
+
+            if (motherName) {
+                return {
+                    name: motherName,
+                    phone: motherPhone || clean(student.phone) || clean(student.telefono) || 'No reg.'
+                };
+            }
+
+            if (fatherName) {
+                return {
+                    name: fatherName,
+                    phone: fatherPhone || clean(student.phone) || clean(student.telefono) || 'No reg.'
+                };
+            }
+
+            // 3. Fallback general si no hay ningún dato familiar
+            return {
+                name: 'Padre de Familia',
+                phone: clean(student.phone) || clean(student.telefono) || 'No reg.'
+            };
+        },
+
+        /**
          * Reverso del carné estudiantil horizontal (ultra legible con datos completos)
          */
         renderStudentCardBackHtml(student) {
@@ -290,8 +357,10 @@
             const career = student.career || 'Perito Contador';
             const shift = student.shift || student.jornada || 'Matutina';
             const birthDate = student.birthDate || student.fechaNacimiento || '';
-            const guardian = student.guardian || student.guardianName || student.motherName || student.fatherName || 'Padre de Familia';
-            const guardianPhone = student.guardianPhone || student.motherPhone || student.fatherPhone || student.phone || student.telefono || 'No reg.';
+            
+            const guardianData = this.resolveStudentGuardian(student);
+            const guardian = guardianData.name;
+            const guardianPhone = guardianData.phone;
 
             const qrTextBack = `https://comerciojutiapa.github.io/enccojutiapa/?verify=student&carne=${encodeURIComponent(carne)}&cycle=${cycle}`;
             const qrSvgBack = this.generateQrSvg(qrTextBack, 30);
