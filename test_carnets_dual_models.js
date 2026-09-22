@@ -119,6 +119,18 @@ assert.strictEqual(teachersList.length, 1, 'Debe encontrar 1 docente en STATE.us
 assert.strictEqual(teachersList[0].id, 'usr-doc-01');
 console.log('✅ TEST 6: getTeachersList resuelve nómina de catedráticos correctamente');
 
+// 7. Probar funciones de foto para docentes y estudiantes (cámara y archivo)
+assert.strictEqual(typeof EnccoCarnets.openPhotoModal, 'function', 'openPhotoModal debe ser función');
+assert.strictEqual(typeof EnccoCarnets.promptDirectFileUpload, 'function', 'promptDirectFileUpload debe ser función');
+assert.strictEqual(typeof EnccoCarnets.applyPhoto, 'function', 'applyPhoto debe ser función');
+
+// Simular asignación de fotografía tomada con cámara para un docente
+EnccoCarnets.applyPhoto(doc, 'users', 'data:image/jpeg;base64,/9j/mockTeacherWebcamPhoto');
+assert.strictEqual(doc.photoUrl, 'data:image/jpeg;base64,/9j/mockTeacherWebcamPhoto');
+const docFrontWithPhoto = EnccoCarnets.renderTeacherCardFrontHtml(doc);
+assert(docFrontWithPhoto.includes('/9j/mockTeacherWebcamPhoto'), 'El carné debe renderizar la foto tomada con cámara');
+console.log('✅ TEST 7: Captura y asignación de fotografía para docentes (cámara y archivo) verificada');
+
 console.log('\n========================================================================');
-console.log('🎉 ¡TODAS LAS PRUEBAS DE CARNÉS DUALES PASARON CON ÉXITO ROTUNDO (6/6)!');
+console.log('🎉 ¡TODAS LAS PRUEBAS DE CARNÉS DUALES PASARON CON ÉXITO ROTUNDO (7/7)!');
 console.log('========================================================================\n');

@@ -563,20 +563,360 @@
         },
 
         /**
-         * Cargar fotografía para estudiante o docente
+         * Estado interno de la captura de fotografía
          */
-        promptUploadPhoto(id, type = 'student') {
+        currentPhotoEntity: null,
+        webcamStream: null,
+
+        /**
+         * Asegura la existencia del modal interactivo de fotografía en el DOM
+         */
+        ensurePhotoModalInDom() {
+            if (typeof document === 'undefined') return;
+            if (document.getElementById('modalCarnetPhoto')) return;
+
+            const modalHtml = `
+                <div class="modal-overlay" id="modalCarnetPhoto" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.75); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:15px;" onclick="if(event.target===this) EnccoCarnets.closePhotoModal()">
+                    <div class="modal-container" style="max-width:500px; width:100%; background:#ffffff; border-radius:14px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); display:flex; flex-direction:column; font-family:'Plus Jakarta Sans', sans-serif;">
+                        
+                        <!-- ENCABEZADO DEL MODAL -->
+                        <div style="background:linear-gradient(135deg, #0f5127, #15803d); color:#ffffff; padding:12px 18px; display:flex; justify-content:space-between; align-items:center;">
+                            <h3 style="margin:0; font-size:1.02rem; font-weight:800; display:flex; align-items:center; gap:8px; color:#ffffff;">
+                                <i class="fa-solid fa-camera-rotate"></i> Actualizar Fotografía Oficial
+                            </h3>
+                            <button type="button" onclick="EnccoCarnets.closePhotoModal()" style="background:none; border:none; color:#ffffff; font-size:1.3rem; line-height:1; cursor:pointer;">&times;</button>
+                        </div>
+
+                        <!-- CUERPO DEL MODAL -->
+                        <div style="padding:16px 20px; font-size:0.86rem;">
+                            
+                            <!-- INFORMACIÓN DEL TITULAR -->
+                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; margin-bottom:14px; display:flex; align-items:center; gap:10px;">
+                                <div id="carnetPhotoCurrentAvatar" style="width:44px; height:44px; border-radius:8px; overflow:hidden; border:1.5px solid #d4af37; flex-shrink:0; background:#fff; display:flex; align-items:center; justify-content:center;">
+                                    <!-- Avatar o foto actual -->
+                                </div>
+                                <div style="flex:1; overflow:hidden;">
+                                    <div id="carnetPhotoEntityName" style="font-weight:900; color:#0f172a; font-size:0.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                        Titular
+                                    </div>
+                                    <div id="carnetPhotoEntityRole" style="font-size:0.72rem; color:#15803d; font-weight:700;">
+                                        DOCENTE
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SELECTOR DE MODO (CÁMARA O ARCHIVO) -->
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
+                                <button type="button" id="carnetTabBtnCamera" class="btn btn-primary btn-sm" onclick="EnccoCarnets.startWebcamMode()" style="font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                    <i class="fa-solid fa-camera"></i> Tomar con Cámara
+                                </button>
+                                <button type="button" id="carnetTabBtnFile" class="btn btn-outline-secondary btn-sm" onclick="EnccoCarnets.startFileMode()" style="font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                    <i class="fa-solid fa-upload"></i> Subir Archivo
+                                </button>
+                            </div>
+
+                            <!-- CONTENEDOR DE CÁMARA WEB EN VIVO -->
+                            <div id="carnetWebcamBox" style="display:none; text-align:center; background:#0f172a; border-radius:10px; padding:10px; position:relative; overflow:hidden;">
+                                <video id="carnetWebcamVideo" autoplay playsinline style="width:100%; max-height:260px; object-fit:cover; border-radius:8px; border:2px solid #22c55e;"></video>
+                                <canvas id="carnetWebcamCanvas" style="display:none;"></canvas>
+                                
+                                <!-- GUÍA OVALADA PARA ENCUADRE DE ROSTRO -->
+                                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:130px; height:160px; border:2px dashed rgba(254,240,138,0.7); border-radius:50%; pointer-events:none;"></div>
+                                
+                                <div style="margin-top:10px; display:flex; justify-content:center; gap:8px;">
+                                    <button type="button" class="btn btn-warning btn-sm" onclick="EnccoCarnets.captureWebcamPhoto()" style="font-weight:800; background:#eab308; color:#0f172a; border:none; padding:6px 14px;">
+                                        <i class="fa-solid fa-camera"></i> Capturar Fotografía
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- CONTENEDOR DE SUBIDA DE ARCHIVO -->
+                            <div id="carnetFileBox" style="display:none; border:2px dashed #cbd5e1; border-radius:10px; padding:25px 15px; text-align:center; background:#f8fafc;">
+                                <i class="fa-solid fa-cloud-arrow-up" style="font-size:2.2rem; color:#0284c7; margin-bottom:8px; display:block;"></i>
+                                <label class="btn btn-outline-primary btn-sm" style="font-weight:700; cursor:pointer; margin:0 auto 6px auto; display:inline-block;">
+                                    <i class="fa-solid fa-folder-open"></i> Seleccionar Imagen (.jpg, .png)
+                                    <input type="file" id="carnetLocalFileInput" accept="image/*" style="display:none;" onchange="EnccoCarnets.handleLocalFileSelected(event)">
+                                </label>
+                                <p style="font-size:0.75rem; color:#64748b; margin:0;">O arrastre una fotografía directamente a este recuadro</p>
+                            </div>
+
+                            <!-- PREVIEW DE LA FOTO CAPTURADA / SELECCIONADA -->
+                            <div id="carnetCapturedPreviewBox" style="display:none; text-align:center; margin-top:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px;">
+                                <div style="font-size:0.76rem; font-weight:800; color:#166534; margin-bottom:6px;">
+                                    <i class="fa-solid fa-circle-check"></i> Fotografía lista para guardar:
+                                </div>
+                                <img id="carnetCapturedImg" src="" alt="Preview" style="width:90px; height:108px; object-fit:cover; border-radius:8px; border:2.5px solid #d4af37; box-shadow:0 3px 8px rgba(0,0,0,0.15); display:inline-block; margin-bottom:8px;">
+                                <div style="display:flex; justify-content:center; gap:8px;">
+                                    <button type="button" class="btn btn-success btn-sm" onclick="EnccoCarnets.saveCapturedPhoto()" style="font-weight:800; background:#15803d; border-color:#15803d;">
+                                        <i class="fa-solid fa-floppy-disk"></i> Confirmar y Asignar al Carné
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- PIE DEL MODAL -->
+                        <div style="padding:10px 18px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="EnccoCarnets.closePhotoModal()">Cerrar</button>
+                        </div>
+
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        },
+
+        /**
+         * Abre el modal de fotografía para Docente o Estudiante
+         */
+        openPhotoModal(id, type = 'student', defaultMode = 'choice') {
+            this.ensurePhotoModalInDom();
+
             let entity = null;
-            let listNode = '';
+            let listNode = (type === 'teacher') ? 'users' : 'students';
 
             if (type === 'teacher') {
-                const teachers = this.getTeachersList();
-                entity = teachers.find(t => t.id === id);
-                listNode = 'users';
+                entity = this.getTeachersList().find(t => t.id === id);
             } else {
-                const students = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
-                entity = students.find(s => s.id === id);
-                listNode = 'students';
+                entity = (window.STATE && window.STATE.students) ? window.STATE.students.find(s => s.id === id) : null;
+            }
+
+            if (!entity) return;
+
+            this.currentPhotoEntity = { id, type, listNode, entity };
+
+            // Cargar datos en el modal
+            const nameEl = document.getElementById('carnetPhotoEntityName');
+            const roleEl = document.getElementById('carnetPhotoEntityRole');
+            const avatarEl = document.getElementById('carnetPhotoCurrentAvatar');
+
+            if (nameEl) nameEl.textContent = entity.name || 'Titular';
+            if (roleEl) roleEl.textContent = (type === 'teacher') 
+                ? `CATEDRÁTICO / DOCENTE [${entity.renglon || '011'}]` 
+                : `ESTUDIANTE REGULAR [${entity.carne || 'ENCCO'}]`;
+
+            if (avatarEl) {
+                avatarEl.innerHTML = entity.photoUrl 
+                    ? `<img src="${entity.photoUrl}" style="width:100%; height:100%; object-fit:cover;">` 
+                    : (type === 'teacher' ? this.generateTeacherAvatarSvg(entity.name, 44, 44) : this.generateStudentAvatarSvg(entity.name, 44, 44));
+            }
+
+            // Ocultar previsualizaciones previas
+            const prevBox = document.getElementById('carnetCapturedPreviewBox');
+            if (prevBox) prevBox.style.display = 'none';
+
+            const modal = document.getElementById('modalCarnetPhoto');
+            if (modal) modal.style.display = 'flex';
+
+            if (defaultMode === 'camera') {
+                this.startWebcamMode();
+            } else if (defaultMode === 'file') {
+                this.startFileMode();
+            } else {
+                this.startWebcamMode();
+            }
+        },
+
+        /**
+         * Inicia el modo de cámara web en vivo
+         */
+        startWebcamMode() {
+            const camBox = document.getElementById('carnetWebcamBox');
+            const fileBox = document.getElementById('carnetFileBox');
+            const btnCam = document.getElementById('carnetTabBtnCamera');
+            const btnFile = document.getElementById('carnetTabBtnFile');
+
+            if (camBox) camBox.style.display = 'block';
+            if (fileBox) fileBox.style.display = 'none';
+            if (btnCam) { btnCam.className = 'btn btn-primary btn-sm'; }
+            if (btnFile) { btnFile.className = 'btn btn-outline-secondary btn-sm'; }
+
+            this.initWebcamStream();
+        },
+
+        /**
+         * Inicia el modo de subida de archivo
+         */
+        startFileMode() {
+            this.stopWebcam();
+            const camBox = document.getElementById('carnetWebcamBox');
+            const fileBox = document.getElementById('carnetFileBox');
+            const btnCam = document.getElementById('carnetTabBtnCamera');
+            const btnFile = document.getElementById('carnetTabBtnFile');
+
+            if (camBox) camBox.style.display = 'none';
+            if (fileBox) fileBox.style.display = 'block';
+            if (btnCam) { btnCam.className = 'btn btn-outline-secondary btn-sm'; }
+            if (btnFile) { btnFile.className = 'btn btn-primary btn-sm'; }
+        },
+
+        /**
+         * Inicia el stream de video de la cámara web
+         */
+        initWebcamStream() {
+            const video = document.getElementById('carnetWebcamVideo');
+            if (!video) return;
+
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 640 },
+                        facingMode: 'user'
+                    }
+                }).then(stream => {
+                    this.webcamStream = stream;
+                    video.srcObject = stream;
+                }).catch(err => {
+                    console.warn('No se pudo iniciar cámara:', err);
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('No se pudo acceder a la cámara web. Utilice la opción de subir archivo.', 'warning');
+                    }
+                    this.startFileMode();
+                });
+            } else {
+                this.startFileMode();
+            }
+        },
+
+        /**
+         * Captura la fotografía de la cámara web con centrado y recorte de proporciones
+         */
+        captureWebcamPhoto() {
+            const video = document.getElementById('carnetWebcamVideo');
+            const canvas = document.getElementById('carnetWebcamCanvas');
+            if (!video || !canvas || !this.webcamStream) return;
+
+            const vW = video.videoWidth || 640;
+            const vH = video.videoHeight || 480;
+            const targetRatio = 0.8; // 4:5
+
+            let sW, sH, sX, sY;
+            if (vW / vH > targetRatio) {
+                sH = vH;
+                sW = vH * targetRatio;
+                sX = (vW - sW) / 2;
+                sY = 0;
+            } else {
+                sW = vW;
+                sH = vW / targetRatio;
+                sX = 0;
+                sY = (vH - sH) / 2;
+            }
+
+            canvas.width = 320;
+            canvas.height = 400;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, sX, sY, sW, sH, 0, 0, 320, 400);
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.90);
+            this.showCapturedPreview(dataUrl);
+            this.stopWebcam();
+        },
+
+        /**
+         * Maneja archivo local seleccionado desde input
+         */
+        handleLocalFileSelected(e) {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 3 * 1024 * 1024) {
+                alert('La fotografía debe ser menor a 3 MB.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                this.showCapturedPreview(evt.target.result);
+            };
+            reader.readAsDataURL(file);
+        },
+
+        /**
+         * Muestra previsualización antes de confirmar
+         */
+        showCapturedPreview(dataUrl) {
+            const box = document.getElementById('carnetCapturedPreviewBox');
+            const img = document.getElementById('carnetCapturedImg');
+            if (box && img) {
+                img.src = dataUrl;
+                box.style.display = 'block';
+            }
+        },
+
+        /**
+         * Guarda la fotografía en la entidad y sincroniza
+         */
+        saveCapturedPhoto() {
+            const img = document.getElementById('carnetCapturedImg');
+            if (!img || !img.src || !this.currentPhotoEntity) return;
+
+            const { entity, listNode } = this.currentPhotoEntity;
+            this.applyPhoto(entity, listNode, img.src);
+            this.closePhotoModal();
+        },
+
+        /**
+         * Aplica la foto, persiste en LocalStorage y sincroniza con Firebase
+         */
+        applyPhoto(entity, listNode, photoDataUrl) {
+            entity.photoUrl = photoDataUrl;
+
+            if (typeof window.saveStateToLocalStorage === 'function') {
+                window.saveStateToLocalStorage();
+            }
+            if (typeof window.EnccoCloudSync !== 'undefined' && window.EnccoCloudSync.syncNode && window.STATE) {
+                window.EnccoCloudSync.syncNode(listNode, window.STATE[listNode]);
+            }
+
+            renderCarnetsView();
+
+            if (typeof window.showToast === 'function') {
+                window.showToast(`✅ Fotografía de ${entity.name} actualizada y guardada con éxito.`, 'success');
+            }
+        },
+
+        /**
+         * Detiene la cámara web
+         */
+        stopWebcam() {
+            if (this.webcamStream) {
+                this.webcamStream.getTracks().forEach(track => track.stop());
+                this.webcamStream = null;
+            }
+            const video = document.getElementById('carnetWebcamVideo');
+            if (video) video.srcObject = null;
+        },
+
+        /**
+         * Cierra el modal de fotografía y detiene hardware
+         */
+        closePhotoModal() {
+            this.stopWebcam();
+            const modal = document.getElementById('modalCarnetPhoto');
+            if (modal) modal.style.display = 'none';
+            this.currentPhotoEntity = null;
+        },
+
+        /**
+         * Carga directa de archivo o activación de foto
+         */
+        promptUploadPhoto(id, type = 'student') {
+            this.openPhotoModal(id, type, 'choice');
+        },
+
+        /**
+         * Acceso directo a selector de archivos
+         */
+        promptDirectFileUpload(id, type = 'student') {
+            let entity = null;
+            let listNode = (type === 'teacher') ? 'users' : 'students';
+
+            if (type === 'teacher') {
+                entity = this.getTeachersList().find(t => t.id === id);
+            } else {
+                entity = (window.STATE && window.STATE.students) ? window.STATE.students.find(s => s.id === id) : null;
             }
 
             if (!entity) return;
@@ -584,27 +924,16 @@
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = 'image/*';
-            input.onchange = function(e) {
-                const file = e.target.files[0];
+            input.onchange = (e) => {
+                const file = e.target.files && e.target.files[0];
                 if (!file) return;
-                if (file.size > 2.5 * 1024 * 1024) {
-                    alert('La fotografía debe ser menor a 2.5 MB.');
+                if (file.size > 3 * 1024 * 1024) {
+                    alert('La fotografía debe ser menor a 3 MB.');
                     return;
                 }
-
                 const reader = new FileReader();
-                reader.onload = function(evt) {
-                    entity.photoUrl = evt.target.result;
-                    if (typeof window.saveStateToLocalStorage === 'function') {
-                        window.saveStateToLocalStorage();
-                    }
-                    if (typeof window.EnccoCloudSync !== 'undefined' && window.EnccoCloudSync.syncNode) {
-                        window.EnccoCloudSync.syncNode(listNode, window.STATE[listNode]);
-                    }
-                    renderCarnetsView();
-                    if (typeof window.showToast === 'function') {
-                        window.showToast(`Fotografía actualizada para ${entity.name}.`, 'success');
-                    }
+                reader.onload = (evt) => {
+                    this.applyPhoto(entity, listNode, evt.target.result);
                 };
                 reader.readAsDataURL(file);
             };
@@ -796,6 +1125,7 @@
      * 🖥️ 4. RENDERIZADO DE LA VISTA GENERAL DE CARNÉS
      * ====================================================================== */
     function renderCarnetsView() {
+        if (typeof document === 'undefined') return;
         const container = document.getElementById('view-carnets');
         if (!container) return;
 
@@ -957,15 +1287,18 @@
                                 </div>
                                 
                                 <!-- BOTONES DE ACCIÓN INDIVIDUAL -->
-                                <div style="display:flex; gap:6px; margin-top:2px;">
-                                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="EnccoCarnets.toggleCardSide('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.72rem; font-weight:700;">
+                                <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px; margin-top:2px;">
+                                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="EnccoCarnets.toggleCardSide('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.70rem; font-weight:700; padding:2px 7px;" title="Alternar entre Frente y Reverso">
                                         <i class="fa-solid fa-arrows-rotate"></i> Voltear
                                     </button>
-                                    <button type="button" class="btn btn-xs btn-outline-primary" onclick="EnccoCarnets.printSingleCard('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.72rem; font-weight:700;">
+                                    <button type="button" class="btn btn-xs btn-outline-primary" onclick="EnccoCarnets.printSingleCard('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.70rem; font-weight:700; padding:2px 7px;" title="Imprimir carné individual">
                                         <i class="fa-solid fa-print"></i> Imprimir
                                     </button>
-                                    <button type="button" class="btn btn-xs btn-outline-success" onclick="EnccoCarnets.promptUploadPhoto('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.72rem; font-weight:700;">
-                                        <i class="fa-solid fa-camera"></i> Foto
+                                    <button type="button" class="btn btn-xs btn-outline-warning" onclick="EnccoCarnets.openPhotoModal('${cardId}', '${isDoc ? 'teacher' : 'student'}', 'camera')" style="font-size:0.70rem; font-weight:700; padding:2px 7px; color:#b45309; border-color:#f59e0b;" title="Tomar foto con cámara web en vivo">
+                                        <i class="fa-solid fa-camera"></i> Cámara
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-success" onclick="EnccoCarnets.promptDirectFileUpload('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.70rem; font-weight:700; padding:2px 7px;" title="Cargar fotografía desde archivo local">
+                                        <i class="fa-solid fa-upload"></i> Archivo
                                     </button>
                                 </div>
                             </div>
