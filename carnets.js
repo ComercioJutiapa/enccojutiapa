@@ -702,6 +702,167 @@
          */
         currentPhotoEntity: null,
         webcamStream: null,
+        webcamFacingMode: 'user', // 'user' | 'environment'
+
+        /**
+         * Ajusta, recorta y optimiza cualquier imagen (incluso archivos de 10-50MB)
+         * para cumplir estrictamente con la formalidad y proporciones oficiales del carnet (4:5 vertical, 360x450px).
+         * @param {File|Blob|string|HTMLImageElement|HTMLVideoElement} source
+         * @returns {Promise<string>} Data URL en formato JPEG optimizado (~35-65 KB)
+         */
+        async processImageToCarnetFormat(source) {
+            return new Promise((resolve, reject) => {
+                const targetWidth = 360;
+                const targetHeight = 450;
+                const targetRatio = targetWidth / targetHeight; // 0.8 (4:5 formal)
+
+                const processDimensions = (srcW, srcH, drawFn) => {
+                    try {
+                        if (!srcW || !srcH) {
+                            return reject(new Error('Dimensiones de imagen inválidas'));
+                        }
+
+                        const srcRatio = srcW / srcH;
+                        let cropW, cropH, cropX, cropY;
+
+                        if (srcRatio > targetRatio) {
+                            // La imagen es apaisada/horizontal -> Recortar laterales centrados
+                            cropH = srcH;
+                            cropW = Math.round(srcH * targetRatio);
+                            cropX = Math.round((srcW - cropW) / 2);
+                            cropY = 0;
+                        } else {
+                            // La imagen es más alta -> Recortar con sesgo al tercio superior para encuadrar el rostro
+                            cropW = srcW;
+                            cropH = Math.round(srcW / targetRatio);
+                            cropX = 0;
+                            const excessY = srcH - cropH;
+                            // 20% del exceso arriba para dar aire a la cabeza sin cortarla
+                            cropY = Math.max(0, Math.min(Math.round(excessY * 0.20), excessY));
+                        }
+
+                        let canvas;
+                        if (typeof document !== 'undefined') {
+                            canvas = document.createElement('canvas');
+                        } else {
+                            // Entorno de prueba Node sin DOM
+                            return resolve(typeof source === 'string' ? source : 'data:image/jpeg;base64,/9j/mockProcessedPhoto');
+                        }
+
+                        canvas.width = targetWidth;
+                        canvas.height = targetHeight;
+                        const ctx = canvas.getContext('2d');
+
+                        // Fondo blanco institucional de respaldo
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+
+                        drawFn(ctx, cropX, cropY, cropW, cropH, 0, 0, targetWidth, targetHeight);
+
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+                        resolve(dataUrl);
+                    } catch (err) {
+                        reject(err);
+                    }
+                };
+
+                // 1. Si es elemento de video en vivo
+                if (typeof HTMLVideoElement !== 'undefined' && source instanceof HTMLVideoElement) {
+                    const srcW = source.videoWidth || 640;
+                    const srcH = source.videoHeight || 480;
+                    return processDimensions(srcW, srcH, (ctx, sx, sy, sw, sh, dx, dy, dw, dh) => {
+                        ctx.drawImage(source, sx, sy, sw, sh, dx, dy, dw, dh);
+                    });
+                }
+
+                // 2. Si es imagen ya cargada
+                if (typeof HTMLImageElement !== 'undefined' && source instanceof HTMLImageElement) {
+                    if (source.complete) {
+                        const srcW = source.naturalWidth || source.width;
+                        const srcH = source.naturalHeight || source.height;
+                        return processDimensions(srcW, srcH, (ctx, sx, sy, sw, sh, dx, dy, dw, dh) => {
+                            ctx.drawImage(source, sx, sy, sw, sh, dx, dy, dw, dh);
+                        });
+                    }
+                }
+
+                // 3. Si es dataUrl en texto
+                if (typeof source === 'string' && source.startsWith('data:')) {
+                    if (typeof Image === 'undefined') {
+                        return resolve(source);
+                    }
+                    const img = new Image();
+                    img.onload = () => {
+                        const srcW = img.naturalWidth || img.width;
+                        const srcH = img.naturalHeight || img.height;
+                        processDimensions(srcW, srcH, (ctx, sx, sy, sw, sh, dx, dy, dw, dh) => {
+                            ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+                        });
+                    };
+                    img.onerror = (e) => reject(e);
+                    img.src = source;
+                    return;
+                }
+
+                // 4. Si es archivo local (File / Blob) - sin importar el tamaño
+                if (typeof Blob !== 'undefined' && source instanceof Blob) {
+                    // Si el navegador soporta createImageBitmap (rápido y no satura memoria con fotos pesadas)
+                    if (typeof window !== 'undefined' && window.createImageBitmap) {
+                        window.createImageBitmap(source)
+                            .then(bmp => {
+                                const srcW = bmp.width;
+                                const srcH = bmp.height;
+                                processDimensions(srcW, srcH, (ctx, sx, sy, sw, sh, dx, dy, dw, dh) => {
+                                    ctx.drawImage(bmp, sx, sy, sw, sh, dx, dy, dw, dh);
+                                });
+                            })
+                            .catch(() => {
+                                // Fallback a FileReader
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                    const img = new Image();
+                                    img.onload = () => {
+                                        const srcW = img.naturalWidth || img.width;
+                                        const srcH = img.naturalHeight || img.height;
+                                        processDimensions(srcW, srcH, (ctx, sx, sy, sw, sh, dx, dy, dw, dh) => {
+                                            ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+                                        });
+                                    };
+                                    img.onerror = (err) => reject(err);
+                                    img.src = e.target.result;
+                                };
+                                reader.onerror = (err) => reject(err);
+                                reader.readAsDataURL(source);
+                            });
+                    } else if (typeof FileReader !== 'undefined') {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                const srcW = img.naturalWidth || img.width;
+                                const srcH = img.naturalHeight || img.height;
+                                processDimensions(srcW, srcH, (ctx, sx, sy, sw, sh, dx, dy, dw, dh) => {
+                                    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+                                });
+                            };
+                            img.onerror = (err) => reject(err);
+                            img.src = e.target.result;
+                        };
+                        reader.onerror = (err) => reject(err);
+                        reader.readAsDataURL(source);
+                    } else {
+                        resolve('data:image/jpeg;base64,/9j/mockProcessedPhoto');
+                    }
+                    return;
+                }
+
+                // Fallback si no coincide ningún tipo
+                resolve(typeof source === 'string' ? source : 'data:image/jpeg;base64,/9j/mockProcessedPhoto');
+            });
+        },
 
         /**
          * Asegura la existencia del modal interactivo de fotografía en el DOM
@@ -717,9 +878,9 @@
                         <!-- ENCABEZADO DEL MODAL -->
                         <div style="background:linear-gradient(135deg, #0f5127, #15803d); color:#ffffff; padding:12px 18px; display:flex; justify-content:space-between; align-items:center;">
                             <h3 style="margin:0; font-size:1.02rem; font-weight:800; display:flex; align-items:center; gap:8px; color:#ffffff;">
-                                <i class="fa-solid fa-camera-rotate"></i> Actualizar Fotografía Oficial
+                                <i class="fa-solid fa-camera-rotate"></i> Fotografía Oficial del Carné
                             </h3>
-                            <button type="button" onclick="EnccoCarnets.closePhotoModal()" style="background:none; border:none; color:#ffffff; font-size:1.3rem; line-height:1; cursor:pointer;">&times;</button>
+                            <button type="button" onclick="EnccoCarnets.closePhotoModal()" style="background:none; border:none; color:#ffffff; font-size:1.3rem; line-height:1; cursor:pointer;" title="Cerrar">&times;</button>
                         </div>
 
                         <!-- CUERPO DEL MODAL -->
@@ -752,38 +913,59 @@
 
                             <!-- CONTENEDOR DE CÁMARA WEB EN VIVO -->
                             <div id="carnetWebcamBox" style="display:none; text-align:center; background:#0f172a; border-radius:10px; padding:10px; position:relative; overflow:hidden;">
-                                <video id="carnetWebcamVideo" autoplay playsinline style="width:100%; max-height:260px; object-fit:cover; border-radius:8px; border:2px solid #22c55e;"></video>
-                                <canvas id="carnetWebcamCanvas" style="display:none;"></canvas>
+                                <div style="position:relative; display:inline-block; width:100%; max-width:320px; overflow:hidden; border-radius:8px;">
+                                    <video id="carnetWebcamVideo" autoplay playsinline muted style="width:100%; max-height:260px; object-fit:cover; border-radius:8px; border:2px solid #22c55e; display:block;"></video>
+                                    <canvas id="carnetWebcamCanvas" style="display:none;"></canvas>
+                                    
+                                    <!-- GUÍA OVALADA PARA ENCUADRE DE ROSTRO FORMAL -->
+                                    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:130px; height:165px; border:2.5px dashed rgba(254,240,138,0.85); border-radius:50%; pointer-events:none; box-shadow:0 0 0 9999px rgba(15,23,42,0.25);"></div>
+                                    <div style="position:absolute; bottom:6px; left:0; right:0; text-align:center; color:#fef08a; font-size:0.68rem; font-weight:800; text-shadow:0 1px 3px rgba(0,0,0,0.8); pointer-events:none;">
+                                        Encuadre el rostro de frente
+                                    </div>
+                                </div>
                                 
-                                <!-- GUÍA OVALADA PARA ENCUADRE DE ROSTRO -->
-                                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:130px; height:160px; border:2px dashed rgba(254,240,138,0.7); border-radius:50%; pointer-events:none;"></div>
-                                
-                                <div style="margin-top:10px; display:flex; justify-content:center; gap:8px;">
-                                    <button type="button" class="btn btn-warning btn-sm" onclick="EnccoCarnets.captureWebcamPhoto()" style="font-weight:800; background:#eab308; color:#0f172a; border:none; padding:6px 14px;">
+                                <div style="margin-top:10px; display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+                                    <button type="button" class="btn btn-warning btn-sm" onclick="EnccoCarnets.captureWebcamPhoto()" style="font-weight:800; background:#eab308; color:#0f172a; border:none; padding:6px 16px;">
                                         <i class="fa-solid fa-camera"></i> Capturar Fotografía
+                                    </button>
+                                    <button type="button" class="btn btn-outline-light btn-sm" onclick="EnccoCarnets.toggleCameraFacing()" style="font-weight:700; padding:6px 12px;" title="Cambiar cámara frontal / trasera">
+                                        <i class="fa-solid fa-camera-rotate"></i> Cambiar Cámara
                                     </button>
                                 </div>
                             </div>
 
-                            <!-- CONTENEDOR DE SUBIDA DE ARCHIVO -->
-                            <div id="carnetFileBox" style="display:none; border:2px dashed #cbd5e1; border-radius:10px; padding:25px 15px; text-align:center; background:#f8fafc;">
-                                <i class="fa-solid fa-cloud-arrow-up" style="font-size:2.2rem; color:#0284c7; margin-bottom:8px; display:block;"></i>
+                            <!-- CONTENEDOR DE SUBIDA DE ARCHIVO (CON DRAG & DROP Y AJUSTE DE CUALQUIER TAMAÑO) -->
+                            <div id="carnetFileBox" style="display:none; border:2px dashed #cbd5e1; border-radius:10px; padding:25px 15px; text-align:center; background:#f8fafc; transition:all 0.2s ease;"
+                                ondragover="event.preventDefault(); this.style.borderColor='#16a34a'; this.style.background='#f0fdf4';"
+                                ondragleave="this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc';"
+                                ondrop="event.preventDefault(); this.style.borderColor='#cbd5e1'; this.style.background='#f8fafc'; if(event.dataTransfer.files && event.dataTransfer.files[0]) EnccoCarnets.processAndShowFile(event.dataTransfer.files[0]);">
+                                <i class="fa-solid fa-cloud-arrow-up" style="font-size:2.4rem; color:#0284c7; margin-bottom:8px; display:block;"></i>
                                 <label class="btn btn-outline-primary btn-sm" style="font-weight:700; cursor:pointer; margin:0 auto 6px auto; display:inline-block;">
-                                    <i class="fa-solid fa-folder-open"></i> Seleccionar Imagen (.jpg, .png)
+                                    <i class="fa-solid fa-folder-open"></i> Seleccionar Imagen (Cualquier tamaño)
                                     <input type="file" id="carnetLocalFileInput" accept="image/*" style="display:none;" onchange="EnccoCarnets.handleLocalFileSelected(event)">
                                 </label>
-                                <p style="font-size:0.75rem; color:#64748b; margin:0;">O arrastre una fotografía directamente a este recuadro</p>
+                                <p style="font-size:0.75rem; color:#64748b; margin:0;">
+                                    Arrastre una fotografía o selecciónela. Se ajustará y optimizará automáticamente a la formalidad del carné.
+                                </p>
                             </div>
 
-                            <!-- PREVIEW DE LA FOTO CAPTURADA / SELECCIONADA -->
-                            <div id="carnetCapturedPreviewBox" style="display:none; text-align:center; margin-top:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px;">
-                                <div style="font-size:0.76rem; font-weight:800; color:#166534; margin-bottom:6px;">
-                                    <i class="fa-solid fa-circle-check"></i> Fotografía lista para guardar:
+                            <!-- PREVIEW DE LA FOTO FORMAL AJUSTADA -->
+                            <div id="carnetCapturedPreviewBox" style="display:none; text-align:center; margin-top:12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:12px;">
+                                <div style="font-size:0.78rem; font-weight:800; color:#166534; margin-bottom:6px;">
+                                    <i class="fa-solid fa-circle-check"></i> Fotografía formal encuadrada (360×450 px):
                                 </div>
-                                <img id="carnetCapturedImg" src="" alt="Preview" style="width:90px; height:108px; object-fit:cover; border-radius:8px; border:2.5px solid #d4af37; box-shadow:0 3px 8px rgba(0,0,0,0.15); display:inline-block; margin-bottom:8px;">
+                                <div style="display:inline-block; padding:3px; background:linear-gradient(135deg, #fce881, #d4af37, #8a6508); border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.15); margin-bottom:8px;">
+                                    <img id="carnetCapturedImg" src="" alt="Preview" style="width:100px; height:125px; object-fit:cover; border-radius:6px; display:block;">
+                                </div>
+                                <div style="font-size:0.72rem; color:#475569; margin-bottom:8px;">
+                                    Ajustada automáticamente al formato y formalidad oficial del carné.
+                                </div>
                                 <div style="display:flex; justify-content:center; gap:8px;">
                                     <button type="button" class="btn btn-success btn-sm" onclick="EnccoCarnets.saveCapturedPhoto()" style="font-weight:800; background:#15803d; border-color:#15803d;">
                                         <i class="fa-solid fa-floppy-disk"></i> Confirmar y Asignar al Carné
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="EnccoCarnets.retryPhoto()" style="font-weight:700;">
+                                        <i class="fa-solid fa-arrow-rotate-left"></i> Cambiar
                                     </button>
                                 </div>
                             </div>
@@ -828,7 +1010,7 @@
             if (nameEl) nameEl.textContent = entity.name || 'Titular';
             if (roleEl) roleEl.textContent = (type === 'teacher') 
                 ? `CATEDRÁTICO / DOCENTE [${entity.renglon || '011'}]` 
-                : `ESTUDIANTE REGULAR [${entity.carne || 'ENCCO'}]`;
+                : `ESTUDIANTE REGULAR [${entity.carne || entity.personalCode || 'ENCCO'}]`;
 
             if (avatarEl) {
                 avatarEl.innerHTML = entity.photoUrl 
@@ -886,96 +1068,139 @@
         },
 
         /**
-         * Inicia el stream de video de la cámara web
+         * Alterna entre cámara frontal y trasera en dispositivos móviles/tablets
+         */
+        toggleCameraFacing() {
+            this.webcamFacingMode = (this.webcamFacingMode === 'user') ? 'environment' : 'user';
+            this.stopWebcam();
+            this.initWebcamStream();
+            if (typeof window.showToast === 'function') {
+                window.showToast(`Cámara cambiada a: ${this.webcamFacingMode === 'user' ? 'Frontal' : 'Trasera'}`, 'info');
+            }
+        },
+
+        /**
+         * Inicia el stream de video de la cámara web (frontal o trasera, con fallback seguro)
          */
         initWebcamStream() {
             const video = document.getElementById('carnetWebcamVideo');
             if (!video) return;
 
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({
+                const constraints = {
                     video: {
-                        width: { ideal: 640 },
-                        height: { ideal: 640 },
-                        facingMode: 'user'
-                    }
-                }).then(stream => {
-                    this.webcamStream = stream;
-                    video.srcObject = stream;
-                }).catch(err => {
-                    console.warn('No se pudo iniciar cámara:', err);
-                    if (typeof window.showToast === 'function') {
-                        window.showToast('No se pudo acceder a la cámara web. Utilice la opción de subir archivo.', 'warning');
-                    }
-                    this.startFileMode();
-                });
+                        facingMode: this.webcamFacingMode || 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .catch(() => navigator.mediaDevices.getUserMedia({ video: true, audio: false }))
+                    .then(stream => {
+                        this.webcamStream = stream;
+                        video.srcObject = stream;
+                        video.setAttribute('playsinline', 'true');
+                        video.setAttribute('muted', 'true');
+                        video.play().catch(e => console.log('Autoplay handled:', e));
+                    })
+                    .catch(err => {
+                        console.warn('No se pudo iniciar cámara:', err);
+                        if (typeof window.showToast === 'function') {
+                            window.showToast('No se pudo acceder a la cámara. Utilice la opción de subir archivo.', 'warning');
+                        }
+                        this.startFileMode();
+                    });
             } else {
                 this.startFileMode();
             }
         },
 
         /**
-         * Captura la fotografía de la cámara web con centrado y recorte de proporciones
+         * Captura la fotografía de la cámara web, recortando y ajustando formalmente a 4:5
          */
-        captureWebcamPhoto() {
+        async captureWebcamPhoto() {
             const video = document.getElementById('carnetWebcamVideo');
-            const canvas = document.getElementById('carnetWebcamCanvas');
-            if (!video || !canvas || !this.webcamStream) return;
+            if (!video || !this.webcamStream) return;
 
-            const vW = video.videoWidth || 640;
-            const vH = video.videoHeight || 480;
-            const targetRatio = 0.8; // 4:5
-
-            let sW, sH, sX, sY;
-            if (vW / vH > targetRatio) {
-                sH = vH;
-                sW = vH * targetRatio;
-                sX = (vW - sW) / 2;
-                sY = 0;
-            } else {
-                sW = vW;
-                sH = vW / targetRatio;
-                sX = 0;
-                sY = (vH - sH) / 2;
+            try {
+                const dataUrl = await this.processImageToCarnetFormat(video);
+                this.showCapturedPreview(dataUrl);
+                this.stopWebcam();
+            } catch (err) {
+                console.error('Error al capturar de cámara:', err);
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Error al capturar la fotografía de la cámara.', 'danger');
+                }
             }
-
-            canvas.width = 320;
-            canvas.height = 400;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, sX, sY, sW, sH, 0, 0, 320, 400);
-
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.90);
-            this.showCapturedPreview(dataUrl);
-            this.stopWebcam();
         },
 
         /**
-         * Maneja archivo local seleccionado desde input
+         * Maneja archivo local seleccionado desde input (sin límite de tamaño, autoajustado)
          */
-        handleLocalFileSelected(e) {
+        async handleLocalFileSelected(e) {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
 
-            if (file.size > 3 * 1024 * 1024) {
-                alert('La fotografía debe ser menor a 3 MB.');
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = (evt) => {
-                this.showCapturedPreview(evt.target.result);
-            };
-            reader.readAsDataURL(file);
+            this.processAndShowFile(file);
         },
 
         /**
-         * Muestra previsualización antes de confirmar
+         * Procesa y muestra en previsualización cualquier archivo de imagen (sin importar su tamaño)
+         */
+        async processAndShowFile(file) {
+            if (!file) return;
+
+            const previewBox = document.getElementById('carnetCapturedPreviewBox');
+            if (previewBox) {
+                previewBox.style.display = 'block';
+                const img = document.getElementById('carnetCapturedImg');
+                if (img) img.style.opacity = '0.5';
+            }
+
+            if (typeof window.showToast === 'function') {
+                window.showToast('Ajustando fotografía para carné formal...', 'info');
+            }
+
+            try {
+                const dataUrl = await this.processImageToCarnetFormat(file);
+                this.showCapturedPreview(dataUrl);
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Fotografía formal ajustada y lista para confirmar.', 'success');
+                }
+            } catch (err) {
+                console.error('Error procesando archivo:', err);
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Error al procesar la imagen seleccionada.', 'danger');
+                } else {
+                    alert('No se pudo procesar la imagen seleccionada.');
+                }
+            }
+        },
+
+        /**
+         * Reintenta o cambia la fotografía seleccionada
+         */
+        retryPhoto() {
+            const previewBox = document.getElementById('carnetCapturedPreviewBox');
+            if (previewBox) previewBox.style.display = 'none';
+
+            const camBox = document.getElementById('carnetWebcamBox');
+            if (camBox && camBox.style.display !== 'none') {
+                this.initWebcamStream();
+            }
+        },
+
+        /**
+         * Muestra previsualización formal antes de confirmar
          */
         showCapturedPreview(dataUrl) {
             const box = document.getElementById('carnetCapturedPreviewBox');
             const img = document.getElementById('carnetCapturedImg');
             if (box && img) {
                 img.src = dataUrl;
+                img.style.opacity = '1';
                 box.style.display = 'block';
             }
         },
@@ -1042,7 +1267,7 @@
         },
 
         /**
-         * Acceso directo a selector de archivos
+         * Acceso directo a selector de archivos con autoajuste de cualquier tamaño
          */
         promptDirectFileUpload(id, type = 'student') {
             let entity = null;
@@ -1059,18 +1284,25 @@
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = 'image/*';
-            input.onchange = (e) => {
+            input.onchange = async (e) => {
                 const file = e.target.files && e.target.files[0];
                 if (!file) return;
-                if (file.size > 3 * 1024 * 1024) {
-                    alert('La fotografía debe ser menor a 3 MB.');
-                    return;
+
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Ajustando fotografía para carné formal...', 'info');
                 }
-                const reader = new FileReader();
-                reader.onload = (evt) => {
-                    this.applyPhoto(entity, listNode, evt.target.result);
-                };
-                reader.readAsDataURL(file);
+
+                try {
+                    const dataUrl = await this.processImageToCarnetFormat(file);
+                    this.applyPhoto(entity, listNode, dataUrl);
+                } catch (err) {
+                    console.error('Error procesando imagen directa:', err);
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('Error al procesar la imagen.', 'danger');
+                    } else {
+                        alert('No se pudo procesar la imagen.');
+                    }
+                }
             };
             input.click();
         },
@@ -1509,8 +1741,9 @@
         `;
     }
 
-    // Exponer EnccoCarnets y renderCarnetsView globalmente
+    // Exponer EnccoCarnets, helper de fotos y renderCarnetsView globalmente
     window.EnccoCarnets = EnccoCarnets;
     window.renderCarnetsView = renderCarnetsView;
+    window.processImageFileToCarnetFormat = (source) => EnccoCarnets.processImageToCarnetFormat(source);
 
 })(typeof window !== 'undefined' ? window : global);

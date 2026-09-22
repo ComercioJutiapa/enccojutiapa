@@ -9917,12 +9917,30 @@ function closeStudentModal() {
 function handleStudentFormPhotoUpload(e) {
     const file = e.target.files[0];
     if (file) {
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            document.getElementById('studentFormPhotoPreview').src = evt.target.result;
-            showToast("Fotografía del alumno cargada exitosamente.", "info");
-        };
-        reader.readAsDataURL(file);
+        if (typeof window.processImageFileToCarnetFormat === 'function') {
+            showToast("Ajustando fotografía a la formalidad del carné...", "info");
+            window.processImageFileToCarnetFormat(file)
+                .then(dataUrl => {
+                    document.getElementById('studentFormPhotoPreview').src = dataUrl;
+                    showToast("Fotografía del alumno encuadrada y optimizada formalmente.", "success");
+                })
+                .catch(err => {
+                    console.warn("Fallo en optimización formal, aplicando directa:", err);
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        document.getElementById('studentFormPhotoPreview').src = evt.target.result;
+                        showToast("Fotografía cargada.", "info");
+                    };
+                    reader.readAsDataURL(file);
+                });
+        } else {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                document.getElementById('studentFormPhotoPreview').src = evt.target.result;
+                showToast("Fotografía del alumno cargada exitosamente.", "info");
+            };
+            reader.readAsDataURL(file);
+        }
     }
 }
 
@@ -9932,12 +9950,16 @@ function startWebcam() {
     const video = document.getElementById('webcamVideo');
 
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: { width: 400, height: 400 } })
+        navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, audio: false })
+            .catch(() => navigator.mediaDevices.getUserMedia({ video: true, audio: false }))
             .then(stream => {
                 STATE.webcamStream = stream;
                 video.srcObject = stream;
+                video.setAttribute('playsinline', 'true');
+                video.setAttribute('muted', 'true');
+                video.play().catch(e => console.log(e));
                 container.style.display = 'block';
-                showToast("Cámara activada. Apunte al alumno y capture la fotografía.", "info");
+                showToast("Cámara activada. Encuadre el rostro del alumno y capture.", "info");
             })
             .catch(err => {
                 showToast("No se pudo acceder a la cámara web. Puede subir una foto desde el dispositivo.", "warning");
@@ -9949,19 +9971,38 @@ function startWebcam() {
 
 function captureWebcamPhoto() {
     const video = document.getElementById('webcamVideo');
-    const canvas = document.getElementById('webcamCanvas');
     if (!video || !STATE.webcamStream) return;
 
-    canvas.width = 320;
-    canvas.height = 320;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, 320, 320);
-
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
-    document.getElementById('studentFormPhotoPreview').src = dataUrl;
-    
-    stopWebcam();
-    showToast("Fotografía del alumno tomada y guardada con éxito desde la cámara.", "success");
+    if (typeof window.processImageFileToCarnetFormat === 'function') {
+        window.processImageFileToCarnetFormat(video)
+            .then(dataUrl => {
+                document.getElementById('studentFormPhotoPreview').src = dataUrl;
+                stopWebcam();
+                showToast("Fotografía formal del carné capturada y guardada con éxito.", "success");
+            })
+            .catch(err => {
+                console.error("Error al capturar con ajuste formal:", err);
+                const canvas = document.getElementById('webcamCanvas') || document.createElement('canvas');
+                canvas.width = 360;
+                canvas.height = 450;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, 360, 450);
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+                document.getElementById('studentFormPhotoPreview').src = dataUrl;
+                stopWebcam();
+                showToast("Fotografía capturada.", "success");
+            });
+    } else {
+        const canvas = document.getElementById('webcamCanvas') || document.createElement('canvas');
+        canvas.width = 360;
+        canvas.height = 450;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, 360, 450);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+        document.getElementById('studentFormPhotoPreview').src = dataUrl;
+        stopWebcam();
+        showToast("Fotografía del alumno tomada y guardada con éxito desde la cámara.", "success");
+    }
 }
 
 function stopWebcam() {
@@ -11368,11 +11409,28 @@ function toggleInactivationFields(val) {
 function handlePhotoUpload(e) {
     const file = e.target.files[0];
     if (file) {
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            document.getElementById('profilePhotoImg').src = evt.target.result;
-        };
-        reader.readAsDataURL(file);
+        if (typeof window.processImageFileToCarnetFormat === 'function') {
+            showToast("Ajustando fotografía a la formalidad del carné...", "info");
+            window.processImageFileToCarnetFormat(file)
+                .then(dataUrl => {
+                    document.getElementById('profilePhotoImg').src = dataUrl;
+                    showToast("Fotografía del perfil formalmente ajustada.", "success");
+                })
+                .catch(err => {
+                    console.warn("Fallo en optimización formal, aplicando directa:", err);
+                    const reader = new FileReader();
+                    reader.onload = function(evt) {
+                        document.getElementById('profilePhotoImg').src = evt.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                });
+        } else {
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                document.getElementById('profilePhotoImg').src = evt.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
     }
 }
 

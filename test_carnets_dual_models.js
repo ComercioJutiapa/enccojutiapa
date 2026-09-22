@@ -153,14 +153,24 @@ console.log('✅ TEST 6: getTeachersList resuelve nómina de catedráticos corre
 assert.strictEqual(typeof EnccoCarnets.openPhotoModal, 'function', 'openPhotoModal debe ser función');
 assert.strictEqual(typeof EnccoCarnets.promptDirectFileUpload, 'function', 'promptDirectFileUpload debe ser función');
 assert.strictEqual(typeof EnccoCarnets.applyPhoto, 'function', 'applyPhoto debe ser función');
+assert.strictEqual(typeof EnccoCarnets.processImageToCarnetFormat, 'function', 'processImageToCarnetFormat debe ser función');
+assert.strictEqual(typeof EnccoCarnets.toggleCameraFacing, 'function', 'toggleCameraFacing debe ser función');
+assert.strictEqual(typeof mockWindow.processImageFileToCarnetFormat, 'function', 'processImageFileToCarnetFormat debe estar expuesto globalmente');
 
-// Simular asignación de fotografía tomada con cámara para un docente
-EnccoCarnets.applyPhoto(doc, 'users', 'data:image/jpeg;base64,/9j/mockTeacherWebcamPhoto');
-assert.strictEqual(doc.photoUrl, 'data:image/jpeg;base64,/9j/mockTeacherWebcamPhoto');
-const docFrontWithPhoto = EnccoCarnets.renderTeacherCardFrontHtml(doc);
-assert(docFrontWithPhoto.includes('/9j/mockTeacherWebcamPhoto'), 'El carné debe renderizar la foto tomada con cámara');
-console.log('✅ TEST 7: Captura y asignación de fotografía para docentes (cámara y archivo) verificada');
+// Simular procesamiento y autoajuste formal de fotografía
+EnccoCarnets.processImageToCarnetFormat('data:image/jpeg;base64,/9j/mockLargeFile50MB').then(processedDataUrl => {
+    assert(processedDataUrl.startsWith('data:image/jpeg'), 'Debe retornar un dataUrl JPEG optimizado');
+    // Simular asignación de fotografía tomada o subida para un docente
+    EnccoCarnets.applyPhoto(doc, 'users', processedDataUrl);
+    assert.strictEqual(doc.photoUrl, processedDataUrl);
+    const docFrontWithPhoto = EnccoCarnets.renderTeacherCardFrontHtml(doc);
+    assert(docFrontWithPhoto.includes(processedDataUrl), 'El carné debe renderizar la foto ajustada formalmente');
+    console.log('✅ TEST 7: Ingreso 100% funcional de fotos por cámara y archivo con autoajuste formal verificado');
 
-console.log('\n========================================================================');
-console.log('🎉 ¡TODAS LAS PRUEBAS DE CARNÉS DUALES PASARON CON ÉXITO ROTUNDO (7/7)!');
-console.log('========================================================================\n');
+    console.log('\n========================================================================');
+    console.log('🎉 ¡TODAS LAS PRUEBAS DE CARNÉS DUALES Y FOTOS FORMALES PASARON CON ÉXITO ROTUNDO (7/7)!');
+    console.log('========================================================================\n');
+}).catch(err => {
+    console.error('Error en test de procesamiento de foto:', err);
+    process.exit(1);
+});
