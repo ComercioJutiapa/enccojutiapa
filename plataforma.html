@@ -274,7 +274,7 @@
                 left: 0 !important;
                 bottom: 0 !important;
                 height: 100vh !important;
-                width: 290px !important;
+                width: 250px !important;
                 max-width: 85vw !important;
                 margin-left: 0 !important; /* Anula cualquier regla de colapso de escritorio */
                 background: #032b14 !important;
@@ -323,6 +323,9 @@
             #sidebar.sidebar {
                 position: relative !important;
                 left: 0 !important;
+                width: 236px !important;
+                min-width: 236px !important;
+                max-width: 236px !important;
                 transform: none !important;
                 z-index: 100 !important;
                 opacity: 1 !important;
@@ -332,7 +335,7 @@
             }
 
             #sidebar.sidebar.collapsed {
-                margin-left: -280px !important;
+                margin-left: -236px !important;
                 opacity: 0 !important;
                 pointer-events: none !important;
             }
@@ -507,9 +510,9 @@
 
             <!-- Selector de Ciclo Lectivo Dinámico -->
             <div class="cycle-selector-box">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                    <label style="margin:0; font-size:0.8rem; font-weight:700; color:white;"><i class="fa-solid fa-calendar-days"></i> Ciclo Lectivo:</label>
-                    <button type="button" class="btn btn-xs role-restricted" data-allowed="admin,director,secretaria,profesor_auxiliar" onclick="openCycleModal()" title="Ingresar o Gestionar Ciclos Escolares" style="background:rgba(255,255,255,0.18); border:none; color:white; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:0.72rem; font-weight:700;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <label style="margin:0; font-size:0.70rem; font-weight:700; color:white;"><i class="fa-solid fa-calendar-days"></i> Ciclo Lectivo:</label>
+                    <button type="button" class="btn btn-xs role-restricted" data-allowed="admin,director,secretaria,profesor_auxiliar" onclick="openCycleModal()" title="Ingresar o Gestionar Ciclos Escolares" style="background:rgba(255,255,255,0.18); border:none; color:white; border-radius:4px; padding:1px 6px; cursor:pointer; font-size:0.68rem; font-weight:700;">
                         <i class="fa-solid fa-plus"></i> Ingresar
                     </button>
                 </div>
