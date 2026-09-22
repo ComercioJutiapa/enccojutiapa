@@ -901,18 +901,31 @@
                                 </div>
                             </div>
 
-                            <!-- SELECTOR DE MODO (CÁMARA O ARCHIVO) -->
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
-                                <button type="button" id="carnetTabBtnCamera" class="btn btn-primary btn-sm" onclick="EnccoCarnets.startWebcamMode()" style="font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px;">
-                                    <i class="fa-solid fa-camera"></i> Tomar con Cámara
+                            <!-- SELECTOR DE MODO (CÁMARA WEB, CÁMARA NATIVA O ARCHIVO) -->
+                            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:14px;">
+                                <button type="button" id="carnetTabBtnCamera" class="btn btn-primary btn-sm" onclick="EnccoCarnets.startWebcamMode()" style="font-weight:700; display:flex; align-items:center; justify-content:center; gap:5px; font-size:0.78rem;">
+                                    <i class="fa-solid fa-video"></i> Cámara Web
                                 </button>
-                                <button type="button" id="carnetTabBtnFile" class="btn btn-outline-secondary btn-sm" onclick="EnccoCarnets.startFileMode()" style="font-weight:700; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                <label class="btn btn-warning btn-sm" style="font-weight:800; display:flex; align-items:center; justify-content:center; gap:5px; font-size:0.78rem; cursor:pointer; margin:0; background:#f59e0b; color:#ffffff; border:none; box-shadow:0 1px 4px rgba(245,158,11,0.3);" title="Tomar foto directa con la cámara nativa del teléfono, tableta o laptop">
+                                    <i class="fa-solid fa-camera"></i> Cámara Nativa
+                                    <input type="file" accept="image/*" capture="user" style="display:none;" onchange="EnccoCarnets.handleLocalFileSelected(event)">
+                                </label>
+                                <button type="button" id="carnetTabBtnFile" class="btn btn-outline-secondary btn-sm" onclick="EnccoCarnets.startFileMode()" style="font-weight:700; display:flex; align-items:center; justify-content:center; gap:5px; font-size:0.78rem;">
                                     <i class="fa-solid fa-upload"></i> Subir Archivo
                                 </button>
                             </div>
 
                             <!-- CONTENEDOR DE CÁMARA WEB EN VIVO -->
                             <div id="carnetWebcamBox" style="display:none; text-align:center; background:#0f172a; border-radius:10px; padding:10px; position:relative; overflow:hidden;">
+                                <!-- SELECTOR DINÁMICO DE DISPOSITIVOS DE CÁMARA (SI HAY MÁS DE 1 CONECTADA) -->
+                                <div id="carnetCameraSelectRow" style="display:none; margin-bottom:8px; text-align:left;">
+                                    <label style="font-size:0.72rem; color:#94a3b8; font-weight:700; display:block; margin-bottom:2px;">
+                                        <i class="fa-solid fa-video"></i> Seleccionar Cámara Conectada:
+                                    </label>
+                                    <select id="carnetCameraDeviceSelect" class="form-control form-control-sm" onchange="EnccoCarnets.onCameraDeviceChanged(this.value)" style="font-size:0.75rem; background:#1e293b; color:#ffffff; border-color:#475569; height:30px; font-weight:700;">
+                                    </select>
+                                </div>
+
                                 <div style="position:relative; display:inline-block; width:100%; max-width:320px; overflow:hidden; border-radius:8px;">
                                     <video id="carnetWebcamVideo" autoplay playsinline muted style="width:100%; max-height:260px; object-fit:cover; border-radius:8px; border:2px solid #22c55e; display:block; background:#000;"></video>
                                     <canvas id="carnetWebcamCanvas" style="display:none;"></canvas>
@@ -938,7 +951,7 @@
                                     <div id="carnetCamNoticeText" style="margin-bottom:8px;"></div>
                                     <div style="text-align:center;">
                                         <label class="btn btn-warning btn-sm" style="font-weight:800; background:#f59e0b; color:#ffffff; border:none; cursor:pointer; padding:6px 14px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(245,158,11,0.3);">
-                                            <i class="fa-solid fa-camera"></i> Tomar con Cámara del Dispositivo
+                                            <i class="fa-solid fa-camera"></i> Tomar con Cámara del Dispositivo (Nativa)
                                             <input type="file" accept="image/*" capture="user" style="display:none;" onchange="EnccoCarnets.handleLocalFileSelected(event)">
                                         </label>
                                     </div>
@@ -1091,6 +1104,15 @@
         },
 
         /**
+         * Manejador al cambiar de cámara en el selector desplegable
+         */
+        async onCameraDeviceChanged(deviceId) {
+            this.selectedVideoDeviceId = deviceId;
+            this.stopWebcam();
+            await this.initWebcamStream();
+        },
+
+        /**
          * Inicia el stream de video de la cámara web (frontal o trasera, con fallback seguro y diagnóstico)
          */
         async initWebcamStream() {
@@ -1113,34 +1135,92 @@
 
             if (!video) return;
 
-            // 3. Verificar si el navegador soporta getUserMedia
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                console.warn('getUserMedia no soportado directamente en este contexto.');
-                this.showWebcamError('Su navegador o conexión no permite cámara web en vivo directa. Utilice el botón "Tomar con Cámara del Dispositivo" para capturar la fotografía directamente.');
+            // 3. Detección temprana de protocolo local file:///
+            const isFileOrigin = (typeof location !== 'undefined' && location.protocol === 'file:');
+            if (isFileOrigin) {
+                console.warn('Protocolo local file:/// detectado. Chrome/Edge restringen el acceso a cámara web en vivo sin servidor seguro.');
+                this.showWebcamError(
+                    '<strong>Protocolo Local detectado (file:///):</strong> Google Chrome y Microsoft Edge bloquean el encendido de cámaras web directas cuando la página se abre como archivo local.<br><br>' +
+                    '👉 <strong>Solución Inmediata:</strong> Utilice el botón <strong>"Tomar con Cámara del Dispositivo (Nativa)"</strong> o <strong>"Subir Archivo"</strong> para capturar y auto-recortar la foto formal al 100%, o abra la plataforma mediante un servidor local (http://localhost:5500 o similar).'
+                );
                 return;
             }
 
-            // 4. Intentar con diferentes niveles de restricciones (de mayor a menor exigencia)
-            const constraintLevels = [
-                // Nivel A: Resolución ideal y orientación seleccionada
-                {
+            // 4. Verificar si el navegador soporta getUserMedia
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.warn('getUserMedia no soportado directamente en este contexto.');
+                this.showWebcamError('Su navegador o conexión no permite cámara web en vivo directa. Utilice el botón "Tomar con Cámara del Dispositivo (Nativa)" para capturar la fotografía directamente.');
+                return;
+            }
+
+            // 5. Enumerar dispositivos de video disponibles (si hay más de una cámara instalada)
+            if (navigator.mediaDevices.enumerateDevices) {
+                try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                    const camSelect = document.getElementById('carnetCameraDeviceSelect');
+                    const selectRow = document.getElementById('carnetCameraSelectRow');
+                    if (camSelect && videoDevices.length > 1) {
+                        let opts = '';
+                        videoDevices.forEach((vd, idx) => {
+                            const label = vd.label || `Cámara ${idx + 1}`;
+                            opts += `<option value="${vd.deviceId}">${label}</option>`;
+                        });
+                        camSelect.innerHTML = opts;
+                        if (this.selectedVideoDeviceId) {
+                            camSelect.value = this.selectedVideoDeviceId;
+                        }
+                        if (selectRow) selectRow.style.display = 'block';
+                    } else if (selectRow) {
+                        selectRow.style.display = 'none';
+                    }
+                } catch(devErr) {
+                    console.log('Aviso al enumerar cámaras:', devErr);
+                }
+            }
+
+            // 6. Intentar con diferentes niveles de restricciones (de mayor a menor exigencia)
+            const constraintLevels = [];
+
+            // Nivel 1: Dispositivo seleccionado específicamente por el usuario
+            if (this.selectedVideoDeviceId) {
+                constraintLevels.push({
                     video: {
-                        facingMode: this.webcamFacingMode || 'user',
+                        deviceId: { exact: this.selectedVideoDeviceId },
                         width: { ideal: 1280 },
                         height: { ideal: 720 }
-                    }
+                    },
+                    audio: false
+                });
+                constraintLevels.push({
+                    video: { deviceId: { exact: this.selectedVideoDeviceId } },
+                    audio: false
+                });
+            }
+
+            // Nivel 2: Con orientación ideal (ideal no causa OverconstrainedError en webcams USB)
+            constraintLevels.push({
+                video: {
+                    facingMode: { ideal: this.webcamFacingMode || 'user' },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
                 },
-                // Nivel B: Solo orientación
-                {
-                    video: {
-                        facingMode: this.webcamFacingMode || 'user'
-                    }
+                audio: false
+            });
+
+            // Nivel 3: Solo orientación ideal
+            constraintLevels.push({
+                video: {
+                    facingMode: { ideal: this.webcamFacingMode || 'user' }
                 },
-                // Nivel C: Video básico genérico (compatible con cualquier webcam USB antigua en Windows o driver básico)
-                {
-                    video: true
-                }
-            ];
+                audio: false
+            });
+
+            // Nivel 4: Video genérico sin ninguna restricción (máxima compatibilidad)
+            constraintLevels.push({
+                video: true,
+                audio: false
+            });
 
             let stream = null;
             let lastError = null;
@@ -1164,21 +1244,21 @@
 
                 // Esperar a que los metadatos estén listos para reproducir
                 video.onloadedmetadata = () => {
-                    video.play().catch(e => console.log('Autoplay play error:', e));
+                    video.play().catch(e => console.log('Autoplay play warning:', e));
                 };
-                video.play().catch(e => console.log('Video direct play error:', e));
+                video.play().catch(e => console.log('Video direct play warning:', e));
             } else {
                 console.warn('Todos los niveles de getUserMedia fallaron:', lastError);
                 let userMsg = 'No se pudo encender la cámara.';
                 if (lastError) {
                     if (lastError.name === 'NotAllowedError' || lastError.name === 'PermissionDeniedError') {
-                        userMsg = 'Permiso denegado: El navegador tiene bloqueado el acceso a la cámara. Haga clic en el ícono del candado 🔒 en la barra del navegador y permita el acceso, o use el botón abajo para capturar la foto.';
+                        userMsg = '<strong>Permiso de cámara bloqueado:</strong> El navegador o la configuración de privacidad de Windows tiene bloqueado el acceso a la cámara.<br>Haga clic en el ícono del candado 🔒 en la barra de direcciones y permita la cámara, o utilice el botón de abajo para capturar la foto directamente.';
                     } else if (lastError.name === 'NotReadableError' || lastError.name === 'TrackStartError') {
-                        userMsg = 'La cámara web está ocupada por otra aplicación o pestaña (Zoom, Teams, etc.). Ciérrela o use el botón de captura directa abajo.';
+                        userMsg = '<strong>Cámara en uso:</strong> La cámara web está siendo utilizada por otra aplicación (Zoom, Teams, Meet, OBS) o pestaña. Ciérrela para liberarla o utilice el botón de abajo.';
                     } else if (lastError.name === 'NotFoundError' || lastError.name === 'DevicesNotFoundError') {
-                        userMsg = 'No se detectó ninguna cámara web conectada a este equipo. Puede tomar la foto con la cámara de su teléfono o subir un archivo.';
+                        userMsg = '<strong>Cámara no detectada:</strong> No se detectó ninguna cámara web física conectada. Utilice la cámara de su teléfono o suba un archivo con el botón de abajo.';
                     } else if (lastError.name === 'OverconstrainedError') {
-                        userMsg = 'La resolución de la cámara no es compatible con el modo solicitado. Utilice el botón de captura directa abajo.';
+                        userMsg = 'La resolución de la cámara no es compatible con el modo solicitado. Utilice el botón de captura nativa abajo.';
                     } else {
                         userMsg = `No se pudo encender la cámara (${lastError.name || 'error'}). Utilice el botón abajo para capturar la foto con la cámara de su dispositivo.`;
                     }
@@ -1198,7 +1278,7 @@
                 notice.style.display = 'block';
             }
             if (typeof window.showToast === 'function') {
-                window.showToast(message, 'warning');
+                window.showToast("Revise el aviso de la cámara o use la Cámara del Dispositivo.", 'warning');
             }
         },
 

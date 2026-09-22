@@ -9949,23 +9949,48 @@ function startWebcam() {
     const container = document.getElementById('webcamContainer');
     const video = document.getElementById('webcamVideo');
 
+    if (typeof location !== 'undefined' && location.protocol === 'file:') {
+        showToast("⚠️ Protocolo file:///: Chrome restringe la cámara en vivo en archivos locales. Use el botón 'Cámara Dispositivo' para capturar la foto directamente.", "warning");
+    }
+
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, audio: false })
+        const constraints = {
+            video: {
+                facingMode: { ideal: 'user' },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            },
+            audio: false
+        };
+
+        navigator.mediaDevices.getUserMedia(constraints)
             .catch(() => navigator.mediaDevices.getUserMedia({ video: true, audio: false }))
             .then(stream => {
                 STATE.webcamStream = stream;
-                video.srcObject = stream;
-                video.setAttribute('playsinline', 'true');
-                video.setAttribute('muted', 'true');
-                video.play().catch(e => console.log(e));
-                container.style.display = 'block';
+                if (video) {
+                    video.srcObject = stream;
+                    video.setAttribute('playsinline', 'true');
+                    video.setAttribute('muted', 'true');
+                    video.muted = true;
+                    video.play().catch(e => console.log('Autoplay warning:', e));
+                }
+                if (container) container.style.display = 'block';
                 showToast("Cámara activada. Encuadre el rostro del alumno y capture.", "info");
             })
             .catch(err => {
-                showToast("No se pudo acceder a la cámara web. Puede subir una foto desde el dispositivo.", "warning");
+                console.warn("Fallo al acceder a la cámara:", err);
+                let msg = "No se pudo acceder a la cámara web.";
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    msg = "Permiso denegado por el navegador o Windows (revise el candado 🔒).";
+                } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                    msg = "La cámara está en uso por otra app (Zoom, Teams, etc.).";
+                } else if (err.name === 'NotFoundError') {
+                    msg = "No se detectó cámara web física conectada.";
+                }
+                showToast(msg + " Utilice el botón 'Cámara Dispositivo' o 'Subir Archivo'.", "warning");
             });
     } else {
-        showToast("Su navegador o dispositivo no permite acceso directo a la cámara.", "danger");
+        showToast("Su navegador no permite acceso directo a la webcam. Utilice 'Cámara Dispositivo' o 'Subir Archivo'.", "danger");
     }
 }
 

@@ -808,8 +808,12 @@
                                     <img id="studentFormPhotoPreview" src="https://ui-avatars.com/api/?name=Alumno&background=15803d&color=fff" alt="Foto Estudiante" style="width:78px; height:78px; object-fit:cover; border-radius:10px; border:2px solid var(--brand-green); flex-shrink:0;">
                                     <div style="display:flex; flex-direction:column; gap:5px; flex:1;">
                                         <button type="button" class="btn btn-primary btn-xs" onclick="startWebcam()" style="font-size:0.72rem; padding:3px 8px; font-weight:700;">
-                                            <i class="fa-solid fa-camera"></i> Tomar Foto
+                                            <i class="fa-solid fa-video"></i> Cámara Web
                                         </button>
+                                        <label class="btn btn-warning btn-xs" style="cursor:pointer; margin:0; font-size:0.72rem; padding:3px 8px; font-weight:700; text-align:center; background:#f59e0b; color:#ffffff; border:none; display:inline-flex; align-items:center; justify-content:center; gap:5px;" title="Tomar foto directa con la cámara nativa del teléfono, tableta o laptop">
+                                            <i class="fa-solid fa-camera"></i> Cámara Dispositivo
+                                            <input type="file" accept="image/*" capture="user" style="display:none;" onchange="handleStudentFormPhotoUpload(event)">
+                                        </label>
                                         <label class="btn btn-outline-secondary btn-xs" style="cursor:pointer; margin:0; font-size:0.72rem; padding:3px 8px; font-weight:700; text-align:center;">
                                             <i class="fa-solid fa-upload"></i> Subir Archivo
                                             <input type="file" accept="image/*" style="display:none;" onchange="handleStudentFormPhotoUpload(event)">
