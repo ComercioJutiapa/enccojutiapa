@@ -914,7 +914,7 @@
                             <!-- CONTENEDOR DE CÁMARA WEB EN VIVO -->
                             <div id="carnetWebcamBox" style="display:none; text-align:center; background:#0f172a; border-radius:10px; padding:10px; position:relative; overflow:hidden;">
                                 <div style="position:relative; display:inline-block; width:100%; max-width:320px; overflow:hidden; border-radius:8px;">
-                                    <video id="carnetWebcamVideo" autoplay playsinline muted style="width:100%; max-height:260px; object-fit:cover; border-radius:8px; border:2px solid #22c55e; display:block;"></video>
+                                    <video id="carnetWebcamVideo" autoplay playsinline muted style="width:100%; max-height:260px; object-fit:cover; border-radius:8px; border:2px solid #22c55e; display:block; background:#000;"></video>
                                     <canvas id="carnetWebcamCanvas" style="display:none;"></canvas>
                                     
                                     <!-- GUÍA OVALADA PARA ENCUADRE DE ROSTRO FORMAL -->
@@ -931,6 +931,17 @@
                                     <button type="button" class="btn btn-outline-light btn-sm" onclick="EnccoCarnets.toggleCameraFacing()" style="font-weight:700; padding:6px 12px;" title="Cambiar cámara frontal / trasera">
                                         <i class="fa-solid fa-camera-rotate"></i> Cambiar Cámara
                                     </button>
+                                </div>
+
+                                <!-- AVISO DE DIAGNÓSTICO Y ACCESO ALTERNATIVO SI FALLA LA CÁMARA DIRECTA -->
+                                <div id="carnetCamNotice" style="display:none; margin-top:10px; padding:10px 14px; background:#fffbeb; border:1.5px solid #fde68a; border-radius:8px; color:#92400e; font-size:0.75rem; text-align:left; line-height:1.4;">
+                                    <div id="carnetCamNoticeText" style="margin-bottom:8px;"></div>
+                                    <div style="text-align:center;">
+                                        <label class="btn btn-warning btn-sm" style="font-weight:800; background:#f59e0b; color:#ffffff; border:none; cursor:pointer; padding:6px 14px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(245,158,11,0.3);">
+                                            <i class="fa-solid fa-camera"></i> Tomar con Cámara del Dispositivo
+                                            <input type="file" accept="image/*" capture="user" style="display:none;" onchange="EnccoCarnets.handleLocalFileSelected(event)">
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1080,40 +1091,114 @@
         },
 
         /**
-         * Inicia el stream de video de la cámara web (frontal o trasera, con fallback seguro)
+         * Inicia el stream de video de la cámara web (frontal o trasera, con fallback seguro y diagnóstico)
          */
-        initWebcamStream() {
+        async initWebcamStream() {
             const video = document.getElementById('carnetWebcamVideo');
+            const notice = document.getElementById('carnetCamNotice');
+            if (notice) notice.style.display = 'none';
+
+            // 1. Detener cualquier stream anterior en este modal
+            this.stopWebcam();
+
+            // 2. Detener streams que pudieran estar bloqueando el hardware de la cámara en otras partes de la página
+            if (typeof window !== 'undefined') {
+                if (window._attendanceCameraStream) {
+                    try { window._attendanceCameraStream.getTracks().forEach(t => t.stop()); window._attendanceCameraStream = null; } catch(e) {}
+                }
+                if (window.STATE && window.STATE.webcamStream) {
+                    try { window.STATE.webcamStream.getTracks().forEach(t => t.stop()); window.STATE.webcamStream = null; } catch(e) {}
+                }
+            }
+
             if (!video) return;
 
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                const constraints = {
+            // 3. Verificar si el navegador soporta getUserMedia
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.warn('getUserMedia no soportado directamente en este contexto.');
+                this.showWebcamError('Su navegador o conexión no permite cámara web en vivo directa. Utilice el botón "Tomar con Cámara del Dispositivo" para capturar la fotografía directamente.');
+                return;
+            }
+
+            // 4. Intentar con diferentes niveles de restricciones (de mayor a menor exigencia)
+            const constraintLevels = [
+                // Nivel A: Resolución ideal y orientación seleccionada
+                {
                     video: {
                         facingMode: this.webcamFacingMode || 'user',
                         width: { ideal: 1280 },
                         height: { ideal: 720 }
-                    },
-                    audio: false
-                };
+                    }
+                },
+                // Nivel B: Solo orientación
+                {
+                    video: {
+                        facingMode: this.webcamFacingMode || 'user'
+                    }
+                },
+                // Nivel C: Video básico genérico (compatible con cualquier webcam USB antigua en Windows o driver básico)
+                {
+                    video: true
+                }
+            ];
 
-                navigator.mediaDevices.getUserMedia(constraints)
-                    .catch(() => navigator.mediaDevices.getUserMedia({ video: true, audio: false }))
-                    .then(stream => {
-                        this.webcamStream = stream;
-                        video.srcObject = stream;
-                        video.setAttribute('playsinline', 'true');
-                        video.setAttribute('muted', 'true');
-                        video.play().catch(e => console.log('Autoplay handled:', e));
-                    })
-                    .catch(err => {
-                        console.warn('No se pudo iniciar cámara:', err);
-                        if (typeof window.showToast === 'function') {
-                            window.showToast('No se pudo acceder a la cámara. Utilice la opción de subir archivo.', 'warning');
-                        }
-                        this.startFileMode();
-                    });
+            let stream = null;
+            let lastError = null;
+
+            for (const constraints of constraintLevels) {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    if (stream) break;
+                } catch (e) {
+                    lastError = e;
+                    console.log('Intento de cámara con constraints falló, probando nivel más flexible...', constraints, e.name);
+                }
+            }
+
+            if (stream) {
+                this.webcamStream = stream;
+                video.srcObject = stream;
+                video.setAttribute('playsinline', 'true');
+                video.setAttribute('muted', 'true');
+                video.muted = true;
+
+                // Esperar a que los metadatos estén listos para reproducir
+                video.onloadedmetadata = () => {
+                    video.play().catch(e => console.log('Autoplay play error:', e));
+                };
+                video.play().catch(e => console.log('Video direct play error:', e));
             } else {
-                this.startFileMode();
+                console.warn('Todos los niveles de getUserMedia fallaron:', lastError);
+                let userMsg = 'No se pudo encender la cámara.';
+                if (lastError) {
+                    if (lastError.name === 'NotAllowedError' || lastError.name === 'PermissionDeniedError') {
+                        userMsg = 'Permiso denegado: El navegador tiene bloqueado el acceso a la cámara. Haga clic en el ícono del candado 🔒 en la barra del navegador y permita el acceso, o use el botón abajo para capturar la foto.';
+                    } else if (lastError.name === 'NotReadableError' || lastError.name === 'TrackStartError') {
+                        userMsg = 'La cámara web está ocupada por otra aplicación o pestaña (Zoom, Teams, etc.). Ciérrela o use el botón de captura directa abajo.';
+                    } else if (lastError.name === 'NotFoundError' || lastError.name === 'DevicesNotFoundError') {
+                        userMsg = 'No se detectó ninguna cámara web conectada a este equipo. Puede tomar la foto con la cámara de su teléfono o subir un archivo.';
+                    } else if (lastError.name === 'OverconstrainedError') {
+                        userMsg = 'La resolución de la cámara no es compatible con el modo solicitado. Utilice el botón de captura directa abajo.';
+                    } else {
+                        userMsg = `No se pudo encender la cámara (${lastError.name || 'error'}). Utilice el botón abajo para capturar la foto con la cámara de su dispositivo.`;
+                    }
+                }
+                this.showWebcamError(userMsg);
+            }
+        },
+
+        /**
+         * Muestra mensaje explicativo y botón de acción en caso de fallo de cámara
+         */
+        showWebcamError(message) {
+            const notice = document.getElementById('carnetCamNotice');
+            const noticeText = document.getElementById('carnetCamNoticeText');
+            if (notice && noticeText) {
+                noticeText.innerHTML = `<strong><i class="fa-solid fa-triangle-exclamation"></i> Aviso:</strong> ${message}`;
+                notice.style.display = 'block';
+            }
+            if (typeof window.showToast === 'function') {
+                window.showToast(message, 'warning');
             }
         },
 
@@ -1122,7 +1207,20 @@
          */
         async captureWebcamPhoto() {
             const video = document.getElementById('carnetWebcamVideo');
-            if (!video || !this.webcamStream) return;
+            if (!video || !this.webcamStream) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('La cámara no está activa. Intente encenderla o usar el botón de abajo.', 'warning');
+                }
+                return;
+            }
+
+            if (!video.videoWidth || !video.videoHeight) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Aguarde un instante a que el video inicialice...', 'info');
+                }
+                setTimeout(() => this.captureWebcamPhoto(), 300);
+                return;
+            }
 
             try {
                 const dataUrl = await this.processImageToCarnetFormat(video);
@@ -1131,7 +1229,7 @@
             } catch (err) {
                 console.error('Error al capturar de cámara:', err);
                 if (typeof window.showToast === 'function') {
-                    window.showToast('Error al capturar la fotografía de la cámara.', 'danger');
+                    window.showToast('Error al procesar la captura de la cámara.', 'danger');
                 }
             }
         },
