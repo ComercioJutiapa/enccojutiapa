@@ -21306,21 +21306,40 @@ function loadAttendanceList() {
                 // Las casillas de asistencia aparecen en blanco inicialmente; al marcarse muestran su letra y color asignado
                 let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : '';
 
+                // Verificar si existe permiso oficial autorizado por Auxiliatura / Dirección
+                const permKey = `${s.id}_${month}_${day}`;
+                const permMeta = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[permKey]) ? STATE.attendancePermissionsMeta[permKey] : null;
+
+                if (permMeta && (!val || val === 'J')) {
+                    val = 'J';
+                }
+
                 let cellClass = 'att-val-empty';
+                let cellTitle = `${studentFullName} — Día ${day}: Sin registrar (Haga clic para marcar P)`;
+
                 if (val === 'P') {
                     cellClass = 'att-val-p att-val-P';
                     pCount++;
                     dayPresentTotals[day]++;
+                    cellTitle = `${studentFullName} — Día ${day}: PRESENTE`;
                 } else if (val === 'A') {
                     cellClass = 'att-val-a att-val-A';
                     aCount++;
                     dayAbsentTotals[day]++;
+                    cellTitle = `${studentFullName} — Día ${day}: AUSENTE / FALTA`;
                 } else if (val === 'J') {
-                    cellClass = 'att-val-j att-val-J';
+                    if (permMeta) {
+                        cellClass = 'att-val-j att-val-J att-val-permiso';
+                        cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO (📋 PERMISO OFICIAL DE AUXILIATURA: ${permMeta.reasonCategory} — "${permMeta.reasonDetail}" | Autorizado por: ${permMeta.authorizedBy})`;
+                    } else {
+                        cellClass = 'att-val-j att-val-J';
+                        cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO`;
+                    }
                     jCount++;
                 } else if (val === 'T') {
                     cellClass = 'att-val-t att-val-T';
                     tCount++;
+                    cellTitle = `${studentFullName} — Día ${day}: TARDANZA`;
                 }
 
                 cellsHtml += `
@@ -21328,7 +21347,7 @@ function loadAttendanceList() {
                         data-student-id="${s.id}" 
                         data-day="${day}" 
                         onclick="toggleAttendanceCell('${s.id}', ${day})"
-                        title="${studentFullName} — Día ${day}: ${val ? (val === 'P' ? 'PRESENTE' : (val === 'A' ? 'AUSENTE / FALTA' : (val === 'J' ? 'JUSTIFICADO' : 'TARDANZA'))) : 'Sin registrar (Haga clic para marcar P)'}">
+                        title="${cellTitle}">
                         ${val}
                     </td>
                 `;
@@ -21496,6 +21515,17 @@ function toggleAttendanceCell(studentId, day) {
     if (!STATE.attendanceRecords[recordKey][studentId]) STATE.attendanceRecords[recordKey][studentId] = {};
 
     const cur = STATE.attendanceRecords[recordKey][studentId][day] || '';
+
+    // Protección de Permiso Oficial de Auxiliatura / Dirección
+    const permKey = `${studentId}_${month}_${day}`;
+    const permMeta = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[permKey]) ? STATE.attendancePermissionsMeta[permKey] : null;
+    if (permMeta && (cur === 'J' || !cur)) {
+        const confirmChange = confirm(`📋 AVISO OFICIAL DE AUXILIATURA:\n\nEl estudiante tiene un PERMISO DE AUSENCIA AUTORIZADO:\n• Motivo: ${permMeta.reasonCategory}\n• Justificación: "${permMeta.reasonDetail}"\n• Autorizado por: ${permMeta.authorizedBy}\n\n¿Está seguro de que desea alterar manualmente esta asistencia justificada?`);
+        if (!confirmChange) {
+            return;
+        }
+    }
+
     let next = 'P';
     if (!cur || cur === '') next = 'P';
     else if (cur === 'P') next = 'A';
@@ -21513,9 +21543,14 @@ function toggleAttendanceCell(studentId, day) {
     // Actualizar visualmente la celda de inmediato con su letra y color asignado
     const td = document.querySelector(`td[data-student-id="${studentId}"][data-day="${day}"]`);
     if (td) {
-        td.className = next ? `att-cell att-val-${next.toLowerCase()} att-val-${next.toUpperCase()}` : 'att-cell att-val-empty';
+        let cellClass = next ? `att-cell att-val-${next.toLowerCase()} att-val-${next.toUpperCase()}` : 'att-cell att-val-empty';
+        if (next === 'J' && permMeta) {
+            cellClass += ' att-val-permiso';
+        }
+        td.className = cellClass;
         td.textContent = next;
-        td.title = next ? `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? 'JUSTIFICADO' : 'TARDANZA'))} (Haga clic para alternar P/A/J/T)` : `Día ${day}: Sin registrar (Haga clic para marcar P)`;
+        let cellTitle = next ? `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? (permMeta ? `JUSTIFICADO (📋 PERMISO OFICIAL: ${permMeta.reasonCategory} — ${permMeta.reasonDetail} | Autorizado por: ${permMeta.authorizedBy})` : 'JUSTIFICADO') : 'TARDANZA'))} (Haga clic para alternar P/A/J/T)` : `Día ${day}: Sin registrar (Haga clic para marcar P)`;
+        td.title = cellTitle;
     }
 
     saveAttendanceRecords(false);
@@ -22556,6 +22591,666 @@ function exportAttendanceOfficialExcel() {
 
 function exportAttendanceToCSV() { exportAttendanceOfficialExcel(); }
 function printAttendanceExcelSheet() { printAttendanceOfficialSheet(); }
+
+// ==========================================================================
+// 📋 MÓDULO DE AUTORIZACIÓN DE PERMISOS DE AUSENCIA (AUXILIATURA Y DIRECCIÓN)
+// ==========================================================================
+
+function openCreatePermissionModal(preselectedStudentId = null) {
+    const modal = document.getElementById('createPermissionModal');
+    if (!modal) return;
+
+    // Poblar filtros de grado
+    populatePermissionGradeFilter();
+
+    // Resetear formulario
+    const form = modal.querySelector('form');
+    if (form) form.reset();
+
+    // Fecha actual por defecto
+    const todayStr = new Date().toISOString().split('T')[0];
+    const startDateInput = document.getElementById('permStartDate');
+    if (startDateInput) startDateInput.value = todayStr;
+
+    // Nombre y rol del usuario que autoriza
+    const authInput = document.getElementById('permAuthorizedBy');
+    if (authInput) {
+        const u = STATE.currentUser || (STATE.users && STATE.users[0]) || { name: 'Auxiliatura', role: 'profesor_auxiliar' };
+        let roleLabel = 'Maestro Auxiliar';
+        if (u.role === 'director' || u.role === 'super_usuario' || u.role === 'admin') roleLabel = 'Dirección / Administración';
+        else if (u.role === 'secretaria') roleLabel = 'Secretaría';
+        else if (u.role === 'docente') roleLabel = 'Catedrático';
+        authInput.value = `${u.name || 'Auxiliatura General'} (${roleLabel})`;
+    }
+
+    // Filtrar lista de estudiantes
+    filterPermissionStudentList();
+
+    // Si viene un estudiante preseleccionado
+    if (preselectedStudentId) {
+        setTimeout(() => {
+            const select = document.getElementById('permStudentSelect');
+            if (select) {
+                select.value = preselectedStudentId;
+                onPermissionStudentSelected();
+            }
+        }, 50);
+    }
+
+    modal.classList.add('active');
+    modal.style.setProperty('display', 'flex', 'important');
+    modal.style.display = 'flex';
+}
+window.openCreatePermissionModal = openCreatePermissionModal;
+
+function closeCreatePermissionModal() {
+    const modal = document.getElementById('createPermissionModal');
+    if (!modal) return;
+    modal.classList.remove('active');
+    modal.style.setProperty('display', 'none', 'important');
+    modal.style.display = 'none';
+}
+window.closeCreatePermissionModal = closeCreatePermissionModal;
+
+function populatePermissionGradeFilter() {
+    const gradeSelect = document.getElementById('permGradeFilter');
+    if (!gradeSelect) return;
+
+    const gradesList = Array.isArray(STATE.gradesList) && STATE.gradesList.length > 0 
+        ? STATE.gradesList 
+        : [
+            { code: '4to Perito Contador', name: '4to Perito Contador' },
+            { code: '5to Perito Contador', name: '5to Perito Contador' },
+            { code: '6to Perito Contador', name: '6to Perito Contador' }
+        ];
+
+    let optionsHtml = '<option value="ALL">-- Todos los Grados --</option>';
+    gradesList.forEach(g => {
+        const val = g.name || g.code;
+        optionsHtml += `<option value="${val}">${g.name} (${g.code})</option>`;
+    });
+    gradeSelect.innerHTML = optionsHtml;
+}
+window.populatePermissionGradeFilter = populatePermissionGradeFilter;
+
+function filterPermissionStudentList() {
+    const gradeFilter = (document.getElementById('permGradeFilter')?.value || 'ALL').trim();
+    const sectionFilter = (document.getElementById('permSectionFilter')?.value || 'ALL').trim().toUpperCase();
+    const searchInput = document.getElementById('permStudentSearchInput');
+    const q = (searchInput?.value || '').trim().toLowerCase();
+
+    const select = document.getElementById('permStudentSelect');
+    const badge = document.getElementById('permStudentCountBadge');
+    if (!select) return;
+
+    let students = (STATE.students || []).filter(s => isStudentActive(s));
+
+    if (gradeFilter && gradeFilter !== 'ALL') {
+        const gfLower = gradeFilter.toLowerCase();
+        students = students.filter(s => {
+            const sg = (s.grade || s.gradeCode || '').toLowerCase();
+            return sg === gfLower || sg.includes(gfLower) || gfLower.includes(sg);
+        });
+    }
+
+    if (sectionFilter && sectionFilter !== 'ALL') {
+        students = students.filter(s => {
+            const sec = (s.section || '').toUpperCase().trim();
+            return sec === sectionFilter || sec === `SECCIÓN ${sectionFilter}` || sec === `SECCION ${sectionFilter}` || sec.endsWith(sectionFilter);
+        });
+    }
+
+    if (q) {
+        students = students.filter(s => {
+            const fullName = `${s.lastName || ''} ${s.firstName || ''} ${s.name || ''}`.toLowerCase();
+            const carne = (s.carne || s.personalCode || s.cui || '').toLowerCase();
+            return fullName.includes(q) || carne.includes(q);
+        });
+    }
+
+    students.sort((a, b) => (a.lastName || a.name || '').localeCompare(b.lastName || b.name || ''));
+
+    if (badge) {
+        badge.textContent = `${students.length} alumno(s)`;
+        badge.style.background = students.length > 0 ? '#e0f2fe' : '#fee2e2';
+        badge.style.color = students.length > 0 ? '#0369a1' : '#dc2626';
+    }
+
+    if (students.length === 0) {
+        select.innerHTML = '<option value="">⚠️ No se encontraron estudiantes</option>';
+        select.disabled = true;
+    } else {
+        select.disabled = false;
+        select.innerHTML = `<option value="">-- Seleccione Estudiante (${students.length} alumnos) --</option>` + students.map(s => {
+            const fullName = `${s.lastName || ''}, ${s.firstName || ''}`.trim() || s.name || 'Estudiante';
+            const gradeDisplay = s.grade || s.gradeCode || 'Grado';
+            const secDisplay = (s.section || 'A').replace(/secci[oó]n\s*/i, '');
+            const codeDisplay = s.personalCode || s.carne || s.cui || 'S/C';
+            return `<option value="${s.id}">${fullName} • [${gradeDisplay} - Sec ${secDisplay}] (Carné: ${codeDisplay})</option>`;
+        }).join('');
+
+        if (students.length === 1 && q) {
+            select.value = students[0].id;
+        }
+    }
+}
+window.filterPermissionStudentList = filterPermissionStudentList;
+
+function onPermissionStudentSelected() {
+    // Hook adicional para futuras extensiones
+}
+window.onPermissionStudentSelected = onPermissionStudentSelected;
+
+function saveStudentPermissionForm(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    const studentSelect = document.getElementById('permStudentSelect');
+    const studentId = studentSelect ? studentSelect.value : '';
+    if (!studentId) {
+        showToast('Por favor seleccione al estudiante al que se le autoriza el permiso.', 'warning');
+        return;
+    }
+
+    const student = (STATE.students || []).find(s => s.id === studentId);
+    if (!student) {
+        showToast('El estudiante seleccionado no es válido.', 'danger');
+        return;
+    }
+
+    const startDate = (document.getElementById('permStartDate')?.value || '').trim();
+    if (!startDate) {
+        showToast('Por favor ingrese la fecha de inicio del permiso.', 'warning');
+        return;
+    }
+
+    const endDate = (document.getElementById('permEndDate')?.value || '').trim() || startDate;
+    if (endDate < startDate) {
+        showToast('La fecha final no puede ser anterior a la fecha inicial.', 'warning');
+        return;
+    }
+
+    const reasonCategory = (document.getElementById('permReasonCategory')?.value || 'Salud / Cita Médica').trim();
+    const reasonDetail = (document.getElementById('permReasonDetail')?.value || '').trim();
+    if (!reasonDetail) {
+        showToast('Por favor especifique la justificación o razón detallada del permiso.', 'warning');
+        return;
+    }
+
+    const docRef = (document.getElementById('permDocRef')?.value || '').trim();
+    const authorizedBy = (document.getElementById('permAuthorizedBy')?.value || 'Auxiliatura').trim();
+
+    const perm = {
+        id: 'perm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        studentId: student.id,
+        studentName: `${student.lastName || ''}, ${student.firstName || ''}`.trim() || student.name || 'Estudiante',
+        personalCode: student.personalCode || student.carne || student.cui || 'S/C',
+        grade: student.grade || student.gradeCode || '',
+        gradeCode: student.gradeCode || student.grade || '',
+        section: student.section || 'A',
+        startDate: startDate,
+        endDate: endDate,
+        reasonCategory: reasonCategory,
+        reasonDetail: reasonDetail,
+        docRef: docRef,
+        authorizedBy: authorizedBy,
+        authorizedById: (STATE.currentUser && STATE.currentUser.id) ? STATE.currentUser.id : 'auxiliar',
+        createdAt: new Date().toISOString(),
+        status: 'Autorizado'
+    };
+
+    if (!Array.isArray(STATE.studentPermissions)) {
+        STATE.studentPermissions = [];
+    }
+    STATE.studentPermissions.push(perm);
+
+    // Aplicar automáticamente a la asistencia de todas las cátedras y al control general
+    applyStudentPermission(perm);
+
+    // Guardar cambios en el sistema
+    saveAttendanceRecords(false);
+
+    // Sincronizar en la nube si está disponible
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
+        EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta);
+    }
+
+    closeCreatePermissionModal();
+
+    // Si la planilla de asistencia está abierta, recargarla
+    if (typeof loadAttendanceList === 'function') {
+        loadAttendanceList();
+    }
+
+    showToast(`✅ Permiso autorizado exitosamente para ${perm.studentName}. Se reflejará automáticamente en la asistencia de todos los docentes.`, 'success');
+
+    // Ofrecer impresión del comprobante oficial
+    setTimeout(() => {
+        if (confirm(`¿Desea imprimir el Comprobante Oficial de Permiso / Justificación para ${perm.studentName}?`)) {
+            printStudentPermissionPass(perm.id);
+        }
+    }, 400);
+}
+window.saveStudentPermissionForm = saveStudentPermissionForm;
+
+function applyStudentPermission(perm) {
+    if (!perm || !perm.studentId || !perm.startDate) return;
+
+    if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+    if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
+
+    const start = new Date(perm.startDate + 'T00:00:00');
+    const end = new Date((perm.endDate || perm.startDate) + 'T00:00:00');
+
+    // Encontrar estudiante y sus códigos
+    const student = (STATE.students || []).find(s => s.id === perm.studentId);
+    const sGradeNum = extractGradeNumber(student ? (student.grade || student.gradeCode || student.gradeLabel) : (perm.grade || perm.gradeCode));
+    const sSec = extractSectionLetter(student ? (student.section || student.gradeCode || student.gradeLabel) : (perm.section || perm.grade));
+    const directGradeCode = (student && (student.gradeCode || student.grade)) || perm.gradeCode || perm.grade;
+
+    // Reunir todos los códigos de grado posibles para asegurar compatibilidad total
+    const matchingGradeCodes = new Set();
+    if (directGradeCode) matchingGradeCodes.add(directGradeCode);
+
+    (STATE.gradesList || []).forEach(g => {
+        const gNum = extractGradeNumber(g.name || g.code);
+        const gSec = extractSectionLetter(g.section || g.name || g.code);
+        if (sGradeNum > 0 && gNum > 0 && sGradeNum === gNum) {
+            if (!sSec || !gSec || sSec === gSec) {
+                if (g.code) matchingGradeCodes.add(g.code);
+                if (g.name) matchingGradeCodes.add(g.name);
+            }
+        }
+    });
+
+    // Encontrar todas las clases/cursos de este grado en el pensum
+    const matchingCourses = (STATE.pensum || []).filter(p => {
+        const pGradeNum = extractGradeNumber(p.grade || p.gradeCode);
+        const pSec = extractSectionLetter(p.section || p.gradeCode);
+        if (sGradeNum > 0 && pGradeNum > 0 && sGradeNum !== pGradeNum) return false;
+        if (sSec && pSec && sSec !== pSec) return false;
+        return true;
+    });
+
+    // Recorrer cada día en el rango de fechas
+    let curDate = new Date(start);
+    while (curDate <= end) {
+        const y = curDate.getFullYear();
+        const m = curDate.getMonth() + 1;
+        const d = curDate.getDate();
+
+        // 1. Marcar 'J' en el Control General y en CADA una de las clases de todos los docentes
+        matchingGradeCodes.forEach(gCode => {
+            // General
+            const genKey = getAttendanceRecordKey(gCode, m, 'GENERAL');
+            if (!STATE.attendanceRecords[genKey]) STATE.attendanceRecords[genKey] = {};
+            if (!STATE.attendanceRecords[genKey][perm.studentId]) STATE.attendanceRecords[genKey][perm.studentId] = {};
+            STATE.attendanceRecords[genKey][perm.studentId][d] = 'J';
+
+            // Cada curso
+            matchingCourses.forEach(c => {
+                const cKey = getAttendanceRecordKey(gCode, m, c.id);
+                if (!STATE.attendanceRecords[cKey]) STATE.attendanceRecords[cKey] = {};
+                if (!STATE.attendanceRecords[cKey][perm.studentId]) STATE.attendanceRecords[cKey][perm.studentId] = {};
+                STATE.attendanceRecords[cKey][perm.studentId][d] = 'J';
+            });
+        });
+
+        // 2. Guardar metadata para tooltip y advertencia de sobreescritura
+        const metaKey = `${perm.studentId}_${m}_${d}`;
+        STATE.attendancePermissionsMeta[metaKey] = {
+            permissionId: perm.id,
+            reasonCategory: perm.reasonCategory,
+            reasonDetail: perm.reasonDetail,
+            docRef: perm.docRef || '',
+            authorizedBy: perm.authorizedBy,
+            authorizedById: perm.authorizedById,
+            date: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+            studentName: perm.studentName
+        };
+
+        // Avanzar un día
+        curDate.setDate(curDate.getDate() + 1);
+    }
+}
+window.applyStudentPermission = applyStudentPermission;
+
+function openPermissionsHistoryModal() {
+    const modal = document.getElementById('permissionsHistoryModal');
+    if (!modal) return;
+
+    renderPermissionsHistoryTable();
+
+    modal.classList.add('active');
+    modal.style.setProperty('display', 'flex', 'important');
+    modal.style.display = 'flex';
+}
+window.openPermissionsHistoryModal = openPermissionsHistoryModal;
+
+function closePermissionsHistoryModal() {
+    const modal = document.getElementById('permissionsHistoryModal');
+    if (!modal) return;
+    modal.classList.remove('active');
+    modal.style.setProperty('display', 'none', 'important');
+    modal.style.display = 'none';
+}
+window.closePermissionsHistoryModal = closePermissionsHistoryModal;
+
+function renderPermissionsHistoryTable() {
+    const tbody = document.getElementById('permissionsHistoryTableBody');
+    if (!tbody) return;
+
+    const q = (document.getElementById('permHistorySearchInput')?.value || '').trim().toLowerCase();
+    let perms = Array.isArray(STATE.studentPermissions) ? [...STATE.studentPermissions] : [];
+
+    if (q) {
+        perms = perms.filter(p => {
+            const text = `${p.studentName || ''} ${p.personalCode || ''} ${p.reasonCategory || ''} ${p.reasonDetail || ''} ${p.authorizedBy || ''} ${p.startDate || ''}`.toLowerCase();
+            return text.includes(q);
+        });
+    }
+
+    // Ordenar de más reciente a más antiguo
+    perms.sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
+
+    if (perms.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align:center; padding:24px; color:#64748b;">
+                    <i class="fa-solid fa-folder-open" style="font-size:2rem; margin-bottom:8px; display:block; color:#cbd5e1;"></i>
+                    No se han registrado permisos de ausencia aún.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = perms.map((p, idx) => {
+        const isSingleDay = !p.endDate || p.endDate === p.startDate;
+        const dateDisplay = isSingleDay 
+            ? `<strong>${p.startDate}</strong>` 
+            : `<strong>${p.startDate}</strong> al <strong>${p.endDate}</strong>`;
+        const refTag = p.docRef ? `<br><small style="color:#64748b;"><i class="fa-solid fa-paperclip"></i> ${p.docRef}</small>` : '';
+
+        return `
+            <tr>
+                <td style="white-space:nowrap;">
+                    <i class="fa-solid fa-calendar-check" style="color:#d97706;"></i> ${dateDisplay}
+                </td>
+                <td>
+                    <strong>${p.studentName}</strong>
+                    <br><code style="font-size:0.75rem; color:#475569;">${p.personalCode || 'S/C'}</code>
+                </td>
+                <td>
+                    ${p.grade || 'Grado Oficial'} (${p.section || 'A'})
+                </td>
+                <td>
+                    <span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.75rem;">${p.reasonCategory}</span>
+                    <div style="font-size:0.8rem; margin-top:3px; color:#334155;">${p.reasonDetail}</div>
+                    ${refTag}
+                </td>
+                <td style="font-size:0.8rem; color:#475569;">
+                    <i class="fa-solid fa-user-shield" style="color:#10b981;"></i> ${p.authorizedBy || 'Auxiliatura'}
+                </td>
+                <td style="text-align:center; white-space:nowrap;">
+                    <button type="button" class="btn btn-outline-primary btn-xs" onclick="printStudentPermissionPass('${p.id}')" title="Imprimir Comprobante Oficial" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
+                        <i class="fa-solid fa-print"></i> Pase
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-xs" onclick="revokeStudentPermission('${p.id}')" title="Anular este permiso" style="padding:3px 8px; font-size:0.75rem; font-weight:700; margin-left:4px;">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+window.renderPermissionsHistoryTable = renderPermissionsHistoryTable;
+
+function revokeStudentPermission(permId) {
+    if (!permId) return;
+    const perm = (STATE.studentPermissions || []).find(p => p.id === permId);
+    if (!perm) return;
+
+    if (!confirm(`¿Está seguro de que desea anular el permiso de ausencia de ${perm.studentName} (${perm.startDate})?\n\nAl anularlo, se mantendrán las asistencias actuales pero se removerá la etiqueta oficial de Auxiliatura.`)) {
+        return;
+    }
+
+    // Remover metadata asociada
+    const start = new Date(perm.startDate + 'T00:00:00');
+    const end = new Date((perm.endDate || perm.startDate) + 'T00:00:00');
+    let curDate = new Date(start);
+    while (curDate <= end) {
+        const m = curDate.getMonth() + 1;
+        const d = curDate.getDate();
+        const metaKey = `${perm.studentId}_${m}_${d}`;
+        if (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]) {
+            delete STATE.attendancePermissionsMeta[metaKey];
+        }
+        curDate.setDate(curDate.getDate() + 1);
+    }
+
+    // Remover de la lista
+    STATE.studentPermissions = (STATE.studentPermissions || []).filter(p => p.id !== permId);
+
+    saveAttendanceRecords(false);
+
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
+        EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta);
+    }
+
+    renderPermissionsHistoryTable();
+    if (typeof loadAttendanceList === 'function') {
+        loadAttendanceList();
+    }
+    showToast('Permiso anulado correctamente.', 'info');
+}
+window.revokeStudentPermission = revokeStudentPermission;
+
+function printStudentPermissionPass(permId) {
+    const perm = (STATE.studentPermissions || []).find(p => p.id === permId);
+    if (!perm) {
+        showToast('No se encontró el registro del permiso a imprimir.', 'warning');
+        return;
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast('Ventana emergente bloqueada por el navegador. Habilite las ventanas emergentes para imprimir.', 'warning');
+        return;
+    }
+
+    const isSingleDay = !perm.endDate || perm.endDate === perm.startDate;
+    const datesAuthorized = isSingleDay ? perm.startDate : `Del ${perm.startDate} al ${perm.endDate}`;
+
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Pase Oficial de Permiso - ${perm.studentName}</title>
+            <style>
+                @page {
+                    size: 8.5in 5.5in;
+                    margin: 0.3in;
+                }
+                body {
+                    font-family: 'Segoe UI', Arial, sans-serif;
+                    margin: 0;
+                    padding: 10px;
+                    color: #0f172a;
+                    background: #ffffff;
+                }
+                .pass-container {
+                    border: 2px solid #0f172a;
+                    border-radius: 8px;
+                    padding: 16px;
+                    box-sizing: border-box;
+                    position: relative;
+                }
+                .pass-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    border-bottom: 2px solid #0f172a;
+                    padding-bottom: 8px;
+                    margin-bottom: 12px;
+                }
+                .pass-header-text {
+                    text-align: center;
+                    flex: 1;
+                }
+                .pass-header-text h2 {
+                    margin: 0;
+                    font-size: 1.05rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .pass-header-text h3 {
+                    margin: 2px 0 0 0;
+                    font-size: 0.85rem;
+                    color: #334155;
+                    font-weight: 600;
+                }
+                .pass-header-text h4 {
+                    margin: 3px 0 0 0;
+                    font-size: 0.88rem;
+                    color: #b45309;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                }
+                .pass-badge {
+                    border: 1.5px solid #d97706;
+                    background: #fffbeb;
+                    color: #b45309;
+                    padding: 4px 10px;
+                    border-radius: 6px;
+                    font-size: 0.78rem;
+                    font-weight: 800;
+                    text-align: right;
+                }
+                .pass-grid {
+                    display: grid;
+                    grid-template-columns: 2fr 1fr;
+                    gap: 10px;
+                    font-size: 0.84rem;
+                    margin-bottom: 10px;
+                }
+                .pass-row {
+                    margin-bottom: 5px;
+                }
+                .pass-row strong {
+                    color: #1e293b;
+                }
+                .reason-box {
+                    background: #f8fafc;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 6px;
+                    padding: 8px 12px;
+                    font-size: 0.82rem;
+                    margin-bottom: 14px;
+                }
+                .signatures {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr 1fr;
+                    gap: 14px;
+                    margin-top: 22px;
+                    text-align: center;
+                    font-size: 0.74rem;
+                }
+                .sig-line {
+                    border-top: 1px solid #0f172a;
+                    padding-top: 4px;
+                    font-weight: 700;
+                }
+                .watermark {
+                    position: absolute;
+                    top: 45%;
+                    left: 50%;
+                    transform: translate(-50%, -50%) rotate(-15deg);
+                    font-size: 3.2rem;
+                    color: rgba(217, 119, 6, 0.08);
+                    font-weight: 900;
+                    text-transform: uppercase;
+                    pointer-events: none;
+                    white-space: nowrap;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="pass-container">
+                <div class="watermark">JUSTIFICADO OFICIAL</div>
+                <div class="pass-header">
+                    <div style="font-size:0.75rem; font-weight:800; color:#047857;">
+                        MINISTERIO DE EDUCACIÓN<br>DIRECCIÓN DEPARTAMENTAL
+                    </div>
+                    <div class="pass-header-text">
+                        <h2>Escuela Nacional de Ciencias Comerciales</h2>
+                        <h3>Auxiliatura y Control de Disciplina Estudiantil</h3>
+                        <h4>Comprobante Oficial de Permiso / Justificación de Ausencia</h4>
+                    </div>
+                    <div class="pass-badge">
+                        FOLIO: ${perm.id.replace('perm_', 'PERM-').substr(0, 14).toUpperCase()}<br>
+                        EMISIÓN: ${perm.startDate}
+                    </div>
+                </div>
+
+                <div class="pass-grid">
+                    <div>
+                        <div class="pass-row"><strong>Estudiante:</strong> ${perm.studentName}</div>
+                        <div class="pass-row"><strong>Código Personal / Carné:</strong> <code>${perm.personalCode || 'S/C'}</code></div>
+                        <div class="pass-row"><strong>Grado y Sección:</strong> ${perm.grade || 'Grado Oficial'} — Sección ${perm.section || 'A'}</div>
+                    </div>
+                    <div>
+                        <div class="pass-row"><strong>Fecha(s) Autorizada(s):</strong> ${datesAuthorized}</div>
+                        <div class="pass-row"><strong>Categoría:</strong> ${perm.reasonCategory}</div>
+                        <div class="pass-row"><strong>Constancia Ref:</strong> ${perm.docRef || 'Ninguna / Verbal'}</div>
+                    </div>
+                </div>
+
+                <div class="reason-box">
+                    <strong>Motivo y Justificación Registrada:</strong><br>
+                    "${perm.reasonDetail}"
+                    <div style="margin-top:4px; font-size:0.76rem; color:#64748b;">
+                        <em>* Este permiso ha sido notificado y aplicado automáticamente en la lista de asistencia de todos los catedráticos del estudiante con código 'J' (Justificado).</em>
+                    </div>
+                </div>
+
+                <div class="signatures">
+                    <div>
+                        <div class="sig-line">
+                            ${perm.authorizedBy}<br>
+                            Vo.Bo. Maestro Auxiliar / Dirección
+                        </div>
+                    </div>
+                    <div>
+                        <div class="sig-line">
+                            Sello Oficial de Auxiliatura<br>
+                            Control de Asistencia ENCCO
+                        </div>
+                    </div>
+                    <div>
+                        <div class="sig-line">
+                            Firma de Padre / Encargado<br>
+                            Enterado(a) de la Justificación
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `);
+
+    printWin.document.close();
+    setTimeout(() => {
+        printWin.focus();
+        printWin.print();
+    }, 400);
+}
+window.printStudentPermissionPass = printStudentPermissionPass;
 
 // ── HELPER: REPOBLAR SELECTOR DE MODALIDAD DEL CUADRO DE HONOR ─────────────────────────────
 function populateHonorRollSelect() {

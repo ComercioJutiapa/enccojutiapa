@@ -1559,6 +1559,26 @@ body.theme-dark .attendance-excel-table .col-name {
     font-weight: 800 !important;
 }
 
+.att-val-permiso {
+    position: relative !important;
+    background: #ffedd5 !important;
+    color: #9a3412 !important;
+    font-weight: 900 !important;
+    box-shadow: inset 0 0 0 2px #ea580c !important;
+    border-radius: 3px !important;
+}
+
+.att-val-permiso::after {
+    content: "•";
+    position: absolute;
+    top: -2px;
+    right: 2px;
+    font-size: 13px;
+    line-height: 1;
+    color: #ea580c;
+    font-weight: 900;
+}
+
 .att-val-T,
 .att-val-t {
     background: #e0f2fe !important;
@@ -1587,6 +1607,16 @@ body.theme-dark .att-val-J,
 body.theme-dark .att-val-j {
     background: #7c2d12 !important;
     color: #fdba74 !important;
+}
+
+body.theme-dark .att-val-permiso {
+    background: #7c2d12 !important;
+    color: #fed7aa !important;
+    box-shadow: inset 0 0 0 2px #f97316 !important;
+}
+
+body.theme-dark .att-val-permiso::after {
+    color: #fdba74;
 }
 
 body.theme-dark .att-val-T,
