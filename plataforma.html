@@ -708,21 +708,62 @@
 
                 <!-- 2A. VENTANA OFICIAL DE INSCRIPCIÓN DE ALUMNOS (DIRECCIÓN, SECRETARÍA Y ADMIN) -->
                 <section class="app-view" id="view-enrollment">
-                    <div class="section-toolbar" style="margin-bottom:18px;">
+                    <style>
+                        .enrollment-compact-grid {
+                            display: grid;
+                            grid-template-columns: 270px 1fr;
+                            gap: 12px;
+                            margin-bottom: 12px;
+                        }
+                        @media (max-width: 960px) {
+                            .enrollment-compact-grid {
+                                grid-template-columns: 1fr;
+                            }
+                        }
+                        .compact-group {
+                            margin-bottom: 7px !important;
+                        }
+                        .compact-group label {
+                            font-size: 0.74rem !important;
+                            font-weight: 700 !important;
+                            color: #334155 !important;
+                            margin-bottom: 2px !important;
+                            display: block !important;
+                        }
+                        .compact-group .form-control {
+                            font-size: 0.82rem !important;
+                            padding: 4px 8px !important;
+                            height: 33px !important;
+                            border-radius: 6px !important;
+                            border: 1px solid #cbd5e1 !important;
+                        }
+                        .compact-group .form-control:focus {
+                            border-color: #15803d !important;
+                            box-shadow: 0 0 0 2px rgba(21,128,61,0.15) !important;
+                        }
+                        .subcard-parents {
+                            background: #ffffff;
+                            border-radius: 8px;
+                            padding: 10px 12px;
+                        }
+                    </style>
+
+                    <!-- BARRA SUPERIOR DE ACCIONES -->
+                    <div class="section-toolbar" style="margin-bottom:10px; padding:8px 16px; background:#ffffff; border-radius:10px; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                         <div>
-                            <h2 style="font-size:1.25rem; font-weight:800; color:var(--brand-green-dark); margin:0;" id="enrollmentViewTitle">
+                            <h2 style="font-size:1.12rem; font-weight:800; color:var(--brand-green-dark); margin:0; display:flex; align-items:center; gap:8px;" id="enrollmentViewTitle">
                                 <i class="fa-solid fa-user-plus"></i> Inscripción Oficial de Estudiantes
                             </h2>
-                            <small style="color:var(--text-muted);">Módulo Oficial de Matrícula y Expedientes - Escuela Nacional de Ciencias Comerciales Jutiapa</small>
+                            <small style="color:var(--text-muted); font-size:0.74rem;">Ficha y Expediente Institucional - ENCCO Jutiapa 1970</small>
                         </div>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                            <button type="button" class="btn btn-outline-secondary" onclick="navigateTo('students', event)">
-                                <i class="fa-solid fa-address-book"></i> Ver Nómina de Estudiantes
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="navigateTo('students', event)" style="font-weight:700; font-size:0.78rem; padding:5px 12px;">
+                                <i class="fa-solid fa-address-book"></i> Ver Nómina
                             </button>
-                            <button type="button" class="btn btn-secondary" onclick="resetStudentEnrollmentForm()">
-                                <i class="fa-solid fa-rotate-left"></i> Limpiar Formulario
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="resetStudentEnrollmentForm()" style="font-weight:700; font-size:0.78rem; padding:5px 12px;">
+                                <i class="fa-solid fa-rotate-left"></i> Limpiar
                             </button>
-                            <button type="submit" form="mainEnrollmentForm" class="btn btn-primary" id="enrollmentSubmitTopBtn" style="padding:8px 20px; font-weight:700;">
+                            <button type="submit" form="mainEnrollmentForm" class="btn btn-primary btn-sm" id="enrollmentSubmitTopBtn" style="padding:6px 18px; font-weight:800; font-size:0.80rem; background:#15803d; border-color:#15803d; box-shadow:0 2px 6px rgba(21,128,61,0.25);">
                                 <i class="fa-solid fa-floppy-disk"></i> Guardar Inscripción
                             </button>
                         </div>
@@ -732,272 +773,257 @@
                         <input type="hidden" id="studentFormId">
                         
                         <!-- BARRA SUPERIOR DE BÚSQUEDA INTELIGENTE SIRE / CÓDIGO PERSONAL -->
-                        <div class="dash-card" style="margin-bottom:18px; border:2px solid #0284c7; background:linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius:12px; padding:16px; box-shadow:0 4px 12px rgba(2,132,199,0.12);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
-                                <div style="flex:1; min-width:300px;">
-                                    <div style="font-weight:800; font-size:1.05rem; color:#0369a1; display:flex; align-items:center; gap:8px;">
-                                        <i class="fa-solid fa-bolt" style="color:#0284c7; font-size:1.2rem;"></i>
-                                        Inscripción Exprés por Código Personal (MINEDUC / SIRE)
+                        <div class="dash-card" style="margin-bottom:10px; border:1.5px solid #38bdf8; background:linear-gradient(90deg, #f0f9ff 0%, #ffffff 100%); border-radius:10px; padding:8px 14px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                                <div style="display:flex; align-items:center; gap:10px; flex:1; min-width:270px;">
+                                    <div style="width:32px; height:32px; border-radius:8px; background:#0284c7; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                        <i class="fa-solid fa-bolt" style="font-size:0.95rem;"></i>
                                     </div>
-                                    <p style="margin:4px 0 10px 0; font-size:0.80rem; color:#475569;">
-                                        Ingrese el Código Personal o CUI del alumno para precargar automáticamente todo su expediente histórico y sugerir su grado superior en 1 segundo.
-                                    </p>
-                                    <div style="display:flex; gap:8px; max-width:500px;">
-                                        <div style="position:relative; flex:1;">
-                                            <i class="fa-solid fa-id-card" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#0284c7;"></i>
-                                            <input type="text" id="quickSireSearchCode" class="form-control" placeholder="Ej: D456GHT, CUI o Carné" style="padding-left:36px; font-weight:800; text-transform:uppercase; border:2px solid #38bdf8;" onkeydown="if(event.key==='Enter'){event.preventDefault(); searchAndAutoFillByPersonalCode();}">
-                                        </div>
-                                        <button type="button" class="btn btn-primary" onclick="searchAndAutoFillByPersonalCode()" style="background:#0284c7; border-color:#0284c7; font-weight:800; padding:8px 18px; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(2,132,199,0.3); cursor:pointer;">
-                                            <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-llenar Ficha
-                                        </button>
+                                    <div>
+                                        <span style="font-weight:800; font-size:0.86rem; color:#0369a1; display:block;">Inscripción Exprés por Código Personal (SIRE / MINEDUC)</span>
+                                        <span style="font-size:0.72rem; color:#64748b;">Ingrese Código Personal o CUI para autocompletar la ficha en 0 segundos</span>
                                     </div>
                                 </div>
-                                <div id="quickSireSearchResultBanner" style="display:none; padding:12px 16px; border-radius:10px; font-size:0.85rem; max-width:440px; box-shadow:0 2px 8px rgba(0,0,0,0.06);"></div>
+                                <div style="display:flex; gap:6px; flex:1.2; max-width:440px; min-width:240px;">
+                                    <input type="text" id="quickSireSearchCode" class="form-control form-control-sm" placeholder="Ej: D456GHT o CUI" style="font-weight:800; text-transform:uppercase; border:1.5px solid #0284c7; height:32px; font-size:0.82rem;" onkeydown="if(event.key==='Enter'){event.preventDefault(); searchAndAutoFillByPersonalCode();}">
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="searchAndAutoFillByPersonalCode()" style="background:#0284c7; border-color:#0284c7; font-weight:800; font-size:0.76rem; padding:4px 12px; white-space:nowrap; display:inline-flex; align-items:center; gap:5px;">
+                                        <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-llenar
+                                    </button>
+                                </div>
+                                <div id="quickSireSearchResultBanner" style="display:none; width:100%; padding:8px 12px; border-radius:8px; font-size:0.78rem; margin-top:2px;"></div>
                             </div>
                         </div>
 
-                        <div class="cards-grid" style="grid-template-columns: 1fr 2fr; margin-bottom:18px;">
+                        <div class="enrollment-compact-grid">
                             <!-- TARJETA 1: FOTOGRAFÍA EN VIVO Y DOCUMENTOS DE IDENTIDAD -->
-                            <div class="dash-card">
-                                <div class="card-header" style="background:rgba(21,128,61,0.06); padding:12px 16px;">
-                                    <h4 style="margin:0; font-size:0.92rem; font-weight:800; color:var(--brand-green-dark);">
-                                        <i class="fa-solid fa-camera"></i> 1. Fotografía y Credenciales
-                                    </h4>
+                            <div class="dash-card" style="padding:12px; border-radius:10px;">
+                                <div style="font-size:0.82rem; font-weight:800; color:var(--brand-green-dark); border-bottom:1.5px solid #e2e8f0; padding-bottom:6px; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-id-badge"></i> 1. Credenciales y Fotografía
                                 </div>
-                                <div class="card-body" style="padding:16px; text-align:center;">
-                                    <div style="margin-bottom:14px;">
-                                        <img id="studentFormPhotoPreview" src="https://ui-avatars.com/api/?name=Alumno&background=15803d&color=fff" alt="Foto Estudiante" style="width:130px; height:130px; object-fit:cover; border-radius:50%; border:3px solid var(--brand-green); box-shadow:0 4px 12px rgba(0,0,0,0.12);">
-                                    </div>
-                                    <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
-                                        <button type="button" class="btn btn-primary btn-sm" onclick="startWebcam()">
-                                            <i class="fa-solid fa-video"></i> Tomar con Cámara
+                                
+                                <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px;">
+                                    <img id="studentFormPhotoPreview" src="https://ui-avatars.com/api/?name=Alumno&background=15803d&color=fff" alt="Foto Estudiante" style="width:78px; height:78px; object-fit:cover; border-radius:10px; border:2px solid var(--brand-green); flex-shrink:0;">
+                                    <div style="display:flex; flex-direction:column; gap:5px; flex:1;">
+                                        <button type="button" class="btn btn-primary btn-xs" onclick="startWebcam()" style="font-size:0.72rem; padding:3px 8px; font-weight:700;">
+                                            <i class="fa-solid fa-camera"></i> Tomar Foto
                                         </button>
-                                        <label class="btn btn-accent btn-sm" style="cursor:pointer; margin:0;">
+                                        <label class="btn btn-outline-secondary btn-xs" style="cursor:pointer; margin:0; font-size:0.72rem; padding:3px 8px; font-weight:700; text-align:center;">
                                             <i class="fa-solid fa-upload"></i> Subir Archivo
                                             <input type="file" accept="image/*" style="display:none;" onchange="handleStudentFormPhotoUpload(event)">
                                         </label>
                                     </div>
-                                    
-                                    <!-- VISOR WEBCAM EN VIVO -->
-                                    <div id="webcamContainer" style="display:none; background:#0f172a; padding:12px; border-radius:var(--radius-md); text-align:center; margin-top:12px;">
-                                        <video id="webcamVideo" autoplay playsinline style="width:100%; max-width:240px; height:auto; border-radius:var(--radius-sm); border:2px solid var(--brand-green);"></video>
-                                        <canvas id="webcamCanvas" style="display:none;"></canvas>
-                                        <div style="margin-top:10px; display:flex; justify-content:center; gap:8px;">
-                                            <button type="button" class="btn btn-orange btn-sm" onclick="captureWebcamPhoto()">
-                                                <i class="fa-solid fa-camera"></i> Capturar Foto
-                                            </button>
-                                            <button type="button" class="btn btn-secondary btn-sm" onclick="stopWebcam()">
-                                                Cerrar Cámara
-                                            </button>
-                                        </div>
+                                </div>
+                                
+                                <!-- VISOR WEBCAM EN VIVO -->
+                                <div id="webcamContainer" style="display:none; background:#0f172a; padding:10px; border-radius:8px; text-align:center; margin-bottom:10px;">
+                                    <video id="webcamVideo" autoplay playsinline style="width:100%; max-width:200px; height:auto; border-radius:6px; border:2px solid var(--brand-green);"></video>
+                                    <canvas id="webcamCanvas" style="display:none;"></canvas>
+                                    <div style="margin-top:6px; display:flex; justify-content:center; gap:6px;">
+                                        <button type="button" class="btn btn-orange btn-xs" onclick="captureWebcamPhoto()">
+                                            <i class="fa-solid fa-camera"></i> Capturar
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-xs" onclick="stopWebcam()">
+                                            Cerrar
+                                        </button>
                                     </div>
+                                </div>
 
-                                    <hr style="border:0; border-top:1px solid var(--border-color); margin:16px 0;">
+                                <div class="compact-group">
+                                    <label>Carné Escolar Institucional</label>
+                                    <input type="text" id="studentFormCarne" class="form-control" placeholder="Generado automáticamente" oninput="validateStudentFormLiveDuplicate()">
+                                </div>
 
-                                    <div style="text-align:left;">
-                                        <div class="form-group" style="margin-bottom:10px;">
-                                            <label style="font-size:0.85rem; font-weight:700;">Carné Escolar</label>
-                                            <input type="text" id="studentFormCarne" class="form-control" placeholder="Generado automáticamente" oninput="validateStudentFormLiveDuplicate()">
-                                        </div>
-                                        <div class="form-group" style="margin-bottom:10px;">
-                                            <label style="font-size:0.85rem; font-weight:700;">Código Personal (MINEDUC)</label>
-                                            <div style="display:flex; gap:6px;">
-                                                <input type="text" id="studentFormPersonalCode" class="form-control" placeholder="Ej: A123BCD" oninput="validateStudentFormLiveDuplicate()" style="text-transform:uppercase; font-weight:700;">
-                                                <button type="button" class="btn btn-primary btn-sm" onclick="searchAndAutoFillByPersonalCode(document.getElementById('studentFormPersonalCode').value)" title="Buscar y autocompletar ficha" style="white-space:nowrap; font-weight:700; background:#0284c7; border-color:#0284c7; padding:4px 10px;">
-                                                    <i class="fa-solid fa-magnifying-glass"></i> Buscar
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <div class="form-group" style="margin-bottom:10px;">
-                                            <label style="font-size:0.85rem; font-weight:700;">CUI / DPI (RENAP)</label>
-                                            <input type="text" id="studentFormCui" class="form-control" placeholder="Ej: 3024 89123 2201" oninput="validateStudentFormLiveDuplicate()">
-                                        </div>
+                                <div class="compact-group">
+                                    <label>Código Personal (MINEDUC)</label>
+                                    <div style="display:flex; gap:4px;">
+                                        <input type="text" id="studentFormPersonalCode" class="form-control" placeholder="Ej: A123BCD" oninput="validateStudentFormLiveDuplicate()" style="text-transform:uppercase; font-weight:700;">
+                                        <button type="button" class="btn btn-primary btn-xs" onclick="searchAndAutoFillByPersonalCode(document.getElementById('studentFormPersonalCode').value)" title="Buscar ficha" style="white-space:nowrap; font-weight:700; background:#0284c7; border-color:#0284c7; padding:2px 8px;">
+                                            <i class="fa-solid fa-magnifying-glass"></i>
+                                        </button>
                                     </div>
+                                </div>
+
+                                <div class="compact-group">
+                                    <label>CUI / DPI (RENAP)</label>
+                                    <input type="text" id="studentFormCui" class="form-control" placeholder="Ej: 3024 89123 2201" oninput="validateStudentFormLiveDuplicate()">
                                 </div>
                             </div>
 
                             <!-- TARJETA 2: DATOS PERSONALES Y ASIGNACIÓN ACADÉMICA -->
-                            <div class="dash-card">
-                                <div class="card-header" style="background:rgba(21,128,61,0.06); padding:12px 16px;">
-                                    <h4 style="margin:0; font-size:0.92rem; font-weight:800; color:var(--brand-green-dark);">
-                                        <i class="fa-solid fa-user-graduate"></i> 2. Datos Personales y Asignación de Grado
-                                    </h4>
+                            <div class="dash-card" style="padding:12px; border-radius:10px;">
+                                <div style="font-size:0.82rem; font-weight:800; color:var(--brand-green-dark); border-bottom:1.5px solid #e2e8f0; padding-bottom:6px; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-user-graduate"></i> 2. Datos Personales y Grado a Asignar
                                 </div>
-                                <div class="card-body" style="padding:16px;">
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label>Nombres del Estudiante *</label>
-                                            <input type="text" id="studentFormFirstName" class="form-control" required placeholder="Ej: Juan Carlos" oninput="validateStudentFormLiveDuplicate()">
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Apellidos del Estudiante *</label>
-                                            <input type="text" id="studentFormLastName" class="form-control" required placeholder="Ej: Pérez Morales" oninput="validateStudentFormLiveDuplicate()">
-                                        </div>
-                                    </div>
 
-                                    <div class="form-row">
-                                        <div class="form-group" style="flex:1;">
-                                            <label>Fecha de Nacimiento *</label>
-                                            <input type="date" id="studentFormBirthDate" class="form-control" required onchange="calculateStudentAge(); validateStudentFormLiveDuplicate();">
-                                        </div>
-                                        <div class="form-group" style="flex:1;">
-                                            <label>Edad</label>
-                                            <input type="text" id="studentFormAge" class="form-control" readonly placeholder="Se calcula automáticamente" style="background:#f8fafc; font-weight:700; color:var(--brand-green-dark);">
-                                        </div>
-                                        <div class="form-group" style="flex:1;">
-                                            <label>Género *</label>
-                                            <select id="studentFormGender" class="form-control" style="font-weight:700;">
-                                                <option value="Femenino" selected>👩 Femenino (Señorita)</option>
-                                                <option value="Masculino">👨 Masculino (Caballero)</option>
-                                            </select>
-                                        </div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                                    <div class="compact-group">
+                                        <label>Nombres del Estudiante <span style="color:#ef4444;">*</span></label>
+                                        <input type="text" id="studentFormFirstName" class="form-control" required placeholder="Ej: Juan Carlos" oninput="validateStudentFormLiveDuplicate()">
                                     </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label>Teléfono del Estudiante (Opcional)</label>
-                                            <input type="text" id="studentFormPhone" class="form-control" placeholder="Puede quedar vacío">
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Correo Electrónico (Opcional)</label>
-                                            <input type="email" id="studentFormEmail" class="form-control" placeholder="Puede quedar vacío">
-                                        </div>
+                                    <div class="compact-group">
+                                        <label>Apellidos del Estudiante <span style="color:#ef4444;">*</span></label>
+                                        <input type="text" id="studentFormLastName" class="form-control" required placeholder="Ej: Pérez Morales" oninput="validateStudentFormLiveDuplicate()">
                                     </div>
+                                </div>
 
-                                    <div class="form-group">
+                                <div style="display:grid; grid-template-columns: 1.3fr 0.8fr 1.1fr 1.1fr; gap:8px;">
+                                    <div class="compact-group">
+                                        <label>Fecha Nacimiento <span style="color:#ef4444;">*</span></label>
+                                        <input type="date" id="studentFormBirthDate" class="form-control" required onchange="calculateStudentAge(); validateStudentFormLiveDuplicate();">
+                                    </div>
+                                    <div class="compact-group">
+                                        <label>Edad</label>
+                                        <input type="text" id="studentFormAge" class="form-control" readonly placeholder="Auto" style="background:#f8fafc; font-weight:700; color:var(--brand-green-dark);">
+                                    </div>
+                                    <div class="compact-group">
+                                        <label>Género <span style="color:#ef4444;">*</span></label>
+                                        <select id="studentFormGender" class="form-control" style="font-weight:700;">
+                                            <option value="Femenino" selected>Femenino</option>
+                                            <option value="Masculino">Masculino</option>
+                                        </select>
+                                    </div>
+                                    <div class="compact-group">
+                                        <label>Teléfono Alumno</label>
+                                        <input type="text" id="studentFormPhone" class="form-control" placeholder="Ej: 5544-3322">
+                                    </div>
+                                </div>
+
+                                <div style="display:grid; grid-template-columns: 1.6fr 1.1fr; gap:8px;">
+                                    <div class="compact-group">
                                         <label>Dirección Domiciliar</label>
                                         <input type="text" id="studentFormAddress" class="form-control" placeholder="Ej: Barrio El Centro, Jutiapa">
                                     </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group" style="flex:2;">
-                                            <label>Grado y Sección a Asignar *</label>
-                                            <select id="studentFormGrade" class="form-control" required>
-                                                <!-- Cargado dinámicamente con conteo de alumnos -->
-                                            </select>
-                                        </div>
-                                        <div class="form-group" style="flex:1;">
-                                            <label>Ciclo Escolar *</label>
-                                            <select id="studentFormCycle" class="form-control" required onchange="validateStudentFormLiveDuplicate()">
-                                                <!-- Cargado dinámicamente según ciclos registrados -->
-                                            </select>
-                                        </div>
-                                        <div class="form-group" style="flex:1;">
-                                            <label>Jornada *</label>
-                                            <select id="studentFormShift" class="form-control" required>
-                                                <option value="Matutina">Matutina</option>
-                                                <option value="Vespertina">Vespertina</option>
-                                            </select>
-                                        </div>
+                                    <div class="compact-group">
+                                        <label>Correo Electrónico</label>
+                                        <input type="email" id="studentFormEmail" class="form-control" placeholder="correo@ejemplo.com">
                                     </div>
+                                </div>
 
-                                    <div id="studentDuplicateWarning" style="display:none; background:#fef2f2; border:1px solid #ef4444; color:#991b1b; padding:10px 14px; border-radius:var(--radius-md); font-size:0.88rem; font-weight:700; margin-top:12px;">
-                                        <i class="fa-solid fa-triangle-exclamation"></i> <span id="studentDuplicateWarningText"></span>
+                                <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:8px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:8px 10px; margin-top:2px;">
+                                    <div class="compact-group">
+                                        <label style="color:#166534 !important;">Grado y Sección a Asignar <span style="color:#ef4444;">*</span></label>
+                                        <select id="studentFormGrade" class="form-control" required style="font-weight:700;">
+                                            <!-- Cargado dinámicamente con conteo de alumnos -->
+                                        </select>
                                     </div>
+                                    <div class="compact-group">
+                                        <label style="color:#166534 !important;">Ciclo Escolar <span style="color:#ef4444;">*</span></label>
+                                        <select id="studentFormCycle" class="form-control" required onchange="validateStudentFormLiveDuplicate()" style="font-weight:700;">
+                                            <!-- Cargado dinámicamente según ciclos registrados -->
+                                        </select>
+                                    </div>
+                                    <div class="compact-group">
+                                        <label style="color:#166534 !important;">Jornada <span style="color:#ef4444;">*</span></label>
+                                        <select id="studentFormShift" class="form-control" required style="font-weight:700;">
+                                            <option value="Matutina">Matutina</option>
+                                            <option value="Vespertina">Vespertina</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div id="studentDuplicateWarning" style="display:none; background:#fef2f2; border:1px solid #ef4444; color:#991b1b; padding:6px 10px; border-radius:6px; font-size:0.78rem; font-weight:700; margin-top:6px;">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> <span id="studentDuplicateWarningText"></span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- TARJETA 3: APARTADO DE ENCARGADO Y PADRES -->
-                        <div class="dash-card" style="margin-bottom:18px;">
-                            <div class="card-header" style="background:rgba(249,115,22,0.06); padding:12px 16px;">
-                                <div style="display:flex; justify-content:space-between; align-items:center;">
-                                    <h4 style="margin:0; font-size:0.95rem; font-weight:800; color:var(--brand-orange);">
-                                        <i class="fa-solid fa-people-roof"></i> 3. Apartado de Encargado y Padres de Familia
-                                    </h4>
-                                    <small style="color:var(--text-muted);">Los siguientes campos son opcionales y pueden quedar vacíos.</small>
+                        <!-- TARJETA 3: APARTADO COMPACTO DE ENCARGADO Y PADRES -->
+                        <div class="dash-card" style="margin-bottom:10px; padding:12px; border-radius:10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #e2e8f0; padding-bottom:6px; margin-bottom:10px;">
+                                <div style="font-size:0.82rem; font-weight:800; color:var(--brand-orange); display:flex; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-people-roof"></i> 3. Información de Padres y Encargado Legal
                                 </div>
+                                <small style="color:var(--text-muted); font-size:0.72rem;">Campos opcionales para control de Secretaría y citaciones</small>
                             </div>
-                            <div class="card-body" style="padding:16px;">
-                                
-                                <!-- DATOS DE LA MAMÁ -->
-                                <div style="background:#fdf2f8; border:1px solid #fbcfe8; border-radius:var(--radius-sm); padding:14px; margin-bottom:14px;">
-                                    <h5 style="margin:0 0 10px 0; font-size:0.88rem; font-weight:800; color:#db2777;">
-                                        <i class="fa-solid fa-person-dress"></i> Datos de la Mamá (Opcionales)
-                                    </h5>
-                                    <div class="form-row">
-                                        <div class="form-group" style="flex:2;">
-                                            <label>Nombre Completo de la Madre</label>
-                                            <input type="text" id="studentFormMotherName" class="form-control" placeholder="Nombre completo">
+
+                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:10px;">
+                                <!-- COLUMNA 1: ENCARGADO PRINCIPAL / TUTOR -->
+                                <div class="subcard-parents" style="background:#f0fdf4; border:1px solid #bbf7d0;">
+                                    <div style="font-size:0.76rem; font-weight:800; color:#15803d; margin-bottom:6px; display:flex; align-items:center; gap:5px;">
+                                        <i class="fa-solid fa-user-shield"></i> Tutor / Encargado Principal
+                                    </div>
+                                    <div class="compact-group">
+                                        <label>Nombre del Encargado</label>
+                                        <input type="text" id="studentFormGuardianName" class="form-control" placeholder="Nombre completo">
+                                    </div>
+                                    <div class="compact-group">
+                                        <label>DPI del Encargado</label>
+                                        <input type="text" id="studentFormGuardianDpi" class="form-control" placeholder="Ej: 3024 89123 2201">
+                                    </div>
+                                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+                                        <div class="compact-group">
+                                            <label>Teléfono 1</label>
+                                            <input type="text" id="studentFormGuardianPhone1" class="form-control" placeholder="Principal">
                                         </div>
-                                        <div class="form-group" style="flex:1;">
-                                            <label>DPI de la Madre</label>
-                                            <input type="text" id="studentFormMotherDpi" class="form-control" placeholder="Ej: 2981 45678 2201">
-                                        </div>
-                                        <div class="form-group" style="flex:1;">
-                                            <label>Teléfono 1 Mamá</label>
-                                            <input type="text" id="studentFormMotherPhone1" class="form-control" placeholder="Teléfono principal">
-                                        </div>
-                                        <div class="form-group" style="flex:1;">
-                                            <label>Teléfono 2 Mamá</label>
-                                            <input type="text" id="studentFormMotherPhone2" class="form-control" placeholder="Teléfono secundario">
+                                        <div class="compact-group">
+                                            <label>Teléfono 2</label>
+                                            <input type="text" id="studentFormGuardianPhone2" class="form-control" placeholder="Secundario">
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- DATOS DEL PADRE -->
-                                <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:var(--radius-sm); padding:14px; margin-bottom:14px;">
-                                    <h5 style="margin:0 0 10px 0; font-size:0.88rem; font-weight:800; color:#2563eb;">
-                                        <i class="fa-solid fa-person"></i> Datos del Padre (Opcionales)
-                                    </h5>
-                                    <div class="form-row">
-                                        <div class="form-group" style="flex:2;">
-                                            <label>Nombre Completo del Padre</label>
-                                            <input type="text" id="studentFormFatherName" class="form-control" placeholder="Nombre completo">
+                                <!-- COLUMNA 2: MADRE DE FAMILIA -->
+                                <div class="subcard-parents" style="background:#fdf2f8; border:1px solid #fbcfe8;">
+                                    <div style="font-size:0.76rem; font-weight:800; color:#db2777; margin-bottom:6px; display:flex; align-items:center; gap:5px;">
+                                        <i class="fa-solid fa-person-dress"></i> Madre de Familia
+                                    </div>
+                                    <div class="compact-group">
+                                        <label>Nombre de la Madre</label>
+                                        <input type="text" id="studentFormMotherName" class="form-control" placeholder="Nombre completo">
+                                    </div>
+                                    <div class="compact-group">
+                                        <label>DPI de la Madre</label>
+                                        <input type="text" id="studentFormMotherDpi" class="form-control" placeholder="Ej: 2981 45678 2201">
+                                    </div>
+                                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+                                        <div class="compact-group">
+                                            <label>Teléfono 1</label>
+                                            <input type="text" id="studentFormMotherPhone1" class="form-control" placeholder="Principal">
                                         </div>
-                                        <div class="form-group" style="flex:1;">
-                                            <label>DPI del Padre</label>
-                                            <input type="text" id="studentFormFatherDpi" class="form-control" placeholder="Ej: 3024 89123 2201">
-                                        </div>
-                                        <div class="form-group" style="flex:1;">
-                                            <label>Teléfono 1 Papá</label>
-                                            <input type="text" id="studentFormFatherPhone1" class="form-control" placeholder="Teléfono principal">
-                                        </div>
-                                        <div class="form-group" style="flex:1;">
-                                            <label>Teléfono 2 Papá</label>
-                                            <input type="text" id="studentFormFatherPhone2" class="form-control" placeholder="Teléfono secundario">
+                                        <div class="compact-group">
+                                            <label>Teléfono 2</label>
+                                            <input type="text" id="studentFormMotherPhone2" class="form-control" placeholder="Secundario">
                                         </div>
                                     </div>
                                 </div>
 
-                                <!-- DATOS DEL ENCARGADO / TUTOR -->
-                                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:var(--radius-sm); padding:14px;">
-                                    <h5 style="margin:0 0 10px 0; font-size:0.88rem; font-weight:800; color:var(--brand-green-dark);">
-                                        <i class="fa-solid fa-user-shield"></i> Datos del Encargado / Tutor Legal (Opcionales)
-                                    </h5>
-                                    <div class="form-row">
-                                        <div class="form-group" style="flex:2;">
-                                            <label>Nombre Completo del Encargado</label>
-                                            <input type="text" id="studentFormGuardianName" class="form-control" placeholder="Nombre del encargado o tutor">
+                                <!-- COLUMNA 3: PADRE DE FAMILIA -->
+                                <div class="subcard-parents" style="background:#eff6ff; border:1px solid #bfdbfe;">
+                                    <div style="font-size:0.76rem; font-weight:800; color:#2563eb; margin-bottom:6px; display:flex; align-items:center; gap:5px;">
+                                        <i class="fa-solid fa-person"></i> Padre de Familia
+                                    </div>
+                                    <div class="compact-group">
+                                        <label>Nombre del Padre</label>
+                                        <input type="text" id="studentFormFatherName" class="form-control" placeholder="Nombre completo">
+                                    </div>
+                                    <div class="compact-group">
+                                        <label>DPI del Padre</label>
+                                        <input type="text" id="studentFormFatherDpi" class="form-control" placeholder="Ej: 3024 89123 2201">
+                                    </div>
+                                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+                                        <div class="compact-group">
+                                            <label>Teléfono 1</label>
+                                            <input type="text" id="studentFormFatherPhone1" class="form-control" placeholder="Principal">
                                         </div>
-                                        <div class="form-group" style="flex:1;">
-                                            <label>DPI del Encargado</label>
-                                            <input type="text" id="studentFormGuardianDpi" class="form-control" placeholder="Ej: 3024 89123 2201">
-                                        </div>
-                                        <div class="form-group" style="flex:1;">
-                                            <label>Teléfono 1 Encargado</label>
-                                            <input type="text" id="studentFormGuardianPhone1" class="form-control" placeholder="Teléfono principal">
-                                        </div>
-                                        <div class="form-group" style="flex:1;">
-                                            <label>Teléfono 2 Encargado</label>
-                                            <input type="text" id="studentFormGuardianPhone2" class="form-control" placeholder="Teléfono secundario">
+                                        <div class="compact-group">
+                                            <label>Teléfono 2</label>
+                                            <input type="text" id="studentFormFatherPhone2" class="form-control" placeholder="Secundario">
                                         </div>
                                     </div>
                                 </div>
-
                             </div>
                         </div>
 
                         <!-- BARRA DE ACCIONES INFERIOR -->
-                        <div class="table-card" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-top:3px solid var(--brand-green);">
-                            <button type="button" class="btn btn-outline-secondary" onclick="navigateTo('students', event)">
+                        <div class="table-card" style="padding:10px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-top:2.5px solid var(--brand-green); border-radius:10px;">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="navigateTo('students', event)" style="font-weight:700; font-size:0.80rem;">
                                 <i class="fa-solid fa-arrow-left"></i> Volver a Nómina
                             </button>
-                            <div style="display:flex; gap:10px;">
-                                <button type="button" class="btn btn-secondary" onclick="resetStudentEnrollmentForm()">
+                            <div style="display:flex; gap:8px;">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="resetStudentEnrollmentForm()" style="font-weight:700; font-size:0.80rem;">
                                     <i class="fa-solid fa-rotate-left"></i> Limpiar Campos
                                 </button>
-                                <button type="submit" class="btn btn-primary btn-lg" id="enrollmentSubmitBottomBtn" style="padding:10px 28px; font-weight:800;">
+                                <button type="submit" class="btn btn-primary" id="enrollmentSubmitBottomBtn" style="padding:8px 24px; font-weight:800; font-size:0.88rem; background:#15803d; border-color:#15803d; box-shadow:0 2px 6px rgba(21,128,61,0.25);">
                                     <i class="fa-solid fa-floppy-disk"></i> Guardar Inscripción
                                 </button>
                             </div>
