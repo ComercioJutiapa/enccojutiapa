@@ -3,6 +3,9 @@
 <head>
     <!-- Protección Anti-Clickjacking y Secuestro de Marco -->
     <script>
+        if (window.location && (window.location.hostname.includes('web.app') || window.location.hostname.includes('firebaseapp.com'))) {
+            window.location.replace('https://comerciojutiapa.github.io/enccojutiapa/login.html' + window.location.search + window.location.hash);
+        }
 
         // ======================================================================
         // 🛡️ MOTOR DE SEGURIDAD INSTITUCIONAL Y ANTI-FUERZA BRUTA (LOGIN)

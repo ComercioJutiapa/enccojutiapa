@@ -8,6 +8,17 @@
 (function(window) {
     'use strict';
 
+    // 🌐 UNIFICACIÓN CANÓNICA: Evitar duplicados y canalizar exclusivamente hacia GitHub Pages
+    if (typeof window !== 'undefined' && window.location) {
+        const host = (window.location.hostname || '').toLowerCase();
+        if (host.includes('web.app') || host.includes('firebaseapp.com')) {
+            const cleanPath = window.location.pathname.replace(/^\/+/, '');
+            const targetUrl = 'https://comerciojutiapa.github.io/enccojutiapa/' + (cleanPath || 'index.html') + window.location.search + window.location.hash;
+            window.location.replace(targetUrl);
+            return;
+        }
+    }
+
     // 1. MOTOR DE SEGURIDAD, ANTI-XSS & ANTI-INYECCIÓN
     const EnccoSecurityShield = {
         escapeHtml(str) {

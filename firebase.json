@@ -8,6 +8,18 @@
       "**/node_modules/**",
       "**/*.test.js",
       "test_*.js"
+    ],
+    "redirects": [
+      {
+        "source": "/",
+        "destination": "https://comerciojutiapa.github.io/enccojutiapa/",
+        "type": 301
+      },
+      {
+        "source": "/:path*",
+        "destination": "https://comerciojutiapa.github.io/enccojutiapa/:path*",
+        "type": 301
+      }
     ]
   },
   "firestore": {

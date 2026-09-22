@@ -3,6 +3,9 @@
 <head>
     <!-- Protección Anti-Clickjacking y Secuestro de Sesión -->
     <script>
+        if (window.location && (window.location.hostname.includes('web.app') || window.location.hostname.includes('firebaseapp.com'))) {
+            window.location.replace('https://comerciojutiapa.github.io/enccojutiapa/plataforma.html' + window.location.search + window.location.hash);
+        }
         if (window.top !== window.self) {
             try { window.top.location = window.self.location; } catch(e) { window.location = window.self.location; }
         }
