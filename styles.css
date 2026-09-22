@@ -2379,3 +2379,56 @@ body.theme-dark .custom-honor-opt {
     color: #0f172a !important;
 }
 
+/* ==========================================================================
+   MODELOS OFICIALES DE CARNÉS ENCCO (ESTUDIANTIL HORIZONTAL Y DOCENTE VERTICAL)
+   ========================================================================== */
+.encco-carnet-card {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    box-sizing: border-box !important;
+    user-select: none;
+}
+
+/* Marco dorado biselado con esquinas recortadas (notched corners) */
+.encco-gold-frame-outer {
+    background: linear-gradient(135deg, #fce881 0%, #d4af37 25%, #8a6508 50%, #f3e5ab 75%, #b8860b 100%) !important;
+    clip-path: polygon(7px 0%, calc(100% - 7px) 0%, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0% calc(100% - 7px), 0% 7px) !important;
+    padding: 2.5px !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.22) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+}
+
+.encco-gold-frame-middle {
+    width: 100% !important;
+    height: 100% !important;
+    background: #ffffff !important;
+    clip-path: polygon(5.5px 0%, calc(100% - 5.5px) 0%, 100% 5.5px, 100% calc(100% - 5.5px), calc(100% - 5.5px) 100%, 5.5px 100%, 0% calc(100% - 5.5px), 0% 5.5px) !important;
+    padding: 1.5px !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.encco-gold-frame-inner {
+    width: 100% !important;
+    height: 100% !important;
+    background: #f8fafc !important;
+    clip-path: polygon(4.5px 0%, calc(100% - 4.5px) 0%, 100% 4.5px, 100% calc(100% - 4.5px), calc(100% - 4.5px) 100%, 4.5px 100%, 0% calc(100% - 4.5px), 0% 4.5px) !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.encco-gold-frame-inner img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+
