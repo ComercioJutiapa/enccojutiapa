@@ -56,11 +56,11 @@ requiredNavItems.forEach(item => {
 });
 console.log(`✅ TEST 3: Todos los ${requiredNavItems.length} módulos y enlaces de navegación están 100% presentes`);
 
-// 4. Verificar badges especiales intactos
-assert(htmlContent.includes('CR80'), 'Badge CR80 debe estar presente');
+// 4. Verificar badges especiales
+assert(!htmlContent.includes('>CR80<'), 'Badge CR80 fue removido de la barra lateral según solicitud del usuario');
 assert(htmlContent.includes('IA/Riesgo'), 'Badge IA/Riesgo debe estar presente');
 assert(htmlContent.includes('pendingGradeRequestsBadge'), 'Badge de solicitudes pendientes debe estar presente');
-console.log('✅ TEST 4: Todos los distintivos (CR80, IA/Riesgo, contador dinámico) están intactos');
+console.log('✅ TEST 4: Badge CR80 removido exitosamente; distintivos IA/Riesgo y contador dinámico intactos');
 
 // 5. Verificar elementos de identidad y perfil
 assert(htmlContent.includes('school-brand'), 'school-brand presente');

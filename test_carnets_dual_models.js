@@ -71,10 +71,11 @@ assert(stFront.includes('CARNET ESTUDIANTIL'), 'Debe tener el cintillo CARNET ES
 assert(stFront.includes('width:336px; height:212px'), 'Dimensiones deben ser horizontales CR80');
 assert(stFront.includes('ESCUELA NACIONAL DE CIENCIAS COMERCIALES'), 'Debe incluir el título oficial');
 assert(stFront.includes(st.name), 'Debe incluir el nombre completo del alumno');
-assert(stFront.includes(st.carne), 'Debe incluir el carné del alumno');
+assert(stFront.includes(st.personalCode), 'Debe incluir el código personal del alumno como no. de carné');
+assert(!stFront.includes('ROL:'), 'No debe tener la palabra ROL');
 assert(stFront.includes('rect x='), 'Debe incluir barras Code 39');
 assert(stFront.includes('<svg'), 'Debe incluir el código QR');
-console.log('✅ TEST 2: Carné Estudiantil Horizontal (Frente) cumple con diseño y modelo');
+console.log('✅ TEST 2: Carné Estudiantil Horizontal (Frente) cumple con diseño y modelo (Código personal y sin palabra ROL)');
 
 // 3. Probar Carné Estudiantil Horizontal (Reverso)
 const stBack = EnccoCarnets.renderStudentCardBackHtml(st);
@@ -83,9 +84,10 @@ assert(stBack.includes('Cód. Personal:'), 'Debe mostrar Código Personal');
 assert(stBack.includes(st.personalCode), 'Debe mostrar el código personal del estudiante');
 assert(stBack.includes(st.guardian), 'Debe mostrar el nombre del encargado');
 assert(stBack.includes(st.guardianPhone), 'Debe mostrar teléfono de emergencia');
-assert(stBack.includes('22-01-0038-46'), 'Debe incluir código oficial de establecimiento MINEDUC');
+assert(stBack.includes('22-01-0014-46'), 'Debe incluir código oficial de establecimiento MINEDUC 22-01-0014-46');
+assert(!stBack.includes('SELLO OFICIAL'), 'No debe tener la frase SELLO OFICIAL');
 assert(stBack.includes('Dirección ENCCO Jutiapa'), 'Debe incluir firma de dirección');
-console.log('✅ TEST 3: Carné Estudiantil (Reverso) es ultra legible y contiene todos los datos');
+console.log('✅ TEST 3: Carné Estudiantil (Reverso) contiene código 22-01-0014-46 y sin sello oficial');
 
 // 4. Probar Carné Docente Vertical (Frente)
 const doc = mockWindow.STATE.users[0];
@@ -96,10 +98,11 @@ assert(docFront.includes('width:214px; height:336px'), 'Dimensiones deben ser ve
 assert(docFront.includes(doc.name), 'Debe incluir el nombre del catedrático');
 assert(docFront.includes('NÚMERO DE IDENTIFICACIÓN:'), 'Debe tener la etiqueta de identificación');
 assert(docFront.includes('ÁREA:'), 'Debe tener el área del docente');
-assert(docFront.includes('ROL: DOCENTE'), 'Debe tener el rol de docente');
+assert(!docFront.includes('ROL:'), 'No debe tener la palabra ROL');
+assert(docFront.includes('DOCENTE'), 'Debe tener designación de docente');
 assert(docFront.includes('rect x='), 'Debe tener código de barras Code 39');
 assert(docFront.includes('<svg'), 'Debe tener código QR');
-console.log('✅ TEST 4: Carné Docente Vertical (Frente) cumple con cúpula azul, logo y datos centrados');
+console.log('✅ TEST 4: Carné Docente Vertical (Frente) cumple con cúpula azul, sin palabra ROL');
 
 // 5. Probar Carné Docente Vertical (Reverso)
 const docBack = EnccoCarnets.renderTeacherCardBackHtml(doc);
@@ -110,8 +113,9 @@ assert(docBack.includes('ACREDITACIÓN DOCENTE OFICIAL'), 'Debe tener el banner 
 assert(docBack.includes(doc.title), 'Debe tener título profesional');
 assert(docBack.includes(doc.renglon), 'Debe tener renglón presupuestario');
 assert(docBack.includes(doc.classes), 'Debe incluir las materias impartidas');
+assert(docBack.includes('22-01-0014-46'), 'Debe incluir código MINEDUC 22-01-0014-46');
 assert(docBack.includes('Dirección ENCCO Jutiapa'), 'Debe incluir firma de dirección');
-console.log('✅ TEST 5: Carné Docente (Reverso) contiene ficha de acreditación completa y legible');
+console.log('✅ TEST 5: Carné Docente (Reverso) contiene código MINEDUC 22-01-0014-46');
 
 // 6. Probar filtros y lista de docentes
 const teachersList = EnccoCarnets.getTeachersList();

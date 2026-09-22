@@ -154,7 +154,7 @@
         renderStudentCardFrontHtml(student) {
             const cycle = student.academicCycle || (window.STATE && window.STATE.activeCycle) || '2026';
             const name = student.name || `${student.firstName || student.nombres || ''} ${student.lastName || student.apellidos || ''}`.trim() || 'Estudiante';
-            const carne = student.carne || student.personalCode || '2026-0001-PC';
+            const carne = student.personalCode || student.carne || 'ENCCO-2026';
             const grade = student.grade || student.gradeLabel || '4TO PERITO';
             const section = student.section || 'A';
 
@@ -246,8 +246,7 @@
                                 <strong style="font-size:0.62rem; font-weight:900; color:#000000;">[${cycle}]</strong>
                             </div>
                             <div>
-                                <span style="font-size:0.52rem; font-weight:800; color:#0f172a;">ROL:</span> 
-                                <strong style="font-size:0.56rem; font-weight:900; color:#004098;">ESTUDIANTE</strong>
+                                <strong style="font-size:0.58rem; font-weight:900; color:#004098; text-transform:uppercase; letter-spacing:0.4px;">ESTUDIANTE</strong>
                             </div>
                         </div>
                     </div>
@@ -306,7 +305,7 @@
                             ESCUELA NACIONAL DE CIENCIAS COMERCIALES
                         </span>
                         <span style="font-size:0.50rem; color:#475569; font-weight:700;">
-                            Jutiapa, Guatemala | Código MINEDUC: <strong style="color:#0f172a;">22-01-0038-46</strong> | Ciclo ${cycle}
+                            Jutiapa, Guatemala | Código MINEDUC: <strong style="color:#0f172a;">22-01-0014-46</strong> | Ciclo ${cycle}
                         </span>
                     </div>
 
@@ -343,8 +342,7 @@
                         </div>
                         <div style="display:flex; align-items:center; gap:6px;">
                             <div style="text-align:right;">
-                                <div style="font-size:0.50rem; font-weight:800; color:#006837;">SELLO OFICIAL</div>
-                                <div style="font-size:0.44rem; color:#64748b; font-weight:700;">Vigencia: Ciclo ${cycle}</div>
+                                <div style="font-size:0.48rem; color:#64748b; font-weight:700;">Vigencia: Ciclo ${cycle}</div>
                             </div>
                             <div style="width:30px; height:30px;" title="QR de Verificación">
                                 ${qrSvgBack}
@@ -456,8 +454,8 @@
                             ${teacherArea}
                         </div>
                         
-                        <div style="font-size:0.50rem; font-weight:900; color:#0f172a; text-transform:uppercase; letter-spacing:0.4px;">
-                            ROL: DOCENTE <span style="font-size:0.44rem; color:#ea580c; font-weight:800;">[${renglon}]</span>
+                        <div style="font-size:0.52rem; font-weight:900; color:#004098; text-transform:uppercase; letter-spacing:0.4px;">
+                            DOCENTE <span style="font-size:0.44rem; color:#ea580c; font-weight:800;">[${renglon}]</span>
                         </div>
                     </div>
 
@@ -525,7 +523,7 @@
                             MINISTERIO DE EDUCACIÓN
                         </span>
                         <span style="font-size:0.48rem; color:#475569; font-weight:600; display:block;">
-                            ENCCO Jutiapa 1970 | Código: <strong style="color:#0f172a;">22-01-0038-46</strong>
+                            ENCCO Jutiapa 1970 | Código: <strong style="color:#0f172a;">22-01-0014-46</strong>
                         </span>
                         <span style="font-size:0.48rem; color:#004098; font-weight:800; background:#eff6ff; padding:1px 6px; border-radius:3px; display:inline-block; margin-top:2px;">
                             ACREDITACIÓN DOCENTE OFICIAL
