@@ -1450,12 +1450,16 @@ body.theme-dark .attendance-excel-table thead tr.day-header-row th.weekend-heade
     color: #6ee7b7;
 }
 
-/* Columnas fijas a la izquierda estilo Excel */
+/* Columnas fijas a la izquierda estilo Excel (Optimizadas para Celular y Tablet) */
 .attendance-excel-table .col-num {
     width: 36px;
     min-width: 36px;
     background: #f8fafc;
     font-weight: 700;
+    position: sticky;
+    left: 0;
+    z-index: 6;
+    border-right: 1px solid #cbd5e1;
 }
 
 .attendance-excel-table .col-carne {
@@ -1463,17 +1467,49 @@ body.theme-dark .attendance-excel-table thead tr.day-header-row th.weekend-heade
     min-width: 95px;
     font-family: monospace;
     font-size: 0.8rem;
+    background: #f8fafc;
 }
 
 .attendance-excel-table .col-name {
-    min-width: 220px;
-    max-width: 280px;
+    min-width: 200px;
+    max-width: 260px;
     text-align: left;
     padding-left: 10px;
-    font-weight: 600;
+    font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    position: sticky;
+    left: 36px;
+    z-index: 6;
+    background: #ffffff;
+    box-shadow: 3px 0 6px rgba(0, 0, 0, 0.08);
+    border-right: 2px solid #94a3b8;
+}
+
+.attendance-excel-table thead th.col-num {
+    position: sticky !important;
+    left: 0 !important;
+    top: 0 !important;
+    z-index: 25 !important;
+    background: #f1f5f9 !important;
+}
+
+.attendance-excel-table thead th.col-name {
+    position: sticky !important;
+    left: 36px !important;
+    top: 0 !important;
+    z-index: 25 !important;
+    background: #f1f5f9 !important;
+    box-shadow: 3px 0 6px rgba(0, 0, 0, 0.08);
+    border-right: 2px solid #94a3b8;
+}
+
+body.theme-dark .attendance-excel-table .col-num {
+    background: #091a35 !important;
+}
+body.theme-dark .attendance-excel-table .col-name {
+    background: #0d274c !important;
 }
 
 /* Celdas de día interactivas */
@@ -1901,8 +1937,72 @@ body.theme-dark .att-global-pct-bar {
     .cards-grid {
         grid-template-columns: 1fr !important;
     }
+
+    /* Optimizaciones táctiles para Celular y Tablet */
+    input, select, textarea {
+        font-size: 16px !important; /* Previene auto-zoom molesto en navegadores móviles (iOS Safari / Chrome) */
+    }
+
+    .btn {
+        min-height: 38px;
+        touch-action: manipulation;
+    }
+
+    /* Asistencia en Celular: Ocultar Código Personal para dar espacio completo al nombre */
+    .attendance-excel-table .col-carne,
+    .attendance-excel-table th.col-carne {
+        display: none !important;
+    }
+
+    .attendance-excel-table .col-name {
+        min-width: 140px !important;
+        max-width: 180px !important;
+        font-size: 0.82rem !important;
+    }
+
+    .att-cell,
+    .att-day-cell {
+        min-width: 34px !important;
+        width: 34px !important;
+        height: 34px !important;
+        font-size: 0.84rem !important;
+    }
+
+    .attendance-control-bar {
+        padding: 12px !important;
+    }
+
+    .attendance-quick-scan-bar {
+        padding: 12px 14px !important;
+    }
+
+    .view-container {
+        padding: 10px 12px !important;
+    }
 }
 
+/* TABLETS EN HORIZONTAL Y VERTICAL (769px - 1024px) */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+    .attendance-excel-table .col-name {
+        min-width: 180px !important;
+        max-width: 220px !important;
+    }
+    .att-cell,
+    .att-day-cell {
+        min-width: 30px !important;
+        width: 30px !important;
+        height: 32px !important;
+    }
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+@keyframes scanLineAnim {
+    0% { top: 4%; opacity: 0.7; }
+    50% { top: 92%; opacity: 1; }
+    100% { top: 4%; opacity: 0.7; }
+}
 
 /* ==========================================================================
    CORRECCIÓN ESTRUCTURAL DE LAYOUT PRINCIPAL (SIDEBAR A LA IZQUIERDA + CONTENIDO A LA DERECHA)

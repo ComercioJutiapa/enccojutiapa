@@ -21729,6 +21729,438 @@ async function _syncAttendanceToFirebaseBackground() {
     }
 }
 
+// ==========================================================================
+// TOMA RÁPIDA DE ASISTENCIA CON CARNÉ (QR / CÓDIGO DE BARRAS) EN MÓVIL Y TABLET
+// ==========================================================================
+let _attendanceCameraStream = null;
+let _attendanceCameraFacing = 'environment'; // 'environment' (trasera) o 'user' (frontal)
+let _attendanceBarcodeDetector = null;
+let _attendanceScanAnimId = null;
+let _attendanceLastScannedStudentCode = '';
+let _attendanceLastScanTime = 0;
+let _attendanceTodayScannedCount = 0;
+
+function focusAttendanceBarcodeInput() {
+    const input = document.getElementById('attendanceBarcodeInput');
+    if (input) {
+        input.focus();
+        input.select();
+    }
+}
+
+function handleAttendanceBarcodeInput(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        submitAttendanceManualBarcodeInput();
+    }
+}
+
+function submitAttendanceManualBarcodeInput() {
+    const input = document.getElementById('attendanceBarcodeInput');
+    if (!input) return;
+    const rawVal = input.value.trim();
+    if (!rawVal) return;
+    registerAttendanceByCode(rawVal);
+    input.value = '';
+    input.focus();
+}
+
+function submitAttendanceCameraManualInput() {
+    const input = document.getElementById('attendanceCameraManualInput');
+    if (!input) return;
+    const rawVal = input.value.trim();
+    if (!rawVal) return;
+    registerAttendanceByCode(rawVal);
+    input.value = '';
+}
+
+function playAttendanceBeep(isSuccess = true) {
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        if (isSuccess) {
+            // Tono alegre de confirmación: Dos notas cortas (880Hz -> 1174.66Hz)
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc1.type = 'sine';
+            osc2.type = 'triangle';
+            osc1.frequency.setValueAtTime(880, ctx.currentTime);
+            osc2.frequency.setValueAtTime(1174.66, ctx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.18, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(ctx.destination);
+            osc1.start(ctx.currentTime);
+            osc1.stop(ctx.currentTime + 0.08);
+            osc2.start(ctx.currentTime + 0.08);
+            osc2.stop(ctx.currentTime + 0.22);
+        } else {
+            // Tono de error/no encontrado: Tono grave corto (220Hz)
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(220, ctx.currentTime);
+            gain.gain.setValueAtTime(0.2, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.25);
+        }
+    } catch (e) {
+        console.warn('Audio feedback warning:', e);
+    }
+}
+
+function updateLastScannedBanner(student, status, detailsMsg) {
+    const banner = document.getElementById('attendanceLastScannedBanner');
+    const nameEl = document.getElementById('attendanceBannerStudentName');
+    const detEl = document.getElementById('attendanceBannerStudentDetails');
+    const badgeEl = document.getElementById('attendanceBannerStatusBadge');
+    const timeEl = document.getElementById('attendanceBannerTime');
+    const avatarEl = document.getElementById('attendanceBannerAvatar');
+
+    const modalPill = document.getElementById('scannerLastScannedPill');
+    const modalName = document.getElementById('scannerPillName');
+    const modalDet = document.getElementById('scannerPillDetails');
+    const modalAvatar = document.getElementById('scannerPillAvatar');
+
+    const countNum = document.getElementById('attendanceScanCountNum');
+    if (countNum) countNum.textContent = _attendanceTodayScannedCount;
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    if (status === 'success' && student) {
+        const studentName = `${student.apellidos || student.lastName || ''} ${student.nombres || student.firstName || student.name || ''}`.trim() || 'Estudiante';
+        const gradeStr = student.grade || student.gradeLabel || student.gradeCode || 'Grado no esp.';
+        const sectionStr = student.section || '';
+        const carneStr = student.carne || student.personalCode || student.cui || '';
+
+        if (banner) {
+            banner.style.display = 'flex';
+            banner.style.borderColor = '#86efac';
+            banner.style.background = '#ffffff';
+        }
+        if (nameEl) nameEl.textContent = studentName;
+        if (detEl) detEl.textContent = `${gradeStr} ${sectionStr ? 'Sec. ' + sectionStr : ''} | Carné: ${carneStr} | ${detailsMsg || 'Presente'}`;
+        if (badgeEl) {
+            badgeEl.className = 'badge';
+            badgeEl.style.background = '#dcfce7';
+            badgeEl.style.color = '#15803d';
+            badgeEl.innerHTML = '<i class="fa-solid fa-check"></i> PRESENTE';
+        }
+        if (timeEl) timeEl.textContent = timeStr;
+        if (avatarEl) {
+            if (student.photo) {
+                avatarEl.innerHTML = `<img src="${student.photo}" style="width:100%; height:100%; object-fit:cover;">`;
+            } else {
+                avatarEl.innerHTML = `<i class="fa-solid fa-user-check"></i>`;
+            }
+        }
+
+        if (modalPill) modalPill.style.display = 'flex';
+        if (modalName) modalName.textContent = studentName;
+        if (modalDet) modalDet.textContent = `${gradeStr} ${sectionStr ? 'Sec. ' + sectionStr : ''} - ${timeStr}`;
+        if (modalAvatar) {
+            if (student.photo) {
+                modalAvatar.innerHTML = `<img src="${student.photo}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+            } else {
+                modalAvatar.innerHTML = `<i class="fa-solid fa-check"></i>`;
+            }
+        }
+    } else {
+        if (banner) {
+            banner.style.display = 'flex';
+            banner.style.borderColor = '#fca5a5';
+            banner.style.background = '#fff5f5';
+        }
+        if (nameEl) nameEl.textContent = 'Código no reconocido';
+        if (detEl) detEl.textContent = detailsMsg || 'No se encontró un estudiante con el código escaneado.';
+        if (badgeEl) {
+            badgeEl.className = 'badge';
+            badgeEl.style.background = '#fee2e2';
+            badgeEl.style.color = '#b91c1c';
+            badgeEl.innerHTML = '<i class="fa-solid fa-xmark"></i> NO REGISTRADO';
+        }
+        if (timeEl) timeEl.textContent = timeStr;
+        if (avatarEl) avatarEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;"></i>`;
+    }
+}
+
+function registerAttendanceByCode(rawCode) {
+    if (!rawCode) return false;
+    let cleanCode = String(rawCode).trim();
+    if (!cleanCode) return false;
+
+    // Si viene de URL o texto enriquecido de QR, extraer parámetro o segmento clave
+    if (cleanCode.includes('?')) {
+        try {
+            const url = new URL(cleanCode, (typeof window !== 'undefined' && window.location) ? window.location.origin : 'https://comerciojutiapa.edu.gt');
+            const pCode = url.searchParams.get('carne') || url.searchParams.get('code') || url.searchParams.get('personalCode') || url.searchParams.get('id');
+            if (pCode) cleanCode = pCode.trim();
+        } catch(e) {}
+    }
+
+    const normTarget = cleanCode.toUpperCase().replace(/[\s\-_]/g, '');
+    const rawTarget = cleanCode.toUpperCase();
+
+    const students = STATE.students || [];
+    const student = students.find(s => {
+        if (typeof isStudentActive === 'function' && !isStudentActive(s)) return false;
+        const pCode = (s.personalCode || '').toUpperCase();
+        const carne = (s.carne || '').toUpperCase();
+        const cui = (s.cui || '').toString().trim();
+        const sid = (s.id || '').toString().trim();
+
+        if (pCode === rawTarget || carne === rawTarget || cui === cleanCode || sid === cleanCode) return true;
+        if (normTarget.length >= 3) {
+            if (pCode.replace(/[\s\-_]/g, '') === normTarget) return true;
+            if (carne.replace(/[\s\-_]/g, '') === normTarget) return true;
+        }
+        return false;
+    });
+
+    if (!student) {
+        playAttendanceBeep(false);
+        if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([200]);
+        updateLastScannedBanner(null, 'error', `Código "${rawCode}" no coincide con ningún estudiante activo.`);
+        if (typeof showToast === 'function') showToast(`Código "${rawCode}" no encontrado.`, 'warning');
+        return false;
+    }
+
+    // Identificar grado del estudiante
+    const rawS = `${student.grade || ''} ${student.gradeCode || ''} ${student.gradeLabel || ''}`.toUpperCase();
+    let sGradeNum = 0;
+    if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+    else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+    else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+    const sSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(student.section || student.gradeCode || student.gradeLabel || rawS) : (student.section || '');
+
+    // Encontrar el grado en gradesList
+    let studentGradeCode = student.gradeCode || student.grade || '';
+    const matchingGradeObj = (STATE.gradesList || []).find(g => {
+        const rawG = `${g.code || ''} ${g.name || ''} ${g.section || ''}`.toUpperCase();
+        let gNum = 0;
+        if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gNum = 6;
+        else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gNum = 5;
+        else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gNum = 4;
+        const gSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(g.section || g.code || g.name || rawG) : (g.section || '');
+        return (sGradeNum > 0 && gNum === sGradeNum) && (sSec && gSec === sSec);
+    });
+
+    if (matchingGradeObj && matchingGradeObj.code) {
+        studentGradeCode = matchingGradeObj.code;
+    }
+
+    const today = new Date();
+    const todayDay = today.getDate();
+    const todayMonth = today.getMonth() + 1;
+
+    // Obtener elementos selectores actuales del DOM
+    const gradeSelect = (typeof document !== 'undefined') ? document.getElementById('attendanceGradeSelect') : null;
+    const monthSelect = (typeof document !== 'undefined') ? document.getElementById('attendanceMonthSelect') : null;
+    const courseSelect = (typeof document !== 'undefined') ? document.getElementById('attendanceCourseSelect') : null;
+    
+    let activeGradeCode = (gradeSelect && gradeSelect.value) ? gradeSelect.value : studentGradeCode;
+    let activeMonth = monthSelect ? (parseInt(monthSelect.value) || todayMonth) : todayMonth;
+    let activeCourse = courseSelect ? courseSelect.value : 'GENERAL';
+
+    // Si el usuario tiene seleccionado otro grado y el estudiante pertenece a un grado registrado en el select
+    if (gradeSelect && gradeSelect.value !== studentGradeCode && studentGradeCode) {
+        for (let i = 0; i < gradeSelect.options.length; i++) {
+            if (gradeSelect.options[i].value === studentGradeCode) {
+                gradeSelect.selectedIndex = i;
+                activeGradeCode = studentGradeCode;
+                break;
+            }
+        }
+    }
+
+    if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+    const recordKey = (typeof getAttendanceRecordKey === 'function') ? getAttendanceRecordKey(activeGradeCode, activeMonth, activeCourse) : `${activeGradeCode}_${activeMonth}_${activeCourse}`;
+    if (!STATE.attendanceRecords[recordKey]) STATE.attendanceRecords[recordKey] = {};
+    if (!STATE.attendanceRecords[recordKey][student.id]) STATE.attendanceRecords[recordKey][student.id] = {};
+
+    // Marcar presente en el día de hoy (o día 1 si el mes seleccionado no es el actual)
+    const targetDay = (activeMonth === todayMonth) ? todayDay : 1;
+    STATE.attendanceRecords[recordKey][student.id][targetDay] = 'P';
+
+    _attendanceTodayScannedCount++;
+
+    // Guardado optimista instantáneo
+    if (typeof saveAttendanceRecords === 'function') {
+        saveAttendanceRecords(false);
+    }
+
+    // Notificaciones sensoriales
+    playAttendanceBeep(true);
+    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([70, 40, 70]);
+
+    const sFullName = `${student.apellidos || student.lastName || ''} ${student.nombres || student.firstName || student.name || ''}`.trim() || 'Estudiante';
+    updateLastScannedBanner(student, 'success', `Presente marcado: Día ${targetDay}`);
+    if (typeof showToast === 'function') showToast(`Asistencia registrada: ${sFullName}`, 'success');
+
+    // Refrescar grilla visual si estamos viendo este módulo
+    if (typeof document !== 'undefined' && document.getElementById('view-attendance')) {
+        if (typeof loadAttendanceList === 'function') loadAttendanceList();
+        setTimeout(() => {
+            const row = document.getElementById(`att-row-${student.id}`);
+            if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                row.style.transition = 'background-color 0.4s ease';
+                row.style.backgroundColor = '#dcfce7';
+                setTimeout(() => {
+                    row.style.backgroundColor = '';
+                }, 2000);
+            }
+        }, 80);
+    }
+
+    return true;
+}
+
+async function openAttendanceCameraScanner() {
+    const modal = document.getElementById('attendanceCameraModal');
+    if (modal) modal.style.display = 'flex';
+
+    const statusMsg = document.getElementById('attendanceCameraStatusMsg');
+    const video = document.getElementById('attendanceScannerVideo');
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        if (statusMsg) statusMsg.textContent = 'Tu navegador no soporta cámara directa. Usa lector láser o ingreso manual.';
+        if (typeof showToast === 'function') showToast('Navegador no soporta cámara directa.', 'warning');
+        return;
+    }
+
+    if (statusMsg) statusMsg.textContent = 'Iniciando cámara trasera...';
+
+    try {
+        if (_attendanceCameraStream) {
+            _attendanceCameraStream.getTracks().forEach(t => t.stop());
+            _attendanceCameraStream = null;
+        }
+
+        const constraints = {
+            audio: false,
+            video: {
+                facingMode: { ideal: _attendanceCameraFacing },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        _attendanceCameraStream = stream;
+        if (video) {
+            video.srcObject = stream;
+            await video.play();
+        }
+
+        if (statusMsg) statusMsg.textContent = 'Cámara lista. Apunte el carné hacia el recuadro verde.';
+
+        _startAttendanceBarcodeLoop();
+    } catch (err) {
+        console.error('Error al abrir cámara para asistencia:', err);
+        if (statusMsg) statusMsg.textContent = 'Permiso denegado o cámara no disponible. Ingrese el código manualmente.';
+        if (typeof showToast === 'function') showToast('No se pudo acceder a la cámara. Revisa los permisos.', 'danger');
+    }
+}
+
+function closeAttendanceCameraScanner() {
+    if (_attendanceScanAnimId) {
+        cancelAnimationFrame(_attendanceScanAnimId);
+        _attendanceScanAnimId = null;
+    }
+    if (_attendanceCameraStream) {
+        _attendanceCameraStream.getTracks().forEach(t => t.stop());
+        _attendanceCameraStream = null;
+    }
+    const video = document.getElementById('attendanceScannerVideo');
+    if (video) video.srcObject = null;
+
+    const modal = document.getElementById('attendanceCameraModal');
+    if (modal) modal.style.display = 'none';
+
+    focusAttendanceBarcodeInput();
+}
+
+async function switchAttendanceCameraFacing() {
+    _attendanceCameraFacing = (_attendanceCameraFacing === 'environment') ? 'user' : 'environment';
+    const textEl = document.getElementById('attendanceCurrentFacingText');
+    if (textEl) textEl.textContent = (_attendanceCameraFacing === 'environment') ? 'Trasera' : 'Frontal';
+    await openAttendanceCameraScanner();
+}
+
+function _startAttendanceBarcodeLoop() {
+    if (_attendanceScanAnimId) cancelAnimationFrame(_attendanceScanAnimId);
+
+    const video = document.getElementById('attendanceScannerVideo');
+
+    let detector = null;
+    if (typeof window !== 'undefined' && 'BarcodeDetector' in window) {
+        try {
+            detector = new window.BarcodeDetector({
+                formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'codabar', 'upc_a', 'upc_e', 'data_matrix']
+            });
+        } catch(e) {
+            console.warn('BarcodeDetector format init error:', e);
+        }
+    }
+
+    async function scanFrame() {
+        if (!_attendanceCameraStream || !video || video.readyState < 2) {
+            _attendanceScanAnimId = requestAnimationFrame(scanFrame);
+            return;
+        }
+
+        const now = Date.now();
+        if (now - _attendanceLastScanTime > 150) {
+            _attendanceLastScanTime = now;
+
+            if (detector) {
+                try {
+                    const barcodes = await detector.detect(video);
+                    if (barcodes && barcodes.length > 0) {
+                        const rawCode = barcodes[0].rawValue;
+                        if (rawCode && rawCode !== _attendanceLastScannedStudentCode) {
+                            _attendanceLastScannedStudentCode = rawCode;
+                            registerAttendanceByCode(rawCode);
+                            setTimeout(() => {
+                                if (_attendanceLastScannedStudentCode === rawCode) {
+                                    _attendanceLastScannedStudentCode = '';
+                                }
+                            }, 2500);
+                        }
+                    }
+                } catch(detErr) {
+                    // Ignorar frames no legibles
+                }
+            }
+        }
+
+        _attendanceScanAnimId = requestAnimationFrame(scanFrame);
+    }
+
+    _attendanceScanAnimId = requestAnimationFrame(scanFrame);
+}
+
+if (typeof window !== 'undefined') {
+    window.focusAttendanceBarcodeInput = focusAttendanceBarcodeInput;
+    window.handleAttendanceBarcodeInput = handleAttendanceBarcodeInput;
+    window.submitAttendanceManualBarcodeInput = submitAttendanceManualBarcodeInput;
+    window.submitAttendanceCameraManualInput = submitAttendanceCameraManualInput;
+    window.registerAttendanceByCode = registerAttendanceByCode;
+    window.openAttendanceCameraScanner = openAttendanceCameraScanner;
+    window.closeAttendanceCameraScanner = closeAttendanceCameraScanner;
+    window.switchAttendanceCameraFacing = switchAttendanceCameraFacing;
+    window.playAttendanceBeep = playAttendanceBeep;
+    window.updateLastScannedBanner = updateLastScannedBanner;
+}
+
 function printAttendanceOfficialSheet(forcedIsBlank = null) {
     const gradeSelect = document.getElementById('attendanceGradeSelect');
     const monthSelect = document.getElementById('attendanceMonthSelect');

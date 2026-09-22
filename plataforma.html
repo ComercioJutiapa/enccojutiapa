@@ -2033,6 +2033,58 @@
                         </span>
                     </div>
 
+                    <!-- BARRA DE TOMA RÁPIDA DE ASISTENCIA / ESCÁNER MÓVIL Y TABLET -->
+                    <div class="attendance-quick-scan-bar" style="background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%); border: 1.5px solid #86efac; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; box-shadow: 0 4px 12px rgba(16,185,129,0.08);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 280px;">
+                                <div style="width: 44px; height: 44px; border-radius: 10px; background: var(--brand-green-main, #10b981); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; box-shadow: 0 4px 8px rgba(16,185,129,0.25);">
+                                    <i class="fa-solid fa-qrcode"></i>
+                                </div>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 800; font-size: 0.95rem; color: #064e3b; display: flex; align-items: center; gap: 6px;">
+                                        Toma de Asistencia con Carné (QR / Código de Barras)
+                                        <span class="badge" style="background: #2563eb; color: #fff; font-size: 0.72rem; padding: 2px 6px; border-radius: 4px;">Móvil & Tablet</span>
+                                    </div>
+                                    <div style="position: relative; margin-top: 6px;">
+                                        <input type="text" id="attendanceBarcodeInput" class="form-control" placeholder="Pase lector láser, escanee con cámara o ingrese carné..." onkeydown="handleAttendanceBarcodeInput(event)" style="padding-left: 36px; padding-right: 70px; height: 42px; font-size: 16px; font-weight: 600; border-color: #86efac; background: #ffffff;">
+                                        <i class="fa-solid fa-barcode" style="position: absolute; left: 12px; top: 13px; color: #10b981; font-size: 1.1rem;"></i>
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="submitAttendanceManualBarcodeInput()" style="position: absolute; right: 4px; top: 4px; height: 34px; padding: 0 12px; font-size: 0.82rem; font-weight: 700;">
+                                            <i class="fa-solid fa-arrow-right"></i> Marcar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <button type="button" class="btn btn-warning" onclick="openAttendanceCameraScanner()" style="height: 42px; font-weight: 800; font-size: 0.9rem; padding: 0 16px; display: inline-flex; align-items: center; gap: 8px; background: #ea580c; border-color: #c2410c; color: #ffffff; box-shadow: 0 3px 8px rgba(234,88,12,0.25);">
+                                    <i class="fa-solid fa-camera"></i> Escáner con Cámara
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="focusAttendanceBarcodeInput()" title="Enfocar campo para lector láser externo" style="height: 42px; padding: 0 12px; font-weight: 700; background: #fff;">
+                                    <i class="fa-solid fa-crosshairs"></i> Modo Lector
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- BANNER DE ÚLTIMO ALUMNO ESCANEADO -->
+                        <div id="attendanceLastScannedBanner" style="display: none; margin-top: 12px; padding: 10px 14px; border-radius: 8px; background: #ffffff; border: 1.5px solid #86efac; box-shadow: 0 2px 6px rgba(0,0,0,0.04); align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div id="attendanceBannerAvatar" style="width: 38px; height: 38px; border-radius: 50%; background: #10b981; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; overflow: hidden; border: 2px solid #86efac;">
+                                    <i class="fa-solid fa-user-check"></i>
+                                </div>
+                                <div>
+                                    <div id="attendanceBannerStudentName" style="font-weight: 800; color: #0f172a; font-size: 0.92rem;">-</div>
+                                    <div id="attendanceBannerStudentDetails" style="font-size: 0.8rem; color: #64748b;">-</div>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span id="attendanceBannerStatusBadge" class="badge" style="background: #dcfce7; color: #15803d; font-weight: 800; font-size: 0.82rem; padding: 6px 12px; border-radius: 6px;">
+                                    <i class="fa-solid fa-check"></i> PRESENTE
+                                </span>
+                                <span id="attendanceBannerTime" style="font-size: 0.8rem; color: #64748b; font-weight: 600;">-</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="attendance-control-bar" style="background:#ffffff; padding:16px; border-radius:10px; border:1px solid #cbd5e1; margin-bottom:14px; box-shadow:var(--shadow-sm);">
                         <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
                             <div style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; flex:1;">
@@ -4643,6 +4695,90 @@
                         </button>
                     </div>
                 </div>
+    </div>
+</div>
+
+<!-- MODAL ESCÁNER DE ASISTENCIA CON CÁMARA (MÓVIL / TABLET) -->
+<div id="attendanceCameraModal" class="modal" style="display: none; position: fixed; inset: 0; z-index: 10050; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px);">
+    <div class="modal-dialog" style="max-width: 520px; width: 95%; margin: auto; border-radius: 14px; overflow: hidden; background: #ffffff; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border: 2px solid #0284c7; animation: fadeIn 0.2s ease;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #0284c7 0%, #10b981 100%); color: #ffffff; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="fa-solid fa-qrcode" style="font-size: 1.3rem;"></i>
+                <div>
+                    <h4 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #ffffff;">Escáner de Carnés con Cámara</h4>
+                    <span style="font-size: 0.75rem; opacity: 0.92; color: #f0fdf4;">Apunta el carné de estudiante (código QR o barras)</span>
+                </div>
+            </div>
+            <button type="button" onclick="closeAttendanceCameraScanner()" style="background: rgba(255,255,255,0.2); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer;">&times;</button>
+        </div>
+
+        <div class="modal-body" style="padding: 16px; background: #0f172a; color: #ffffff;">
+            <!-- CONTENEDOR DE VIDEO -->
+            <div style="position: relative; width: 100%; height: 320px; border-radius: 12px; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center;">
+                <video id="attendanceScannerVideo" playsinline autoplay muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+                <canvas id="attendanceScannerCanvas" style="display: none;"></canvas>
+                
+                <!-- GUÍA VISUAL DE ESCANEO -->
+                <div style="position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center;">
+                    <div style="width: 240px; height: 200px; border: 2.5px dashed #22c55e; border-radius: 12px; box-shadow: 0 0 0 4000px rgba(0,0,0,0.45); position: relative;">
+                        <!-- Laser scanline animation -->
+                        <div style="position: absolute; left: 0; right: 0; height: 2px; background: #ef4444; box-shadow: 0 0 8px #ef4444; animation: scanLineAnim 2s infinite ease-in-out;"></div>
+                        <div style="position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; color: #86efac; font-size: 0.75rem; font-weight: 700; text-shadow: 0 1px 2px #000;">
+                            Centra el carné aquí
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ESTADO DE LA CÁMARA / MENSAJES -->
+                <div id="attendanceCameraStatusMsg" style="position: absolute; top: 10px; left: 10px; right: 10px; background: rgba(0,0,0,0.75); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 0.78rem; text-align: center; z-index: 10;">
+                    Iniciando cámara...
+                </div>
+            </div>
+
+            <!-- CONTROLES DE CÁMARA (CAMBIAR TRASERA / FRONTAL) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 8px; flex-wrap: wrap;">
+                <button type="button" class="btn btn-outline-light btn-sm" onclick="switchAttendanceCameraFacing()" style="font-weight: 700; font-size: 0.8rem; border-color: rgba(255,255,255,0.3); color: #ffffff;">
+                    <i class="fa-solid fa-camera-rotate"></i> Cambiar Cámara (<span id="attendanceCurrentFacingText">Trasera</span>)
+                </button>
+                <span id="attendanceScanCountBadge" class="badge" style="background: #10b981; color: #fff; font-size: 0.8rem; padding: 6px 10px; font-weight: 800;">
+                    Escaneados hoy: <span id="attendanceScanCountNum">0</span>
+                </span>
+            </div>
+
+            <!-- PILL DE ÚLTIMO DETECTADO EN EL MODAL -->
+            <div id="scannerLastScannedPill" style="display: none; margin-top: 12px; background: #1e293b; border: 1.5px solid #22c55e; border-radius: 8px; padding: 10px; align-items: center; gap: 10px;">
+                <div id="scannerPillAvatar" style="width: 34px; height: 34px; border-radius: 50%; background: #22c55e; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem;">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div id="scannerPillName" style="font-weight: 800; color: #fff; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</div>
+                    <div id="scannerPillDetails" style="color: #94a3b8; font-size: 0.78rem;">-</div>
+                </div>
+                <span class="badge" style="background: #22c55e; color: #000; font-weight: 800; font-size: 0.75rem;">REGISTRADO</span>
+            </div>
+
+            <!-- INGRESO MANUAL DE RESPALDO -->
+            <div style="margin-top: 14px; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+                <label style="font-size: 0.78rem; color: #cbd5e1; font-weight: 600; display: block; margin-bottom: 4px;">
+                    ¿Problemas de iluminación? Ingrese el carné o código personal:
+                </label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="attendanceCameraManualInput" class="form-control" placeholder="Ej. 2026-0001 o A123BCD" style="background: #1e293b; border-color: #475569; color: #fff; font-size: 16px; height: 38px;" onkeydown="if(event.key==='Enter') submitAttendanceCameraManualInput()">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="submitAttendanceCameraManualInput()" style="font-weight: 700; padding: 0 14px; background: #2563eb;">
+                        Registrar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer" style="background: #1e293b; border-top: 1px solid #334155; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.75rem; color: #94a3b8;">
+                <i class="fa-solid fa-volume-high"></i> Tono y vibración activos al registrar.
+            </span>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeAttendanceCameraScanner()" style="font-weight: 700;">
+                Listo / Cerrar
+            </button>
+        </div>
     </div>
 </div>
 
