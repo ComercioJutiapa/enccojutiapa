@@ -535,7 +535,7 @@
                 </a>
 
                 <!-- SECCIÓN CONTROL ACADÉMICO Y SECRETARÍA -->
-                <div class="nav-section-label" data-perm="grades,guide-teachers,pensum,class-assignments,enrollment,students,datos-sire,excel-import,grade-lock,cycles">CONTROL ACADÉMICO Y SECRETARÍA</div>
+                <div class="nav-section-label" data-perm="grades,guide-teachers,pensum,class-assignments,enrollment,students,carnets,datos-sire,excel-import,grade-lock,cycles">CONTROL ACADÉMICO Y SECRETARÍA</div>
                 <a href="#" class="nav-item" data-view="grades" data-perm="grades" onclick="navigateTo('grades', event)">
                     <i class="fa-solid fa-graduation-cap"></i>
                     <span>Editor de Grados y Secciones</span>
@@ -559,6 +559,11 @@
                 <a href="#" class="nav-item" data-view="students" data-perm="students" onclick="navigateTo('students', event)">
                     <i class="fa-solid fa-address-book"></i>
                     <span>Nómina y Expedientes de Alumnos</span>
+                </a>
+                <a href="#" class="nav-item" data-view="carnets" data-perm="carnets" data-allowed="director,secretaria,admin" onclick="navigateTo('carnets', event)">
+                    <i class="fa-solid fa-id-card"></i>
+                    <span>Carnés Estudiantiles</span>
+                    <span class="badge" style="margin-left:auto; font-size:0.65rem; padding:2px 6px; background:#16a34a; color:#fff; border-radius:4px; font-weight:700;">CR80</span>
                 </a>
                 <a href="datos-sire.html" class="nav-item hidden" data-view="datos-sire" data-perm="datos-sire" data-allowed="director,secretaria,admin" onclick="navigateTo('datos-sire', event)" title="Módulo Oficial Datos para Sire MINEDUC" style="display:none !important;">
                     <i class="fa-solid fa-cloud-arrow-up"></i>
@@ -599,7 +604,7 @@
                 </a>
 
                 <!-- SECCIÓN REPORTES Y CUADRO DE HONOR -->
-                <div class="nav-section-label" data-perm="honor-roll,reports,grade-stats">REPORTES Y CUADRO DE HONOR</div>
+                <div class="nav-section-label" data-perm="honor-roll,reports,grade-stats,predictive-analytics">REPORTES Y CUADRO DE HONOR</div>
                 <a href="#" class="nav-item" data-view="honor-roll" data-perm="honor-roll" onclick="navigateTo('honor-roll', event)">
                     <i class="fa-solid fa-award"></i>
                     <span>Cuadros de Honor</span>
@@ -611,6 +616,11 @@
                 <a href="#" class="nav-item" data-view="grade-stats" data-perm="grade-stats" onclick="navigateTo('grade-stats', event)">
                     <i class="fa-solid fa-chart-bar"></i>
                     <span>Promedios y Estadísticas</span>
+                </a>
+                <a href="#" class="nav-item" data-view="predictive-analytics" data-perm="predictive-analytics" data-allowed="director,secretaria,admin" onclick="navigateTo('predictive-analytics', event)">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Analítica y Riesgo Escolar</span>
+                    <span class="badge" style="margin-left:auto; font-size:0.65rem; padding:2px 6px; background:#e11d48; color:#fff; border-radius:4px; font-weight:700;">IA/Riesgo</span>
                 </a>
             </nav>
 
@@ -2734,6 +2744,16 @@
                     </style>
                 </section>
 
+                <!-- 17. VISTA: ANALÍTICA PREDICTIVA Y DETECCIÓN DE RIESGO ESCOLAR -->
+                <section class="app-view" id="view-predictive-analytics">
+                    <!-- Renderizado dinámicamente con analytics.js -->
+                </section>
+
+                <!-- 18. VISTA: GENERADOR E IMPRESIÓN DE CARNÉS ESTUDIANTILES CR80 -->
+                <section class="app-view" id="view-carnets">
+                    <!-- Renderizado dinámicamente con carnets.js -->
+                </section>
+
             </div> <!-- Fin .view-container -->
         </main> <!-- Fin .main-content -->
     </div> <!-- Fin .app-layout -->
@@ -4113,6 +4133,8 @@
     <script src="ui.js?v=2026.09.21.v224_signed_session_and_security_shield"></script>
     <script src="sire.js?v=2026.09.21.v224_signed_session_and_security_shield"></script>
     <script src="app.js?v=2026.09.21.v224_signed_session_and_security_shield"></script>
+    <script src="analytics.js?v=2026.09.21.v225_analytics_and_carnets"></script>
+    <script src="carnets.js?v=2026.09.21.v225_analytics_and_carnets"></script>
 
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre

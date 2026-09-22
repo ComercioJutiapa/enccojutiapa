@@ -1141,6 +1141,8 @@ function normalizePermKey(key) {
     if (k === 'class_assignments') return 'class-assignments';
     if (k === 'boletin' || k === 'boletines' || k === 'boletin_calificaciones' || k === 'boletin-calificaciones' || k === 'report_card' || k === 'report-card') return 'reports';
     if (k === 'grade_stats' || k === 'grade-stats' || k === 'estadisticas' || k === 'promedios' || k === 'grade_statistics') return 'grade-stats';
+    if (k === 'predictive_analytics' || k === 'predictive-analytics' || k === 'riesgo' || k === 'analitica' || k === 'analytics') return 'predictive-analytics';
+    if (k === 'carnets' || k === 'carne' || k === 'carnet' || k === 'credenciales') return 'carnets';
     return k;
 }
 
@@ -1163,6 +1165,20 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
         const allowedStats = ['director', 'secretaria', 'admin', 'super_usuario'];
         if (!allowedStats.includes(roleKey)) return 'none';
         return 'view';
+    }
+
+    // 🛡️ BLINDAJE RBAC ESTRICTO: "Analítica Predictiva y Riesgo Escolar" exclusivo para Dirección, Secretaría, Admin y Superusuario
+    if (key === 'predictive-analytics') {
+        const allowedAnalytics = ['director', 'secretaria', 'admin', 'super_usuario'];
+        if (!allowedAnalytics.includes(roleKey)) return 'none';
+        return 'view';
+    }
+
+    // 🛡️ BLINDAJE RBAC ESTRICTO: "Carnés Estudiantiles" exclusivo para Dirección, Secretaría, Admin y Superusuario
+    if (key === 'carnets') {
+        const allowedCarnets = ['director', 'secretaria', 'admin', 'super_usuario'];
+        if (!allowedCarnets.includes(roleKey)) return 'none';
+        return 'edit';
     }
 
     if (typeof normalizeRolesConfig === 'function') normalizeRolesConfig();
@@ -1206,6 +1222,18 @@ function hasRolePermission(permKey, role = null) {
     if (testKey === 'grade-stats') {
         const allowedStats = ['director', 'secretaria', 'admin', 'super_usuario'];
         return allowedStats.includes(targetRole);
+    }
+
+    // 🛡️ BLINDAJE RBAC ESTRICTO: "Analítica Predictiva y Riesgo Escolar" denegado terminantemente a docentes y otros roles
+    if (testKey === 'predictive-analytics') {
+        const allowedAnalytics = ['director', 'secretaria', 'admin', 'super_usuario'];
+        return allowedAnalytics.includes(targetRole);
+    }
+
+    // 🛡️ BLINDAJE RBAC ESTRICTO: "Carnés Estudiantiles" denegado terminantemente a docentes y otros roles
+    if (testKey === 'carnets') {
+        const allowedCarnets = ['director', 'secretaria', 'admin', 'super_usuario'];
+        return allowedCarnets.includes(targetRole);
     }
 
     try {
@@ -2293,7 +2321,9 @@ var SYSTEM_MODULES_LIST = [
     { key: 'roles', name: 'Gestor de Roles y Permisos', icon: 'fa-user-shield', category: 'Administración', desc: 'Configuración de permisos por módulo (Solo Administrador).' },
     { key: 'careers', name: 'Gestor de Carreras', icon: 'fa-graduation-cap', category: 'Académico', desc: 'Creación y edición de carreras escolares.' },
     { key: 'cycles', name: 'Gestor de Ciclos Escolares', icon: 'fa-calendar-days', category: 'Académico', desc: 'Habilitación de ciclos lectivos y promociones.' },
-    { key: 'grade-stats', name: 'Promedios y Estadísticas', icon: 'fa-chart-bar', category: 'Académico', desc: 'Estadísticas de promedios, aprobados y reprobados por grado y sección.' }
+    { key: 'grade-stats', name: 'Promedios y Estadísticas', icon: 'fa-chart-bar', category: 'Académico', desc: 'Estadísticas de promedios, aprobados y reprobados por grado y sección.' },
+    { key: 'predictive-analytics', name: 'Analítica Predictiva y Riesgo Escolar', icon: 'fa-chart-line', category: 'Académico', desc: 'Semáforo de riesgo de deserción, ranking de cursos críticos y citaciones.' },
+    { key: 'carnets', name: 'Carnés Estudiantiles CR80', icon: 'fa-id-card', category: 'Secretaría y Alumnos', desc: 'Generador de credenciales con código de barras Code 39 e impresión masiva en hoja Carta.' }
 ];
 window.SYSTEM_MODULES_LIST = SYSTEM_MODULES_LIST;
 
@@ -8341,6 +8371,8 @@ function navigateTo(viewName, event = null) {
         'students': { title: 'Nómina Oficial de Estudiantes', sub: 'Listado general y consulta de expedientes' },
         'grade-lock': { title: 'Control de Bloqueo y Bimestre Activo', sub: 'Configuración del bimestre oficial para docentes' },
         'grade-stats': { title: 'Promedios y Estadísticas por Grado y Sección', sub: 'Rendimiento académico consolidado, cuadros por grado y reportes oficiales de promedios' },
+        'predictive-analytics': { title: 'Analítica Predictiva y Riesgo Escolar', sub: 'Monitoreo de rendimiento temprano, detección de deserción y citaciones a padres de familia' },
+        'carnets': { title: 'Generador e Impresión de Carnés Estudiantiles', sub: 'Credenciales oficiales formato CR80 con código de barras e impresión masiva' },
     };
     const t = titles[viewName];
     if (t) {
@@ -8373,6 +8405,8 @@ function renderCurrentView() {
         case 'roles': renderRolesManagementView(); break;
         case 'reports': populateReportStudentSelect(); break;
         case 'grade-stats': renderGradeStatsView(); break;
+        case 'predictive-analytics': if (typeof renderPredictiveAnalyticsView === 'function') renderPredictiveAnalyticsView(); break;
+        case 'carnets': if (typeof renderCarnetsView === 'function') renderCarnetsView(); break;
     }
 }
 
