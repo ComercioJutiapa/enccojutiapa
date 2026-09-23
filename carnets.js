@@ -2,6 +2,12 @@
  * ======================================================================
  * 🪪 ENCCO OFFICIAL ID CARDS MODULE (carnets.js)
  * Escuela Nacional de Ciencias Comerciales - ENCCO Jutiapa 1970
+ * ----------------------------------------------------------------------
+ * Copyright (c) 2026 Nehemias Salguero. Jutiapa, Guatemala.
+ * Todos los derechos reservados. All Rights Reserved.
+ *
+ * Desarrollado por: Nehemias Salguero
+ * Ubicación: Jutiapa, Guatemala
  * ======================================================================
  * - Generador oficial de carnés estudiantiles (HORIZONTAL) y docentes (VERTICAL)
  * - Tamaño oficial CR80 (85.6mm × 53.98mm / 3.375" × 2.125").
@@ -1719,6 +1725,9 @@
                         </div>
                         <div class="carnets-sheet-grid">
                             ${cardsHtml}
+                        </div>
+                        <div style="text-align:center; margin-top:10px; padding-top:6px; border-top:1px solid #e2e8f0; font-size:9px; color:#64748b;">
+                            Sistema de Emisión de Carnés Institucionales ENCCO • © 2026 <strong>Nehemias Salguero</strong>, Jutiapa, Guatemala. Todos los derechos reservados.
                         </div>
                         <script>
                             window.onload = function() { window.print(); };

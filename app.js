@@ -1,4 +1,36 @@
 
+/**
+ * ======================================================================
+ * PLATAFORMA DE CONTROL ACADÉMICO ENCCO JUTIAPA 1970
+ * ----------------------------------------------------------------------
+ * Copyright (c) 2026 Nehemias Salguero. Jutiapa, Guatemala.
+ * Todos los derechos reservados. All Rights Reserved.
+ *
+ * Desarrollado y Diseñado por: Nehemias Salguero
+ * Ubicación: Jutiapa, Guatemala
+ * ======================================================================
+ */
+
+function openAboutSystemModal() {
+    const modal = document.getElementById('aboutSystemModal');
+    if (modal) {
+        modal.classList.add('active');
+        modal.style.display = 'flex';
+        modal.style.setProperty('display', 'flex', 'important');
+    }
+}
+window.openAboutSystemModal = openAboutSystemModal;
+
+function closeAboutSystemModal() {
+    const modal = document.getElementById('aboutSystemModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+        modal.style.setProperty('display', 'none', 'important');
+    }
+}
+window.closeAboutSystemModal = closeAboutSystemModal;
+
 // ======================================================================
 // 🛡️ ENCCO SECURITY SHIELD & ANTI-HACKING PROTECTION ENGINE (V2026)
 // ======================================================================
@@ -16977,9 +17009,9 @@ function buildStudentReportCardInnerHtml(s) {
                     </div>
                 </div>
 
-                <!-- PIE DE PÁGINA INSTITUCIONAL -->
-                <div style="display:flex; justify-content:space-between; border-top:1px dotted #94a3b8; padding-top:2px; font-size:8.5px; color:#64748b; font-weight:600; margin-top:1px;">
-                    <span>ENCCO JUTIAPA • Sistema de Control Académico Oficial</span>
+                <!-- PIE DE PÁGINA INSTITUCIONAL Y COPYRIGHT -->
+                <div style="display:flex; justify-content:space-between; border-top:1px dotted #94a3b8; padding-top:2px; font-size:8px; color:#64748b; font-weight:600; margin-top:1px;">
+                    <span>ENCCO JUTIAPA • Sistema de Control Académico • © 2026 Nehemias Salguero, Jutiapa, Guatemala</span>
                     <span>Fecha de emisión: ${new Date().toLocaleDateString("es-GT")}</span>
                 </div>
             </div>

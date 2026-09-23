@@ -2,6 +2,12 @@
  * ======================================================================
  * 🏛️ ENCCO MINEDUC SIRE INTEGRATION MODULE (sire.js)
  * Escuela Nacional de Ciencias Comerciales - ENCCO Jutiapa 1970
+ * ----------------------------------------------------------------------
+ * Copyright (c) 2026 Nehemias Salguero. Jutiapa, Guatemala.
+ * Todos los derechos reservados. All Rights Reserved.
+ *
+ * Desarrollado por: Nehemias Salguero
+ * Ubicación: Jutiapa, Guatemala
  * ======================================================================
  * - Estructuración de alumnos con "Código Personal del Estudiante" obligatorio.
  * - Cálculo de Promedios Finales en tiempo real vinculado a Código Personal e ID.

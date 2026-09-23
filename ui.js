@@ -2,6 +2,12 @@
  * ======================================================================
  * 🎨 ENCCO REACTIVE UI & BUSINESS LOGIC MODULE (ui.js)
  * Escuela Nacional de Ciencias Comerciales - ENCCO Jutiapa 1970
+ * ----------------------------------------------------------------------
+ * Copyright (c) 2026 Nehemias Salguero. Jutiapa, Guatemala.
+ * Todos los derechos reservados. All Rights Reserved.
+ *
+ * Desarrollado por: Nehemias Salguero
+ * Ubicación: Jutiapa, Guatemala
  * ======================================================================
  * - Actualizaciones reactivas y fluidas sin parpadeos ni recargas de página.
  * - Bloqueo dinámico de bimestres en interfaz para docentes.

@@ -2,6 +2,12 @@
  * ======================================================================
  * 🛡️ ENCCO AUTH & SECURITY MODULE (auth.js)
  * Escuela Nacional de Ciencias Comerciales - ENCCO Jutiapa 1970
+ * ----------------------------------------------------------------------
+ * Copyright (c) 2026 Nehemias Salguero. Jutiapa, Guatemala.
+ * Todos los derechos reservados. All Rights Reserved.
+ *
+ * Desarrollado por: Nehemias Salguero
+ * Ubicación: Jutiapa, Guatemala
  * ======================================================================
  */
 

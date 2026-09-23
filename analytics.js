@@ -2,6 +2,12 @@
  * ======================================================================
  * 📊 ENCCO PREDICTIVE ANALYTICS & DROPOUT DETECTION MODULE (analytics.js)
  * Escuela Nacional de Ciencias Comerciales - ENCCO Jutiapa 1970
+ * ----------------------------------------------------------------------
+ * Copyright (c) 2026 Nehemias Salguero. Jutiapa, Guatemala.
+ * Todos los derechos reservados. All Rights Reserved.
+ *
+ * Desarrollado por: Nehemias Salguero
+ * Ubicación: Jutiapa, Guatemala
  * ======================================================================
  * - Semáforo inteligente de riesgo escolar (Rojo / Amarillo / Verde).
  * - Identificación temprana de estudiantes en riesgo de reprobación.

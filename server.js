@@ -1,6 +1,13 @@
 /**
- * Servidor Web Seguro en Node.js para ENCCO Jutiapa 1970
- * Soporta autenticación de roles, middleware RBAC para SIRE y serving estático.
+ * ======================================================================
+ * SERVIDOR WEB SEGURO EN NODE.JS - ENCCO JUTIAPA 1970
+ * ----------------------------------------------------------------------
+ * Copyright (c) 2026 Nehemias Salguero. Jutiapa, Guatemala.
+ * Todos los derechos reservados. All Rights Reserved.
+ *
+ * Desarrollado por: Nehemias Salguero
+ * Ubicación: Jutiapa, Guatemala
+ * ======================================================================
  */
 const http = require('http');
 const fs = require('fs');

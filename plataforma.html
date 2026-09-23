@@ -79,6 +79,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <meta name="author" content="Nehemias Salguero, Jutiapa, Guatemala">
+    <meta name="copyright" content="© 2026 Nehemias Salguero. Jutiapa, Guatemala. Todos los derechos reservados.">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="logo.png">
@@ -446,6 +448,9 @@
                 <a href="portal.html" class="btn btn-outline-light btn-xs" target="_blank" title="Ver Portal Web Informativo" style="color:white; border:1px solid rgba(255,255,255,0.4); border-radius:18px; padding:4px 10px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; text-decoration:none;">
                     <i class="fa-solid fa-globe"></i> Portal Web
                 </a>
+                <button type="button" class="btn btn-outline-light btn-xs" onclick="openAboutSystemModal()" title="Acerca del Sistema y Derechos de Autor" style="color:white; border:1px solid rgba(255,255,255,0.4); border-radius:18px; padding:4px 10px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
+                    <i class="fa-solid fa-copyright"></i> Copyright
+                </button>
                 <button class="theme-toggle-btn" onclick="toggleTheme()" title="Cambiar Tema">
                     <i class="fa-solid fa-moon" id="themeIcon"></i>
                 </button>
@@ -634,6 +639,11 @@
                 <button class="btn btn-outline-light btn-sm" style="width:100%" onclick="performLogout()">
                     <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
                 </button>
+                <div class="sidebar-copyright-box" style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.12); text-align:center; font-size:0.68rem; color:rgba(255,255,255,0.72); line-height:1.35; user-select:none;">
+                    <div style="font-weight:700; color:#ffffff;">© 2026 Nehemias Salguero</div>
+                    <div style="font-size:0.62rem; color:rgba(255,255,255,0.6);">Jutiapa, Guatemala</div>
+                    <div style="font-size:0.58rem; color:rgba(255,255,255,0.45); margin-top:2px;">Todos los derechos reservados</div>
+                </div>
             </div>
         </aside>
 
@@ -2884,10 +2894,74 @@
                 </section>
 
             </div> <!-- Fin .view-container -->
+
+            <!-- PIE DE PÁGINA INSTITUCIONAL Y DERECHOS DE AUTOR -->
+            <footer class="app-platform-footer" style="margin-top:auto; padding:16px 24px; border-top:1px solid #e2e8f0; background:#ffffff; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; font-size:0.80rem; color:#64748b;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <img src="logo.png" style="width:22px; height:22px; border-radius:50%; opacity:0.9;" alt="ENCCO Logo">
+                    <span><strong style="color:#0f172a;">ENCCO Jutiapa 1970</strong> • Escuela Nacional de Ciencias Comerciales</span>
+                </div>
+                <div style="font-weight:600; text-align:right;">
+                    <span>© 2026 <strong style="color:#0f172a;">Nehemias Salguero</strong> • Jutiapa, Guatemala. Todos los derechos reservados.</span>
+                </div>
+            </footer>
         </main> <!-- Fin .main-content -->
     </div> <!-- Fin .app-layout -->
 
 
+
+    <!-- MODAL ACERCA DEL SISTEMA Y DERECHOS DE AUTOR -->
+    <div class="modal-overlay" id="aboutSystemModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeAboutSystemModal()">
+        <div class="modal-container" style="max-width:520px; border-radius:18px; overflow:hidden; box-shadow:0 25px 50px rgba(0,0,0,0.35);">
+            <div class="modal-header" style="background:linear-gradient(135deg, #15803d, #0f5127); color:#ffffff; padding:18px 24px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <img src="logo.png" style="width:36px; height:36px; border-radius:50%; background:white; padding:2px;" alt="Logo ENCCO">
+                    <div>
+                        <h3 style="margin:0; font-size:1.15rem; font-weight:800; color:#ffffff;">ENCCO Jutiapa 1970</h3>
+                        <p style="margin:0; font-size:0.75rem; color:#bbf7d0;">Control Académico & Plataforma Institucional</p>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeAboutSystemModal()" style="color:#ffffff; font-size:1.5rem; background:none; border:none; cursor:pointer;">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:22px 24px; text-align:center;">
+                <div style="margin-bottom:16px;">
+                    <div style="display:inline-block; background:#f0fdf4; border:1px solid #86efac; border-radius:50%; padding:14px; margin-bottom:10px;">
+                        <i class="fa-solid fa-shield-halved" style="font-size:2rem; color:#15803d;"></i>
+                    </div>
+                    <h4 style="margin:0 0 6px 0; font-size:1.1rem; font-weight:800; color:#0f172a;">Plataforma de Control Académico</h4>
+                    <p style="margin:0; font-size:0.85rem; color:#64748b;">Escuela Nacional de Ciencias Comerciales — Ciclo Lectivo 2026</p>
+                </div>
+
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; text-align:left; margin-bottom:16px; font-size:0.86rem; line-height:1.6;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
+                        <span style="color:#64748b; font-weight:600;">Desarrollo y Diseño:</span>
+                        <strong style="color:#15803d; font-size:0.92rem;">Nehemias Salguero</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
+                        <span style="color:#64748b; font-weight:600;">Ubicación:</span>
+                        <strong style="color:#0f172a;">Jutiapa, Guatemala</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:1px solid #e2e8f0; padding-bottom:6px;">
+                        <span style="color:#64748b; font-weight:600;">Derechos de Autor:</span>
+                        <strong style="color:#0f172a;">© 2026 Nehemias Salguero</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="color:#64748b; font-weight:600;">Estado de Licencia:</span>
+                        <span class="badge" style="background:#dcfce7; color:#15803d; font-weight:800; padding:2px 8px; border-radius:6px;">Todos los derechos reservados</span>
+                    </div>
+                </div>
+
+                <p style="font-size:0.78rem; color:#94a3b8; line-height:1.45; margin:0;">
+                    Queda prohibida la reproducción, distribución o modificación no autorizada de la presente plataforma y su arquitectura de software sin la autorización expresa del titular de los derechos de autor.
+                </p>
+            </div>
+            <div class="modal-footer" style="padding:12px 24px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="closeAboutSystemModal()" style="font-weight:700; border-radius:8px; padding:6px 18px; background:#15803d; color:white; border:none; cursor:pointer;">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL RECUPERACIÓN DE CONTRASEÑA -->
     <div class="modal-overlay" id="forgotPasswordModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeForgotPasswordModal()">
