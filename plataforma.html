@@ -697,6 +697,9 @@
                         </div>
                     </div>
 
+                    <!-- HUB DE ACCIONES RÁPIDAS DEL DÍA (ACCESO EN 1 CLIC SEGÚN ROL) -->
+                    <div id="dashQuickActionsHub" style="margin-top:14px; margin-bottom:18px;"></div>
+
                     <div class="kpi-grid" id="kpiGrid"></div>
 
                     <div class="dashboard-grid">
@@ -2156,8 +2159,8 @@
                                 <button type="button" class="btn btn-outline-warning btn-sm" onclick="openPermissionsHistoryModal()" title="Ver historial de permisos de ausencia autorizados" style="height:38px; font-size:0.86rem; font-weight:700; padding:0 12px; display:inline-flex; align-items:center; gap:6px;">
                                     <i class="fa-solid fa-clipboard-list"></i> Historial Permisos
                                 </button>
-                                <button type="button" class="btn btn-outline-success btn-sm" onclick="markAllPresentToday()" title="Marcar presente a todos en el día de hoy" style="height:38px; font-size:0.86rem; font-weight:700; padding:0 12px;">
-                                    <i class="fa-solid fa-check-double"></i> Todos Presentes (Hoy)
+                                <button type="button" class="btn btn-success btn-sm" onclick="markAllPresentToday()" title="Marcar a todos los alumnos como Presentes hoy (respeta automáticamente los permisos de Auxiliatura)" style="height:38px; font-size:0.86rem; font-weight:800; padding:0 14px; background:#15803d; border-color:#0f5127; color:#ffffff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(21,128,61,0.25);">
+                                    <i class="fa-solid fa-check-double"></i> Marcar Todos Presentes
                                 </button>
                                 <button type="button" class="btn btn-primary btn-sm" onclick="saveAttendanceRecords()" title="Guardar cambios de asistencia" style="height:38px; font-size:0.86rem; font-weight:700; padding:0 14px;">
                                     <i class="fa-solid fa-floppy-disk"></i> Guardar Asistencia

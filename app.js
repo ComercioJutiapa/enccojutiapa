@@ -8443,8 +8443,146 @@ function renderCurrentView() {
 }
 
 // ==========================================================================
-// 4. DASHBOARD ADAPTATIVO (PORTAL DOCENTE VS PANEL DIRECCIÓN/ADMIN)
+// 4. ACCIONES RÁPIDAS Y DASHBOARD ADAPTATIVO POR ROL
 // ==========================================================================
+function renderQuickActionsHub() {
+    const hub = document.getElementById('dashQuickActionsHub');
+    if (!hub) return;
+
+    const role = (STATE.currentRole || 'admin').toLowerCase();
+    let actions = [];
+
+    if (role === 'docente') {
+        actions = [
+            {
+                title: "Tomar Asistencia de Hoy",
+                desc: "Pasar asistencia en sus clases asignadas",
+                icon: "fa-calendar-check",
+                color: "#15803d",
+                bg: "#f0fdf4",
+                border: "#86efac",
+                fn: "navigateTo('attendance')"
+            },
+            {
+                title: "Ingresar Calificaciones",
+                desc: "Planilla de notas del bimestre activo",
+                icon: "fa-pen-to-square",
+                color: "#0284c7",
+                bg: "#f0f9ff",
+                border: "#7dd3fc",
+                fn: "navigateTo('grades-entry')"
+            },
+            {
+                title: "Boletines de Notas",
+                desc: "Consultar promedios e imprimir reportes",
+                icon: "fa-print",
+                color: "#7c3aed",
+                bg: "#f5f3ff",
+                border: "#c4b5fd",
+                fn: "navigateTo('reports')"
+            }
+        ];
+    } else if (role === 'profesor_auxiliar') {
+        actions = [
+            {
+                title: "+ Autorizar Permiso",
+                desc: "Justificar ausencia con motivo oficial",
+                icon: "fa-file-signature",
+                color: "#ea580c",
+                bg: "#fff7ed",
+                border: "#fdba74",
+                fn: "openCreatePermissionModal()"
+            },
+            {
+                title: "Escanear Entrada / Carnets",
+                desc: "Lector móvil con cámara o código de barras",
+                icon: "fa-camera",
+                color: "#15803d",
+                bg: "#f0fdf4",
+                border: "#86efac",
+                fn: "openAttendanceCameraScanner()"
+            },
+            {
+                title: "Historial de Permisos",
+                desc: "Revisar y reimprimir justificaciones",
+                icon: "fa-clipboard-list",
+                color: "#0284c7",
+                bg: "#f0f9ff",
+                border: "#7dd3fc",
+                fn: "openPermissionsHistoryModal()"
+            }
+        ];
+    } else {
+        // Director, Secretaria, Admin
+        actions = [
+            {
+                title: "Inscribir Estudiante",
+                desc: "Nueva matrícula y registro SIRE",
+                icon: "fa-user-plus",
+                color: "#15803d",
+                bg: "#f0fdf4",
+                border: "#86efac",
+                fn: "navigateTo('enrollment')"
+            },
+            {
+                title: "Carnés Oficiales CR80",
+                desc: "Emisión e impresión de credenciales",
+                icon: "fa-id-card",
+                color: "#0284c7",
+                bg: "#f0f9ff",
+                border: "#7dd3fc",
+                fn: "navigateTo('carnets')"
+            },
+            {
+                title: "Boletines de Calificaciones",
+                desc: "Emisión masiva en media página",
+                icon: "fa-print",
+                color: "#7c3aed",
+                bg: "#f5f3ff",
+                border: "#c4b5fd",
+                fn: "navigateTo('reports')"
+            },
+            {
+                title: "Bloqueo de Bimestres",
+                desc: "Configurar fechas y bimestre activo",
+                icon: "fa-lock",
+                color: "#d97706",
+                bg: "#fffbeb",
+                border: "#fde68a",
+                fn: "navigateTo('grade-lock')"
+            }
+        ];
+    }
+
+    hub.innerHTML = `
+        <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:14px 18px; box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <span style="font-size:0.82rem; font-weight:800; color:#334155; text-transform:uppercase; letter-spacing:0.4px; display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-bolt" style="color:#eab308;"></i> Acciones Rápidas del Día
+                </span>
+                <span style="font-size:0.75rem; color:#94a3b8; font-weight:600;">Acceso directo de 1 clic</span>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px;">
+                ${actions.map(a => `
+                    <div onclick="${a.fn}" style="background:${a.bg}; border:1.5px solid ${a.border}; border-radius:10px; padding:12px 14px; cursor:pointer; display:flex; align-items:center; gap:12px; transition:all 0.18s ease; box-shadow:0 1px 3px rgba(0,0,0,0.03); user-select:none;"
+                         onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)';"
+                         onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.03)';">
+                        <div style="width:40px; height:40px; border-radius:10px; background:${a.color}; color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:1.15rem; flex-shrink:0;">
+                            <i class="fa-solid ${a.icon}"></i>
+                        </div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:800; font-size:0.88rem; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${a.title}</div>
+                            <div style="font-size:0.74rem; color:#64748b; line-height:1.2; margin-top:2px;">${a.desc}</div>
+                        </div>
+                        <i class="fa-solid fa-arrow-right" style="color:${a.color}; font-size:0.82rem; opacity:0.6;"></i>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+window.renderQuickActionsHub = renderQuickActionsHub;
+
 function renderDashboard() {
     const kpiGrid = document.getElementById('kpiGrid');
     const mainBody = document.getElementById('dashCardMainBody');
@@ -8458,6 +8596,9 @@ function renderDashboard() {
         const capDate = todayStr.charAt(0).toUpperCase() + todayStr.slice(1);
         dateChip.innerHTML = `<i class="fa-regular fa-clock"></i> ${capDate} ${STATE.activeCycle ? '| Ciclo ' + STATE.activeCycle : ''}`;
     }
+
+    // Renderizar hub de acciones rápidas intuitivo
+    renderQuickActionsHub();
 
     if (!kpiGrid || !mainBody) return;
 
@@ -21826,14 +21967,31 @@ function markAllPresentToday() {
         return (qGradeNum === sGradeNum) && (qSec === sSec);
     });
 
+    let markedCount = 0;
+    let preservedJustifiedCount = 0;
+
     students.forEach(s => {
         if (!STATE.attendanceRecords[recordKey][s.id]) STATE.attendanceRecords[recordKey][s.id] = {};
+        
+        // 🛡️ Regla de oro: No sobrescribir alumnos con permiso oficial justificado 'J' de Auxiliatura
+        const currentVal = STATE.attendanceRecords[recordKey][s.id][targetDay];
+        if (currentVal === 'J') {
+            preservedJustifiedCount++;
+            return;
+        }
+
         STATE.attendanceRecords[recordKey][s.id][targetDay] = 'P';
+        markedCount++;
     });
 
     saveAttendanceRecords(false);
     loadAttendanceList();
-    showToast(`Se registraron ${students.length} asistencias en 'Presente' para el día ${targetDay}.`, 'success');
+
+    if (preservedJustifiedCount > 0) {
+        showToast(`✔ ${markedCount} estudiantes marcados en 'Presente' (día ${targetDay}). Se respetaron ${preservedJustifiedCount} permisos justificados de Auxiliatura.`, 'success');
+    } else {
+        showToast(`✔ Todos los ${markedCount} estudiantes marcados en 'Presente' para el día ${targetDay}.`, 'success');
+    }
 }
 
 let _attendanceSaveTimeout = null;
