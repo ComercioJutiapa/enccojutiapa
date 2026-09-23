@@ -26720,54 +26720,125 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         return;
     }
 
-    // 5. Identificación de columnas según formato
+    // 5. Identificación inteligente y universal de columnas según formato
     if (headerRowIdx === -1) headerRowIdx = 4;
     let actColumns = [];
     let colIdxClave = -1, colIdxCode = -1, colIdxCui = -1, colIdxName = -1, colIdxZona = -1, colIdxExam = -1, colIdxTotal = -1;
     let dataStartRow = headerRowIdx + 1;
+    let actsRow = null;
 
     if (detectedFormat === 'Modelo de Cuadro Docente') {
         actsRowIdx = headerRowIdx + 1; // fila 5
         dataStartRow = actsRowIdx + 1; // fila 6
-        const actsRow = rawRows[actsRowIdx] || [];
-        const hdrRow = rawRows[headerRowIdx] || [];
+        actsRow = rawRows[actsRowIdx] || [];
+    } else {
+        // En otros formatos, verificar si la fila siguiente a encabezados contiene subtítulos de actividades en vez de alumnos
+        const nextRow = rawRows[headerRowIdx + 1] || [];
+        const nextRowIsStudent = nextRow.some((cell, cIdx) => {
+            if (cIdx === 0 && typeof cell === 'number' && cell >= 1 && cell <= 100) return true;
+            if (typeof cell === 'string' && (cell.match(/\b\d{4}-\d{4}-[A-Z0-9]+\b/i) || cell.replace(/[^0-9]/g, '').length === 13)) return true;
+            return false;
+        });
+        if (!nextRowIsStudent && nextRow.length > 0 && nextRow.some(c => typeof c === 'string' && c.trim().length > 0)) {
+            actsRow = nextRow;
+            actsRowIdx = headerRowIdx + 1;
+            dataStartRow = actsRowIdx + 1;
+        } else {
+            dataStartRow = headerRowIdx + 1;
+        }
+    }
 
-        colIdxClave = hdrRow.findIndex(h => cleanStr(h) === 'clave' || cleanStr(h) === 'no');
-        if (colIdxClave === -1) colIdxClave = 0;
-        colIdxName = hdrRow.findIndex(h => cleanStr(h).includes('alumno') || cleanStr(h).includes('estudiante') || cleanStr(h).includes('nombre'));
-        if (colIdxName === -1) colIdxName = 1;
+    const hdrRow = (rawRows[headerRowIdx] || []).map(c => String(c !== undefined && c !== null ? c : '').trim());
 
-        colIdxZona = hdrRow.findIndex(h => cleanStr(h) === 'zona' || cleanStr(h).includes('totalzona'));
-        if (colIdxZona === -1) colIdxZona = 9;
-        colIdxExam = hdrRow.findIndex(h => cleanStr(h).includes('prueba') || cleanStr(h).includes('examen'));
-        if (colIdxExam === -1) colIdxExam = 10;
-        colIdxTotal = hdrRow.findIndex(h => cleanStr(h) === 'total' || cleanStr(h).includes('totalbimestre'));
-        if (colIdxTotal === -1) colIdxTotal = 11;
+    // A. Identificar columnas de resumen buscando de DERECHA a IZQUIERDA (evita falsos positivos en actividades a la izquierda)
+    // 1. Total Final / Total Bimestre
+    for (let c = hdrRow.length - 1; c >= 0; c--) {
+        const h = cleanStr(hdrRow[c]);
+        if (!h) continue;
+        if ((h.includes('total') && !h.includes('zona')) || h.includes('notafinal') || h.includes('promediobimestre') || h === 'resultado') {
+            colIdxTotal = c;
+            break;
+        }
+    }
 
-        const endActCol = colIdxZona !== -1 ? colIdxZona : 9;
-        for (let c = 2; c < endActCol; c++) {
-            const actTitle = String(actsRow[c] || '').trim();
-            if (actTitle && !cleanStr(actTitle).includes('observacion')) {
-                if (actColumns.length < 10) {
-                    const ptsMatch = actTitle.match(/\((\d+)\s*(?:pts|puntos)?\)/i) || actTitle.match(/(\d+)\s*(?:pts|puntos)?\s*$/i) || actTitle.match(/(\d+)/);
-                    const maxPts = ptsMatch ? parseInt(ptsMatch[1]) : 0;
-                    let cleanName = actTitle.replace(/^Act(?:ividad)?\s*\d+[\s:\-–.]*/i, '').replace(/\s*\(\s*\d+\s*(?:pts|puntos)?\s*\)\s*$/i, '').trim();
-                    if (!cleanName) cleanName = actTitle.trim() || `Act. ${actColumns.length + 1}`;
-                    actColumns.push({ colIdx: c, name: cleanName, rawHeader: actTitle, max: maxPts, maxPoints: maxPts });
-                }
+    // 2. Examen / Evaluación / Prueba Bimestral
+    const examSearchLimit = (colIdxTotal !== -1) ? colIdxTotal - 1 : hdrRow.length - 1;
+    for (let c = examSearchLimit; c >= 0; c--) {
+        const h = cleanStr(hdrRow[c]);
+        if (!h) continue;
+        if (h.includes('examen') || h.includes('prueba') || h.includes('evaluacion') || h.includes('eval') || h.includes('bimestral')) {
+            colIdxExam = c;
+            break;
+        }
+    }
+
+    // 3. Zona / Acumulado / Total Zona
+    const zonaSearchLimit = (colIdxExam !== -1) ? colIdxExam - 1 : ((colIdxTotal !== -1) ? colIdxTotal - 1 : hdrRow.length - 1);
+    for (let c = zonaSearchLimit; c >= 0; c--) {
+        const h = cleanStr(hdrRow[c]);
+        if (!h) continue;
+        if (h.includes('zona') || h.includes('acumulado') || h.includes('totalzona') || h.includes('zonatotal')) {
+            colIdxZona = c;
+            break;
+        }
+    }
+    // Búsqueda de respaldo para Zona si no se halló a la izquierda de Examen
+    if (colIdxZona === -1) {
+        for (let c = hdrRow.length - 1; c >= 0; c--) {
+            const h = cleanStr(hdrRow[c]);
+            if (h && (h.includes('zona') || h.includes('acumulado')) && c !== colIdxTotal && c !== colIdxExam) {
+                colIdxZona = c;
+                break;
             }
         }
-    } else {
-        const hdrRow = (rawRows[headerRowIdx] || []).map(c => String(c).trim());
-        colIdxClave = hdrRow.findIndex(h => cleanStr(h) === 'no' || cleanStr(h) === 'clave' || cleanStr(h) === '');
-        colIdxCode = hdrRow.findIndex(h => cleanStr(h).includes('codigo') || cleanStr(h).includes('personal') || cleanStr(h).includes('carne'));
-        colIdxCui = hdrRow.findIndex(h => cleanStr(h).includes('cui') || cleanStr(h).includes('dpi'));
-        colIdxName = hdrRow.findIndex(h => cleanStr(h).includes('nombre') || cleanStr(h).includes('estudiante') || cleanStr(h).includes('alumno') || cleanStr(h).includes('apellidos'));
-        colIdxZona = hdrRow.findIndex(h => cleanStr(h).includes('totalzona') || cleanStr(h) === 'zona');
-        colIdxExam = hdrRow.findIndex(h => cleanStr(h).includes('examen') || cleanStr(h).includes('evaluacion') || cleanStr(h).includes('prueba'));
-        colIdxTotal = hdrRow.findIndex(h => cleanStr(h).includes('totalbimestre') || cleanStr(h) === 'total' || cleanStr(h).includes('notafinal'));
+    }
 
-        const endActCol = (colIdxZona !== -1) ? colIdxZona : ((colIdxExam !== -1) ? colIdxExam : ((colIdxTotal !== -1) ? colIdxTotal : hdrRow.length));
+    // B. Identificar columnas de información del alumno
+    for (let c = 0; c < hdrRow.length; c++) {
+        const h = cleanStr(hdrRow[c]);
+        if (!h) continue;
+        if (colIdxName === -1 && (h.includes('nombre') || h.includes('estudiante') || h.includes('alumno') || h.includes('apellidos'))) {
+            colIdxName = c;
+        } else if (colIdxCode === -1 && (h.includes('codigo') || h.includes('personal') || h.includes('carne'))) {
+            colIdxCode = c;
+        } else if (colIdxCui === -1 && (h.includes('cui') || h.includes('dpi') || h.includes('identificacion'))) {
+            colIdxCui = c;
+        } else if (colIdxClave === -1 && (h === 'clave' || h === 'no' || h === 'num' || h === 'no.' || h === '#')) {
+            colIdxClave = c;
+        }
+    }
+    if (colIdxClave === -1 && colIdxName > 0) colIdxClave = 0;
+    if (colIdxName === -1) colIdxName = (colIdxClave === 0) ? 1 : 0;
+
+    // C. Detección exhaustiva de TODAS las columnas de actividades entre datos y resumen
+    const maxInfoCol = Math.max(colIdxClave, colIdxCode, colIdxCui, colIdxName);
+    const startActCol = maxInfoCol + 1;
+    const endActCol = (colIdxZona !== -1) ? colIdxZona : ((colIdxExam !== -1) ? colIdxExam : ((colIdxTotal !== -1) ? colIdxTotal : hdrRow.length));
+
+    for (let c = startActCol; c < endActCol; c++) {
+        if (c === colIdxClave || c === colIdxCode || c === colIdxCui || c === colIdxName || c === colIdxZona || c === colIdxExam || c === colIdxTotal) continue;
+
+        let actTitle = '';
+        if (actsRow && actsRow[c] !== undefined && String(actsRow[c]).trim()) {
+            actTitle = String(actsRow[c]).trim();
+        } else if (hdrRow[c] !== undefined && String(hdrRow[c]).trim()) {
+            actTitle = String(hdrRow[c]).trim();
+        }
+
+        const cH = cleanStr(actTitle);
+        if (cH.includes('observacion') || cH.includes('resultado') || cH.includes('estado') || cH.includes('promedio')) continue;
+
+        if (actColumns.length < 10) {
+            const ptsMatch = actTitle.match(/\((\d+)\s*(?:pts|puntos)?\)/i) || actTitle.match(/(\d+)\s*(?:pts|puntos)?\s*$/i) || actTitle.match(/(\d+)/);
+            const maxPts = ptsMatch ? parseInt(ptsMatch[1]) : 0;
+            let cleanName = actTitle.replace(/^Act(?:ividad)?\s*\d+[\s:\-–.]*/i, '').replace(/\s*\(\s*\d+\s*(?:pts|puntos)?\s*\)\s*$/i, '').trim();
+            if (!cleanName) cleanName = actTitle.trim() || `Actividad ${actColumns.length + 1}`;
+            actColumns.push({ colIdx: c, name: cleanName, rawHeader: actTitle, max: maxPts, maxPoints: maxPts });
+        }
+    }
+
+    // D. Si aún no se detectaron actividades pero hay columnas intermedias con palabras clave de actividades
+    if (actColumns.length === 0) {
         for (let c = 0; c < hdrRow.length; c++) {
             const h = hdrRow[c];
             if (!h) continue;
@@ -26776,16 +26847,12 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             if (cH.includes('resultado') || cH.includes('observaci') || cH.includes('promedio') || cH.includes('estado')) continue;
 
             const isActKeyword = cH.startsWith('act') || cH.startsWith('tarea') || cH.startsWith('ejercicio') || cH.startsWith('laboratorio') || cH.startsWith('folder') || cH.startsWith('proyecto') || cH.startsWith('investig') || cH.startsWith('taller') || cH.startsWith('guia') || cH.startsWith('practica') || cH.startsWith('cuestionario') || cH.startsWith('ensayo') || cH.startsWith('glosario') || cH.startsWith('exposic') || cH.startsWith('evaluac');
-            const isBetweenInfoAndSummary = (colIdxName !== -1 && c > colIdxName && c < endActCol);
-
-            if (isActKeyword || isBetweenInfoAndSummary) {
-                if (actColumns.length < 10) {
-                    const ptsMatch = h.match(/\((\d+)\s*(?:pts|puntos)?\)/i) || h.match(/(\d+)\s*(?:pts|puntos)?\s*$/i) || h.match(/(\d+)/);
-                    const maxPts = ptsMatch ? parseInt(ptsMatch[1]) : 0;
-                    let cleanName = h.replace(/^Act(?:ividad)?\s*\d+[\s:\-–.]*/i, '').replace(/\s*\(\s*\d+\s*(?:pts|puntos)?\s*\)\s*$/i, '').trim();
-                    if (!cleanName) cleanName = h.trim() || `Act. ${actColumns.length + 1}`;
-                    actColumns.push({ colIdx: c, name: cleanName, rawHeader: h, max: maxPts, maxPoints: maxPts });
-                }
+            if (isActKeyword && actColumns.length < 10) {
+                const ptsMatch = h.match(/\((\d+)\s*(?:pts|puntos)?\)/i) || h.match(/(\d+)\s*(?:pts|puntos)?\s*$/i) || h.match(/(\d+)/);
+                const maxPts = ptsMatch ? parseInt(ptsMatch[1]) : 0;
+                let cleanName = h.replace(/^Act(?:ividad)?\s*\d+[\s:\-–.]*/i, '').replace(/\s*\(\s*\d+\s*(?:pts|puntos)?\s*\)\s*$/i, '').trim();
+                if (!cleanName) cleanName = h.trim() || `Actividad ${actColumns.length + 1}`;
+                actColumns.push({ colIdx: c, name: cleanName, rawHeader: h, max: maxPts, maxPoints: maxPts });
             }
         }
     }
@@ -26960,8 +27027,16 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         }
 
         let finalZona = sumZona;
-        if (!hasActValues && colIdxZona !== -1 && row[colIdxZona] !== undefined && row[colIdxZona] !== '' && !isNaN(row[colIdxZona])) {
-            finalZona = Math.max(0, Number(row[colIdxZona]));
+        if (colIdxZona !== -1 && row[colIdxZona] !== undefined && row[colIdxZona] !== '' && !isNaN(row[colIdxZona])) {
+            const directColZona = Math.max(0, Number(row[colIdxZona]));
+            if (!hasActValues) {
+                finalZona = directColZona;
+                if (newActs.every(v => v === 0)) {
+                    newActs[0] = finalZona;
+                }
+            } else if (directColZona > sumZona) {
+                finalZona = directColZona;
+            }
         }
 
         let finalTotal = finalZona + examScore;
