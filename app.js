@@ -20925,7 +20925,7 @@ function loadTeacherGradebook() {
                 return `
                     <td style="text-align:center; padding:4px;">
                         <input type="number" min="0" max="${actMax}" class="grade-box-input" value="${val || ''}" placeholder="0" 
-                            onfocus="this.select()"
+                            onfocus="handleGradeInputFocus(this)"
                             onkeydown="handleGradeGridKeyDown(event, this)"
                             onchange="handleActivityBoxChange('${s.id}', ${actIdx}, this.value, '${subjectName}', ${currentUnit})">
                     </td>
@@ -21040,7 +21040,7 @@ function loadTeacherGradebook() {
                                     style="background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; cursor:not-allowed; text-align:center; font-weight:700; width:65px;" 
                                     title="Bimestre cerrado (Solo lectura). Solicite habilitación a Dirección para editar.">` :
                                 `<input type="number" min="0" max="${cfg.examMax}" class="grade-box-input-exam" value="${exam}" 
-                                    onfocus="this.select()"
+                                    onfocus="handleGradeInputFocus(this)"
                                     onkeydown="handleGradeGridKeyDown(event, this)"
                                     onchange="handleExamScoreChange('${s.id}', this.value, '${subjectName}', ${currentUnit})"
                                     style="text-align:center; font-weight:700; width:65px;">`
@@ -21155,16 +21155,36 @@ function loadTeacherGradebook() {
     }
 }
 
-// ⚡ NAVEGACIÓN FLUIDA ESTILO EXCEL (Enter y Flechas en Planilla de Notas)
+// 🌐 SELECCIÓN Y ENFOQUE UNIVERSAL CROSS-BROWSER (Safari, Chrome, Firefox, Opera, Edge, Brave)
+function handleGradeInputFocus(input) {
+    if (!input) return;
+    setTimeout(() => {
+        try {
+            if (typeof input.select === 'function') {
+                input.select();
+            }
+        } catch (err) {
+            try {
+                if (typeof input.setSelectionRange === 'function') {
+                    input.setSelectionRange(0, (input.value || '').toString().length);
+                }
+            } catch (e2) {}
+        }
+    }, 15);
+}
+window.handleGradeInputFocus = handleGradeInputFocus;
+
+// ⚡ NAVEGACIÓN FLUIDA ESTILO EXCEL UNIVERSAL (Enter y Flechas en Planilla de Notas)
 function handleGradeGridKeyDown(e, input) {
     if (!input || !e) return;
-    const key = e.key;
+    const key = e.key || '';
+    const code = e.keyCode || e.which || 0;
 
-    const isEnter = (key === 'Enter');
-    const isDown = (key === 'ArrowDown');
-    const isUp = (key === 'ArrowUp');
-    const isRight = (key === 'ArrowRight');
-    const isLeft = (key === 'ArrowLeft');
+    const isEnter = (key === 'Enter' || code === 13);
+    const isDown = (key === 'ArrowDown' || key === 'Down' || code === 40);
+    const isUp = (key === 'ArrowUp' || key === 'Up' || code === 38);
+    const isRight = (key === 'ArrowRight' || key === 'Right' || code === 39);
+    const isLeft = (key === 'ArrowLeft' || key === 'Left' || code === 37);
 
     if (!isEnter && !isDown && !isUp && !isRight && !isLeft) return;
 
@@ -21222,10 +21242,8 @@ function handleGradeGridKeyDown(e, input) {
         input.blur();
         setTimeout(() => {
             targetInput.focus();
-            if (typeof targetInput.select === 'function') {
-                targetInput.select();
-            }
-        }, 15);
+            handleGradeInputFocus(targetInput);
+        }, 20);
     }
 }
 window.handleGradeGridKeyDown = handleGradeGridKeyDown;

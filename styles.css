@@ -2503,7 +2503,23 @@ body.theme-dark .custom-honor-opt {
     transform: translateX(3px);
 }
 
-/* 🟢 Efecto celda activa estilo Excel para digitación ágil de calificaciones */
+/* 🌐 Compatibilidad Cross-Browser universal para casillas de calificación (Safari, Firefox, Chrome, Edge, Opera, Brave) */
+input.grade-box-input::-webkit-outer-spin-button,
+input.grade-box-input::-webkit-inner-spin-button,
+input.grade-box-input-exam::-webkit-outer-spin-button,
+input.grade-box-input-exam::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+}
+
+input.grade-box-input,
+input.grade-box-input-exam {
+    -moz-appearance: textfield !important;
+    appearance: textfield !important;
+    -webkit-appearance: none;
+}
+
+/* 🟢 Efecto celda activa estilo Excel universal */
 input.grade-box-input:focus,
 input.grade-box-input-exam:focus {
     outline: none !important;
@@ -2512,7 +2528,9 @@ input.grade-box-input-exam:focus {
     background-color: #f0fdf4 !important;
     color: #14532d !important;
     font-weight: 800 !important;
+    -webkit-transform: scale(1.04);
     transform: scale(1.04);
+    -webkit-transition: -webkit-transform 0.1s ease, box-shadow 0.1s ease;
     transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 

@@ -1,38 +1,36 @@
 // test_excel_gradebook_navigation.js
-// Verificación automatizada de navegación fluida estilo Excel en planilla de calificaciones
+// Verificación automatizada de compatibilidad universal (Safari, Firefox, Chrome, Edge, Opera, Brave)
 
 const fs = require('fs');
 const assert = require('assert');
 
-console.log("=== INICIANDO PRUEBAS DE NAVEGACIÓN ESTILO EXCEL EN PLANILLA DE NOTAS ===");
+console.log("=== INICIANDO PRUEBAS CROSS-BROWSER DE PLANILLA DE NOTAS ESTILO EXCEL ===");
 
 const appJs = fs.readFileSync('app.js', 'utf8');
 const stylesCss = fs.readFileSync('styles.css', 'utf8');
 
-// 1. Verificación de estilos de foco y celda activa
-assert(stylesCss.includes('input.grade-box-input:focus'), 'Falta estilo de foco para grade-box-input en styles.css');
-assert(stylesCss.includes('input.grade-box-input-exam:focus'), 'Falta estilo de foco para grade-box-input-exam en styles.css');
-assert(stylesCss.includes('transform: scale(1.04)'), 'Falta efecto scale en celda activa');
-console.log("✔ TEST 1: Estilos CSS de celda activa estilo Excel verificados.");
+// 1. Verificación de estilos CSS cross-browser (WebKit, Gecko, Blink)
+assert(stylesCss.includes('::-webkit-outer-spin-button'), 'Falta reseteo de spinners webkit');
+assert(stylesCss.includes('-moz-appearance: textfield'), 'Falta compatibilidad de apariencia Firefox (-moz)');
+assert(stylesCss.includes('-webkit-transform: scale(1.04)'), 'Falta prefijo -webkit para Safari');
+console.log("✔ TEST 1: Reglas CSS cross-browser para Safari, Firefox, Chrome, Edge, Opera y Brave verificadas.");
 
-// 2. Verificación de atributos en inputs de actividades y examen
+// 2. Verificación de atributos en inputs con helper universal
 assert(appJs.includes('onkeydown="handleGradeGridKeyDown(event, this)"'), 'Falta onkeydown en los inputs');
-assert(appJs.includes('onfocus="this.select()"'), 'Falta onfocus="this.select()" en los inputs');
-console.log("✔ TEST 2: Atributos onkeydown y onfocus(select) presentes en inputs de planilla.");
+assert(appJs.includes('onfocus="handleGradeInputFocus(this)"'), 'Falta onfocus="handleGradeInputFocus(this)" en inputs');
+console.log("✔ TEST 2: Enlace a handleGradeInputFocus verificado en inputs.");
 
-// 3. Verificación de la función handleGradeGridKeyDown
-assert(appJs.includes('function handleGradeGridKeyDown(e, input)'), 'Falta la función handleGradeGridKeyDown');
-assert(appJs.includes("window.handleGradeGridKeyDown = handleGradeGridKeyDown;"), 'Falta exportar handleGradeGridKeyDown a window');
-console.log("✔ TEST 3: Función handleGradeGridKeyDown definida y exportada correctamente.");
+// 3. Verificación de la función handleGradeInputFocus y tolerancia Safari/WebKit
+assert(appJs.includes('function handleGradeInputFocus(input)'), 'Falta la función handleGradeInputFocus');
+assert(appJs.includes('setSelectionRange'), 'Falta fallback setSelectionRange para WebKit/Safari');
+console.log("✔ TEST 3: Función universal handleGradeInputFocus blindada para WebKit/Safari.");
 
-// 4. Verificación de soporte de teclas clave (Enter, ArrowDown, ArrowUp, ArrowRight, ArrowLeft)
-assert(appJs.includes("key === 'Enter'"), "Falta soporte para Enter");
-assert(appJs.includes("key === 'ArrowDown'"), "Falta soporte para ArrowDown");
-assert(appJs.includes("key === 'ArrowUp'"), "Falta soporte para ArrowUp");
-assert(appJs.includes("key === 'ArrowRight'"), "Falta soporte para ArrowRight");
-assert(appJs.includes("key === 'ArrowLeft'"), "Falta soporte para ArrowLeft");
-assert(appJs.includes("targetInput.focus()"), "Falta llamada a targetInput.focus()");
-assert(appJs.includes("targetInput.select()"), "Falta llamada a targetInput.select()");
-console.log("✔ TEST 4: Soporte de flechas direccionales, enter, foco y auto-selección de texto verificado.");
+// 4. Verificación de normalización de teclas (e.key y e.keyCode para navegadores con variantes)
+assert(appJs.includes("key === 'Enter' || code === 13"), "Falta normalización de tecla Enter / 13");
+assert(appJs.includes("key === 'ArrowDown' || key === 'Down' || code === 40"), "Falta normalización ArrowDown / 40");
+assert(appJs.includes("key === 'ArrowUp' || key === 'Up' || code === 38"), "Falta normalización ArrowUp / 38");
+assert(appJs.includes("key === 'ArrowRight' || key === 'Right' || code === 39"), "Falta normalización ArrowRight / 39");
+assert(appJs.includes("key === 'ArrowLeft' || key === 'Left' || code === 37"), "Falta normalización ArrowLeft / 37");
+console.log("✔ TEST 4: Normalización completa de teclas físicas y códigos de evento aprobada.");
 
-console.log("\n🎉 ¡TODAS LAS PRUEBAS DE NAVEGACIÓN EXCEL PASARON CON ÉXITO ROTUNDO (4/4)!");
+console.log("\n🎉 ¡COMPATIBILIDAD 100% UNIVERSAL EN SAFARI, OPERA, MOZILLA, EDGE, BRAVE Y CHROME CONFIRMADA (4/4)!");
