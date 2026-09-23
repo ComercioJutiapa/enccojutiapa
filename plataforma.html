@@ -809,9 +809,9 @@
                                         <span style="font-size:0.72rem; color:#64748b;">Ingrese Código Personal o CUI para autocompletar la ficha en 0 segundos</span>
                                     </div>
                                 </div>
-                                <div style="display:flex; gap:6px; flex:1.2; max-width:440px; min-width:240px;">
-                                    <input type="text" id="quickSireSearchCode" class="form-control form-control-sm" placeholder="Ej: D456GHT o CUI" style="font-weight:800; text-transform:uppercase; border:1.5px solid #0284c7; height:32px; font-size:0.82rem;" onkeydown="if(event.key==='Enter'){event.preventDefault(); searchAndAutoFillByPersonalCode();}">
-                                    <button type="button" class="btn btn-primary btn-sm" onclick="searchAndAutoFillByPersonalCode()" style="background:#0284c7; border-color:#0284c7; font-weight:800; font-size:0.76rem; padding:4px 12px; white-space:nowrap; display:inline-flex; align-items:center; gap:5px;">
+                                <div style="display:flex; gap:8px; flex:1.2; max-width:440px; min-width:240px; align-items:center;">
+                                    <input type="text" id="quickSireSearchCode" class="form-control form-control-sm" placeholder="Ej: D456GHT o CUI" style="font-weight:800; text-transform:uppercase; border:1.5px solid #0284c7; min-height:38px; height:38px; font-size:0.88rem; padding:6px 12px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); searchAndAutoFillByPersonalCode();}">
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="searchAndAutoFillByPersonalCode()" style="background:#0284c7; border-color:#0284c7; font-weight:800; font-size:0.82rem; min-height:38px; height:38px; padding:0 14px; white-space:nowrap; display:inline-flex; align-items:center; gap:6px;">
                                         <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-llenar
                                     </button>
                                 </div>
@@ -3704,11 +3704,11 @@
                         <span class="badge badge-primary" id="promoCountBadge">0 Alumnos</span>
                     </div>
                     <div style="display:flex; gap:8px; align-items:center;">
-                        <input type="text" id="promoSearchInput" class="form-control" placeholder="Buscar por nombre o carné..." style="width:200px; height:30px; font-size:0.8rem;" oninput="filterPromotionTable()">
-                        <select id="promoGradeFilter" class="form-control" style="width:180px; height:30px; font-size:0.8rem;" onchange="filterPromotionTable()">
+                        <input type="text" id="promoSearchInput" class="form-control form-control-sm" placeholder="Buscar por nombre o carné..." style="width:220px; min-height:38px; height:38px; font-size:0.88rem; padding:6px 12px;" oninput="filterPromotionTable()">
+                        <select id="promoGradeFilter" class="form-control form-control-sm" style="width:200px; min-height:38px; height:38px; font-size:0.88rem; padding:6px 12px;" onchange="filterPromotionTable()">
                             <option value="ALL">-- Todos los Grados --</option>
                         </select>
-                        <button type="button" class="btn btn-xs btn-outline-success" onclick="selectAllPromotedStudents(true)" style="font-weight:700;">
+                        <button type="button" class="btn btn-xs btn-outline-success" onclick="selectAllPromotedStudents(true)" style="font-weight:700; min-height:38px; height:38px; padding:0 12px; display:inline-flex; align-items:center; gap:5px;">
                             <i class="fa-solid fa-check-double"></i> Seleccionar Aprobados
                         </button>
                     </div>
@@ -4076,12 +4076,12 @@
                         </div>
 
                         <!-- Fila 1: Selectores Dinámicos de Grado y Sección -->
-                        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:8px; margin-bottom:8px;">
+                        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px; margin-bottom:10px;">
                             <div>
-                                <label style="font-size:0.75rem; font-weight:700; color:#475569; margin-bottom:2px; display:block;">
+                                <label style="font-size:0.84rem; font-weight:700; color:#334155; margin-bottom:4px; display:block;">
                                     <i class="fa-solid fa-graduation-cap"></i> Filtrar Grado:
                                 </label>
-                                <select id="discGradeFilter" class="form-control form-control-sm" onchange="filterDisciplineStudentList()" style="font-size:0.82rem; font-weight:700; background:#ffffff; border-color:#94a3b8; height:34px;">
+                                <select id="discGradeFilter" class="form-control form-control-sm" onchange="filterDisciplineStudentList()" style="font-size:0.88rem; font-weight:600; min-height:38px; height:38px; padding:6px 12px; background:#ffffff; border-color:#94a3b8; line-height:1.4;">
                                     <option value="ALL">-- Todos los Grados --</option>
                                     <option value="4to Perito Contador">4to Perito Contador</option>
                                     <option value="5to Perito Contador">5to Perito Contador</option>
@@ -4089,10 +4089,10 @@
                                 </select>
                             </div>
                             <div>
-                                <label style="font-size:0.75rem; font-weight:700; color:#475569; margin-bottom:2px; display:block;">
+                                <label style="font-size:0.84rem; font-weight:700; color:#334155; margin-bottom:4px; display:block;">
                                     <i class="fa-solid fa-layer-group"></i> Sección:
                                 </label>
-                                <select id="discSectionFilter" class="form-control form-control-sm" onchange="filterDisciplineStudentList()" style="font-size:0.82rem; font-weight:700; background:#ffffff; border-color:#94a3b8; height:34px;">
+                                <select id="discSectionFilter" class="form-control form-control-sm" onchange="filterDisciplineStudentList()" style="font-size:0.88rem; font-weight:600; min-height:38px; height:38px; padding:6px 12px; background:#ffffff; border-color:#94a3b8; line-height:1.4;">
                                     <option value="ALL">Todas</option>
                                     <option value="A">Sección A</option>
                                     <option value="B">Sección B</option>
@@ -4103,23 +4103,23 @@
                         </div>
 
                         <!-- Fila 2: Búsqueda Dinámica por Nombre / Apellido / Carné -->
-                        <div style="margin-bottom:8px;">
-                            <label style="font-size:0.75rem; font-weight:700; color:#475569; margin-bottom:2px; display:block;">
+                        <div style="margin-bottom:10px;">
+                            <label style="font-size:0.84rem; font-weight:700; color:#334155; margin-bottom:4px; display:block;">
                                 <i class="fa-solid fa-magnifying-glass"></i> Buscar por Nombre, Apellido o Carné:
                             </label>
                             <div style="position:relative;">
-                                <input type="text" id="discStudentSearchInput" class="form-control form-control-sm" placeholder="Escriba el nombre del alumno para filtrar en tiempo real..." oninput="filterDisciplineStudentList()" style="font-size:0.82rem; background:#ffffff; padding-left:30px; height:34px;">
-                                <i class="fa-solid fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.82rem;"></i>
+                                <input type="text" id="discStudentSearchInput" class="form-control form-control-sm" placeholder="Escriba el nombre del alumno para filtrar en tiempo real..." oninput="filterDisciplineStudentList()" style="font-size:0.88rem; background:#ffffff; padding-left:34px; min-height:38px; height:38px;">
+                                <i class="fa-solid fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.88rem;"></i>
                                 <button type="button" id="discClearSearchBtn" onclick="clearDisciplineStudentSearch()" style="display:none; position:absolute; right:8px; top:50%; transform:translateY(-50%); border:none; background:transparent; color:#94a3b8; cursor:pointer; font-size:0.9rem;" title="Limpiar búsqueda">✕</button>
                             </div>
                         </div>
 
                         <!-- Fila 3: Selector del Estudiante (Filtrado en tiempo real) -->
                         <div>
-                            <label style="font-size:0.76rem; font-weight:800; color:#0f172a; margin-bottom:2px; display:block;">
+                            <label style="font-size:0.86rem; font-weight:800; color:#0f172a; margin-bottom:4px; display:block;">
                                 <i class="fa-solid fa-user-check" style="color:var(--brand-green);"></i> Seleccionar Estudiante (*):
                             </label>
-                            <select id="discStudentSelect" class="form-control" required style="font-weight:700; font-size:0.85rem; border-color:#0284c7; background:#ffffff; color:#0f172a;">
+                            <select id="discStudentSelect" class="form-control" required style="font-weight:700; font-size:0.90rem; min-height:42px; border-color:#0284c7; background:#ffffff; color:#0f172a;">
                                 <option value="">-- Seleccione Estudiante --</option>
                             </select>
                         </div>
@@ -4147,42 +4147,42 @@
 
     <!-- MODAL AUTORIZAR PERMISO DE AUSENCIA (AUXILIATURA / DIRECCIÓN) -->
     <div class="modal-overlay" id="createPermissionModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeCreatePermissionModal()">
-        <div class="modal-container" style="max-width: 650px; width:100%; border-radius:14px; overflow:hidden; border:2px solid #f59e0b; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);">
-            <div class="modal-header" style="background:linear-gradient(135deg, #b45309, #d97706); color:#ffffff; padding:16px 20px; display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="margin:0; font-size:1.15rem; color:#ffffff; display:flex; align-items:center; gap:8px; font-weight:800;">
+        <div class="modal-container" style="max-width: 660px; width:100%; border-radius:14px; overflow:hidden; border:1px solid #cbd5e1; box-shadow:0 25px 50px -12px rgba(15,23,42,0.35);">
+            <div class="modal-header" style="background:linear-gradient(135deg, #d97706, #b45309); color:#ffffff; padding:18px 24px; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size:1.18rem; color:#ffffff; display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:-0.01em;">
                     <i class="fa-solid fa-file-signature"></i> Autorizar Permiso Oficial de Ausencia
                 </h3>
-                <button type="button" class="modal-close" onclick="closeCreatePermissionModal()" style="color:#fff; background:transparent; border:none; font-size:1.6rem; cursor:pointer;">&times;</button>
+                <button type="button" class="modal-close" onclick="closeCreatePermissionModal()" style="color:#fff; background:rgba(255,255,255,0.15); border:none; width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.4rem; cursor:pointer;" title="Cerrar">&times;</button>
             </div>
             <form onsubmit="saveStudentPermissionForm(event)">
-                <div class="modal-body" style="padding:20px; max-height:78vh; overflow-y:auto;">
-                    <div style="background:#fffbeb; border:1.5px solid #fcd34d; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:0.83rem; color:#92400e; display:flex; align-items:flex-start; gap:8px;">
-                        <i class="fa-solid fa-circle-info" style="font-size:1.1rem; margin-top:2px; flex-shrink:0; color:#d97706;"></i>
+                <div class="modal-body" style="padding:22px 24px; max-height:78vh; overflow-y:auto;">
+                    <div style="background:#fffbeb; border:1.5px solid #fde68a; border-left:4px solid #f59e0b; border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:0.90rem; line-height:1.55; color:#1e293b; display:flex; align-items:flex-start; gap:10px;">
+                        <i class="fa-solid fa-circle-info" style="font-size:1.25rem; margin-top:2px; flex-shrink:0; color:#d97706;"></i>
                         <div>
-                            <strong>Efecto Automático en Toda la Plataforma:</strong> Al autorizar este permiso, se registrará como <strong>"J" (Justificado)</strong> en las listas de asistencia de <strong>TODOS los catedráticos</strong> y se mostrará la justificación oficial en pantalla.
+                            <strong style="color:#b45309;">Efecto Automático en Toda la Plataforma:</strong> Al autorizar este permiso, se registrará como <strong style="color:#15803d;">"J" (Justificado)</strong> en las listas de asistencia de <strong>TODOS los catedráticos</strong> y se mostrará la justificación oficial en pantalla.
                         </div>
                     </div>
 
                     <!-- BUSCADOR DINÁMICO DE ESTUDIANTE -->
-                    <div style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:10px; padding:12px; margin-bottom:14px;">
-                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-                            <label style="font-weight:800; color:#0f172a; font-size:0.86rem; margin:0; display:flex; align-items:center; gap:6px;">
+                    <div style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:12px; padding:14px; margin-bottom:16px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                            <label style="font-weight:800; color:#0f172a; font-size:0.92rem; margin:0; display:flex; align-items:center; gap:8px;">
                                 <i class="fa-solid fa-user-check" style="color:#d97706;"></i> Seleccionar Estudiante (*)
                             </label>
-                            <span id="permStudentCountBadge" class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.74rem;">
+                            <span id="permStudentCountBadge" class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800; font-size:0.78rem; padding:4px 8px; border-radius:6px;">
                                 Alumnos
                             </span>
                         </div>
-                        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:8px; margin-bottom:8px;">
+                        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:10px; margin-bottom:10px;">
                             <div>
-                                <label style="font-size:0.75rem; font-weight:700; color:#475569; margin-bottom:2px; display:block;">Filtrar Grado:</label>
-                                <select id="permGradeFilter" class="form-control form-control-sm" onchange="filterPermissionStudentList()" style="font-size:0.82rem; font-weight:700; height:34px; background:#fff;">
+                                <label style="font-size:0.84rem; font-weight:700; color:#334155; margin-bottom:4px; display:block;">Filtrar Grado:</label>
+                                <select id="permGradeFilter" class="form-control form-control-sm" onchange="filterPermissionStudentList()" style="font-size:0.88rem; font-weight:600; min-height:38px; height:38px; padding:6px 12px; background:#fff; line-height:1.4;">
                                     <option value="ALL">-- Todos los Grados --</option>
                                 </select>
                             </div>
                             <div>
-                                <label style="font-size:0.75rem; font-weight:700; color:#475569; margin-bottom:2px; display:block;">Sección:</label>
-                                <select id="permSectionFilter" class="form-control form-control-sm" onchange="filterPermissionStudentList()" style="font-size:0.82rem; font-weight:700; height:34px; background:#fff;">
+                                <label style="font-size:0.84rem; font-weight:700; color:#334155; margin-bottom:4px; display:block;">Sección:</label>
+                                <select id="permSectionFilter" class="form-control form-control-sm" onchange="filterPermissionStudentList()" style="font-size:0.88rem; font-weight:600; min-height:38px; height:38px; padding:6px 12px; background:#fff; line-height:1.4;">
                                     <option value="ALL">Todas</option>
                                     <option value="A">Sección A</option>
                                     <option value="B">Sección B</option>
@@ -4191,27 +4191,27 @@
                                 </select>
                             </div>
                         </div>
-                        <div style="margin-bottom:8px; position:relative;">
-                            <input type="text" id="permStudentSearchInput" class="form-control form-control-sm" placeholder="Buscar por nombre, apellido o carné..." oninput="filterPermissionStudentList()" style="font-size:0.82rem; padding-left:30px; height:34px; background:#fff;">
-                            <i class="fa-solid fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.82rem;"></i>
+                        <div style="margin-bottom:10px; position:relative;">
+                            <input type="text" id="permStudentSearchInput" class="form-control form-control-sm" placeholder="Buscar por nombre, apellido o carné..." oninput="filterPermissionStudentList()" style="font-size:0.88rem; padding-left:34px; min-height:38px; height:38px; background:#fff;">
+                            <i class="fa-solid fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.88rem;"></i>
                         </div>
                         <div>
-                            <select id="permStudentSelect" class="form-control" required style="font-weight:700; font-size:0.85rem; border-color:#d97706; background:#fff; color:#0f172a;">
+                            <select id="permStudentSelect" class="form-control" required style="font-weight:700; font-size:0.90rem; min-height:42px; border-color:#d97706; background:#fff; color:#0f172a;">
                                 <option value="">-- Seleccione Estudiante (*) --</option>
                             </select>
                         </div>
                     </div>
 
                     <!-- FECHAS DE AUSENCIA -->
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px;">
                         <div>
-                            <label style="font-weight:700; font-size:0.82rem; color:#334155;"><i class="fa-solid fa-calendar-day"></i> Fecha de Inicio / Ausencia (*):</label>
-                            <input type="date" id="permStartDate" class="form-control" required style="font-size:0.85rem; font-weight:700;">
+                            <label style="font-weight:700; font-size:0.86rem; color:#1e293b; margin-bottom:4px; display:block;"><i class="fa-solid fa-calendar-day"></i> Fecha de Inicio / Ausencia (*):</label>
+                            <input type="date" id="permStartDate" class="form-control" required style="font-size:0.88rem; font-weight:700; min-height:40px;">
                         </div>
                         <div>
-                            <label style="font-weight:700; font-size:0.82rem; color:#334155;"><i class="fa-solid fa-calendar-plus"></i> Fecha Final (Opcional):</label>
-                            <input type="date" id="permEndDate" class="form-control" style="font-size:0.85rem;">
-                            <small style="color:#64748b; font-size:0.73rem;">Dejar vacío si el permiso es de un solo día.</small>
+                            <label style="font-weight:700; font-size:0.86rem; color:#1e293b; margin-bottom:4px; display:block;"><i class="fa-solid fa-calendar-plus"></i> Fecha Final (Opcional):</label>
+                            <input type="date" id="permEndDate" class="form-control" style="font-size:0.88rem; min-height:40px;">
+                            <small style="color:#64748b; font-size:0.76rem; margin-top:3px; display:block;">Dejar vacío si el permiso es de un solo día.</small>
                         </div>
                     </div>
 
