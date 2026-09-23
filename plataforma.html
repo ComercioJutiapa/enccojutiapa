@@ -430,6 +430,9 @@
 <header class="top-role-bar" id="topRoleBar" style="display:block;">
         <div class="role-bar-container">
             <div class="role-bar-brand">
+                <button type="button" class="btn btn-xs" id="sidebarCollapseToggleBtn" onclick="toggleSidebar()" title="Colapsar o Expandir Menú Lateral (Pantalla Completa)" style="background:rgba(255,255,255,0.18); color:#ffffff; border:1px solid rgba(255,255,255,0.3); border-radius:6px; padding:3px 9px; margin-right:8px; cursor:pointer; font-size:0.85rem; display:inline-flex; align-items:center;">
+                    <i class="fa-solid fa-bars" id="sidebarToggleIcon"></i>
+                </button>
                 <span class="role-bar-badge">
                     <img src="logo.png" alt="ENCCO Jutiapa Logo"> ENCCO JUTIAPA 1970
                 </span>
@@ -441,6 +444,12 @@
             </div>
 
             <div class="role-bar-actions">
+                <button type="button" class="btn btn-outline-light btn-xs" onclick="openGlobalSearchModal()" title="Búsqueda Global Rápida (Atajo Ctrl + K)" style="color:#ffffff; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.35); border-radius:18px; padding:4px 11px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                    <i class="fa-solid fa-magnifying-glass"></i> Buscar <kbd style="background:rgba(0,0,0,0.35); padding:1px 5px; border-radius:4px; font-size:0.65rem; color:#bbf7d0;">Ctrl K</kbd>
+                </button>
+                <button type="button" class="btn btn-outline-light btn-xs" onclick="exportDataBackupJSON()" title="Descargar Respaldo JSON Inmediato de Base de Datos" style="color:#ffffff; background:rgba(34,197,94,0.28); border:1px solid #22c55e; border-radius:18px; padding:4px 11px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
+                    <i class="fa-solid fa-download"></i> Respaldo JSON
+                </button>
                 <button type="button" id="topDbStatusBtn" class="btn btn-xs" onclick="openDbConfigModal()" style="font-weight:800; border-radius:18px; padding:4px 14px; font-size:0.75rem; display:inline-flex; align-items:center; gap:6px; cursor:pointer; background:#065f46; color:#ffffff; border:1.5px solid #10b981; transition:all 0.2s;" title="⚡ Sincronización en Tiempo Real Activa: Cada cambio se guarda inmediatamente en 0ms y se sincroniza en vivo">
                     <i class="fa-solid fa-bolt pulse-live" id="topDbStatusIcon" style="color:#fef08a;"></i>
                     <span id="topDbStatusText">⚡ Tiempo Real: Sincronizado (0ms)</span>
@@ -1927,6 +1936,7 @@
                             <span class="badge" style="background:#dcfce7; color:#15803d; font-weight:800; font-size:0.85rem; padding:4px 10px;" id="badgeZonaMaxDisplay">Zona: 40 pts</span>
                             <span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.85rem; padding:4px 10px;" id="badgeExamMaxDisplay">Examen / Evaluación: 60 pts</span>
                             <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:900; font-size:0.85rem; padding:4px 10px;">Total: 100 pts</span>
+                            <span class="badge" id="gradebookProgressBadge" style="display:none; font-weight:800; font-size:0.85rem; padding:4px 10px; align-items:center; gap:6px;"></span>
                         </div>
                         <button type="button" class="btn btn-sm btn-outline-success" onclick="openGradingConfigModal()" style="font-weight:700;">
                             <i class="fa-solid fa-pen-to-square"></i> Cambiar Valor de Zona y Examen
@@ -2912,6 +2922,25 @@
     </div> <!-- Fin .app-layout -->
 
 
+
+    <!-- 🔍 MODAL DE BÚSQUEDA GLOBAL RÁPIDA (SPOTLIGHT / CTRL + K) -->
+    <div class="modal-overlay" id="globalSearchModal" style="display:none !important; align-items:flex-start; padding-top:60px;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeGlobalSearchModal()">
+        <div class="modal-container" style="max-width:640px; border-radius:18px; overflow:hidden; box-shadow:0 25px 60px rgba(0,0,0,0.5); border:1.5px solid #22c55e;">
+            <div style="background:#0f172a; padding:16px 20px; display:flex; align-items:center; gap:12px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                <i class="fa-solid fa-magnifying-glass" style="color:#22c55e; font-size:1.2rem;"></i>
+                <input type="text" id="globalSearchModalInput" placeholder="Buscar alumnos, profesores, grados o funciones (ej: notas, carnés)..." style="flex:1; background:transparent; border:none; outline:none; color:#ffffff; font-size:1rem; font-weight:600; font-family:inherit;" oninput="runGlobalSpotlightSearch(this.value)">
+                <kbd style="background:rgba(255,255,255,0.15); color:#94a3b8; font-size:0.75rem; padding:3px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.2);">ESC</kbd>
+                <button type="button" onclick="closeGlobalSearchModal()" style="background:none; border:none; color:#94a3b8; font-size:1.4rem; cursor:pointer;">&times;</button>
+            </div>
+            <div id="globalSearchResultsContainer" style="max-height:420px; overflow-y:auto; background:#ffffff; padding:12px;">
+                <!-- Resultados dinámicos en vivo -->
+            </div>
+            <div style="background:#f8fafc; padding:8px 16px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#64748b;">
+                <span>💡 Atajo: presiona <strong style="color:#0f172a;">Ctrl + K</strong> desde cualquier pantalla</span>
+                <span>ENCCO Control Académico</span>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL ACERCA DEL SISTEMA Y DERECHOS DE AUTOR -->
     <div class="modal-overlay" id="aboutSystemModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeAboutSystemModal()">

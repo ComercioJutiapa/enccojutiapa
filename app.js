@@ -16415,15 +16415,176 @@ window.addEventListener('resize', () => {
 });
 
 
-function handleGlobalSearch(val) {
-    if (val.length > 2) {
-        if (STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') {
-            navigateTo('gradebook');
+// ==========================================================================
+// 🔍 MOTOR DE BÚSQUEDA GLOBAL RÁPIDA (SPOTLIGHT / CTRL + K)
+// ==========================================================================
+function openGlobalSearchModal() {
+    const modal = document.getElementById('globalSearchModal');
+    if (!modal) return;
+    modal.classList.add('active');
+    modal.style.setProperty('display', 'flex', 'important');
+    modal.style.display = 'flex';
+    const input = document.getElementById('globalSearchModalInput');
+    if (input) {
+        input.value = '';
+        setTimeout(() => input.focus(), 60);
+    }
+    runGlobalSpotlightSearch('');
+}
+window.openGlobalSearchModal = openGlobalSearchModal;
+
+function closeGlobalSearchModal() {
+    const modal = document.getElementById('globalSearchModal');
+    if (!modal) return;
+    modal.classList.remove('active');
+    modal.style.setProperty('display', 'none', 'important');
+    modal.style.display = 'none';
+}
+window.closeGlobalSearchModal = closeGlobalSearchModal;
+
+function runGlobalSpotlightSearch(rawQuery) {
+    const container = document.getElementById('globalSearchResultsContainer');
+    if (!container) return;
+    const q = (rawQuery || '').trim().toLowerCase();
+
+    let html = '';
+
+    if (!q) {
+        // Atajos rápidos directos de navegación
+        const shortcuts = [
+            { icon: "fa-calendar-check", color: "#15803d", title: "Control de Asistencia", desc: "Pasar asistencia diaria por grado o cátedra", fn: "navigateTo('attendance')" },
+            { icon: "fa-pen-to-square", color: "#0284c7", title: "Ingreso de Calificaciones", desc: "Planilla de notas de bimestres y actividades", fn: "navigateTo('gradebook')" },
+            { icon: "fa-id-card", color: "#0d47a1", title: "Emisión de Carnés Oficiales", desc: "Impresión de credenciales con Código de Barras y QR", fn: "navigateTo('carnets')" },
+            { icon: "fa-print", color: "#7c3aed", title: "Boletines de Calificaciones", desc: "Cuadros oficiales de notas por sección", fn: "navigateTo('reports')" },
+            { icon: "fa-user-plus", color: "#d97706", title: "Inscripción de Alumnos", desc: "Registrar nuevos expedientes en el plantel", fn: "navigateTo('enrollment')" },
+            { icon: "fa-file-signature", color: "#ea580c", title: "Permisos y Justificaciones", desc: "Control de ausencias de auxiliatura", fn: "openCreatePermissionModal()" },
+            { icon: "fa-download", color: "#16a34a", title: "Descargar Respaldo JSON", desc: "Copia de seguridad inmediata de la base de datos", fn: "exportDataBackupJSON()" }
+        ];
+
+        html += `<div style="font-size:0.75rem; font-weight:800; color:#64748b; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px; padding:0 4px;">⚡ Accesos Rápidos Principales</div>`;
+        shortcuts.forEach(s => {
+            html += `
+                <div class="spotlight-result-item" onclick="closeGlobalSearchModal(); ${s.fn};">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="width:34px; height:34px; border-radius:8px; background:${s.color}15; color:${s.color}; display:flex; align-items:center; justify-content:center; font-size:1rem;">
+                            <i class="fa-solid ${s.icon}"></i>
+                        </div>
+                        <div>
+                            <strong style="color:#0f172a; font-size:0.88rem; display:block;">${s.title}</strong>
+                            <span style="color:#64748b; font-size:0.75rem;">${s.desc}</span>
+                        </div>
+                    </div>
+                    <span style="font-size:0.75rem; color:#94a3b8;"><i class="fa-solid fa-chevron-right"></i></span>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+        return;
+    }
+
+    // Buscar Estudiantes
+    const students = (STATE.students || []).filter(s => {
+        const name = (s.name || `${s.firstName || ''} ${s.lastName || ''}`).toLowerCase();
+        const carne = (s.carne || '').toLowerCase();
+        const code = (s.personalCode || '').toLowerCase();
+        const grd = (s.grade || '').toLowerCase();
+        return name.includes(q) || carne.includes(q) || code.includes(q) || grd.includes(q);
+    }).slice(0, 8);
+
+    // Buscar Catedráticos
+    const teachers = (STATE.users || []).filter(u => {
+        const name = (u.name || '').toLowerCase();
+        const title = (u.title || '').toLowerCase();
+        const role = (u.role || '').toLowerCase();
+        return (role === 'docente' || role === 'profesor_auxiliar' || role === 'director') && (name.includes(q) || title.includes(q));
+    }).slice(0, 4);
+
+    if (students.length > 0) {
+        html += `<div style="font-size:0.75rem; font-weight:800; color:#15803d; margin:6px 0; text-transform:uppercase; letter-spacing:0.5px; padding:0 4px;">🎓 Estudiantes (${students.length})</div>`;
+        students.forEach(st => {
+            const stName = `${st.lastName || ''}, ${st.firstName || ''}`.toUpperCase().trim() || st.name;
+            const carneStr = st.carne || st.personalCode || 'S/C';
+            html += `
+                <div class="spotlight-result-item" onclick="closeGlobalSearchModal(); navigateTo('students'); document.getElementById('studentSearchInput').value='${st.carne || st.firstName}'; filterStudentsTable();">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="width:34px; height:34px; border-radius:50%; background:#f0fdf4; border:1px solid #86efac; color:#15803d; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.8rem;">
+                            ${st.firstName ? st.firstName.charAt(0) : 'E'}
+                        </div>
+                        <div>
+                            <strong style="color:#0f172a; font-size:0.88rem; display:block;">${stName}</strong>
+                            <span style="color:#64748b; font-size:0.75rem;">${st.grade || 'Perito Contador'} (${st.section || 'A'}) • Carné: <strong>${carneStr}</strong></span>
+                        </div>
+                    </div>
+                    <span class="badge" style="background:#f1f5f9; color:#475569; font-size:0.72rem; padding:4px 8px;">Ver Expediente</span>
+                </div>
+            `;
+        });
+    }
+
+    if (teachers.length > 0) {
+        html += `<div style="font-size:0.75rem; font-weight:800; color:#0284c7; margin:12px 0 6px 0; text-transform:uppercase; letter-spacing:0.5px; padding:0 4px;">👨‍🏫 Catedráticos y Personal (${teachers.length})</div>`;
+        teachers.forEach(t => {
+            html += `
+                <div class="spotlight-result-item" onclick="closeGlobalSearchModal(); navigateTo('attendance');">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="width:34px; height:34px; border-radius:50%; background:#f0f9ff; border:1px solid #7dd3fc; color:#0284c7; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.8rem;">
+                            ${t.name ? t.name.charAt(0) : 'P'}
+                        </div>
+                        <div>
+                            <strong style="color:#0f172a; font-size:0.88rem; display:block;">${t.name}</strong>
+                            <span style="color:#64748b; font-size:0.75rem;">${t.title || 'Catedrático'} • Rol: <strong>${t.role}</strong></span>
+                        </div>
+                    </div>
+                    <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.72rem; padding:4px 8px;">Asistencia</span>
+                </div>
+            `;
+        });
+    }
+
+    if (students.length === 0 && teachers.length === 0) {
+        html = `
+            <div style="text-align:center; padding:32px 16px; color:#64748b;">
+                <i class="fa-solid fa-magnifying-glass" style="font-size:2rem; color:#cbd5e1; margin-bottom:8px;"></i>
+                <p style="margin:0; font-weight:700; font-size:0.92rem; color:#475569;">No se encontraron resultados para "${escapeHtml(q)}"</p>
+                <span style="font-size:0.78rem; color:#94a3b8;">Verifique la ortografía, nombre o número de carné</span>
+            </div>
+        `;
+    }
+
+    container.innerHTML = html;
+}
+window.runGlobalSpotlightSearch = runGlobalSpotlightSearch;
+
+// Atajo global de teclado: Ctrl + K (o Cmd + K) y tecla ESC
+window.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const modal = document.getElementById('globalSearchModal');
+        if (modal && (modal.classList.contains('active') || modal.style.display === 'flex')) {
+            closeGlobalSearchModal();
         } else {
-            navigateTo('students');
-            document.getElementById('studentSearchInput').value = val;
-            filterStudentsTable();
+            openGlobalSearchModal();
         }
+    } else if (e.key === 'Escape') {
+        closeGlobalSearchModal();
+    }
+});
+
+// 🛡️ Alerta protectora contra pérdida involuntaria de cambios sin guardar
+window.addEventListener('beforeunload', function(e) {
+    if (window._locallyDirtyStudentIds && window._locallyDirtyStudentIds.size > 0) {
+        e.preventDefault();
+        e.returnValue = 'Tiene calificaciones que se están sincronizando con el servidor. ¿Está seguro de cerrar la ventana?';
+        return e.returnValue;
+    }
+});
+
+function handleGlobalSearch(val) {
+    openGlobalSearchModal();
+    const input = document.getElementById('globalSearchModalInput');
+    if (input) {
+        input.value = val;
+        runGlobalSpotlightSearch(val);
     }
 }
 
@@ -16660,6 +16821,7 @@ function exportDataBackupJSON() {
     downloadAnchor.remove();
     showToast("¡Copia de seguridad JSON descargada con éxito!", "success");
 }
+window.exportDataBackupJSON = exportDataBackupJSON;
 
 function importDataBackupJSON(e) {
     const file = e.target.files[0];
@@ -20958,6 +21120,34 @@ function loadTeacherGradebook() {
         errAlert.style.display = hasOverLimit ? 'flex' : 'none';
         if (errText) {
             errText.innerHTML = `<strong>¡ALERTA DE ERROR DE CALIFICACIÓN!</strong> La suma de Zona y Evaluación NO puede exceder los 100 Puntos (Zona máx ${cfg.zonaMax}, Examen máx ${cfg.examMax}). Corrija los valores que exceden la ponderación.`;
+        }
+    }
+
+    // 📊 Barra e Indicador de Progreso en Vivo para Docentes y Dirección
+    const progressBadge = document.getElementById('gradebookProgressBadge');
+    if (progressBadge) {
+        const activeStudents = students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo');
+        const completedCount = activeStudents.filter(s => {
+            const uData = s.gradebookDetails && s.gradebookDetails[subjectName] && s.gradebookDetails[subjectName][currentUnit];
+            const t = (uData && uData.total) || (s.grades && s.grades[subjectName] && s.grades[subjectName][currentUnit - 1]) || 0;
+            return parseInt(t) > 0;
+        }).length;
+        const totalActive = activeStudents.length;
+        const pct = totalActive > 0 ? Math.round((completedCount / totalActive) * 100) : 0;
+        progressBadge.innerHTML = `<i class="fa-solid fa-chart-pie"></i> Avance: <strong>${completedCount}/${totalActive}</strong> calificados (${pct}%)`;
+        progressBadge.style.display = 'inline-flex';
+        if (pct === 100) {
+            progressBadge.style.background = '#dcfce7';
+            progressBadge.style.color = '#15803d';
+            progressBadge.style.border = '1px solid #86efac';
+        } else if (pct > 50) {
+            progressBadge.style.background = '#fef9c3';
+            progressBadge.style.color = '#854d0e';
+            progressBadge.style.border = '1px solid #fde047';
+        } else {
+            progressBadge.style.background = '#f1f5f9';
+            progressBadge.style.color = '#475569';
+            progressBadge.style.border = '1px solid #cbd5e1';
         }
     }
 }

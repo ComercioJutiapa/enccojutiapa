@@ -2467,3 +2467,40 @@ body.theme-dark .custom-honor-opt {
     display: block !important;
 }
 
+/* ====================================================================== */
+/* 🌟 MEJORAS DE ALTO IMPACTO UX: SEMÁFORO DE CALIFICACIONES Y SPOTLIGHT */
+/* ====================================================================== */
+.grade-score-pass {
+    color: #15803d !important;
+    background: #dcfce7 !important;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-weight: 800;
+}
+
+.grade-score-fail {
+    color: #b91c1c !important;
+    background: #fee2e2 !important;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-weight: 800;
+}
+
+.spotlight-result-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.spotlight-result-item:hover, .spotlight-result-item.selected {
+    background: #f0fdf4 !important;
+    border-color: #86efac !important;
+    transform: translateX(3px);
+}
+
+
