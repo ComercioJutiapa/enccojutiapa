@@ -20925,6 +20925,8 @@ function loadTeacherGradebook() {
                 return `
                     <td style="text-align:center; padding:4px;">
                         <input type="number" min="0" max="${actMax}" class="grade-box-input" value="${val || ''}" placeholder="0" 
+                            onfocus="this.select()"
+                            onkeydown="handleGradeGridKeyDown(event, this)"
                             onchange="handleActivityBoxChange('${s.id}', ${actIdx}, this.value, '${subjectName}', ${currentUnit})">
                     </td>
                 `;
@@ -21038,8 +21040,9 @@ function loadTeacherGradebook() {
                                     style="background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; cursor:not-allowed; text-align:center; font-weight:700; width:65px;" 
                                     title="Bimestre cerrado (Solo lectura). Solicite habilitación a Dirección para editar.">` :
                                 `<input type="number" min="0" max="${cfg.examMax}" class="grade-box-input-exam" value="${exam}" 
+                                    onfocus="this.select()"
+                                    onkeydown="handleGradeGridKeyDown(event, this)"
                                     onchange="handleExamScoreChange('${s.id}', this.value, '${subjectName}', ${currentUnit})"
-                                    onkeyup="if(event.key==='Enter') this.blur();"
                                     style="text-align:center; font-weight:700; width:65px;">`
                             )
                         }
@@ -21151,6 +21154,81 @@ function loadTeacherGradebook() {
         }
     }
 }
+
+// ⚡ NAVEGACIÓN FLUIDA ESTILO EXCEL (Enter y Flechas en Planilla de Notas)
+function handleGradeGridKeyDown(e, input) {
+    if (!input || !e) return;
+    const key = e.key;
+
+    const isEnter = (key === 'Enter');
+    const isDown = (key === 'ArrowDown');
+    const isUp = (key === 'ArrowUp');
+    const isRight = (key === 'ArrowRight');
+    const isLeft = (key === 'ArrowLeft');
+
+    if (!isEnter && !isDown && !isUp && !isRight && !isLeft) return;
+
+    const tr = input.closest('tr');
+    if (!tr) return;
+    const tbody = tr.closest('tbody');
+    if (!tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll('tr[data-student-id]'));
+    const currRowIdx = rows.indexOf(tr);
+    if (currRowIdx === -1) return;
+
+    const currInputs = Array.from(tr.querySelectorAll('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])'));
+    const colIdx = currInputs.indexOf(input);
+
+    let targetInput = null;
+
+    if (isEnter || isDown || isUp) {
+        e.preventDefault();
+        const moveUp = isUp || (isEnter && e.shiftKey);
+        const targetRowIdx = moveUp ? (currRowIdx - 1) : (currRowIdx + 1);
+
+        if (targetRowIdx >= 0 && targetRowIdx < rows.length) {
+            const targetRow = rows[targetRowIdx];
+            const targetInputs = Array.from(targetRow.querySelectorAll('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])'));
+            if (targetInputs.length > 0) {
+                targetInput = targetInputs[Math.min(colIdx >= 0 ? colIdx : 0, targetInputs.length - 1)];
+            }
+        }
+    } else if (isRight) {
+        if (colIdx >= 0 && colIdx + 1 < currInputs.length) {
+            e.preventDefault();
+            targetInput = currInputs[colIdx + 1];
+        } else if (currRowIdx + 1 < rows.length) {
+            const nextRowInputs = Array.from(rows[currRowIdx + 1].querySelectorAll('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])'));
+            if (nextRowInputs.length > 0) {
+                e.preventDefault();
+                targetInput = nextRowInputs[0];
+            }
+        }
+    } else if (isLeft) {
+        if (colIdx > 0) {
+            e.preventDefault();
+            targetInput = currInputs[colIdx - 1];
+        } else if (currRowIdx > 0) {
+            const prevRowInputs = Array.from(rows[currRowIdx - 1].querySelectorAll('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])'));
+            if (prevRowInputs.length > 0) {
+                e.preventDefault();
+                targetInput = prevRowInputs[prevRowInputs.length - 1];
+            }
+        }
+    }
+
+    if (targetInput) {
+        input.blur();
+        setTimeout(() => {
+            targetInput.focus();
+            if (typeof targetInput.select === 'function') {
+                targetInput.select();
+            }
+        }, 15);
+    }
+}
+window.handleGradeGridKeyDown = handleGradeGridKeyDown;
 
 function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit) {
     const selectedId = document.getElementById('teacherCourseSelect')?.value;
