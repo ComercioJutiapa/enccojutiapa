@@ -15830,6 +15830,9 @@ function filterUsersTable(val) {
 
 
 function showToast(msg, type = 'info') {
+    if (typeof window !== 'undefined' && typeof window.showToast === 'function' && window.showToast !== showToast) {
+        return window.showToast(msg, type);
+    }
     const container = document.getElementById('toastContainer');
     if (!container) return;
     const toast = document.createElement('div');
@@ -26405,7 +26408,9 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     let detectedSubject = '';
     let detectedGrade = '';
     let detectedSection = '';
+    let detectedTeacher = '';
     let detectedUnit = fallbackUnit || 1;
+    let hasExplicitUnit = false;
     let detectedFormat = 'Plantilla Estándar';
     let headerRowIdx = -1;
     let actsRowIdx = -1;
@@ -26426,6 +26431,11 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         if (rowStr.includes('catedra:') || rowStr.includes('cátedra:')) {
             const idxC = row.findIndex(c => String(c).toLowerCase().includes('catedra'));
             if (idxC !== -1 && row[idxC + 1]) detectedSubject = String(row[idxC + 1]).trim();
+        }
+
+        if (rowStr.includes('catedratico:') || rowStr.includes('catedrático:')) {
+            const idxT = row.findIndex(c => String(c).toLowerCase().includes('catedratico') || String(c).toLowerCase().includes('catedrático'));
+            if (idxT !== -1 && row[idxT + 1]) detectedTeacher = String(row[idxT + 1]).trim();
         }
 
         if (rowStr.includes('grado:')) {
@@ -26457,7 +26467,10 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
                 }
                 if (row[10]) {
                     const bNum = parseInt(row[10]);
-                    if (bNum >= 1 && bNum <= 4) detectedUnit = bNum;
+                    if (bNum >= 1 && bNum <= 4) {
+                        detectedUnit = bNum;
+                        hasExplicitUnit = true;
+                    }
                 }
                 if (row[14]) zonaValInHeader = parseInt(row[14]) || 0;
             }
@@ -26468,7 +26481,10 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         }
 
         const bimMatch = rowStr.match(/(\d+)\s*(?:o\.|o|er|do|to|er\.)?\s*bimestre/i);
-        if (bimMatch) detectedUnit = parseInt(bimMatch[1]);
+        if (bimMatch) {
+            detectedUnit = parseInt(bimMatch[1]);
+            hasExplicitUnit = true;
+        }
 
         if (rowStr.includes('clave') || rowStr.includes('no.') || (rowStr.includes('codigo') && rowStr.includes('estudiante')) || rowStr.includes('apellidos y nombres')) {
             headerRowIdx = r;
@@ -26495,46 +26511,97 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             else if (fNorm.includes('calculo')) detectedSubject = 'Cálculo Mercantil y Financiero';
         }
         const bimFMatch = fNorm.match(/(\d+)(?:o|er|do|to)?bim/);
-        if (bimFMatch) detectedUnit = parseInt(bimFMatch[1]);
+        if (bimFMatch && !hasExplicitUnit) {
+            detectedUnit = parseInt(bimFMatch[1]);
+            hasExplicitUnit = true;
+        }
     }
 
-    const cleanTargetSubj = cleanStr(detectedSubject);
-    const cleanG = cleanStr(detectedGrade);
-    const cleanSec = cleanStr(detectedSection);
+    const activePensum = fallbackPensum || (STATE.pensum || [])[0];
+    const activeUnit = fallbackUnit || parseInt(document.getElementById('gradebookBimestreSelect')?.value) || 1;
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentUser = STATE.currentUser || (STATE.users || []).find(u => u.role === 'docente');
 
-    // 2. Localizar clase exacta en el pensum institucional
-    let targetPensum = (STATE.pensum || []).find(p => {
-        const sMatch = cleanStr(p.subject) === cleanTargetSubj || cleanStr(p.subject).includes(cleanTargetSubj) || cleanTargetSubj.includes(cleanStr(p.subject));
-        const gMatch = !cleanG || cleanStr(p.grade) === cleanG || cleanStr(p.grade).includes(cleanG) || cleanG.includes(cleanStr(p.grade));
-        const secMatch = !cleanSec || cleanStr(p.section) === cleanSec || cleanStr(p.section).includes(cleanSec) || cleanSec.includes(cleanStr(p.section));
-        return sMatch && gMatch && secMatch;
-    });
+    // ------------------------------------------------------------------------
+    // 🛡️ PRE-FLIGHT VALIDATOR: VERIFICACIONES ESTRICTAS DE SEGURIDAD (7 PUNTOS)
+    // ------------------------------------------------------------------------
 
-    if (!targetPensum && cleanTargetSubj) {
-        targetPensum = (STATE.pensum || []).find(p => cleanStr(p.subject) === cleanTargetSubj);
+    // REGLA 2 y 5: Verificar que la materia coincida con la activa (si no -> ¡Cuadro Erróneo!)
+    if (detectedSubject && activePensum && activePensum.subject) {
+        const cleanDetSubj = cleanStr(detectedSubject);
+        const cleanActSubj = cleanStr(activePensum.subject);
+        const subjectMatches = (cleanDetSubj === cleanActSubj) || 
+                               cleanActSubj.includes(cleanDetSubj) || 
+                               cleanDetSubj.includes(cleanActSubj);
+        if (!subjectMatches) {
+            showToast(`¡Cuadro Erróneo! El archivo cargado corresponde a "${detectedSubject}", pero la clase activa seleccionada es "${activePensum.subject}". Importación cancelada para proteger sus calificaciones.`, "danger");
+            return;
+        }
     }
-    if (!targetPensum) {
-        targetPensum = fallbackPensum || (STATE.pensum || [])[0];
+
+    // REGLA 7: Verificar a qué grado y sección corresponde
+    if (activePensum) {
+        if (detectedGrade) {
+            const gNumFile = (detectedGrade || '').toString().match(/(\d+)/)?.[1] || '';
+            const gNumActive = (activePensum.grade || '').toString().match(/(\d+)/)?.[1] || '';
+            if (gNumFile && gNumActive && gNumFile !== gNumActive) {
+                showToast(`¡Grado Incorrecto! El archivo cargado corresponde a "${detectedGrade}", pero la clase activa seleccionada es "${activePensum.grade}".`, "danger");
+                return;
+            }
+        }
+        if (detectedSection) {
+            const secFile = cleanStr(detectedSection).replace(/^seccion/, '');
+            const secActive = cleanStr(activePensum.section).replace(/^seccion/, '');
+            if (secFile && secActive && secFile !== secActive) {
+                showToast(`¡Sección Incorrecta! El archivo cargado corresponde a "${detectedSection}", pero actualmente tiene seleccionada la "${activePensum.section}". Seleccione la sección correspondiente en el libro de notas antes de importar.`, "danger");
+                return;
+            }
+        }
     }
 
+    // REGLA 1: Verificar que el cuadro sea del bimestre correspondiente
+    if (hasExplicitUnit && detectedUnit !== activeUnit) {
+        showToast(`¡Bimestre Incorrecto! El archivo cargado corresponde a la Unidad/Bimestre ${detectedUnit}, pero actualmente tiene abierta la Unidad/Bimestre ${activeUnit}. Seleccione el Bimestre ${detectedUnit} en el selector antes de importar.`, "danger");
+        return;
+    }
+
+    // REGLA 6: Verificar a qué maestro pertenece para poder darle ingreso
+    if (isDocente && currentUser && activePensum) {
+        if (typeof isCourseAssignedToTeacher === 'function' && !isCourseAssignedToTeacher(activePensum, currentUser)) {
+            showToast(`Acceso no autorizado: La clase "${activePensum.subject}" (${activePensum.grade} ${activePensum.section}) no está asignada a su usuario docente.`, "danger");
+            return;
+        }
+
+        if (detectedTeacher) {
+            const tokenize = str => (str || '').toString().toLowerCase()
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-z0-9\s]/g, ' ')
+                .split(/\s+/)
+                .filter(t => t.length > 2 && !['pem', 'lic', 'prof', 'profe', 'docente', 'catedratico', 'catedratica', 'del', 'las', 'los'].includes(t));
+
+            const tTokens = tokenize(detectedTeacher);
+            const pensumTeacherTokens = tokenize(activePensum.teacher || '');
+            const userTokens = tokenize(currentUser.name || '');
+
+            const matchesPensum = tTokens.some(t => pensumTeacherTokens.includes(t));
+            const matchesUser = tTokens.some(t => userTokens.includes(t));
+
+            if (tTokens.length >= 1 && !matchesPensum && !matchesUser) {
+                showToast(`¡Cátedra de Otro Docente! El cuadro indica como catedrático a "${detectedTeacher}", pero la clase está asignada a "${activePensum.teacher || currentUser.name}". Importación rechazada.`, "danger");
+                return;
+            }
+        }
+    }
+
+    const targetPensum = activePensum;
     const effectiveSubject = targetPensum ? targetPensum.subject : (detectedSubject || 'Materia');
-    const effectiveUnit = detectedUnit || fallbackUnit || 1;
+    const effectiveUnit = activeUnit;
 
     // 3. Verificación de permisos y bloqueo de edición para la clase y bimestre detectados
     const editCheck = isGradebookEditableForUser(targetPensum?.id, effectiveUnit);
     if (!editCheck.editable) {
         showToast(`Importación Bloqueada para ${effectiveSubject} (Bimestre ${effectiveUnit}): ${editCheck.message || "El bimestre seleccionado está cerrado para edición."}`, "danger");
         return;
-    }
-
-    // 4. Sincronización automática de selectores en la interfaz si difieren del archivo
-    const courseSel = document.getElementById('teacherCourseSelect');
-    const bimSel = document.getElementById('gradebookBimestreSelect');
-    if (courseSel && targetPensum && courseSel.value !== targetPensum.id) {
-        courseSel.value = targetPensum.id;
-    }
-    if (bimSel && bimSel.value !== String(effectiveUnit)) {
-        bimSel.value = String(effectiveUnit);
     }
 
     // 5. Identificación de columnas según formato
