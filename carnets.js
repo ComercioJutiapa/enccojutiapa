@@ -1761,10 +1761,14 @@
         const docRenglonFilter = document.getElementById('carnetsTeacherRenglonFilter')?.value || 'ALL';
         const docSearchVal = (document.getElementById('carnetsTeacherSearchInput')?.value || '').trim().toLowerCase();
 
-        // Opciones únicas para estudiantes
-        const careers = [...new Set(allStudents.map(s => s.career).filter(Boolean))];
-        const grades = [...new Set(allStudents.map(s => s.grade).filter(Boolean))];
-        const sections = [...new Set(allStudents.map(s => s.section).filter(Boolean))];
+        // Opciones únicas para estudiantes ordenadas pedagógicamente
+        const careers = [...new Set(allStudents.map(s => s.career).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        const grades = [...new Set(allStudents.map(s => s.grade).filter(Boolean))].sort((a, b) => {
+            const wa = typeof window.getGradeWeight === 'function' ? window.getGradeWeight(a) : 99;
+            const wb = typeof window.getGradeWeight === 'function' ? window.getGradeWeight(b) : 99;
+            return wa - wb || a.localeCompare(b);
+        });
+        const sections = [...new Set(allStudents.map(s => s.section).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 
         // Lista filtrada de estudiantes
         const filteredStudents = allStudents.filter(st => {

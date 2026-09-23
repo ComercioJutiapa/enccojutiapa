@@ -5400,7 +5400,7 @@ function updateGradeSelects() {
     try {
         const gradeSelects = document.querySelectorAll('.grade-select, #studentGradeFilter, #studentFormGrade, #pensumSubjectGrade, #gradeFilterSelect, #attendanceGradeSelect, #reportsGradeSelect, #honorRollGradeSelect, #profGradeSelect');
         if (gradeSelects && gradeSelects.length > 0) {
-            const grades = (STATE.gradesList && STATE.gradesList.length > 0) ? STATE.gradesList : [];
+            const grades = (STATE.gradesList && STATE.gradesList.length > 0) ? sortGrades(STATE.gradesList) : [];
             gradeSelects.forEach(sel => {
                 if (!sel) return;
                 const currentVal = sel.value;
@@ -5457,9 +5457,36 @@ function generateTeacherPassword(name) {
 window.generateTeacherPassword = generateTeacherPassword;
 
 
+function getGradeWeight(str) {
+    if (!str || typeof str !== 'string') return 999;
+    const s = str.toLowerCase();
+    if (s.includes('1ro') || s.includes('primero') || s.includes('1er') || s.includes('1')) return 10;
+    if (s.includes('2do') || s.includes('segundo') || s.includes('2')) return 20;
+    if (s.includes('3ro') || s.includes('tercero') || s.includes('3er') || s.includes('3')) return 30;
+    if (s.includes('4to') || s.includes('cuarto') || s.includes('4')) return 40;
+    if (s.includes('5to') || s.includes('quinto') || s.includes('5')) return 50;
+    if (s.includes('6to') || s.includes('sexto') || s.includes('6')) return 60;
+    return 100;
+}
+window.getGradeWeight = getGradeWeight;
+
 function sortGrades(grades) {
     if (!Array.isArray(grades)) return [];
-    return [...grades].sort((a, b) => (a.name || '').localeCompare(b.name || '') || (a.section || '').localeCompare(b.section || ''));
+    return [...grades].sort((a, b) => {
+        if (!a && !b) return 0;
+        if (!a) return 1;
+        if (!b) return -1;
+        const wA = getGradeWeight(a.name || a.grade || a.code || '');
+        const wB = getGradeWeight(b.name || b.grade || b.code || '');
+        if (wA !== wB) return wA - wB;
+        const carComp = (a.career || '').localeCompare(b.career || '');
+        if (carComp !== 0) return carComp;
+        const nameComp = (a.name || a.grade || '').localeCompare(b.name || b.grade || '');
+        if (nameComp !== 0) return nameComp;
+        const secA = (a.section || '').trim().toUpperCase();
+        const secB = (b.section || '').trim().toUpperCase();
+        return secA.localeCompare(secB);
+    });
 }
 window.sortGrades = sortGrades;
 
@@ -8470,7 +8497,7 @@ function renderQuickActionsHub() {
                 color: "#0284c7",
                 bg: "#f0f9ff",
                 border: "#7dd3fc",
-                fn: "navigateTo('grades-entry')"
+                fn: "navigateTo('gradebook')"
             },
             {
                 title: "Boletines de Notas",
@@ -16683,9 +16710,11 @@ function populateReportStudentSelect() {
     const gradeFilter = document.getElementById('reportGradeFilter');
     const sectionFilter = document.getElementById('reportSectionFilter');
 
-    // Cargar opciones de Grado disponibles
+    // Cargar opciones de Grado disponibles ordenadas pedagógicamente
     const allStudents = STATE.students || [];
-    let distinctGrades = Array.from(new Set(allStudents.map(s => s.grade).filter(Boolean))).sort();
+    let distinctGrades = Array.from(new Set(allStudents.map(s => s.grade).filter(Boolean))).sort((a, b) => {
+        return (typeof getGradeWeight === 'function' ? getGradeWeight(a) - getGradeWeight(b) : 0) || a.localeCompare(b);
+    });
     if (distinctGrades.length === 0) {
         distinctGrades = ['4to Perito Contador', '5to Perito Contador', '6to Perito Contador'];
     }
@@ -18582,13 +18611,21 @@ function populateTeacherCourseSelect(preferredCourseId = null) {
             });
 
             const sortedGrades = Object.keys(grouped).sort((a, b) => {
-                const ia = gradeOrder.indexOf(a), ib = gradeOrder.indexOf(b);
-                if (ia !== -1 && ib !== -1) return ia - ib;
+                const wA = (typeof getGradeWeight === 'function') ? getGradeWeight(a) : 999;
+                const wB = (typeof getGradeWeight === 'function') ? getGradeWeight(b) : 999;
+                if (wA !== wB) return wA - wB;
                 return a.localeCompare(b);
             });
 
             sortedGrades.forEach(g => {
                 html += `<optgroup label="🎓 ${g} — Asignadas (${currentUser.name})">`;
+                // Ordenar rigurosamente por Sección ('A', 'B', 'C') y luego por Asignatura
+                grouped[g].sort((a, b) => {
+                    const secA = (a.section || '').trim().toUpperCase();
+                    const secB = (b.section || '').trim().toUpperCase();
+                    if (secA !== secB) return secA.localeCompare(secB);
+                    return (a.subject || '').localeCompare(b.subject || '');
+                });
                 grouped[g].forEach(p => {
                     html += `<option value="${p.id}">${p.subject} — ${p.grade} (${p.section}) [${p.career}]</option>`;
                 });
@@ -18607,13 +18644,21 @@ function populateTeacherCourseSelect(preferredCourseId = null) {
         });
 
         const sortedGrades = Object.keys(grouped).sort((a, b) => {
-            const ia = gradeOrder.indexOf(a), ib = gradeOrder.indexOf(b);
-            if (ia !== -1 && ib !== -1) return ia - ib;
+            const wA = (typeof getGradeWeight === 'function') ? getGradeWeight(a) : 999;
+            const wB = (typeof getGradeWeight === 'function') ? getGradeWeight(b) : 999;
+            if (wA !== wB) return wA - wB;
             return a.localeCompare(b);
         });
 
         sortedGrades.forEach(g => {
             html += `<optgroup label="🎓 ${g} — Clases y Secciones Oficiales">`;
+            // Ordenar rigurosamente por Sección ('A', 'B', 'C') y luego por Asignatura
+            grouped[g].sort((a, b) => {
+                const secA = (a.section || '').trim().toUpperCase();
+                const secB = (b.section || '').trim().toUpperCase();
+                if (secA !== secB) return secA.localeCompare(secB);
+                return (a.subject || '').localeCompare(b.subject || '');
+            });
             grouped[g].forEach(p => {
                 html += `<option value="${p.id}">${p.subject} — ${p.grade} (${p.section}) — Catedrático: ${p.teacher} [${p.career}]</option>`;
             });
@@ -21232,13 +21277,15 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
 
         if (uniqueGrades.size > 0) {
             gradeOptionsHtml += `<optgroup label="📋 Mis Grados Asignados (${currentUser.name})">`;
-            uniqueGrades.forEach(g => {
+            const sortedAssigned = sortGrades(Array.from(uniqueGrades.values()));
+            sortedAssigned.forEach(g => {
                 gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
             });
             gradeOptionsHtml += `</optgroup>`;
         } else {
             // Si el docente aún no tiene cátedras directas, mostrar todos los grados para facilitar registro
-            (STATE.gradesList || []).forEach(g => {
+            const sortedAll = sortGrades(STATE.gradesList || []);
+            sortedAll.forEach(g => {
                 gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
             });
         }
@@ -21265,7 +21312,8 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
 
         if (uniqueGrades.size > 0) {
             gradeOptionsHtml += `<optgroup label="👨‍🏫 Grados A Cargo de: ${activeTeacherObj.name}">`;
-            uniqueGrades.forEach(g => {
+            const sortedTeacherGrades = sortGrades(Array.from(uniqueGrades.values()));
+            sortedTeacherGrades.forEach(g => {
                 gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
             });
             gradeOptionsHtml += `</optgroup>`;
@@ -21275,7 +21323,8 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
     } else {
         // MODO GENERAL POR GRADO: DIRECCIÓN TIENE ACCESO A TODOS LOS 12 GRADOS Y SECCIONES
         gradeOptionsHtml += `<optgroup label="⭐ General por Grado y Sección (Todos los Maestros)">`;
-        (STATE.gradesList || []).forEach(g => {
+        const sortedGeneralGrades = sortGrades(STATE.gradesList || []);
+        sortedGeneralGrades.forEach(g => {
             gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
         });
         gradeOptionsHtml += `</optgroup>`;
@@ -22871,13 +22920,14 @@ function populatePermissionGradeFilter() {
     const gradeSelect = document.getElementById('permGradeFilter');
     if (!gradeSelect) return;
 
-    const gradesList = Array.isArray(STATE.gradesList) && STATE.gradesList.length > 0 
+    const rawList = Array.isArray(STATE.gradesList) && STATE.gradesList.length > 0 
         ? STATE.gradesList 
         : [
-            { code: '4to Perito Contador', name: '4to Perito Contador' },
-            { code: '5to Perito Contador', name: '5to Perito Contador' },
-            { code: '6to Perito Contador', name: '6to Perito Contador' }
+            { code: '4to Perito Contador', name: '4to Perito Contador', section: 'A' },
+            { code: '5to Perito Contador', name: '5to Perito Contador', section: 'A' },
+            { code: '6to Perito Contador', name: '6to Perito Contador', section: 'A' }
         ];
+    const gradesList = typeof sortGrades === 'function' ? sortGrades(rawList) : rawList;
 
     let optionsHtml = '<option value="ALL">-- Todos los Grados --</option>';
     gradesList.forEach(g => {
