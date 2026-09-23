@@ -20930,7 +20930,8 @@ function loadTeacherGradebook() {
                         <input type="number" min="0" max="${actMax}" class="grade-box-input" value="${val || ''}" placeholder="0" 
                             onfocus="handleGradeInputFocus(this)"
                             onkeydown="handleGradeGridKeyDown(event, this)"
-                            onchange="handleActivityBoxChange('${s.id}', ${actIdx}, this.value, '${subjectName}', ${currentUnit})">
+                            oninput="handleActivityBoxChange('${s.id}', ${actIdx}, this.value, '${subjectName}', ${currentUnit}, false)"
+                            onchange="handleActivityBoxChange('${s.id}', ${actIdx}, this.value, '${subjectName}', ${currentUnit}, true)">
                     </td>
                 `;
             }).join('');
@@ -21045,7 +21046,8 @@ function loadTeacherGradebook() {
                                 `<input type="number" min="0" max="${cfg.examMax}" class="grade-box-input-exam" value="${exam}" 
                                     onfocus="handleGradeInputFocus(this)"
                                     onkeydown="handleGradeGridKeyDown(event, this)"
-                                    onchange="handleExamScoreChange('${s.id}', this.value, '${subjectName}', ${currentUnit})"
+                                    oninput="handleExamScoreChange('${s.id}', this.value, '${subjectName}', ${currentUnit}, false)"
+                                    onchange="handleExamScoreChange('${s.id}', this.value, '${subjectName}', ${currentUnit}, true)"
                                     style="text-align:center; font-weight:700; width:65px;">`
                             )
                         }
@@ -21242,16 +21244,122 @@ function handleGradeGridKeyDown(e, input) {
     }
 
     if (targetInput) {
-        input.blur();
-        setTimeout(() => {
-            targetInput.focus();
-            handleGradeInputFocus(targetInput);
-        }, 20);
+        targetInput.focus();
+        handleGradeInputFocus(targetInput);
     }
 }
 window.handleGradeGridKeyDown = handleGradeGridKeyDown;
 
-function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit) {
+const _gradeAutoSaveTimers = (typeof window !== 'undefined' && window._gradeAutoSaveTimers) || {};
+if (typeof window !== 'undefined') window._gradeAutoSaveTimers = _gradeAutoSaveTimers;
+
+function debounceStudentGradeSave(studentId, subjectName, unit, gradeData) {
+    const timerKey = `${studentId}_${subjectName}_${unit}`;
+    if (_gradeAutoSaveTimers[timerKey]) {
+        clearTimeout(_gradeAutoSaveTimers[timerKey]);
+    }
+    _gradeAutoSaveTimers[timerKey] = setTimeout(() => {
+        delete _gradeAutoSaveTimers[timerKey];
+        if (typeof saveStudentSubjectGradeAtomic === 'function') {
+            saveStudentSubjectGradeAtomic(studentId, subjectName, unit, gradeData).catch(e => {
+                console.warn("Aviso en autosave de calificación:", e);
+            });
+        }
+    }, 300);
+}
+
+function flushStudentGradeSave(studentId, subjectName, unit, gradeData) {
+    const timerKey = `${studentId}_${subjectName}_${unit}`;
+    if (_gradeAutoSaveTimers[timerKey]) {
+        clearTimeout(_gradeAutoSaveTimers[timerKey]);
+        delete _gradeAutoSaveTimers[timerKey];
+    }
+    if (typeof saveStudentSubjectGradeAtomic === 'function') {
+        saveStudentSubjectGradeAtomic(studentId, subjectName, unit, gradeData).catch(e => {
+            console.warn("Aviso en autosave de calificación:", e);
+        });
+    }
+}
+
+function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, student, subjectName, unit) {
+    if (!studentId || !student) return;
+
+    // 1. Actualizar celda de Suma de Zona en la pestaña de actividades
+    const sumCell = document.getElementById(`zonaSum_${studentId}`);
+    if (sumCell) {
+        sumCell.innerHTML = `&Sigma; ${zonaVal}`;
+        const targetPensum = (STATE.pensum || []).find(p => p.subject === subjectName);
+        const cfg = (typeof getGradingConfig === 'function') ? getGradingConfig(targetPensum, unit) : { zonaMax: 40, examMax: 60 };
+        sumCell.style.color = (zonaVal > cfg.zonaMax) ? '#b91c1c' : '';
+    }
+
+    // 2. Actualizar fila en la pestaña de Examen y Resumen sin destruir el DOM
+    const sumRow = document.querySelector(`#gradebookSummaryTableBody tr[data-student-id="${studentId}"]`);
+    if (sumRow) {
+        const zonaInput = sumRow.querySelector('input.grade-box-input-exam[readonly]');
+        if (zonaInput) zonaInput.value = zonaVal;
+
+        const cells = sumRow.querySelectorAll('td');
+        if (cells && cells.length >= 6) {
+            const totalCell = cells[4];
+            if (totalCell) {
+                totalCell.textContent = totalVal;
+                totalCell.className = (totalVal < 60 ? 'grade-score-fail' : 'grade-score-pass');
+            }
+
+            const acumCell = cells[5];
+            if (acumCell) {
+                const isInactive = (student.status === 'Retirado' || student.status === 'Ausente' || student.status === 'Inactivo');
+                const gList = student.grades?.[subjectName] || [0, 0, 0, 0];
+                const activeGrades = gList.slice(0, unit);
+                const sumGrades = activeGrades.reduce((a, b) => a + (parseInt(b) || 0), 0);
+                acumCell.textContent = isInactive ? '—' : (sumGrades / unit).toFixed(2);
+            }
+        }
+    }
+
+    // 3. Actualizar fila en la pestaña de Promedios Totales si existe
+    const avgRow = document.querySelector(`#gradebookAveragesTableBody tr[data-student-id="${studentId}"]`);
+    if (avgRow) {
+        const avgCells = avgRow.querySelectorAll('td');
+        if (avgCells && avgCells.length >= 7) {
+            const bimCell = avgCells[unit + 1];
+            if (bimCell) {
+                bimCell.textContent = totalVal > 0 ? totalVal : '—';
+                bimCell.className = totalVal < 60 ? 'grade-score-fail' : 'grade-score-pass';
+            }
+            const g = student.grades?.[subjectName] || [0, 0, 0, 0];
+            const valid = [];
+            for (let b = 0; b < 4; b++) {
+                const val = parseInt(g[b]) || 0;
+                if (val > 0) valid.push(val);
+            }
+            const finalCell = avgCells[6];
+            if (finalCell) {
+                const finalAvg = valid.length > 0 ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : 0;
+                finalCell.textContent = finalAvg > 0 ? finalAvg : '—';
+                finalCell.className = finalAvg < 60 ? 'grade-score-fail' : 'grade-score-pass';
+            }
+        }
+    }
+
+    // 4. Actualizar barra de avance calificado en vivo
+    const progressBadge = document.getElementById('gradebookProgressBadge');
+    if (progressBadge) {
+        const students = STATE.students || [];
+        const activeStudents = students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo');
+        const completedCount = activeStudents.filter(s => {
+            const uData = s.gradebookDetails && s.gradebookDetails[subjectName] && s.gradebookDetails[subjectName][unit];
+            const t = (uData && uData.total) || (s.grades && s.grades[subjectName] && s.grades[subjectName][unit - 1]) || 0;
+            return parseInt(t) > 0;
+        }).length;
+        const totalActive = activeStudents.length;
+        const pct = totalActive > 0 ? Math.round((completedCount / totalActive) * 100) : 0;
+        progressBadge.innerHTML = `<i class="fa-solid fa-chart-pie"></i> Avance: <strong>${completedCount}/${totalActive}</strong> calificados (${pct}%)`;
+    }
+}
+
+function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, isCommit = false) {
     const selectedId = document.getElementById('teacherCourseSelect')?.value;
     const targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
     const editCheck = isGradebookEditableForUser(targetPensum?.id, unit);
@@ -21280,30 +21388,30 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit) 
     const zonaSum = acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
     student.gradebookDetails[subjectName][unit].zona = zonaSum;
 
-    // Actualizar celda en vivo
-    const sumCell = document.getElementById(`zonaSum_${studentId}`);
-    if (sumCell) {
-        sumCell.innerHTML = `&Sigma; ${zonaSum}`;
-        sumCell.style.color = (zonaSum > cfg.zonaMax) ? '#b91c1c' : '';
-    }
-
     // Recalcular nota total
     const exam = parseInt(student.gradebookDetails[subjectName][unit].exam) || 0;
     const total = zonaSum + exam;
     student.gradebookDetails[subjectName][unit].total = total;
     student.grades[subjectName][unit - 1] = total;
 
+    // Actualización quirúrgica inmediata en DOM (0ms) sin destruir tabla
+    updateStudentGradeRowSummaryDOM(studentId, zonaSum, exam, total, student, subjectName, unit);
+
     saveStateToLocalStorage();
 
+    if (typeof updateDbSyncStatus === 'function') {
+        updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
+    }
+
     // 🌟 Sincronización atómica asíncrona inmediata en Firebase
-    if (typeof saveStudentSubjectGradeAtomic === 'function') {
-        saveStudentSubjectGradeAtomic(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]).catch(e => {
-            console.warn("Aviso en autosave de actividad:", e);
-        });
+    if (isCommit) {
+        flushStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
+    } else {
+        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
     }
 }
 
-function handleDirectZonaChange(studentId, value, subjectName, unit) {
+function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = false) {
     const selectedId = document.getElementById('teacherCourseSelect')?.value;
     const targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
     const editCheck = isGradebookEditableForUser(targetPensum?.id, unit);
@@ -21333,19 +21441,23 @@ function handleDirectZonaChange(studentId, value, subjectName, unit) {
     student.gradebookDetails[subjectName][unit].total = total;
     student.grades[subjectName][unit - 1] = total;
 
+    updateStudentGradeRowSummaryDOM(studentId, valNum, exam, total, student, subjectName, unit);
+
     saveStateToLocalStorage();
 
-    // 🌟 Sincronización atómica asíncrona inmediata en Firebase
-    if (typeof saveStudentSubjectGradeAtomic === 'function') {
-        saveStudentSubjectGradeAtomic(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]).catch(e => {
-            console.warn("Aviso en autosave de zona:", e);
-        });
+    if (typeof updateDbSyncStatus === 'function') {
+        updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
     }
 
-    loadTeacherGradebook();
+    // 🌟 Sincronización atómica asíncrona inmediata en Firebase
+    if (isCommit) {
+        flushStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
+    } else {
+        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
+    }
 }
 
-function handleExamScoreChange(studentId, value, subjectName, unit) {
+function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = false) {
     const selectedId = document.getElementById('teacherCourseSelect')?.value;
     const targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
     const editCheck = isGradebookEditableForUser(targetPensum?.id, unit);
@@ -21378,16 +21490,20 @@ function handleExamScoreChange(studentId, value, subjectName, unit) {
     student.gradebookDetails[subjectName][unit].total = total;
     student.grades[subjectName][unit - 1] = total;
 
+    updateStudentGradeRowSummaryDOM(studentId, zonaSum, examVal, total, student, subjectName, unit);
+
     saveStateToLocalStorage();
 
-    // 🌟 Sincronización atómica asíncrona inmediata en Firebase
-    if (typeof saveStudentSubjectGradeAtomic === 'function') {
-        saveStudentSubjectGradeAtomic(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]).catch(e => {
-            console.warn("Aviso en autosave de examen:", e);
-        });
+    if (typeof updateDbSyncStatus === 'function') {
+        updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
     }
 
-    loadTeacherGradebook();
+    // 🌟 Sincronización atómica asíncrona inmediata en Firebase
+    if (isCommit) {
+        flushStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
+    } else {
+        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
+    }
 }
 
 async function saveGradebookChanges() {
@@ -31125,9 +31241,16 @@ function initFirestoreModularLiveListeners() {
                     }
                 });
 
-                // Actualizar interfaz reactiva en tiempo real sin recargar página
-                if (typeof renderGradebookTable === 'function') renderGradebookTable();
-                if (typeof loadTeacherGradebook === 'function' && STATE.activeView === 'gradebook') loadTeacherGradebook();
+                // Actualizar interfaz reactiva en tiempo real sin recargar página (protegiendo foco activo del docente)
+                const isEditingGradebook = (typeof document !== 'undefined') && document.activeElement && 
+                    (document.activeElement.classList?.contains('grade-box-input') || 
+                     document.activeElement.classList?.contains('grade-box-input-exam') || 
+                     document.activeElement.closest?.('#gradebookActivitiesTable, #gradebookSummaryTable, #view-gradebook .clean-excel-table'));
+
+                if (!isEditingGradebook) {
+                    if (typeof renderGradebookTable === 'function') renderGradebookTable();
+                    if (typeof loadTeacherGradebook === 'function' && STATE.activeView === 'gradebook') loadTeacherGradebook();
+                }
                 if (typeof renderStudentsTable === 'function') renderStudentsTable();
                 if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
                 // Recalcular Cuadro de Honor en tiempo real al ingresar o editar notas
