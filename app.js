@@ -9734,6 +9734,11 @@ function renderStudentsTable() {
             statusBadge = `<span class="badge badge-success">Activo</span>`;
         }
 
+        const hasExon = (s.isExonerated === true || s.exonerated === true || (Array.isArray(s.academicExceptions) && s.academicExceptions.length > 0) || (Array.isArray(s.exoneraciones) && s.exoneraciones.length > 0));
+        if (hasExon) {
+            statusBadge += `<br><span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-size:0.72rem; margin-top:3px; display:inline-block;" title="Estudiante con exoneración o consideración académica activa"><i class="fa-solid fa-user-shield"></i> Exonerado</span>`;
+        }
+
         const assign = getStudentAssignment(s);
         const gradeName = assign.grade;
         const sectionName = assign.section;
@@ -10504,88 +10509,14 @@ function getStudentExonerationsList(student) {
 window.getStudentExonerationsList = getStudentExonerationsList;
 
 function cleanExoneratedStudentGrades(student) {
-    if (!student) return false;
-    let modified = false;
-
-    const cleanSubjStr = s => (s || '').toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9]/g, '');
-
-    const isGlobal = (student.isExonerated === true || student.exonerated === true);
-
-    if (isGlobal) {
-        if (student.grades && typeof student.grades === 'object') {
-            Object.keys(student.grades).forEach(c => {
-                if (Array.isArray(student.grades[c])) {
-                    for (let i = 0; i < 4; i++) {
-                        if (student.grades[c][i] !== 0) {
-                            student.grades[c][i] = 0;
-                            modified = true;
-                        }
-                    }
-                }
-            });
-        }
-        if (student.gradebookDetails && typeof student.gradebookDetails === 'object') {
-            Object.keys(student.gradebookDetails).forEach(c => {
-                if (student.gradebookDetails[c] && Object.keys(student.gradebookDetails[c]).length > 0) {
-                    student.gradebookDetails[c] = {};
-                    modified = true;
-                }
-            });
-        }
-        return modified;
-    }
-
-    const allExons = getStudentExonerationsList(student);
-    if (!Array.isArray(allExons) || allExons.length === 0) return false;
-
-    allExons.forEach(ex => {
-        const isActive = (!ex.type || ex.type === 'EXONERADO' || ex.type === 'JUSTIFICADO') && (ex.active !== false);
-        if (!isActive) return;
-
-        const exSubj = cleanSubjStr(ex.subject);
-        const targetBims = (ex.bimestre === 'ALL' || String(ex.bimestre).toUpperCase() === 'ALL')
-            ? [1, 2, 3, 4]
-            : [parseInt(ex.bimestre) || 0].filter(b => b >= 1 && b <= 4);
-
-        targetBims.forEach(b => {
-            const bIdx = b - 1;
-
-            // 1. Purgar calificación en student.grades física y definitivamente
-            if (student.grades && typeof student.grades === 'object') {
-                Object.keys(student.grades).forEach(course => {
-                    const cClean = cleanSubjStr(course);
-                    const matchCourse = (!ex.subject || ex.subject === 'ALL' || exSubj === 'all' || (cClean && exSubj && (cClean === exSubj || cClean.includes(exSubj) || exSubj.includes(cClean))));
-                    if (matchCourse && Array.isArray(student.grades[course])) {
-                        if (student.grades[course][bIdx] !== 0) {
-                            student.grades[course][bIdx] = 0;
-                            modified = true;
-                        }
-                    }
-                });
-            }
-
-            // 2. Purgar detalle de actividades, zona y examen en student.gradebookDetails
-            if (student.gradebookDetails && typeof student.gradebookDetails === 'object') {
-                Object.keys(student.gradebookDetails).forEach(course => {
-                    const cClean = cleanSubjStr(course);
-                    const matchCourse = (!ex.subject || ex.subject === 'ALL' || exSubj === 'all' || (cClean && exSubj && (cClean === exSubj || cClean.includes(exSubj) || exSubj.includes(cClean))));
-                    if (matchCourse && student.gradebookDetails[course]) {
-                        if (student.gradebookDetails[course][b] !== undefined || student.gradebookDetails[course][String(b)] !== undefined) {
-                            delete student.gradebookDetails[course][b];
-                            delete student.gradebookDetails[course][String(b)];
-                            modified = true;
-                        }
-                    }
-                });
-            }
-        });
-    });
-
-    return modified;
+    // 🛡️ REGLA ESTRICTA DE INTEGRIDAD ACADÉMICA Y AUDITORÍA:
+    // Las calificaciones registradas por los docentes en student.grades y student.gradebookDetails
+    // NUNCA deben modificarse, eliminarse ni ponerse a 0 al exonerar. Se preservan intactas e inmutables.
+    // La exoneración actúa como exención administrativa en el cálculo de promedios y visualización.
+    return false;
 }
 window.cleanExoneratedStudentGrades = cleanExoneratedStudentGrades;
+
 
 function isSubjectBimestreExonerated(student, subjectName, bimestreNum) {
     if (!student) return false;
@@ -10651,10 +10582,6 @@ function getStudentAcademicInfo(student) {
             failedSubjectsList: [],
             exoneratedCount: 0
         };
-    }
-
-    if (typeof cleanExoneratedStudentGrades === 'function') {
-        cleanExoneratedStudentGrades(student);
     }
 
     const rawGrade = (student.grade || student.gradeLabel || student.gradeCode || '').toUpperCase();
@@ -11103,11 +11030,7 @@ async function saveAcademicExoneration(e) {
         };
         student.academicExceptions.push(newEx);
 
-        // 🌟 Purgado físico y definitivo de las calificaciones del bimestre exonerado
-        if (typeof cleanExoneratedStudentGrades === 'function') {
-            cleanExoneratedStudentGrades(student);
-        }
-
+        // 🌟 Las calificaciones se preservan intactas e inmutables (no se purgan ni se ponen a cero)
         const nowTime = Date.now();
         STATE.lastModified = nowTime;
 
@@ -11127,7 +11050,7 @@ async function saveAcademicExoneration(e) {
         const form = document.getElementById('academicExonerationForm');
         if (form) form.reset();
 
-        showToast("Consideración académica guardada exitosamente. Las notas del bimestre exonerado fueron retiradas.", "success");
+        showToast("Consideración académica guardada exitosamente. Las calificaciones se preservan intactas.", "success");
 
         // 🌟 Persistencia atómica en Firestore con setDoc { merge: true } y RTDB en segundo plano
         (async () => {
@@ -11137,8 +11060,6 @@ async function saveAcademicExoneration(e) {
                     const stuRef = doc(db, 'students', student.id);
                     const stuPayload = {
                         academicExceptions: student.academicExceptions,
-                        grades: student.grades || {},
-                        gradebookDetails: student.gradebookDetails || {},
                         lastModified: nowTime
                     };
                     if (typeof setDoc === 'function') {
@@ -11153,9 +11074,7 @@ async function saveAcademicExoneration(e) {
                 try {
                     const studentIndex = (STATE.students || []).findIndex(s => String(s.id) === String(student.id));
                     const patchData = {
-                        academicExceptions: student.academicExceptions,
-                        grades: student.grades || {},
-                        gradebookDetails: student.gradebookDetails || {}
+                        academicExceptions: student.academicExceptions
                     };
                     if (studentIndex !== -1) {
                         await withTimeout(
@@ -17116,10 +17035,6 @@ function getReportCardSubjectGrades(student, subject) {
     let b1 = 0, b2 = 0, b3 = 0, b4 = 0;
     if (!student) return { b1, b2, b3, b4, avg: 0, isExon1: false, isExon2: false, isExon3: false, isExon4: false, isFullyExon: false };
 
-    if (typeof cleanExoneratedStudentGrades === 'function') {
-        cleanExoneratedStudentGrades(student);
-    }
-
     const cleanStr = s => (s || '').toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]/g, '');
@@ -17202,9 +17117,6 @@ window.getReportCardSubjectGrades = getReportCardSubjectGrades;
 
 function buildStudentReportCardInnerHtml(s) {
     if (!s) return "";
-    if (typeof cleanExoneratedStudentGrades === 'function') {
-        cleanExoneratedStudentGrades(s);
-    }
     const gradeObj = (STATE.gradesList || []).find(g => 
         (g.code && g.code === s.grade) ||
         (g.name === s.grade && (!s.section || g.section === s.section)) ||
@@ -17273,6 +17185,7 @@ function buildStudentReportCardInnerHtml(s) {
 
     const overallAvg = subjectCount > 0 ? Math.round(totalAvgSum / subjectCount) : 0;
     const isOverallFail = (overallAvg > 0 && overallAvg < 60);
+    const isGlobalExonerated = (s.isExonerated === true || s.exonerated === true || (subjectCount === 0 && subjects.length > 0 && subjects.every(sub => getReportCardSubjectGrades(s, sub).isFullyExon)));
 
     const directorUser = (STATE.users || []).find(u => u.role === "director");
     const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || "Licda. Mirza Elizabeth Aragón Polanco de Hernández");
@@ -17330,8 +17243,8 @@ function buildStudentReportCardInnerHtml(s) {
                     <tfoot>
                         <tr style="height:21px; background:#f1f5f9; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">
                             <td colspan="6" style="text-align:right; font-weight:900; padding:2px 8px; border:1px solid #000000; font-size:11px; letter-spacing:0.3px;">PROMEDIO GENERAL ACUMULADO:</td>
-                            <td style="text-align:center; font-weight:900; font-size:13.5px; border:1px solid #000000; color:${isOverallFail ? "#dc2626" : "#0369a1"}; background:${isOverallFail ? "#fee2e2" : "#e0f2fe"}; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">${overallAvg > 0 ? overallAvg : "—"}</td>
-                            <td style="text-align:center; font-weight:900; font-size:11px; border:1px solid #000000; letter-spacing:0.3px; color:${overallAvg >= 60 ? "#15803d" : (overallAvg > 0 ? "#dc2626" : "#64748b")};">${overallAvg >= 60 ? "PROMOVIDO" : (overallAvg > 0 ? "EN RIESGO" : "EN CURSO")}</td>
+                            <td style="text-align:center; font-weight:900; font-size:13.5px; border:1px solid #000000; color:${isOverallFail ? "#dc2626" : "#0369a1"}; background:${isOverallFail ? "#fee2e2" : "#e0f2fe"}; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">${overallAvg > 0 ? overallAvg : (isGlobalExonerated ? "EXON." : "—")}</td>
+                            <td style="text-align:center; font-weight:900; font-size:11px; border:1px solid #000000; letter-spacing:0.3px; color:${isGlobalExonerated ? "#0369a1" : (overallAvg >= 60 ? "#15803d" : (overallAvg > 0 ? "#dc2626" : "#64748b"))};">${isGlobalExonerated ? "EXONERADO" : (overallAvg >= 60 ? "PROMOVIDO" : (overallAvg > 0 ? "EN RIESGO" : "EN CURSO"))}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -20659,10 +20572,6 @@ window.renderGradebook = renderGradebook;
 function loadTeacherGradebook() {
     // 🔌 Des-suscribir inmediatamente cualquier listener del bimestre anterior para evitar colisiones
     unsubscribeCurrentGradebookListener();
-
-    if (typeof cleanExoneratedStudentGrades === 'function' && Array.isArray(STATE.students)) {
-        STATE.students.forEach(cleanExoneratedStudentGrades);
-    }
 
     const courseSelect = document.getElementById('teacherCourseSelect');
     let selectedId = courseSelect ? courseSelect.value : null;
@@ -24135,23 +24044,26 @@ function loadHonorRoll() {
         list = list.filter(s => matchingGrades.includes(s.grade));
     }
 
-    // Filtrar estrictamente solo estudiantes con calificaciones ingresadas y elegibles
+    // 🌟 REGLA FUNDAMENTAL DE INTEGRIDAD Y VISIBILIDAD:
+    // Los estudiantes exonerados NUNCA deben borrarse de la lista.
+    // - Si onlyEligible está activo: mostrar elegibles Y TAMBIÉN a los exonerados (con distintivo Exonerado).
+    // - Si onlyEligible está desactivado: mostrar a todos los estudiantes de la nómina.
     const evaluatedList = list.filter(s => {
         const info = getStudentAcademicInfo(s);
         if (onlyEligible) {
-            return info.eligibleForHonorRoll && info.gradedClasses > 0 && info.average > 0;
+            return info.eligibleForHonorRoll || info.isExonerated || (info.exoneratedCount > 0);
         }
-        return info.gradedClasses > 0 && info.average > 0;
+        return true;
     });
 
     if (evaluatedList.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="8" style="text-align:center; padding:45px 20px; color:var(--text-muted);">
-                    <i class="fa-solid fa-trophy" style="font-size:2.4rem; margin-bottom:12px; display:block; color:var(--brand-green); opacity:0.8;"></i>
-                    <strong style="font-size:1.1rem; color:var(--text-primary); display:block; margin-bottom:6px;">Aún no hay calificaciones ingresadas en el sistema</strong>
+                    <i class="fa-solid fa-users" style="font-size:2.4rem; margin-bottom:12px; display:block; color:var(--brand-blue); opacity:0.8;"></i>
+                    <strong style="font-size:1.1rem; color:var(--text-primary); display:block; margin-bottom:6px;">No se encontraron estudiantes en este grado o sección</strong>
                     <span style="font-size:0.88rem; max-width:550px; display:inline-block; line-height:1.4;">
-                        El Cuadro de Honor se calculará y nivelará automáticamente en tiempo real (Base 100 equilibrada) en cuanto los catedráticos ingresen las calificaciones bimestrales de sus asignaturas.
+                        Desmarque la casilla "Solo Estudiantes Elegibles" superior si desea visualizar estudiantes con notas pendientes.
                     </span>
                 </td>
             </tr>
@@ -24159,7 +24071,7 @@ function loadHonorRoll() {
         return;
     }
 
-    // Ordenamiento estricto: primero los elegibles por promedio descendente, luego no elegibles
+    // Ordenamiento estricto: primero los elegibles por promedio descendente, luego exonerados y no elegibles
     evaluatedList.sort((a, b) => {
         const infoA = getStudentAcademicInfo(a);
         const infoB = getStudentAcademicInfo(b);
@@ -24209,10 +24121,11 @@ function loadHonorRoll() {
         let posBadge = `<span style="font-weight:800; font-size:1.05rem;">#${idx + 1}</span>`;
 
         if (!info.eligibleForHonorRoll) {
-            posBadge = `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-size:0.75rem;"><i class="fa-solid fa-ban"></i> No Elegible</span>`;
-            if (info.isExonerated) {
+            if (info.isExonerated || info.exoneratedCount > 0) {
+                posBadge = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-size:0.75rem; font-weight:700;"><i class="fa-solid fa-user-shield"></i> Exonerado</span>`;
                 badgeHtml = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-weight:700;"><i class="fa-solid fa-user-shield"></i> Exonerado (Sin Cuadro)</span>`;
             } else {
+                posBadge = `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-size:0.75rem;"><i class="fa-solid fa-ban"></i> No Elegible</span>`;
                 badgeHtml = `<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #f87171; font-weight:700;" title="Materias reprobadas: ${info.failedSubjectsList.join(', ')}"><i class="fa-solid fa-triangle-exclamation"></i> Nota &lt; 60 pts (${info.failedSubjectsList.length})</span>`;
             }
         } else {
@@ -24251,8 +24164,8 @@ function loadHonorRoll() {
                 <td>${formatStudentGradeAndSection(s)}</td>
                 <td style="text-align:center;">${loadBadge}</td>
                 <td style="text-align:center;">
-                    <strong style="color:${info.eligibleForHonorRoll ? 'var(--brand-green)' : '#b91c1c'}; font-size:1.15rem; font-variant-numeric:tabular-nums;">${info.average.toFixed(3)} pts</strong>
-                    <div style="font-size:0.72rem; color:var(--text-muted);">Total: ${info.totalPoints}/${info.officialClassLoad * 100} pts</div>
+                    <strong style="color:${info.eligibleForHonorRoll ? 'var(--brand-green)' : (info.isExonerated ? '#0f766e' : '#b91c1c')}; font-size:1.15rem; font-variant-numeric:tabular-nums;">${info.average > 0 ? info.average.toFixed(3) + ' pts' : (info.isExonerated ? 'Exento' : '0.000 pts')}</strong>
+                    <div style="font-size:0.72rem; color:var(--text-muted);">${(info.isExonerated && info.gradedClasses === 0) ? 'Calificación Exenta' : `Total: ${info.totalPoints}/${info.officialClassLoad * 100} pts`}</div>
                 </td>
                 <td style="text-align:center;">${badgeHtml}</td>
                 <td style="text-align:center; white-space:nowrap;">
@@ -24294,12 +24207,27 @@ function printHonorRoll() {
         list = list.filter(s => matchingGrades.includes(s.grade));
     }
 
-    // Filtrar estrictamente solo estudiantes elegibles (sin materias reprobadas < 60 pts)
-    list = list.filter(s => getStudentAcademicInfo(s).eligibleForHonorRoll);
-    list.sort((a, b) => getStudentAcademicInfo(b).average - getStudentAcademicInfo(a).average);
+    // 🌟 INTEGRIDAD ACADÉMICA Y VISIBILIDAD EN IMPRESIÓN:
+    // Los estudiantes exonerados se muestran claramente identificados con su distintivo de exoneración.
+    const onlyEligible = document.getElementById('honorRollOnlyEligibleCheck') ? document.getElementById('honorRollOnlyEligibleCheck').checked : true;
+    if (onlyEligible) {
+        list = list.filter(s => {
+            const info = getStudentAcademicInfo(s);
+            return info.eligibleForHonorRoll || info.isExonerated || (info.exoneratedCount > 0);
+        });
+    }
+
+    list.sort((a, b) => {
+        const infoA = getStudentAcademicInfo(a);
+        const infoB = getStudentAcademicInfo(b);
+        if (infoA.eligibleForHonorRoll !== infoB.eligibleForHonorRoll) {
+            return infoA.eligibleForHonorRoll ? -1 : 1;
+        }
+        return infoB.average - infoA.average;
+    });
 
     if (list.length === 0) {
-        showToast("No hay estudiantes elegibles para imprimir en el Cuadro de Honor seleccionado.", "warning");
+        showToast("No hay estudiantes para imprimir en el Cuadro de Honor seleccionado.", "warning");
         return;
     }
 
@@ -24311,17 +24239,30 @@ function printHonorRoll() {
     const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || "Licda. Mirza Elizabeth Aragón Polanco");
     const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes("licda") ? "Directora del Plantel" : "Director del Plantel");
 
+    let rankCounter = 0;
     const printRowsHtml = top30.map((s, idx) => {
         const info = getStudentAcademicInfo(s);
         const fullName = `${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}`;
         const gradeSection = formatStudentGradeAndSection(s);
+        let posText = '';
+        if (info.eligibleForHonorRoll) {
+            rankCounter++;
+            posText = `#${rankCounter}`;
+        } else if (info.isExonerated || info.exoneratedCount > 0) {
+            posText = `<span style="font-size:0.75rem; font-weight:700; color:#0f766e;">Exon.</span>`;
+        } else {
+            posText = `<span style="font-size:0.75rem; color:#dc2626;">—</span>`;
+        }
+
+        const avgText = info.average > 0 ? `${info.average.toFixed(3)} pts` : (info.isExonerated ? 'Exento' : '0.000 pts');
+        const exonTag = (info.isExonerated || info.exoneratedCount > 0) ? ` <span style="font-size:0.72rem; color:#0f766e; font-weight:700;">[Exonerado]</span>` : '';
 
         return `
-            <tr>
-                <td class="col-pos">#${idx + 1}</td>
-                <td class="col-name" title="${fullName}">${fullName}</td>
+            <tr style="${!info.eligibleForHonorRoll ? 'background:#f0fdfa;' : ''}">
+                <td class="col-pos">${posText}</td>
+                <td class="col-name" title="${fullName}">${fullName}${exonTag}</td>
                 <td class="col-grade">${gradeSection}</td>
-                <td class="col-avg">${info.average.toFixed(3)} pts</td>
+                <td class="col-avg">${avgText}</td>
             </tr>
         `;
     }).join('');
