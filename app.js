@@ -4293,10 +4293,20 @@ function initFirebaseRealtimeConnection() {
                                 if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
                             }
                         }
-                    } else if (cleanPath === 'attendanceRecords') {
+                    } else if (cleanPath === 'attendanceRecords' || cleanPath.startsWith('attendanceRecords/')) {
                         if (nodeData && typeof nodeData === 'object') {
-                            STATE.attendanceRecords = nodeData;
-                            if (typeof renderAttendanceTable === 'function') renderAttendanceTable();
+                            if (cleanPath === 'attendanceRecords') {
+                                STATE.attendanceRecords = nodeData;
+                            } else {
+                                const sub = cleanPath.replace(/^attendanceRecords\/?/, '');
+                                if (sub) {
+                                    if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+                                    STATE.attendanceRecords[sub] = nodeData;
+                                }
+                            }
+                            if (STATE.activeView === 'attendance' && typeof updateAttendanceLiveStats === 'function') {
+                                updateAttendanceLiveStats();
+                            }
                         }
                     } else if (cleanPath === 'disciplineReports') {
                         if (Array.isArray(nodeData)) {
@@ -4359,6 +4369,20 @@ function initFirebaseRealtimeConnection() {
                                 applyBimestreAndLockConfig(data.data, false);
                             } else {
                                 STATE.config = { ...(STATE.config || {}), ...data.data };
+                            }
+                        } else if (data.path === '/attendanceRecords' || data.path.startsWith('/attendanceRecords')) {
+                            // 🛡️ Actualización reactiva atómica de asistencia: no recargar toda la plataforma ni resetear selectores
+                            if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+                            if (data.path === '/attendanceRecords') {
+                                Object.assign(STATE.attendanceRecords, data.data);
+                            } else {
+                                const subPath = data.path.replace(/^\/attendanceRecords\/?/, '');
+                                if (subPath) {
+                                    STATE.attendanceRecords[subPath] = { ...(STATE.attendanceRecords[subPath] || {}), ...data.data };
+                                }
+                            }
+                            if (STATE.activeView === 'attendance' && typeof updateAttendanceLiveStats === 'function') {
+                                updateAttendanceLiveStats();
                             }
                         } else if (typeof pullStateFromFirebaseCloud === 'function') {
                             pullStateFromFirebaseCloud(false);
@@ -5398,7 +5422,7 @@ window.formatStudentGradeAndSection = formatStudentGradeAndSection;
 
 function updateGradeSelects() {
     try {
-        const gradeSelects = document.querySelectorAll('.grade-select, #studentGradeFilter, #studentFormGrade, #pensumSubjectGrade, #gradeFilterSelect, #attendanceGradeSelect, #reportsGradeSelect, #honorRollGradeSelect, #profGradeSelect');
+        const gradeSelects = document.querySelectorAll('.grade-select, #studentGradeFilter, #studentFormGrade, #pensumSubjectGrade, #gradeFilterSelect, #reportsGradeSelect, #honorRollGradeSelect, #profGradeSelect');
         if (gradeSelects && gradeSelects.length > 0) {
             const grades = (STATE.gradesList && STATE.gradesList.length > 0) ? sortGrades(STATE.gradesList) : [];
             gradeSelects.forEach(sel => {
@@ -21714,7 +21738,15 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
 
         const uniqueGrades = new Map();
         myClasses.forEach(c => {
-            const key = c.gradeCode || c.grade;
+            let gCode = c.gradeCode;
+            if (!gCode || gCode === c.grade) {
+                const gMatch = (STATE.gradesList || []).find(g => 
+                    (g.name && c.grade && g.name.toLowerCase().includes(c.grade.toLowerCase())) &&
+                    (g.section && c.section && g.section.toLowerCase().includes(c.section.toLowerCase()))
+                );
+                if (gMatch && gMatch.code) gCode = gMatch.code;
+            }
+            const key = gCode || c.gradeCode || c.grade;
             if (!uniqueGrades.has(key)) {
                 uniqueGrades.set(key, {
                     code: key,
@@ -21749,7 +21781,15 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
 
         const uniqueGrades = new Map();
         teacherClasses.forEach(c => {
-            const key = c.gradeCode || c.grade;
+            let gCode = c.gradeCode;
+            if (!gCode || gCode === c.grade) {
+                const gMatch = (STATE.gradesList || []).find(g => 
+                    (g.name && c.grade && g.name.toLowerCase().includes(c.grade.toLowerCase())) &&
+                    (g.section && c.section && g.section.toLowerCase().includes(c.section.toLowerCase()))
+                );
+                if (gMatch && gMatch.code) gCode = gMatch.code;
+            }
+            const key = gCode || c.gradeCode || c.grade;
             if (!uniqueGrades.has(key)) {
                 uniqueGrades.set(key, {
                     code: key,
@@ -21782,16 +21822,42 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
 
     gradeSelect.innerHTML = gradeOptionsHtml;
 
-    if (!resetSelection && currentSelectedGrade && Array.from(gradeSelect.options || []).some(o => o.value === currentSelectedGrade)) {
-        gradeSelect.value = currentSelectedGrade;
+    // 🛡️ Preservación inmutable del grado y sección seleccionado para cualquier grado (4to, 5to, 6to A, B, C, D, etc.)
+    const targetGrade = (!resetSelection && (currentSelectedGrade || STATE.attendanceSelectedGrade)) 
+        ? (currentSelectedGrade || STATE.attendanceSelectedGrade) 
+        : null;
+
+    if (targetGrade && Array.from(gradeSelect.options || []).some(o => o.value === targetGrade)) {
+        gradeSelect.value = targetGrade;
+        STATE.attendanceSelectedGrade = targetGrade;
+    } else if (targetGrade) {
+        // Coincidencia inteligente en caso de variaciones de formato entre código y texto de grado/sección
+        const matchedOpt = Array.from(gradeSelect.options || []).find(o => {
+            const optVal = (o.value || '').toUpperCase();
+            const optText = (o.textContent || '').toUpperCase();
+            const tNorm = targetGrade.toUpperCase();
+            return optVal === tNorm || optText.includes(tNorm) || tNorm.includes(optVal);
+        });
+        if (matchedOpt) {
+            gradeSelect.value = matchedOpt.value;
+            STATE.attendanceSelectedGrade = matchedOpt.value;
+        } else if (gradeSelect.options && gradeSelect.options.length > 0) {
+            gradeSelect.selectedIndex = 0;
+            STATE.attendanceSelectedGrade = gradeSelect.value;
+        }
     } else if (gradeSelect.options && gradeSelect.options.length > 0) {
         gradeSelect.selectedIndex = 0;
+        STATE.attendanceSelectedGrade = gradeSelect.value;
     }
 
     updateAttendanceCoursesList();
 }
 
 function onAttendanceGradeChange() {
+    const gradeSelect = document.getElementById('attendanceGradeSelect');
+    if (gradeSelect && gradeSelect.value) {
+        STATE.attendanceSelectedGrade = gradeSelect.value;
+    }
     updateAttendanceCoursesList();
     loadAttendanceList();
 }
@@ -21880,6 +21946,9 @@ function loadAttendanceList() {
     }
 
     const gradeCode = gradeSelect.value;
+    if (gradeCode) {
+        STATE.attendanceSelectedGrade = gradeCode;
+    }
     const month = parseInt(monthSelect ? monthSelect.value : '8') || 8;
     const courseId = courseSelect ? courseSelect.value : 'GENERAL';
     const year = 2026;
