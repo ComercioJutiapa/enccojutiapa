@@ -10997,6 +10997,11 @@ async function saveAcademicExoneration(e) {
         return;
     }
 
+    if (!student.firstName && !student.name && !student.carne) {
+        showToast("Error: No se puede aplicar la consideración porque faltan datos de identidad del alumno.", "danger");
+        return;
+    }
+
     const subject = document.getElementById('exonFormSubject')?.value || 'ALL';
     const bimestre = document.getElementById('exonFormBimestre')?.value || '2';
     const type = document.getElementById('exonFormType')?.value || 'EXONERADO';
@@ -11073,18 +11078,37 @@ async function saveAcademicExoneration(e) {
             if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
                 try {
                     const studentIndex = (STATE.students || []).findIndex(s => String(s.id) === String(student.id));
-                    const patchData = {
+                    // 🛡️ BLINDAJE ABSOLUTO DE IDENTIDAD ESTUDIANTIL:
+                    // Se envía siempre la identidad inmutable completa del alumno junto a sus excepciones.
+                    // Esto hace imposible que una petición de red en Firebase deje en blanco el nombre, carné o grado.
+                    const safeIdentityPayload = {
+                        id: student.id,
+                        carne: student.carne,
+                        personalCode: student.personalCode || '',
+                        firstName: student.firstName,
+                        lastName: student.lastName,
+                        name: student.name || `${student.lastName} ${student.firstName}`,
+                        grade: student.grade,
+                        gradeCode: student.gradeCode || '',
+                        gradeLabel: student.gradeLabel || '',
+                        section: student.section,
+                        career: student.career || 'Perito Contador',
+                        status: student.status || 'Activo',
+                        statusSire: student.statusSire || 'INSCRITO',
+                        active: student.active !== false,
                         academicExceptions: student.academicExceptions
                     };
+
                     if (studentIndex !== -1) {
                         await withTimeout(
-                            EnccoCloudSync.patchNode(`students/${studentIndex}`, patchData),
+                            EnccoCloudSync.patchNode(`students/${studentIndex}`, safeIdentityPayload),
                             8000,
                             'Tiempo de espera en Realtime Database agotado.'
                         );
-                    } else {
+                    }
+                    if (student.id) {
                         await withTimeout(
-                            EnccoCloudSync.patchNode(`students/${student.id}`, patchData),
+                            EnccoCloudSync.patchNode(`students/${student.id}`, safeIdentityPayload),
                             8000,
                             'Tiempo de espera en Realtime Database agotado.'
                         );
@@ -11141,10 +11165,29 @@ async function deleteAcademicExoneration(studentId, exIndex) {
 
     if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
         const studentIndex = (STATE.students || []).findIndex(s => String(s.id) === String(student.id));
+        const safeIdentityPayload = {
+            id: student.id,
+            carne: student.carne,
+            personalCode: student.personalCode || '',
+            firstName: student.firstName,
+            lastName: student.lastName,
+            name: student.name || `${student.lastName} ${student.firstName}`,
+            grade: student.grade,
+            gradeCode: student.gradeCode || '',
+            gradeLabel: student.gradeLabel || '',
+            section: student.section,
+            career: student.career || 'Perito Contador',
+            status: student.status || 'Activo',
+            statusSire: student.statusSire || 'INSCRITO',
+            active: student.active !== false,
+            academicExceptions: student.academicExceptions
+        };
+
         if (studentIndex !== -1) {
-            EnccoCloudSync.patchNode(`students/${studentIndex}`, { academicExceptions: student.academicExceptions });
-        } else {
-            EnccoCloudSync.patchNode(`students/${student.id}`, { academicExceptions: student.academicExceptions });
+            EnccoCloudSync.patchNode(`students/${studentIndex}`, safeIdentityPayload);
+        }
+        if (student.id) {
+            EnccoCloudSync.patchNode(`students/${student.id}`, safeIdentityPayload);
         }
     }
 }
