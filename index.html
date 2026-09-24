@@ -26,6 +26,8 @@
     <meta name="copyright" content="© 2026 Nehemias Salguero. Jutiapa, Guatemala. Todos los derechos reservados.">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="icon" type="image/png" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#15803d">
     
     <!-- Fuentes Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -998,6 +1000,15 @@
                 el.textContent = totalPromotions;
             });
         })();
+
+        // Registro oficial PWA Service Worker
+        if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js').catch(function(err) {
+                    console.debug('[SW] Registro omitido o no compatible:', err);
+                });
+            });
+        }
     </script>
 </body>
 </html>
