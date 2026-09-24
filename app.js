@@ -11261,7 +11261,7 @@ function openStudentProfileModal(id) {
 
     // 1. Cabecera del Perfil
     const photoImg = document.getElementById('profilePhotoImg');
-    if (photoImg) photoImg.src = student.photo || 'https://ui-avatars.com/api/?name=' + student.firstName;
+    if (photoImg) photoImg.src = student.photoUrl || student.photo || ('https://ui-avatars.com/api/?name=' + student.firstName);
     
     const nameDisp = document.getElementById('profNameDisplay');
     if (nameDisp) nameDisp.textContent = `${student.firstName} ${student.lastName}`;
@@ -11699,7 +11699,11 @@ async function saveStudentProfileForm(e) {
         submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
     }
 
-    student.photo = document.getElementById('profilePhotoImg')?.src || student.photo;
+    const pPhoto = document.getElementById('profilePhotoImg')?.src;
+    if (pPhoto && !pPhoto.includes('ui-avatars.com')) {
+        student.photo = pPhoto;
+        student.photoUrl = pPhoto;
+    }
     student.status = newStatus;
 
     const profGradeEl = document.getElementById('profGradeSelect');

@@ -224,10 +224,10 @@
                     </div>
 
                     <!-- FOTO CON MARCO DORADO BISELADO (NOTCHED CORNERS) -->
-                    <div style="position:absolute; left:12px; top:46px; width:74px; height:94px; z-index:4;">
+                    <div style="position:absolute; left:12px; top:46px; width:74px; height:94px; z-index:4; cursor:pointer;" onclick="EnccoCarnets.openPhotoModal('${student.id}', 'student')" title="Haga clic para tomar o cambiar la fotografía">
                         <div class="encco-gold-frame-outer" style="width:100%; height:100%;">
                             <div class="encco-gold-frame-middle">
-                                <div class="encco-gold-frame-inner">
+                                <div class="encco-gold-frame-inner" id="carnetPhotoFrame_${student.id}">
                                     ${photoInner}
                                 </div>
                             </div>
@@ -502,10 +502,10 @@
                     </svg>
 
                     <!-- FOTO CENTRAL CON MARCO DORADO BISELADO (NOTCHED CORNERS) -->
-                    <div style="position:absolute; top:80px; left:50%; transform:translateX(-50%); width:80px; height:100px; z-index:4;">
+                    <div style="position:absolute; top:80px; left:50%; transform:translateX(-50%); width:80px; height:100px; z-index:4; cursor:pointer;" onclick="EnccoCarnets.openPhotoModal('${teacher.id}', 'teacher')" title="Haga clic para tomar o cambiar la fotografía">
                         <div class="encco-gold-frame-outer" style="width:100%; height:100%;">
                             <div class="encco-gold-frame-middle">
-                                <div class="encco-gold-frame-inner">
+                                <div class="encco-gold-frame-inner" id="carnetPhotoFrame_${teacher.id}">
                                     ${photoInner}
                                 </div>
                             </div>
@@ -878,7 +878,7 @@
             if (document.getElementById('modalCarnetPhoto')) return;
 
             const modalHtml = `
-                <div class="modal-overlay" id="modalCarnetPhoto" style="display:none; position:fixed; inset:0; z-index:99999; background:rgba(15,23,42,0.75); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:15px;" onclick="if(event.target===this) EnccoCarnets.closePhotoModal()">
+                <div class="modal-overlay" id="modalCarnetPhoto" style="display:none; position:fixed; inset:0; z-index:999999; background:rgba(15,23,42,0.75); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:15px;" onclick="if(event.target===this) EnccoCarnets.closePhotoModal()">
                     <div class="modal-container" style="max-width:500px; width:100%; background:#ffffff; border-radius:14px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.35); display:flex; flex-direction:column; font-family:'Plus Jakarta Sans', sans-serif;">
                         
                         <!-- ENCABEZADO DEL MODAL -->
@@ -1053,7 +1053,14 @@
             if (prevBox) prevBox.style.display = 'none';
 
             const modal = document.getElementById('modalCarnetPhoto');
-            if (modal) modal.style.display = 'flex';
+            if (modal) {
+                modal.classList.add('active');
+                modal.style.setProperty('display', 'flex', 'important');
+                modal.style.display = 'flex';
+                modal.style.visibility = 'visible';
+                modal.style.opacity = '1';
+                modal.style.pointerEvents = 'auto';
+            }
 
             if (defaultMode === 'camera') {
                 this.startWebcamMode();
@@ -1406,18 +1413,52 @@
          */
         applyPhoto(entity, listNode, photoDataUrl) {
             entity.photoUrl = photoDataUrl;
+            entity.photo = photoDataUrl;
 
-            if (typeof window.saveStateToLocalStorage === 'function') {
+            // Actualizar referencia en STATE si existe
+            if (typeof window !== 'undefined' && window.STATE && listNode && Array.isArray(window.STATE[listNode])) {
+                const targetInState = window.STATE[listNode].find(x => x.id === entity.id);
+                if (targetInState) {
+                    targetInState.photoUrl = photoDataUrl;
+                    targetInState.photo = photoDataUrl;
+                }
+            }
+
+            if (typeof window !== 'undefined' && typeof window.saveStateToLocalStorage === 'function') {
                 window.saveStateToLocalStorage();
             }
-            if (typeof window.EnccoCloudSync !== 'undefined' && window.EnccoCloudSync.syncNode && window.STATE) {
+            if (typeof window !== 'undefined' && typeof window.EnccoCloudSync !== 'undefined' && window.EnccoCloudSync.syncNode && window.STATE) {
                 window.EnccoCloudSync.syncNode(listNode, window.STATE[listNode]);
             }
 
-            renderCarnetsView();
+            // Actualizar DOM del carnet específico de forma inmediata si está renderizado
+            if (typeof document !== 'undefined') {
+                const cardBox = document.getElementById(`carnetCardBox_${entity.id}`);
+                if (cardBox) {
+                    const isDoc = (listNode === 'users');
+                    cardBox.innerHTML = isDoc 
+                        ? this.renderTeacherCardFrontHtml(entity) 
+                        : this.renderStudentCardFrontHtml(entity);
+                }
 
-            if (typeof window.showToast === 'function') {
-                window.showToast(`✅ Fotografía de ${entity.name} actualizada y guardada con éxito.`, 'success');
+                const photoFrame = document.getElementById(`carnetPhotoFrame_${entity.id}`);
+                if (photoFrame) {
+                    photoFrame.innerHTML = `<img src="${photoDataUrl}" alt="${entity.name || ''}" style="width:100%; height:100%; object-fit:cover; display:block;">`;
+                }
+
+                // Si el perfil del estudiante está abierto en pantalla, actualizar su foto
+                const profImg = document.getElementById('profilePhotoImg');
+                if (profImg && window.STATE && window.STATE.selectedStudentId === entity.id) {
+                    profImg.src = photoDataUrl;
+                }
+            }
+
+            if (typeof renderCarnetsView === 'function' && typeof document !== 'undefined' && document.getElementById('carnetsGridView')) {
+                renderCarnetsView();
+            }
+
+            if (typeof window !== 'undefined' && typeof window.showToast === 'function') {
+                window.showToast(`✅ Fotografía de ${entity.name || 'titular'} guardada y asignada al carné con éxito.`, 'success');
             }
         },
 
@@ -1439,7 +1480,14 @@
         closePhotoModal() {
             this.stopWebcam();
             const modal = document.getElementById('modalCarnetPhoto');
-            if (modal) modal.style.display = 'none';
+            if (modal) {
+                modal.classList.remove('active');
+                modal.style.setProperty('display', 'none', 'important');
+                modal.style.display = 'none';
+                modal.style.visibility = 'hidden';
+                modal.style.opacity = '0';
+                modal.style.pointerEvents = 'none';
+            }
             this.currentPhotoEntity = null;
         },
 

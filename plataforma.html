@@ -3768,6 +3768,9 @@
                                 <i class="fa-solid fa-camera"></i> Cambiar Foto
                                 <input type="file" accept="image/*" style="display:none;" onchange="handlePhotoUpload(event)">
                             </label>
+                            <button type="button" class="btn btn-xs btn-outline-warning role-restricted" data-allowed="admin,director,secretaria,docente,profesor_auxiliar" onclick="if(window.EnccoCarnets) EnccoCarnets.openPhotoModal(STATE.selectedStudentId, 'student', 'camera')" style="margin-top:5px; font-size:0.72rem; font-weight:700; width:100%; padding:3px 6px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; gap:4px;" title="Tomar foto con cámara web en vivo">
+                                <i class="fa-solid fa-video"></i> Usar Cámara
+                            </button>
                         </div>
                         <div class="profile-meta">
                             <h3 id="profNameDisplay" style="margin:0 0 4px 0;">Ana Lucía García Pérez</h3>
