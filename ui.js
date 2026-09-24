@@ -347,6 +347,13 @@
 
     // Modal de Exoneración Académica
     function openAcademicExonerationModal(studentId) {
+        const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
+        const curRole = (window.STATE && window.STATE.currentRole ? window.STATE.currentRole : '').toLowerCase();
+        if (!allowedRoles.includes(curRole)) {
+            showToast("Acceso Restringido: La exoneración de estudiantes es facultad única y exclusiva de Dirección, Secretaría o Auxiliatura.", "warning");
+            return;
+        }
+
         const studentsList = (window.STATE && window.STATE.students) ? window.STATE.students : [];
         const student = studentsList.find(s => s.id === studentId || s.personalCode === studentId);
         if (!student) {
@@ -418,6 +425,13 @@
 
     async function handleAcademicExonerationSubmit(e) {
         if (e && e.preventDefault) e.preventDefault();
+        const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
+        const curRole = (window.STATE && window.STATE.currentRole ? window.STATE.currentRole : '').toLowerCase();
+        if (!allowedRoles.includes(curRole)) {
+            showToast("Acceso Denegado: La exoneración de estudiantes es facultad única y exclusiva de Dirección, Secretaría o Auxiliatura.", "danger");
+            return;
+        }
+
         const student = window._activeExonStudent;
         if (!student) return;
 

@@ -3964,7 +3964,7 @@
                 <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                     <button type="button" class="btn btn-secondary" onclick="closeStudentProfileModal()">Cerrar</button>
                     <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                        <button type="button" class="btn btn-outline-info role-restricted" data-allowed="admin,director,secretaria,docente,profesor_auxiliar" onclick="closeStudentProfileModal(); openAcademicExonerationModal(STATE.selectedStudentId);" title="Gestionar exoneraciones o consideraciones individuales de notas">
+                        <button type="button" id="profExonerateBtn" class="btn btn-outline-info role-restricted" data-allowed="admin,director,secretaria,profesor_auxiliar" onclick="closeStudentProfileModal(); openAcademicExonerationModal(STATE.selectedStudentId);" title="Gestionar exoneraciones o consideraciones individuales de notas">
                             <i class="fa-solid fa-user-shield"></i> Exoneraciones de Notas
                         </button>
                         <button type="button" class="btn btn-outline-primary role-restricted" data-allowed="admin,director,secretaria,docente,profesor_auxiliar" onclick="closeStudentProfileModal(); openEditStudentModal(STATE.selectedStudentId);" title="Abrir y editar en la Ventana de Inscripción">

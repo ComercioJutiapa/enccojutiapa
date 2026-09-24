@@ -10921,7 +10921,14 @@ function getStudentAcademicInfo(student) {
 
 
 function openAcademicExonerationModal(studentId) {
-    const student = STATE.students.find(s => s.id === studentId);
+    const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
+    const curRole = (STATE.currentRole || '').toLowerCase();
+    if (!allowedRoles.includes(curRole)) {
+        showToast("Acceso Restringido: La exoneración de estudiantes es facultad única y exclusiva de Dirección, Secretaría o Auxiliatura.", "warning");
+        return;
+    }
+
+    const student = (STATE.students || []).find(s => s.id === studentId || s.personalCode === studentId);
     if (!student) {
         showToast("No se encontró el expediente del estudiante.", "warning");
         return;
@@ -10998,6 +11005,9 @@ function renderAcademicExonerationsList(student) {
     const container = document.getElementById('exonListContainer');
     if (!container) return;
 
+    const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
+    const canManageExon = allowedRoles.includes((STATE.currentRole || '').toLowerCase());
+
     const list = student.academicExceptions || [];
     if (list.length === 0) {
         container.innerHTML = `
@@ -11026,9 +11036,11 @@ function renderAcademicExonerationsList(student) {
                         <strong>Motivo:</strong> ${escapeHtml(ex.reason || 'Sin justificación registrada')} | <small style="color:#64748b;">${ex.date || ''}</small>
                     </div>
                 </div>
+                ${canManageExon ? `
                 <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteAcademicExoneration('${student.id}', ${idx})" title="Eliminar exoneración">
                     <i class="fa-solid fa-trash"></i>
                 </button>
+                ` : ''}
             </div>
         `;
     }).join('');
@@ -11037,6 +11049,13 @@ function renderAcademicExonerationsList(student) {
 async function saveAcademicExoneration(e) {
     if (e && e.preventDefault) e.preventDefault();
     if (e && e.stopPropagation) e.stopPropagation();
+
+    const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
+    const curRole = (STATE.currentRole || '').toLowerCase();
+    if (!allowedRoles.includes(curRole)) {
+        showToast("Acceso Denegado: La exoneración de estudiantes es facultad única y exclusiva de Dirección, Secretaría o Auxiliatura.", "danger");
+        return;
+    }
 
     const studentId = STATE.exonerationStudentId;
     if (!studentId || studentId === 'undefined' || studentId === 'null') {
@@ -11184,6 +11203,13 @@ async function saveAcademicExoneration(e) {
 }
 
 async function deleteAcademicExoneration(studentId, exIndex) {
+    const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
+    const curRole = (STATE.currentRole || '').toLowerCase();
+    if (!allowedRoles.includes(curRole)) {
+        showToast("Acceso Denegado: Solo Dirección, Secretaría o Auxiliatura pueden eliminar exoneraciones.", "danger");
+        return;
+    }
+
     const student = (STATE.students || []).find(s => String(s.id) === String(studentId));
     if (!student || !student.academicExceptions) return;
 
@@ -11274,6 +11300,13 @@ function openStudentProfileModal(id) {
     STATE.selectedStudentId = id;
     const isDocente = (STATE.currentRole === 'docente');
     const canEdit = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria');
+    const canExonerate = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria' || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar');
+
+    // 🛡️ El docente no puede exonerar estudiantes (facultad única de Dirección, Secretaría o Auxiliatura)
+    const profExonBtn = document.getElementById('profExonerateBtn');
+    if (profExonBtn) {
+        profExonBtn.style.display = canExonerate ? 'inline-flex' : 'none';
+    }
 
     // 1. Cabecera del Perfil
     const photoImg = document.getElementById('profilePhotoImg');
@@ -24253,7 +24286,9 @@ function loadHonorRoll() {
             exonBadges = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-size:0.75rem; margin-right:4px;" title="Tiene ${info.exoneratedCount} consideración(es) o exoneración(es)"><i class="fa-solid fa-user-shield"></i> Exonerado</span>`;
         }
 
-        const actionBtn = `<button type="button" class="btn btn-sm btn-outline-primary" style="padding:2px 8px; font-size:0.75rem;" onclick="openAcademicExonerationModal('${s.id}')" title="Configurar consideración individual o exoneración"><i class="fa-solid fa-user-shield"></i> Exonerar</button>`;
+        const allowedExonRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
+        const canExonerate = allowedExonRoles.includes((STATE.currentRole || '').toLowerCase());
+        const actionBtn = canExonerate ? `<button type="button" class="btn btn-sm btn-outline-primary" style="padding:2px 8px; font-size:0.75rem;" onclick="openAcademicExonerationModal('${s.id}')" title="Configurar consideración individual o exoneración"><i class="fa-solid fa-user-shield"></i> Exonerar</button>` : '';
 
         return `
             <tr style="${!info.eligibleForHonorRoll ? 'background:#fff1f2; opacity:0.92;' : ''}">
@@ -24269,7 +24304,7 @@ function loadHonorRoll() {
                 <td style="text-align:center;">${badgeHtml}</td>
                 <td style="text-align:center; white-space:nowrap;">
                     ${exonBadges}
-                    ${actionBtn}
+                    ${actionBtn || (exonBadges ? '' : '<span style="color:var(--text-muted); font-size:0.8rem;">—</span>')}
                 </td>
             </tr>
         `;
