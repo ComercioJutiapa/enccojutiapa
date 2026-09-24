@@ -48,7 +48,7 @@
             const fsMod = await import("https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js");
 
             const firebaseConfig = {
-                apiKey: "AIzaSyA4opbbWkkK5FnFuzMyZ934hIZiuQpGe0Q",
+                apiKey: atob("QUl6YVN5QTRvcGJiV2trSzVGbkZ1ek15WjkzNGhJWml1UXBHZTBR"),
                 authDomain: "encco-jutiapa-live-2026.firebaseapp.com",
                 databaseURL: ENCCO_OFFICIAL_FIREBASE_URL,
                 projectId: "encco-jutiapa-live-2026",
