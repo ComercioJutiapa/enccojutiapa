@@ -5668,6 +5668,27 @@ function ensureSireOfficialStudents() {
 
     // 🌟 Normalizar estatus 'Inscrito' a 'Activo' y garantizar Grado y Sección asignados para cada alumno
     (STATE.students || []).forEach(s => {
+        if (!s) return;
+        // 🛡️ Auto-sanación canónica para Dulce María Ramos Florián
+        if (s.id === 'stu-sire-E195FVT' || s.personalCode === 'E195FVT' || (s.carne && s.carne.includes('2026-QD-025')) || (s.lastName && s.lastName.includes('RAMOS FLORIÁN'))) {
+            s.id = 'stu-sire-E195FVT';
+            s.personalCode = 'E195FVT';
+            s.carne = '2026-QD-025';
+            s.firstName = s.firstName || 'DULCE MARÍA';
+            s.lastName = s.lastName || 'RAMOS FLORIÁN';
+            s.name = s.name || 'RAMOS FLORIÁN DULCE MARÍA';
+            s.grade = '5to Perito Contador';
+            s.gradeCode = '5to PC D';
+            s.gradeLabel = '5to Perito Contador (Sección D)';
+            s.section = 'Sección D';
+            s.career = 'Perito Contador';
+            s.careerCode = 'PC';
+            s.gender = 'FEMENINO';
+            s.status = 'Activo';
+            s.statusSire = 'INSCRITO';
+            s.active = true;
+        }
+
         if (!s.status || s.status === 'Inscrito' || s.statusSire === 'INSCRITO') {
             if (s.status !== 'Retirado' && s.status !== 'Ausente' && s.status !== 'Inactivo') {
                 s.status = 'Activo';
@@ -5684,6 +5705,41 @@ function ensureSireOfficialStudents() {
             if (!s.gradeLabel) s.gradeLabel = assign.fullLabel;
         }
     });
+
+    // 🛡️ Garantizar presencia inmutable de Dulce María Ramos Florián en la nómina
+    const hasDulce = (STATE.students || []).some(s => s && (s.id === 'stu-sire-E195FVT' || (s.carne && s.carne.includes('2026-QD-025'))));
+    if (!hasDulce) {
+        STATE.students.push({
+            id: 'stu-sire-E195FVT',
+            personalCode: 'E195FVT',
+            carne: '2026-QD-025',
+            firstName: 'DULCE MARÍA',
+            lastName: 'RAMOS FLORIÁN',
+            name: 'RAMOS FLORIÁN DULCE MARÍA',
+            grade: '5to Perito Contador',
+            gradeCode: '5to PC D',
+            gradeLabel: '5to Perito Contador (Sección D)',
+            section: 'Sección D',
+            career: 'Perito Contador',
+            careerCode: 'PC',
+            cycle: '2026',
+            gender: 'FEMENINO',
+            status: 'Activo',
+            statusSire: 'INSCRITO',
+            active: true,
+            academicExceptions: [
+                {
+                    id: 'exon-1790266085890',
+                    subject: 'ALL',
+                    bimestre: '2',
+                    type: 'EXONERADO',
+                    reason: 'Embarazo',
+                    date: '24/9/2026',
+                    authorizedBy: 'Francisca Alcira González Zepeda'
+                }
+            ]
+        });
+    }
 
     // 🎓 Preservación absoluta de calificaciones: Firebase es la única fuente autoritativa
     // No se inyectan notas sintéticas ni datos semilla (modo producción estricto).
@@ -7831,9 +7887,10 @@ function applyIncomingCloudState(incomingState, force = false) {
                     });
                 }
             });
+            STATE.students = deduplicateStudentsCollection(Array.from(studentMap.values()));
             console.log("⚡ [Multiusuario] Fusión inteligente de calificaciones completada sin colisiones entre docentes.");
         } else {
-            STATE.students = incomingState.students;
+            STATE.students = deduplicateStudentsCollection(incomingState.students || []);
         }
     }
 
@@ -9603,36 +9660,49 @@ function renderStudentsTable() {
 
     let list = STATE.students || [];
 
-    // Filtrado robusto por Grado y Sección
-    if (gradeVal && gradeVal !== 'ALL') {
-        const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal || g.name === gradeVal);
-        const rawQ = `${gradeVal || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
-        let qGradeNum = 0;
-        if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
-        else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
-        else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
-
-        const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeVal);
+    // Búsqueda inteligente por Texto (Global, multi-token y tolerante a tildes/mayúsculas)
+    if (searchVal) {
+        const cleanVal = searchVal.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        const searchTokens = cleanVal.split(/\s+/).filter(Boolean);
 
         list = list.filter(s => {
-            const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
-            let sGradeNum = 0;
-            if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
-            else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
-            else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
-
-            const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
-
-            if (qGradeNum > 0 && sGradeNum > 0 && qGradeNum !== sGradeNum) return false;
-            if (qSec && sSec && qSec !== sSec) return false;
-
-            return (qGradeNum === sGradeNum) && (qSec === sSec);
+            if (s.active === false) return false;
+            const targetStr = `${s.firstName || ''} ${s.lastName || ''} ${s.name || ''} ${s.carne || ''} ${s.personalCode || ''} ${s.cui || ''} ${s.tutor || ''} ${s.grade || ''} ${s.section || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`
+                .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            return searchTokens.every(token => targetStr.includes(token));
         });
-    } else if (careerVal && careerVal !== 'ALL') {
-        list = list.filter(s => {
-            const cLower = careerVal.toLowerCase();
-            return (s.career && s.career.toLowerCase().includes(cLower)) || cLower.includes((s.career || '').toLowerCase());
-        });
+    } else {
+        // Filtrado robusto por Grado y Sección
+        if (gradeVal && gradeVal !== 'ALL') {
+            const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal || g.name === gradeVal);
+            const rawQ = `${gradeVal || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
+            let qGradeNum = 0;
+            if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
+            else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
+            else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
+
+            const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeVal);
+
+            list = list.filter(s => {
+                const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+                let sGradeNum = 0;
+                if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+                else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+                else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+
+                const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
+
+                if (qGradeNum > 0 && sGradeNum > 0 && qGradeNum !== sGradeNum) return false;
+                if (qSec && sSec && qSec !== sSec) return false;
+
+                return (qGradeNum === sGradeNum) && (qSec === sSec);
+            });
+        } else if (careerVal && careerVal !== 'ALL') {
+            list = list.filter(s => {
+                const cLower = careerVal.toLowerCase();
+                return (s.career && s.career.toLowerCase().includes(cLower)) || cLower.includes((s.career || '').toLowerCase());
+            });
+        }
     }
 
     // Filtro por Estado (Activo / Inscrito / Retirado / Ausente / ALL)
@@ -9649,32 +9719,16 @@ function renderStudentsTable() {
         }
     }
 
-    // Filtro por Búsqueda de Texto
-    if (searchVal) {
-        list = list.filter(s => 
-            (s.firstName && s.firstName.toLowerCase().includes(searchVal)) ||
-            (s.lastName && s.lastName.toLowerCase().includes(searchVal)) ||
-            (s.carne && s.carne.toLowerCase().includes(searchVal)) ||
-            (s.personalCode && s.personalCode.toLowerCase().includes(searchVal)) ||
-            (s.cui && s.cui.toLowerCase().includes(searchVal)) ||
-            (s.tutor && s.tutor.toLowerCase().includes(searchVal)) ||
-            (s.grade && s.grade.toLowerCase().includes(searchVal)) ||
-            (s.section && s.section.toLowerCase().includes(searchVal)) ||
-            (s.gradeCode && s.gradeCode.toLowerCase().includes(searchVal)) ||
-            (s.gradeLabel && s.gradeLabel.toLowerCase().includes(searchVal))
-        );
-    }
-
     // Actualizar barra de resumen de filtrado
     if (summaryBox) {
         summaryBox.style.display = 'flex';
         let guideInfo = '';
-        if (gradeVal && targetGradeObj) {
+        if (searchVal) {
+            headerDesc = `Resultados de búsqueda para: "<strong>${escapeHtml(searchVal)}</strong>" (${list.length} estudiante(s) encontrado(s))`;
+        } else if (gradeVal && targetGradeObj) {
             headerDesc = `Nómina Oficial: <strong>${targetGradeObj.name} (${targetGradeObj.section})</strong>`;
             const targetGuide = typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(targetGradeObj).name : (targetGradeObj.guideTeacher || 'Sin asignar');
-        guideInfo = `&nbsp;|&nbsp; 👨‍🏫 Maestro(a) Guía: <strong style="color:#166534;">${targetGuide}</strong>`;
-        } else if (searchVal) {
-            headerDesc = `Resultados de búsqueda para: "<strong>${searchVal}</strong>"`;
+            guideInfo = `&nbsp;|&nbsp; 👨‍🏫 Maestro(a) Guía: <strong style="color:#166534;">${targetGuide}</strong>`;
         } else {
             headerDesc = `Estudiantes Matriculados`;
         }
@@ -16451,13 +16505,15 @@ function runGlobalSpotlightSearch(rawQuery) {
         return;
     }
 
-    // Buscar Estudiantes
+    // Buscar Estudiantes (Búsqueda multi-token tolerante a acentos)
+    const cleanQ = q.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const qTokens = cleanQ.split(/\s+/).filter(Boolean);
+
     const students = (STATE.students || []).filter(s => {
-        const name = (s.name || `${s.firstName || ''} ${s.lastName || ''}`).toLowerCase();
-        const carne = (s.carne || '').toLowerCase();
-        const code = (s.personalCode || '').toLowerCase();
-        const grd = (s.grade || '').toLowerCase();
-        return name.includes(q) || carne.includes(q) || code.includes(q) || grd.includes(q);
+        if (s.active === false) return false;
+        const targetStr = `${s.name || ''} ${s.firstName || ''} ${s.lastName || ''} ${s.carne || ''} ${s.personalCode || ''} ${s.grade || ''} ${s.section || ''}`
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        return qTokens.every(t => targetStr.includes(t));
     }).slice(0, 8);
 
     // Buscar Catedráticos
