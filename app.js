@@ -11078,13 +11078,13 @@ async function saveAcademicExoneration(e) {
                     };
                     if (studentIndex !== -1) {
                         await withTimeout(
-                            EnccoCloudSync.patchNode('students', { [studentIndex]: patchData }),
+                            EnccoCloudSync.patchNode(`students/${studentIndex}`, patchData),
                             8000,
                             'Tiempo de espera en Realtime Database agotado.'
                         );
                     } else {
                         await withTimeout(
-                            EnccoCloudSync.patchNode('students', { [student.id]: patchData }),
+                            EnccoCloudSync.patchNode(`students/${student.id}`, patchData),
                             8000,
                             'Tiempo de espera en Realtime Database agotado.'
                         );
@@ -11142,9 +11142,9 @@ async function deleteAcademicExoneration(studentId, exIndex) {
     if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
         const studentIndex = (STATE.students || []).findIndex(s => String(s.id) === String(student.id));
         if (studentIndex !== -1) {
-            EnccoCloudSync.patchNode('students', { [studentIndex]: { academicExceptions: student.academicExceptions } });
+            EnccoCloudSync.patchNode(`students/${studentIndex}`, { academicExceptions: student.academicExceptions });
         } else {
-            EnccoCloudSync.patchNode('students', { [student.id]: { academicExceptions: student.academicExceptions } });
+            EnccoCloudSync.patchNode(`students/${student.id}`, { academicExceptions: student.academicExceptions });
         }
     }
 }
