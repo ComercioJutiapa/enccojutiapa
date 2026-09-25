@@ -7994,14 +7994,43 @@ function applyIncomingCloudState(incomingState, force = false) {
                 if (!localSt) {
                     studentMap.set(key, incSt);
                 } else if (!localDirty.has(key)) {
-                    const mergedGrades = { ...(localSt.grades || {}), ...(incSt.grades || {}) };
-                    const mergedDetails = { ...(localSt.gradebookDetails || {}) };
-                    if (incSt.gradebookDetails) {
-                        Object.keys(incSt.gradebookDetails).forEach(subj => {
-                            mergedDetails[subj] = {
-                                ...(mergedDetails[subj] || {}),
-                                ...(incSt.gradebookDetails[subj] || {})
-                            };
+                    // 🛡️ [Anti-Reversión de Notas] Fusión inteligente protegida contra sobrescritura por caché o latencia
+                    const localGrades = localSt.grades || {};
+                    const incGrades = incSt.grades || {};
+                    const mergedGrades = { ...incGrades, ...localGrades };
+
+                    Object.keys(localGrades).forEach(subj => {
+                        if (Array.isArray(localGrades[subj])) {
+                            if (!mergedGrades[subj]) {
+                                mergedGrades[subj] = [...localGrades[subj]];
+                            } else {
+                                for (let u = 0; u < 4; u++) {
+                                    const lVal = Number(localGrades[subj][u]) || 0;
+                                    const iVal = Number(incGrades[subj] && incGrades[subj][u]) || 0;
+                                    // Si local tiene una nota ingresada (> 0) y la nube viene en 0 o vacía, preservar la local
+                                    if (lVal > 0 && iVal === 0) {
+                                        mergedGrades[subj][u] = lVal;
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                    const mergedDetails = { ...(incSt.gradebookDetails || {}) };
+                    if (localSt.gradebookDetails) {
+                        Object.keys(localSt.gradebookDetails).forEach(subj => {
+                            if (!mergedDetails[subj]) {
+                                mergedDetails[subj] = { ...(localSt.gradebookDetails[subj] || {}) };
+                            } else {
+                                for (let u = 1; u <= 4; u++) {
+                                    const uStr = String(u);
+                                    const lDet = localSt.gradebookDetails[subj] && localSt.gradebookDetails[subj][uStr];
+                                    const iDet = incSt.gradebookDetails && incSt.gradebookDetails[subj] && incSt.gradebookDetails[subj][uStr];
+                                    if (lDet && (!iDet || ((lDet.total || 0) > 0 && (iDet.total || 0) === 0))) {
+                                        mergedDetails[subj][uStr] = { ...lDet };
+                                    }
+                                }
+                            }
                         });
                     }
                     Object.assign(localSt, incSt, {
@@ -13847,6 +13876,11 @@ function confirmStudentImport() {
     renderStudentsTable();
     updateGradeSelects();
     if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
+
+    // 🌟 Persistencia atómica de estudiantes y notas importadas a Firebase Cloud
+    if (typeof pushStateToFirebaseCloud === 'function') {
+        pushStateToFirebaseCloud(false);
+    }
     cancelStudentImport();
 
     showToast(`¡Proceso completado! ${addedCount} estudiantes inscritos, ${updatedCount} actualizados con sus 10 notas de zona y evaluación.`, "success");
@@ -19797,9 +19831,16 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
         const activitiesArr = Array.isArray(currentData.activities) ? currentData.activities.slice(0, 10) : [0,0,0,0,0,0,0,0,0,0];
         while (activitiesArr.length < 10) activitiesArr.push(0);
 
-        const calculatedZona = activitiesArr.reduce((a, b) => a + (parseInt(b) || 0), 0);
+        let calculatedZona = activitiesArr.reduce((a, b) => a + (parseInt(b) || 0), 0);
+        // 🛡️ Si no hay actividades individuales desglosadas pero existía zona directa, preservarla
+        if (calculatedZona === 0 && currentData.zona > 0) {
+            calculatedZona = parseInt(currentData.zona) || 0;
+        }
         const examScore = parseInt(currentData.exam) || 0;
-        const totalScore = calculatedZona + examScore;
+        let totalScore = calculatedZona + examScore;
+        if (totalScore === 0 && currentData.total > 0) {
+            totalScore = parseInt(currentData.total) || 0;
+        }
 
         const compositeGradeKey = `${student.id}_${cleanSubj}_b${effectiveUnit}`;
 
@@ -19832,7 +19873,12 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
         student.grades[effectiveSubject] = student.grades[effectiveSubject] || [0, 0, 0, 0];
         student.grades[effectiveSubject][effectiveUnit - 1] = totalScore;
 
-        const rtdbIdx = localStudents.findIndex(s => s && s.id === student.id);
+        let rtdbIdx = -1;
+        if (window._rtdbStudentIndexMap && window._rtdbStudentIndexMap.has(student.id)) {
+            rtdbIdx = window._rtdbStudentIndexMap.get(student.id);
+        } else {
+            rtdbIdx = localStudents.findIndex(s => s && s.id === student.id);
+        }
 
         gradeRecords.push({
             student,
@@ -19917,9 +19963,13 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
         }
     }
 
-    if (window._locallyDirtyStudentIds) {
-        gradeRecords.forEach(item => window._locallyDirtyStudentIds.delete(item.student.id));
-    }
+    if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
+    gradeRecords.forEach(item => window._locallyDirtyStudentIds.add(item.student.id));
+    setTimeout(() => {
+        if (window._locallyDirtyStudentIds) {
+            gradeRecords.forEach(item => window._locallyDirtyStudentIds.delete(item.student.id));
+        }
+    }, 15000);
     saveStateToLocalStorage();
 
     window.dispatchEvent(new CustomEvent('EnccoGradesBulkUpdated', {
@@ -26715,20 +26765,31 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     // 🛡️ PRE-FLIGHT VALIDATOR: VERIFICACIONES ESTRICTAS DE SEGURIDAD (7 PUNTOS)
     // ------------------------------------------------------------------------
 
-    // REGLA 2 y 5: Verificar que la materia coincida con la activa (si no -> ¡Cuadro Erróneo!)
+    // REGLA 2 y 5: Verificación estricta de Cátedra/Clase
+    if (!detectedSubject && fileName) {
+        const fNorm = cleanStr(fileName);
+        const pFound = (STATE.pensum || []).find(p => p && p.subject && fNorm.includes(cleanStr(p.subject)));
+        if (pFound) detectedSubject = pFound.subject;
+    }
+
     if (detectedSubject && activePensum && activePensum.subject) {
         const cleanDetSubj = cleanStr(detectedSubject);
         const cleanActSubj = cleanStr(activePensum.subject);
-        const subjectMatches = (cleanDetSubj === cleanActSubj) || 
-                               cleanActSubj.includes(cleanDetSubj) || 
-                               cleanDetSubj.includes(cleanActSubj);
+        
+        // Evitar confusión entre materias homónimas (ej. Computación I vs II, Contabilidad de Costos vs General)
+        const exactMatch = (cleanDetSubj === cleanActSubj);
+        const numDet = cleanDetSubj.match(/\d+/)?.[0] || '';
+        const numAct = cleanActSubj.match(/\d+/)?.[0] || '';
+        const numbersMatch = (!numDet && !numAct) || (numDet === numAct);
+
+        const subjectMatches = exactMatch || (numbersMatch && (cleanActSubj.includes(cleanDetSubj) || cleanDetSubj.includes(cleanActSubj)));
         if (!subjectMatches) {
             showToast(`¡Cuadro Erróneo! El archivo cargado corresponde a "${detectedSubject}", pero la clase activa seleccionada es "${activePensum.subject}". Importación cancelada para proteger sus calificaciones.`, "danger");
             return;
         }
     }
 
-    // REGLA 7: Verificar a qué grado y sección corresponde
+    // REGLA 7: Verificación estricta de Grado y Sección
     if (activePensum) {
         if (detectedGrade) {
             const gNumFile = (detectedGrade || '').toString().match(/(\d+)/)?.[1] || '';
@@ -26748,17 +26809,19 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         }
     }
 
-    // REGLA 1: Verificar que el cuadro sea del bimestre correspondiente
+    // REGLA 1: Verificación estricta de Bimestre
     if (hasExplicitUnit && detectedUnit !== activeUnit) {
         showToast(`¡Bimestre Incorrecto! El archivo cargado corresponde a la Unidad/Bimestre ${detectedUnit}, pero actualmente tiene abierta la Unidad/Bimestre ${activeUnit}. Seleccione el Bimestre ${detectedUnit} en el selector antes de importar.`, "danger");
         return;
     }
 
-    // REGLA 6: Verificar a qué maestro pertenece para poder darle ingreso
-    if (isDocente && currentUser && activePensum) {
-        if (typeof isCourseAssignedToTeacher === 'function' && !isCourseAssignedToTeacher(activePensum, currentUser)) {
-            showToast(`Acceso no autorizado: La clase "${activePensum.subject}" (${activePensum.grade} ${activePensum.section}) no está asignada a su usuario docente.`, "danger");
-            return;
+    // REGLA 6: Verificación de Catedrático con coincidencia de múltiples tokens
+    if (activePensum) {
+        if (isDocente && currentUser) {
+            if (typeof isCourseAssignedToTeacher === 'function' && !isCourseAssignedToTeacher(activePensum, currentUser)) {
+                showToast(`Acceso no autorizado: La clase "${activePensum.subject}" (${activePensum.grade} ${activePensum.section}) no está asignada a su usuario docente.`, "danger");
+                return;
+            }
         }
 
         if (detectedTeacher) {
@@ -26766,18 +26829,23 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
                 .replace(/[^a-z0-9\s]/g, ' ')
                 .split(/\s+/)
-                .filter(t => t.length > 2 && !['pem', 'lic', 'prof', 'profe', 'docente', 'catedratico', 'catedratica', 'del', 'las', 'los'].includes(t));
+                .filter(t => t.length > 2 && !['pem', 'lic', 'prof', 'profe', 'docente', 'catedratico', 'catedratica', 'del', 'las', 'los', 'san', 'santa'].includes(t));
 
             const tTokens = tokenize(detectedTeacher);
             const pensumTeacherTokens = tokenize(activePensum.teacher || '');
-            const userTokens = tokenize(currentUser.name || '');
+            const userTokens = (currentUser && currentUser.name) ? tokenize(currentUser.name) : [];
 
-            const matchesPensum = tTokens.some(t => pensumTeacherTokens.includes(t));
-            const matchesUser = tTokens.some(t => userTokens.includes(t));
+            const minRequiredMatches = tTokens.length >= 2 ? 2 : 1;
+            const matchesPensum = tTokens.filter(t => pensumTeacherTokens.includes(t)).length >= minRequiredMatches;
+            const matchesUser = userTokens.length > 0 && tTokens.filter(t => userTokens.includes(t)).length >= minRequiredMatches;
 
             if (tTokens.length >= 1 && !matchesPensum && !matchesUser) {
-                showToast(`¡Cátedra de Otro Docente! El cuadro indica como catedrático a "${detectedTeacher}", pero la clase está asignada a "${activePensum.teacher || currentUser.name}". Importación rechazada.`, "danger");
-                return;
+                if (isDocente) {
+                    showToast(`¡Cátedra de Otro Docente! El cuadro indica como catedrático a "${detectedTeacher}", pero la clase está asignada a "${activePensum.teacher || (currentUser ? currentUser.name : '')}". Importación rechazada.`, "danger");
+                    return;
+                } else {
+                    console.warn(`[Importación Docente] Aviso: El archivo menciona a "${detectedTeacher}" y el pensum a "${activePensum.teacher}".`);
+                }
             }
         }
     }
@@ -27011,13 +27079,14 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         const common = tokensRow.filter(t => tokensTarget.includes(t));
         const minTokens = Math.min(tokensRow.length, tokensTarget.length);
         if (minTokens <= 2) {
-            return common.length >= minTokens;
+            return common.length === minTokens; // Exigir coincidencia exacta si son 1 o 2 tokens
         }
-        return common.length >= 2 && (common.length / minTokens >= 0.5);
+        return common.length >= 2 && (common.length / minTokens >= 0.65);
     };
 
     let updatedCount = 0;
     let omittedCount = 0;
+    const actuallyUpdatedStudents = [];
 
     for (let r = dataStartRow; r < rawRows.length; r++) {
         const row = rawRows[r];
@@ -27123,6 +27192,9 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         gDetail.exam = examScore;
         gDetail.total = finalTotal;
         matched.grades[effectiveSubject][effectiveUnit - 1] = finalTotal;
+        if (!actuallyUpdatedStudents.some(st => st.id === matched.id)) {
+            actuallyUpdatedStudents.push(matched);
+        }
 
         updatedCount++;
     }
@@ -27143,14 +27215,20 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     const omittedMsg = omittedCount > 0 ? ` (${omittedCount} fila(s) omitida(s) por no coincidir el nombre)` : '';
     showToast(`¡Notas importadas con éxito (${detectedFormat})! Se actualizaron ${updatedCount} estudiantes en ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}, Bimestre ${effectiveUnit})${omittedMsg}.`, "success");
 
-    // 9. Sincronización atómica en la nube en segundo plano
+    // 9. 🛡️ Sincronización atómica en la nube de ÚNICAMENTE los estudiantes procesados en el Excel
+    const studentsToSync = (actuallyUpdatedStudents.length > 0) ? actuallyUpdatedStudents : courseStudents;
+
+    // Marcar en _locallyDirtyStudentIds con ventana protegida
+    if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
+    studentsToSync.forEach(st => window._locallyDirtyStudentIds.add(st.id));
+
     if (typeof saveBulkStudentGradesAtomic === 'function') {
-        saveBulkStudentGradesAtomic(courseStudents, effectiveSubject, effectiveUnit).catch(err => {
+        saveBulkStudentGradesAtomic(studentsToSync, effectiveSubject, effectiveUnit).catch(err => {
             console.warn("Aviso en guardado atómico por lotes tras importación:", err);
         });
     } else if (typeof saveStudentSubjectGradeAtomic === 'function') {
         (async () => {
-            for (const stu of courseStudents) {
+            for (const stu of studentsToSync) {
                 if (stu && stu.grades && stu.grades[effectiveSubject]) {
                     try {
                         await saveStudentSubjectGradeAtomic(stu, effectiveSubject, effectiveUnit);
