@@ -21717,9 +21717,20 @@ function loadAttendanceList() {
     if (gradeCode) {
         STATE.attendanceSelectedGrade = gradeCode;
     }
-    const month = parseInt(monthSelect ? monthSelect.value : '8') || 8;
+    const today = new Date();
+    const todayDay = today.getDate();
+    const todayMonth = today.getMonth() + 1;
+    if (monthSelect) {
+        if (!monthSelect.value || !STATE.attendanceSelectedMonth) {
+            monthSelect.value = String(todayMonth);
+            STATE.attendanceSelectedMonth = String(todayMonth);
+        } else {
+            STATE.attendanceSelectedMonth = monthSelect.value;
+        }
+    }
+    const month = parseInt(monthSelect ? monthSelect.value : String(todayMonth)) || todayMonth;
     const courseId = courseSelect ? courseSelect.value : 'GENERAL';
-    const year = 2026;
+    const year = (window.STATE && STATE.activeCycle && parseInt(STATE.activeCycle, 10)) || today.getFullYear() || 2026;
     const daysInMonth = new Date(year, month, 0).getDate();
     const dayNames = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
@@ -21743,12 +21754,7 @@ function loadAttendanceList() {
         }
     }
 
-    // Obtener la fecha seleccionada para toma de asistencia
-    const attDate = (typeof getSelectedAttendanceDate === 'function') 
-        ? getSelectedAttendanceDate() 
-        : { year, month, day: new Date().getDate(), dateStr: '' };
-    const activeSelectedDay = (attDate.month === month) ? attDate.day : null;
-    if (typeof updateMarkAllPresentButtonLabel === 'function') updateMarkAllPresentButtonLabel();
+    const isCurrentCalendarMonth = (month === todayMonth);
 
     // 1. GENERAR ENCABEZADO DE DÍAS (1 AL FIN DE MES)
     let thDaysHtml = '';
@@ -21757,21 +21763,19 @@ function loadAttendanceList() {
         const dayOfWeek = dayNames[dObj.getDay()];
         const isWeekend = (dObj.getDay() === 0 || dObj.getDay() === 6);
         const weekendClass = isWeekend ? 'col-day-weekend' : '';
-        const isSelectedDay = (day === activeSelectedDay);
-        const activeClass = isSelectedDay ? 'col-day-active' : '';
-        const activeBadge = isSelectedDay ? '<span style="font-size:0.58rem; background:#16a34a; color:#fff; padding:1px 3px; border-radius:3px; display:block; margin:2px auto 0 auto; max-width:28px; font-weight:800;">ACT</span>' : '';
-        const dayTitle = isSelectedDay 
-            ? `📌 FECHA ACTIVA: ${dObj.toLocaleDateString('es-GT', { weekday: 'long', day: 'numeric', month: 'long' })} (Fecha actual de toma de asistencia)` 
-            : `${dObj.toLocaleDateString('es-GT', { weekday: 'long', day: 'numeric', month: 'long' })} (Haga clic para seleccionar esta fecha)`;
+        const isToday = isCurrentCalendarMonth && (day === todayDay);
+        const todayClass = isToday ? 'col-day-today' : '';
+        const todayBadge = isToday ? '<span style="font-size:0.58rem; background:#16a34a; color:#fff; padding:1px 4px; border-radius:3px; display:block; margin:2px auto 0 auto; max-width:32px; font-weight:800;">HOY</span>' : '';
+        const dayTitle = isToday 
+            ? `📌 DÍA ACTUAL (HOY): ${dObj.toLocaleDateString('es-GT', { weekday: 'long', day: 'numeric', month: 'long' })}` 
+            : `${dObj.toLocaleDateString('es-GT', { weekday: 'long', day: 'numeric', month: 'long' })}`;
 
         thDaysHtml += `
-            <th class="col-day ${weekendClass} ${activeClass}" 
-                onclick="selectAttendanceDay(${day})" 
-                style="cursor:pointer;" 
+            <th class="col-day ${weekendClass} ${todayClass}" 
                 title="${dayTitle}">
                 <div class="day-letter">${dayOfWeek}</div>
                 <div class="day-number">${day}</div>
-                ${activeBadge}
+                ${todayBadge}
             </th>
         `;
     }
@@ -21898,11 +21902,11 @@ function loadAttendanceList() {
                     cellTitle = `${studentFullName} — Día ${day}: TARDANZA`;
                 }
 
-                const isSelectedCol = (day === activeSelectedDay);
-                const activeColClass = isSelectedCol ? 'cell-day-active' : '';
+                const isTodayCol = isCurrentCalendarMonth && (day === todayDay);
+                const todayColClass = isTodayCol ? 'cell-day-today' : '';
 
                 cellsHtml += `
-                    <td class="att-cell ${cellClass} ${activeColClass}" 
+                    <td class="att-cell ${cellClass} ${todayColClass}" 
                         data-student-id="${s.id}" 
                         data-day="${day}" 
                         onclick="toggleAttendanceCell('${s.id}', ${day})"
@@ -22296,138 +22300,42 @@ function updateAttendanceLiveStats() {
 
 
 // ==========================================================================
-// CONTROL PRECISO DE FECHA DE TOMA DE ASISTENCIA (V125)
+// CONTROL PRECISO DE FECHA DE TOMA DE ASISTENCIA: DÍA ACTUAL (HOY)
 // ==========================================================================
 function getSelectedAttendanceDate() {
-    const dateInput = document.getElementById('attendanceDateInput');
-    const monthSelect = document.getElementById('attendanceMonthSelect');
     const today = new Date();
     const cycleYear = (window.STATE && STATE.activeCycle && parseInt(STATE.activeCycle, 10)) || today.getFullYear() || 2026;
-
-    if (dateInput && dateInput.value) {
-        const parts = dateInput.value.split('-');
-        if (parts.length === 3) {
-            const y = parseInt(parts[0], 10);
-            const m = parseInt(parts[1], 10);
-            const d = parseInt(parts[2], 10);
-            if (!isNaN(y) && !isNaN(m) && !isNaN(d) && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
-                return { year: y, month: m, day: d, dateStr: dateInput.value };
-            }
-        }
-    }
-
-    const selMonth = monthSelect ? (parseInt(monthSelect.value, 10) || (today.getMonth() + 1)) : (today.getMonth() + 1);
-    const todayMonth = today.getMonth() + 1;
-    const maxDays = new Date(cycleYear, selMonth, 0).getDate();
-    const day = (selMonth === todayMonth) ? Math.min(today.getDate(), maxDays) : 1;
-    const formattedDate = `${cycleYear}-${String(selMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-    if (dateInput && !dateInput.value) {
-        dateInput.value = formattedDate;
-    }
-
-    return { year: cycleYear, month: selMonth, day, dateStr: formattedDate };
+    const m = today.getMonth() + 1;
+    const d = today.getDate();
+    return { year: cycleYear, month: m, day: d, dateStr: `${cycleYear}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` };
 }
 window.getSelectedAttendanceDate = getSelectedAttendanceDate;
-
-function onAttendanceDateInputChange() {
-    const dateInput = document.getElementById('attendanceDateInput');
-    const monthSelect = document.getElementById('attendanceMonthSelect');
-    if (!dateInput || !dateInput.value) return;
-
-    const parts = dateInput.value.split('-');
-    if (parts.length === 3) {
-        const m = parseInt(parts[1], 10);
-        if (monthSelect && monthSelect.value != m) {
-            monthSelect.value = String(m);
-        }
-    }
-    updateMarkAllPresentButtonLabel();
-    loadAttendanceList();
-}
-window.onAttendanceDateInputChange = onAttendanceDateInputChange;
-
-function onAttendanceMonthSelectChange() {
-    const monthSelect = document.getElementById('attendanceMonthSelect');
-    const dateInput = document.getElementById('attendanceDateInput');
-    const today = new Date();
-    const cycleYear = (window.STATE && STATE.activeCycle && parseInt(STATE.activeCycle, 10)) || today.getFullYear() || 2026;
-    const m = parseInt(monthSelect ? monthSelect.value : '8', 10) || 8;
-
-    if (dateInput) {
-        let curDay = today.getDate();
-        if (dateInput.value) {
-            const parts = dateInput.value.split('-');
-            if (parts.length === 3) curDay = parseInt(parts[2], 10) || curDay;
-        }
-        const maxDays = new Date(cycleYear, m, 0).getDate();
-        const validDay = Math.min(curDay, maxDays);
-        dateInput.value = `${cycleYear}-${String(m).padStart(2, '0')}-${String(validDay).padStart(2, '0')}`;
-    }
-    updateMarkAllPresentButtonLabel();
-    loadAttendanceList();
-}
-window.onAttendanceMonthSelectChange = onAttendanceMonthSelectChange;
-
-function selectAttendanceDay(day) {
-    const monthSelect = document.getElementById('attendanceMonthSelect');
-    const dateInput = document.getElementById('attendanceDateInput');
-    const m = parseInt(monthSelect ? monthSelect.value : '8', 10) || 8;
-    const cycleYear = (window.STATE && STATE.activeCycle && parseInt(STATE.activeCycle, 10)) || 2026;
-
-    const formattedDate = `${cycleYear}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    if (dateInput) {
-        dateInput.value = formattedDate;
-    }
-    updateMarkAllPresentButtonLabel();
-    loadAttendanceList();
-}
-window.selectAttendanceDay = selectAttendanceDay;
-
-function updateMarkAllPresentButtonLabel() {
-    const btn = document.getElementById('btnMarkAllPresent');
-    const lbl = document.getElementById('btnMarkAllPresentLabel');
-    const attDate = getSelectedAttendanceDate();
-    const monthNames = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const mName = monthNames[attDate.month] || '';
-
-    if (btn) {
-        btn.title = `Marcar a todos los alumnos como Presentes para el día ${attDate.day} de ${mName} (${attDate.dateStr}) (respeta automáticamente los permisos de Auxiliatura)`;
-    }
-    if (lbl) {
-        lbl.textContent = `Marcar Todos Presentes (${attDate.day} ${mName})`;
-    }
-}
-window.updateMarkAllPresentButtonLabel = updateMarkAllPresentButtonLabel;
 
 function markAllPresentToday() {
     const gradeSelect = document.getElementById('attendanceGradeSelect');
     const monthSelect = document.getElementById('attendanceMonthSelect');
     const courseSelect = document.getElementById('attendanceCourseSelect');
-    if (!gradeSelect || !monthSelect) return;
+    if (!gradeSelect) return;
 
     const gradeCode = gradeSelect.value;
     const courseId = courseSelect ? courseSelect.value : 'GENERAL';
 
-    // 🗓️ Considerar la fecha exacta en la que se toma la asistencia
-    const attDate = (typeof getSelectedAttendanceDate === 'function') 
-        ? getSelectedAttendanceDate() 
-        : { year: 2026, month: parseInt(monthSelect.value) || 8, day: new Date().getDate(), dateStr: '' };
+    // 🗓️ Registrar a la fecha del día actual según la fecha en la que nos encontramos tomando asistencia
+    const today = new Date();
+    const todayDay = today.getDate();
+    const todayMonth = today.getMonth() + 1;
 
-    const month = attDate.month;
-    const targetDay = attDate.day;
-    const dateStr = attDate.dateStr;
-
-    // Sincronizar el selector de mes si estuviese desfasado
-    if (monthSelect.value != month) {
-        monthSelect.value = String(month);
+    // Sincronizar automáticamente el selector de mes con el mes actual en el que nos encontramos
+    if (monthSelect) {
+        monthSelect.value = String(todayMonth);
     }
+    STATE.attendanceSelectedMonth = String(todayMonth);
 
     const monthNames = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-    const monthName = monthNames[month] || `Mes ${month}`;
+    const monthName = monthNames[todayMonth] || `Mes ${todayMonth}`;
 
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
-    const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
+    const recordKey = getAttendanceRecordKey(gradeCode, todayMonth, courseId);
     if (!STATE.attendanceRecords[recordKey]) STATE.attendanceRecords[recordKey] = {};
 
     // Obtener estudiantes del grado
@@ -22458,26 +22366,26 @@ function markAllPresentToday() {
         if (!STATE.attendanceRecords[recordKey][s.id]) STATE.attendanceRecords[recordKey][s.id] = {};
         
         // 🛡️ Regla de oro: No sobrescribir alumnos con permiso oficial justificado 'J' de Auxiliatura
-        const currentVal = STATE.attendanceRecords[recordKey][s.id][targetDay];
+        const currentVal = STATE.attendanceRecords[recordKey][s.id][todayDay];
         if (currentVal === 'J') {
             preservedJustifiedCount++;
             return;
         }
 
-        STATE.attendanceRecords[recordKey][s.id][targetDay] = 'P';
+        STATE.attendanceRecords[recordKey][s.id][todayDay] = 'P';
         markedCount++;
     });
 
     saveAttendanceRecords(false);
     loadAttendanceList();
 
-    const formattedDateText = dateStr ? ` (${dateStr})` : '';
     if (preservedJustifiedCount > 0) {
-        showToast(`✔ ${markedCount} estudiantes marcados en 'Presente' para el día ${targetDay} de ${monthName}${formattedDateText}. Se respetaron ${preservedJustifiedCount} permisos justificados de Auxiliatura.`, 'success');
+        showToast(`✔ ${markedCount} estudiantes marcados en 'Presente' para el día de hoy (${todayDay} de ${monthName}). Se respetaron ${preservedJustifiedCount} permisos justificados de Auxiliatura.`, 'success');
     } else {
-        showToast(`✔ Todos los ${markedCount} estudiantes marcados en 'Presente' para el día ${targetDay} de ${monthName}${formattedDateText}.`, 'success');
+        showToast(`✔ Todos los ${markedCount} estudiantes marcados en 'Presente' para el día de hoy (${todayDay} de ${monthName}).`, 'success');
     }
 }
+window.markAllPresentToday = markAllPresentToday;
 
 let _attendanceSaveTimeout = null;
 

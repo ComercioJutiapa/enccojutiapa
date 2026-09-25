@@ -2824,3 +2824,30 @@ textarea.form-control:focus {
 
 
 
+
+/* Estilos de columna y celda para el DÍA ACTUAL (HOY) */
+.col-day-today {
+    background: #dcfce7 !important;
+    border-left: 2px solid #16a34a !important;
+    border-right: 2px solid #16a34a !important;
+    color: #14532d !important;
+    font-weight: 800 !important;
+}
+
+.cell-day-today {
+    border-left: 2px solid #86efac !important;
+    border-right: 2px solid #86efac !important;
+    background-color: rgba(220, 252, 231, 0.3) !important;
+}
+
+body.theme-dark .col-day-today {
+    background: #064e3b !important;
+    color: #86efac !important;
+    border-color: #22c55e !important;
+}
+
+body.theme-dark .cell-day-today {
+    border-left: 2px solid #15803d !important;
+    border-right: 2px solid #15803d !important;
+    background-color: rgba(6, 78, 59, 0.3) !important;
+}
