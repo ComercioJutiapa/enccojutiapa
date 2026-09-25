@@ -5328,9 +5328,14 @@ window.closeForgotPasswordModal = closeForgotPasswordModal;
 function closeSirePensumImportModal() { closeModalProperly('sirePensumImportModal'); }
 window.closeSirePensumImportModal = closeSirePensumImportModal;
 
-function closePrintDocumentModal() { closeModalProperly('printDocumentModal'); }
+function closePrintDocumentModal() {
+    const modal = document.getElementById('printDocumentModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+    }
+}
 window.closePrintDocumentModal = closePrintDocumentModal;
-
 
 function hideModalById(modalId) {
     const modal = document.getElementById(modalId);
@@ -5341,11 +5346,6 @@ function hideModalById(modalId) {
     }
 }
 window.hideModalById = hideModalById;
-
-function closePrintDocumentModal() {
-    hideModalById('printDocumentModal');
-}
-window.closePrintDocumentModal = closePrintDocumentModal;
 
 function renderAndShowPrintDocument(title, htmlContent, orientation = 'portrait') {
     const modal = document.getElementById('printDocumentModal');
@@ -12703,13 +12703,13 @@ function generateOfficialPrintList(opts = null) {
 
     const subjectName = getFullOfficialSubjectName(rawSubVal, gGradeNum || 0);
 
-    if (!subjectName && !targetPensum) {
+    if (!subjectName && !targetPensum && modelType !== 'NOMINA_OFICIAL') {
         showToast("Por favor seleccione la Asignatura correspondiente a su cátedra.", "warning");
         return;
     }
 
     // Identificar el pensum si no fue provisto
-    if (!targetPensum) {
+    if (!targetPensum && subjectName) {
         const isDocente = (STATE.currentRole === 'docente');
         const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
 
@@ -12741,7 +12741,7 @@ function generateOfficialPrintList(opts = null) {
                 return isMatchGrade && isMatchSec && isMatchSub;
             });
 
-            if (!targetPensum) {
+            if (!targetPensum && modelType !== 'NOMINA_OFICIAL') {
                 showToast("Acceso Denegado: Como docente, únicamente tiene autorización para generar e imprimir listas de sus propias clases asignadas.", "danger");
                 return;
             }
@@ -12845,188 +12845,385 @@ function generateOfficialPrintList(opts = null) {
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
     const bimestreDisplay = ['I', 'II', 'III', 'IV'][bNum - 1] || 'I';
 
-    const STUDENTS_PER_PAGE = 45;
-    const pages = [];
-    for (let i = 0; i < totalStudents; i += STUDENTS_PER_PAGE) {
-        pages.push(students.slice(i, i + STUDENTS_PER_PAGE));
-    }
-    if (pages.length === 0) pages.push([]);
+        const isLandscape = (modelType === 'ASISTENCIA_MENSUAL' || (modelType === 'LISTA_COTEJO' && activitiesList.length > 7));
+        const STUDENTS_PER_PAGE = (modelType === 'ASISTENCIA_MENSUAL') ? 35 : 45;
+        const pages = [];
+        for (let i = 0; i < totalStudents; i += STUDENTS_PER_PAGE) {
+            pages.push(students.slice(i, i + STUDENTS_PER_PAGE));
+        }
+        if (pages.length === 0) pages.push([]);
 
-    const numActivities = activitiesList.length;
-    const colWidth = Math.max(22, Math.min(36, Math.floor(240 / numActivities)));
-    const cellPadding = totalStudents > 35 ? '1px 2px' : '2px 3px';
-    const rowFontSize = totalStudents > 35 ? '7px' : '7.5px';
-    const rowHeight = totalStudents > 35 ? '15px' : '17px';
-    const rowLineHeight = totalStudents > 35 ? '1.05' : '1.1';
+        const numActivities = activitiesList.length;
+        const colWidth = Math.max(22, Math.min(36, Math.floor(240 / numActivities)));
+        const cellPadding = totalStudents > 35 ? '1px 2px' : '2px 3px';
+        const rowFontSize = totalStudents > 35 ? '7px' : '7.5px';
+        const rowHeight = totalStudents > 35 ? '15px' : '17px';
+        const rowLineHeight = totalStudents > 35 ? '1.05' : '1.1';
 
-    const renderPageTable = (pageStudents, pageIdx, totalPages) => {
-        const startNo = pageIdx * STUDENTS_PER_PAGE;
-        const isLastPage = (pageIdx === totalPages - 1);
+        // Título oficial según modelo
+        let headerDocTitle = '';
+        let docTitle = '';
+        if (modelType === 'NOMINA_OFICIAL') {
+            headerDocTitle = 'NÓMINA OFICIAL DE ESTUDIANTES INSCRITOS - CICLO ESCOLAR 2026';
+            docTitle = `Nómina Oficial - ${gradeTitle}`;
+        } else if (modelType === 'ASISTENCIA_MENSUAL') {
+            headerDocTitle = `CONTROL MENSUAL DE ASISTENCIA Y PUNTUALIDAD (${bimestreDisplay} BIMESTRE)`;
+            docTitle = `Control de Asistencia - ${gradeTitle} - ${finalSubjectName}`;
+        } else if (modelType === 'LISTA_COTEJO') {
+            headerDocTitle = `LISTA DE COTEJO DE ACTIVIDADES Y TAREAS DE ZONA (${cfgZonaMax} PTS - ${bimestreDisplay} BIMESTRE)`;
+            docTitle = `Lista de Cotejo (${cfgZonaMax} pts) - ${gradeTitle} - ${finalSubjectName}`;
+        } else {
+            headerDocTitle = `CUADRO DE CONTROL DE ZONA Y EVALUACIONES (${bimestreDisplay} BIMESTRE)`;
+            docTitle = `Cuadro Oficial de Calificaciones - ${gradeTitle} - ${finalSubjectName}`;
+        }
 
-        const rowsHtml = pageStudents.map((s, idx) => {
-            const uData = (s.gradebookDetails && s.gradebookDetails[finalSubjectName] && s.gradebookDetails[finalSubjectName][bNum])
-                ? s.gradebookDetails[finalSubjectName][bNum]
-                : null;
+        const renderPageTable = (pageStudents, pageIdx, totalPages) => {
+            const startNo = pageIdx * STUDENTS_PER_PAGE;
+            const isLastPage = (pageIdx === totalPages - 1);
 
-            const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
-            const isExonerated = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, finalSubjectName, bNum);
+            let tableHtml = '';
 
-            let actCells = '';
-            let zonaVal = '';
-            let examVal = '';
-            let totalVal = '';
-
-            if (isInactive) {
-                actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#94a3b8; font-size:${rowFontSize};">-</td>`).join('');
-                zonaVal = '-';
-                examVal = '-';
-                totalVal = `<span style="color:#94a3b8; font-size:6.5px; font-weight:700;">${s.status.toUpperCase()}</span>`;
-            } else if (isExonerated) {
-                actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#0284c7; font-size:${rowFontSize};">-</td>`).join('');
-                zonaVal = '-';
-                examVal = '-';
-                totalVal = `<span style="color:#0284c7; font-size:7px; font-weight:800;">EXONERADO</span>`;
-            } else if (uData) {
-                const acts = uData.activities || [];
-                let sumZona = 0;
-                let hasAnyAct = false;
-
-                actCells = activitiesList.map((a, actIdx) => {
-                    const score = acts[actIdx];
-                    if (score !== undefined && score !== null && score !== '' && !isNaN(score)) {
-                        const numScore = parseFloat(score);
-                        sumZona += numScore;
-                        hasAnyAct = true;
-                        return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; font-weight:700; color:#0f172a;">${numScore}</td>`;
-                    }
-                    return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; color:#94a3b8;"></td>`;
+            if (modelType === 'NOMINA_OFICIAL') {
+                const rowsHtml = pageStudents.map((s, idx) => {
+                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const claveVal = s.clave || (startNo + idx + 1);
+                    const genderShort = (s.gender === 'Femenino' || s.genero === 'Femenino') ? 'F' : 'M';
+                    const statusText = s.status || 'Inscrito';
+                    return `
+                    <tr style="height:${rowHeight};">
+                        <td style="text-align:center; font-weight:bold; width:26px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
+                        <td style="text-align:center; font-weight:700; width:34px; padding:${cellPadding}; font-size:${rowFontSize};">${claveVal}</td>
+                        <td style="text-align:center; font-family:monospace; width:80px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
+                        <td style="text-align:center; font-family:monospace; width:95px; padding:${cellPadding}; font-size:${rowFontSize};">${s.cui || s.dpi || '-'}</td>
+                        <td style="text-align:left; padding-left:5px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
+                        <td style="text-align:center; font-weight:700; width:30px; padding:${cellPadding}; font-size:${rowFontSize};">${genderShort}</td>
+                        <td style="text-align:center; width:55px; padding:${cellPadding}; font-size:6.8px; font-weight:700; color:#15803d;">${statusText.toUpperCase()}</td>
+                        <td style="width:140px; padding:${cellPadding}; border-bottom:1px solid #94a3b8;"></td>
+                    </tr>`;
                 }).join('');
 
-                const hasExam = (uData.exam !== undefined && uData.exam !== null && uData.exam !== '' && !isNaN(uData.exam));
-                const examNum = hasExam ? parseFloat(uData.exam) : null;
+                tableHtml = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width:26px;">No.</th>
+                            <th style="width:34px;">CLAVE</th>
+                            <th style="width:80px;">CÓDIGO PERSONAL</th>
+                            <th style="width:95px;">CUI / DPI</th>
+                            <th>APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
+                            <th style="width:30px;">SEXO</th>
+                            <th style="width:55px;">ESTADO</th>
+                            <th style="width:140px;">FIRMA / OBSERVACIONES</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>`;
 
-                if (hasAnyAct || hasExam) {
-                    zonaVal = sumZona > 0 || hasAnyAct ? sumZona : '';
-                    examVal = hasExam ? examNum : '';
-                    const calcTotal = sumZona + (hasExam ? examNum : 0);
-                    const isApproved = calcTotal >= 60;
-                    totalVal = `<strong style="${isApproved ? 'color:#15803d;' : 'color:#dc2626;'}">${calcTotal}</strong>`;
-                } else {
-                    const recordedGrade = (s.grades && s.grades[finalSubjectName] && s.grades[finalSubjectName][bNum - 1] !== undefined)
-                        ? parseFloat(s.grades[finalSubjectName][bNum - 1])
+            } else if (modelType === 'ASISTENCIA_MENSUAL') {
+                const daysHeaders = Array.from({ length: 31 }, (_, i) => `<th style="width:17px; padding:1px 0; font-size:6.5px;">${i + 1}</th>`).join('');
+                const rowsHtml = pageStudents.map((s, idx) => {
+                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const daysCells = Array.from({ length: 31 }, () => `<td style="width:17px; padding:0; text-align:center; font-size:7px; border:1px solid #94a3b8;"></td>`).join('');
+                    return `
+                    <tr style="height:18px;">
+                        <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
+                        <td style="text-align:center; font-family:monospace; width:70px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
+                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:180px; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
+                        ${daysCells}
+                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};"></td>
+                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};"></td>
+                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};"></td>
+                        <td style="width:30px; text-align:center; font-weight:800; background:#f1f5f9; font-size:${rowFontSize};"></td>
+                    </tr>`;
+                }).join('');
+
+                tableHtml = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" style="width:24px;">No.</th>
+                            <th rowspan="2" style="width:70px;">CÓDIGO PERSONAL</th>
+                            <th rowspan="2" style="width:180px;">APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
+                            <th colspan="31">REGISTRO DIARIO DE ASISTENCIA (DÍAS 1 AL 31)</th>
+                            <th colspan="4">RESUMEN</th>
+                        </tr>
+                        <tr>
+                            ${daysHeaders}
+                            <th style="width:22px;" title="Asistencias">P</th>
+                            <th style="width:22px;" title="Ausencias Injustificadas">A</th>
+                            <th style="width:22px;" title="Ausencias Justificadas">J</th>
+                            <th style="width:30px;" title="% Asistencia">%</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>`;
+
+            } else if (modelType === 'LISTA_COTEJO') {
+                const rowsHtml = pageStudents.map((s, idx) => {
+                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const uData = (s.gradebookDetails && s.gradebookDetails[finalSubjectName] && s.gradebookDetails[finalSubjectName][bNum])
+                        ? s.gradebookDetails[finalSubjectName][bNum]
                         : null;
-                    if (recordedGrade !== null && recordedGrade > 0) {
-                        const isApproved = recordedGrade >= 60;
-                        totalVal = `<strong style="${isApproved ? 'color:#15803d;' : 'color:#dc2626;'}">${recordedGrade}</strong>`;
-                    }
-                }
-            } else {
-                const recordedGrade = (s.grades && s.grades[finalSubjectName] && s.grades[finalSubjectName][bNum - 1] !== undefined)
-                    ? parseFloat(s.grades[finalSubjectName][bNum - 1])
-                    : null;
 
-                actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding};"></td>`).join('');
-                if (recordedGrade !== null && recordedGrade > 0) {
-                    const isApproved = recordedGrade >= 60;
-                    totalVal = `<strong style="${isApproved ? 'color:#15803d;' : 'color:#dc2626;'}">${recordedGrade}</strong>`;
+                    let sumZona = 0;
+                    let hasAnyAct = false;
+                    const acts = uData ? (uData.activities || []) : [];
+
+                    const actCells = activitiesList.map((a, actIdx) => {
+                        const score = acts[actIdx];
+                        if (score !== undefined && score !== null && score !== '' && !isNaN(score)) {
+                            const numScore = parseFloat(score);
+                            sumZona += numScore;
+                            hasAnyAct = true;
+                            return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; font-weight:700; color:#0f172a;">${numScore}</td>`;
+                        }
+                        return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; color:#94a3b8;"></td>`;
+                    }).join('');
+
+                    const zonaText = (hasAnyAct || sumZona > 0) ? sumZona : '';
+                    const percentCompliance = cfgZonaMax > 0 ? Math.round((sumZona / cfgZonaMax) * 100) : 0;
+                    let complianceBadge = '';
+                    if (hasAnyAct) {
+                        complianceBadge = percentCompliance >= 75
+                            ? `<strong style="color:#15803d; font-size:6.8px;">${percentCompliance}% (ALTO)</strong>`
+                            : (percentCompliance >= 50 ? `<span style="color:#b45309; font-size:6.8px;">${percentCompliance}% (MEDIO)</span>`
+                            : `<span style="color:#dc2626; font-size:6.8px;">${percentCompliance}% (BAJO)</span>`);
+                    }
+
+                    return `
+                    <tr style="height:${rowHeight};">
+                        <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
+                        <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
+                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
+                        ${actCells}
+                        <td style="width:40px; background:#f0fdf4; padding:${cellPadding}; text-align:center; font-weight:800; font-size:${rowFontSize}; color:#15803d;">${zonaText}</td>
+                        <td style="width:65px; background:#f8fafc; padding:${cellPadding}; text-align:center;">${complianceBadge}</td>
+                        <td style="padding:${cellPadding}; border-bottom:1px solid #cbd5e1;"></td>
+                    </tr>`;
+                }).join('');
+
+                tableHtml = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" style="width:24px;">No.</th>
+                            <th rowspan="2" style="width:75px;">CÓDIGO PERSONAL</th>
+                            <th rowspan="2" style="width:190px;">APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
+                            <th colspan="${numActivities}">ACTIVIDADES DE ZONA (${cfgZonaMax} PTS)</th>
+                            <th rowspan="2" style="width:40px;">TOTAL<br>ZONA (${cfgZonaMax}p)</th>
+                            <th rowspan="2" style="width:65px;">NIVEL DE LOGRO</th>
+                            <th rowspan="2">OBSERVACIONES / RECOMENDACIONES</th>
+                        </tr>
+                        <tr>
+                            ${activitiesList.map(a => `<th style="width:${colWidth}px;" title="${a.label}${a.pts > 0 ? ` (${a.pts} pts)` : ''}">${a.shortLabel}${a.pts > 0 ? `<br><span style="font-size:6.5px; font-weight:normal;">${a.pts}pts</span>` : ''}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>`;
+
+            } else {
+                // FORMATO 1: CUADRO OFICIAL DE CONTROL DE ZONA (40 PTS) Y EVALUACIONES (60 PTS)
+                const rowsHtml = pageStudents.map((s, idx) => {
+                    const uData = (s.gradebookDetails && s.gradebookDetails[finalSubjectName] && s.gradebookDetails[finalSubjectName][bNum])
+                        ? s.gradebookDetails[finalSubjectName][bNum]
+                        : null;
+
+                    const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
+                    const isExonerated = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, finalSubjectName, bNum);
+
+                    let actCells = '';
+                    let zonaVal = '';
+                    let examVal = '';
+                    let totalVal = '';
+
+                    if (isInactive) {
+                        actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#94a3b8; font-size:${rowFontSize};">-</td>`).join('');
+                        zonaVal = '-';
+                        examVal = '-';
+                        totalVal = `<span style="color:#94a3b8; font-size:6.5px; font-weight:700;">${s.status.toUpperCase()}</span>`;
+                    } else if (isExonerated) {
+                        actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#0284c7; font-size:${rowFontSize};">-</td>`).join('');
+                        zonaVal = '-';
+                        examVal = '-';
+                        totalVal = `<span style="color:#0284c7; font-size:7px; font-weight:800;">EXONERADO</span>`;
+                    } else if (uData) {
+                        const acts = uData.activities || [];
+                        let sumZona = 0;
+                        let hasAnyAct = false;
+
+                        actCells = activitiesList.map((a, actIdx) => {
+                            const score = acts[actIdx];
+                            if (score !== undefined && score !== null && score !== '' && !isNaN(score)) {
+                                const numScore = parseFloat(score);
+                                sumZona += numScore;
+                                hasAnyAct = true;
+                                return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; font-weight:700; color:#0f172a;">${numScore}</td>`;
+                            }
+                            return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; color:#94a3b8;"></td>`;
+                        }).join('');
+
+                        const hasExam = (uData.exam !== undefined && uData.exam !== null && uData.exam !== '' && !isNaN(uData.exam));
+                        const examNum = hasExam ? parseFloat(uData.exam) : null;
+
+                        if (hasAnyAct || hasExam) {
+                            zonaVal = sumZona > 0 || hasAnyAct ? sumZona : '';
+                            examVal = hasExam ? examNum : '';
+                            const calcTotal = sumZona + (hasExam ? examNum : 0);
+                            const isApproved = calcTotal >= 60;
+                            totalVal = `<strong style="${isApproved ? 'color:#15803d;' : 'color:#dc2626;'}">${calcTotal}</strong>`;
+                        } else {
+                            const recordedGrade = (s.grades && s.grades[finalSubjectName] && s.grades[finalSubjectName][bNum - 1] !== undefined)
+                                ? parseFloat(s.grades[finalSubjectName][bNum - 1])
+                                : null;
+                            if (recordedGrade !== null && recordedGrade > 0) {
+                                const isApproved = recordedGrade >= 60;
+                                totalVal = `<strong style="${isApproved ? 'color:#15803d;' : 'color:#dc2626;'}">${recordedGrade}</strong>`;
+                            }
+                        }
+                    } else {
+                        const recordedGrade = (s.grades && s.grades[finalSubjectName] && s.grades[finalSubjectName][bNum - 1] !== undefined)
+                            ? parseFloat(s.grades[finalSubjectName][bNum - 1])
+                            : null;
+
+                        actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding};"></td>`).join('');
+                        if (recordedGrade !== null && recordedGrade > 0) {
+                            const isApproved = recordedGrade >= 60;
+                            totalVal = `<strong style="${isApproved ? 'color:#15803d;' : 'color:#dc2626;'}">${recordedGrade}</strong>`;
+                        }
+                    }
+
+                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+
+                    return `
+                    <tr style="height:${rowHeight};">
+                        <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
+                        <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
+                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
+                        ${actCells}
+                        <td style="width:32px; background:#f8fafc; padding:${cellPadding}; text-align:center; font-weight:700; font-size:${rowFontSize};">${zonaVal}</td>
+                        <td style="width:32px; background:#f8fafc; padding:${cellPadding}; text-align:center; font-weight:700; font-size:${rowFontSize};">${examVal}</td>
+                        <td style="width:40px; background:#f1f5f9; text-align:center; padding:${cellPadding}; font-size:${rowFontSize};">${totalVal}</td>
+                    </tr>`;
+                }).join('');
+
+                tableHtml = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" style="width:24px;">No.</th>
+                            <th rowspan="2" style="width:75px;">CÓDIGO PERSONAL</th>
+                            <th rowspan="2" style="width:210px;">APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
+                            <th colspan="${numActivities}">ACTIVIDADES DE ZONA (${cfgZonaMax} PTS)</th>
+                            <th colspan="2">EVALUACIONES</th>
+                            <th rowspan="2" style="width:40px;">TOTAL<br>100 pts</th>
+                        </tr>
+                        <tr>
+                            ${activitiesList.map(a => `<th style="width:${colWidth}px;" title="${a.label}${a.pts > 0 ? ` (${a.pts} pts)` : ''}">${a.shortLabel}${a.pts > 0 ? `<br><span style="font-size:6.5px; font-weight:normal;">${a.pts}pts</span>` : ''}</th>`).join('')}
+                            <th style="width:32px;">Zona<br><span style="font-size:6.5px; font-weight:normal;">${cfgZonaMax}p</span></th>
+                            <th style="width:32px;">Examen<br><span style="font-size:6.5px; font-weight:normal;">${cfgExamMax}p</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>`;
+            }
+
+            const pageIndicator = totalPages > 1 ? `<div style="text-align:right; font-size:7px; color:#64748b; margin:1px 0 0 0; line-height:1;">Página ${pageIdx + 1} de ${totalPages}</div>` : '';
+
+            // Bloque de firmas institucionales en la última página
+            let signatureHtml = '';
+            if (isLastPage) {
+                if (modelType === 'ASISTENCIA_MENSUAL') {
+                    signatureHtml = `
+                    <div style="margin-top:14px; display:flex; justify-content:space-around; text-align:center; font-size:7.5px; color:#1e293b;">
+                        <div style="width:220px; border-top:1.2px solid #000; padding-top:3px;">
+                            <strong>${effectiveTeacher}</strong><br>Catedrático(a) Titular
+                        </div>
+                        <div style="width:220px; border-top:1.2px solid #000; padding-top:3px;">
+                            <strong>Profesor(a) Auxiliar</strong><br>Control y Registro de Asistencia
+                        </div>
+                    </div>`;
+                } else {
+                    signatureHtml = `
+                    <div style="margin-top:14px; display:flex; justify-content:space-around; text-align:center; font-size:7.5px; color:#1e293b;">
+                        <div style="width:190px; border-top:1.2px solid #000; padding-top:3px;">
+                            <strong>${effectiveTeacher}</strong><br>Catedrático(a) Titular
+                        </div>
+                        <div style="width:190px; border-top:1.2px solid #000; padding-top:3px;">
+                            <strong>Comisión de Evaluación</strong><br>ENCCO Jutiapa
+                        </div>
+                        <div style="width:190px; border-top:1.2px solid #000; padding-top:3px;">
+                            <strong>Vo.Bo. Dirección General</strong><br>Sello y Firma
+                        </div>
+                    </div>`;
                 }
             }
 
-            const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
-
             return `
-            <tr style="height:${rowHeight};">
-                <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
-                <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
-                <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
-                ${actCells}
-                <td style="width:32px; background:#f8fafc; padding:${cellPadding}; text-align:center; font-weight:700; font-size:${rowFontSize};">${zonaVal}</td>
-                <td style="width:32px; background:#f8fafc; padding:${cellPadding}; text-align:center; font-weight:700; font-size:${rowFontSize};">${examVal}</td>
-                <td style="width:40px; background:#f1f5f9; text-align:center; padding:${cellPadding}; font-size:${rowFontSize};">${totalVal}</td>
-            </tr>
-            `;
-        }).join('');
-
-        const pageIndicator = totalPages > 1 ? `<div style="text-align:right; font-size:7px; color:#64748b; margin:1px 0 0 0; line-height:1;">Página ${pageIdx + 1} de ${totalPages}</div>` : '';
-
-        const signatureBlock = '';
-
-        return `
-        <div class="print-page-wrapper"${totalPages > 1 && pageIdx > 0 ? ' style="page-break-before:always;"' : ''}>
-            <table class="header-table">
-                <tr>
-                    <td style="width:50px; text-align:center;">
-                        <img src="${h.schoolLogoUrl || 'logo.png'}" style="height:38px; max-width:50px;" onerror="this.style.display='none'">
-                    </td>
-                    <td>
-                        <div class="school-title">${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</div>
-                        <div class="school-sub">Jornada Matutina • Jutiapa • Ciclo Escolar 2026</div>
-                        <div class="eval-title">
-                            CUADRO DE CONTROL DE ZONA Y EVALUACIONES (${bimestreDisplay} BIMESTRE)
-                        </div>
-                    </td>
-                    <td style="width:50px; text-align:center;">
-                        <img src="${h.mineducLogoUrl || 'logo.png'}" style="height:38px; max-width:50px;" onerror="this.style.display='none'">
-                    </td>
-                </tr>
-            </table>
-
-            <table class="meta-grid">
-                <tr>
-                    <td class="meta-label">CARRERA:</td>
-                    <td class="meta-val">${career || 'Perito Contador'}</td>
-                    <td class="meta-label">GRADO Y SECCIÓN:</td>
-                    <td class="meta-val"><strong>${gradeTitle}</strong></td>
-                </tr>
-                <tr>
-                    <td class="meta-label">CÁTEDRA / MATERIA:</td>
-                    <td class="meta-val"><strong style="color:#047857;">${finalSubjectName}</strong></td>
-                    <td class="meta-label">CATEDRÁTICO(A):</td>
-                    <td class="meta-val"><strong>${effectiveTeacher}</strong></td>
-                </tr>
-            </table>
-
-            <table class="data-table">
-                <thead>
+            <div class="print-page-wrapper"${totalPages > 1 && pageIdx > 0 ? ' style="page-break-before:always;"' : ''}>
+                <table class="header-table">
                     <tr>
-                        <th rowspan="2" style="width:24px;">No.</th>
-                        <th rowspan="2" style="width:75px;">CÓDIGO PERSONAL</th>
-                        <th rowspan="2" style="width:210px;">APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
-                        <th colspan="${numActivities}">ACTIVIDADES DE ZONA (${cfgZonaMax} PTS)</th>
-                        <th colspan="2">EVALUACIONES</th>
-                        <th rowspan="2" style="width:40px;">TOTAL<br>100 pts</th>
+                        <td style="width:50px; text-align:center;">
+                            <img src="${h.schoolLogoUrl || 'logo.png'}" style="height:38px; max-width:50px;" onerror="this.style.display='none'">
+                        </td>
+                        <td>
+                            <div class="school-title">${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</div>
+                            <div class="school-sub">Jornada Matutina • Jutiapa • Ciclo Escolar 2026</div>
+                            <div class="eval-title">${headerDocTitle}</div>
+                        </td>
+                        <td style="width:50px; text-align:center;">
+                            <img src="${h.mineducLogoUrl || 'logo.png'}" style="height:38px; max-width:50px;" onerror="this.style.display='none'">
+                        </td>
+                    </tr>
+                </table>
+
+                <table class="meta-grid">
+                    <tr>
+                        <td class="meta-label">CARRERA:</td>
+                        <td class="meta-val">${career || 'Perito Contador'}</td>
+                        <td class="meta-label">GRADO Y SECCIÓN:</td>
+                        <td class="meta-val"><strong>${gradeTitle}</strong></td>
                     </tr>
                     <tr>
-                        ${activitiesList.map(a => `<th style="width:${colWidth}px;" title="${a.label}${a.pts > 0 ? ` (${a.pts} pts)` : ''}">${a.shortLabel}${a.pts > 0 ? `<br><span style="font-size:6.5px; font-weight:normal;">${a.pts}pts</span>` : ''}</th>`).join('')}
-                        <th style="width:32px;">Zona<br><span style="font-size:6.5px; font-weight:normal;">${cfgZonaMax}p</span></th>
-                        <th style="width:32px;">Examen<br><span style="font-size:6.5px; font-weight:normal;">${cfgExamMax}p</span></th>
+                        <td class="meta-label">CÁTEDRA / MATERIA:</td>
+                        <td class="meta-val"><strong style="color:#047857;">${finalSubjectName}</strong></td>
+                        <td class="meta-label">CATEDRÁTICO(A):</td>
+                        <td class="meta-val"><strong>${effectiveTeacher}</strong></td>
                     </tr>
-                </thead>
-                <tbody>
-                    ${rowsHtml}
-                </tbody>
-            </table>
-            
-            ${pageIndicator}
-        </div>`;
-    };
+                </table>
 
-    const allPagesHtml = pages.map((pageStudents, idx) => renderPageTable(pageStudents, idx, pages.length)).join('');
+                ${tableHtml}
+                ${signatureHtml}
+                ${pageIndicator}
+            </div>`;
+        };
 
-    const printWin = window.open('', '_blank');
-    if (!printWin) {
-        showToast("Por favor permita las ventanas emergentes (popups) para imprimir.", "warning");
-        return;
-    }
+        const allPagesHtml = pages.map((pageStudents, idx) => renderPageTable(pageStudents, idx, pages.length)).join('');
+        const pageOrientation = isLandscape ? 'landscape' : 'portrait';
 
-    const htmlContent = `<!DOCTYPE html>
+        if (opts?.previewModal) {
+            renderAndShowPrintDocument(docTitle, allPagesHtml, pageOrientation);
+            showToast(`Vista previa de '${docTitle}' abierta en pantalla.`, "info");
+            return;
+        }
+
+        const printWin = window.open('', '_blank');
+        if (!printWin) {
+            renderAndShowPrintDocument(docTitle, allPagesHtml, pageOrientation);
+            showToast("Ventana emergente bloqueada por el navegador. Se abrió la vista previa oficial en pantalla.", "info");
+            return;
+        }
+
+        const pageSizeCss = isLandscape ? '8.5in 13in landscape' : '8.5in 13in portrait';
+        const pageWidthCss = isLandscape ? '13in' : '8.5in';
+
+        const htmlContent = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Cuadro Oficial de Calificaciones - ${gradeTitle} - ${finalSubjectName}</title>
+<title>${docTitle}</title>
 <style>
 @page {
-    size: 8.5in 13in portrait;
+    size: ${pageSizeCss};
     margin: 5mm 5mm 5mm 5mm;
 }
 * {
@@ -13122,7 +13319,7 @@ html, body {
 }
 @media print {
     html, body {
-        width: 8.5in;
+        width: ${pageWidthCss};
         height: auto;
     }
     .print-page-wrapper {
@@ -13144,11 +13341,11 @@ window.onload = function() {
 <body>${allPagesHtml}</body>
 </html>`;
 
-    printWin.document.open();
-    printWin.document.write(htmlContent);
-    printWin.document.close();
-    showToast(`Cuadro Oficial de '${finalSubjectName}' (${gradeTitle}) generado con calificaciones asentadas.`, "success");
-}
+        printWin.document.open();
+        printWin.document.write(htmlContent);
+        printWin.document.close();
+        showToast(`Documento '${docTitle}' generado exitosamente.`, "success");
+    }
 
 function printGradebookOfficialList() {
     const courseSelect = document.getElementById('teacherCourseSelect');
