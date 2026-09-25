@@ -10086,8 +10086,11 @@ function renderStudentsTable() {
     const summaryBox = document.getElementById('studentsFilterSummary');
     const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal);
 
-    // Verificación estricta: Si no se ha seleccionado grado/sección y no hay búsqueda activa por texto
-    if (!gradeVal && !searchVal) {
+    const sValLower = (statusVal || '').toLowerCase().trim();
+    const isSpecialStatusFilter = (sValLower === 'retirado' || sValLower === 'ausente' || sValLower === 'inactivo' || sValLower === 'all');
+
+    // Verificación estricta: Si no se ha seleccionado grado/sección, no hay búsqueda activa por texto y el estado es Activo (por defecto)
+    if (!gradeVal && !searchVal && !isSpecialStatusFilter) {
         if (summaryBox) summaryBox.style.display = 'none';
         tbody.innerHTML = `
             <tr>
@@ -10100,7 +10103,7 @@ function renderStudentsTable() {
                             Seleccione Carrera, Grado y Sección
                         </h4>
                         <p style="font-size:0.88rem; color:#64748b; line-height:1.5; margin-bottom:18px;">
-                            Para visualizar la nómina de estudiantes, consultar expedientes o generar la <strong>Nómina en Blanco con 8 Casillas (sin firmas)</strong>, por favor elija los tres filtros superiores.
+                            Para visualizar la nómina regular de estudiantes activos, consultar expedientes o generar la <strong>Nómina en Blanco con 8 Casillas (sin firmas)</strong>, elija los filtros superiores o filtre directamente por estado (Retirados / Ausentes).
                         </p>
                         <div style="display:flex; justify-content:center; gap:10px; font-size:0.82rem; font-weight:700;">
                             <span class="badge" style="background:#e2e8f0; color:#334155; padding:6px 12px;"><i class="fa-solid fa-graduation-cap"></i> 1. Carrera</span>
@@ -10114,12 +10117,17 @@ function renderStudentsTable() {
         return;
     }
 
-    // Mostrar resumen de filtro
-    if (summaryBox) {
-        summaryBox.style.display = gradeVal ? 'flex' : 'none';
-    }
-
     let list = STATE.students || [];
+
+    // Si el usuario es docente y está viendo el listado sin seleccionar un grado específico, limitar a sus cátedras
+    if (STATE.currentRole === 'docente' && STATE.currentUser && !gradeVal) {
+        const teacherName = (STATE.currentUser.name || '').toLowerCase();
+        const teacherPensum = (STATE.pensum || []).filter(p => (p.teacher || '').toLowerCase().includes(teacherName) || (p.teacherName || '').toLowerCase().includes(teacherName));
+        const assignedGrades = Array.from(new Set(teacherPensum.map(p => p.grade || p.gradeCode)));
+        if (assignedGrades.length > 0) {
+            list = list.filter(s => assignedGrades.includes(s.grade) || assignedGrades.some(g => (s.gradeLabel || '').includes(g)));
+        }
+    }
 
     // Búsqueda inteligente por Texto (Global, multi-token y tolerante a tildes/mayúsculas)
     if (searchVal) {
@@ -10127,13 +10135,12 @@ function renderStudentsTable() {
         const searchTokens = cleanVal.split(/\s+/).filter(Boolean);
 
         list = list.filter(s => {
-            if (s.active === false) return false;
             const targetStr = `${s.firstName || ''} ${s.lastName || ''} ${s.name || ''} ${s.carne || ''} ${s.personalCode || ''} ${s.cui || ''} ${s.tutor || ''} ${s.grade || ''} ${s.section || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
             return searchTokens.every(token => targetStr.includes(token));
         });
     } else {
-        // Filtrado robusto por Grado y Sección
+        // Filtrado robusto por Grado y Sección (si se seleccionó)
         if (gradeVal && gradeVal !== 'ALL') {
             const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal || g.name === gradeVal);
             const rawQ = `${gradeVal || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
@@ -10168,15 +10175,24 @@ function renderStudentsTable() {
 
     // Filtro por Estado (Activo / Inscrito / Retirado / Ausente / ALL)
     if (statusVal && statusVal !== 'ALL' && statusVal !== '') {
-        const sValLower = statusVal.toLowerCase();
         if (sValLower === 'retirado' || sValLower === 'inactivo') {
-            list = list.filter(s => s.status === 'Retirado' || (s.status === 'Inactivo' && s.retireReason));
+            list = list.filter(s => {
+                const st = (s.status || '').toLowerCase().trim();
+                if (st === 'ausente') return false;
+                return st === 'retirado' || st === 'inactivo' || Boolean(s.retireReason) || (s.active === false);
+            });
         } else if (sValLower === 'ausente') {
-            list = list.filter(s => s.status === 'Ausente');
+            list = list.filter(s => {
+                const st = (s.status || '').toLowerCase().trim();
+                return st === 'ausente' || st.includes('ausent') || st.includes('desert');
+            });
         } else if (sValLower === 'activo' || sValLower === 'inscrito') {
-            list = list.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || s.statusSire === 'INSCRITO' || s.active !== false || !s.status);
+            list = list.filter(s => {
+                const st = (s.status || '').toLowerCase().trim();
+                return st === 'activo' || st === 'inscrito' || s.statusSire === 'INSCRITO' || (s.active !== false && st !== 'retirado' && st !== 'inactivo' && st !== 'ausente');
+            });
         } else {
-            list = list.filter(s => s.status && s.status.toLowerCase() === sValLower);
+            list = list.filter(s => s.status && s.status.toLowerCase().trim() === sValLower);
         }
     }
 
@@ -10190,6 +10206,7 @@ function renderStudentsTable() {
     // Actualizar barra de resumen de filtrado
     if (summaryBox) {
         summaryBox.style.display = 'flex';
+        let headerDesc = '';
         let guideInfo = '';
         if (searchVal) {
             headerDesc = `Resultados de búsqueda para: "<strong>${escapeHtml(searchVal)}</strong>" (${list.length} estudiante(s) encontrado(s))`;
@@ -10197,6 +10214,9 @@ function renderStudentsTable() {
             headerDesc = `Nómina Oficial: <strong>${targetGradeObj.name} (${targetGradeObj.section})</strong>`;
             const targetGuide = typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(targetGradeObj).name : (targetGradeObj.guideTeacher || 'Sin asignar');
             guideInfo = `&nbsp;|&nbsp; 👨‍🏫 Maestro(a) Guía: <strong style="color:#166534;">${targetGuide}</strong>`;
+        } else if (sValLower === 'retirado' || sValLower === 'ausente') {
+            const labelTxt = sValLower === 'retirado' ? 'Retirados' : 'Ausentes / Desertores';
+            headerDesc = `<i class="fa-solid fa-users-slash" style="color:#dc2626;"></i> Registro Oficial Institucional: <strong>Alumnos ${labelTxt}</strong>`;
         } else {
             headerDesc = `Estudiantes Matriculados`;
         }
