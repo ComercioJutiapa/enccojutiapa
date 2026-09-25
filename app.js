@@ -1242,9 +1242,9 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
         return 'edit';
     }
 
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Promedios y Estadísticas" exclusivo para Dirección, Secretaría, Admin y Superusuario (Docentes NO pueden verlo)
+    // 🛡️ "Promedios y Estadísticas / Estadísticas por Grado": Visible para todo el personal docente y administrativo
     if (key === 'grade-stats') {
-        const allowedStats = ['director', 'secretaria', 'admin', 'super_usuario'];
+        const allowedStats = ['director', 'direccion', 'secretaria', 'admin', 'super_usuario', 'docente', 'catedratico', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
         if (!allowedStats.includes(roleKey)) return 'none';
         return 'view';
     }
@@ -1300,9 +1300,9 @@ function hasRolePermission(permKey, role = null) {
         return allowedSire.includes(targetRole);
     }
 
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Promedios y Estadísticas" denegado terminantemente a docentes y otros roles
+    // 🛡️ "Promedios y Estadísticas / Estadísticas por Grado": Visible para todo el personal docente y administrativo
     if (testKey === 'grade-stats') {
-        const allowedStats = ['director', 'secretaria', 'admin', 'super_usuario'];
+        const allowedStats = ['director', 'direccion', 'secretaria', 'admin', 'super_usuario', 'docente', 'catedratico', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
         return allowedStats.includes(targetRole);
     }
 
@@ -2478,7 +2478,7 @@ function initDefaultRolesConfig() {
             description: 'Coordinación disciplinaria escolar, control de asistencia y convivencia',
             color: '#d97706',
             isSystem: true,
-            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history']
+            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history']
         },
         {
             key: 'docente',
@@ -2486,7 +2486,7 @@ function initDefaultRolesConfig() {
             description: 'Ingreso de calificaciones, control de asistencia y seguimiento pedagógico',
             color: '#0891b2',
             isSystem: true,
-            permissions: ['dashboard', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports', 'exoneraciones-log', 'permissions-history']
+            permissions: ['dashboard', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'exoneraciones-log', 'permissions-history']
         },
         {
             key: 'estudiante',
