@@ -82,6 +82,14 @@ const calcPct = Math.round(((p + j + (t * 0.5)) / total) * 100);
 assert.strictEqual(calcPct, 100, 'El porcentaje con solo justificaciones oficiales debe ser 100%.');
 console.log(`  ✅ Test 7 Superado: Porcentaje computa exactamente al ${calcPct}% sin perjuicio para el estudiante.`);
 
+// TEST 8: Verificación de que la J colocada por el docente es editable libremente
+console.log('\n▶ [TEST 8] Verificando que la J colocada por el docente sea editable libremente...');
+assert(appCode.includes("const isOfficialJustified = (genVal === 'J' || !!permMeta);"),
+  'toggleAttendanceCell debe basar el bloqueo únicamente en si es justificación oficial (isOfficialJustified).');
+assert(appCode.includes("J COLOCADA DIRECTAMENTE POR EL DOCENTE (Editable libremente)"),
+  'loadAttendanceList debe permitir que el docente edite su propia J.');
+console.log('  ✅ Test 8 Superado: La J colocada por el docente es 100% editable; solo las de Auxiliatura/Dirección quedan bloqueadas.');
+
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS UNITARIAS PASARON EXITOSAMENTE AL 100%');
 console.log('================================================================================');

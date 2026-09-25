@@ -22390,9 +22390,11 @@ function loadAttendanceList() {
                     ? STATE.attendanceRecords[genKey][s.id][day]
                     : '';
 
-                // Si tiene permiso o está justificado por las autoridades, el indicador obligatorio es 'J'
-                const isJustified = (val === 'J' || rawVal === 'J' || genDayVal === 'J' || !!permMeta);
-                if (isJustified) {
+                // ¿Es justificación oficial de Auxiliatura, Secretaría o Dirección?
+                const isOfficialJustified = (genDayVal === 'J' || !!permMeta);
+
+                // Si tiene permiso o está justificado oficialmente por las autoridades, el indicador obligatorio es 'J'
+                if (isOfficialJustified) {
                     val = 'J';
                 }
 
@@ -22414,19 +22416,30 @@ function loadAttendanceList() {
                 } else if (val === 'J') {
                     jCount++;
                     dayJustTotals[day]++;
-                    const authBy = permMeta ? (permMeta.authorizedBy || 'Auxiliatura') : 'Auxiliatura / Dirección / Secretaría';
-                    const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Permiso Oficial Autorizado';
 
-                    cellClass = 'att-val-j att-val-J att-val-permiso';
-                    cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO (📋 ${authBy}: ${reason})`;
+                    if (isOfficialJustified) {
+                        // JUSTIFICACIÓN OFICIAL DE AUTORIDADES (Auxiliatura, Secretaría o Dirección)
+                        const authBy = permMeta ? (permMeta.authorizedBy || 'Auxiliatura') : 'Auxiliatura / Dirección / Secretaría';
+                        const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Permiso Oficial Autorizado';
 
-                    if (!isAuditRole) {
-                        isCellReadonly = true;
-                        cellClass += ' att-cell-locked att-cell-justified-readonly';
-                        cellTitle += ' — 🔒 REGISTRO OFICIAL BLOQUEADO: Permiso autorizado por las autoridades del plantel. No modificable por docentes.';
-                        cellInnerHtml = `<span style="display:inline-flex; align-items:center; justify-content:center; gap:2px;"><i class="fa-solid fa-lock" style="font-size:0.60rem; opacity:0.85; color:#c2410c;"></i>J</span>`;
+                        cellClass = 'att-val-j att-val-J att-val-permiso';
+                        cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO (📋 ${authBy}: ${reason})`;
+
+                        if (!isAuditRole) {
+                            // BLOQUEADO PARA DOCENTE: Solo lectura
+                            isCellReadonly = true;
+                            cellClass += ' att-cell-locked att-cell-justified-readonly';
+                            cellTitle += ' — 🔒 REGISTRO OFICIAL BLOQUEADO: Justificado por Auxiliatura / Dirección / Secretaría. No modificable por docentes.';
+                            cellInnerHtml = `<span style="display:inline-flex; align-items:center; justify-content:center; gap:2px;"><i class="fa-solid fa-lock" style="font-size:0.60rem; opacity:0.85; color:#c2410c;"></i>J</span>`;
+                        } else {
+                            cellInnerHtml = `<span style="display:inline-flex; align-items:center; justify-content:center; gap:2px;"><i class="fa-solid fa-shield-halved" style="font-size:0.62rem; color:#ea580c;"></i>J</span>`;
+                        }
                     } else {
-                        cellInnerHtml = `<span style="display:inline-flex; align-items:center; justify-content:center; gap:2px;"><i class="fa-solid fa-shield-halved" style="font-size:0.62rem; color:#ea580c;"></i>J</span>`;
+                        // J COLOCADA DIRECTAMENTE POR EL DOCENTE (Editable libremente)
+                        cellClass = 'att-val-j att-val-J';
+                        cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO (Registrado por el docente - Haga clic para cambiar a T)`;
+                        cellInnerHtml = 'J';
+                        isCellReadonly = false;
                     }
                 } else if (val === 'T') {
                     cellClass = 'att-val-t att-val-T';
@@ -22685,16 +22698,17 @@ function toggleAttendanceCell(studentId, day) {
         ? STATE.attendanceRecords[genKey][studentId][day]
         : '';
 
-    const isJustified = (cur === 'J' || genVal === 'J' || !!permMeta);
+    // 🛡️ Blindaje Estricto de Permisos Oficiales y Justificaciones de Auxiliatura / Dirección / Secretaría
+    const isOfficialJustified = (genVal === 'J' || !!permMeta);
 
-    if (isJustified) {
+    if (isOfficialJustified) {
         const studentObj = (STATE.students || []).find(s => s.id === studentId);
         const sName = studentObj ? formatStudentDisplayName(studentObj, 'lastFirst') : 'El estudiante';
         const authBy = permMeta ? (permMeta.authorizedBy || 'Auxiliatura') : 'Auxiliatura / Dirección / Secretaría';
         const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Justificación / Permiso Oficial Autorizado';
 
         if (!isAuditRole) {
-            // DOCENTE BLOQUEADO: Registro de solo lectura (no editable)
+            // DOCENTE BLOQUEADO: Registro de solo lectura ÚNICAMENTE si fue justificado por Auxiliatura, Secretaría o Dirección
             if (typeof showToast === 'function') {
                 showToast(`🔒 Registro Bloqueado: ${sName} cuenta con inasistencia justificada autorizada por ${authBy} (${reason}). Este registro es de solo lectura y no puede ser modificado por docentes.`, 'warning', 6000);
             }
