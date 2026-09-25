@@ -2876,16 +2876,25 @@ body.theme-dark .cell-day-today {
     background-color: rgba(255, 255, 255, 0.04);
 }
 
-.nav-group-header .nav-section-label {
-    margin: 0;
-    padding: 0;
-    cursor: pointer;
-    flex: 1;
-    font-size: 0.68rem;
-    font-weight: 800;
-    color: #67e8f9 !important;
-    letter-spacing: 0.6px;
+.nav-group-header .nav-section-label,
+.nav-group-header .nav-group-title {
+    margin: 0 !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    flex: 1 !important;
+    font-size: 0.68rem !important;
+    font-weight: 800 !important;
+    color: #38bdf8 !important;
+    letter-spacing: 0.6px !important;
+    text-transform: uppercase !important;
     display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.nav-group-header:hover .nav-section-label,
+.nav-group-header:hover .nav-group-title {
+    color: #7dd3fc !important;
 }
 
 .nav-group-arrow {

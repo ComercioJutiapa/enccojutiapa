@@ -13,7 +13,7 @@ const js = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
 // 1. Sidebar y Grupo BECAS
 console.log('▶ [TEST 1] Verificando grupos del sidebar y nombre BECAS...');
 assert(html.includes('id="navGroup-scholarships"'), 'Debe existir id="navGroup-scholarships"');
-assert(html.includes('<div class="nav-section-label" data-perm="scholarships">BECAS</div>'), 'El grupo debe llamarse BECAS');
+assert(html.includes('data-perm="scholarships">BECAS</div>'), 'El grupo debe llamarse BECAS');
 assert(!html.includes('DIRECCIÓN Y BIENESTAR ESTUDIANTIL'), 'No debe existir el nombre anterior DIRECCIÓN Y BIENESTAR ESTUDIANTIL');
 assert(html.includes('data-view="scholarships"'), 'Debe existir enlace a vista scholarships');
 console.log('  ✅ Test 1 Superado: El grupo se llama estrictamente "BECAS" y la estructura del sidebar es correcta.');

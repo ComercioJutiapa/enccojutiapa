@@ -902,10 +902,11 @@ const EnccoAuthStore = {
         // 3. Encabezados de sección (.nav-section-label): ocultar si no tienen ningún ítem visible
         document.querySelectorAll('.nav-section-label').forEach(header => {
             if (header.closest('.nav-group')) {
-                header.style.removeProperty('display');
-                header.classList.remove('hidden');
-                return;
-            }
+            header.style.removeProperty('display');
+            header.style.setProperty('display', 'block', 'important');
+            header.classList.remove('hidden');
+            return;
+        }
             let sibling = header.nextElementSibling;
             let hasVisibleChild = false;
             while (sibling && !sibling.classList.contains('nav-section-label')) {
@@ -29746,6 +29747,7 @@ function applyUserRole(role = STATE.currentRole) {
     document.querySelectorAll('.nav-section-label').forEach(header => {
         if (header.closest('.nav-group')) {
             header.style.removeProperty('display');
+            header.style.setProperty('display', 'block', 'important');
             header.classList.remove('hidden');
             return;
         }
@@ -34709,6 +34711,12 @@ function initSidebarGroups() {
     if (STATE && STATE.activeView) {
         expandGroupForView(STATE.activeView);
     }
+    // Asegurar títulos de grupo siempre visibles
+    document.querySelectorAll('.nav-group-header .nav-section-label, .nav-group-title').forEach(el => {
+        el.style.removeProperty('display');
+        el.style.setProperty('display', 'block', 'important');
+        el.classList.remove('hidden');
+    });
 }
 window.initSidebarGroups = initSidebarGroups;
 
