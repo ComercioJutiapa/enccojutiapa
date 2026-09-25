@@ -21811,15 +21811,9 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
                 gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
             });
             gradeOptionsHtml += `</optgroup>`;
+        } else {
+            gradeOptionsHtml = `<option value="">-- No tiene grados ni clases asignadas --</option>`;
         }
-
-        // 🌟 GARANTÍA TOTAL: Todos los grados y secciones del colegio siempre disponibles
-        gradeOptionsHtml += `<optgroup label="⭐ Todos los Grados y Secciones (Plantel Completo)">`;
-        const sortedGeneralGrades = sortGrades(STATE.gradesList || []);
-        sortedGeneralGrades.forEach(g => {
-            gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
-        });
-        gradeOptionsHtml += `</optgroup>`;
     } else if (isDirectorOrAdmin && activeTeacherObj) {
         // SUPERVISIÓN POR MAESTRO ESPECÍFICO
         const teacherClasses = (STATE.pensum || []).filter(p => 
@@ -21932,7 +21926,10 @@ function updateAttendanceCoursesList() {
     else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
     const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : selGrade);
 
-    let coursesHtml = `<option value="GENERAL">📑 Control General de Asistencia (Jornada Diaria)</option>`;
+    let coursesHtml = '';
+    if (!isDocente || isDirectorOrAdmin) {
+        coursesHtml += `<option value="GENERAL">📑 Control General de Asistencia (Jornada Diaria)</option>`;
+    }
     
     let matchingPensum = (STATE.pensum || []).filter(p => {
         const rawP = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
@@ -21964,9 +21961,17 @@ function updateAttendanceCoursesList() {
             coursesHtml += `<option value="${p.id}">📘 ${p.subject}${isDirectorOrAdmin ? teacherLabel : ''}</option>`;
         });
         coursesHtml += `</optgroup>`;
+    } else if (isDocente && !isDirectorOrAdmin) {
+        coursesHtml = `<option value="">-- Sin clases asignadas en este grado --</option>`;
     }
 
     courseSelect.innerHTML = coursesHtml;
+
+    if (isDocente && !isDirectorOrAdmin && matchingPensum.length > 0) {
+        if (!courseSelect.value || courseSelect.value === 'GENERAL' || !matchingPensum.some(p => p.id === courseSelect.value)) {
+            courseSelect.value = matchingPensum[0].id;
+        }
+    }
 }
 
 function getAttendanceRecordKey(gradeCode, month, courseId) {
@@ -22051,13 +22056,57 @@ function loadAttendanceList() {
         }
     }
     let month = parseInt(monthSelect ? monthSelect.value : String(todayMonth)) || todayMonth;
-    const courseId = courseSelect ? courseSelect.value : 'GENERAL';
+    let courseId = courseSelect ? courseSelect.value : 'GENERAL';
     const year = (window.STATE && STATE.activeCycle && parseInt(STATE.activeCycle, 10)) || today.getFullYear() || 2026;
     let daysInMonth = new Date(year, month, 0).getDate();
     const dayNames = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
     const isDirectorOrAdmin = (STATE.currentRole === 'director' || STATE.currentRole === 'admin' || STATE.currentRole === 'secretaria');
     const isAuditRole = (isDirectorOrAdmin || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar' || STATE.currentRole === 'auxiliatura' || STATE.currentRole === 'super_usuario');
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentUser = STATE.currentUser || (STATE.users || [])[0];
+
+    // 🔒 RESTRICCIÓN ESTRICTA DE VISIBILIDAD: Los docentes SOLO pueden ver sus clases asignadas
+    if (isDocente && currentUser && !isAuditRole) {
+        const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
+        const currentCourseIsMine = myClasses.some(p => p.id === courseId);
+        if (!currentCourseIsMine) {
+            const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
+            const rawQ = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
+            let qGradeNum = 0;
+            if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
+            else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
+            else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
+            const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
+
+            const matchingInGrade = myClasses.filter(p => {
+                const rawP = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
+                let pGradeNum = 0;
+                if (rawP.includes('6') || rawP.includes('SEXTO') || rawP.includes('6TO')) pGradeNum = 6;
+                else if (rawP.includes('5') || rawP.includes('QUINTO') || rawP.includes('5TO')) pGradeNum = 5;
+                else if (rawP.includes('4') || rawP.includes('CUARTO') || rawP.includes('4TO')) pGradeNum = 4;
+                const pSec = getCleanSectionLetter(p.section || p.gradeCode || rawP);
+
+                if (qGradeNum > 0 && pGradeNum > 0 && qGradeNum !== pGradeNum) return false;
+                if (qSec && pSec && qSec !== pSec) return false;
+                return true;
+            });
+
+            if (matchingInGrade.length > 0) {
+                courseId = matchingInGrade[0].id;
+                if (courseSelect) courseSelect.value = courseId;
+            } else {
+                body.innerHTML = `<tr><td colspan="${daysInMonth + 8}" style="text-align:center; padding:35px; color:#64748b; font-size:0.95rem;">
+                    <i class="fa-solid fa-lock" style="font-size:2.2rem; color:#f59e0b; display:block; margin-bottom:10px;"></i>
+                    <strong style="color:#0f172a; font-size:1.05rem; display:block; margin-bottom:4px;">Acceso Restringido</strong>
+                    Usted solo puede consultar y registrar la asistencia de las cátedras a las que está asignado(a).
+                </td></tr>`;
+                if (foot) foot.innerHTML = '';
+                if (statsSummary) statsSummary.innerHTML = '';
+                return;
+            }
+        }
+    }
 
     // --- Visibilidad por rol: selector de mes y botón Autorizar Permiso ---
     const monthContainer = document.getElementById('attendanceMonthContainer');
@@ -22438,6 +22487,18 @@ function toggleAttendanceCell(studentId, day) {
 
     const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
     const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
+    const isDocente = (currentRole === 'docente');
+
+    if (isDocente && !isAuditRole) {
+        const currentUser = STATE.currentUser || (STATE.users || [])[0];
+        const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
+        if (!myClasses.some(p => p.id === courseId)) {
+            if (typeof showToast === 'function') {
+                showToast("🔒 Acceso Restringido: Solo puede registrar asistencia de sus clases asignadas.", "warning");
+            }
+            return;
+        }
+    }
 
     const isPast = (cycleYear < todayYear) || 
                    (cycleYear === todayYear && month < todayMonth) || 
@@ -22720,6 +22781,21 @@ function markAllPresentToday() {
 
     const gradeCode = gradeSelect.value;
     const courseId = courseSelect ? courseSelect.value : 'GENERAL';
+
+    const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
+    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
+    const isDocente = (currentRole === 'docente');
+
+    if (isDocente && !isAuditRole) {
+        const currentUser = STATE.currentUser || (STATE.users || [])[0];
+        const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
+        if (!myClasses.some(p => p.id === courseId)) {
+            if (typeof showToast === 'function') {
+                showToast("🔒 Acceso Restringido: Solo puede marcar asistencia en sus cátedras asignadas.", "warning");
+            }
+            return;
+        }
+    }
 
     // 🗓️ Registrar a la fecha del día actual según la fecha en la que nos encontramos tomando asistencia
     const today = new Date();
@@ -23273,6 +23349,21 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
     const gradeText = gradeSelect && gradeSelect.selectedIndex >= 0 ? gradeSelect.options[gradeSelect.selectedIndex].text : 'Grado y Sección';
     const month = parseInt(monthSelect ? monthSelect.value : '8') || 8;
     const courseId = courseSelect ? courseSelect.value : 'GENERAL';
+
+    const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
+    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
+    const isDocente = (currentRole === 'docente');
+
+    if (isDocente && !isAuditRole) {
+        const currentUser = STATE.currentUser || (STATE.users || [])[0];
+        const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
+        if (!myClasses.some(p => p.id === courseId)) {
+            if (typeof showToast === 'function') {
+                showToast("🔒 Acceso Restringido: Solo puede imprimir la asistencia de sus cátedras asignadas.", "warning");
+            }
+            return;
+        }
+    }
     const year = 2026;
     const daysInMonth = new Date(year, month, 0).getDate();
     const dayNames = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
@@ -23502,6 +23593,21 @@ function exportAttendanceOfficialExcel() {
     const gradeText = gradeSelect && gradeSelect.selectedIndex >= 0 ? gradeSelect.options[gradeSelect.selectedIndex].text : 'Grado';
     const month = parseInt(monthSelect ? monthSelect.value : '8') || 8;
     const courseId = courseSelect ? courseSelect.value : 'GENERAL';
+
+    const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
+    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
+    const isDocente = (currentRole === 'docente');
+
+    if (isDocente && !isAuditRole) {
+        const currentUser = STATE.currentUser || (STATE.users || [])[0];
+        const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
+        if (!myClasses.some(p => p.id === courseId)) {
+            if (typeof showToast === 'function') {
+                showToast("🔒 Acceso Restringido: Solo puede exportar la asistencia de sus cátedras asignadas.", "warning");
+            }
+            return;
+        }
+    }
     const year = 2026;
     const daysInMonth = new Date(year, month, 0).getDate();
 
@@ -26547,9 +26653,6 @@ function exportStudentsOfficialCSV() {
     }
 }
 
-function exportAttendanceOfficialExcel() {
-    exportAttendanceToCSV();
-}
 
 // ==========================================================================
 // ? EXPORTACIÓN E IMPORTACIÓN OFICIAL DE CALIFICACIONES EN FORMATO EXCEL
