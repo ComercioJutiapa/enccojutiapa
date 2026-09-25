@@ -468,17 +468,8 @@
                 <a href="portal.html" class="btn btn-outline-light btn-xs" target="_blank" title="Ver Portal Web Informativo" style="color:white; border:1px solid rgba(255,255,255,0.4); border-radius:18px; padding:4px 10px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; text-decoration:none;">
                     <i class="fa-solid fa-globe"></i> Portal Web
                 </a>
-                <button type="button" class="btn btn-outline-light btn-xs" onclick="openAboutSystemModal()" title="Acerca del Sistema y Derechos de Autor" style="color:white; border:1px solid rgba(255,255,255,0.4); border-radius:18px; padding:4px 10px; font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:5px; cursor:pointer;">
-                    <i class="fa-solid fa-copyright"></i> Copyright
-                </button>
-                <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="Cambiar Tema">
+                <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="Cambiar Tema (Claro / Oscuro)">
                     <i class="fa-solid fa-moon" id="themeIcon"></i>
-                </button>
-                <button type="button" id="btnBackupBaseDatos" class="role-restricted" data-allowed="director,admin" onclick="exportDatabaseBackupJSON()" title="Descargar Respaldo JSON de la Base de Datos (1 Clic)" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; background:#0284c7; border:none; padding:7px 12px; border-radius:6px; font-size:0.75rem; color:#fff; cursor:pointer; margin-right:4px;">
-                    <i class="fa-solid fa-cloud-arrow-down"></i> Respaldo JSON
-                </button>
-                <button type="button" id="btnReinicioBaseDatos" class="reset-data-btn btn-reset-db role-restricted" data-allowed="admin" onclick="reiniciarBaseDeDatosTotal()" title="Reinicio Total de Base de Datos en Firebase (Exclusivo Administrador)">
-                    <i class="fa-solid fa-triangle-exclamation"></i> Reinicio Base de Datos
                 </button>
                 <button type="button" class="logout-btn" onclick="performLogout()" title="Cerrar Sesión">
                     <i class="fa-solid fa-right-from-bracket"></i> Cerrar Sesión
@@ -597,11 +588,6 @@
                 <a href="#" class="nav-item" data-view="carnets" data-perm="carnets" data-allowed="director,secretaria,admin" onclick="navigateTo('carnets', event)">
                     <i class="fa-solid fa-id-card"></i>
                     <span>Carnés Estudiantiles</span>
-                </a>
-                <a href="datos-sire.html" class="nav-item hidden" data-view="datos-sire" data-perm="datos-sire" data-allowed="director,secretaria,admin" onclick="navigateTo('datos-sire', event)" title="Módulo Oficial Datos para Sire MINEDUC" style="display:none !important;">
-                    <i class="fa-solid fa-cloud-arrow-up"></i>
-                    <span>Datos para Sire</span>
-                    <span class="badge" style="margin-left:auto; font-size:0.65rem; padding:2px 6px; background:#10b981; color:#fff; border-radius:4px; font-weight:700;">OFICIAL</span>
                 </a>
                 <a href="#" class="nav-item" data-view="excel-import" data-perm="excel-import" onclick="navigateTo('excel-import', event)">
                     <i class="fa-solid fa-file-excel"></i>
@@ -1307,7 +1293,7 @@
                                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="downloadStudentTemplate()"><i class="fa-solid fa-file-excel"></i> Plantilla Excel (.xlsx)</button>
                                         <input type="file" id="excelStudentInput" accept=".xlsx, .xls, .csv, .txt, .htm, .html" style="display:none;" onchange="previewStudentImport(event)">
-                                        <button type="button" class="btn btn-primary btn-sm" onclick="triggerStudentImportClick()"><i class="fa-solid fa-upload"></i> Subir Archivo</button>
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('excelStudentInput').click()"><i class="fa-solid fa-upload"></i> Subir Archivo</button>
                                     </div>
                                 </div>
 
@@ -1319,7 +1305,7 @@
                                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="downloadTeacherTemplate()"><i class="fa-solid fa-file-excel"></i> Plantilla Docentes (.xlsx)</button>
                                         <input type="file" id="excelTeacherInput" accept=".xlsx, .xls, .csv, .txt, .htm, .html" style="display:none;" onchange="importTeacherCSV(event)">
-                                        <button type="button" class="btn btn-primary btn-sm" onclick="triggerStudentImportClick()"><i class="fa-solid fa-upload"></i> Subir Archivo</button>
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('excelTeacherInput').click()"><i class="fa-solid fa-upload"></i> Subir Archivo</button>
                                     </div>
                                 </div>
 
@@ -1331,7 +1317,7 @@
                                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
                                         <button type="button" class="btn btn-outline-primary btn-sm" onclick="downloadAdminStaffTemplate()"><i class="fa-solid fa-file-excel"></i> Plantilla Admin (.xlsx)</button>
                                         <input type="file" id="excelAdminStaffInput" accept=".xlsx, .xls, .csv, .txt, .htm, .html" style="display:none;" onchange="importAdminStaffCSV(event)">
-                                        <button type="button" class="btn btn-primary btn-sm" onclick="triggerStudentImportClick()"><i class="fa-solid fa-upload"></i> Subir Archivo</button>
+                                        <button type="button" class="btn btn-primary btn-sm" onclick="document.getElementById('excelAdminStaffInput').click()"><i class="fa-solid fa-upload"></i> Subir Archivo</button>
                                     </div>
                                 </div>
                             </div>
@@ -1936,9 +1922,6 @@
                         </div>
 
                         <div class="gradebook-actions" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                            <button type="button" class="btn btn-outline-primary" onclick="openGradingConfigModal()" title="Configurar nombre y ponderación de las 10 actividades de zona">
-                                <i class="fa-solid fa-sliders"></i> Configurar Zona y Examen
-                            </button>
                             <button type="button" class="btn btn-outline-primary" onclick="exportGradebookOfficialExcel()" title="Descargar libro de Microsoft Excel (.xlsx) con formato y notas">
                                 <i class="fa-solid fa-file-excel"></i> Exportar Notas (Excel)
                             </button>
@@ -4864,7 +4847,7 @@
                             Elimina atómicamente con <code>writeBatch()</code> todas las colecciones en Firebase (notas, clases, docentes, estudiantes, pensum, exoneraciones, bimestres).
                         </span>
                     </div>
-                    <button type="button" class="btn btn-danger btn-sm" onclick="reiniciarBaseDeDatosTotal()" style="background:#dc2626; color:#ffffff; border:none; font-weight:800; padding:6px 14px; border-radius:6px; white-space:nowrap; cursor:pointer;" title="Reinicio Total de Base de Datos (Exclusivo Administrador)">
+                    <button type="button" id="btnReinicioBaseDatos" class="btn btn-danger btn-sm" onclick="reiniciarBaseDeDatosTotal()" style="background:#dc2626; color:#ffffff; border:none; font-weight:800; padding:6px 14px; border-radius:6px; white-space:nowrap; cursor:pointer;" title="Reinicio Total de Base de Datos (Exclusivo Administrador)">
                         <i class="fa-solid fa-trash-can"></i> Reiniciar Base de Datos
                     </button>
                 </div>

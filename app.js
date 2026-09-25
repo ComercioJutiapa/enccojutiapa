@@ -27010,7 +27010,7 @@ function toggleDashAlertsCard() {
 }
 
 function triggerStudentImportClick() {
-    const input = document.getElementById('studentImportFile');
+    const input = document.getElementById('excelStudentInput') || document.getElementById('studentImportFile');
     if (input) input.click();
 }
 
