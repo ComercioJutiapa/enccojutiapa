@@ -8946,6 +8946,7 @@ function navigateTo(viewName, event = null) {
     if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(viewName);
     if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
 }
+window.navigateTo = navigateTo;
 
 function renderCurrentView() {
     switch (STATE.activeView) {
@@ -34472,7 +34473,7 @@ function initSidebarGroups() {
 window.initSidebarGroups = initSidebarGroups;
 
 // Auto-expand group upon navigation
-const _origNavigateTo = window.navigateTo;
+const _origNavigateTo = window.navigateTo || (typeof navigateTo === 'function' ? navigateTo : null);
 if (typeof _origNavigateTo === 'function') {
     window.navigateTo = function(viewName, event) {
         expandGroupForView(viewName);
