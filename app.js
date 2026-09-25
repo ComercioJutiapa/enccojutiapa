@@ -1879,6 +1879,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     if (Array.isArray(STATE.announcements)) cleanPayload.announcements = STATE.announcements;
     if (Array.isArray(STATE.disciplineReports)) cleanPayload.disciplineReports = STATE.disciplineReports;
     if (Array.isArray(STATE.studentPermissions)) cleanPayload.studentPermissions = STATE.studentPermissions;
+    if (STATE.attendancePermissionsMeta && typeof STATE.attendancePermissionsMeta === 'object') cleanPayload.attendancePermissionsMeta = STATE.attendancePermissionsMeta;
     if (STATE.attendanceRecords && Object.keys(STATE.attendanceRecords).length > 0) cleanPayload.attendanceRecords = STATE.attendanceRecords;
     if (STATE.dismissedAlerts) cleanPayload.dismissedAlerts = STATE.dismissedAlerts;
     if (Array.isArray(STATE.gradeEditRequests)) cleanPayload.gradeEditRequests = STATE.gradeEditRequests;
@@ -4420,8 +4421,21 @@ function initFirebaseRealtimeConnection() {
                     } else if (cleanPath === 'studentPermissions') {
                         if (Array.isArray(nodeData)) {
                             STATE.studentPermissions = nodeData;
+                            nodeData.forEach(p => {
+                                if (typeof applyStudentPermission === 'function') applyStudentPermission(p);
+                            });
                             if (typeof renderPermissionsHistoryView === 'function' && STATE.activeView === 'permissions-history') {
                                 renderPermissionsHistoryView();
+                            }
+                            if (typeof loadAttendanceList === 'function' && STATE.activeView === 'attendance') {
+                                loadAttendanceList();
+                            }
+                        }
+                    } else if (cleanPath === 'attendancePermissionsMeta') {
+                        if (nodeData && typeof nodeData === 'object') {
+                            STATE.attendancePermissionsMeta = { ...(STATE.attendancePermissionsMeta || {}), ...nodeData };
+                            if (typeof loadAttendanceList === 'function' && STATE.activeView === 'attendance') {
+                                loadAttendanceList();
                             }
                         }
                     } else if (cleanPath === 'rolesConfig') {
@@ -6123,6 +6137,7 @@ function getInitialData() {
         announcements: [],
         disciplineReports: [],
         studentPermissions: [],
+        attendancePermissionsMeta: {},
         attendanceRecords: {},
         dismissedAlerts: {},
         schoolHeader: {
@@ -6274,6 +6289,7 @@ var STATE = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {
     announcements: [],
     disciplineReports: [],
     studentPermissions: [],
+    attendancePermissionsMeta: {},
     attendanceRecords: {},
     dismissedAlerts: {},
     gradeEditRequests: [],
@@ -8232,8 +8248,20 @@ function applyIncomingCloudState(incomingState, force = false) {
     if (Array.isArray(incomingState.disciplineReports)) STATE.disciplineReports = incomingState.disciplineReports;
     if (Array.isArray(incomingState.studentPermissions)) {
         STATE.studentPermissions = incomingState.studentPermissions;
+        incomingState.studentPermissions.forEach(p => {
+            if (typeof applyStudentPermission === 'function') applyStudentPermission(p);
+        });
         if (STATE.activeView === 'permissions-history' && typeof renderPermissionsHistoryView === 'function') {
             renderPermissionsHistoryView();
+        }
+        if (STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') {
+            loadAttendanceList();
+        }
+    }
+    if (incomingState.attendancePermissionsMeta && typeof incomingState.attendancePermissionsMeta === 'object') {
+        STATE.attendancePermissionsMeta = { ...(STATE.attendancePermissionsMeta || {}), ...incomingState.attendancePermissionsMeta };
+        if (STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') {
+            loadAttendanceList();
         }
     }
 
@@ -8420,6 +8448,7 @@ function saveStateRecursively(options = { syncCloud: false, isAutoSave: false })
             announcements: recursiveDeepClone(STATE.announcements || []),
             disciplineReports: recursiveDeepClone(STATE.disciplineReports || []),
             studentPermissions: recursiveDeepClone(STATE.studentPermissions || []),
+            attendancePermissionsMeta: recursiveDeepClone(STATE.attendancePermissionsMeta || {}),
             attendanceRecords: recursiveDeepClone(STATE.attendanceRecords || {}),
             dismissedAlerts: recursiveDeepClone(STATE.dismissedAlerts || {}),
             rolesConfig: recursiveDeepClone(STATE.rolesConfig || (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : [])),
@@ -21948,6 +21977,46 @@ function getAttendanceRecordKey(gradeCode, month, courseId) {
     return `${cycleKey}_M${month}_${gradeCode}`;
 }
 
+function getStudentPermissionForDay(studentId, year, month, day) {
+    if (!studentId) return null;
+    const y = parseInt(year) || 2026;
+    const m = parseInt(month);
+    const d = parseInt(day);
+    const targetDateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    
+    // 1. Buscar en lista de permisos oficiales de STATE.studentPermissions
+    if (Array.isArray(STATE.studentPermissions)) {
+        const found = STATE.studentPermissions.find(p => {
+            if (!p || p.studentId !== studentId) return false;
+            if (p.status && p.status !== 'Autorizado' && p.status !== 'justificada') return false;
+            const start = p.startDate;
+            const end = p.endDate || p.startDate;
+            if (!start) return false;
+            return targetDateStr >= start && targetDateStr <= end;
+        });
+        if (found) {
+            return {
+                permissionId: found.id,
+                reasonCategory: found.reasonCategory || 'Permiso Oficial',
+                reasonDetail: found.reasonDetail || 'Permiso autorizado por Auxiliatura',
+                docRef: found.docRef || '',
+                authorizedBy: found.authorizedBy || 'Auxiliatura',
+                authorizedById: found.authorizedById || 'auxiliar',
+                date: targetDateStr,
+                studentName: found.studentName || ''
+            };
+        }
+    }
+    
+    // 2. Buscar en metadata indexada rápida
+    const metaKey = `${studentId}_${m}_${d}`;
+    if (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]) {
+        return STATE.attendancePermissionsMeta[metaKey];
+    }
+    return null;
+}
+window.getStudentPermissionForDay = getStudentPermissionForDay;
+
 function loadAttendanceList() {
     const gradeSelect = document.getElementById('attendanceGradeSelect');
     const monthSelect = document.getElementById('attendanceMonthSelect');
@@ -21972,6 +22041,7 @@ function loadAttendanceList() {
     const today = new Date();
     const todayDay = today.getDate();
     const todayMonth = today.getMonth() + 1;
+    const todayYear = today.getFullYear();
     if (monthSelect) {
         if (!monthSelect.value || !STATE.attendanceSelectedMonth) {
             monthSelect.value = String(todayMonth);
@@ -22138,10 +22208,9 @@ function loadAttendanceList() {
                 let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : '';
 
                 // Verificar si existe permiso oficial autorizado por Auxiliatura / Dirección
-                const permKey = `${s.id}_${month}_${day}`;
-                const permMeta = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[permKey]) ? STATE.attendancePermissionsMeta[permKey] : null;
+                const permMeta = getStudentPermissionForDay(s.id, year, month, day);
 
-                if (permMeta && (!val || val === 'J')) {
+                if (permMeta) {
                     val = 'J';
                 }
 
@@ -22162,6 +22231,10 @@ function loadAttendanceList() {
                     if (permMeta) {
                         cellClass = 'att-val-j att-val-J att-val-permiso';
                         cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO (📋 PERMISO OFICIAL DE AUXILIATURA: ${permMeta.reasonCategory} — "${permMeta.reasonDetail}" | Autorizado por: ${permMeta.authorizedBy})`;
+                        if (!isAuditRole) {
+                            cellClass += ' att-cell-locked';
+                            cellTitle += ' (🔒 Permiso Oficial Autorizado por Auxiliatura — No modificable por docentes)';
+                        }
                     } else {
                         cellClass = 'att-val-j att-val-J';
                         cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO`;
@@ -22399,10 +22472,18 @@ function toggleAttendanceCell(studentId, day) {
 
     const cur = STATE.attendanceRecords[recordKey][studentId][day] || '';
 
-    // Protección de Permiso Oficial de Auxiliatura / Dirección
-    const permKey = `${studentId}_${month}_${day}`;
-    const permMeta = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[permKey]) ? STATE.attendancePermissionsMeta[permKey] : null;
-    if (permMeta && (cur === 'J' || !cur)) {
+    // 🛡️ Blindaje Estricto de Permiso Oficial de Auxiliatura: Los docentes NO pueden modificarlo
+    const permMeta = (typeof getStudentPermissionForDay === 'function')
+        ? getStudentPermissionForDay(studentId, cycleYear, month, day)
+        : ((STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[`${studentId}_${month}_${day}`]) || null);
+
+    if (permMeta) {
+        if (!isAuditRole) {
+            if (typeof showToast === 'function') {
+                showToast(`🔒 Permiso Oficial de Auxiliatura Protegido: ${permMeta.studentName || 'El estudiante'} cuenta con un permiso de ausencia autorizado por Auxiliatura (${permMeta.reasonCategory || 'Oficial'}). No puede ser modificado por docentes.`, 'warning', 6000);
+            }
+            return;
+        }
         const confirmChange = confirm(`📋 AVISO OFICIAL DE AUXILIATURA:\n\nEl estudiante tiene un PERMISO DE AUSENCIA AUTORIZADO:\n• Motivo: ${permMeta.reasonCategory}\n• Justificación: "${permMeta.reasonDetail}"\n• Autorizado por: ${permMeta.authorizedBy}\n\n¿Está seguro de que desea alterar manualmente esta asistencia justificada?`);
         if (!confirmChange) {
             return;
@@ -22670,8 +22751,12 @@ function markAllPresentToday() {
         if (!STATE.attendanceRecords[recordKey][s.id]) STATE.attendanceRecords[recordKey][s.id] = {};
         
         // 🛡️ Regla de oro: No sobrescribir alumnos con permiso oficial justificado 'J' de Auxiliatura
+        const hasPermit = (typeof getStudentPermissionForDay === 'function')
+            ? !!getStudentPermissionForDay(s.id, today.getFullYear(), todayMonth, todayDay)
+            : false;
         const currentVal = STATE.attendanceRecords[recordKey][s.id][todayDay];
-        if (currentVal === 'J') {
+        if (currentVal === 'J' || hasPermit) {
+            STATE.attendanceRecords[recordKey][s.id][todayDay] = 'J';
             preservedJustifiedCount++;
             return;
         }
@@ -29977,6 +30062,8 @@ function applyUserRole(role = STATE.currentRole) {
         let hasAccess = false;
         if (isSuper) {
             hasAccess = true;
+        } else if (el.dataset.allowed === '*' || el.getAttribute('data-allowed') === '*') {
+            hasAccess = true;
         } else if (permKey) {
             hasAccess = hasRolePermission(permKey, role);
         } else if (targetView) {
@@ -32454,6 +32541,9 @@ function playAlertChime() {
     try {
         const ctx = getUnlockedAudioContext();
         if (!ctx) return;
+        if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+        }
 
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
