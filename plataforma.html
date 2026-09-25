@@ -678,19 +678,15 @@
                     </div>
                 </div>
 
-                <!-- GRUPO: BECAS — Nuevo módulo becados -->
-                <div class="nav-group" id="navGroup-scholarships">
+                <!-- GRUPO: BECAS — Inscripción y Registro de Becas (Dirección, Secretaría y Auxiliatura) -->
+                <div class="nav-group" id="navGroup-scholarships" data-allowed="director,direccion,secretaria,admin,super_usuario,profesor_auxiliar,auxiliar,auxiliatura">
                     <div class="nav-group-header" onclick="toggleNavGroup('navGroup-scholarships')">
                         <div class="nav-section-label nav-group-title" style="display:block !important; color:#38bdf8 !important; font-size:0.68rem; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;" data-perm="scholarships">BECAS</div>
                         <i class="fa-solid fa-chevron-down nav-group-arrow"></i>
                     </div>
                     <div class="nav-group-items">
-                        <a href="#" class="nav-item" data-view="scholarships" data-perm="scholarships" data-allowed="director,secretaria,admin" onclick="navigateTo('scholarships', event)">
-                            <i class="fa-solid fa-hand-holding-heart"></i>
-                            <span>Alumnos Becados</span>
-                        </a>
-                        <a href="#" class="nav-item" data-view="scholarships" data-perm="scholarships" data-allowed="director,secretaria,admin" onclick="openScholarshipEnrollmentFromSidebar(event)">
-                            <i class="fa-solid fa-user-plus"></i>
+                        <a href="#" class="nav-item" data-view="scholarships" data-perm="scholarships" data-allowed="director,direccion,secretaria,admin,super_usuario,profesor_auxiliar,auxiliar,auxiliatura" onclick="navigateTo('scholarships', event)">
+                            <i class="fa-solid fa-graduation-cap"></i>
                             <span>Inscripción de Becas</span>
                         </a>
                     </div>
@@ -826,7 +822,15 @@
                     </div>
                 </div>
             </div>
-</section>
+            <div class="modal-footer" style="border-top:1px solid #334155; padding:10px 16px;">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveScholarship()" style="font-weight:700;">
+                    <i class="fa-solid fa-save"></i> Guardar Beca
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
                 <!-- 2A. VENTANA OFICIAL DE INSCRIPCIÓN DE ALUMNOS (DIRECCIÓN, SECRETARÍA Y ADMIN) -->
                 <section class="app-view" id="view-enrollment">
@@ -5694,17 +5698,6 @@
         </div>
     </div>
 </section>
-
-
-            <div class="modal-footer" style="border-top:1px solid #334155; padding:10px 16px;">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary btn-sm" onclick="saveScholarship()" style="font-weight:700;">
-                    <i class="fa-solid fa-save"></i> Guardar Beca
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 
 </body>
 </html>

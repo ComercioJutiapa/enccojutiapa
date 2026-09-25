@@ -10,7 +10,23 @@
 let _scholarshipsCache = [];
 let _scholarshipsEditingId = null;
 
+function isScholarshipsAuthorized() {
+    const allowed = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+    const currentRole = ((window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || '').toLowerCase();
+    return allowed.includes(currentRole);
+}
+
 async function loadScholarshipsView() {
+    if (!isScholarshipsAuthorized()) {
+        if (typeof showToast === 'function') {
+            showToast('Acceso Restringido: El registro de Becas es exclusivo de Dirección, Secretaría y Auxiliatura.', 'error');
+        }
+        if (typeof navigateTo === 'function') {
+            navigateTo('dashboard');
+        }
+        return;
+    }
+
     const container = document.getElementById('view-scholarships');
     if (!container) return;
 
@@ -348,6 +364,12 @@ function filterScholarshipsView() {
 window.filterScholarshipsView = filterScholarshipsView;
 
 function openRegisterScholarshipModal(editId = null) {
+    if (!isScholarshipsAuthorized()) {
+        if (typeof showToast === 'function') {
+            showToast('Acceso Denegado: Su rol no tiene autorización para inscribir o editar becas.', 'error');
+        }
+        return;
+    }
     _scholarshipsEditingId = editId;
 
     const studentSelect = document.getElementById('scholarshipStudentSelect');
@@ -421,6 +443,10 @@ window.openScholarshipEnrollmentFromSidebar = openScholarshipEnrollmentFromSideb
 window.openRegisterScholarshipModal = openRegisterScholarshipModal;
 
 async function saveScholarship() {
+    if (!isScholarshipsAuthorized()) {
+        showToast('Acceso Denegado: Su rol no tiene autorización para guardar becas.', 'error');
+        return;
+    }
     const studentSelect = document.getElementById('scholarshipStudentSelect');
     if (!studentSelect || !studentSelect.value) {
         showToast('Seleccione un estudiante.', 'warning');
@@ -500,6 +526,10 @@ function editScholarship(id) {
 window.editScholarship = editScholarship;
 
 async function deleteScholarship(id) {
+    if (!isScholarshipsAuthorized()) {
+        showToast('Acceso Denegado: Su rol no tiene autorización para eliminar becas.', 'error');
+        return;
+    }
     if (!confirm('¿Está seguro de eliminar esta asignación de beca?')) return;
 
     const item = _scholarshipsCache.find(s => s.id === id);

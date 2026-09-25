@@ -46,20 +46,24 @@ assert(js.includes("testKey === 'scholarships'"), 'hasRolePermission debe valida
 assert(js.includes("case 'scholarships':"), 'renderCurrentView debe rutear scholarships');
 assert(js.includes("'scholarships': { title:"), 'navigateTo debe tener títulos para scholarships');
 
-// Evaluar permisos de roles
+// Evaluar permisos de roles (Dirección, Secretaría y Auxiliatura autorizados, Docentes bloqueados)
 function checkRole(role) {
-    const allowed = ['director', 'secretaria', 'admin', 'super_usuario'];
+    const allowed = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
     return allowed.includes(role);
 }
 
 assert.strictEqual(checkRole('director'), true, 'Director debe tener acceso');
+assert.strictEqual(checkRole('direccion'), true, 'Dirección debe tener acceso');
 assert.strictEqual(checkRole('secretaria'), true, 'Secretaría debe tener acceso');
+assert.strictEqual(checkRole('profesor_auxiliar'), true, 'Auxiliar debe tener acceso');
+assert.strictEqual(checkRole('auxiliar'), true, 'Auxiliar debe tener acceso');
+assert.strictEqual(checkRole('auxiliatura'), true, 'Auxiliatura debe tener acceso');
 assert.strictEqual(checkRole('admin'), true, 'Admin debe tener acceso');
 assert.strictEqual(checkRole('super_usuario'), true, 'Super usuario debe tener acceso');
 assert.strictEqual(checkRole('docente'), false, 'Docente NO debe tener acceso');
-assert.strictEqual(checkRole('profesor_auxiliar'), false, 'Auxiliar NO debe tener acceso');
 assert.strictEqual(checkRole('estudiante'), false, 'Estudiante NO debe tener acceso');
-console.log('  ✅ Test 4 Superado: Blindaje RBAC estricto verificado (docente bloqueado, directivos habilitados).');
+assert.strictEqual(checkRole('padre'), false, 'Padre NO debe tener acceso');
+console.log('  ✅ Test 4 Superado: Blindaje RBAC estricto verificado (Dirección, Secretaría y Auxiliatura habilitados; Docentes bloqueados).');
 
 // 5. Funciones en app.js
 console.log('\n▶ [TEST 5] Verificando funciones clave en app.js...');

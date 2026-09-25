@@ -1339,9 +1339,9 @@ function hasRolePermission(permKey, role = null) {
         return true;
     }
 
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Alumnos Becados y Bolsas de Estudio" solo Dirección, Secretaría, Admin
+    // 🛡️ BLINDAJE RBAC ESTRICTO: "Alumnos Becados y Bolsas de Estudio" solo Dirección, Secretaría, Auxiliatura, Admin
     if (testKey === 'scholarships') {
-        const allowedScholarships = ['director', 'secretaria', 'admin', 'super_usuario'];
+        const allowedScholarships = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
         return allowedScholarships.includes(targetRole);
     }
 
@@ -8841,6 +8841,20 @@ function navigateTo(viewName, event = null) {
                 alert('Acceso Restringido: El módulo "Datos para Sire" es exclusivo de Dirección y Secretaría.');
             }
             return;
+        }
+    }
+
+    // 🛡️ Restricción estricta de navegación: "Inscripción de Becas" solo Dirección, Secretaría y Auxiliatura (Docentes bloqueados)
+    if (viewName === 'scholarships') {
+        const allowedScholarships = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+        const currentRole = ((window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || '').toLowerCase();
+        if (!allowedScholarships.includes(currentRole)) {
+            if (typeof showToast === 'function') {
+                showToast('Acceso Restringido: El registro de Becas es exclusivo de Dirección, Secretaría y Auxiliatura.', 'error');
+            } else {
+                alert('Acceso Restringido: El registro de Becas es exclusivo de Dirección, Secretaría y Auxiliatura.');
+            }
+            viewName = 'dashboard';
         }
     }
 
