@@ -35373,6 +35373,15 @@ window.printScholarshipsReport = printScholarshipsReport;
 // UTILIDAD DE RESPALDO Y PRESERVACIÓN DE BASE DE DATOS EN FORMATO JSON
 // ==========================================================================
 async function exportDatabaseBackupJSON() {
+    const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
+    const isDirectorOrAdmin = ['director', 'admin', 'super_usuario'].includes(currentRole);
+    if (!isDirectorOrAdmin) {
+        if (typeof showToast === 'function') {
+            showToast('Acceso restringido: La copia de seguridad es exclusiva para Dirección.', 'danger');
+        }
+        return;
+    }
+
     if (typeof showToast === 'function') {
         showToast('Generando copia de seguridad completa de la base de datos...', 'info');
     }

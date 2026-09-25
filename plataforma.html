@@ -166,7 +166,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="styles.css?v=20260924_v231_db_backup_indexes">
+    <link rel="stylesheet" href="styles.css?v=20260924_v232_backup_director_only">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -462,7 +462,7 @@
                 <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="Cambiar Tema">
                     <i class="fa-solid fa-moon" id="themeIcon"></i>
                 </button>
-                <button type="button" id="btnBackupBaseDatos" class="role-restricted" data-allowed="admin,director,secretaria" onclick="exportDatabaseBackupJSON()" title="Descargar Respaldo JSON de la Base de Datos (1 Clic)" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; background:#0284c7; border:none; padding:7px 12px; border-radius:6px; font-size:0.75rem; color:#fff; cursor:pointer; margin-right:4px;">
+                <button type="button" id="btnBackupBaseDatos" class="role-restricted" data-allowed="director,admin" onclick="exportDatabaseBackupJSON()" title="Descargar Respaldo JSON de la Base de Datos (1 Clic)" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; background:#0284c7; border:none; padding:7px 12px; border-radius:6px; font-size:0.75rem; color:#fff; cursor:pointer; margin-right:4px;">
                     <i class="fa-solid fa-cloud-arrow-down"></i> Respaldo JSON
                 </button>
                 <button type="button" id="btnReinicioBaseDatos" class="reset-data-btn btn-reset-db role-restricted" data-allowed="admin" onclick="reiniciarBaseDeDatosTotal()" title="Reinicio Total de Base de Datos en Firebase (Exclusivo Administrador)">
@@ -4911,7 +4911,7 @@
                 </div>
 
                 <!-- RESPALDO OFICIAL DE BASE DE DATOS (RECOMENDADO) -->
-                <div style="margin-bottom:14px; padding:12px 14px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div class="role-restricted" data-allowed="director,admin" style="margin-bottom:14px; padding:12px 14px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
                     <div>
                         <strong style="color:#166534; font-size:0.85rem; display:flex; align-items:center; gap:6px;">
                             <i class="fa-solid fa-cloud-arrow-down"></i> Respaldo Preventivo en Formato JSON
@@ -5010,7 +5010,7 @@
     <script src="db.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="ui.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="sire.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
-    <script src="app.js?v=20260924_v231_db_backup_indexes" charset="UTF-8"></script>
+    <script src="app.js?v=20260924_v232_backup_director_only" charset="UTF-8"></script>
     <script src="analytics.js?v=2026.09.21.v225_analytics_and_carnets" charset="UTF-8"></script>
     <script src="qrcode.min.js" charset="UTF-8"></script>
     <script src="carnets.js?v=2026.09.21.v226_carnets_horizontal_vertical" charset="UTF-8"></script>
