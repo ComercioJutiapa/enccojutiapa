@@ -645,7 +645,7 @@
                             <i class="fa-solid fa-clipboard-list"></i>
                             <span>Historial de Permisos</span>
                         </a>
-                        <a href="#" class="nav-item" data-view="discipline" data-perm="discipline" onclick="navigateTo('discipline', event)">
+                        <a href="#" class="nav-item" data-view="discipline" data-perm="discipline" data-allowed="*" onclick="navigateTo('discipline', event)">
                             <i class="fa-solid fa-triangle-exclamation"></i>
                             <span>Reportes de Conducta</span>
                         </a>
@@ -2585,10 +2585,10 @@
                     <div class="section-toolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
                         <h3 style="margin:0;">Reportes y Llamadas de Atención Disciplinarias</h3>
                         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                            <button type="button" class="btn btn-warning" onclick="openCreatePermissionModal()" style="font-weight:700; background:#f59e0b; border-color:#d97706; color:#ffffff; display:inline-flex; align-items:center; gap:6px;">
+                            <button type="button" id="btnAuthPermDisciplineView" class="btn btn-warning" onclick="openCreatePermissionModal()" style="font-weight:700; background:#f59e0b; border-color:#d97706; color:#ffffff; display:inline-flex; align-items:center; gap:6px;">
                                 <i class="fa-solid fa-file-signature"></i> Autorizar Permiso de Ausencia
                             </button>
-                            <button type="button" class="btn btn-primary" onclick="openDisciplineModal()">
+                            <button type="button" id="btnNewDisciplineReport" class="btn btn-primary" onclick="openDisciplineModal()">
                                 <i class="fa-solid fa-plus"></i> Nueva Llamada de Atención
                             </button>
                         </div>

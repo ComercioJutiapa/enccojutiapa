@@ -1202,6 +1202,7 @@ function normalizePermKey(key) {
     if (k === 'carnets' || k === 'carne' || k === 'carnet' || k === 'credenciales') return 'carnets';
     if (k === 'exoneraciones' || k === 'exoneraciones_log' || k === 'exoneraciones-log' || k === 'exoneracion') return 'exoneraciones-log';
     if (k === 'permisos' || k === 'permissions' || k === 'permissions-history' || k === 'permissions_history' || k === 'permisos-history' || k === 'permisos_history') return 'permissions-history';
+    if (k === 'disciplina' || k === 'discipline' || k === 'conducta' || k === 'discipline-report' || k === 'discipline_report' || k === 'reportes-conducta' || k === 'reportes_conducta' || k === 'discipline_view') return 'discipline';
     return k;
 }
 
@@ -1224,6 +1225,14 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
         const allowedManagers = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
         if (allowedManagers.includes(roleKey)) return 'edit';
         return 'view'; // Docentes y cualquier usuario autenticado tienen consulta libre
+    }
+
+    // 🛡️ ACCESO UNIVERSAL CON RESTRICCIÓN DE MODIFICACIÓN: "Reportes de Conducta y Disciplina"
+    if (key === 'discipline') {
+        const allowedManagers = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+        if (allowedManagers.includes(roleKey)) return 'edit';
+        if (roleKey === 'docente') return 'edit'; // Docentes pueden registrar incidencias y llamadas de atención
+        return 'view'; // Estudiantes, padres y cualquier usuario autenticado tienen consulta libre
     }
 
     // 🛡️ BLINDAJE RBAC ESTRICTO: "Datos para Sire" exclusivo para Dirección, Secretaría y Admin
@@ -1322,6 +1331,11 @@ function hasRolePermission(permKey, role = null) {
 
     // 🛡️ ACCESO UNIVERSAL: "Historial de Permisos de Ausencia" (Visible para consulta por todos los usuarios)
     if (testKey === 'permissions-history') {
+        return true;
+    }
+
+    // 🛡️ ACCESO UNIVERSAL: "Reportes de Conducta y Disciplina" (Visible para consulta por todos los usuarios)
+    if (testKey === 'discipline') {
         return true;
     }
 
@@ -1864,6 +1878,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     if (Array.isArray(STATE.pensum) && STATE.pensum.length > 0) cleanPayload.pensum = STATE.pensum;
     if (Array.isArray(STATE.announcements)) cleanPayload.announcements = STATE.announcements;
     if (Array.isArray(STATE.disciplineReports)) cleanPayload.disciplineReports = STATE.disciplineReports;
+    if (Array.isArray(STATE.studentPermissions)) cleanPayload.studentPermissions = STATE.studentPermissions;
     if (STATE.attendanceRecords && Object.keys(STATE.attendanceRecords).length > 0) cleanPayload.attendanceRecords = STATE.attendanceRecords;
     if (STATE.dismissedAlerts) cleanPayload.dismissedAlerts = STATE.dismissedAlerts;
     if (Array.isArray(STATE.gradeEditRequests)) cleanPayload.gradeEditRequests = STATE.gradeEditRequests;
@@ -2478,7 +2493,7 @@ function initDefaultRolesConfig() {
             description: 'Consulta de calificaciones, boleta de notas y asistencia personal',
             color: '#6366f1',
             isSystem: true,
-            permissions: ['dashboard', 'guide-teachers', 'honor-roll']
+            permissions: ['dashboard', 'guide-teachers', 'honor-roll', 'exoneraciones-log', 'permissions-history', 'discipline']
         }
     ];
 }
@@ -4402,6 +4417,13 @@ function initFirebaseRealtimeConnection() {
                             STATE.disciplineReports = nodeData;
                             if (typeof renderDisciplineTable === 'function') renderDisciplineTable();
                         }
+                    } else if (cleanPath === 'studentPermissions') {
+                        if (Array.isArray(nodeData)) {
+                            STATE.studentPermissions = nodeData;
+                            if (typeof renderPermissionsHistoryView === 'function' && STATE.activeView === 'permissions-history') {
+                                renderPermissionsHistoryView();
+                            }
+                        }
                     } else if (cleanPath === 'rolesConfig') {
                         if (Array.isArray(nodeData) && nodeData.length > 0) {
                             if (!Array.isArray(STATE.rolesConfig) || STATE.rolesConfig.length === 0) {
@@ -6100,6 +6122,7 @@ function getInitialData() {
         pensum: [],
         announcements: [],
         disciplineReports: [],
+        studentPermissions: [],
         attendanceRecords: {},
         dismissedAlerts: {},
         schoolHeader: {
@@ -6250,6 +6273,7 @@ var STATE = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {
     pensum: [],
     announcements: [],
     disciplineReports: [],
+    studentPermissions: [],
     attendanceRecords: {},
     dismissedAlerts: {},
     gradeEditRequests: [],
@@ -8206,6 +8230,12 @@ function applyIncomingCloudState(incomingState, force = false) {
         if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
     }
     if (Array.isArray(incomingState.disciplineReports)) STATE.disciplineReports = incomingState.disciplineReports;
+    if (Array.isArray(incomingState.studentPermissions)) {
+        STATE.studentPermissions = incomingState.studentPermissions;
+        if (STATE.activeView === 'permissions-history' && typeof renderPermissionsHistoryView === 'function') {
+            renderPermissionsHistoryView();
+        }
+    }
 
     // 5b. Solicitudes de Habilitación de Edición de Notas (Bimestres Cerrados)
     if (Array.isArray(incomingState.gradeEditRequests)) {
@@ -8389,6 +8419,7 @@ function saveStateRecursively(options = { syncCloud: false, isAutoSave: false })
             pensum: recursiveDeepClone(STATE.pensum || []),
             announcements: recursiveDeepClone(STATE.announcements || []),
             disciplineReports: recursiveDeepClone(STATE.disciplineReports || []),
+            studentPermissions: recursiveDeepClone(STATE.studentPermissions || []),
             attendanceRecords: recursiveDeepClone(STATE.attendanceRecords || {}),
             dismissedAlerts: recursiveDeepClone(STATE.dismissedAlerts || {}),
             rolesConfig: recursiveDeepClone(STATE.rolesConfig || (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : [])),
@@ -25136,7 +25167,8 @@ function openDisciplineResolutionModal(reportId) {
     const currentRole = STATE.currentRole || (STATE.currentUser ? STATE.currentUser.role : 'docente');
     const isDirector = checkDisciplineDirectorPermission();
     const isAuxiliar = currentRole === 'profesor_auxiliar';
-    const isDocente = currentRole === 'docente' || (!isDirector && !isAuxiliar);
+    const isStudent = currentRole === 'estudiante';
+    const isDocente = !isDirector && !isAuxiliar && !isStudent;
 
     const idInput = document.getElementById('discResModalReportId');
     const nameEl = document.getElementById('discResModalStudentName');
@@ -25211,13 +25243,15 @@ function openDisciplineResolutionModal(reportId) {
     const isResolvedAndLocked = (rep.status === 'Resuelto' || rep.isLocked === true) && Boolean(rep.resolution);
 
     // GESTIÓN DE PRIVILEGIOS Y ESTADOS
-    if (isDocente) {
-        // --- 1. DOCENTE: Consulta de solo lectura sin posibilidad de modificar ---
+    if (isStudent || isDocente) {
+        // --- 1. DOCENTE / ESTUDIANTE: Consulta de solo lectura sin posibilidad de modificar ---
         if (securityBanner) {
             securityBanner.style.background = '#eff6ff';
             securityBanner.style.border = '1px solid #bfdbfe';
             securityBanner.style.color = '#1e40af';
-            securityBanner.innerHTML = '<i class="fa-solid fa-lock" style="font-size:1.1rem; color:#2563eb;"></i> <span><strong>Consulta de Dictamen Oficial:</strong> Como catedrático puede revisar la resolución y medidas disciplinarias aplicadas. Por normativa institucional, los dictámenes no pueden ser modificados por docentes.</span>';
+            securityBanner.innerHTML = isStudent
+                ? '<i class="fa-solid fa-circle-info" style="font-size:1.1rem; color:#2563eb;"></i> <span><strong>Consulta de Dictamen Oficial:</strong> Vista informativa de solo lectura para el estudiante y tutores.</span>'
+                : '<i class="fa-solid fa-lock" style="font-size:1.1rem; color:#2563eb;"></i> <span><strong>Consulta de Dictamen Oficial:</strong> Como catedrático puede revisar la resolución y medidas disciplinarias aplicadas. Por normativa institucional, los dictámenes no pueden ser modificados por docentes.</span>';
         }
         if (actionSelect) { actionSelect.disabled = true; actionSelect.style.backgroundColor = '#f8fafc'; }
         if (statusSelect) { statusSelect.disabled = true; statusSelect.style.backgroundColor = '#f8fafc'; }
@@ -25506,11 +25540,26 @@ function renderDisciplineTable() {
     const tbody = document.getElementById('disciplineTableBody');
     if (!tbody) return;
 
-    let list = STATE.disciplineReports || [];
+    let list = (Array.isArray(STATE.disciplineReports) && STATE.disciplineReports.length > 0)
+        ? STATE.disciplineReports
+        : (STATE.discipline || []);
+
     const currentRole = STATE.currentRole || (STATE.currentUser ? STATE.currentUser.role : 'docente');
     const isDirector = checkDisciplineDirectorPermission();
     const isAuxiliar = currentRole === 'profesor_auxiliar';
-    const isDocente = currentRole === 'docente' || (!isDirector && !isAuxiliar);
+    const isStudent = currentRole === 'estudiante';
+    const isDocente = !isDirector && !isAuxiliar && !isStudent;
+
+    // Control de visibilidad de botones superiores de la vista
+    const btnNew = document.getElementById('btnNewDisciplineReport');
+    if (btnNew) {
+        btnNew.style.display = (currentRole !== 'estudiante') ? '' : 'none';
+    }
+    const btnAuthPerm = document.getElementById('btnAuthPermDisciplineView');
+    if (btnAuthPerm) {
+        const canAuthPerm = isDirector || isAuxiliar || ['admin', 'direccion', 'secretaria', 'profesor_auxiliar'].includes(currentRole);
+        btnAuthPerm.style.display = canAuthPerm ? '' : 'none';
+    }
 
     if (list.length === 0) {
         tbody.innerHTML = `
@@ -25556,7 +25605,20 @@ function renderDisciplineTable() {
 
         // Acciones según rol del usuario
         let actionButtonsHtml = '';
-        if (isDocente) {
+        if (isStudent) {
+            // Estudiante: Solo puede consultar el dictamen de forma transparente y segura
+            if (d.resolution) {
+                actionButtonsHtml = `
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="openDisciplineResolutionModal('${d.id}')" title="Consultar dictamen oficial (Solo Lectura)" style="padding:4px 9px; font-weight:700;">
+                        <i class="fa-solid fa-eye"></i> Ver Dictamen
+                    </button>
+                `;
+            } else {
+                actionButtonsHtml = `
+                    <span class="badge" style="background:#64748b; color:#fff; font-size:0.75rem; padding:5px 8px;"><i class="fa-solid fa-clock"></i> Pendiente</span>
+                `;
+            }
+        } else if (isDocente) {
             // Catedrático: Solo puede consultar la resolución sin modificarla
             if (d.resolution) {
                 actionButtonsHtml = `
