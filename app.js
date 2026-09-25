@@ -1339,11 +1339,6 @@ function hasRolePermission(permKey, role = null) {
         return true;
     }
 
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Alumnos Becados y Bolsas de Estudio" solo Dirección, Secretaría, Auxiliatura, Admin
-    if (testKey === 'scholarships') {
-        const allowedScholarships = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
-        return allowedScholarships.includes(targetRole);
-    }
 
     try {
         const rawKey = String(permKey).trim();
@@ -8848,19 +8843,6 @@ function navigateTo(viewName, event = null) {
         }
     }
 
-    // 🛡️ Restricción estricta de navegación: "Inscripción de Becas" solo Dirección, Secretaría y Auxiliatura (Docentes bloqueados)
-    if (viewName === 'scholarships') {
-        const allowedScholarships = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
-        const currentRole = ((window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || '').toLowerCase();
-        if (!allowedScholarships.includes(currentRole)) {
-            if (typeof showToast === 'function') {
-                showToast('Acceso Restringido: El registro de Becas es exclusivo de Dirección, Secretaría y Auxiliatura.', 'error');
-            } else {
-                alert('Acceso Restringido: El registro de Becas es exclusivo de Dirección, Secretaría y Auxiliatura.');
-            }
-            viewName = 'dashboard';
-        }
-    }
 
     // Si no tiene acceso al editor de grados pero sí tiene permiso a maestros guías, redirigir al directorio
     if (viewName === 'grades' && !hasRolePermission('grades', STATE.currentRole)) {
@@ -8935,7 +8917,6 @@ function navigateTo(viewName, event = null) {
         'auxiliatura-log': { title: 'Bitácora Diaria de Ausencias y Alertas Escolares', sub: 'Monitoreo en tiempo real de inasistencias en aula, avisos a padres y verificación de auxiliatura' },
         'exoneraciones-log': { title: 'Libro de Registro Oficial de Exoneraciones Académicas', sub: 'Archivo central de alumnos con consideraciones especiales, dispensas y resoluciones ministeriales' },
         'permissions-history': { title: 'Libro de Registro Oficial de Permisos de Ausencia', sub: 'Archivo central de justificaciones de inasistencia, pases de salida y licencias emitidas por Auxiliatura' },
-        'scholarships': { title: 'Alumnos Becados y Bolsas de Estudio', sub: 'Registro y estadísticas de estudiantes beneficiados por grado y sección' },
     };
     const t = titles[viewName];
     if (t) {
@@ -8974,7 +8955,6 @@ function renderCurrentView() {
         case 'auxiliatura-log': if (typeof renderAuxiliaturaLogView === 'function') renderAuxiliaturaLogView(); break;
         case 'exoneraciones-log': if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView(); break;
         case 'permissions-history': if (typeof renderPermissionsHistoryView === 'function') renderPermissionsHistoryView(); break;
-        case 'scholarships': if (typeof loadScholarshipsView === 'function') loadScholarshipsView(); break;
     }
 }
 
@@ -34485,12 +34465,6 @@ if (document.readyState === 'loading') {
 }
 
 // ==========================================================================
-// MÓDULO: ALUMNOS BECADOS Y BOLSAS DE ESTUDIO (CRUD + ESTADÍSTICAS)
-// Extraído de manera modular y mantenible en scholarships.js
-// ==========================================================================
-
-
-// ==========================================================================
 // UTILIDAD DE RESPALDO Y PRESERVACIÓN DE BASE DE DATOS EN FORMATO JSON
 // ==========================================================================
 async function exportDatabaseBackupJSON() {
@@ -34517,7 +34491,6 @@ async function exportDatabaseBackupJSON() {
                 activeCycleKey: STATE.activeCycleKey || (new Date().getFullYear().toString())
             },
             encc_school_state: null,
-            scholarships: null,
             exoneraciones: null,
             permissions: null,
             localCacheSummary: {
@@ -34530,15 +34503,13 @@ async function exportDatabaseBackupJSON() {
 
         if (typeof firebase !== 'undefined' && firebase.database) {
             const db = firebase.database();
-            const [stateSnap, schSnap, exonSnap, permSnap] = await Promise.all([
+            const [stateSnap, exonSnap, permSnap] = await Promise.all([
                 db.ref('encc_school_state').once('value').catch(() => null),
-                db.ref('scholarships').once('value').catch(() => null),
                 db.ref('exoneraciones').once('value').catch(() => null),
                 db.ref('permissions').once('value').catch(() => null)
             ]);
 
             if (stateSnap && stateSnap.exists()) backupData.encc_school_state = stateSnap.val();
-            if (schSnap && schSnap.exists()) backupData.scholarships = schSnap.val();
             if (exonSnap && exonSnap.exists()) backupData.exoneraciones = exonSnap.val();
             if (permSnap && permSnap.exists()) backupData.permissions = permSnap.val();
         }

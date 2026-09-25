@@ -54,18 +54,6 @@
         ".write": true
       }
     },
-    "scholarships": {
-      ".read": true,
-      ".write": "newData.exists()",
-      ".indexOn": [
-        "studentId",
-        "studentCode",
-        "gradeCode",
-        "section",
-        "scholarshipType",
-        "status"
-      ]
-    },
     "attendance": {
       ".read": true,
       ".write": "newData.exists()",
