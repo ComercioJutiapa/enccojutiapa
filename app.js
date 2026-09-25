@@ -21728,13 +21728,35 @@ function loadAttendanceList() {
             STATE.attendanceSelectedMonth = monthSelect.value;
         }
     }
-    const month = parseInt(monthSelect ? monthSelect.value : String(todayMonth)) || todayMonth;
+    let month = parseInt(monthSelect ? monthSelect.value : String(todayMonth)) || todayMonth;
     const courseId = courseSelect ? courseSelect.value : 'GENERAL';
     const year = (window.STATE && STATE.activeCycle && parseInt(STATE.activeCycle, 10)) || today.getFullYear() || 2026;
-    const daysInMonth = new Date(year, month, 0).getDate();
+    let daysInMonth = new Date(year, month, 0).getDate();
     const dayNames = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
     const isDirectorOrAdmin = (STATE.currentRole === 'director' || STATE.currentRole === 'admin' || STATE.currentRole === 'secretaria');
+    const isAuditRole = (isDirectorOrAdmin || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar' || STATE.currentRole === 'auxiliatura' || STATE.currentRole === 'super_usuario');
+
+    // --- Visibilidad por rol: selector de mes y botón Autorizar Permiso ---
+    const monthContainer = document.getElementById('attendanceMonthContainer');
+    const btnAutorizarPermiso = document.getElementById('btnAutorizarPermiso');
+    if (!isAuditRole) {
+        // Docentes: ocultar selector de mes y forzar mes actual
+        if (monthContainer) monthContainer.style.display = 'none';
+        if (monthSelect) {
+            monthSelect.value = String(todayMonth);
+            STATE.attendanceSelectedMonth = String(todayMonth);
+        }
+        // Docentes: ocultar botón Autorizar Permiso
+        if (btnAutorizarPermiso) btnAutorizarPermiso.style.display = 'none';
+    } else {
+        // Roles de auditoría: mostrar selector de mes y botón Autorizar Permiso
+        if (monthContainer) monthContainer.style.display = '';
+        if (btnAutorizarPermiso) btnAutorizarPermiso.style.display = '';
+    }
+    // Recalcular mes y días después de posible forzado por rol
+    month = parseInt(monthSelect ? monthSelect.value : String(todayMonth)) || todayMonth;
+    daysInMonth = new Date(year, month, 0).getDate();
 
     // Identificar asignación de curso
     let currentCourseObj = null;

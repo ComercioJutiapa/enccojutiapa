@@ -2154,7 +2154,7 @@
                                     </select>
                                 </div>
 
-                                <div>
+                                <div id="attendanceMonthContainer">
                                     <label style="font-size:0.82rem; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:4px;">
                                         <i class="fa-solid fa-calendar-days"></i> 4. Mes:
                                     </label>
@@ -2176,7 +2176,7 @@
                             </div>
 
                             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                                <button type="button" class="btn btn-warning btn-sm" onclick="openCreatePermissionModal()" title="Autorizar permiso oficial de ausencia (Auxiliatura / Dirección)" style="height:38px; font-size:0.86rem; font-weight:800; padding:0 14px; background:#f59e0b; border-color:#d97706; color:#ffffff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(217,119,6,0.25);">
+                                <button type="button" id="btnAutorizarPermiso" class="btn btn-warning btn-sm" onclick="openCreatePermissionModal()" title="Autorizar permiso oficial de ausencia (Auxiliatura / Dirección)" style="height:38px; font-size:0.86rem; font-weight:800; padding:0 14px; background:#f59e0b; border-color:#d97706; color:#ffffff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(217,119,6,0.25);">
                                     <i class="fa-solid fa-file-signature"></i> Autorizar Permiso
                                 </button>
                                 <button type="button" class="btn btn-outline-warning btn-sm" onclick="navigateTo('permissions-history')" title="Ver registro oficial de permisos de ausencia autorizados" style="height:38px; font-size:0.86rem; font-weight:700; padding:0 12px; display:inline-flex; align-items:center; gap:6px;">
