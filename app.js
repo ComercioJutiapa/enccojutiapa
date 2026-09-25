@@ -35097,7 +35097,9 @@ function openRegisterScholarshipModal(editId = null) {
         });
     }
 
+    const titleEl = document.getElementById('scholarshipFormTitle');
     if (editId) {
+        if (titleEl) titleEl.textContent = 'Editar Asignación de Beca';
         const item = _scholarshipsCache.find(s => s.id === editId);
         if (item) {
             if (studentSelect) studentSelect.value = item.studentId || '';
@@ -35108,6 +35110,7 @@ function openRegisterScholarshipModal(editId = null) {
             document.getElementById('scholarshipEndDate').value = item.endDate || '';
         }
     } else {
+        if (titleEl) titleEl.textContent = 'Inscripción / Registro de Beca o Bolsa de Estudio';
         document.getElementById('scholarshipTypeSelect').value = 'completa';
         document.getElementById('scholarshipInstitution').value = '';
         document.getElementById('scholarshipDescription').value = '';
@@ -35115,12 +35118,37 @@ function openRegisterScholarshipModal(editId = null) {
         document.getElementById('scholarshipEndDate').value = '';
     }
 
-    const modalEl = document.getElementById('registerScholarshipModal');
-    if (modalEl && typeof bootstrap !== 'undefined') {
-        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        modal.show();
+    // Mostrar ventana integrada dentro del apartado de becas
+    const panel = document.getElementById('scholarshipEnrollmentPanel');
+    if (panel) {
+        panel.style.display = 'block';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (studentSelect) studentSelect.focus();
+    } else {
+        const modalEl = document.getElementById('registerScholarshipModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
     }
 }
+window.openRegisterScholarshipModal = openRegisterScholarshipModal;
+
+function closeScholarshipEnrollmentPanel() {
+    const panel = document.getElementById('scholarshipEnrollmentPanel');
+    if (panel) panel.style.display = 'none';
+    _scholarshipsEditingId = null;
+}
+window.closeScholarshipEnrollmentPanel = closeScholarshipEnrollmentPanel;
+
+function openScholarshipEnrollmentFromSidebar(event) {
+    if (event) event.preventDefault();
+    navigateTo('scholarships');
+    setTimeout(() => {
+        openRegisterScholarshipModal();
+    }, 150);
+}
+window.openScholarshipEnrollmentFromSidebar = openScholarshipEnrollmentFromSidebar;
 window.openRegisterScholarshipModal = openRegisterScholarshipModal;
 
 async function saveScholarship() {
@@ -35184,7 +35212,8 @@ async function saveScholarship() {
         _scholarshipsCache.push({ id: schId, cycle: cycle, ...scholarshipData });
     }
 
-    // Cerrar modal
+    // Cerrar ventana integrada o modal
+    closeScholarshipEnrollmentPanel();
     const modalEl = document.getElementById('registerScholarshipModal');
     if (modalEl && typeof bootstrap !== 'undefined') {
         const modal = bootstrap.Modal.getInstance(modalEl);

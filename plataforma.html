@@ -166,7 +166,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="styles.css?v=20260924_v229_sidebar_category_names">
+    <link rel="stylesheet" href="styles.css?v=20260924_v230_scholarship_window_in_section">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -686,6 +686,10 @@
                             <i class="fa-solid fa-hand-holding-heart"></i>
                             <span>Alumnos Becados</span>
                         </a>
+                        <a href="#" class="nav-item" data-view="scholarships" data-perm="scholarships" data-allowed="director,secretaria,admin" onclick="openScholarshipEnrollmentFromSidebar(event)">
+                            <i class="fa-solid fa-user-plus"></i>
+                            <span>Inscripción de Becas</span>
+                        </a>
                     </div>
                 </div>
             </nav>
@@ -775,7 +779,51 @@
                             <div class="card-body" id="dashAnnouncementsList" style="display:none;"></div>
                         </div>
                     </div>
-                </section>
+                <!-- MODAL: REGISTRAR BECA / BOLSA DE ESTUDIO -->
+<div class="modal fade" id="registerScholarshipModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:#1e293b; color:#e2e8f0; border:1px solid #334155;">
+            <div class="modal-header" style="border-bottom:1px solid #334155; background:linear-gradient(135deg,#4c1d95,#1e40af); padding:12px 16px;">
+                <h5 class="modal-title" style="font-weight:800; font-size:0.95rem;">
+                    <i class="fa-solid fa-hand-holding-heart"></i> Registrar Beca / Bolsa de Estudio
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:16px;">
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:0.78rem; font-weight:700;">Alumno:</label>
+                    <select id="scholarshipStudentSelect" class="form-control" style="font-size:0.82rem;">
+                        <option value="">— Seleccione alumno —</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:0.78rem; font-weight:700;">Tipo de Beneficio:</label>
+                    <select id="scholarshipTypeSelect" class="form-control" style="font-size:0.82rem;">
+                        <option value="completa">Beca Completa</option>
+                        <option value="parcial">Beca Parcial</option>
+                        <option value="bolsa_estudio">Bolsa de Estudio</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:0.78rem; font-weight:700;">Institución / Fuente:</label>
+                    <input type="text" id="scholarshipInstitution" class="form-control" placeholder="Ej. MINEDUC, Municipalidad, ONG..." style="font-size:0.82rem;">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label" style="font-size:0.78rem; font-weight:700;">Descripción (opcional):</label>
+                    <textarea id="scholarshipDescription" class="form-control" rows="2" placeholder="Detalles adicionales..." style="font-size:0.82rem;"></textarea>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1;">
+                        <label class="form-label" style="font-size:0.78rem; font-weight:700;">Fecha Inicio:</label>
+                        <input type="date" id="scholarshipStartDate" class="form-control" style="font-size:0.82rem;">
+                    </div>
+                    <div style="flex:1;">
+                        <label class="form-label" style="font-size:0.78rem; font-weight:700;">Fecha Fin (opcional):</label>
+                        <input type="date" id="scholarshipEndDate" class="form-control" style="font-size:0.82rem;">
+                    </div>
+                </div>
+            </div>
+</section>
 
                 <!-- 2A. VENTANA OFICIAL DE INSCRIPCIÓN DE ALUMNOS (DIRECCIÓN, SECRETARÍA Y ADMIN) -->
                 <section class="app-view" id="view-enrollment">
@@ -4944,7 +4992,7 @@
     <script src="db.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="ui.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="sire.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
-    <script src="app.js?v=20260924_v229_sidebar_category_names" charset="UTF-8"></script>
+    <script src="app.js?v=20260924_v230_scholarship_window_in_section" charset="UTF-8"></script>
     <script src="analytics.js?v=2026.09.21.v225_analytics_and_carnets" charset="UTF-8"></script>
     <script src="qrcode.min.js" charset="UTF-8"></script>
     <script src="carnets.js?v=2026.09.21.v226_carnets_horizontal_vertical" charset="UTF-8"></script>
@@ -5504,6 +5552,57 @@
         </div>
     </div>
 
+    
+    <!-- VENTANA DE INSCRIPCIÓN / REGISTRO DE BECAS (Integrada directamente en el apartado de becas) -->
+    <div id="scholarshipEnrollmentPanel" style="display:none; background:#1e293b; border:1.5px solid #6366f1; border-radius:12px; padding:18px; margin-bottom:18px; box-shadow:0 10px 25px rgba(0,0,0,0.35);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid #334155; padding-bottom:10px;">
+            <h5 style="margin:0; font-weight:800; font-size:1.02rem; color:#f8fafc; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-hand-holding-heart" style="color:#818cf8;"></i> <span id="scholarshipFormTitle">Inscripción / Registro de Beca o Bolsa de Estudio</span>
+            </h5>
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="closeScholarshipEnrollmentPanel()" style="padding:3px 10px; font-size:0.75rem;">
+                <i class="fa-solid fa-xmark"></i> Cerrar
+            </button>
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap:12px; margin-bottom:12px;">
+            <div>
+                <label class="form-label" style="font-size:0.75rem; font-weight:700; color:#cbd5e1; display:block; margin-bottom:4px;">Alumno: *</label>
+                <select id="scholarshipStudentSelect" class="form-control" style="font-size:0.82rem; height:36px; background:#0f172a; color:#f8fafc; border-color:#334155;">
+                    <option value="">— Seleccione alumno —</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label" style="font-size:0.75rem; font-weight:700; color:#cbd5e1; display:block; margin-bottom:4px;">Tipo de Beneficio: *</label>
+                <select id="scholarshipTypeSelect" class="form-control" style="font-size:0.82rem; height:36px; background:#0f172a; color:#f8fafc; border-color:#334155;">
+                    <option value="completa">Beca Completa</option>
+                    <option value="parcial">Beca Parcial</option>
+                    <option value="bolsa_estudio">Bolsa de Estudio</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label" style="font-size:0.75rem; font-weight:700; color:#cbd5e1; display:block; margin-bottom:4px;">Institución / Fuente:</label>
+                <input type="text" id="scholarshipInstitution" class="form-control" placeholder="Ej. MINEDUC, Municipalidad, ONG..." style="font-size:0.82rem; height:36px; background:#0f172a; color:#f8fafc; border-color:#334155;">
+            </div>
+            <div>
+                <label class="form-label" style="font-size:0.75rem; font-weight:700; color:#cbd5e1; display:block; margin-bottom:4px;">Fecha Inicio:</label>
+                <input type="date" id="scholarshipStartDate" class="form-control" style="font-size:0.82rem; height:36px; background:#0f172a; color:#f8fafc; border-color:#334155;">
+            </div>
+            <div>
+                <label class="form-label" style="font-size:0.75rem; font-weight:700; color:#cbd5e1; display:block; margin-bottom:4px;">Fecha Fin (opcional):</label>
+                <input type="date" id="scholarshipEndDate" class="form-control" style="font-size:0.82rem; height:36px; background:#0f172a; color:#f8fafc; border-color:#334155;">
+            </div>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label class="form-label" style="font-size:0.75rem; font-weight:700; color:#cbd5e1; display:block; margin-bottom:4px;">Descripción (opcional):</label>
+            <textarea id="scholarshipDescription" class="form-control" rows="2" placeholder="Detalles adicionales, notas del beneficio..." style="font-size:0.82rem; background:#0f172a; color:#f8fafc; border-color:#334155;"></textarea>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeScholarshipEnrollmentPanel()">Cancelar</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveScholarship()" style="font-weight:700; background:#6366f1; border-color:#6366f1;">
+                <i class="fa-solid fa-save"></i> Guardar Beca
+            </button>
+        </div>
+    </div>
+
     <!-- Filtros -->
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; align-items:end;">
         <div style="flex:1; min-width:140px;">
@@ -5576,50 +5675,7 @@
     </div>
 </section>
 
-<!-- MODAL: REGISTRAR BECA / BOLSA DE ESTUDIO -->
-<div class="modal fade" id="registerScholarshipModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="background:#1e293b; color:#e2e8f0; border:1px solid #334155;">
-            <div class="modal-header" style="border-bottom:1px solid #334155; background:linear-gradient(135deg,#4c1d95,#1e40af); padding:12px 16px;">
-                <h5 class="modal-title" style="font-weight:800; font-size:0.95rem;">
-                    <i class="fa-solid fa-hand-holding-heart"></i> Registrar Beca / Bolsa de Estudio
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" style="padding:16px;">
-                <div class="mb-2">
-                    <label class="form-label" style="font-size:0.78rem; font-weight:700;">Alumno:</label>
-                    <select id="scholarshipStudentSelect" class="form-control" style="font-size:0.82rem;">
-                        <option value="">— Seleccione alumno —</option>
-                    </select>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label" style="font-size:0.78rem; font-weight:700;">Tipo de Beneficio:</label>
-                    <select id="scholarshipTypeSelect" class="form-control" style="font-size:0.82rem;">
-                        <option value="completa">Beca Completa</option>
-                        <option value="parcial">Beca Parcial</option>
-                        <option value="bolsa_estudio">Bolsa de Estudio</option>
-                    </select>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label" style="font-size:0.78rem; font-weight:700;">Institución / Fuente:</label>
-                    <input type="text" id="scholarshipInstitution" class="form-control" placeholder="Ej. MINEDUC, Municipalidad, ONG..." style="font-size:0.82rem;">
-                </div>
-                <div class="mb-2">
-                    <label class="form-label" style="font-size:0.78rem; font-weight:700;">Descripción (opcional):</label>
-                    <textarea id="scholarshipDescription" class="form-control" rows="2" placeholder="Detalles adicionales..." style="font-size:0.82rem;"></textarea>
-                </div>
-                <div style="display:flex; gap:10px;">
-                    <div style="flex:1;">
-                        <label class="form-label" style="font-size:0.78rem; font-weight:700;">Fecha Inicio:</label>
-                        <input type="date" id="scholarshipStartDate" class="form-control" style="font-size:0.82rem;">
-                    </div>
-                    <div style="flex:1;">
-                        <label class="form-label" style="font-size:0.78rem; font-weight:700;">Fecha Fin (opcional):</label>
-                        <input type="date" id="scholarshipEndDate" class="form-control" style="font-size:0.82rem;">
-                    </div>
-                </div>
-            </div>
+
             <div class="modal-footer" style="border-top:1px solid #334155; padding:10px 16px;">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary btn-sm" onclick="saveScholarship()" style="font-weight:700;">
