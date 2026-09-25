@@ -426,6 +426,21 @@
             <span id="hydrationStatusText" style="font-size:0.75rem; color:#cbd5e1; font-weight:700;">Conectando con Google Firebase...</span>
         </div>
     </div>
+    <script>
+        // Temporizador de guardia infalible para el overlay de hidratación (máx 2.5s)
+        (function() {
+            function dismissOverlaySafely() {
+                var overlay = document.getElementById('appHydrationOverlay');
+                if (overlay && overlay.style.display !== 'none') {
+                    overlay.style.opacity = '0';
+                    setTimeout(function() {
+                        if (overlay) overlay.style.display = 'none';
+                    }, 300);
+                }
+            }
+            setTimeout(dismissOverlaySafely, 2500);
+        })();
+    </script>
 <header class="top-role-bar" id="topRoleBar" style="display:block;">
         <div class="role-bar-container">
             <div class="role-bar-brand">
@@ -708,7 +723,7 @@
             <div class="view-container">
 
                 <!-- 1. DASHBOARD PRINCIPAL (ADAPTADO POR ROL) -->
-                <section class="app-view" id="view-dashboard">
+                <section class="app-view active" id="view-dashboard">
                     <div class="welcome-banner">
                         <img src="logo.png" class="banner-watermark-logo" alt="Marca de Agua ENCCO">
                         <div class="banner-text">
@@ -743,6 +758,7 @@
                             <div class="card-body" id="dashAnnouncementsList" style="display:none;"></div>
                         </div>
                     </div>
+                </section>
 
                 <!-- 2A. VENTANA OFICIAL DE INSCRIPCIÓN DE ALUMNOS (DIRECCIÓN, SECRETARÍA Y ADMIN) -->
                 <section class="app-view" id="view-enrollment">
@@ -5375,6 +5391,7 @@
                         </button>
                     </div>
                 </div>
+            </form>
     </div>
 </div>
 

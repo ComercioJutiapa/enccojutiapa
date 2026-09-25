@@ -6910,9 +6910,20 @@ async function initApp() {
         if (_fbUrl && (typeof navigator === "undefined" || navigator.onLine !== false)) {
             const rutaColeccion = 'encc_school_state/pensum';
             console.log("Consultando asignaciones en ruta:", rutaColeccion);
-            console.log("⚡ [v189] Descargando estado autoritativo completo directamente desde Firebase Realtime DB...");
-            const _cloudRes = await fetch(_fbUrl + "/encc_school_state.json?t=" + Date.now(), { method: "GET", headers: { "Accept": "application/json" } });
-            if (_cloudRes.ok) {
+            let _cloudRes = null;
+            try {
+                const _abortCtrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+                const _timeoutId = _abortCtrl ? setTimeout(() => _abortCtrl.abort(), 3500) : null;
+                _cloudRes = await fetch(_fbUrl + "/encc_school_state.json?t=" + Date.now(), { 
+                    method: "GET", 
+                    headers: { "Accept": "application/json" },
+                    signal: _abortCtrl ? _abortCtrl.signal : undefined
+                });
+                if (_timeoutId) clearTimeout(_timeoutId);
+            } catch(_fetchErr) {
+                console.warn("⚠️ [v189] Aviso o timeout al consultar Firebase en arranque:", _fetchErr);
+            }
+            if (_cloudRes && _cloudRes.ok) {
                 const _cloudData = await _cloudRes.json();
                 if (_cloudData && typeof _cloudData === "object" && (_cloudData.users || _cloudData.students || _cloudData.pensum)) {
                     applyIncomingCloudState(_cloudData, true);
@@ -7040,8 +7051,8 @@ async function initApp() {
 
     // 6. Si estamos en plataforma.html, verificar sesión
     if (window.location.pathname.includes('plataforma.html') || window.location.href.includes('plataforma.html')) {
-        const authUserStr = sessionStorage.getItem('ENCCO_AUTH_USER');
-        const authRoleStr = sessionStorage.getItem('ENCCO_AUTH_ROLE');
+        const authUserStr = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
+        const authRoleStr = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
         
         if (!authUserStr) {
             const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
@@ -7084,15 +7095,20 @@ async function initApp() {
         }
     }
 
-    updateCycleSelects();
-    updateCareerSelects();
-    updateGradeSelects();
-    updateLoginAccountSelect();
-    initCloudDatabaseConnection();
+    try { updateCycleSelects(); } catch(e) { console.warn("updateCycleSelects error:", e); }
+    try { updateCareerSelects(); } catch(e) { console.warn("updateCareerSelects error:", e); }
+    try { updateGradeSelects(); } catch(e) { console.warn("updateGradeSelects error:", e); }
+    try { updateLoginAccountSelect(); } catch(e) { console.warn("updateLoginAccountSelect error:", e); }
+    try { initCloudDatabaseConnection(); } catch(e) { console.warn("initCloudDatabaseConnection error:", e); }
 
     // ⚡ Hidratación completa exitosa: Desbloquear UI y evaluar permisos reactivos
     if (window.EnccoAuthStore && typeof window.EnccoAuthStore.setHydrated === 'function') {
         window.EnccoAuthStore.setHydrated(STATE.currentUser, STATE.currentRole);
+    }
+    const _overlay = document.getElementById('appHydrationOverlay');
+    if (_overlay) {
+        _overlay.style.opacity = '0';
+        setTimeout(() => { _overlay.style.display = 'none'; }, 250);
     }
 
     // Iniciar en dashboard y aplicar rol activo
@@ -26288,7 +26304,13 @@ function handleGlobalTeachersPensumExcelUpload(e) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', async () => { await initApp(); });
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', async () => { await initApp(); });
+    } else {
+        initApp();
+    }
+}
 
 
 
