@@ -11032,12 +11032,20 @@ window.cleanExoneratedStudentGrades = cleanExoneratedStudentGrades;
 
 function isSubjectBimestreExonerated(student, subjectName, bimestreNum) {
     if (!student) return false;
-    if (student.isExonerated === true || student.exonerated === true) return true;
 
-    const b = parseInt(bimestreNum) || 0;
     const cleanSubj = (subjectName || '').toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]/g, '');
+
+    // 🛑 REGLA MINEDUC DE GRADUACIÓN (6to Grado):
+    // Práctica Supervisada y Seminario NUNCA son susceptibles de exoneración.
+    // Todos los alumnos deben asentar obligatoriamente su calificación oficial.
+    const isGraduationSubject = cleanSubj.includes('practica') || cleanSubj.includes('seminario');
+    if (isGraduationSubject) return false;
+
+    if (student.isExonerated === true || student.exonerated === true) return true;
+
+    const b = parseInt(bimestreNum) || 0;
 
     // 1. Revisar flag directo en gradebookDetails para esta materia y bimestre
     if (student.gradebookDetails && typeof student.gradebookDetails === 'object') {
