@@ -7565,6 +7565,7 @@ function completeLoginWithRole(selectedRole, userObj = null) {
         admin: 'Super Administrador', 
         director: 'Dirección del Plantel', 
         secretaria: 'Secretaría Académica', 
+        profesor_auxiliar: 'Profesor Auxiliar y Disciplinario',
         docente: 'Catedrático / Docente' 
     };
     const roleTitle = roleTitleMap[selectedRole] || (selectedRole === 'docente' ? 'Docente' : (user.title || user.role));
@@ -7737,18 +7738,50 @@ function updateTopRoleBar() {
                 <i class="fa-solid fa-file-signature"></i> Secretaría
             </span>
         `;
+    } else if (STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar' || STATE.currentRole === 'auxiliatura') {
+        group.innerHTML = `
+            <span class="role-btn active" style="cursor:default; background:#fef2f2; color:#b91c1c; border-color:#f87171; font-weight:800; padding:6px 14px; border-radius:6px; font-size:0.84rem;">
+                <i class="fa-solid fa-clipboard-user"></i> Auxiliatura y Disciplina
+            </span>
+        `;
     }
 }
 
 async function performLogout() {
     if (window._isLoggingOut) return;
     window._isLoggingOut = true;
-    console.log("🚪 [Logout] Iniciando guardado exhaustivo y cierre seguro de sesión...");
+    console.log("🚪 [Logout] Iniciando cierre seguro de sesión y limpieza de credenciales...");
 
-    // 1. Mostrar feedback visual inmediato con overlay modal de guardado
+    // Respaldo de seguridad incondicional: Redirección garantizada en máximo 1200ms
+    const baseUrl = (typeof window !== 'undefined' && window.location)
+        ? (window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, ''))
+        : '';
+    const safeRedirect = () => {
+        try {
+            if (typeof clearUserSession === 'function') clearUserSession();
+            if (window.EnccoAuth && typeof window.EnccoAuth.clearUserSession === 'function') {
+                window.EnccoAuth.clearUserSession();
+            }
+            if (window.EnccoInactivityTimer && typeof window.EnccoInactivityTimer.stop === 'function') {
+                window.EnccoInactivityTimer.stop();
+            }
+            sessionStorage.clear();
+            localStorage.removeItem('ENCCO_AUTH_USER');
+            localStorage.removeItem('ENCCO_AUTH_ROLE');
+            localStorage.removeItem('ENCCO_AUTH_TOKEN');
+            localStorage.removeItem('ENCCO_AUTH_BRIDGE');
+            localStorage.removeItem('ENCCO_AUTH_TIMESTAMP');
+            localStorage.removeItem('ENCCO_AUTH_REMEMBER');
+        } catch(e) {}
+        if (typeof window !== 'undefined' && window.location) {
+            window.location.replace(baseUrl + '/index.html');
+        }
+    };
+    const safetyRedirectTimer = setTimeout(safeRedirect, 1200);
+
+    // 1. Mostrar feedback visual inmediato con overlay modal
     try {
         if (typeof document !== 'undefined') {
-            // Deshabilitar todos los botones de cerrar sesión para evitar clics múltiples
             const logoutBtns = document.querySelectorAll('.logout-btn, button[onclick*="performLogout"]');
             logoutBtns.forEach(btn => {
                 btn.disabled = true;
@@ -7763,8 +7796,8 @@ async function performLogout() {
                 overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.88);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999999;color:white;font-family:system-ui,-apple-system,sans-serif;gap:16px;box-shadow:inset 0 0 100px rgba(0,0,0,0.5);';
                 overlay.innerHTML = `
                     <div style="font-size:3.2rem;color:#38bdf8;animation:enccoSpin 1s linear infinite;"><i class="fa-solid fa-cloud-arrow-up"></i></div>
-                    <div style="font-size:1.4rem;font-weight:800;letter-spacing:0.5px;color:#f8fafc;text-shadow:0 2px 8px rgba(0,0,0,0.4);">Guardando datos escolares...</div>
-                    <div style="font-size:0.95rem;color:#94a3b8;font-weight:500;">Asegurando registros en el almacenamiento local y sincronizando con la base de datos central.</div>
+                    <div style="font-size:1.4rem;font-weight:800;letter-spacing:0.5px;color:#f8fafc;text-shadow:0 2px 8px rgba(0,0,0,0.4);">Cerrando Sesión...</div>
+                    <div style="font-size:0.95rem;color:#94a3b8;font-weight:500;">Guardando registros y desconectando sesión institucional.</div>
                     <style>@keyframes enccoSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }</style>
                 `;
                 document.body.appendChild(overlay);
@@ -7773,14 +7806,7 @@ async function performLogout() {
         }
     } catch(e) {}
 
-    if (window.EnccoAuthStore && typeof window.EnccoAuthStore.setHydrating === 'function') {
-        window.EnccoAuthStore.setHydrating('Guardando datos y cerrando sesión de forma segura...');
-    }
-    if (typeof showToast === 'function') {
-        showToast("Guardando datos escolares antes de salir...", "info");
-    }
-
-    // 2. Desenfocar elemento activo y emitir 'change' para forzar guardado de inputs pendientes (ej. casillas de notas/asistencia)
+    // 2. Desenfocar elemento activo
     try {
         if (typeof document !== 'undefined' && document.activeElement) {
             const el = document.activeElement;
@@ -7793,111 +7819,112 @@ async function performLogout() {
         }
     } catch(e) {}
 
-    // 3. Forzar consolidación de vistas activas (Calificaciones, Asistencia)
+    // 3. Forzar consolidación de vistas con timeout de 400ms
     try {
+        const preSavePromises = [];
         if (window.STATE && window.STATE.activeView === 'gradebook' && typeof saveGradebookChanges === 'function') {
-            await saveGradebookChanges();
+            preSavePromises.push(Promise.resolve(saveGradebookChanges()).catch(() => {}));
         }
         if (window.STATE && window.STATE.activeView === 'attendance' && typeof saveAttendanceRecords === 'function') {
-            await saveAttendanceRecords(false);
+            preSavePromises.push(Promise.resolve(saveAttendanceRecords(false)).catch(() => {}));
+        }
+        if (preSavePromises.length > 0) {
+            await Promise.race([
+                Promise.all(preSavePromises),
+                new Promise(r => setTimeout(r, 400))
+            ]);
         }
     } catch(e) {}
 
-    // 4. Guardar atómicamente en almacenamiento local (ENCCO_DATABASE)
+    // 4. Guardar atómicamente en almacenamiento local
     try {
         if (typeof saveStateToLocalStorage === 'function') {
             saveStateToLocalStorage();
         }
     } catch(e) {}
 
-    // 5. Protección de Logout: NO sobreescribir ni resetear la base de datos en la nube.
-    // Firebase es la única fuente de la verdad; la sesión local simplemente se desconecta.
-    console.log("🛡️ [Logout Seguro] Preservando datos remotos de Firebase al 100% (sin sobreescritura).");
-
-    // 6. Destruir y desconectar de inmediato todos los listeners de Firebase y EventSource
-    const eventSrc = (typeof _firebaseEventSource !== 'undefined' && _firebaseEventSource) || (typeof window !== 'undefined' ? window._firebaseEventSource : null);
-    if (eventSrc) {
-        try {
+    // 5. Desconectar listeners de EventSource y BroadcastChannel
+    try {
+        const eventSrc = (typeof _firebaseEventSource !== 'undefined' && _firebaseEventSource) || (typeof window !== 'undefined' ? window._firebaseEventSource : null);
+        if (eventSrc) {
             eventSrc.close();
             _firebaseEventSource = null;
             if (typeof window !== 'undefined') window._firebaseEventSource = null;
-            console.log("🔌 [Cleanup] Firebase EventSource SSE cerrado exitosamente.");
-        } catch(e) {}
-    }
-
-    // 7. Cerrar canales de Broadcast
-    if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
-        try {
+        }
+        if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
             _enccBroadcastChannel.close();
             _enccBroadcastChannel = null;
-            console.log("🔌 [Cleanup] BroadcastChannel cerrado exitosamente.");
-        } catch(e) {}
-    }
+        }
+    } catch(e) {}
 
-    // 8. Desuscribir listeners modulares de Firestore y libro de notas
-    if (typeof _firestoreModularUnsubscribers !== 'undefined' && Array.isArray(_firestoreModularUnsubscribers)) {
-        _firestoreModularUnsubscribers.forEach(unsub => {
-            try { if (typeof unsub === 'function') unsub(); } catch(e) {}
-        });
-        _firestoreModularUnsubscribers = [];
-    }
-    if (typeof unsubscribeAllFirestoreListeners === 'function') {
-        unsubscribeAllFirestoreListeners();
-    }
-    if (typeof unsubscribeCurrentGradebookListener === 'function') {
-        unsubscribeCurrentGradebookListener();
-    }
+    // 6. Desuscribir listeners modulares de Firestore
+    try {
+        if (typeof _firestoreModularUnsubscribers !== 'undefined' && Array.isArray(_firestoreModularUnsubscribers)) {
+            _firestoreModularUnsubscribers.forEach(unsub => {
+                try { if (typeof unsub === 'function') unsub(); } catch(e) {}
+            });
+            _firestoreModularUnsubscribers = [];
+        }
+        if (typeof unsubscribeAllFirestoreListeners === 'function') {
+            unsubscribeAllFirestoreListeners();
+        }
+        if (typeof unsubscribeCurrentGradebookListener === 'function') {
+            unsubscribeCurrentGradebookListener();
+        }
+    } catch(e) {}
 
-    // 8. Cancelar temporizadores pendientes
-    if (typeof _autoCloudSyncTimer !== 'undefined' && _autoCloudSyncTimer) {
-        clearInterval(_autoCloudSyncTimer);
-        _autoCloudSyncTimer = null;
-    }
-    if (typeof _instantCloudPushTimeout !== 'undefined' && _instantCloudPushTimeout) {
-        clearTimeout(_instantCloudPushTimeout);
-        _instantCloudPushTimeout = null;
-    }
+    // 7. Cancelar temporizadores pendientes
+    try {
+        if (typeof _autoCloudSyncTimer !== 'undefined' && _autoCloudSyncTimer) {
+            clearInterval(_autoCloudSyncTimer);
+            _autoCloudSyncTimer = null;
+        }
+        if (typeof _instantCloudPushTimeout !== 'undefined' && _instantCloudPushTimeout) {
+            clearTimeout(_instantCloudPushTimeout);
+            _instantCloudPushTimeout = null;
+        }
+    } catch(e) {}
 
-    // 9. Limpiar todos los efectos secundarios registrados en el AuthStore
-    if (window.EnccoAuthStore && typeof window.EnccoAuthStore.cleanupAllEffects === 'function') {
-        window.EnccoAuthStore.cleanupAllEffects();
-        window.EnccoAuthStore.setUnauthenticated();
-    }
+    // 8. Limpiar AuthStore y Auth Effects
+    try {
+        if (window.EnccoAuthStore && typeof window.EnccoAuthStore.cleanupAllEffects === 'function') {
+            window.EnccoAuthStore.cleanupAllEffects();
+            window.EnccoAuthStore.setUnauthenticated();
+        }
+    } catch(e) {}
 
-    // 10. Cerrar sesión en Firebase Auth Modular si está presente
+    // 9. Firebase Auth signOut con timeout de 350ms
     try {
         if (window.FirebaseModular && window.FirebaseModular.auth) {
             const auth = window.FirebaseModular.auth;
             const signOutFn = window.FirebaseModular.signOut || (window.FirebaseModular.authMod && window.FirebaseModular.authMod.signOut);
             if (typeof signOutFn === 'function') {
-                await signOutFn(auth);
-                console.log("🔐 [Firebase Auth] signOut ejecutado exitosamente en performLogout.");
+                await Promise.race([
+                    Promise.resolve(signOutFn(auth)).catch(() => {}),
+                    new Promise(r => setTimeout(r, 350))
+                ]);
             }
         }
-    } catch(authErr) {
-        console.warn("Aviso al ejecutar signOut en Firebase Auth:", authErr);
-    }
+    } catch(authErr) {}
 
-    // 11. Detener temporizador de inactividad
-    if (window.EnccoInactivityTimer && typeof window.EnccoInactivityTimer.stop === 'function') {
-        window.EnccoInactivityTimer.stop();
-    }
+    // 10. Detener temporizador de inactividad
+    try {
+        if (window.EnccoInactivityTimer && typeof window.EnccoInactivityTimer.stop === 'function') {
+            window.EnccoInactivityTimer.stop();
+        }
+    } catch(e) {}
 
+    // 11. Limpieza total de estado y almacenamiento
     STATE.currentUser = null;
     STATE.currentRole = 'guest';
     STATE.isLoggedIn = false;
     STATE.impersonatorAdmin = null;
 
     try {
-        sessionStorage.clear();
-        localStorage.removeItem('ENCCO_AUTH_USER');
-        localStorage.removeItem('ENCCO_AUTH_ROLE');
-        localStorage.removeItem('ENCCO_AUTH_REMEMBER');
+        clearTimeout(safetyRedirectTimer);
     } catch(e) {}
-    
-    // 12. Redirección limpia y directa a 'index.html' (sin posibilidad de volver atrás)
-    const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
-    window.location.replace(baseUrl + '/index.html');
+
+    safeRedirect();
 }
 window.performLogout = performLogout;
 
@@ -17341,7 +17368,7 @@ window.addEventListener('keydown', function(e) {
 
 // 🛡️ Alerta protectora contra pérdida involuntaria de cambios sin guardar
 window.addEventListener('beforeunload', function(e) {
-    if (window._locallyDirtyStudentIds && window._locallyDirtyStudentIds.size > 0) {
+    if (!window._isLoggingOut && window._locallyDirtyStudentIds && window._locallyDirtyStudentIds.size > 0) {
         e.preventDefault();
         e.returnValue = 'Tiene calificaciones que se están sincronizando con el servidor. ¿Está seguro de cerrar la ventana?';
         return e.returnValue;

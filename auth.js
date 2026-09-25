@@ -572,10 +572,13 @@
             sessionStorage.removeItem('ENCCO_AUTH_USER');
             sessionStorage.removeItem('ENCCO_AUTH_ROLE');
             sessionStorage.removeItem('ENCCO_AUTH_TOKEN');
+            sessionStorage.removeItem('ENCCO_AUTH_TIMESTAMP');
             sessionStorage.clear();
             localStorage.removeItem('ENCCO_AUTH_USER');
             localStorage.removeItem('ENCCO_AUTH_ROLE');
             localStorage.removeItem('ENCCO_AUTH_TOKEN');
+            localStorage.removeItem('ENCCO_AUTH_BRIDGE');
+            localStorage.removeItem('ENCCO_AUTH_TIMESTAMP');
             localStorage.removeItem('ENCCO_AUTH_REMEMBER');
         } catch(e) {}
     }
@@ -660,17 +663,17 @@
                 return;
             }
 
-            // 🛡️ MODO CENTINELA AUXILIATURA: La sesión del Auxiliar NUNCA caduca por inactividad
-            // para garantizar la recepción y atención ininterrumpida de alertas de ausencias escolares
+            // 🛡️ MODULO AUXILIATURA: Monitoreo continuo y soporte de alertas en tiempo real
             if (session.role === 'profesor_auxiliar') {
-                console.log("🛡️ [Modo Centinela] Sesión permanente activada para Auxiliatura. Monitoreo continuo de ausencias en tiempo real habilitado.");
-                this.isActive = false;
+                console.log("🛡️ [Auxiliatura] Sesión verificada con monitoreo de alertas escolares activo y temporizador de inactividad regulado.");
                 this.startAuxiliarHeartbeat();
-                return;
             }
 
             this.isActive = true;
             _lastActivityTimestamp = Date.now();
+            if (_inactivityTimer) {
+                clearTimeout(_inactivityTimer);
+            }
             _inactivityTimer = setTimeout(() => {
                 this.onTimeout();
             }, this.timeoutMs);
@@ -706,6 +709,10 @@
             if (_inactivityTimer) {
                 clearTimeout(_inactivityTimer);
                 _inactivityTimer = null;
+            }
+            if (this._heartbeatInterval) {
+                clearInterval(this._heartbeatInterval);
+                this._heartbeatInterval = null;
             }
         },
 
