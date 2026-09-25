@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <meta charset="UTF-8">
     <!-- Protección Anti-Clickjacking y Secuestro de Marco -->
     <script>
         if (window.location && (window.location.hostname.includes('web.app') || window.location.hostname.includes('firebaseapp.com'))) {
@@ -108,8 +109,6 @@
             try { window.top.location = window.self.location; } catch(e) { window.location = window.self.location; }
         }
     </script>
-
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Acceso a la Plataforma | ENCCO Jutiapa 1970</title>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src 'self' data: blob: https:; connect-src 'self' https: wss:;">
@@ -414,11 +413,11 @@
         </div>
     </div>
 
-    <script src="xlsx.full.min.js"></script>
-    <script src="auth.js?v=2026.09.21.v224_signed_session_and_security_shield"></script>
-    <script src="db.js?v=2026.09.21.v224_signed_session_and_security_shield"></script>
-    <script src="ui.js?v=2026.09.21.v224_signed_session_and_security_shield"></script>
-    <script src="app.js?v=2026.09.24.v227_dulce_ramos_florian_search_fix"></script>
+    <script src="xlsx.full.min.js" charset="UTF-8"></script>
+    <script src="auth.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
+    <script src="db.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
+    <script src="ui.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
+    <script src="app.js?v=2026.09.24.v227_dulce_ramos_florian_search_fix" charset="UTF-8"></script>
     <script>
         function togglePassVisibility() {
             const input = document.getElementById('loginPassword');

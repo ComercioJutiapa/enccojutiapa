@@ -181,7 +181,7 @@
         return {
             studentId: student.id,
             personalCode: personalCode,
-            studentName: student.name || `${student.lastName || ''} ${student.firstName || ''}`.trim(),
+            studentName: (typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(student, 'lastFirst') : null) || (student.lastName && student.firstName ? `${student.lastName}, ${student.firstName}` : student.name) || 'Estudiante',
             generalFinalAverage: generalFinalAverage,
             status: generalFinalAverage >= 60 ? 'PROMOVIDO' : 'EN CURSO',
             subjects: calculatedSubjects

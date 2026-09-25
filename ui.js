@@ -366,7 +366,7 @@
         const nameEl = document.getElementById('exonModalStudentName');
         const metaEl = document.getElementById('exonModalStudentMeta');
         const badgeEl = document.getElementById('exonModalStatusBadge');
-        if (nameEl) nameEl.textContent = `Estudiante: ${student.lastName || ''} ${student.firstName || student.name || ''}`;
+        if (nameEl) nameEl.textContent = `Estudiante: ${(typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(student, 'lastFirst') : `${student.lastName || ''}, ${student.firstName || student.name || ''}`.trim())}`;
         if (metaEl) metaEl.textContent = `Carné: ${student.carne || student.personalCode || 'S/C'} | Grado: ${student.grade || ''} "${student.section || ''}"`;
         if (badgeEl) {
             badgeEl.textContent = student.exoneraciones && student.exoneraciones.length > 0 ? `Exoneraciones: ${student.exoneraciones.length}` : 'Expediente Regular';

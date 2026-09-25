@@ -276,7 +276,7 @@
                 isStudent = true;
                 matched = {
                     id: foundStudent.id,
-                    name: foundStudent.name || ((foundStudent.firstName || '') + ' ' + (foundStudent.lastName || '')).trim(),
+                    name: (typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(foundStudent, 'lastFirst') : null) || (foundStudent.lastName && foundStudent.firstName ? `${foundStudent.lastName}, ${foundStudent.firstName}` : foundStudent.name) || 'Estudiante',
                     role: 'estudiante',
                     username: foundStudent.carne || foundStudent.personalCode || 'estudiante',
                     email: foundStudent.email || '',
@@ -659,11 +659,35 @@
             if (!session || !session.user) {
                 return;
             }
+
+            // 🛡️ MODO CENTINELA AUXILIATURA: La sesión del Auxiliar NUNCA caduca por inactividad
+            // para garantizar la recepción y atención ininterrumpida de alertas de ausencias escolares
+            if (session.role === 'profesor_auxiliar') {
+                console.log("🛡️ [Modo Centinela] Sesión permanente activada para Auxiliatura. Monitoreo continuo de ausencias en tiempo real habilitado.");
+                this.isActive = false;
+                this.startAuxiliarHeartbeat();
+                return;
+            }
+
             this.isActive = true;
             _lastActivityTimestamp = Date.now();
             _inactivityTimer = setTimeout(() => {
                 this.onTimeout();
             }, this.timeoutMs);
+        },
+
+        startAuxiliarHeartbeat() {
+            if (this._heartbeatInterval) clearInterval(this._heartbeatInterval);
+            this._heartbeatInterval = setInterval(() => {
+                const s = getUserSession();
+                if (s && s.user && s.role === 'profesor_auxiliar') {
+                    // Refrescar timestamp de sesión local
+                    try {
+                        localStorage.setItem('ENCCO_AUTH_TIMESTAMP', Date.now().toString());
+                        sessionStorage.setItem('ENCCO_AUTH_TIMESTAMP', Date.now().toString());
+                    } catch(e) {}
+                }
+            }, 5 * 60 * 1000); // Cada 5 minutos
         },
 
         reset() {

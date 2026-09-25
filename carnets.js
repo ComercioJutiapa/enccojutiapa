@@ -159,7 +159,7 @@
          */
         renderStudentCardFrontHtml(student) {
             const cycle = student.academicCycle || (window.STATE && window.STATE.activeCycle) || '2026';
-            const name = student.name || `${student.firstName || student.nombres || ''} ${student.lastName || student.apellidos || ''}`.trim() || 'Estudiante';
+            const name = (typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(student, 'lastFirst') : null) || student.name || `${student.lastName || student.apellidos || ''}, ${student.firstName || student.nombres || ''}`.trim() || 'Estudiante';
             const carne = student.personalCode || student.carne || 'ENCCO-2026';
             const grade = student.grade || student.gradeLabel || '4TO PERITO';
             const section = student.section || 'A';
@@ -1558,7 +1558,7 @@
                 if (!student) return;
                 frontHtml = this.renderStudentCardFrontHtml(student);
                 backHtml = this.renderStudentCardBackHtml(student);
-                title = `Carné Estudiantil - ${student.name}`;
+                title = `Carné Estudiantil - ${(typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(student, 'lastFirst') : (student.name || ''))}`;
             }
 
             const printWin = window.open('', '_blank', 'width=850,height=650');
@@ -1680,12 +1680,18 @@
                     const secMatch = (secFilter === 'ALL' || !secFilter || (st.section || '').toLowerCase() === secFilter.toLowerCase());
                     if (!carMatch || !grdMatch || !secMatch) return false;
                     if (searchVal) {
-                        const sName = (st.name || `${st.firstName || ''} ${st.lastName || ''}`).toLowerCase();
+                        const sName = (typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(st, 'lastFirst') : (st.name || `${st.lastName || ''} ${st.firstName || ''}`)).toLowerCase();
                         const sCarne = (st.carne || '').toLowerCase();
                         const sCode = (st.personalCode || '').toLowerCase();
                         if (!sName.includes(searchVal) && !sCarne.includes(searchVal) && !sCode.includes(searchVal)) return false;
                     }
                     return true;
+                });
+
+                itemsToPrint.sort((a, b) => {
+                    const nameA = typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(a, 'lastFirst') : (a.lastName || a.name || '');
+                    const nameB = typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(b, 'lastFirst') : (b.lastName || b.name || '');
+                    return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
                 });
 
                 if (itemsToPrint.length === 0) {
@@ -1826,12 +1832,18 @@
             const secMatch = (secFilter === 'ALL' || !secFilter || (st.section || '').toLowerCase() === secFilter.toLowerCase());
             if (!carMatch || !grdMatch || !secMatch) return false;
             if (stSearchVal) {
-                const sName = (st.name || `${st.firstName || ''} ${st.lastName || ''}`).toLowerCase();
+                const sName = (typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(st, 'lastFirst') : (st.name || `${st.lastName || ''} ${st.firstName || ''}`)).toLowerCase();
                 const sCarne = (st.carne || '').toLowerCase();
                 const sCode = (st.personalCode || '').toLowerCase();
                 if (!sName.includes(stSearchVal) && !sCarne.includes(stSearchVal) && !sCode.includes(stSearchVal)) return false;
             }
             return true;
+        });
+
+        filteredStudents.sort((a, b) => {
+            const nameA = typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(a, 'lastFirst') : (a.lastName || a.name || '');
+            const nameB = typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(b, 'lastFirst') : (b.lastName || b.name || '');
+            return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
         });
 
         // Lista filtrada de docentes

@@ -1268,6 +1268,18 @@ function hasRolePermission(permKey, role = null) {
         return allowedCarnets.includes(targetRole);
     }
 
+    // 🛡️ BLINDAJE RBAC: "Bitácora de Auxiliatura" (Auxiliares, Secretaría, Dirección, Admin)
+    if (testKey === 'auxiliatura-log') {
+        const allowedAux = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+        return allowedAux.includes(targetRole);
+    }
+
+    // 🛡️ BLINDAJE RBAC: "Registro Oficial de Exoneraciones" (Dirección, Secretaría, Admin)
+    if (testKey === 'exoneraciones-log') {
+        const allowedExo = ['director', 'secretaria', 'admin', 'super_usuario'];
+        return allowedExo.includes(targetRole);
+    }
+
     try {
         const rawKey = String(permKey).trim();
         // Si contiene múltiples permisos separados por comas, verificar si tiene al menos uno
@@ -4308,6 +4320,30 @@ function initFirebaseRealtimeConnection() {
                                 updateAttendanceLiveStats();
                             }
                         }
+                    } else if (cleanPath === 'attendanceAlerts' || cleanPath.startsWith('attendanceAlerts')) {
+                        if (nodeData && typeof nodeData === 'object') {
+                            if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
+                            if (cleanPath === 'attendanceAlerts') {
+                                STATE.attendanceAlerts = Array.isArray(nodeData) ? nodeData : Object.values(nodeData);
+                            } else {
+                                const incomingAlert = nodeData;
+                                if (incomingAlert && incomingAlert.id) {
+                                    const existingIdx = STATE.attendanceAlerts.findIndex(a => a && a.id === incomingAlert.id);
+                                    if (existingIdx !== -1) {
+                                        STATE.attendanceAlerts[existingIdx] = { ...STATE.attendanceAlerts[existingIdx], ...incomingAlert };
+                                    } else {
+                                        STATE.attendanceAlerts.unshift(incomingAlert);
+                                        if (typeof notifyAuxiliaturaAlert === 'function') {
+                                            notifyAuxiliaturaAlert(incomingAlert);
+                                        }
+                                    }
+                                }
+                            }
+                            if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
+                            if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
+                                renderAuxiliaturaLogView();
+                            }
+                        }
                     } else if (cleanPath === 'disciplineReports') {
                         if (Array.isArray(nodeData)) {
                             STATE.disciplineReports = nodeData;
@@ -5393,6 +5429,41 @@ function formatStudentGradeAndSection(s) {
     return assign.fullLabel;
 }
 window.formatStudentGradeAndSection = formatStudentGradeAndSection;
+
+/**
+ * Formatea y preserva la legibilidad de nombres de estudiantes con caracteres especiales y tildes (á, é, í, ó, ú, ñ, Á, É, Í, Ó, Ú, Ñ).
+ * Evita la visualización de "undefined undefined" o comas sueltas cuando solo existe un campo o viene de importación.
+ * @param {Object|string} student Objeto estudiante o cadena de nombre
+ * @param {string} format 'lastFirst' (default oficial MINEDUC: "Apellidos, Nombres") o 'firstLast' ("Nombres Apellidos")
+ * @returns {string} Nombre legible formateado
+ */
+function formatStudentDisplayName(student, format = 'lastFirst') {
+    if (!student) return 'Estudiante';
+    if (typeof student === 'string') return student.trim();
+    
+    let fName = (student.firstName || student.nombres || '').trim();
+    let lName = (student.lastName || student.apellidos || '').trim();
+    
+    if (!fName && !lName && (student.name || student.fullName)) {
+        const raw = (student.name || student.fullName).trim();
+        if (raw.includes(',')) {
+            const parts = raw.split(',');
+            lName = parts[0].trim();
+            fName = parts.slice(1).join(' ').trim();
+        } else {
+            return raw;
+        }
+    }
+    
+    if (format === 'lastFirst') {
+        if (lName && fName) return `${lName}, ${fName}`;
+        return lName || fName || student.name || student.fullName || 'Estudiante';
+    }
+    
+    if (fName && lName) return `${fName} ${lName}`;
+    return fName || lName || student.name || student.fullName || 'Estudiante';
+}
+window.formatStudentDisplayName = formatStudentDisplayName;
 
 
 function updateGradeSelects() {
@@ -8488,6 +8559,8 @@ function navigateTo(viewName, event = null) {
         'grade-stats': { title: 'Promedios y Estadísticas por Grado y Sección', sub: 'Rendimiento académico consolidado, cuadros por grado y reportes oficiales de promedios' },
         'predictive-analytics': { title: 'Analítica Predictiva y Riesgo Escolar', sub: 'Monitoreo de rendimiento temprano, detección de deserción y citaciones a padres de familia' },
         'carnets': { title: 'Generador e Impresión de Carnés Estudiantiles', sub: 'Credenciales oficiales formato CR80 con código de barras e impresión masiva' },
+        'auxiliatura-log': { title: 'Bitácora Diaria de Ausencias y Alertas Escolares', sub: 'Monitoreo en tiempo real de inasistencias en aula, avisos a padres y verificación de auxiliatura' },
+        'exoneraciones-log': { title: 'Libro de Registro Oficial de Exoneraciones Académicas', sub: 'Archivo central de alumnos con consideraciones especiales, dispensas y resoluciones ministeriales' },
     };
     const t = titles[viewName];
     if (t) {
@@ -8499,6 +8572,7 @@ function navigateTo(viewName, event = null) {
 
     renderCurrentView();
     if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(viewName);
+    if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
 }
 
 function renderCurrentView() {
@@ -8522,6 +8596,8 @@ function renderCurrentView() {
         case 'grade-stats': renderGradeStatsView(); break;
         case 'predictive-analytics': if (typeof renderPredictiveAnalyticsView === 'function') renderPredictiveAnalyticsView(); break;
         case 'carnets': if (typeof renderCarnetsView === 'function') renderCarnetsView(); break;
+        case 'auxiliatura-log': if (typeof renderAuxiliaturaLogView === 'function') renderAuxiliaturaLogView(); break;
+        case 'exoneraciones-log': if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView(); break;
     }
 }
 
@@ -8567,6 +8643,15 @@ function renderQuickActionsHub() {
         ];
     } else if (role === 'profesor_auxiliar') {
         actions = [
+            {
+                title: "Bitácora de Ausencias",
+                desc: "Monitoreo en tiempo real e inasistencias de hoy",
+                icon: "fa-clipboard-user",
+                color: "#dc2626",
+                bg: "#fef2f2",
+                border: "#fecaca",
+                fn: "navigateTo('auxiliatura-log')"
+            },
             {
                 title: "+ Autorizar Permiso",
                 desc: "Justificar ausencia con motivo oficial",
@@ -8863,8 +8948,8 @@ function renderDashboard() {
                     <tbody>
                         ${(STATE.students || []).length > 0 ? (STATE.students || []).slice(-5).reverse().map(s => `
                             <tr>
-                                <td><code>${s.carne}</code></td>
-                                <td><strong>${s.firstName} ${s.lastName}</strong></td>
+                                <td><code>${s.carne || ''}</code></td>
+                                <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
                                 <td>${formatStudentGradeAndSection(s)}</td>
                                 <td><span class="badge ${s.status==='Activo'?'badge-success':'badge-danger'}">${s.status}</span></td>
                             </tr>
@@ -9020,9 +9105,9 @@ function printCourseStudentList(courseId) {
         : (STATE.students || []).filter(s => s.active !== false && (s.grade === gradeCode || (s.gradeLabel && s.gradeLabel.includes(gradeCode))));
 
     students.sort((a, b) => {
-        const lastA = (a.lastName || '').localeCompare(b.lastName || '', 'es', { sensitivity: 'base' });
-        if (lastA !== 0) return lastA;
-        return (a.firstName || '').localeCompare(b.firstName || '', 'es', { sensitivity: 'base' });
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
     });
 
     const printWin = window.open('', '_blank');
@@ -9043,7 +9128,7 @@ function printCourseStudentList(courseId) {
         <tr style="height:22px;">
             <td style="border:1px solid #333; padding:4px 4px; text-align:center; font-weight:bold; width:30px;">${idx + 1}</td>
             <td style="border:1px solid #333; padding:4px 4px; text-align:center; font-family:monospace; font-weight:700; width:95px;">${s.personalCode || s.carne || '---'}</td>
-            <td style="border:1px solid #333; padding:4px 8px; font-weight:bold; text-transform:uppercase;">${s.lastName || ''}, ${s.firstName || s.name || ''}</td>
+            <td style="border:1px solid #333; padding:4px 8px; font-weight:bold; text-transform:uppercase;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst')).toUpperCase()}</td>
             <td style="border:1px solid #333; width:44px; text-align:center;"></td>
             <td style="border:1px solid #333; width:44px; text-align:center;"></td>
             <td style="border:1px solid #333; width:44px; text-align:center;"></td>
@@ -9167,9 +9252,9 @@ function printCourseAttendanceSheet(courseId, monthNum = null) {
         : (STATE.students || []).filter(s => s.active !== false && (s.grade === gradeCode || (s.gradeLabel && s.gradeLabel.includes(gradeCode))));
 
     students.sort((a, b) => {
-        const lastA = (a.lastName || '').localeCompare(b.lastName || '', 'es', { sensitivity: 'base' });
-        if (lastA !== 0) return lastA;
-        return (a.firstName || '').localeCompare(b.firstName || '', 'es', { sensitivity: 'base' });
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
     });
 
     const printWin = window.open('', '_blank');
@@ -9204,7 +9289,7 @@ function printCourseAttendanceSheet(courseId, monthNum = null) {
             <tr>
                 <td style="border:1px solid #333; text-align:center; font-weight:bold; font-size:7.5px; padding:2px;">${idx + 1}</td>
                 <td style="border:1px solid #333; font-family:monospace; font-size:7.5px; text-align:center; padding:2px;">${s.personalCode || s.carne || ''}</td>
-                <td style="border:1px solid #333; font-weight:600; font-size:7.5px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:2px 4px;">${s.lastName || ''}, ${s.firstName || s.name || ''}</td>
+                <td style="border:1px solid #333; font-weight:600; font-size:7.5px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:2px 4px;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst')).toUpperCase()}</td>
                 ${dayCells}
                 <td style="border:1px solid #333; width:22px;"></td>
                 <td style="border:1px solid #333; width:22px;"></td>
@@ -9699,6 +9784,13 @@ function renderStudentsTable() {
         }
     }
 
+    // Ordenar alfabéticamente por apellidos y nombres (lastFirst) con soporte de colación en español
+    list.sort((a, b) => {
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
+
     // Actualizar barra de resumen de filtrado
     if (summaryBox) {
         summaryBox.style.display = 'flex';
@@ -9791,7 +9883,7 @@ function renderStudentsTable() {
                     ${s.cui ? `<br><small style="color:var(--text-muted);">CUI: ${s.cui}</small>` : ''}
                 </td>
                 <td>
-                    <strong>${s.firstName} ${s.lastName}</strong>
+                    <strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong>
                     ${s.retireReason ? `<br><small style="color:#b45309; font-style:italic;" title="Motivo registrado por Secretaría"><i class="fa-solid fa-circle-info"></i> ${escapeHtml(s.retireReason)}</small>` : ''}
                 </td>
                 <td>
@@ -9860,7 +9952,8 @@ async function deleteStudent(studentId) {
     const student = (STATE.students || []).find(s => s.id === studentId);
     if (!student) return;
 
-    if (confirm(`¿Está seguro de eliminar permanentemente al estudiante "${student.firstName} ${student.lastName}" (${student.carne})? Esta acción borrará expediente, notas y registros de disciplina.`)) {
+    const sName = formatStudentDisplayName(student, 'lastFirst');
+    if (confirm(`¿Está seguro de eliminar permanentemente al estudiante "${sName}" (${student.carne || ''})? Esta acción borrará expediente, notas y registros de disciplina.`)) {
         STATE.students = (STATE.students || []).filter(s => s.id !== studentId);
         
         // Limpiar reportes de disciplina del estudiante
@@ -9877,7 +9970,7 @@ async function deleteStudent(studentId) {
         renderCurrentDashboardAlerts();
         renderTeacherGradeProgressTable();
         populateAttendanceSelects(false);
-        showToast(`El estudiante "${student.firstName} ${student.lastName}" ha sido eliminado del sistema.`, "info");
+        showToast(`El estudiante "${sName}" ha sido eliminado del sistema.`, "info");
 
         // 🌟 Persistencia atómica en Firestore y RTDB en segundo plano
         (async () => {
@@ -10060,7 +10153,7 @@ function openEditStudentModal(studentId) {
     
     const titleEl = document.getElementById('enrollmentViewTitle');
     if (titleEl) {
-        titleEl.innerHTML = `<i class="fa-solid fa-user-pen"></i> Editar Datos de Inscripción (${student.carne || ''} - ${student.firstName || ''} ${student.lastName || ''})`;
+        titleEl.innerHTML = `<i class="fa-solid fa-user-pen"></i> Editar Datos de Inscripción (${escapeHtml(student.carne || '')} - ${escapeHtml(formatStudentDisplayName(student, 'lastFirst'))})`;
     }
     
     const topBtn = document.getElementById('enrollmentSubmitTopBtn');
@@ -10138,14 +10231,14 @@ function openEditStudentModal(studentId) {
 
     const photoPreview = document.getElementById('studentFormPhotoPreview');
     if (photoPreview) {
-        photoPreview.src = student.photo || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(student.firstName || 'Alumno') + '&background=15803d&color=fff');
+        photoPreview.src = student.photo || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(formatStudentDisplayName(student, 'lastFirst')) + '&background=15803d&color=fff');
     }
 
     const warn = document.getElementById('studentDuplicateWarning');
     if (warn) warn.style.display = 'none';
 
     navigateTo('enrollment');
-    showToast(`Editando datos de ${student.firstName} ${student.lastName} (${student.carne || ''})`, 'info');
+    showToast(`Editando datos de ${formatStudentDisplayName(student, 'lastFirst')} (${student.carne || ''})`, 'info');
 }
 window.openEditStudentModal = openEditStudentModal;
 
@@ -10347,7 +10440,7 @@ function validateStudentFormLiveDuplicate() {
         const dupGrade = duplicate.gradeLabel || duplicate.grade || 'otro grado';
         const dupCycle = duplicate.cycle || STATE.activeCycle || 'ciclo actual';
         warnBox.style.display = 'block';
-        warnText.textContent = `Aviso: El alumno "${duplicate.firstName} ${duplicate.lastName}" ya está inscrito en "${dupGrade}" (${dupCycle}).`;
+        warnText.textContent = `Aviso: El alumno "${formatStudentDisplayName(duplicate, 'lastFirst')}" ya está inscrito en "${dupGrade}" (${dupCycle}).`;
     } else {
         warnBox.style.display = 'none';
     }
@@ -10396,7 +10489,7 @@ async function saveStudentForm(e) {
         if (duplicate) {
             const dupGrade = duplicate.gradeLabel || duplicate.grade || 'otro grado';
             const dupCycle = duplicate.cycle || STATE.activeCycle || 'el ciclo lectivo actual';
-            showToast(`⚠️ No se puede duplicar la inscripción: El alumno "${duplicate.firstName} ${duplicate.lastName}" ya está inscrito en ${dupGrade} para el ciclo ${dupCycle}.`, 'warning');
+            showToast(`⚠️ No se puede duplicar la inscripción: El alumno "${formatStudentDisplayName(duplicate, 'lastFirst')}" ya está inscrito en ${dupGrade} para el ciclo ${dupCycle}.`, 'warning');
             return;
         }
     }
@@ -10921,7 +11014,7 @@ function openAcademicExonerationModal(studentId) {
     const badgeEl = document.getElementById('exonModalStatusBadge');
     const subjSelect = document.getElementById('exonFormSubject');
 
-    if (nameEl) nameEl.textContent = `Estudiante: ${student.firstName} ${student.lastName}`;
+    if (nameEl) nameEl.textContent = `Estudiante: ${formatStudentDisplayName(student, 'lastFirst')}`;
     if (metaEl) metaEl.textContent = `Carné: ${student.carne || '—'} | Cód. Personal: ${student.personalCode || '—'} | Grado y Sección: ${formatStudentGradeAndSection(student)}`;
 
     const exceptions = student.academicExceptions || [];
@@ -11290,10 +11383,10 @@ function openStudentProfileModal(id) {
 
     // 1. Cabecera del Perfil
     const photoImg = document.getElementById('profilePhotoImg');
-    if (photoImg) photoImg.src = student.photoUrl || student.photo || ('https://ui-avatars.com/api/?name=' + student.firstName);
+    if (photoImg) photoImg.src = student.photoUrl || student.photo || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(formatStudentDisplayName(student, 'lastFirst')));
     
     const nameDisp = document.getElementById('profNameDisplay');
-    if (nameDisp) nameDisp.textContent = `${student.firstName} ${student.lastName}`;
+    if (nameDisp) nameDisp.textContent = formatStudentDisplayName(student, 'lastFirst');
 
     const carneDisp = document.getElementById('profCarneDisplay');
     if (carneDisp) carneDisp.textContent = `Carné: ${student.carne} | Cód. Personal: ${student.personalCode || 'No registrado'} | CUI: ${student.cui || 'No registrado'} | Ciclo: ${student.cycle || STATE.activeCycle || '2026'}`;
@@ -11806,7 +11899,7 @@ async function saveStudentProfileForm(e) {
         saveStateToLocalStorage();
         closeStudentProfileModal();
         renderStudentsTable();
-        showToast(`Estado de matrícula y expediente de ${student.firstName} ${student.lastName} actualizado y confirmado en Firebase (${newStatus}).`, "success");
+        showToast(`Estado de matrícula y expediente de ${formatStudentDisplayName(student, 'lastFirst')} actualizado y confirmado en Firebase (${newStatus}).`, "success");
     } catch(err) {
         console.error("❌ Error al guardar perfil del estudiante en Firebase:", err);
         showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
@@ -12357,7 +12450,11 @@ function generateOfficialPrintList(opts = null) {
     }
 
     // Ordenar alfabéticamente por apellidos
-    students.sort((a, b) => (a.lastName || a.name || '').localeCompare(b.lastName || b.name || ''));
+    students.sort((a, b) => {
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
 
     const totalStudents = students.length;
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
@@ -12450,7 +12547,7 @@ function generateOfficialPrintList(opts = null) {
                 }
             }
 
-            const fullNameDisplay = `${s.lastName || ''}, ${s.firstName || ''}`.trim() || s.name || 'Estudiante';
+            const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
 
             return `
             <tr style="height:${rowHeight};">
@@ -12706,10 +12803,10 @@ function downloadStudentTemplate() {
     const h = STATE.schoolHeader || getInitialData().schoolHeader;
     
     const sampleStudents = [
-        { clave: 1, name: 'CHACON LÉMUS, ASTRID YAMILETH', personalCode: 'A123BCD', cui: '2340 56789 2201', carne: 'ENCCO-2026-101', phone: '5555-1111', tutor: 'Maria Lemus', acts: [10, 10, 10, 10, 0, 0, 0, 0, 0, 0], zona: 40, exam: 45, total: 85 },
-        { clave: 2, name: 'CHACON LÉMUS, JACKELINE YAMILETH', personalCode: 'B456CDE', cui: '2340 98765 2201', carne: 'ENCCO-2026-102', phone: '5555-2222', tutor: 'Carlos Chacon', acts: [10, 8, 10, 9, 0, 0, 0, 0, 0, 0], zona: 37, exam: 42, total: 79 },
-        { clave: 3, name: 'CINTO MONZÓN, ROSELIN DANIELA', personalCode: 'C789EFG', cui: '2340 34567 2201', carne: 'ENCCO-2026-103', phone: '5555-3333', tutor: 'Elena Monzon', acts: [10, 10, 10, 10, 0, 0, 0, 0, 0, 0], zona: 40, exam: 50, total: 90 },
-        { clave: 4, name: 'CRÚZ MARTINEZ, ILEANA JIREH', personalCode: 'D012FGH', cui: '2340 12345 2201', carne: 'ENCCO-2026-104', phone: '5555-4444', tutor: 'Roberto Cruz', acts: [8, 9, 7, 8, 0, 0, 0, 0, 0, 0], zona: 32, exam: 40, total: 72 }
+        { clave: 1, name: 'CHACÓN LÉMUS, ASTRID YAMILETH', personalCode: 'A123BCD', cui: '2340 56789 2201', carne: 'ENCCO-2026-101', phone: '5555-1111', tutor: 'María Lemus', acts: [10, 10, 10, 10, 0, 0, 0, 0, 0, 0], zona: 40, exam: 45, total: 85 },
+        { clave: 2, name: 'CHACÓN LÉMUS, JACKELINE YAMILETH', personalCode: 'B456CDE', cui: '2340 98765 2201', carne: 'ENCCO-2026-102', phone: '5555-2222', tutor: 'Carlos Chacón', acts: [10, 8, 10, 9, 0, 0, 0, 0, 0, 0], zona: 37, exam: 42, total: 79 },
+        { clave: 3, name: 'CINTO MONZÓN, ROSELIN DANIELA', personalCode: 'C789EFG', cui: '2340 34567 2201', carne: 'ENCCO-2026-103', phone: '5555-3333', tutor: 'Elena Monzón', acts: [10, 10, 10, 10, 0, 0, 0, 0, 0, 0], zona: 40, exam: 50, total: 90 },
+        { clave: 4, name: 'CRUZ MARTÍNEZ, ILEANA JIREH', personalCode: 'D012FGH', cui: '2340 12345 2201', carne: 'ENCCO-2026-104', phone: '5555-4444', tutor: 'Roberto Cruz', acts: [8, 9, 7, 8, 0, 0, 0, 0, 0, 0], zona: 32, exam: 40, total: 72 }
     ];
 
     const rowsHtml = sampleStudents.map(s => {
@@ -13101,10 +13198,9 @@ function exportStudentsOfficialExcel() {
     }
 
     students.sort((a, b) => {
-        const lastA = (a.lastName || '').trim().toLowerCase();
-        const lastB = (b.lastName || '').trim().toLowerCase();
-        if (lastA !== lastB) return lastA.localeCompare(lastB);
-        return (a.firstName || '').trim().toLowerCase().localeCompare((b.firstName || '').trim().toLowerCase());
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
     });
 
     const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeFilter);
@@ -13114,7 +13210,7 @@ function exportStudentsOfficialExcel() {
     const cycle = STATE.activeCycle || '2026';
 
     const rowsHtml = students.map((s, idx) => {
-        const fullName = `${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}`;
+        const fullName = formatStudentDisplayName(s, 'lastFirst').toUpperCase();
         return `
             <tr>
                 <td class="td-num">${idx + 1}</td>
@@ -13558,7 +13654,11 @@ function previewStudentImport(e) {
         }
 
         // Ordenar alfabéticamente por apellido los estudiantes pendientes
-        PENDING_STUDENTS_TO_IMPORT.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+        PENDING_STUDENTS_TO_IMPORT.sort((a, b) => {
+            const nameA = formatStudentDisplayName(a, 'lastFirst');
+            const nameB = formatStudentDisplayName(b, 'lastFirst');
+            return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+        });
 
         // Renderizar encabezado institucional detectado y vista previa
         const container = document.getElementById('studentImportPreviewContainer');
@@ -13601,7 +13701,7 @@ function previewStudentImport(e) {
                 return `
                 <tr style="${s.isDuplicate ? 'background:#f0f9ff;' : ''}">
                     <td style="text-align:center; font-weight:bold; background:#f8fafc;">${s.clave || idx + 1}</td>
-                    <td><strong>${s.lastName}, ${s.firstName}</strong></td>
+                    <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
                     <td style="font-size:0.75rem;">${s.personalCode || '—'}</td>
                     <td><code>${s.carne}</code></td>
                     ${actCells}
@@ -13939,9 +14039,9 @@ function printStudentsOfficialList(targetGrade = null) {
 
     // 5. Ordenar alfabéticamente por Apellidos y luego Nombres
     list.sort((a, b) => {
-        const lastA = (a.lastName || '').localeCompare(b.lastName || '', 'es', { sensitivity: 'base' });
-        if (lastA !== 0) return lastA;
-        return (a.firstName || '').localeCompare(b.firstName || '', 'es', { sensitivity: 'base' });
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
     });
 
     // 6. Estadísticas oficiales
@@ -13968,7 +14068,7 @@ function printStudentsOfficialList(targetGrade = null) {
             <td style="text-align:center; font-weight:bold; width:35px; border:1px solid #334155; padding:5px;">${idx + 1}</td>
             <td style="text-align:center; font-weight:bold; width:85px; border:1px solid #334155; padding:5px;">${s.carne || '-'}</td>
             <td style="text-align:center; width:110px; border:1px solid #334155; padding:5px;">${s.personalCode || s.cui || '-'}</td>
-            <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:5px;">${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}</td>
+            <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:5px;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase())}</td>
             <td style="text-align:center; width:50px; font-weight:600; border:1px solid #334155; padding:5px;">${(s.gender || '').toLowerCase().startsWith('f') ? 'F' : 'M'}</td>
             <td style="width:140px; border:1px solid #334155; padding:5px; font-size:8.5pt;">${s.tutor || s.tutorName || 'No reg.'} (${s.tutorPhone || s.phone || 'Sin tel.'})</td>
             <td style="text-align:center; width:75px; font-weight:bold; border:1px solid #334155; padding:5px; color:${s.status === 'Activo' || s.status === 'Inscrito' ? '#15803d' : '#b91c1c'};">${s.status || 'Activo'}</td>
@@ -14111,9 +14211,9 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
 
     // 4. Ordenar alfabéticamente por Apellidos y luego Nombres
     list.sort((a, b) => {
-        const lastA = (a.lastName || '').localeCompare(b.lastName || '', 'es', { sensitivity: 'base' });
-        if (lastA !== 0) return lastA;
-        return (a.firstName || '').localeCompare(b.firstName || '', 'es', { sensitivity: 'base' });
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
     });
 
     const countMale = list.filter(s => {
@@ -14151,7 +14251,7 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
             <td style="text-align:center; font-weight:bold; width:26px; border:1px solid #334155; padding:2px 1px; font-size:8pt;">${idx + 1}</td>
             <td style="text-align:center; font-weight:bold; width:78px; border:1px solid #334155; padding:2px 2px; font-size:7.5pt; font-family:monospace;">${escapeHtml(s.personalCode || s.cui || s.carne || '-')}</td>
             <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:2px 5px; font-size:8pt; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:215px;">
-                ${escapeHtml((s.lastName || '').toUpperCase())}, ${escapeHtml((s.firstName || '').toUpperCase())}
+                ${escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase())}
             </td>
             <td style="text-align:center; width:22px; font-weight:600; border:1px solid #334155; padding:2px 1px; font-size:7.5pt;">${(s.gender || '').toLowerCase().startsWith('f') ? 'F' : 'M'}</td>
             <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
@@ -14395,7 +14495,12 @@ function openDisciplineModal() {
     if (!checkEnrolmentPermissions()) return;
     const select = document.getElementById('discStudentSelect');
     if (select && STATE.students) {
-        select.innerHTML = STATE.students.map(s => `<option value="${s.id}">${s.firstName} ${s.lastName} (${formatStudentGradeAndSection(s)})</option>`).join('');
+        const sortedStudents = [...STATE.students].sort((a, b) => {
+            const nameA = formatStudentDisplayName(a, 'lastFirst');
+            const nameB = formatStudentDisplayName(b, 'lastFirst');
+            return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+        });
+        select.innerHTML = sortedStudents.map(s => `<option value="${s.id}">${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))} (${formatStudentGradeAndSection(s)})</option>`).join('');
     }
     const modal = document.getElementById('disciplineModal');
     if (modal) {
@@ -14466,7 +14571,7 @@ async function saveDisciplineForm(e) {
     }
 
     try {
-        const stuName = student ? (student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim()) : 'Estudiante';
+        const stuName = student ? formatStudentDisplayName(student, 'lastFirst') : 'Estudiante';
         const grade = student ? (student.grade || student.gradeCode || 'Perito Contador') : '4to Perito Contador';
         const section = student ? (student.section || 'Sección A') : 'Sección A';
         const teacherName = STATE.currentUser ? (STATE.currentUser.name || STATE.currentUser.username) : 'Docente Catedrático';
@@ -16540,13 +16645,13 @@ function runGlobalSpotlightSearch(rawQuery) {
     if (students.length > 0) {
         html += `<div style="font-size:0.75rem; font-weight:800; color:#15803d; margin:6px 0; text-transform:uppercase; letter-spacing:0.5px; padding:0 4px;">🎓 Estudiantes (${students.length})</div>`;
         students.forEach(st => {
-            const stName = `${st.lastName || ''}, ${st.firstName || ''}`.toUpperCase().trim() || st.name;
+            const stName = formatStudentDisplayName(st, 'lastFirst').toUpperCase();
             const carneStr = st.carne || st.personalCode || 'S/C';
             html += `
-                <div class="spotlight-result-item" onclick="closeGlobalSearchModal(); navigateTo('students'); document.getElementById('studentSearchInput').value='${st.carne || st.firstName}'; filterStudentsTable();">
+                <div class="spotlight-result-item" onclick="closeGlobalSearchModal(); navigateTo('students'); document.getElementById('studentSearchInput').value='${st.carne || st.lastName || st.firstName}'; filterStudentsTable();">
                     <div style="display:flex; align-items:center; gap:12px;">
                         <div style="width:34px; height:34px; border-radius:50%; background:#f0fdf4; border:1px solid #86efac; color:#15803d; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.8rem;">
-                            ${st.firstName ? st.firstName.charAt(0) : 'E'}
+                            ${st.lastName ? st.lastName.charAt(0) : (st.firstName ? st.firstName.charAt(0) : 'E')}
                         </div>
                         <div>
                             <strong style="color:#0f172a; font-size:0.88rem; display:block;">${stName}</strong>
@@ -16976,7 +17081,11 @@ function getFilteredReportStudents() {
         students = students.filter(s => s.section === sectionVal || (s.gradeLabel && s.gradeLabel.includes(sectionVal)));
     }
 
-    return students.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
+    return students.sort((a, b) => {
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
 }
 window.getFilteredReportStudents = getFilteredReportStudents;
 
@@ -16996,7 +17105,7 @@ function filterAndPopulateReportStudents() {
     }
 
     select.innerHTML = students.map(s => `
-        <option value="${s.id}">${s.lastName}, ${s.firstName} (${s.carne || s.personalCode || '—'}) - ${formatStudentGradeAndSection(s)}</option>
+        <option value="${s.id}">${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))} (${s.carne || s.personalCode || '—'}) - ${formatStudentGradeAndSection(s)}</option>
     `).join('');
 
     previewStudentReportCard(students[0].id);
@@ -17327,7 +17436,7 @@ function buildStudentReportCardInnerHtml(s) {
 
                 <!-- DATOS DEL ESTUDIANTE -->
                 <div style="display:grid; grid-template-columns:1.25fr 1fr; gap:2px 14px; background:#f8fafc; border:1px solid #cbd5e1; border-left:4px solid #0369a1; padding:3px 10px; font-size:11px; line-height:1.28; margin-bottom:3px; border-radius:4px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
-                    <div><strong style="color:#0369a1; font-weight:800;">Estudiante:</strong> <span style="font-weight:900; color:#0f172a; font-size:12.5px; text-transform:uppercase;">${s.lastName}, ${s.firstName}</span></div>
+                    <div><strong style="color:#0369a1; font-weight:800;">Estudiante:</strong> <span style="font-weight:900; color:#0f172a; font-size:12.5px; text-transform:uppercase;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</span></div>
                     <div><strong style="color:#0369a1; font-weight:800;">Carné Oficial:</strong> <span style="font-weight:700; color:#000;">${s.carne || "ENCCO-2026"}</span></div>
                     <div><strong style="color:#0369a1; font-weight:800;">Código Personal:</strong> <span style="font-weight:700; color:#000;">${s.personalCode || "—"}</span></div>
                     <div><strong style="color:#0369a1; font-weight:800;">Grado y Sección:</strong> <span style="font-weight:700; color:#000;">${gradeName}</span></div>
@@ -17430,7 +17539,7 @@ function printStudentReportCardOfficial(targetStudentId) {
         <head>
             <meta charset="UTF-8">
             <base href="${window.location.href}">
-            <title>Boletín Oficial - ${s.lastName}, ${s.firstName} (Media Página Oficio)</title>
+            <title>Boletín Oficial - ${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))} (Media Página Oficio)</title>
             <style>
                 @page {
                     size: 8.5in 6.5in;
@@ -17637,6 +17746,12 @@ function openSectionStudentsModal(gradeCode) {
         getSortedGradebookStudents(gradeCode, gradeObj) : 
         (STATE.students || []).filter(s => s.grade === gradeCode || (gradeObj && s.grade === gradeObj.name));
 
+    students.sort((a, b) => {
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
+
     const secClean = (gradeObj?.section || '').toLowerCase().startsWith('secci') ? gradeObj.section : ('Sección ' + (gradeObj?.section || 'A'));
     if (title) title.textContent = gradeObj ? `${gradeObj.name} - ${secClean}` : gradeCode;
     if (subtitle) subtitle.textContent = `Carrera: ${gradeObj?.career || 'Perito Contador'} | Jornada: ${gradeObj?.shift || 'Matutina'}`;
@@ -17646,9 +17761,9 @@ function openSectionStudentsModal(gradeCode) {
         tbody.innerHTML = students.map((s, idx) => `
             <tr>
                 <td style="text-align:center;"><strong>${idx + 1}</strong></td>
-                <td style="text-align:center;"><img src="${s.photo || 'https://ui-avatars.com/api/?name='+encodeURIComponent((s.firstName||'')+' '+(s.lastName||''))}" style="width:28px; height:28px; border-radius:50%; object-fit:cover;"></td>
-                <td><code>${s.carne || s.personalCode || '---'}</code></td>
-                <td><strong>${s.lastName || ''}, ${s.firstName || s.name || ''}</strong></td>
+                <td style="text-align:center;"><img src="${s.photo || 'https://ui-avatars.com/api/?name='+encodeURIComponent(formatStudentDisplayName(s, 'lastFirst'))}" style="width:28px; height:28px; border-radius:50%; object-fit:cover;"></td>
+                <td><code>${escapeHtml(s.carne || s.personalCode || '---')}</code></td>
+                <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
                 <td style="text-align:center;">${s.age || (typeof calculateStudentAge === 'function' ? calculateStudentAge(s.birthDate) : '—') || '—'}</td>
                 <td>${s.tutorPhone || s.phone || 'Sin teléfono'}</td>
                 <td><span class="badge ${s.status === 'Activo' ? 'badge-success' : 'badge-danger'}">${s.status || 'Activo'}</span></td>
@@ -18078,14 +18193,14 @@ function exportDataToExcelFile(filename, title, subtitle, headers, dataRows, col
     }
 
     try {
-        const csvFileName = filename.replace(/\\.[^/.]+$/, "") + ".csv";
-        let csvContent = "\\uFEFF";
-        csvContent += `"${title}"\\n`;
-        csvContent += `"Ciclo Escolar: ${cycle} - ENCCO"\\n\\n`;
+        const csvFileName = filename.replace(/\.[^/.]+$/, "") + ".csv";
+        let csvContent = "\uFEFF";
+        csvContent += `"${title}"\n`;
+        csvContent += `"Ciclo Escolar: ${cycle} - ENCCO"\n\n`;
         
-        csvContent += headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(";") + "\\n";
+        csvContent += headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(";") + "\n";
         dataRows.forEach(row => {
-            csvContent += row.map(cell => `"${String(cell !== undefined && cell !== null ? cell : '').replace(/"/g, '""')}"`).join(";") + "\\n";
+            csvContent += row.map(cell => `"${String(cell !== undefined && cell !== null ? cell : '').replace(/"/g, '""')}"`).join(";") + "\n";
         });
 
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -19156,9 +19271,11 @@ function getSortedGradebookStudents(gradeCode, targetPensum = null) {
     });
 
     return students.sort((a, b) => {
-        const nameA = `${a.lastName || ''} ${a.firstName || a.name || ''}`.toUpperCase().trim();
-        const nameB = `${b.lastName || ''} ${b.firstName || b.name || ''}`.toUpperCase().trim();
-        return gradebookSortAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+        const nameA = formatStudentDisplayName(a, 'lastFirst').toUpperCase();
+        const nameB = formatStudentDisplayName(b, 'lastFirst').toUpperCase();
+        return gradebookSortAsc 
+            ? nameA.localeCompare(nameB, 'es', { sensitivity: 'base' }) 
+            : nameB.localeCompare(nameA, 'es', { sensitivity: 'base' });
     });
 }
 window.getSortedGradebookStudents = getSortedGradebookStudents;
@@ -19300,7 +19417,7 @@ function getStudentSubjectGrade(studentIdentifier, subjectIdentifier, unit = nul
         const uNum = parseInt(unit) || 1;
         return {
             studentId: student.id,
-            studentName: `${student.lastName || ''}, ${student.firstName || ''}`.trim(),
+            studentName: formatStudentDisplayName(student, 'lastFirst'),
             subjectName: targetSubjectName,
             unit: uNum,
             ...getUnitData(uNum)
@@ -19309,7 +19426,7 @@ function getStudentSubjectGrade(studentIdentifier, subjectIdentifier, unit = nul
 
     return {
         studentId: student.id,
-        studentName: `${student.lastName || ''}, ${student.firstName || ''}`.trim(),
+        studentName: formatStudentDisplayName(student, 'lastFirst'),
         subjectName: targetSubjectName,
         grades: [...resolvedGrades],
         b1: getUnitData(1),
@@ -20567,7 +20684,7 @@ function loadTeacherGradebook() {
             const zonaSum = (isInactive || isExon) ? 0 : acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
             if (!isInactive && !isExon && zonaSum > cfg.zonaMax) hasOverLimit = true;
 
-            const studentFullName = `${s.lastName || ''}, ${s.firstName || ''}`.toUpperCase().trim();
+            const studentFullName = escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase());
 
             let statusTag = '';
             if (s.status === 'Retirado') {
@@ -20577,22 +20694,23 @@ function loadTeacherGradebook() {
             } else if (s.status === 'Inactivo') {
                 statusTag = `<span class="badge badge-secondary" style="font-size:0.7rem; margin-left:6px;">Inactivo</span>`;
             } else if (isExon) {
-                statusTag = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.7rem; margin-left:6px; font-weight:700;"><i class="fa-solid fa-shield-check"></i> Exonerado</span>`;
+                statusTag = `<span class="badge" onclick="openExonerationDetailModal('${s.id}', '${escapeHtml(subjectName)}', ${currentUnit})" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.7rem; margin-left:6px; font-weight:800; cursor:pointer;" title="Haga clic para ver el motivo oficial de la exoneración"><i class="fa-solid fa-file-shield"></i> Exonerado ℹ️</span>`;
             }
 
             if (isExon) {
                 const exonActInputs = acts.map(() => `
                     <td style="text-align:center; padding:4px;">
-                        <input type="text" class="grade-box-input" value="—" disabled readonly 
-                            style="background:#f0f9ff; color:#0284c7; border:1px dashed #bae6fd; cursor:not-allowed;" 
-                            title="Estudiante Exonerado en este bimestre: Calificación no aplica">
+                        <input type="text" class="grade-box-input" value="—" readonly 
+                            onclick="openExonerationDetailModal('${s.id}', '${escapeHtml(subjectName)}', ${currentUnit})"
+                            style="background:#f0f9ff; color:#0284c7; border:1px dashed #bae6fd; cursor:pointer;" 
+                            title="Estudiante Exonerado en este bimestre: Calificación no aplica. Haga clic para ver constancia">
                     </td>
                 `).join('');
                 return `
                     <tr data-student-id="${s.id}" style="background:rgba(240,249,255,0.6);">
                         <td style="text-align:center;"><input type="checkbox" disabled></td>
                         <td><strong>${idx + 1}. ${studentFullName}</strong>${statusTag}</td>
-                        <td style="text-align:center; background:#f0f9ff; font-weight:800; font-size:0.85rem; color:#0369a1;" class="zona-sum-cell" id="zonaSum_${s.id}">
+                        <td style="text-align:center; background:#f0f9ff; font-weight:800; font-size:0.85rem; color:#0369a1; cursor:pointer;" class="zona-sum-cell" id="zonaSum_${s.id}" onclick="openExonerationDetailModal('${s.id}', '${escapeHtml(subjectName)}', ${currentUnit})" title="Haga clic para ver constancia de exoneración">
                             Exon.
                         </td>
                         ${exonActInputs}
@@ -20657,7 +20775,7 @@ function loadTeacherGradebook() {
             const total = zonaSum + exam;
             if (!isInactive && !isExon && (exam > cfg.examMax || total > 100)) hasOverLimit = true;
 
-            const studentFullName = `${s.lastName || ''}, ${s.firstName || ''}`.toUpperCase().trim();
+            const studentFullName = escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase());
 
             let statusTag = '';
             if (s.status === 'Retirado') {
@@ -20667,7 +20785,7 @@ function loadTeacherGradebook() {
             } else if (s.status === 'Inactivo') {
                 statusTag = `<span class="badge badge-secondary" style="font-size:0.7rem; margin-left:6px;">Inactivo</span>`;
             } else if (isExon) {
-                statusTag = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.7rem; margin-left:6px; font-weight:700;"><i class="fa-solid fa-shield-check"></i> Exonerado</span>`;
+                statusTag = `<span class="badge" onclick="openExonerationDetailModal('${s.id}', '${escapeHtml(subjectName)}', ${currentUnit})" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.7rem; margin-left:6px; font-weight:800; cursor:pointer;" title="Haga clic para ver el motivo oficial de la exoneración"><i class="fa-solid fa-file-shield"></i> Exonerado ℹ️</span>`;
             }
 
             if (isExon) {
@@ -20691,14 +20809,14 @@ function loadTeacherGradebook() {
                         <td style="text-align:center;"><input type="checkbox" disabled></td>
                         <td><strong>${idx + 1}. ${studentFullName}</strong>${statusTag}</td>
                         <td style="text-align:center; font-weight:700;">
-                            <input type="text" class="grade-box-input-exam" value="—" disabled readonly style="background:#f0f9ff; color:#0284c7; border:1.5px dashed #bae6fd; cursor:not-allowed; text-align:center; width:65px;" title="Zona Exonerada">
+                            <input type="text" class="grade-box-input-exam" value="—" readonly onclick="openExonerationDetailModal('${s.id}', '${escapeHtml(subjectName)}', ${currentUnit})" style="background:#f0f9ff; color:#0284c7; border:1.5px dashed #bae6fd; cursor:pointer; text-align:center; width:65px;" title="Zona Exonerada - Clic para ver constancia">
                         </td>
                         <td style="text-align:center;">
-                            <input type="text" class="grade-box-input-exam" value="—" disabled readonly style="background:#f0f9ff; color:#0284c7; border:1px dashed #bae6fd; cursor:not-allowed; text-align:center; width:65px;" title="Examen Exonerado">
+                            <input type="text" class="grade-box-input-exam" value="—" readonly onclick="openExonerationDetailModal('${s.id}', '${escapeHtml(subjectName)}', ${currentUnit})" style="background:#f0f9ff; color:#0284c7; border:1px dashed #bae6fd; cursor:pointer; text-align:center; width:65px;" title="Examen Exonerado - Clic para ver constancia">
                         </td>
                         <td style="text-align:center;">
-                            <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.85rem; padding:4px 10px; font-weight:800;" title="Exoneración autorizada: La nota no se toma en cuenta">
-                                <i class="fa-solid fa-shield-check"></i> Exon.
+                            <span class="badge" onclick="openExonerationDetailModal('${s.id}', '${escapeHtml(subjectName)}', ${currentUnit})" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.85rem; padding:4px 10px; font-weight:800; cursor:pointer;" title="Exoneración autorizada: Haga clic para ver constancia oficial">
+                                <i class="fa-solid fa-shield-check"></i> Exon. ℹ️
                             </span>
                         </td>
                         <td style="text-align:center; font-weight:800; color:#0369a1; font-size:0.95rem;">
@@ -20762,7 +20880,7 @@ function loadTeacherGradebook() {
     const tbodyAverages = document.getElementById('gradebookAveragesTableBody');
     if (tbodyAverages) {
         tbodyAverages.innerHTML = students.map((s, idx) => {
-            const studentFullName = `${s.lastName || ''}, ${s.firstName || ''}`.toUpperCase().trim();
+            const studentFullName = escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase());
             const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
             const g = s.grades[subjectName] || [0, 0, 0, 0];
             const n1 = parseInt(g[0]) || 0;
@@ -21656,7 +21774,11 @@ function loadAttendanceList() {
         const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
 
         return (qGradeNum === sGradeNum) && (qSec === sSec);
-    }).sort((a, b) => (a.fullName || (a.lastName + ' ' + a.firstName)).localeCompare(b.fullName || (b.lastName + ' ' + b.firstName)));
+    }).sort((a, b) => {
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
 
     if (students.length === 0) {
         body.innerHTML = `<tr><td colspan="${daysInMonth + 8}" style="text-align:center; padding:35px; color:#64748b; font-size:0.95rem;">
@@ -21683,7 +21805,7 @@ function loadAttendanceList() {
         const sRecords = monthData[s.id] || {};
         let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
         let cellsHtml = '';
-        const studentFullName = s.fullName || `${s.lastName || ''}, ${s.firstName || s.name || ''}`.trim();
+        const studentFullName = formatStudentDisplayName(s, 'lastFirst');
         const isAbsentStatus = (s.status === 'Ausente');
 
         for (let day = 1; day <= daysInMonth; day++) {
@@ -21930,6 +22052,13 @@ function toggleAttendanceCell(studentId, day) {
         STATE.attendanceRecords[recordKey][studentId][day] = next;
     } else {
         delete STATE.attendanceRecords[recordKey][studentId][day];
+    }
+
+    // 🚨 Alerta Inmediata a Auxiliatura cuando un docente marca ausencia en aula
+    if (next === 'A' && typeof emitAttendanceAbsenceAlert === 'function') {
+        emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month);
+    } else if (cur === 'A' && next !== 'A' && typeof dismissAttendanceAbsenceAlert === 'function') {
+        dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month);
     }
 
     // Actualizar visualmente la celda de inmediato con su letra y color asignado
@@ -22349,7 +22478,7 @@ function updateLastScannedBanner(student, status, detailsMsg) {
     const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     if (status === 'success' && student) {
-        const studentName = `${student.apellidos || student.lastName || ''} ${student.nombres || student.firstName || student.name || ''}`.trim() || 'Estudiante';
+        const studentName = formatStudentDisplayName(student, 'lastFirst') || 'Estudiante';
         const gradeStr = student.grade || student.gradeLabel || student.gradeCode || 'Grado no esp.';
         const sectionStr = student.section || '';
         const carneStr = student.carne || student.personalCode || student.cui || '';
@@ -22514,7 +22643,7 @@ function registerAttendanceByCode(rawCode) {
     playAttendanceBeep(true);
     if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([70, 40, 70]);
 
-    const sFullName = `${student.apellidos || student.lastName || ''} ${student.nombres || student.firstName || student.name || ''}`.trim() || 'Estudiante';
+    const sFullName = formatStudentDisplayName(student, 'lastFirst') || 'Estudiante';
     updateLastScannedBanner(student, 'success', `Presente marcado: Día ${targetDay}`);
     if (typeof showToast === 'function') showToast(`Asistencia registrada: ${sFullName}`, 'success');
 
@@ -22730,7 +22859,11 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
         const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
 
         return (qGradeNum === sGradeNum) && (qSec === sSec);
-    }).sort((a, b) => (a.fullName || (a.lastName + ' ' + a.firstName)).localeCompare(b.fullName || (b.lastName + ' ' + b.firstName)));
+    }).sort((a, b) => {
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
 
     if (students.length === 0) {
         showToast("No hay estudiantes registrados en este grado para generar la planilla de asistencia.", "warning");
@@ -22772,7 +22905,7 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
         const sRecords = monthData[s.id] || {};
         let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
         let dayCells = '';
-        const studentFullName = s.fullName || `${s.lastName || ''}, ${s.firstName || s.name || ''}`.trim();
+        const studentFullName = formatStudentDisplayName(s, 'lastFirst').toUpperCase();
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dObj = new Date(year, month - 1, day);
@@ -22951,7 +23084,11 @@ function exportAttendanceOfficialExcel() {
         const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
 
         return (qGradeNum === sGradeNum) && (qSec === sSec);
-    }).sort((a, b) => (a.fullName || (a.lastName + ' ' + a.firstName)).localeCompare(b.fullName || (b.lastName + ' ' + b.firstName)));
+    }).sort((a, b) => {
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
 
     if (students.length === 0) {
         showToast("No hay estudiantes para exportar.", "warning");
@@ -22968,7 +23105,7 @@ function exportAttendanceOfficialExcel() {
     students.forEach((s, idx) => {
         const sRecords = monthData[s.id] || {};
         let p = 0, a = 0, j = 0, t = 0;
-        let line = `${idx + 1},"${s.personalCode || s.cui || s.carne || ''}","${s.fullName || (s.lastName + ', ' + s.firstName)}",`;
+        let line = `${idx + 1},"${s.personalCode || s.cui || s.carne || ''}","${formatStudentDisplayName(s, 'lastFirst')}",`;
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dObj = new Date(year, month - 1, d);
@@ -23118,7 +23255,11 @@ function filterPermissionStudentList() {
         });
     }
 
-    students.sort((a, b) => (a.lastName || a.name || '').localeCompare(b.lastName || b.name || ''));
+    students.sort((a, b) => {
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
 
     if (badge) {
         badge.textContent = `${students.length} alumno(s)`;
@@ -23132,11 +23273,11 @@ function filterPermissionStudentList() {
     } else {
         select.disabled = false;
         select.innerHTML = `<option value="">-- Seleccione Estudiante (${students.length} alumnos) --</option>` + students.map(s => {
-            const fullName = `${s.lastName || ''}, ${s.firstName || ''}`.trim() || s.name || 'Estudiante';
+            const fullName = formatStudentDisplayName(s, 'lastFirst');
             const gradeDisplay = s.grade || s.gradeCode || 'Grado';
             const secDisplay = (s.section || 'A').replace(/secci[oó]n\s*/i, '');
             const codeDisplay = s.personalCode || s.carne || s.cui || 'S/C';
-            return `<option value="${s.id}">${fullName} • [${gradeDisplay} - Sec ${secDisplay}] (Carné: ${codeDisplay})</option>`;
+            return `<option value="${s.id}">${escapeHtml(fullName)} • [${gradeDisplay} - Sec ${secDisplay}] (Carné: ${codeDisplay})</option>`;
         }).join('');
 
         if (students.length === 1 && q) {
@@ -23195,7 +23336,7 @@ function saveStudentPermissionForm(e) {
     const perm = {
         id: 'perm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
         studentId: student.id,
-        studentName: `${student.lastName || ''}, ${student.firstName || ''}`.trim() || student.name || 'Estudiante',
+        studentName: formatStudentDisplayName(student, 'lastFirst'),
         personalCode: student.personalCode || student.carne || student.cui || 'S/C',
         grade: student.grade || student.gradeCode || '',
         gradeCode: student.gradeCode || student.grade || '',
@@ -23989,7 +24130,7 @@ function loadHonorRoll() {
             <tr style="${!info.eligibleForHonorRoll ? 'background:#fff1f2; opacity:0.92;' : ''}">
                 <td style="text-align:center;">${posBadge}</td>
                 <td style="text-align:center;"><code>${s.personalCode || '—'}</code></td>
-                <td><strong>${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}</strong></td>
+                <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
                 <td>${formatStudentGradeAndSection(s)}</td>
                 <td style="text-align:center;">${loadBadge}</td>
                 <td style="text-align:center;">
@@ -24071,7 +24212,7 @@ function printHonorRoll() {
     let rankCounter = 0;
     const printRowsHtml = top30.map((s, idx) => {
         const info = getStudentAcademicInfo(s);
-        const fullName = `${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}`;
+        const fullName = formatStudentDisplayName(s, 'lastFirst');
         const gradeSection = formatStudentGradeAndSection(s);
         let posText = '';
         if (info.eligibleForHonorRoll) {
@@ -24471,7 +24612,11 @@ function filterDisciplineStudentList() {
     }
 
     // Ordenar alfabéticamente por apellidos
-    students.sort((a, b) => (a.lastName || a.name || '').localeCompare(b.lastName || b.name || ''));
+    students.sort((a, b) => {
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
 
     if (badge) {
         badge.textContent = `${students.length} alumno(s) encontrado(s)`;
@@ -24485,10 +24630,10 @@ function filterDisciplineStudentList() {
     } else {
         select.disabled = false;
         select.innerHTML = `<option value="">-- Seleccione Estudiante (${students.length} disponibles) --</option>` + students.map(s => {
-            const fullName = `${s.lastName || ''}, ${s.firstName || ''}`.trim() || s.name || 'Estudiante';
+            const fullName = formatStudentDisplayName(s, 'lastFirst');
             const gradeDisplay = s.grade || s.gradeCode || 'Grado Oficial';
             const secDisplay = (s.section || 'A').replace(/secci[oó]n\s*/i, '');
-            return `<option value="${s.id}">${fullName} • [${gradeDisplay} - Sec ${secDisplay}] (Carné: ${s.carne || 'S/C'})</option>`;
+            return `<option value="${s.id}">${escapeHtml(fullName)} • [${gradeDisplay} - Sec ${secDisplay}] (Carné: ${s.carne || 'S/C'})</option>`;
         }).join('');
 
         // Si solo hay un estudiante tras la búsqueda, seleccionarlo automáticamente
@@ -24607,7 +24752,7 @@ async function saveDisciplineForm(e) {
         return;
     }
 
-    const stuName = student ? (student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim()) : 'Estudiante';
+    const stuName = student ? formatStudentDisplayName(student, 'lastFirst') : 'Estudiante';
     const grade = student ? (student.grade || student.gradeCode || 'Perito Contador') : '4to Perito Contador';
     const section = student ? (student.section || 'Sección A') : 'Sección A';
     const teacherName = STATE.currentUser ? (STATE.currentUser.name || STATE.currentUser.username) : 'Docente Catedrático';
@@ -25866,11 +26011,17 @@ function exportAdminStaffOfficialExcel() {
 
 function exportStudentsOfficialCSV() {
     try {
-        const students = STATE.students || [];
+        let students = [...(STATE.students || [])];
         if (!students || students.length === 0) {
             showToast("No hay estudiantes matriculados para exportar en este ciclo.", "warning");
             return;
         }
+
+        students.sort((a, b) => {
+            const nameA = formatStudentDisplayName(a, 'lastFirst');
+            const nameB = formatStudentDisplayName(b, 'lastFirst');
+            return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+        });
 
         const cycle = STATE.activeCycle || '2026';
         const rowsHtml = students.map((s, idx) => `
@@ -25878,7 +26029,7 @@ function exportStudentsOfficialCSV() {
                 <td style="text-align:center;">${idx + 1}</td>
                 <td style="text-align:center;">${s.carne || '-'}</td>
                 <td style="text-align:center;">${s.personalCode || '-'}</td>
-                <td style="text-align:left; font-weight:bold;">${(s.lastName || '').toUpperCase()}, ${(s.firstName || '').toUpperCase()}</td>
+                <td style="text-align:left; font-weight:bold;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</td>
                 <td style="text-align:center;">${s.gender || 'Masculino'}</td>
                 <td style="text-align:center; font-weight:bold;">${formatStudentGradeAndSection(s)}</td>
                 <td style="text-align:left;">${s.tutorName || '-'}</td>
@@ -25970,8 +26121,8 @@ function exportGradebookOfficialExcel() {
     }
 
     students.sort((a, b) => {
-        const nameA = `${a.lastName || ''} ${a.firstName || a.name || ''}`.toUpperCase().trim();
-        const nameB = `${b.lastName || ''} ${b.firstName || b.name || ''}`.toUpperCase().trim();
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
         return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
     });
 
@@ -26047,7 +26198,7 @@ function exportGradebookOfficialExcel() {
 
             students.forEach((s, idx) => {
                 const rowNum = startRowIdx + idx + 1;
-                const fullName = `${s.lastName || ''}, ${s.firstName || ''}`.trim() || s.name || '';
+                const fullName = formatStudentDisplayName(s, 'lastFirst');
                 const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
 
                 const row = [
@@ -26165,7 +26316,7 @@ function exportGradebookHtmlExcelFallback(targetPensum, unit, students, actsConf
         </tr>`;
 
     students.forEach((s, idx) => {
-        const fullName = `${s.lastName || ''}, ${s.firstName || ''}`.trim() || s.name || '';
+        const fullName = formatStudentDisplayName(s, 'lastFirst');
         const uData = (s.gradebookDetails && s.gradebookDetails[targetPensum.subject] && s.gradebookDetails[targetPensum.subject][unit])
             ? s.gradebookDetails[targetPensum.subject][unit] : null;
         const acts = (uData && Array.isArray(uData.activities)) ? uData.activities : [0,0,0,0,0,0,0,0,0,0];
@@ -27107,9 +27258,9 @@ function exportStudentsOfficialExcel() {
 
         // Ordenar alfabéticamente
         students.sort((a, b) => {
-            const lastA = (a.lastName || '').localeCompare(b.lastName || '', 'es', { sensitivity: 'base' });
-            if (lastA !== 0) return lastA;
-            return (a.firstName || '').localeCompare(b.firstName || '', 'es', { sensitivity: 'base' });
+            const nameA = formatStudentDisplayName(a, 'lastFirst');
+            const nameB = formatStudentDisplayName(b, 'lastFirst');
+            return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
         });
 
         const headers = [
@@ -27126,19 +27277,43 @@ function exportStudentsOfficialExcel() {
             "Estado"
         ];
 
-        const dataRows = students.map((s, idx) => [
-            idx + 1,
-            s.carne || '-',
-            s.personalCode || '-',
-            s.cui || '-',
-            (s.lastName || '').toUpperCase(),
-            (s.firstName || '').toUpperCase(),
-            s.gender || 'Masculino',
-            formatStudentGradeAndSection(s),
-            s.tutorName || s.tutor || '-',
-            s.tutorPhone || s.phone || '-',
-            s.status || 'Inscrito Regular'
-        ]);
+        const dataRows = students.map((s, idx) => {
+            let lName = (s.lastName || s.apellidos || '').trim();
+            let fName = (s.firstName || s.nombres || '').trim();
+            if (!lName && !fName && (s.name || s.fullName)) {
+                const raw = (s.name || s.fullName).trim();
+                if (raw.includes(',')) {
+                    const parts = raw.split(',');
+                    lName = parts[0].trim();
+                    fName = parts.slice(1).join(' ').trim();
+                } else {
+                    const parts = raw.split(/\s+/);
+                    if (parts.length > 2) {
+                        lName = parts.slice(-2).join(' ');
+                        fName = parts.slice(0, -2).join(' ');
+                    } else if (parts.length === 2) {
+                        lName = parts[1];
+                        fName = parts[0];
+                    } else {
+                        lName = raw;
+                        fName = '-';
+                    }
+                }
+            }
+            return [
+                idx + 1,
+                s.carne || '-',
+                s.personalCode || '-',
+                s.cui || '-',
+                (lName || '-').toUpperCase(),
+                (fName || '-').toUpperCase(),
+                s.gender || 'Masculino',
+                formatStudentGradeAndSection(s),
+                s.tutorName || s.tutor || '-',
+                s.tutorPhone || s.phone || '-',
+                s.status || 'Inscrito Regular'
+            ];
+        });
 
         const colWidths = [6, 15, 18, 18, 25, 25, 12, 20, 25, 14, 15];
         exportDataToExcelFile(fileName, reportTitle, `CICLO ESCOLAR ${cycle}`, headers, dataRows, colWidths);
@@ -28076,13 +28251,18 @@ window.closeSectionStudentsModal = closeSectionStudentsModal;
 
 function printSectionStudentsList(gradeCode, section) {
     const students = (STATE.students || []).filter(s => (s.gradeCode === gradeCode || s.grade === gradeCode || (s.gradeLabel && s.gradeLabel.includes(gradeCode))) && (!section || s.section === section));
+    students.sort((a, b) => {
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
     const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode) || { name: gradeCode, section: section || 'A', career: 'Ciclo Diversificado' };
 
     let rows = students.map((s, idx) => `
         <tr>
             <td style="text-align:center; font-weight:700;">${idx + 1}</td>
             <td><code>${s.carne || '---'}</code></td>
-            <td><strong>${s.lastName || ''}, ${s.firstName || s.name || ''}</strong></td>
+            <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
             <td style="text-align:center;">${s.gender || 'M'}</td>
             <td style="text-align:center;"><span class="badge ${s.status === 'Activo' ? 'badge-success' : 'badge-danger'}">${s.status || 'Activo'}</span></td>
         </tr>
@@ -28511,6 +28691,11 @@ async function deletePensumSubject(subjectId) {
 function viewStudentsBySectionModal(gradeCode, section) {
     const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode) || { name: gradeCode, section: section, career: 'Ciclo Diversificado' };
     const students = (STATE.students || []).filter(s => (s.gradeCode === gradeCode || s.grade === gradeCode || (s.gradeLabel && s.gradeLabel.includes(gradeCode))) && (!section || s.section === section));
+    students.sort((a, b) => {
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
 
     const titleEl = document.getElementById('sectionStudentsModalTitle');
     const tbody = document.getElementById('sectionStudentsTableBody');
@@ -28525,7 +28710,7 @@ function viewStudentsBySectionModal(gradeCode, section) {
                 <tr>
                     <td style="text-align:center; font-weight:700;">${idx + 1}</td>
                     <td><code>${s.carne || s.personalCode || '---'}</code></td>
-                    <td><strong>${s.lastName || ''}, ${s.firstName || s.name || ''}</strong></td>
+                    <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
                     <td style="text-align:center;">${s.gender || 'M'}</td>
                     <td style="text-align:center;"><span class="badge ${s.status === 'Activo' ? 'badge-success' : 'badge-danger'}">${s.status || 'Activo'}</span></td>
                 </tr>
@@ -31990,8 +32175,8 @@ function renderGradeStatsView() {
             const sSec = (s.section || s.sectionId || '').replace(/^secci[oó]n\s*/i, '').trim().toUpperCase();
             return sSec === sec;
         }).sort((a, b) => {
-            const nameA = (a.name || `${a.lastName || ''} ${a.firstName || ''}`).toUpperCase().trim();
-            const nameB = (b.name || `${b.lastName || ''} ${b.firstName || ''}`).toUpperCase().trim();
+            const nameA = formatStudentDisplayName(a, 'lastFirst').toUpperCase();
+            const nameB = formatStudentDisplayName(b, 'lastFirst').toUpperCase();
             return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
         });
 
@@ -32035,7 +32220,7 @@ function renderGradeStatsView() {
             processedStudents.push({
                 clave: idx + 1,
                 student: st,
-                name: (st.name || `${st.lastName || ''}, ${st.firstName || ''}`).toUpperCase().trim(),
+                name: formatStudentDisplayName(st, 'lastFirst').toUpperCase(),
                 scores: subjectScores,
                 average: genAvg,
                 lostCount: lostCount,
@@ -32799,3 +32984,1225 @@ function printGradeStatsReport(reportType = 'section') {
 }
 window.printGradeStatsReport = printGradeStatsReport;
 
+// ==========================================================================
+// 🚨 MÓDULO OFICIAL DE AUXILIATURA: ALERTAS DE AUSENCIA Y BITÁCORA DIARIA
+// ==========================================================================
+
+let _tabTitleInterval = null;
+let _origDocTitle = '';
+let _sharedAudioCtx = null;
+let _auxChimeMuted = (typeof localStorage !== 'undefined' && localStorage.getItem('ENCCO_AUX_CHIME_MUTED') === 'true');
+
+function getUnlockedAudioContext() {
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return null;
+        if (!_sharedAudioCtx) {
+            _sharedAudioCtx = new AudioCtx();
+        }
+        if (_sharedAudioCtx.state === 'suspended') {
+            _sharedAudioCtx.resume().catch(() => {});
+        }
+        return _sharedAudioCtx;
+    } catch(e) {
+        return null;
+    }
+}
+
+if (typeof document !== 'undefined') {
+    const unlockAudio = () => {
+        getUnlockedAudioContext();
+        document.removeEventListener('click', unlockAudio);
+        document.removeEventListener('keydown', unlockAudio);
+        document.removeEventListener('touchstart', unlockAudio);
+    };
+    document.addEventListener('click', unlockAudio, { once: true });
+    document.addEventListener('keydown', unlockAudio, { once: true });
+    document.addEventListener('touchstart', unlockAudio, { once: true });
+}
+
+function toggleAuxiliaturaChime() {
+    _auxChimeMuted = !_auxChimeMuted;
+    try {
+        localStorage.setItem('ENCCO_AUX_CHIME_MUTED', _auxChimeMuted ? 'true' : 'false');
+    } catch(e) {}
+    updateAuxChimeButtonUI();
+    showToast(_auxChimeMuted ? "🔇 Avisos sonoros de auxiliatura silenciados." : "🔊 Avisos sonoros de auxiliatura activados.", "info");
+    if (!_auxChimeMuted) {
+        playAlertChime();
+    }
+}
+
+function updateAuxChimeButtonUI() {
+    const btn = document.getElementById('btnToggleAuxChime');
+    const icon = document.getElementById('iconAuxChime');
+    const label = document.getElementById('labelAuxChime');
+    if (!btn) return;
+    if (_auxChimeMuted) {
+        btn.className = 'btn btn-outline-danger';
+        if (icon) icon.className = 'fa-solid fa-volume-xmark';
+        if (label) label.textContent = 'Sonido: MUTE';
+    } else {
+        btn.className = 'btn btn-outline-secondary';
+        if (icon) icon.className = 'fa-solid fa-volume-high';
+        if (label) label.textContent = 'Sonido: ON';
+    }
+}
+
+function flashTabTitle(alertText) {
+    if (typeof document === 'undefined') return;
+    if (!_origDocTitle) _origDocTitle = document.title || 'Plataforma Académica ENCCO';
+    if (_tabTitleInterval) clearInterval(_tabTitleInterval);
+
+    let count = 0;
+    _tabTitleInterval = setInterval(() => {
+        document.title = (count % 2 === 0) ? alertText : _origDocTitle;
+        count++;
+        if (count >= 12) {
+            clearInterval(_tabTitleInterval);
+            _tabTitleInterval = null;
+            document.title = _origDocTitle;
+        }
+    }, 700);
+}
+
+function playAlertChime() {
+    if (_auxChimeMuted) return;
+    try {
+        const ctx = getUnlockedAudioContext();
+        if (!ctx) return;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        // Campana sintetizada bitonal: 587.33Hz (D5) -> 880Hz (A5)
+        const now = ctx.currentTime;
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+        osc.start(now);
+        osc.stop(now + 0.45);
+
+        setTimeout(() => {
+            try {
+                if (_auxChimeMuted) return;
+                const ctx2 = getUnlockedAudioContext();
+                if (!ctx2) return;
+                const osc2 = ctx2.createOscillator();
+                const gain2 = ctx2.createGain();
+                osc2.connect(gain2);
+                gain2.connect(ctx2.destination);
+                const t2 = ctx2.currentTime;
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(880, t2);
+                osc2.frequency.exponentialRampToValueAtTime(1174.66, t2 + 0.15);
+                gain2.gain.setValueAtTime(0.35, t2);
+                gain2.gain.exponentialRampToValueAtTime(0.001, t2 + 0.4);
+                osc2.start(t2);
+                osc2.stop(t2 + 0.4);
+            } catch(e) {}
+        }, 160);
+    } catch (e) {
+        console.warn("Web Audio API no disponible para aviso:", e);
+    }
+}
+
+function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) {
+    const student = (STATE.students || []).find(s => s.id === studentId);
+    const studentName = student ? formatStudentDisplayName(student, 'lastFirst') : 'Estudiante';
+    const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
+    const gradeLabel = qGradeObj ? `${qGradeObj.name || gradeCode} - Sección ${qGradeObj.section || ''}`.trim() : (gradeCode || 'General');
+
+    const courseSelect = (typeof document !== 'undefined') ? document.getElementById('attendanceCourseSelect') : null;
+    let courseName = 'Control General de Asistencia';
+    if (courseSelect && courseSelect.selectedIndex >= 0) {
+        courseName = courseSelect.options[courseSelect.selectedIndex].text.replace(/^[^\w\s]+/g, '').trim();
+    } else if (courseId && courseId !== 'GENERAL') {
+        const pObj = (STATE.pensum || []).find(p => p.id === courseId || p.subject === courseId);
+        if (pObj) courseName = pObj.subject;
+    }
+
+    const teacherName = (STATE.currentUser && STATE.currentUser.name) ? STATE.currentUser.name : (STATE.currentRole === 'docente' ? 'Catedrático de Aula' : 'Personal Docente');
+    const now = new Date();
+    const todayDateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const timestamp = Date.now();
+
+    if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
+
+    // Optimización: De-duplicación inteligente de alertas en el mismo día/mes/período
+    const existingAlert = STATE.attendanceAlerts.find(a => 
+        a.studentId === studentId && 
+        a.day === day && 
+        a.month === month && 
+        (a.date === todayDateStr || (!a.date && new Date(a.timestamp || 0).toISOString().split('T')[0] === todayDateStr)) &&
+        a.status === 'pendiente'
+    );
+
+    if (existingAlert) {
+        existingAlert.timestamp = timestamp;
+        existingAlert.time = timeStr;
+        existingAlert.courseName = courseName;
+        existingAlert.teacherName = teacherName;
+        saveStateToLocalStorage();
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+            EnccoCloudSync.patchNode(`attendanceAlerts/${existingAlert.id}`, existingAlert).catch(() => {});
+        }
+        updateAuxiliaturaBadge();
+        notifyAuxiliaturaAlert(existingAlert);
+        return;
+    }
+
+    const alertId = 'alert_' + timestamp + '_' + Math.random().toString(36).substring(2, 7);
+    const alertObj = {
+        id: alertId,
+        studentId: studentId,
+        studentName: studentName,
+        carne: (student && (student.carne || student.personalCode)) ? (student.carne || student.personalCode) : '---',
+        gradeCode: gradeCode,
+        gradeLabel: gradeLabel,
+        courseId: courseId,
+        courseName: courseName,
+        teacherName: teacherName,
+        day: day,
+        month: month,
+        date: todayDateStr,
+        time: timeStr,
+        timestamp: timestamp,
+        status: 'pendiente', // 'pendiente', 'justificada', 'citacion', 'verificada', 'corregida'
+        guardianName: (student && (student.tutorName || student.tutor)) ? (student.tutorName || student.tutor) : 'No registrado',
+        guardianPhone: (student && (student.tutorPhone || student.phone)) ? (student.tutorPhone || student.phone) : '',
+        notes: ''
+    };
+
+    STATE.attendanceAlerts.unshift(alertObj);
+    saveStateToLocalStorage();
+
+    // Sincronizar en tiempo real a Firebase Realtime Database
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+        EnccoCloudSync.patchNode(`attendanceAlerts/${alertId}`, alertObj).catch(err => {
+            console.warn("Aviso en RTDB al guardar alerta de inasistencia:", err);
+        });
+    }
+
+    updateAuxiliaturaBadge();
+    notifyAuxiliaturaAlert(alertObj);
+}
+
+function dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) {
+    if (!STATE.attendanceAlerts || STATE.attendanceAlerts.length === 0) return;
+    const todayDateStr = new Date().toISOString().split('T')[0];
+    const alertObj = STATE.attendanceAlerts.find(a => 
+        a.studentId === studentId && 
+        a.day === day && 
+        a.month === month && 
+        (a.date === todayDateStr || (!a.date && new Date(a.timestamp || 0).toISOString().split('T')[0] === todayDateStr)) &&
+        a.status === 'pendiente'
+    );
+    if (alertObj) {
+        alertObj.status = 'corregida';
+        alertObj.notes = 'Rectificación en aula: el catedrático cambió la marca de inasistencia.';
+        saveStateToLocalStorage();
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+            EnccoCloudSync.patchNode(`attendanceAlerts/${alertObj.id}`, alertObj).catch(() => {});
+        }
+        updateAuxiliaturaBadge();
+        if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
+            renderAuxiliaturaLogView();
+        }
+    }
+}
+
+function notifyAuxiliaturaAlert(alertObj) {
+    if (!alertObj) return;
+    const role = STATE.currentRole || (STATE.currentUser && STATE.currentUser.role);
+    const relevantRoles = ['profesor_auxiliar', 'secretaria', 'director', 'admin', 'super_usuario'];
+    if (role && !relevantRoles.includes(role)) {
+        return; // Alerta exclusiva para Auxiliatura, Dirección y Secretaría
+    }
+
+    // 1. Chime acústico
+    playAlertChime();
+
+    // 2. Parpadeo en pestaña del navegador
+    flashTabTitle(`🚨 ¡AUSENCIA! ${alertObj.studentName}`);
+
+    // 3. Notificación emergente visual
+    if (typeof showToast === 'function') {
+        showToast(`🚨 ALERTA DE AUXILIATURA: Inasistencia reportada para ${alertObj.studentName} (${alertObj.gradeLabel}) en ${alertObj.courseName}`, 'warning', 9000);
+    }
+
+    // 4. Si la vista actual es la bitácora, actualizarla de inmediato
+    if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
+        renderAuxiliaturaLogView();
+    }
+}
+
+function updateAuxiliaturaBadge() {
+    const badge = document.getElementById('auxiliaturaAlertsBadge');
+    if (!badge) return;
+    const today = new Date().toISOString().split('T')[0];
+    const pendingToday = (STATE.attendanceAlerts || []).filter(a => {
+        const isToday = (a.date === today || (!a.date && new Date(a.timestamp || 0).toISOString().split('T')[0] === today));
+        return isToday && (a.status === 'pendiente' || !a.status);
+    });
+
+    if (pendingToday.length > 0) {
+        badge.textContent = pendingToday.length > 99 ? '99+' : pendingToday.length;
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+
+let _auxKioskActive = false;
+function toggleAuxiliaturaKioskMode() {
+    _auxKioskActive = !_auxKioskActive;
+    const view = document.getElementById('view-auxiliatura-log');
+    const sidebar = document.getElementById('sidebar');
+    const header = document.querySelector('.top-navbar') || document.querySelector('header');
+    const icon = document.getElementById('iconAuxKiosk');
+    const label = document.getElementById('labelAuxKiosk');
+
+    if (_auxKioskActive) {
+        if (sidebar) sidebar.style.display = 'none';
+        if (header) header.style.display = 'none';
+        if (view) {
+            view.style.padding = '20px';
+            view.style.maxWidth = '100%';
+        }
+        if (icon) icon.className = 'fa-solid fa-compress';
+        if (label) label.textContent = 'Salir Kiosco';
+        showToast("📺 Modo Kiosco de Recepción activado. Pulse 'Salir Kiosco' para restaurar la vista.", "info");
+    } else {
+        if (sidebar) sidebar.style.display = '';
+        if (header) header.style.display = '';
+        if (view) {
+            view.style.padding = '';
+            view.style.maxWidth = '';
+        }
+        if (icon) icon.className = 'fa-solid fa-expand';
+        if (label) label.textContent = 'Pantalla Completa';
+    }
+}
+
+function getStudentMonthAbsenceDays(studentId, month) {
+    if (!STATE.attendanceRecords) return 0;
+    const m = parseInt(month) || (new Date().getMonth() + 1);
+    const absentDays = new Set();
+    Object.keys(STATE.attendanceRecords).forEach(recordKey => {
+        const parts = recordKey.split('_');
+        if (parts.length >= 2 && parseInt(parts[1]) === m) {
+            const rec = STATE.attendanceRecords[recordKey];
+            if (rec && rec[studentId]) {
+                Object.entries(rec[studentId]).forEach(([day, val]) => {
+                    if (val === 'A') {
+                        absentDays.add(parseInt(day));
+                    }
+                });
+            }
+        }
+    });
+    return absentDays.size;
+}
+
+function openWhatsAppPrompt(studentName, guardianPhone, gradeLabel, accumulatedAbsences) {
+    const cleanPhone = (guardianPhone || '').replace(/\D/g, '');
+    if (!cleanPhone) {
+        showToast("No hay número telefónico registrado para este encargado.", "warning");
+        return;
+    }
+
+    const t1 = `Estimado(a) padre/madre de familia del estudiante ${studentName} (${gradeLabel}): Le saludamos de Auxiliatura de la Escuela de Comercio ENCCO Jutiapa para verificar el motivo de la inasistencia a clases el día de hoy.`;
+    const t2 = `Estimado(a) padre/madre de familia del estudiante ${studentName} (${gradeLabel}): Notificamos desde Auxiliatura de la ENCCO Jutiapa que el alumno acumula ${accumulatedAbsences || 2} inasistencias en este período lectivo. Le solicitamos comunicarse para justificar formalmente y evitar afectación académica.`;
+    const t3 = `CITACIÓN OFICIAL - ENCCO JUTIAPA: Estimado(a) padre/madre de familia de ${studentName} (${gradeLabel}), se le cita formalmente a la Dirección y Auxiliatura de la Escuela Nacional de Ciencias Comerciales para tratar asuntos de asistencia escolar y disciplinarios.`;
+
+    const choice = prompt(`📱 SELECCIONE PLANTILLA DE WHATSAPP PARA ${studentName.toUpperCase()}:\n\n1. Consulta Simple de Inasistencia de Hoy\n2. Alerta de Inasistencias Acumuladas (${accumulatedAbsences} faltas este mes)\n3. Citación Formal a Dirección\n\nEscriba 1, 2 o 3:`, "1");
+    if (!choice) return;
+
+    let textToSend = t1;
+    if (choice.trim() === '2') textToSend = t2;
+    else if (choice.trim() === '3') textToSend = t3;
+
+    const url = `https://wa.me/502${cleanPhone}?text=${encodeURIComponent(textToSend)}`;
+    window.open(url, '_blank');
+}
+
+function renderAuxiliaturaLogView() {
+    updateAuxChimeButtonUI();
+
+    const dateInput = document.getElementById('auxiliaturaLogDateFilter');
+    const gradeSelect = document.getElementById('auxiliaturaLogGradeFilter');
+    const statusSelect = document.getElementById('auxiliaturaLogStatusFilter');
+    const searchInput = document.getElementById('auxiliaturaLogSearchInput');
+    const tbody = document.getElementById('auxiliaturaLogTableBody');
+
+    if (!tbody) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateInput && !dateInput.value) {
+        dateInput.value = todayStr;
+    }
+    const selectedDate = dateInput ? (dateInput.value || todayStr) : todayStr;
+
+    // Llenar combo de grados si solo tiene 1 opción
+    if (gradeSelect && gradeSelect.options.length <= 1) {
+        let optionsHtml = '<option value="ALL">-- Todos los Grados --</option>';
+        (STATE.gradesList || []).forEach(g => {
+            optionsHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} - Sección ${escapeHtml(g.section || '')}</option>`;
+        });
+        gradeSelect.innerHTML = optionsHtml;
+    }
+
+    const selectedGrade = gradeSelect ? gradeSelect.value : 'ALL';
+    const selectedStatus = statusSelect ? statusSelect.value : 'ALL';
+    const searchQuery = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+    const allAlerts = STATE.attendanceAlerts || [];
+
+    // Calcular KPIs para la fecha seleccionada
+    const alertsForDate = allAlerts.filter(a => {
+        const aDate = a.date || (a.timestamp ? new Date(a.timestamp).toISOString().split('T')[0] : '');
+        return aDate === selectedDate;
+    });
+
+    const totalToday = alertsForDate.filter(a => a.status !== 'corregida').length;
+    const pendingToday = alertsForDate.filter(a => a.status === 'pendiente' || !a.status).length;
+    const justifiedToday = alertsForDate.filter(a => a.status === 'justificada').length;
+    const citedToday = alertsForDate.filter(a => a.status === 'citacion').length;
+
+    const elTotal = document.getElementById('kpiAuxTotalToday');
+    const elPending = document.getElementById('kpiAuxPendingToday');
+    const elJust = document.getElementById('kpiAuxJustifiedToday');
+    const elCit = document.getElementById('kpiAuxCitacionesToday');
+
+    if (elTotal) elTotal.textContent = totalToday;
+    if (elPending) elPending.textContent = pendingToday;
+    if (elJust) elJust.textContent = justifiedToday;
+    if (elCit) elCit.textContent = citedToday;
+
+    // Filtrar para la tabla
+    let filtered = alertsForDate;
+    if (selectedGrade !== 'ALL') {
+        filtered = filtered.filter(a => a.gradeCode === selectedGrade || (a.gradeLabel && a.gradeLabel.includes(selectedGrade)));
+    }
+    if (selectedStatus !== 'ALL') {
+        filtered = filtered.filter(a => (a.status || 'pendiente') === selectedStatus);
+    }
+    if (searchQuery) {
+        filtered = filtered.filter(a => 
+            (a.studentName || '').toLowerCase().includes(searchQuery) ||
+            (a.carne || '').toLowerCase().includes(searchQuery) ||
+            (a.teacherName || '').toLowerCase().includes(searchQuery) ||
+            (a.courseName || '').toLowerCase().includes(searchQuery) ||
+            (a.guardianName || '').toLowerCase().includes(searchQuery)
+        );
+    }
+
+    // Ordenar de más reciente a más antiguo
+    filtered.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center; padding:35px 20px; color:#64748b;">
+                    <i class="fa-solid fa-clipboard-check" style="font-size:2.2rem; color:#86efac; display:block; margin-bottom:8px;"></i>
+                    <strong style="color:#0f172a; font-size:1rem;">Sin inasistencias reportadas</strong>
+                    <div style="font-size:0.84rem; margin-top:4px;">No hay reportes de ausencias para la fecha y filtros seleccionados (${selectedDate}).</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(a => {
+        const cleanPhone = (a.guardianPhone || '').replace(/\D/g, '');
+        const monthVal = a.month || (new Date().getMonth() + 1);
+        const accumulatedDays = (typeof getStudentMonthAbsenceDays === 'function') ? getStudentMonthAbsenceDays(a.studentId, monthVal) : 1;
+
+        let monthAbsenceBadge = '';
+        if (accumulatedDays >= 3) {
+            monthAbsenceBadge = `<span class="badge" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-size:0.68rem; font-weight:800; margin-left:6px;" title="Estudiante con ${accumulatedDays} inasistencias acumuladas este mes"><i class="fa-solid fa-triangle-exclamation"></i> ${accumulatedDays} faltas este mes</span>`;
+        } else if (accumulatedDays > 1) {
+            monthAbsenceBadge = `<span class="badge" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-size:0.68rem; font-weight:700; margin-left:6px;" title="Inasistencias registradas este mes">${accumulatedDays} faltas este mes</span>`;
+        }
+
+        let phoneHtml = `<span style="color:#94a3b8; font-size:0.8rem;">Sin teléfono</span>`;
+        if (cleanPhone) {
+            phoneHtml = `
+                <div style="display:flex; flex-direction:column; gap:4px; margin-top:2px;">
+                    <a href="tel:${cleanPhone}" class="btn btn-xs btn-outline-primary" style="padding:2px 6px; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                        <i class="fa-solid fa-phone"></i> ${escapeHtml(a.guardianPhone)}
+                    </a>
+                    <button type="button" class="btn btn-xs btn-outline-success" onclick="openWhatsAppPrompt('${escapeHtml(a.studentName)}', '${escapeHtml(a.guardianPhone)}', '${escapeHtml(a.gradeLabel)}', ${accumulatedDays})" style="padding:2px 6px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px; color:#15803d; border-color:#86efac; background:#f0fdf4; font-weight:700;">
+                        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                    </button>
+                </div>
+            `;
+        }
+
+        let statusBadge = '';
+        if (a.status === 'justificada') {
+            statusBadge = `<span class="badge badge-success" style="font-size:0.75rem; padding:4px 8px;"><i class="fa-solid fa-circle-check"></i> Justificada</span>`;
+        } else if (a.status === 'citacion') {
+            statusBadge = `<span class="badge" style="background:#fef08a; color:#854d0e; border:1px solid #fde047; font-size:0.75rem; padding:4px 8px; font-weight:700;"><i class="fa-solid fa-envelope-open-text"></i> Citación</span>`;
+        } else if (a.status === 'verificada') {
+            statusBadge = `<span class="badge badge-secondary" style="font-size:0.75rem; padding:4px 8px;"><i class="fa-solid fa-check-double"></i> Confirmada</span>`;
+        } else if (a.status === 'corregida') {
+            statusBadge = `<span class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1; font-size:0.75rem; padding:4px 8px;"><i class="fa-solid fa-rotate-left"></i> Rectificada</span>`;
+        } else {
+            statusBadge = `<span class="badge badge-danger" style="font-size:0.75rem; padding:4px 8px; animation:pulse 2s infinite;"><i class="fa-solid fa-clock"></i> Pendiente</span>`;
+        }
+
+        const notesTooltip = a.notes ? `<div style="font-size:0.75rem; color:#475569; margin-top:4px; background:#f8fafc; border-left:3px solid #3b82f6; padding:3px 6px; border-radius:2px;"><strong>Nota:</strong> ${escapeHtml(a.notes)}</div>` : '';
+
+        return `
+            <tr style="border-bottom:1px solid #f1f5f9; ${a.status === 'pendiente' || !a.status ? 'background:rgba(254,242,242,0.35);' : ''}">
+                <td style="text-align:center; font-weight:700; color:#475569;">
+                    <i class="fa-regular fa-clock" style="font-size:0.75rem; margin-right:2px;"></i> ${escapeHtml(a.time || '--:--')}
+                </td>
+                <td>
+                    <strong style="color:#0f172a; font-size:0.9rem;">${escapeHtml(a.studentName)}</strong>${monthAbsenceBadge}
+                    <div style="font-size:0.76rem; color:#64748b;">Carné: <code>${escapeHtml(a.carne || '---')}</code></div>
+                    ${notesTooltip}
+                </td>
+                <td>
+                    <span style="font-weight:600; color:#334155;">${escapeHtml(a.gradeLabel)}</span>
+                </td>
+                <td>
+                    <span style="font-size:0.84rem; color:#475569;">${escapeHtml(a.courseName)}</span>
+                </td>
+                <td>
+                    <span style="font-size:0.84rem; color:#334155;"><i class="fa-solid fa-chalkboard-user" style="color:#94a3b8; margin-right:3px;"></i> ${escapeHtml(a.teacherName)}</span>
+                </td>
+                <td>
+                    <div style="font-size:0.82rem; font-weight:600; color:#0f172a;">${escapeHtml(a.guardianName)}</div>
+                    ${phoneHtml}
+                </td>
+                <td style="text-align:center;">
+                    ${statusBadge}
+                </td>
+                <td style="text-align:center;">
+                    <div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="openAuxiliaturaJustifyModal('${a.id}')" style="font-size:0.75rem; padding:3px 8px; font-weight:700;" title="Justificar o emitir citación oficial">
+                            <i class="fa-solid fa-pen-to-square"></i> Atender
+                        </button>
+                        ${a.status !== 'verificada' && a.status !== 'justificada' ? `
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="markAuxiliaturaAlertStatus('${a.id}', 'verificada')" title="Marcar falta como verificada / no justificada" style="font-size:0.75rem; padding:3px 8px;">
+                                <i class="fa-solid fa-check"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function openAuxiliaturaJustifyModal(alertId) {
+    const alertObj = (STATE.attendanceAlerts || []).find(a => a.id === alertId);
+    if (!alertObj) {
+        showToast("No se encontró el registro de la alerta.", "warning");
+        return;
+    }
+
+    const modal = document.getElementById('auxiliaturaJustifyModal');
+    if (!modal) return;
+
+    document.getElementById('auxJustifyAlertId').value = alertId;
+    document.getElementById('auxJustifyStudentName').textContent = alertObj.studentName;
+    document.getElementById('auxJustifyStudentMeta').textContent = `${alertObj.gradeLabel} | ${alertObj.courseName} | Reportado por: ${alertObj.teacherName} a las ${alertObj.time}`;
+    
+    const typeSelect = document.getElementById('auxJustifyType');
+    if (typeSelect) typeSelect.value = (alertObj.status && alertObj.status !== 'pendiente') ? alertObj.status : 'justificada';
+
+    const notesArea = document.getElementById('auxJustifyNotes');
+    if (notesArea) notesArea.value = alertObj.notes || '';
+
+    modal.style.setProperty('display', 'flex', 'important');
+}
+
+function closeAuxiliaturaJustifyModal() {
+    const modal = document.getElementById('auxiliaturaJustifyModal');
+    if (modal) modal.style.setProperty('display', 'none', 'important');
+}
+
+async function submitAuxiliaturaJustification() {
+    const alertId = document.getElementById('auxJustifyAlertId').value;
+    const type = document.getElementById('auxJustifyType').value;
+    const notes = (document.getElementById('auxJustifyNotes').value || '').trim();
+
+    if (!alertId) return;
+    const alertObj = (STATE.attendanceAlerts || []).find(a => a.id === alertId);
+    if (!alertObj) return;
+
+    alertObj.status = type;
+    alertObj.notes = notes;
+    alertObj.resolvedBy = (STATE.currentUser && STATE.currentUser.name) ? STATE.currentUser.name : (STATE.currentRole === 'profesor_auxiliar' ? 'Profesor Auxiliar' : 'Dirección/Secretaría');
+    alertObj.resolvedAt = new Date().toISOString();
+
+    // Si la resolución es Justificada ('justificada'), actualizar automáticamente la planilla de asistencia a 'J'
+    if (type === 'justificada') {
+        const gradeCode = alertObj.gradeCode;
+        const month = alertObj.month || (new Date().getMonth() + 1);
+        const day = alertObj.day || (new Date().getDate());
+        const courseId = alertObj.courseId || 'GENERAL';
+        const studentId = alertObj.studentId;
+
+        const recordKey = (typeof getAttendanceRecordKey === 'function') ? getAttendanceRecordKey(gradeCode, month, courseId) : `${gradeCode}_${month}_${courseId}`;
+        if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+        if (!STATE.attendanceRecords[recordKey]) STATE.attendanceRecords[recordKey] = {};
+        if (!STATE.attendanceRecords[recordKey][studentId]) STATE.attendanceRecords[recordKey][studentId] = {};
+
+        STATE.attendanceRecords[recordKey][studentId][day] = 'J';
+
+        // Guardar metadata del permiso oficial
+        if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
+        const permKey = `${studentId}_${month}_${day}`;
+        STATE.attendancePermissionsMeta[permKey] = {
+            reasonCategory: 'Permiso Oficial de Auxiliatura',
+            reasonDetail: notes || 'Justificación registrada en Bitácora Diaria',
+            authorizedBy: alertObj.resolvedBy,
+            timestamp: Date.now()
+        };
+
+        if (typeof saveAttendanceRecords === 'function') {
+            saveAttendanceRecords(false);
+        }
+    }
+
+    saveStateToLocalStorage();
+
+    // Sincronizar actualización de la alerta en RTDB
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+        EnccoCloudSync.patchNode(`attendanceAlerts/${alertId}`, alertObj).catch(err => {
+            console.warn("Aviso en RTDB al actualizar alerta:", err);
+        });
+    }
+
+    closeAuxiliaturaJustifyModal();
+    updateAuxiliaturaBadge();
+    renderAuxiliaturaLogView();
+
+    const typeLabels = {
+        'justificada': 'Falta Justificada con éxito (Asistencia actualizada a "J")',
+        'citacion': 'Citación a Encargado registrada en bitácora',
+        'verificada': 'Inasistencia verificada y confirmada en bitácora'
+    };
+    showToast(typeLabels[type] || 'Resolución guardada exitosamente.', 'success');
+}
+
+function markAuxiliaturaAlertStatus(alertId, newStatus) {
+    const alertObj = (STATE.attendanceAlerts || []).find(a => a.id === alertId);
+    if (!alertObj) return;
+
+    alertObj.status = newStatus;
+    alertObj.resolvedBy = (STATE.currentUser && STATE.currentUser.name) ? STATE.currentUser.name : 'Auxiliatura';
+    alertObj.resolvedAt = new Date().toISOString();
+
+    saveStateToLocalStorage();
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+        EnccoCloudSync.patchNode(`attendanceAlerts/${alertId}`, alertObj).catch(() => {});
+    }
+
+    updateAuxiliaturaBadge();
+    renderAuxiliaturaLogView();
+    showToast(`Alerta actualizada a: ${newStatus.toUpperCase()}`, 'info');
+}
+
+function printAuxiliaturaLog() {
+    const dateInput = document.getElementById('auxiliaturaLogDateFilter');
+    const todayStr = new Date().toISOString().split('T')[0];
+    const targetDate = dateInput ? (dateInput.value || todayStr) : todayStr;
+    const gradeSelect = document.getElementById('auxiliaturaLogGradeFilter');
+    const targetGrade = gradeSelect ? gradeSelect.value : 'ALL';
+
+    const allAlerts = STATE.attendanceAlerts || [];
+    let filtered = allAlerts.filter(a => {
+        const aDate = a.date || (a.timestamp ? new Date(a.timestamp).toISOString().split('T')[0] : '');
+        return aDate === targetDate && a.status !== 'corregida';
+    });
+
+    if (targetGrade !== 'ALL') {
+        filtered = filtered.filter(a => a.gradeCode === targetGrade || (a.gradeLabel && a.gradeLabel.includes(targetGrade)));
+    }
+
+    filtered.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+
+    const parts = targetDate.split('-');
+    const formattedDate = (parts.length === 3) ? `${parts[2]}/${parts[1]}/${parts[0]}` : targetDate;
+    const cycle = STATE.activeCycle || '2026';
+
+    const totalCount = filtered.length;
+    const justCount = filtered.filter(a => a.status === 'justificada').length;
+    const pendingCount = filtered.filter(a => a.status === 'pendiente' || !a.status).length;
+    const citedCount = filtered.filter(a => a.status === 'citacion').length;
+
+    let rowsHtml = '';
+    if (filtered.length === 0) {
+        rowsHtml = `<tr><td colspan="7" style="text-align:center; padding:25px; color:#64748b;">No se registraron inasistencias en la fecha indicada.</td></tr>`;
+    } else {
+        rowsHtml = filtered.map((a, idx) => `
+            <tr>
+                <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+                <td style="text-align:center; font-family:monospace; font-weight:700;">${escapeHtml(a.time || '--:--')}</td>
+                <td>
+                    <strong>${escapeHtml(a.studentName)}</strong><br>
+                    <small>Carné: ${escapeHtml(a.carne || '---')}</small>
+                </td>
+                <td>${escapeHtml(a.gradeLabel)}</td>
+                <td>${escapeHtml(a.courseName)}<br><small style="color:#64748b;">Prof: ${escapeHtml(a.teacherName)}</small></td>
+                <td>
+                    <strong>${escapeHtml(a.guardianName)}</strong><br>
+                    <small>Tel: ${escapeHtml(a.guardianPhone || 'Sin tel.')}</small>
+                </td>
+                <td style="text-align:center;">
+                    <strong>${escapeHtml((a.status || 'PENDIENTE').toUpperCase())}</strong>
+                    ${a.notes ? `<br><small style="font-style:italic;">${escapeHtml(a.notes)}</small>` : ''}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast("Habilite las ventanas emergentes (pop-ups) para imprimir la bitácora.", "warning");
+        return;
+    }
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Bitácora Oficial de Ausencias - ENCCO Jutiapa - ${formattedDate}</title>
+    <style>
+        @page { size: letter portrait; margin: 12mm 15mm; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; margin: 0; padding: 0; line-height: 1.35; }
+        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0f172a; padding-bottom: 10px; margin-bottom: 12px; }
+        .header-logo { width: 65px; height: auto; }
+        .header-center { text-align: center; flex: 1; margin: 0 15px; }
+        .header-center h1 { font-size: 13pt; margin: 0; font-weight: 800; text-transform: uppercase; color: #0f172a; letter-spacing: 0.5px; }
+        .header-center h2 { font-size: 11pt; margin: 3px 0 0 0; color: #dc2626; font-weight: 700; text-transform: uppercase; }
+        .header-center p { font-size: 8.5pt; margin: 2px 0 0 0; color: #475569; }
+        
+        .kpi-row { display: flex; justify-content: space-between; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; margin-bottom: 14px; font-size: 9pt; }
+        .kpi-item { text-align: center; }
+        .kpi-item strong { display: block; font-size: 12pt; color: #0f172a; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 8.5pt; }
+        th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
+        th { background: #f1f5f9; font-weight: 700; color: #0f172a; text-transform: uppercase; font-size: 8pt; text-align: center; }
+        
+        .signatures { display: flex; justify-content: space-between; margin-top: 35px; page-break-inside: avoid; }
+        .sign-box { width: 30%; text-align: center; font-size: 8.5pt; }
+        .sign-line { border-top: 1.5px solid #334155; margin-bottom: 5px; }
+        
+        .footer-note { font-size: 7.5pt; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 6px; margin-top: 15px; }
+        @media print {
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="logo.png" alt="Logo ENCCO" class="header-logo" onerror="this.style.display='none'">
+        <div class="header-center">
+            <h1>Escuela Nacional de Ciencias Comerciales</h1>
+            <h2>Bitácora Oficial Diaria de Control de Ausencias</h2>
+            <p>Jutiapa, Guatemala &bull; Ciclo Escolar ${escapeHtml(cycle)} &bull; Fecha: <strong>${escapeHtml(formattedDate)}</strong></p>
+        </div>
+        <div style="width:65px; text-align:right; font-size:8pt; color:#64748b;">
+            Original<br>Auxiliatura
+        </div>
+    </div>
+
+    <div class="kpi-row">
+        <div class="kpi-item">
+            <span>Total Ausencias</span>
+            <strong>${totalCount}</strong>
+        </div>
+        <div class="kpi-item">
+            <span>Justificadas</span>
+            <strong style="color:#15803d;">${justCount}</strong>
+        </div>
+        <div class="kpi-item">
+            <span>Pendientes / Sin Justificar</span>
+            <strong style="color:#dc2626;">${pendingCount}</strong>
+        </div>
+        <div class="kpi-item">
+            <span>Citaciones Emitidas</span>
+            <strong style="color:#854d0e;">${citedCount}</strong>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:25px;">No.</th>
+                <th style="width:50px;">Hora</th>
+                <th>Estudiante</th>
+                <th>Grado y Sección</th>
+                <th>Período / Cátedra</th>
+                <th>Encargado / Teléfono</th>
+                <th style="width:100px;">Resolución</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml}
+        </tbody>
+    </table>
+
+    <div class="signatures">
+        <div class="sign-box">
+            <div class="sign-line"></div>
+            <strong>Profesor Auxiliar</strong><br>
+            Auxiliatura de Turno
+        </div>
+        <div class="sign-box">
+            <div class="sign-line"></div>
+            <strong>Secretaría</strong><br>
+            Control y Registro Académico
+        </div>
+        <div class="sign-box">
+            <div class="sign-line"></div>
+            <strong>Dirección</strong><br>
+            Vo.Bo. Dirección General
+        </div>
+    </div>
+
+    <div class="footer-note">
+        Documento oficial emitido por la Plataforma Académica ENCCO el ${new Date().toLocaleDateString('es-GT')} a las ${new Date().toLocaleTimeString('es-GT')}.
+    </div>
+</body>
+</html>`;
+
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
+
+    setTimeout(() => {
+        try {
+            printWin.focus();
+            printWin.print();
+        } catch(e) {}
+    }, 400);
+}
+
+// ==========================================================================
+// 🛡️ MÓDULO OFICIAL: LIBRO DE REGISTRO DE EXONERACIONES Y DETALLE PARA DOCENTE
+// ==========================================================================
+
+function openExonerationDetailModal(studentId, subjectName, unit) {
+    const student = (STATE.students || []).find(s => s.id === studentId);
+    if (!student) {
+        showToast("No se pudo localizar el expediente del alumno.", "error");
+        return;
+    }
+
+    const modal = document.getElementById('exonerationDetailDocenteModal');
+    if (!modal) return;
+
+    const studentFullName = formatStudentDisplayName(student, 'lastFirst').toUpperCase();
+    const carneText = student.carne || student.personalCode || 'Sin carné';
+    const gradeText = formatStudentGradeAndSection(student) || `${student.grade || student.gradeCode || ''} ${student.section || ''}`.trim();
+
+    const nameEl = document.getElementById('exonDocModalStudentName');
+    const metaEl = document.getElementById('exonDocModalMeta');
+    const subjEl = document.getElementById('exonDocModalSubject');
+    const bimEl = document.getElementById('exonDocModalBimestre');
+    const reasonEl = document.getElementById('exonDocModalReason');
+    const authEl = document.getElementById('exonDocModalAuthorizedBy');
+    const dateEl = document.getElementById('exonDocModalDate');
+
+    if (nameEl) nameEl.textContent = studentFullName;
+    if (metaEl) metaEl.textContent = `Carné: ${carneText} | Grado: ${gradeText}`;
+    if (subjEl) subjEl.textContent = subjectName || 'Todas las Asignaturas';
+    if (bimEl) bimEl.textContent = unit ? `${unit}º Bimestre (Ciclo Escolar)` : 'Todo el Ciclo / Anual';
+
+    // Buscar la exoneración específica
+    const exons = (typeof getStudentExonerationsList === 'function') ? getStudentExonerationsList(student) : (student.academicExceptions || []);
+    const cleanSubj = (subjectName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+    const uNum = parseInt(unit) || 0;
+
+    let matchedEx = null;
+    if (Array.isArray(exons)) {
+        matchedEx = exons.find(ex => {
+            if (!ex) return false;
+            const exSubj = (ex.subject || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+            const matchSubj = (!ex.subject || ex.subject === 'ALL' || exSubj === 'all' || cleanSubj === exSubj || cleanSubj.includes(exSubj) || exSubj.includes(cleanSubj));
+            const matchB = (!ex.bimestre || ex.bimestre === 'ALL' || String(ex.bimestre).toUpperCase() === 'ALL' || parseInt(ex.bimestre) === uNum);
+            return matchSubj && matchB;
+        });
+    }
+
+    if (matchedEx) {
+        if (reasonEl) reasonEl.innerHTML = `<i class="fa-solid fa-file-circle-check" style="color:#d97706; margin-right:4px;"></i> ${escapeHtml(matchedEx.reason || matchedEx.details || matchedEx.observation || 'Exoneración y dispensa autorizada por la Dirección de la institución.')}`;
+        if (authEl) authEl.textContent = matchedEx.authorizedBy || matchedEx.authorizer || 'Dirección del Plantel / MINEDUC';
+        if (dateEl) dateEl.textContent = matchedEx.date || matchedEx.createdAt || (STATE.activeCycle || '2026');
+    } else {
+        if (reasonEl) reasonEl.innerHTML = `<i class="fa-solid fa-circle-info" style="color:#d97706; margin-right:4px;"></i> Estudiante con régimen de exoneración académica registrado en Dirección y Secretaría. Por disposición ministerial e institucional, la calificación no se computa numéricamente para este período.`;
+        if (authEl) authEl.textContent = 'Dirección del Plantel';
+        if (dateEl) dateEl.textContent = STATE.activeCycle || 'Ciclo Escolar Vigente';
+    }
+
+    modal.style.setProperty('display', 'flex', 'important');
+}
+
+function closeExonerationDetailDocenteModal() {
+    const modal = document.getElementById('exonerationDetailDocenteModal');
+    if (modal) modal.style.setProperty('display', 'none', 'important');
+}
+
+function openNewExonerationDialog() {
+    const input = prompt("📋 REGISTRO DE NUEVA EXONERACIÓN ACADÉMICA\n\nIngrese el Carné, Código Personal o Apellido del estudiante a exonerar:");
+    if (!input || !input.trim()) return;
+
+    const query = input.trim().toLowerCase();
+    const matches = (STATE.students || []).filter(s => {
+        const carne = (s.carne || '').toLowerCase();
+        const code = (s.personalCode || '').toLowerCase();
+        const name = formatStudentDisplayName(s, 'lastFirst').toLowerCase();
+        return carne.includes(query) || code.includes(query) || name.includes(query);
+    });
+
+    if (matches.length === 0) {
+        showToast("No se encontró ningún estudiante con ese criterio.", "warning");
+        return;
+    }
+
+    if (matches.length === 1) {
+        if (typeof openAcademicExonerationModal === 'function') {
+            openAcademicExonerationModal(matches[0].id);
+        } else {
+            showToast("Módulo de exoneración no disponible.", "warning");
+        }
+    } else {
+        let msg = `Se encontraron ${matches.length} estudiantes coincidentes. Escriba el número del alumno deseado:\n\n`;
+        matches.slice(0, 10).forEach((m, idx) => {
+            msg += `${idx + 1}. ${formatStudentDisplayName(m, 'lastFirst')} (${m.carne || 'Sin carné'}) - ${formatStudentGradeAndSection(m)}\n`;
+        });
+        const choice = prompt(msg);
+        const selIdx = parseInt(choice) - 1;
+        if (!isNaN(selIdx) && matches[selIdx]) {
+            if (typeof openAcademicExonerationModal === 'function') {
+                openAcademicExonerationModal(matches[selIdx].id);
+            }
+        }
+    }
+}
+
+function renderExoneracionesLogView() {
+    const gradeSelect = document.getElementById('exoneracionesLogGradeFilter');
+    const bimSelect = document.getElementById('exoneracionesLogBimestreFilter');
+    const searchInput = document.getElementById('exoneracionesLogSearchInput');
+    const tbody = document.getElementById('exoneracionesLogTableBody');
+
+    if (!tbody) return;
+
+    // Llenar select de grados si solo tiene 1 opción
+    if (gradeSelect && gradeSelect.options.length <= 1) {
+        let optHtml = '<option value="ALL">-- Todos los Grados --</option>';
+        (STATE.gradesList || []).forEach(g => {
+            optHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} - Sección ${escapeHtml(g.section || '')}</option>`;
+        });
+        gradeSelect.innerHTML = optHtml;
+    }
+
+    const selGrade = gradeSelect ? gradeSelect.value : 'ALL';
+    const selBim = bimSelect ? bimSelect.value : 'ALL';
+    const searchQuery = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+    // Recolectar todas las exoneraciones
+    const allExonsList = [];
+    (STATE.students || []).forEach(s => {
+        const exons = (typeof getStudentExonerationsList === 'function') ? getStudentExonerationsList(s) : (s.academicExceptions || []);
+        if (Array.isArray(exons) && exons.length > 0) {
+            exons.forEach(ex => {
+                allExonsList.push({
+                    student: s,
+                    studentId: s.id,
+                    studentName: formatStudentDisplayName(s, 'lastFirst'),
+                    carne: s.carne || s.personalCode || '---',
+                    gradeCode: s.gradeCode || s.grade || '',
+                    gradeLabel: formatStudentGradeAndSection(s) || `${s.grade || ''} ${s.section || ''}`.trim(),
+                    subject: ex.subject || 'Todas las materias',
+                    bimestre: ex.bimestre || 'ALL',
+                    reason: ex.reason || ex.details || ex.observation || 'Exoneración y dispensa autorizada oficialmente.',
+                    authorizedBy: ex.authorizedBy || ex.authorizer || 'Dirección del Plantel',
+                    date: ex.date || ex.createdAt || (STATE.activeCycle || '2026'),
+                    rawExon: ex
+                });
+            });
+        }
+    });
+
+    let filtered = allExonsList;
+    if (selGrade !== 'ALL') {
+        filtered = filtered.filter(item => item.gradeCode === selGrade || (item.gradeLabel && item.gradeLabel.includes(selGrade)));
+    }
+    if (selBim !== 'ALL') {
+        filtered = filtered.filter(item => String(item.bimestre).toUpperCase() === 'ALL' || String(item.bimestre) === String(selBim));
+    }
+    if (searchQuery) {
+        filtered = filtered.filter(item => 
+            item.studentName.toLowerCase().includes(searchQuery) ||
+            item.carne.toLowerCase().includes(searchQuery) ||
+            item.subject.toLowerCase().includes(searchQuery) ||
+            item.reason.toLowerCase().includes(searchQuery)
+        );
+    }
+
+    // Ordenar alfabéticamente por estudiante
+    filtered.sort((a, b) => a.studentName.localeCompare(b.studentName, 'es', { sensitivity: 'base' }));
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" style="text-align:center; padding:35px 20px; color:#64748b;">
+                    <i class="fa-solid fa-file-circle-check" style="font-size:2.2rem; color:#99f6e4; display:block; margin-bottom:8px;"></i>
+                    <strong style="color:#0f172a; font-size:1rem;">Sin registros de exoneraciones</strong>
+                    <div style="font-size:0.84rem; margin-top:4px;">No se encontraron registros de estudiantes con consideraciones especiales bajo los filtros seleccionados.</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map((item, idx) => {
+        let bimLabel = 'Todo el Ciclo (Anual)';
+        if (item.bimestre && item.bimestre !== 'ALL') {
+            bimLabel = `${item.bimestre}º Bimestre`;
+        }
+
+        return `
+            <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="text-align:center; font-weight:700; color:#64748b;">${idx + 1}</td>
+                <td>
+                    <strong style="color:#0f172a; font-size:0.9rem;">${escapeHtml(item.studentName)}</strong>
+                    <div style="font-size:0.76rem; color:#64748b;">Carné: <code>${escapeHtml(item.carne)}</code></div>
+                </td>
+                <td>
+                    <span style="font-weight:600; color:#334155;">${escapeHtml(item.gradeLabel)}</span>
+                </td>
+                <td>
+                    <span class="badge" style="background:#f0fdfa; color:#0f766e; border:1px solid #99f6e4; font-size:0.8rem; font-weight:700;">
+                        <i class="fa-solid fa-book"></i> ${escapeHtml(item.subject)}
+                    </span>
+                </td>
+                <td style="text-align:center;">
+                    <span class="badge badge-info" style="font-size:0.75rem; font-weight:700;">${bimLabel}</span>
+                </td>
+                <td>
+                    <div style="font-size:0.83rem; color:#334155; line-height:1.35;">
+                        ${escapeHtml(item.reason)}
+                    </div>
+                </td>
+                <td>
+                    <span style="font-size:0.82rem; font-weight:600; color:#0f172a;">${escapeHtml(item.authorizedBy)}</span>
+                </td>
+                <td style="text-align:center; font-size:0.8rem; color:#64748b;">
+                    ${escapeHtml(item.date)}
+                </td>
+                <td style="text-align:center;">
+                    <div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-xs btn-outline-info" onclick="openExonerationDetailModal('${item.studentId}', '${escapeHtml(item.subject)}', '${item.bimestre}')" style="font-size:0.75rem; padding:3px 8px; font-weight:700;" title="Ver constancia oficial de exoneración">
+                            <i class="fa-solid fa-eye"></i> Constancia
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="openAcademicExonerationModal('${item.studentId}')" style="font-size:0.75rem; padding:3px 8px; font-weight:700;" title="Gestionar dispensa del alumno">
+                            <i class="fa-solid fa-pen-to-square"></i> Gestionar
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function printExoneracionesLog() {
+    const gradeSelect = document.getElementById('exoneracionesLogGradeFilter');
+    const bimSelect = document.getElementById('exoneracionesLogBimestreFilter');
+    const targetGrade = gradeSelect ? gradeSelect.value : 'ALL';
+    const targetBim = bimSelect ? bimSelect.value : 'ALL';
+    const cycle = STATE.activeCycle || '2026';
+
+    const allExonsList = [];
+    (STATE.students || []).forEach(s => {
+        const exons = (typeof getStudentExonerationsList === 'function') ? getStudentExonerationsList(s) : (s.academicExceptions || []);
+        if (Array.isArray(exons) && exons.length > 0) {
+            exons.forEach(ex => {
+                allExonsList.push({
+                    student: s,
+                    studentName: formatStudentDisplayName(s, 'lastFirst'),
+                    carne: s.carne || s.personalCode || '---',
+                    gradeCode: s.gradeCode || s.grade || '',
+                    gradeLabel: formatStudentGradeAndSection(s) || `${s.grade || ''} ${s.section || ''}`.trim(),
+                    subject: ex.subject || 'Todas las materias',
+                    bimestre: ex.bimestre || 'ALL',
+                    reason: ex.reason || ex.details || ex.observation || 'Exoneración y dispensa autorizada oficialmente.',
+                    authorizedBy: ex.authorizedBy || ex.authorizer || 'Dirección del Plantel',
+                    date: ex.date || ex.createdAt || cycle
+                });
+            });
+        }
+    });
+
+    let filtered = allExonsList;
+    if (targetGrade !== 'ALL') {
+        filtered = filtered.filter(item => item.gradeCode === targetGrade || (item.gradeLabel && item.gradeLabel.includes(targetGrade)));
+    }
+    if (targetBim !== 'ALL') {
+        filtered = filtered.filter(item => String(item.bimestre).toUpperCase() === 'ALL' || String(item.bimestre) === String(targetBim));
+    }
+
+    filtered.sort((a, b) => a.studentName.localeCompare(b.studentName, 'es', { sensitivity: 'base' }));
+
+    let rowsHtml = '';
+    if (filtered.length === 0) {
+        rowsHtml = `<tr><td colspan="7" style="text-align:center; padding:25px; color:#64748b;">No se registran estudiantes exonerados bajo los criterios seleccionados.</td></tr>`;
+    } else {
+        rowsHtml = filtered.map((item, idx) => {
+            let bimStr = 'Todo el Ciclo';
+            if (item.bimestre && item.bimestre !== 'ALL') bimStr = `${item.bimestre}º Bimestre`;
+            return `
+                <tr>
+                    <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+                    <td>
+                        <strong>${escapeHtml(item.studentName)}</strong><br>
+                        <small>Carné: ${escapeHtml(item.carne)}</small>
+                    </td>
+                    <td>${escapeHtml(item.gradeLabel)}</td>
+                    <td><strong>${escapeHtml(item.subject)}</strong></td>
+                    <td style="text-align:center;">${bimStr}</td>
+                    <td>${escapeHtml(item.reason)}</td>
+                    <td style="text-align:center;"><small>${escapeHtml(item.authorizedBy)}<br>${escapeHtml(item.date)}</small></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast("Habilite las ventanas emergentes (pop-ups) para imprimir.", "warning");
+        return;
+    }
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Libro Oficial de Exoneraciones Académicas - ENCCO - ${cycle}</title>
+    <style>
+        @page { size: letter landscape; margin: 12mm 15mm; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #1e293b; margin: 0; padding: 0; line-height: 1.35; }
+        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0f766e; padding-bottom: 10px; margin-bottom: 14px; }
+        .header-logo { width: 65px; height: auto; }
+        .header-center { text-align: center; flex: 1; margin: 0 15px; }
+        .header-center h1 { font-size: 13pt; margin: 0; font-weight: 800; text-transform: uppercase; color: #0f172a; }
+        .header-center h2 { font-size: 11pt; margin: 3px 0 0 0; color: #0f766e; font-weight: 700; text-transform: uppercase; }
+        .header-center p { font-size: 8.5pt; margin: 2px 0 0 0; color: #475569; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 8.5pt; }
+        th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
+        th { background: #f0fdfa; font-weight: 700; color: #0f766e; text-transform: uppercase; font-size: 8pt; text-align: center; }
+        
+        .signatures { display: flex; justify-content: space-around; margin-top: 40px; page-break-inside: avoid; }
+        .sign-box { width: 35%; text-align: center; font-size: 8.5pt; }
+        .sign-line { border-top: 1.5px solid #334155; margin-bottom: 5px; }
+        
+        .footer-note { font-size: 7.5pt; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 6px; margin-top: 15px; }
+        @media print {
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="logo.png" alt="Logo ENCCO" class="header-logo" onerror="this.style.display='none'">
+        <div class="header-center">
+            <h1>Escuela Nacional de Ciencias Comerciales</h1>
+            <h2>Libro de Registro Oficial de Exoneraciones Académicas</h2>
+            <p>Jutiapa, Guatemala &bull; Ciclo Escolar Oficial ${escapeHtml(cycle)} &bull; Archivo Institucional de Secretaría y Dirección</p>
+        </div>
+        <div style="width:65px; text-align:right; font-size:8pt; color:#64748b;">
+            Libro de Actas<br>y Acuerdos
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:25px;">No.</th>
+                <th>Estudiante</th>
+                <th>Grado y Sección</th>
+                <th>Asignatura Afectada</th>
+                <th style="width:90px;">Bimestre</th>
+                <th>Motivo y Resolución Ministerial / Institucional</th>
+                <th style="width:140px;">Autorizado por y Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml}
+        </tbody>
+    </table>
+
+    <div class="signatures">
+        <div class="sign-box">
+            <div class="sign-line"></div>
+            <strong>Secretario(a) de la Institución</strong><br>
+            Registro Académico y Control Escolar
+        </div>
+        <div class="sign-box">
+            <div class="sign-line"></div>
+            <strong>Director(a) General</strong><br>
+            Escuela Nacional de Ciencias Comerciales
+        </div>
+    </div>
+
+    <div class="footer-note">
+        Certificación oficial generada por Plataforma Académica ENCCO el ${new Date().toLocaleDateString('es-GT')} a las ${new Date().toLocaleTimeString('es-GT')}.
+    </div>
+</body>
+</html>`;
+
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
+
+    setTimeout(() => {
+        try {
+            printWin.focus();
+            printWin.print();
+        } catch(e) {}
+    }, 400);
+}
+
+// Exportar globalmente a window
+window.emitAttendanceAbsenceAlert = emitAttendanceAbsenceAlert;
+window.dismissAttendanceAbsenceAlert = dismissAttendanceAbsenceAlert;
+window.notifyAuxiliaturaAlert = notifyAuxiliaturaAlert;
+window.playAlertChime = playAlertChime;
+window.toggleAuxiliaturaChime = toggleAuxiliaturaChime;
+window.updateAuxChimeButtonUI = updateAuxChimeButtonUI;
+window.flashTabTitle = flashTabTitle;
+window.updateAuxiliaturaBadge = updateAuxiliaturaBadge;
+window.renderAuxiliaturaLogView = renderAuxiliaturaLogView;
+window.printAuxiliaturaLog = printAuxiliaturaLog;
+window.openAuxiliaturaJustifyModal = openAuxiliaturaJustifyModal;
+window.closeAuxiliaturaJustifyModal = closeAuxiliaturaJustifyModal;
+window.submitAuxiliaturaJustification = submitAuxiliaturaJustification;
+window.markAuxiliaturaAlertStatus = markAuxiliaturaAlertStatus;
+window.toggleAuxiliaturaKioskMode = toggleAuxiliaturaKioskMode;
+window.getStudentMonthAbsenceDays = getStudentMonthAbsenceDays;
+window.openWhatsAppPrompt = openWhatsAppPrompt;
+window.openNewExonerationDialog = openNewExonerationDialog;
+window.renderExoneracionesLogView = renderExoneracionesLogView;
+window.printExoneracionesLog = printExoneracionesLog;
+window.openExonerationDetailModal = openExonerationDetailModal;
+window.closeExonerationDetailDocenteModal = closeExonerationDetailDocenteModal;
