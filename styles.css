@@ -3050,3 +3050,13 @@ body.theme-dark .cell-day-today {
     color: #94a3b8;
     margin-top: 2px;
 }
+
+/* 🔒 Celda de asistencia con fecha finalizada / bloqueada */
+.att-cell.att-cell-locked {
+    cursor: not-allowed !important;
+}
+.att-cell.att-cell-locked:hover {
+    transform: none !important;
+    background: inherit;
+    filter: brightness(0.96);
+}

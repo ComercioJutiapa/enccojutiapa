@@ -4473,6 +4473,28 @@ function initFirebaseRealtimeConnection() {
                             if (STATE.activeView === 'attendance' && typeof updateAttendanceLiveStats === 'function') {
                                 updateAttendanceLiveStats();
                             }
+                        } else if (data.path === '/attendanceAlerts' || data.path.startsWith('/attendanceAlerts')) {
+                            // 🚨 Entrega reactiva inmediata de alertas de inasistencia por SSE patch
+                            if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
+                            const subPath = data.path.replace(/^\/attendanceAlerts\/?/, '');
+                            const alertId = subPath || (data.data && data.data.id);
+                            let incomingAlert = (data.data && typeof data.data === 'object') ? data.data : null;
+                            if (incomingAlert) {
+                                if (!incomingAlert.id && alertId) incomingAlert.id = alertId;
+                                const exIdx = STATE.attendanceAlerts.findIndex(a => a && a.id === incomingAlert.id);
+                                if (exIdx === -1) {
+                                    STATE.attendanceAlerts.unshift(incomingAlert);
+                                    if (typeof notifyAuxiliaturaAlert === 'function') {
+                                        notifyAuxiliaturaAlert(incomingAlert);
+                                    }
+                                } else {
+                                    STATE.attendanceAlerts[exIdx] = { ...STATE.attendanceAlerts[exIdx], ...incomingAlert };
+                                }
+                                if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
+                                if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
+                                    renderAuxiliaturaLogView();
+                                }
+                            }
                         } else if (typeof pullStateFromFirebaseCloud === 'function') {
                             pullStateFromFirebaseCloud(false);
                         }
@@ -7921,6 +7943,22 @@ try {
                 } else if (event.data.type === 'BIMESTRE_CHANGED' && event.data.data) {
                     console.log("⚡ [Inter-Pestaña] Notificación de cambio de bimestre recibida.");
                     applyBimestreAndLockConfig(event.data.data, false);
+                } else if (event.data.type === 'ATTENDANCE_ALERT' || (event.data.type === 'NODE_PATCHED' && event.data.node && event.data.node.startsWith('attendanceAlerts'))) {
+                    const incomingAlert = event.data.alert || event.data.data;
+                    if (incomingAlert && incomingAlert.id) {
+                        if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
+                        const exIdx = STATE.attendanceAlerts.findIndex(a => a && a.id === incomingAlert.id);
+                        if (exIdx === -1) {
+                            STATE.attendanceAlerts.unshift(incomingAlert);
+                            if (typeof notifyAuxiliaturaAlert === 'function') notifyAuxiliaturaAlert(incomingAlert);
+                        } else {
+                            STATE.attendanceAlerts[exIdx] = { ...STATE.attendanceAlerts[exIdx], ...incomingAlert };
+                        }
+                        if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
+                        if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
+                            renderAuxiliaturaLogView();
+                        }
+                    }
                 }
             }
         };
@@ -8092,6 +8130,19 @@ function applyIncomingCloudState(incomingState, force = false) {
 
     // 5. Asistencia y Disciplina
     if (incomingState.attendanceRecords) STATE.attendanceRecords = incomingState.attendanceRecords;
+    if (incomingState.attendanceAlerts) {
+        const cloudAlerts = Array.isArray(incomingState.attendanceAlerts) 
+            ? incomingState.attendanceAlerts 
+            : Object.values(incomingState.attendanceAlerts);
+        if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
+        cloudAlerts.forEach(cA => {
+            if (!cA || !cA.id) return;
+            const exIdx = STATE.attendanceAlerts.findIndex(a => a && a.id === cA.id);
+            if (exIdx === -1) STATE.attendanceAlerts.push(cA);
+            else STATE.attendanceAlerts[exIdx] = { ...STATE.attendanceAlerts[exIdx], ...cA };
+        });
+        if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
+    }
     if (Array.isArray(incomingState.disciplineReports)) STATE.disciplineReports = incomingState.disciplineReports;
 
     // 5b. Solicitudes de Habilitación de Edición de Notas (Bimestres Cerrados)
@@ -22010,6 +22061,19 @@ function loadAttendanceList() {
                 const isTodayCol = isCurrentCalendarMonth && (day === todayDay);
                 const todayColClass = isTodayCol ? 'cell-day-today' : '';
 
+                const isPastDay = (year < todayYear) || 
+                                  (year === todayYear && month < todayMonth) || 
+                                  (year === todayYear && month === todayMonth && day < todayDay);
+                const isFutureDay = (year > todayYear) || 
+                                    (year === todayYear && month > todayMonth) || 
+                                    (year === todayYear && month === todayMonth && day > todayDay);
+                const isDayLocked = (isPastDay || isFutureDay) && !isAuditRole;
+                if (isDayLocked) {
+                    cellClass += ' att-cell-locked';
+                    if (isPastDay) cellTitle += ' (🔒 Finalizado - Bloqueado para modificación)';
+                    else if (isFutureDay) cellTitle += ' (🔒 Fecha futura)';
+                }
+
                 cellsHtml += `
                     <td class="att-cell ${cellClass} ${todayColClass}" 
                         data-student-id="${s.id}" 
@@ -22176,6 +22240,42 @@ function toggleAttendanceCell(studentId, day) {
     const gradeCode = gradeSelect.value;
     const month = parseInt(monthSelect.value) || 8;
     const courseId = courseSelect ? courseSelect.value : 'GENERAL';
+
+    // 🔒 Bloqueo estricto: Si pasa el día, se bloquea la toma de asistencia para docentes
+    const now = new Date();
+    const cycleYear = parseInt(STATE.activeCycle) || now.getFullYear();
+    const todayYear = now.getFullYear();
+    const todayMonth = now.getMonth() + 1;
+    const todayDay = now.getDate();
+
+    const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
+    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
+
+    const isPast = (cycleYear < todayYear) || 
+                   (cycleYear === todayYear && month < todayMonth) || 
+                   (cycleYear === todayYear && month === todayMonth && day < todayDay);
+
+    const isFuture = (cycleYear > todayYear) || 
+                     (cycleYear === todayYear && month > todayMonth) || 
+                     (cycleYear === todayYear && month === todayMonth && day > todayDay);
+
+    if (isPast) {
+        if (!isAuditRole) {
+            if (typeof showToast === 'function') {
+                showToast(`🔒 Toma de Asistencia Bloqueada: El día ${day} ya finalizó. No está permitido modificar la asistencia de fechas anteriores. Para justificaciones o cambios oficiales, comuníquese con Auxiliatura o Dirección.`, 'warning');
+            }
+            return;
+        }
+    }
+
+    if (isFuture) {
+        if (!isAuditRole) {
+            if (typeof showToast === 'function') {
+                showToast(`🔒 Fecha Futura Bloqueada: No está permitido tomar asistencia de días futuros por adelantado.`, 'warning');
+            }
+            return;
+        }
+    }
 
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
@@ -31796,6 +31896,33 @@ function initFirestoreModularLiveListeners() {
             }, err => console.warn('Aviso en onSnapshot pensumCatalog:', err));
             if (typeof unsubPensumCat === 'function') _firestoreModularUnsubscribers.push(unsubPensumCat);
         } catch(e) {}
+
+        // 7. 🚨 ESCUCHAR ALERTAS DE AUSENCIA EN TIEMPO REAL ('attendanceAlerts')
+        try {
+            const unsubAlerts = onSnapshot(collection(db, 'attendanceAlerts'), (snap) => {
+                if (!snap || snap.empty) return;
+                snap.docChanges().forEach(change => {
+                    if (change.type === 'added' || change.type === 'modified') {
+                        const alertData = change.doc.data();
+                        if (alertData && alertData.id) {
+                            if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
+                            const exIdx = STATE.attendanceAlerts.findIndex(a => a && a.id === alertData.id);
+                            if (exIdx === -1) {
+                                STATE.attendanceAlerts.unshift(alertData);
+                                if (typeof notifyAuxiliaturaAlert === 'function') notifyAuxiliaturaAlert(alertData);
+                            } else {
+                                STATE.attendanceAlerts[exIdx] = { ...STATE.attendanceAlerts[exIdx], ...alertData };
+                            }
+                            if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
+                            if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
+                                renderAuxiliaturaLogView();
+                            }
+                        }
+                    }
+                });
+            }, err => console.warn('Aviso en onSnapshot attendanceAlerts:', err));
+            if (typeof unsubAlerts === 'function') _firestoreModularUnsubscribers.push(unsubAlerts);
+        } catch(e) {}
     } catch(err) {
         console.warn('Aviso al configurar Firestore onSnapshot:', err);
     }
@@ -32350,11 +32477,33 @@ function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) 
     STATE.attendanceAlerts.unshift(alertObj);
     saveStateToLocalStorage();
 
-    // Sincronizar en tiempo real a Firebase Realtime Database
+    // 🚨 Sincronización Multi-Vía de Alta Confiabilidad hacia Auxiliatura
+    // 1. BroadcastChannel inter-pestañas instantáneo (0ms)
+    if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+        try {
+            _enccBroadcastChannel.postMessage({
+                type: 'ATTENDANCE_ALERT',
+                alert: alertObj,
+                timestamp: timestamp
+            });
+        } catch(bcErr) {}
+    }
+
+    // 2. Firebase Realtime Database con patch atómico en nodo de alertas y raíz
     if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
         EnccoCloudSync.patchNode(`attendanceAlerts/${alertId}`, alertObj).catch(err => {
             console.warn("Aviso en RTDB al guardar alerta de inasistencia:", err);
         });
+    }
+
+    // 3. Google Cloud Firestore en tiempo real con setDoc
+    if (window.FirebaseModular && window.FirebaseModular.db) {
+        try {
+            const { db, doc, setDoc } = window.FirebaseModular;
+            if (typeof setDoc === 'function') {
+                setDoc(doc(db, 'attendanceAlerts', alertId), alertObj, { merge: true }).catch(() => {});
+            }
+        } catch(fsErr) {}
     }
 
     updateAuxiliaturaBadge();
@@ -32387,8 +32536,8 @@ function dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, mont
 
 function notifyAuxiliaturaAlert(alertObj) {
     if (!alertObj) return;
-    const role = STATE.currentRole || (STATE.currentUser && STATE.currentUser.role);
-    const relevantRoles = ['profesor_auxiliar', 'secretaria', 'director', 'admin', 'super_usuario'];
+    const role = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
+    const relevantRoles = ['profesor_auxiliar', 'auxiliar', 'auxiliatura', 'secretaria', 'director', 'direccion', 'admin', 'super_usuario'];
     if (role && !relevantRoles.includes(role)) {
         return; // Alerta exclusiva para Auxiliatura, Dirección y Secretaría
     }
