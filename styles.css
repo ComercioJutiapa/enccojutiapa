@@ -3060,3 +3060,27 @@ body.theme-dark .cell-day-today {
     background: inherit;
     filter: brightness(0.96);
 }
+
+/* 🛡️ Celda justificada oficial: Solo lectura y bloqueada para docentes */
+.att-cell.att-cell-justified-readonly {
+    cursor: not-allowed !important;
+    background: #ffedd5 !important;
+    color: #9a3412 !important;
+    font-weight: 900 !important;
+    box-shadow: inset 0 0 0 1.5px #ea580c !important;
+    user-select: none !important;
+}
+
+.att-cell.att-cell-justified-readonly:hover {
+    transform: none !important;
+    background: #fed7aa !important;
+    box-shadow: inset 0 0 0 2px #c2410c !important;
+}
+
+.att-cell.att-cell-justified-readonly .fa-lock {
+    font-size: 0.60rem;
+    opacity: 0.85;
+    margin-right: 2px;
+    color: #c2410c;
+}
+

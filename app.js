@@ -21993,7 +21993,8 @@ function getStudentPermissionForDay(studentId, year, month, day) {
     if (Array.isArray(STATE.studentPermissions)) {
         const found = STATE.studentPermissions.find(p => {
             if (!p || p.studentId !== studentId) return false;
-            if (p.status && p.status !== 'Autorizado' && p.status !== 'justificada') return false;
+            const st = (p.status || 'autorizado').toLowerCase();
+            if (st === 'revocado' || st === 'rechazado' || st === 'cancelado' || st === 'inactivo') return false;
             const start = p.startDate;
             const end = p.endDate || p.startDate;
             if (!start) return false;
@@ -22234,6 +22235,8 @@ function loadAttendanceList() {
     let tbodyHtml = '';
     let dayPresentTotals = new Array(daysInMonth + 1).fill(0);
     let dayAbsentTotals = new Array(daysInMonth + 1).fill(0);
+    let dayJustTotals = new Array(daysInMonth + 1).fill(0);
+    let dayTardyTotals = new Array(daysInMonth + 1).fill(0);
     let totalClassLogs = 0;
     let totalClassPresent = 0;
 
@@ -22256,15 +22259,25 @@ function loadAttendanceList() {
                 // Las casillas de asistencia aparecen en blanco inicialmente; al marcarse muestran su letra y color asignado
                 let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : '';
 
-                // Verificar si existe permiso oficial autorizado por Auxiliatura / Dirección
+                // 🛡️ 1. Verificar si existe permiso oficial autorizado por Auxiliatura / Dirección / Secretaría
                 const permMeta = getStudentPermissionForDay(s.id, year, month, day);
 
-                if (permMeta) {
+                // 🛡️ 2. Verificar si está justificado en Control General (GENERAL) por Auxiliatura / Secretaría / Dirección
+                const genKey = getAttendanceRecordKey(gradeCode, month, 'GENERAL');
+                const genDayVal = (courseId !== 'GENERAL' && STATE.attendanceRecords && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][s.id])
+                    ? STATE.attendanceRecords[genKey][s.id][day]
+                    : '';
+
+                // Si tiene permiso o está justificado por las autoridades, el indicador obligatorio es 'J'
+                const isJustified = (val === 'J' || rawVal === 'J' || genDayVal === 'J' || !!permMeta);
+                if (isJustified) {
                     val = 'J';
                 }
 
                 let cellClass = 'att-val-empty';
                 let cellTitle = `${studentFullName} — Día ${day}: Sin registrar (Haga clic para marcar P)`;
+                let cellInnerHtml = val;
+                let isCellReadonly = false;
 
                 if (val === 'P') {
                     cellClass = 'att-val-p att-val-P';
@@ -22277,21 +22290,26 @@ function loadAttendanceList() {
                     dayAbsentTotals[day]++;
                     cellTitle = `${studentFullName} — Día ${day}: AUSENTE / FALTA`;
                 } else if (val === 'J') {
-                    if (permMeta) {
-                        cellClass = 'att-val-j att-val-J att-val-permiso';
-                        cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO (📋 PERMISO OFICIAL DE AUXILIATURA: ${permMeta.reasonCategory} — "${permMeta.reasonDetail}" | Autorizado por: ${permMeta.authorizedBy})`;
-                        if (!isAuditRole) {
-                            cellClass += ' att-cell-locked';
-                            cellTitle += ' (🔒 Permiso Oficial Autorizado por Auxiliatura — No modificable por docentes)';
-                        }
-                    } else {
-                        cellClass = 'att-val-j att-val-J';
-                        cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO`;
-                    }
                     jCount++;
+                    dayJustTotals[day]++;
+                    const authBy = permMeta ? (permMeta.authorizedBy || 'Auxiliatura') : 'Auxiliatura / Dirección / Secretaría';
+                    const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Permiso Oficial Autorizado';
+
+                    cellClass = 'att-val-j att-val-J att-val-permiso';
+                    cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO (📋 ${authBy}: ${reason})`;
+
+                    if (!isAuditRole) {
+                        isCellReadonly = true;
+                        cellClass += ' att-cell-locked att-cell-justified-readonly';
+                        cellTitle += ' — 🔒 REGISTRO OFICIAL BLOQUEADO: Permiso autorizado por las autoridades del plantel. No modificable por docentes.';
+                        cellInnerHtml = `<span style="display:inline-flex; align-items:center; justify-content:center; gap:2px;"><i class="fa-solid fa-lock" style="font-size:0.60rem; opacity:0.85; color:#c2410c;"></i>J</span>`;
+                    } else {
+                        cellInnerHtml = `<span style="display:inline-flex; align-items:center; justify-content:center; gap:2px;"><i class="fa-solid fa-shield-halved" style="font-size:0.62rem; color:#ea580c;"></i>J</span>`;
+                    }
                 } else if (val === 'T') {
                     cellClass = 'att-val-t att-val-T';
                     tCount++;
+                    dayTardyTotals[day]++;
                     cellTitle = `${studentFullName} — Día ${day}: TARDANZA`;
                 }
 
@@ -22305,7 +22323,7 @@ function loadAttendanceList() {
                                     (year === todayYear && month > todayMonth) || 
                                     (year === todayYear && month === todayMonth && day > todayDay);
                 const isDayLocked = (isPastDay || isFutureDay) && !isAuditRole;
-                if (isDayLocked) {
+                if (isDayLocked && !isCellReadonly) {
                     cellClass += ' att-cell-locked';
                     if (isPastDay) cellTitle += ' (🔒 Finalizado - Bloqueado para modificación)';
                     else if (isFutureDay) cellTitle += ' (🔒 Fecha futura)';
@@ -22315,9 +22333,11 @@ function loadAttendanceList() {
                     <td class="att-cell ${cellClass} ${todayColClass}" 
                         data-student-id="${s.id}" 
                         data-day="${day}" 
+                        data-val="${val}"
+                        ${isCellReadonly ? 'data-readonly="true" aria-readonly="true"' : ''}
                         onclick="toggleAttendanceCell('${s.id}', ${day})"
                         title="${cellTitle}">
-                        ${val}
+                        ${cellInnerHtml}
                     </td>
                 `;
             }
@@ -22533,19 +22553,33 @@ function toggleAttendanceCell(studentId, day) {
 
     const cur = STATE.attendanceRecords[recordKey][studentId][day] || '';
 
-    // 🛡️ Blindaje Estricto de Permiso Oficial de Auxiliatura: Los docentes NO pueden modificarlo
+    // 🛡️ Blindaje Estricto de Permisos Oficiales y Justificaciones de Auxiliatura / Dirección
     const permMeta = (typeof getStudentPermissionForDay === 'function')
         ? getStudentPermissionForDay(studentId, cycleYear, month, day)
         : ((STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[`${studentId}_${month}_${day}`]) || null);
 
-    if (permMeta) {
+    const genKey = getAttendanceRecordKey(gradeCode, month, 'GENERAL');
+    const genVal = (STATE.attendanceRecords && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][studentId])
+        ? STATE.attendanceRecords[genKey][studentId][day]
+        : '';
+
+    const isJustified = (cur === 'J' || genVal === 'J' || !!permMeta);
+
+    if (isJustified) {
+        const studentObj = (STATE.students || []).find(s => s.id === studentId);
+        const sName = studentObj ? formatStudentDisplayName(studentObj, 'lastFirst') : 'El estudiante';
+        const authBy = permMeta ? (permMeta.authorizedBy || 'Auxiliatura') : 'Auxiliatura / Dirección / Secretaría';
+        const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Justificación / Permiso Oficial Autorizado';
+
         if (!isAuditRole) {
+            // DOCENTE BLOQUEADO: Registro de solo lectura (no editable)
             if (typeof showToast === 'function') {
-                showToast(`🔒 Permiso Oficial de Auxiliatura Protegido: ${permMeta.studentName || 'El estudiante'} cuenta con un permiso de ausencia autorizado por Auxiliatura (${permMeta.reasonCategory || 'Oficial'}). No puede ser modificado por docentes.`, 'warning', 6000);
+                showToast(`🔒 Registro Bloqueado: ${sName} cuenta con inasistencia justificada autorizada por ${authBy} (${reason}). Este registro es de solo lectura y no puede ser modificado por docentes.`, 'warning', 6000);
             }
             return;
         }
-        const confirmChange = confirm(`📋 AVISO OFICIAL DE AUXILIATURA:\n\nEl estudiante tiene un PERMISO DE AUSENCIA AUTORIZADO:\n• Motivo: ${permMeta.reasonCategory}\n• Justificación: "${permMeta.reasonDetail}"\n• Autorizado por: ${permMeta.authorizedBy}\n\n¿Está seguro de que desea alterar manualmente esta asistencia justificada?`);
+
+        const confirmChange = confirm(`📋 AVISO OFICIAL DE AUTORIZACIÓN:\n\n${sName} tiene una inasistencia justificada por las autoridades:\n• Motivo: ${reason}\n• Autorizado por: ${authBy}\n\n¿Está seguro de que desea alterar manualmente este registro justificado?`);
         if (!confirmChange) {
             return;
         }
@@ -22581,6 +22615,7 @@ function toggleAttendanceCell(studentId, day) {
         }
         td.className = cellClass;
         td.textContent = next;
+        td.setAttribute('data-val', next || '');
         let cellTitle = next ? `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? (permMeta ? `JUSTIFICADO (📋 PERMISO OFICIAL: ${permMeta.reasonCategory} — ${permMeta.reasonDetail} | Autorizado por: ${permMeta.authorizedBy})` : 'JUSTIFICADO') : 'TARDANZA'))} (Haga clic para alternar P/A/J/T)` : `Día ${day}: Sin registrar (Haga clic para marcar P)`;
         td.title = cellTitle;
     }
@@ -22823,15 +22858,21 @@ function markAllPresentToday() {
     let markedCount = 0;
     let preservedJustifiedCount = 0;
 
+    const genRecordKey = (courseId && courseId !== 'GENERAL') ? getAttendanceRecordKey(gradeCode, todayMonth, 'GENERAL') : null;
+
     students.forEach(s => {
         if (!STATE.attendanceRecords[recordKey][s.id]) STATE.attendanceRecords[recordKey][s.id] = {};
         
-        // 🛡️ Regla de oro: No sobrescribir alumnos con permiso oficial justificado 'J' de Auxiliatura
+        // 🛡️ Regla de oro: No sobrescribir alumnos con permiso oficial justificado 'J' de Auxiliatura o Dirección
         const hasPermit = (typeof getStudentPermissionForDay === 'function')
             ? !!getStudentPermissionForDay(s.id, today.getFullYear(), todayMonth, todayDay)
             : false;
         const currentVal = STATE.attendanceRecords[recordKey][s.id][todayDay];
-        if (currentVal === 'J' || hasPermit) {
+        const genVal = (genRecordKey && STATE.attendanceRecords[genRecordKey] && STATE.attendanceRecords[genRecordKey][s.id])
+            ? STATE.attendanceRecords[genRecordKey][s.id][todayDay]
+            : null;
+
+        if (currentVal === 'J' || genVal === 'J' || hasPermit) {
             STATE.attendanceRecords[recordKey][s.id][todayDay] = 'J';
             preservedJustifiedCount++;
             return;
@@ -23165,22 +23206,46 @@ function registerAttendanceByCode(rawCode) {
 
     // Marcar presente en el día de hoy (o día 1 si el mes seleccionado no es el actual)
     const targetDay = (activeMonth === todayMonth) ? todayDay : 1;
-    STATE.attendanceRecords[recordKey][student.id][targetDay] = 'P';
 
-    _attendanceTodayScannedCount++;
-
-    // Guardado optimista instantáneo
-    if (typeof saveAttendanceRecords === 'function') {
-        saveAttendanceRecords(false);
-    }
-
-    // Notificaciones sensoriales
-    playAttendanceBeep(true);
-    if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([70, 40, 70]);
+    // 🛡️ Regla de oro: No sobrescribir si el alumno tiene permiso justificado oficial de Auxiliatura / Dirección
+    const genRecKey = (activeCourse !== 'GENERAL') 
+        ? ((typeof getAttendanceRecordKey === 'function') ? getAttendanceRecordKey(activeGradeCode, activeMonth, 'GENERAL') : `${activeGradeCode}_${activeMonth}_GENERAL`)
+        : null;
+    const curVal = STATE.attendanceRecords[recordKey][student.id][targetDay];
+    const genVal = (genRecKey && STATE.attendanceRecords[genRecKey] && STATE.attendanceRecords[genRecKey][student.id])
+        ? STATE.attendanceRecords[genRecKey][student.id][targetDay]
+        : null;
+    const hasPermit = (typeof getStudentPermissionForDay === 'function')
+        ? !!getStudentPermissionForDay(student.id, today.getFullYear(), activeMonth, targetDay)
+        : false;
 
     const sFullName = formatStudentDisplayName(student, 'lastFirst') || 'Estudiante';
-    updateLastScannedBanner(student, 'success', `Presente marcado: Día ${targetDay}`);
-    if (typeof showToast === 'function') showToast(`Asistencia registrada: ${sFullName}`, 'success');
+
+    if (curVal === 'J' || genVal === 'J' || hasPermit) {
+        STATE.attendanceRecords[recordKey][student.id][targetDay] = 'J';
+        if (typeof saveAttendanceRecords === 'function') saveAttendanceRecords(false);
+        playAttendanceBeep(true);
+        if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([70, 40, 70]);
+        updateLastScannedBanner(student, 'warning', `🔒 Permiso Justificado Protegido (Día ${targetDay})`);
+        if (typeof showToast === 'function') {
+            showToast(`ℹ️ ${sFullName} cuenta con Justificación / Permiso Oficial activo para el día ${targetDay}. Se preserva el estado 'J'.`, 'info');
+        }
+    } else {
+        STATE.attendanceRecords[recordKey][student.id][targetDay] = 'P';
+        _attendanceTodayScannedCount++;
+
+        // Guardado optimista instantáneo
+        if (typeof saveAttendanceRecords === 'function') {
+            saveAttendanceRecords(false);
+        }
+
+        // Notificaciones sensoriales
+        playAttendanceBeep(true);
+        if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([70, 40, 70]);
+
+        updateLastScannedBanner(student, 'success', `Presente marcado: Día ${targetDay}`);
+        if (typeof showToast === 'function') showToast(`Asistencia registrada: ${sFullName}`, 'success');
+    }
 
     // Refrescar grilla visual si estamos viendo este módulo
     if (typeof document !== 'undefined' && document.getElementById('view-attendance')) {
