@@ -6,6 +6,9 @@
  * 3. Bitácora Diaria de Ausencias y Alertas con KPIs y Justificación con propagación a "J".
  * 4. Libro de Exoneraciones Académicas Oficiales e Impresión.
  * 5. Transparencia de Exoneraciones para Docentes (Modal con motivo oficial y resolución).
+ * 6. Optimizaciones: rectificación, de-duplicación, mute y búsqueda.
+ * 7. Modo Kiosco, plantillas WhatsApp y contador mensual de inasistencias.
+ * 8. Acceso Universal de Consulta a Exoneraciones y Permisos para Todos los Usuarios.
  */
 
 const fs = require('fs');
@@ -106,6 +109,59 @@ assert(htmlContent.includes('id="btnAuxKiosk"'), "plataforma.html debe tener bot
 
 console.log("  ✅ Test 8 Superado: Modo Kiosco de Recepción, plantillas inteligentes de WhatsApp y cálculo mensual activos.");
 
+// 9. VERIFICACIÓN DE ACCESO UNIVERSAL A EXONERACIONES Y PERMISOS DE AUSENCIA
+console.log("\n▶ [TEST 9] Verificando Acceso Universal a Exoneraciones y Permisos para Todos los Usuarios...");
+
+// 9.1 Acceso universal en plataforma.html
+assert(htmlContent.includes('data-view="exoneraciones-log" data-perm="exoneraciones-log" data-allowed="*"'), "Sidebar debe permitir acceso universal (*) a exoneraciones");
+assert(htmlContent.includes('data-view="permissions-history" data-perm="permissions-history" data-allowed="*"'), "Sidebar debe permitir acceso universal (*) a permisos de ausencia");
+assert(htmlContent.includes('id="btnNewExoneracionToolbar"'), "Botón de nueva exoneración debe tener id btnNewExoneracionToolbar");
+assert(htmlContent.includes('id="btnNewPermHistory"'), "Botón de nuevo permiso en modal debe tener id btnNewPermHistory");
+
+// 9.2 Verificación de funciones de app.js
+assert(appContent.includes("testKey === 'exoneraciones-log'"), "app.js debe comprobar exoneraciones-log en RBAC");
+assert(appContent.includes("testKey === 'permissions-history'"), "app.js debe comprobar permissions-history en RBAC");
+assert(appContent.includes("key === 'exoneraciones-log'"), "app.js debe asignar niveles en getModulePermissionLevel para exoneraciones-log");
+assert(appContent.includes("key === 'permissions-history'"), "app.js debe asignar niveles en getModulePermissionLevel para permissions-history");
+
+// 9.3 Simulación de lógica RBAC para consulta y modificación
+const vm = require('vm');
+const sandbox = {
+    window: {},
+    STATE: {
+        currentRole: 'docente',
+        rolesConfig: []
+    },
+    console: { warn: () => {}, log: () => {} }
+};
+sandbox.window = sandbox;
+
+// Extraer funciones relevantes
+const normCode = appContent.match(/function normalizePermKey[\s\S]*?\n\}/)[0];
+const getModCode = appContent.match(/function getModulePermissionLevel[\s\S]*?\n\}/)[0];
+const hasPermCode = appContent.match(/function hasRolePermission[\s\S]*?\n\}/)[0];
+const canModCode = appContent.match(/function canRoleModify[\s\S]*?\n\}/)[0];
+
+vm.runInNewContext([normCode, getModCode, hasPermCode, canModCode].join('\n'), sandbox);
+
+// Probar lectura universal en todos los roles oficiales
+const allTestRoles = ['docente', 'profesor_auxiliar', 'secretaria', 'director', 'admin', 'super_usuario'];
+allTestRoles.forEach(role => {
+    assert.strictEqual(sandbox.hasRolePermission('exoneraciones-log', role), true, `El rol ${role} DEBE poder ver la lista de exoneraciones`);
+    assert.strictEqual(sandbox.hasRolePermission('permissions-history', role), true, `El rol ${role} DEBE poder ver el historial de permisos`);
+});
+
+// Probar blindaje defensivo de modificación (docentes NO pueden modificar; directivos y auxiliares SÍ)
+assert.strictEqual(sandbox.canRoleModify('exoneraciones-log', 'docente'), false, "Docente NO debe poder modificar exoneraciones");
+assert.strictEqual(sandbox.canRoleModify('permissions-history', 'docente'), false, "Docente NO debe poder modificar permisos de auxiliatura");
+
+assert.strictEqual(sandbox.canRoleModify('exoneraciones-log', 'director'), true, "Director SÍ debe poder modificar exoneraciones");
+assert.strictEqual(sandbox.canRoleModify('exoneraciones-log', 'secretaria'), true, "Secretaría SÍ debe poder modificar exoneraciones");
+assert.strictEqual(sandbox.canRoleModify('permissions-history', 'profesor_auxiliar'), true, "Profesor auxiliar SÍ debe poder modificar permisos");
+assert.strictEqual(sandbox.canRoleModify('permissions-history', 'director'), true, "Director SÍ debe poder modificar permisos");
+
+console.log("  ✅ Test 9 Superado: Acceso universal de consulta activo para todos los roles con privilegios de modificación estrictamente blindados.");
+
 console.log("\n================================================================================");
-console.log("🎉 TODAS LAS 8 PRUEBAS AUTOMATIZADAS PASARON EXITOSAMENTE (100%)");
+console.log("🎉 TODAS LAS 9 PRUEBAS AUTOMATIZADAS PASARON EXITOSAMENTE (100%)");
 console.log("================================================================================");

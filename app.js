@@ -1175,6 +1175,8 @@ function normalizePermKey(key) {
     if (k === 'grade_stats' || k === 'grade-stats' || k === 'estadisticas' || k === 'promedios' || k === 'grade_statistics') return 'grade-stats';
     if (k === 'predictive_analytics' || k === 'predictive-analytics' || k === 'riesgo' || k === 'analitica' || k === 'analytics') return 'predictive-analytics';
     if (k === 'carnets' || k === 'carne' || k === 'carnet' || k === 'credenciales') return 'carnets';
+    if (k === 'exoneraciones' || k === 'exoneraciones_log' || k === 'exoneraciones-log' || k === 'exoneracion') return 'exoneraciones-log';
+    if (k === 'permisos' || k === 'permissions' || k === 'permissions-history' || k === 'permissions_history' || k === 'permisos-history' || k === 'permisos_history') return 'permissions-history';
     return k;
 }
 
@@ -1184,6 +1186,20 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
     if (!roleKey || roleKey === 'guest') return 'none';
 
     const key = normalizePermKey(moduleKey);
+
+    // 🛡️ ACCESO UNIVERSAL CON RESTRICCIÓN DE MODIFICACIÓN: "Registro Oficial de Exoneraciones"
+    if (key === 'exoneraciones-log') {
+        const allowedManagers = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+        if (allowedManagers.includes(roleKey)) return 'edit';
+        return 'view'; // Docentes y cualquier usuario autenticado tienen consulta libre
+    }
+
+    // 🛡️ ACCESO UNIVERSAL CON RESTRICCIÓN DE MODIFICACIÓN: "Historial de Permisos de Ausencia"
+    if (key === 'permissions-history') {
+        const allowedManagers = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+        if (allowedManagers.includes(roleKey)) return 'edit';
+        return 'view'; // Docentes y cualquier usuario autenticado tienen consulta libre
+    }
 
     // 🛡️ BLINDAJE RBAC ESTRICTO: "Datos para Sire" exclusivo para Dirección, Secretaría y Admin
     if (key === 'datos-sire') {
@@ -1274,10 +1290,14 @@ function hasRolePermission(permKey, role = null) {
         return allowedAux.includes(targetRole);
     }
 
-    // 🛡️ BLINDAJE RBAC: "Registro Oficial de Exoneraciones" (Dirección, Secretaría, Admin)
+    // 🛡️ ACCESO UNIVERSAL: "Registro Oficial de Exoneraciones" (Visible para consulta por todos los usuarios)
     if (testKey === 'exoneraciones-log') {
-        const allowedExo = ['director', 'secretaria', 'admin', 'super_usuario'];
-        return allowedExo.includes(targetRole);
+        return true;
+    }
+
+    // 🛡️ ACCESO UNIVERSAL: "Historial de Permisos de Ausencia" (Visible para consulta por todos los usuarios)
+    if (testKey === 'permissions-history') {
+        return true;
     }
 
     try {
@@ -2367,7 +2387,9 @@ var SYSTEM_MODULES_LIST = [
     { key: 'cycles', name: 'Gestor de Ciclos Escolares', icon: 'fa-calendar-days', category: 'Académico', desc: 'Habilitación de ciclos lectivos y promociones.' },
     { key: 'grade-stats', name: 'Promedios y Estadísticas', icon: 'fa-chart-bar', category: 'Académico', desc: 'Estadísticas de promedios, aprobados y reprobados por grado y sección.' },
     { key: 'predictive-analytics', name: 'Analítica Predictiva y Riesgo Escolar', icon: 'fa-chart-line', category: 'Académico', desc: 'Semáforo de riesgo de deserción, ranking de cursos críticos y citaciones.' },
-    { key: 'carnets', name: 'Carnés Estudiantiles CR80', icon: 'fa-id-card', category: 'Secretaría y Alumnos', desc: 'Generador de credenciales con código de barras Code 39 e impresión masiva en hoja Carta.' }
+    { key: 'carnets', name: 'Carnés Estudiantiles CR80', icon: 'fa-id-card', category: 'Secretaría y Alumnos', desc: 'Generador de credenciales con código de barras Code 39 e impresión masiva en hoja Carta.' },
+    { key: 'exoneraciones-log', name: 'Libro de Exoneraciones', icon: 'fa-file-shield', category: 'Secretaría y Alumnos', desc: 'Libro de registro oficial de exoneraciones y consideraciones académicas especiales.' },
+    { key: 'permissions-history', name: 'Historial de Permisos', icon: 'fa-clipboard-list', category: 'Estudiantil', desc: 'Historial oficial de permisos de ausencia autorizados por Auxiliatura.' }
 ];
 window.SYSTEM_MODULES_LIST = SYSTEM_MODULES_LIST;
 
@@ -2409,7 +2431,7 @@ function initDefaultRolesConfig() {
             description: 'Coordinación disciplinaria escolar, control de asistencia y convivencia',
             color: '#d97706',
             isSystem: true,
-            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports']
+            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history']
         },
         {
             key: 'docente',
@@ -2417,7 +2439,7 @@ function initDefaultRolesConfig() {
             description: 'Ingreso de calificaciones, control de asistencia y seguimiento pedagógico',
             color: '#0891b2',
             isSystem: true,
-            permissions: ['dashboard', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports']
+            permissions: ['dashboard', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports', 'exoneraciones-log', 'permissions-history']
         },
         {
             key: 'estudiante',
@@ -23146,6 +23168,13 @@ function openCreatePermissionModal(preselectedStudentId = null) {
     const modal = document.getElementById('createPermissionModal');
     if (!modal) return;
 
+    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
+    const canManagePerms = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
+    if (!canManagePerms) {
+        showToast("Acceso Restringido: La autorización de permisos de ausencia es competencia exclusiva de Auxiliatura y Dirección.", "warning");
+        return;
+    }
+
     // Poblar filtros de grado
     populatePermissionGradeFilter();
 
@@ -23473,6 +23502,13 @@ function openPermissionsHistoryModal() {
     const modal = document.getElementById('permissionsHistoryModal');
     if (!modal) return;
 
+    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
+    const canManagePerms = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
+    const btnNew = document.getElementById('btnNewPermHistory');
+    if (btnNew) {
+        btnNew.style.display = canManagePerms ? 'inline-flex' : 'none';
+    }
+
     renderPermissionsHistoryTable();
 
     modal.classList.add('active');
@@ -23493,6 +23529,13 @@ window.closePermissionsHistoryModal = closePermissionsHistoryModal;
 function renderPermissionsHistoryTable() {
     const tbody = document.getElementById('permissionsHistoryTableBody');
     if (!tbody) return;
+
+    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
+    const canManagePerms = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
+    const btnNew = document.getElementById('btnNewPermHistory');
+    if (btnNew) {
+        btnNew.style.display = canManagePerms ? 'inline-flex' : 'none';
+    }
 
     const q = (document.getElementById('permHistorySearchInput')?.value || '').trim().toLowerCase();
     let perms = Array.isArray(STATE.studentPermissions) ? [...STATE.studentPermissions] : [];
@@ -23550,9 +23593,10 @@ function renderPermissionsHistoryTable() {
                     <button type="button" class="btn btn-outline-primary btn-xs" onclick="printStudentPermissionPass('${p.id}')" title="Imprimir Comprobante Oficial" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
                         <i class="fa-solid fa-print"></i> Pase
                     </button>
+                    ${canManagePerms ? `
                     <button type="button" class="btn btn-outline-danger btn-xs" onclick="revokeStudentPermission('${p.id}')" title="Anular este permiso" style="padding:3px 8px; font-size:0.75rem; font-weight:700; margin-left:4px;">
                         <i class="fa-solid fa-trash"></i>
-                    </button>
+                    </button>` : ''}
                 </td>
             </tr>
         `;
@@ -23562,6 +23606,12 @@ window.renderPermissionsHistoryTable = renderPermissionsHistoryTable;
 
 function revokeStudentPermission(permId) {
     if (!permId) return;
+    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
+    const canManagePerms = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
+    if (!canManagePerms) {
+        showToast("Acceso Restringido: Solo el personal de Auxiliatura y Dirección puede anular permisos.", "warning");
+        return;
+    }
     const perm = (STATE.studentPermissions || []).find(p => p.id === permId);
     if (!perm) return;
 
@@ -33861,6 +33911,12 @@ function closeExonerationDetailDocenteModal() {
 }
 
 function openNewExonerationDialog() {
+    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
+    const canManageExon = ['director', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
+    if (!canManageExon) {
+        showToast("Acceso Restringido: La creación de exoneraciones es competencia exclusiva de Dirección, Secretaría o Auxiliatura.", "warning");
+        return;
+    }
     const input = prompt("📋 REGISTRO DE NUEVA EXONERACIÓN ACADÉMICA\n\nIngrese el Carné, Código Personal o Apellido del estudiante a exonerar:");
     if (!input || !input.trim()) return;
 
@@ -33899,6 +33955,13 @@ function openNewExonerationDialog() {
 }
 
 function renderExoneracionesLogView() {
+    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
+    const canManageExon = ['director', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
+    const btnNewExo = document.getElementById('btnNewExoneracionToolbar');
+    if (btnNewExo) {
+        btnNewExo.style.display = canManageExon ? 'inline-flex' : 'none';
+    }
+
     const gradeSelect = document.getElementById('exoneracionesLogGradeFilter');
     const bimSelect = document.getElementById('exoneracionesLogBimestreFilter');
     const searchInput = document.getElementById('exoneracionesLogSearchInput');
@@ -34015,9 +34078,10 @@ function renderExoneracionesLogView() {
                         <button type="button" class="btn btn-xs btn-outline-info" onclick="openExonerationDetailModal('${item.studentId}', '${escapeHtml(item.subject)}', '${item.bimestre}')" style="font-size:0.75rem; padding:3px 8px; font-weight:700;" title="Ver constancia oficial de exoneración">
                             <i class="fa-solid fa-eye"></i> Constancia
                         </button>
+                        ${canManageExon ? `
                         <button type="button" class="btn btn-xs btn-outline-primary" onclick="openAcademicExonerationModal('${item.studentId}')" style="font-size:0.75rem; padding:3px 8px; font-weight:700;" title="Gestionar dispensa del alumno">
                             <i class="fa-solid fa-pen-to-square"></i> Gestionar
-                        </button>
+                        </button>` : ''}
                     </div>
                 </td>
             </tr>
