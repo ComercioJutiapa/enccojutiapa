@@ -663,10 +663,13 @@
                 return;
             }
 
-            // 🛡️ MODULO AUXILIATURA: Monitoreo continuo y soporte de alertas en tiempo real
+            // 🛡️ MODO CENTINELA AUXILIATURA: La sesión del Auxiliar NUNCA caduca por inactividad
+            // para garantizar la recepción y atención ininterrumpida de alertas de ausencias escolares
             if (session.role === 'profesor_auxiliar') {
-                console.log("🛡️ [Auxiliatura] Sesión verificada con monitoreo de alertas escolares activo y temporizador de inactividad regulado.");
+                console.log("🛡️ [Modo Centinela] Sesión permanente activada para Auxiliatura. Monitoreo continuo de ausencias en tiempo real habilitado.");
+                this.isActive = false;
                 this.startAuxiliarHeartbeat();
+                return;
             }
 
             this.isActive = true;
