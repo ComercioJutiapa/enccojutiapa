@@ -8,7 +8,7 @@ console.log('================================================================\n'
 
 const html = fs.readFileSync(path.join(__dirname, 'plataforma.html'), 'utf8');
 const css = fs.readFileSync(path.join(__dirname, 'styles.css'), 'utf8');
-const js = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
+const js = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8') + (fs.existsSync(path.join(__dirname, 'scholarships.js')) ? fs.readFileSync(path.join(__dirname, 'scholarships.js'), 'utf8') : '');
 
 // 1. Sidebar y Grupo BECAS
 console.log('▶ [TEST 1] Verificando grupos del sidebar y nombre BECAS...');
