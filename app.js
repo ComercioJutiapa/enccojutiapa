@@ -6056,6 +6056,8 @@ function ensureSireOfficialStudents() {
             docRef: 'CONSTANCIA-AUX-EXT-2026-003',
             authorizedBy: 'Auxiliatura General (Profesor Auxiliar)',
             authorizedById: 'usr-aux-01',
+            origin_role: 'profesor_auxiliar',
+            is_locked_by_admin: true,
             createdAt: '2026-01-15T08:00:00.000Z',
             status: 'autorizado'
         };
@@ -6073,6 +6075,8 @@ function ensureSireOfficialStudents() {
         ));
         if (existingPerm) {
             existingPerm.status = 'autorizado';
+            existingPerm.origin_role = existingPerm.origin_role || 'profesor_auxiliar';
+            existingPerm.is_locked_by_admin = true;
             existingPerm.startDate = existingPerm.startDate || '2026-01-01';
             existingPerm.endDate = existingPerm.endDate || '2026-11-30';
             if (typeof applyStudentPermission === 'function') {
@@ -22141,7 +22145,9 @@ function getStudentPermissionForDay(studentId, year, month, day) {
                 authorizedBy: found.authorizedBy || 'Auxiliatura',
                 authorizedById: found.authorizedById || 'auxiliar',
                 date: targetDateStr,
-                studentName: found.studentName || ''
+                studentName: found.studentName || '',
+                origin_role: (found.origin_role || found.originRole || 'profesor_auxiliar').toLowerCase(),
+                is_locked_by_admin: true
             };
         }
     }
@@ -22152,7 +22158,16 @@ function getStudentPermissionForDay(studentId, year, month, day) {
     if (sCarne) metaKeys.push(`${sCarne}_${m}_${d}`);
     if (STATE.attendancePermissionsMeta) {
         for (const mk of metaKeys) {
-            if (STATE.attendancePermissionsMeta[mk]) return STATE.attendancePermissionsMeta[mk];
+            if (STATE.attendancePermissionsMeta[mk]) {
+                const meta = STATE.attendancePermissionsMeta[mk];
+                const oRole = (meta.origin_role || meta.originRole || (meta.is_locked_by_admin === false ? 'docente' : 'profesor_auxiliar')).toLowerCase();
+                const isLocked = (meta.is_locked_by_admin !== undefined) ? !!meta.is_locked_by_admin : (oRole !== 'docente');
+                return {
+                    ...meta,
+                    origin_role: oRole,
+                    is_locked_by_admin: isLocked
+                };
+            }
         }
     }
     return null;
@@ -22404,8 +22419,13 @@ function loadAttendanceList() {
                     ? STATE.attendanceRecords[genKey][s.id][day]
                     : '';
 
+                // Determinar origen y si es bloqueo estricto por Autoridad (Dirección, Auxiliatura, Secretaría)
+                const authorityRoles = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+                const permOriginRole = permMeta ? (permMeta.origin_role || permMeta.originRole || '').toLowerCase() : '';
+                const permIsLockedByAdmin = permMeta ? (permMeta.is_locked_by_admin === true || (permMeta.is_locked_by_admin !== false && permOriginRole !== 'docente')) : false;
+
                 // ¿Es justificación oficial de Auxiliatura, Secretaría o Dirección?
-                const isOfficialJustified = (genDayVal === 'J' || !!permMeta);
+                const isOfficialJustified = (genDayVal === 'J' && permOriginRole !== 'docente') || (!!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente');
 
                 // Si tiene permiso o está justificado oficialmente por las autoridades, el indicador obligatorio es 'J'
                 if (isOfficialJustified) {
@@ -22416,6 +22436,7 @@ function loadAttendanceList() {
                 let cellTitle = `${studentFullName} — Día ${day}: Sin registrar (Haga clic para marcar P)`;
                 let cellInnerHtml = val;
                 let isCellReadonly = false;
+                let cellOriginRole = isOfficialJustified ? (permOriginRole || (genDayVal === 'J' ? 'profesor_auxiliar' : 'director')) : (val === 'J' ? 'docente' : '');
 
                 if (val === 'P') {
                     cellClass = 'att-val-p att-val-P';
@@ -22440,7 +22461,7 @@ function loadAttendanceList() {
                         cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO (📋 ${authBy}: ${reason})`;
 
                         if (!isAuditRole) {
-                            // BLOQUEADO PARA DOCENTE: Solo lectura
+                            // BLOQUEADO PARA DOCENTE: Solo lectura (disabled)
                             isCellReadonly = true;
                             cellClass += ' att-cell-locked att-cell-justified-readonly';
                             cellTitle += ' — 🔒 REGISTRO OFICIAL BLOQUEADO: Justificado por Auxiliatura / Dirección / Secretaría. No modificable por docentes.';
@@ -22454,6 +22475,7 @@ function loadAttendanceList() {
                         cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO (Registrado por el docente - Haga clic para cambiar a T)`;
                         cellInnerHtml = 'J';
                         isCellReadonly = false;
+                        cellOriginRole = 'docente';
                     }
                 } else if (val === 'T') {
                     cellClass = 'att-val-t att-val-T';
@@ -22478,12 +22500,19 @@ function loadAttendanceList() {
                     else if (isFutureDay) cellTitle += ' (🔒 Fecha futura)';
                 }
 
+                const cellDisabledAttr = (isCellReadonly && !isAuditRole) ? 'disabled="disabled" aria-disabled="true"' : '';
+                const cellLockAdminAttr = isOfficialJustified ? 'data-locked-by-admin="true"' : 'data-locked-by-admin="false"';
+                const cellOriginRoleAttr = `data-origin-role="${cellOriginRole}"`;
+
                 cellsHtml += `
                     <td class="att-cell ${cellClass} ${todayColClass}" 
                         data-student-id="${s.id}" 
                         data-day="${day}" 
                         data-val="${val}"
                         ${isCellReadonly ? 'data-readonly="true" aria-readonly="true"' : ''}
+                        ${cellDisabledAttr}
+                        ${cellLockAdminAttr}
+                        ${cellOriginRoleAttr}
                         onclick="toggleAttendanceCell('${s.id}', ${day})"
                         title="${cellTitle}">
                         ${cellInnerHtml}
@@ -22708,12 +22737,17 @@ function toggleAttendanceCell(studentId, day) {
         : ((STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[`${studentId}_${month}_${day}`]) || null);
 
     const genKey = getAttendanceRecordKey(gradeCode, month, 'GENERAL');
-    const genVal = (STATE.attendanceRecords && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][studentId])
+    const genVal = (courseId !== 'GENERAL' && STATE.attendanceRecords && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][studentId])
         ? STATE.attendanceRecords[genKey][studentId][day]
         : '';
 
     // 🛡️ Blindaje Estricto de Permisos Oficiales y Justificaciones de Auxiliatura / Dirección / Secretaría
-    const isOfficialJustified = (genVal === 'J' || !!permMeta);
+    const authorityRoles = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+    const permOriginRole = permMeta ? (permMeta.origin_role || permMeta.originRole || '').toLowerCase() : '';
+    const permIsLockedByAdmin = permMeta ? (permMeta.is_locked_by_admin === true || (permMeta.is_locked_by_admin !== false && permOriginRole !== 'docente')) : false;
+
+    // ¿Es justificación oficial de Auxiliatura, Secretaría o Dirección?
+    const isOfficialJustified = (genVal === 'J' && permOriginRole !== 'docente') || (!!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente');
 
     if (isOfficialJustified) {
         const studentObj = (STATE.students || []).find(s => s.id === studentId);
@@ -22749,6 +22783,40 @@ function toggleAttendanceCell(studentId, day) {
         delete STATE.attendanceRecords[recordKey][studentId][day];
     }
 
+    // 🛡️ Control Técnico: Guardar indicador origin_role e is_locked_by_admin
+    const metaKey = `${studentId}_${month}_${day}`;
+    if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
+
+    if (next === 'J') {
+        if (isAuditRole) {
+            STATE.attendancePermissionsMeta[metaKey] = {
+                reasonCategory: 'Permiso / Justificación Oficial',
+                reasonDetail: 'Justificación autorizada por ' + currentRole.toUpperCase(),
+                authorizedBy: (STATE.currentUser && STATE.currentUser.name) || currentRole,
+                origin_role: currentRole,
+                is_locked_by_admin: true,
+                timestamp: Date.now()
+            };
+        } else {
+            STATE.attendancePermissionsMeta[metaKey] = {
+                reasonCategory: 'Justificación en Aula por Docente',
+                reasonDetail: 'Registrado directamente por el catedrático titular',
+                authorizedBy: (STATE.currentUser && STATE.currentUser.name) || 'Docente Titular',
+                origin_role: 'docente',
+                is_locked_by_admin: false,
+                timestamp: Date.now()
+            };
+        }
+    } else if (cur === 'J') {
+        if (STATE.attendancePermissionsMeta[metaKey]) {
+            const metaOrigin = (STATE.attendancePermissionsMeta[metaKey].origin_role || '').toLowerCase();
+            const metaLocked = STATE.attendancePermissionsMeta[metaKey].is_locked_by_admin;
+            if (isAuditRole || metaOrigin === 'docente' || metaLocked === false) {
+                delete STATE.attendancePermissionsMeta[metaKey];
+            }
+        }
+    }
+
     // 🚨 Alerta Inmediata a Auxiliatura cuando un docente marca ausencia en aula
     if (next === 'A' && typeof emitAttendanceAbsenceAlert === 'function') {
         emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month);
@@ -22760,13 +22828,32 @@ function toggleAttendanceCell(studentId, day) {
     const td = document.querySelector(`td[data-student-id="${studentId}"][data-day="${day}"]`);
     if (td) {
         let cellClass = next ? `att-cell att-val-${next.toLowerCase()} att-val-${next.toUpperCase()}` : 'att-cell att-val-empty';
-        if (next === 'J' && permMeta) {
-            cellClass += ' att-val-permiso';
+        if (next === 'J') {
+            if (isAuditRole) {
+                cellClass += ' att-val-permiso';
+                td.setAttribute('data-origin-role', currentRole);
+                td.setAttribute('data-locked-by-admin', 'true');
+            } else {
+                td.setAttribute('data-origin-role', 'docente');
+                td.setAttribute('data-locked-by-admin', 'false');
+                td.removeAttribute('disabled');
+                td.removeAttribute('aria-disabled');
+                td.removeAttribute('data-readonly');
+                td.removeAttribute('aria-readonly');
+            }
+            td.textContent = next;
+        } else {
+            td.removeAttribute('disabled');
+            td.removeAttribute('aria-disabled');
+            td.removeAttribute('data-readonly');
+            td.removeAttribute('aria-readonly');
+            td.setAttribute('data-locked-by-admin', 'false');
+            td.setAttribute('data-origin-role', '');
+            td.textContent = next;
         }
         td.className = cellClass;
-        td.textContent = next;
         td.setAttribute('data-val', next || '');
-        let cellTitle = next ? `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? (permMeta ? `JUSTIFICADO (📋 PERMISO OFICIAL: ${permMeta.reasonCategory} — ${permMeta.reasonDetail} | Autorizado por: ${permMeta.authorizedBy})` : 'JUSTIFICADO') : 'TARDANZA'))} (Haga clic para alternar P/A/J/T)` : `Día ${day}: Sin registrar (Haga clic para marcar P)`;
+        let cellTitle = next ? `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? (isAuditRole ? 'JUSTIFICADO (Autorizado por Dirección / Auxiliatura)' : 'JUSTIFICADO (Registrado por el docente - Haga clic para cambiar a T)') : 'TARDANZA'))} (Haga clic para alternar P/A/J/T)` : `Día ${day}: Sin registrar (Haga clic para marcar P)`;
         td.title = cellTitle;
     }
 
@@ -23078,6 +23165,8 @@ async function _syncAttendanceToFirebaseBackground() {
         if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
             modular.setDoc(modular.doc(modular.db, 'config', 'asistencia'), {
                 records: STATE.attendanceRecords || {},
+                permissionsMeta: STATE.attendancePermissionsMeta || {},
+                attendancePermissionsMeta: STATE.attendancePermissionsMeta || {},
                 lastModified: Date.now()
             }, { merge: true }).catch(fsErr => {
                 console.warn("Aviso en Firestore al guardar asistencia en segundo plano:", fsErr);
@@ -23092,11 +23181,15 @@ async function _syncAttendanceToFirebaseBackground() {
             EnccoCloudSync.patchNode('attendanceRecords', STATE.attendanceRecords || {}).catch(rtErr => {
                 console.warn("Aviso en Realtime Database al guardar asistencia:", rtErr);
             });
+            EnccoCloudSync.patchNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta || {}).catch(rtErr => {
+                console.warn("Aviso en Realtime Database al guardar attendancePermissionsMeta:", rtErr);
+            });
         }
     } catch(err) {
         console.warn("Error background RTDB asistencia:", err);
     }
 }
+window._syncAttendanceToFirebaseBackground = _syncAttendanceToFirebaseBackground;
 
 // ==========================================================================
 // TOMA RÁPIDA DE ASISTENCIA CON CARNÉ (QR / CÓDIGO DE BARRAS) EN MÓVIL Y TABLET
@@ -24095,6 +24188,8 @@ function saveStudentPermissionForm(e) {
         docRef: docRef,
         authorizedBy: authorizedBy,
         authorizedById: (STATE.currentUser && STATE.currentUser.id) ? STATE.currentUser.id : 'auxiliar',
+        origin_role: ((window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || (STATE.currentUser && STATE.currentUser.role) || 'profesor_auxiliar').toLowerCase(),
+        is_locked_by_admin: true,
         createdAt: new Date().toISOString(),
         status: 'Autorizado'
     };
@@ -24217,6 +24312,8 @@ function applyStudentPermission(perm) {
                 docRef: perm.docRef || '',
                 authorizedBy: perm.authorizedBy,
                 authorizedById: perm.authorizedById,
+                origin_role: (perm.origin_role || perm.originRole || 'profesor_auxiliar').toLowerCase(),
+                is_locked_by_admin: true,
                 date: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
                 studentName: perm.studentName
             };

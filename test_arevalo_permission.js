@@ -84,8 +84,8 @@ console.log(`  ✅ Test 7 Superado: Porcentaje computa exactamente al ${calcPct}
 
 // TEST 8: Verificación de que la J colocada por el docente es editable libremente
 console.log('\n▶ [TEST 8] Verificando que la J colocada por el docente sea editable libremente...');
-assert(appCode.includes("const isOfficialJustified = (genVal === 'J' || !!permMeta);"),
-  'toggleAttendanceCell debe basar el bloqueo únicamente en si es justificación oficial (isOfficialJustified).');
+assert(appCode.includes("isOfficialJustified") && appCode.includes("permOriginRole !== 'docente'"),
+  'toggleAttendanceCell debe basar el bloqueo únicamente en si es justificación oficial (permOriginRole !== "docente").');
 assert(appCode.includes("J COLOCADA DIRECTAMENTE POR EL DOCENTE (Editable libremente)"),
   'loadAttendanceList debe permitir que el docente edite su propia J.');
 console.log('  ✅ Test 8 Superado: La J colocada por el docente es 100% editable; solo las de Auxiliatura/Dirección quedan bloqueadas.');
