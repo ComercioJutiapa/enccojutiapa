@@ -5444,14 +5444,19 @@ window.isCourseAssignedToTeacher = isCourseAssignedToTeacher;
 function isStudentActive(s) {
     if (!s) return false;
     if (s.active === false) return false;
-    if (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo') return false;
+    if (s.status === 'Retirado' || s.status === 'Inactivo') return false;
     return true; // 'Activo', 'Inscrito', 'INSCRITO', o sin estatus explícito
 }
 window.isStudentActive = isStudentActive;
 
 function getCleanSectionLetter(str) {
     if (!str) return '';
-    const m = str.match(/Secci[oó]n\s*([A-D])/i) || str.match(/\b([A-D])\b/i);
+    const m = str.match(/Secci[oó]n\s*([A-D])/i) || 
+              str.match(/[-_\s]([A-D])(?:\b|$)/i) ||
+              str.match(/(?:4to|5to|6to|grd-?[456]|PC-?[456]|PC|\d)\s*([A-D])/i) ||
+              str.match(/\(([A-D])\)/i) ||
+              str.match(/([A-D])$/i) ||
+              str.match(/\b([A-D])\b/i);
     return m ? m[1].toUpperCase() : '';
 }
 window.getCleanSectionLetter = getCleanSectionLetter;
@@ -5539,6 +5544,60 @@ function formatStudentDisplayName(student, format = 'lastFirst') {
     return fName || lName || student.name || student.fullName || 'Estudiante';
 }
 window.formatStudentDisplayName = formatStudentDisplayName;
+
+// 🌟 RECUPERADOR ROBUSTO Y BLINDADO DE ESTUDIANTES PARA ASISTENCIA (ANTI-DESAPARICIÓN)
+function getAttendanceStudents(gradeCode, currentCourseObj = null) {
+    if (!gradeCode) return [];
+    const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
+    const rawQ = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''} ${currentCourseObj ? (currentCourseObj.grade + ' ' + currentCourseObj.section + ' ' + (currentCourseObj.gradeCode || '')) : ''}`.toUpperCase();
+
+    let qGradeNum = 0;
+    if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
+    else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
+    else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
+
+    const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : (currentCourseObj ? (currentCourseObj.section || currentCourseObj.gradeCode) : gradeCode));
+
+    let students = (STATE.students || []).filter(s => {
+        if (!s || s.active === false) return false;
+        if (s.status === 'Retirado' || s.status === 'Inactivo') return false;
+
+        // 1. Coincidencia directa por código exacto de grado
+        if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
+        if (qGradeObj && (s.grade === qGradeObj.code || s.gradeCode === qGradeObj.code || s.grade === qGradeObj.id || s.gradeCode === qGradeObj.id)) return true;
+
+        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
+        let sGradeNum = 0;
+        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+
+        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
+
+        if (qGradeNum > 0 && sGradeNum > 0 && qGradeNum !== sGradeNum) return false;
+        if (qSec && sSec && qSec !== sSec) return false;
+
+        return (qGradeNum === sGradeNum) && (!qSec || !sSec || qSec === sSec);
+    });
+
+    // Fallback de ultra-seguridad: si la nómina está vacía pero hay alumnos registrados en el sistema para ese grado
+    if (students.length === 0 && Array.isArray(STATE.students) && STATE.students.length > 0 && qGradeNum > 0) {
+        students = STATE.students.filter(s => {
+            if (!s || s.active === false || s.status === 'Retirado' || s.status === 'Inactivo') return false;
+            const text = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''} ${s.section || ''}`.toUpperCase();
+            const hasNum = text.includes(String(qGradeNum)) || (qGradeNum === 4 && (text.includes('CUARTO') || text.includes('4TO'))) || (qGradeNum === 5 && (text.includes('QUINTO') || text.includes('5TO'))) || (qGradeNum === 6 && (text.includes('SEXTO') || text.includes('6TO')));
+            const hasSec = !qSec || text.includes(qSec);
+            return hasNum && hasSec;
+        });
+    }
+
+    return students.sort((a, b) => {
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
+}
+window.getAttendanceStudents = getAttendanceStudents;
 
 
 function updateGradeSelects() {
@@ -8128,8 +8187,11 @@ function applyIncomingCloudState(incomingState, force = false) {
     }
     if (Array.isArray(incomingState.careers) && (incomingState.careers.length > 0 || !STATE.careers || STATE.careers.length === 0)) STATE.careers = incomingState.careers;
 
-    // 5. Asistencia y Disciplina
-    if (incomingState.attendanceRecords) STATE.attendanceRecords = incomingState.attendanceRecords;
+    // 5. Asistencia y Disciplina (Fusión protegida anti-sobrescritura)
+    if (incomingState.attendanceRecords) {
+        if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+        STATE.attendanceRecords = { ...STATE.attendanceRecords, ...incomingState.attendanceRecords };
+    }
     if (incomingState.attendanceAlerts) {
         const cloudAlerts = Array.isArray(incomingState.attendanceAlerts) 
             ? incomingState.attendanceAlerts 
@@ -9130,10 +9192,21 @@ function openAttendanceForGrade(grade, section) {
     populateAttendanceSelects(false);
     const gradeSel = document.getElementById('attendanceGradeSelect');
     if (gradeSel) {
-        // Buscar la opción que coincida con el grado y sección
+        const targetSec = getCleanSectionLetter(section);
+        let targetNum = 0;
+        const rawG = (grade || '').toUpperCase();
+        if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) targetNum = 6;
+        else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) targetNum = 5;
+        else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) targetNum = 4;
+
         for (let i = 0; i < gradeSel.options.length; i++) {
             const opt = gradeSel.options[i];
-            if (opt.value === grade || (opt.text.includes(grade) && opt.text.includes(section))) {
+            const optVal = opt.value || '';
+            const optText = opt.text || '';
+            const optSec = getCleanSectionLetter(optText || optVal);
+            const optNum = (optText + ' ' + optVal).includes('6') ? 6 : ((optText + ' ' + optVal).includes('5') ? 5 : ((optText + ' ' + optVal).includes('4') ? 4 : 0));
+
+            if (optVal === grade || (optText.includes(grade) && optText.includes(section)) || (targetNum > 0 && targetNum === optNum && targetSec && targetSec === optSec)) {
                 gradeSel.selectedIndex = i;
                 break;
             }
@@ -21641,20 +21714,32 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
         const uniqueGrades = new Map();
         myClasses.forEach(c => {
             let gCode = c.gradeCode;
-            if (!gCode || gCode === c.grade) {
-                const gMatch = (STATE.gradesList || []).find(g => 
-                    (g.name && c.grade && g.name.toLowerCase().includes(c.grade.toLowerCase())) &&
-                    (g.section && c.section && g.section.toLowerCase().includes(c.section.toLowerCase()))
-                );
-                if (gMatch && gMatch.code) gCode = gMatch.code;
-            }
-            const key = gCode || c.gradeCode || c.grade;
-            if (!uniqueGrades.has(key)) {
-                uniqueGrades.set(key, {
-                    code: key,
-                    name: c.grade,
-                    section: c.section || 'A',
-                    career: c.career || 'Perito Contador'
+            let cGradeNum = 0;
+            const rawC = `${c.grade || ''} ${c.gradeCode || ''}`.toUpperCase();
+            if (rawC.includes('6') || rawC.includes('SEXTO') || rawC.includes('6TO')) cGradeNum = 6;
+            else if (rawC.includes('5') || rawC.includes('QUINTO') || rawC.includes('5TO')) cGradeNum = 5;
+            else if (rawC.includes('4') || rawC.includes('CUARTO') || rawC.includes('4TO')) cGradeNum = 4;
+            const cSec = getCleanSectionLetter(c.section || c.gradeCode || rawC);
+
+            const gMatch = (STATE.gradesList || []).find(g => {
+                if (g.code === gCode || g.id === gCode) return true;
+                const rawG = `${g.name || ''} ${g.code || ''}`.toUpperCase();
+                const gNum = rawG.includes(String(cGradeNum));
+                const gSec = getCleanSectionLetter(g.section || g.code);
+                return gNum && (!cSec || gSec === cSec);
+            });
+
+            const resolvedCode = gMatch ? gMatch.code : (gCode || c.gradeCode || c.grade);
+            const resolvedName = gMatch ? gMatch.name : (c.grade || 'Grado');
+            const resolvedSec = gMatch ? gMatch.section : (c.section || `Sección ${cSec || 'A'}`);
+            const resolvedCareer = gMatch ? gMatch.career : (c.career || 'Perito Contador');
+
+            if (!uniqueGrades.has(resolvedCode)) {
+                uniqueGrades.set(resolvedCode, {
+                    code: resolvedCode,
+                    name: resolvedName,
+                    section: resolvedSec,
+                    career: resolvedCareer
                 });
             }
         });
@@ -21666,13 +21751,15 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
                 gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
             });
             gradeOptionsHtml += `</optgroup>`;
-        } else {
-            // Si el docente aún no tiene cátedras directas, mostrar todos los grados para facilitar registro
-            const sortedAll = sortGrades(STATE.gradesList || []);
-            sortedAll.forEach(g => {
-                gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
-            });
         }
+
+        // 🌟 GARANTÍA TOTAL: Todos los grados y secciones del colegio siempre disponibles
+        gradeOptionsHtml += `<optgroup label="⭐ Todos los Grados y Secciones (Plantel Completo)">`;
+        const sortedGeneralGrades = sortGrades(STATE.gradesList || []);
+        sortedGeneralGrades.forEach(g => {
+            gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
+        });
+        gradeOptionsHtml += `</optgroup>`;
     } else if (isDirectorOrAdmin && activeTeacherObj) {
         // SUPERVISIÓN POR MAESTRO ESPECÍFICO
         const teacherClasses = (STATE.pensum || []).filter(p => 
@@ -21957,30 +22044,9 @@ function loadAttendanceList() {
         </tr>
     `;
 
-    // 2. OBTENER ESTUDIANTES DEL GRADO Y SECCIÓN CON FILTRO ROBUSTO
+    // 2. OBTENER ESTUDIANTES DEL GRADO Y SECCIÓN CON FILTRO ROBUSTO Y BLINDAJE ANTI-DESAPARICIÓN
     const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
-    const rawQ = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
-    let qGradeNum = 0;
-    if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
-    else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
-    else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
-    const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
-
-    const students = (STATE.students || []).filter(s => {
-        if (!isStudentActive(s)) return false;
-        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
-        let sGradeNum = 0;
-        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
-        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
-        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
-        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
-
-        return (qGradeNum === sGradeNum) && (qSec === sSec);
-    }).sort((a, b) => {
-        const nameA = formatStudentDisplayName(a, 'lastFirst');
-        const nameB = formatStudentDisplayName(b, 'lastFirst');
-        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
-    });
+    const students = getAttendanceStudents(gradeCode, currentCourseObj);
 
     if (students.length === 0) {
         body.innerHTML = `<tr><td colspan="${daysInMonth + 8}" style="text-align:center; padding:35px; color:#64748b; font-size:0.95rem;">
@@ -21992,10 +22058,28 @@ function loadAttendanceList() {
         return;
     }
 
-    // 3. RECUPERAR REGISTROS DE ASISTENCIA
+    // 3. RECUPERAR REGISTROS DE ASISTENCIA (CON RESOLUCIÓN INTELIGENTE DE ALIAS)
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
-    const monthData = STATE.attendanceRecords[recordKey] || {};
+    let monthData = STATE.attendanceRecords[recordKey] || {};
+
+    if (!monthData || Object.keys(monthData).length === 0) {
+        const altKeys = [];
+        if (qGradeObj) {
+            if (qGradeObj.code && qGradeObj.code !== gradeCode) altKeys.push(getAttendanceRecordKey(qGradeObj.code, month, courseId));
+            if (qGradeObj.id && qGradeObj.id !== gradeCode) altKeys.push(getAttendanceRecordKey(qGradeObj.id, month, courseId));
+        }
+        if (courseId !== 'GENERAL') {
+            altKeys.push(getAttendanceRecordKey(gradeCode, month, 'GENERAL'));
+            if (qGradeObj && qGradeObj.code) altKeys.push(getAttendanceRecordKey(qGradeObj.code, month, 'GENERAL'));
+        }
+        for (const ak of altKeys) {
+            if (STATE.attendanceRecords[ak] && Object.keys(STATE.attendanceRecords[ak]).length > 0) {
+                monthData = STATE.attendanceRecords[ak];
+                break;
+            }
+        }
+    }
 
     let tbodyHtml = '';
     let dayPresentTotals = new Array(daysInMonth + 1).fill(0);
@@ -22543,26 +22627,10 @@ function markAllPresentToday() {
     const recordKey = getAttendanceRecordKey(gradeCode, todayMonth, courseId);
     if (!STATE.attendanceRecords[recordKey]) STATE.attendanceRecords[recordKey] = {};
 
-    // Obtener estudiantes del grado
-    const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
-    const rawQ = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
-    let qGradeNum = 0;
-    if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
-    else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
-    else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
-    const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
-
-    const students = (STATE.students || []).filter(s => {
-        if (!isStudentActive(s)) return false;
-        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
-        let sGradeNum = 0;
-        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
-        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
-        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
-        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
-
-        return (qGradeNum === sGradeNum) && (qSec === sSec);
-    });
+    const currentCourseObj = (courseId && courseId !== 'GENERAL') ? (STATE.pensum || []).find(p => p.id === courseId) : null;
+    const students = (typeof getAttendanceStudents === 'function') 
+        ? getAttendanceStudents(gradeCode, currentCourseObj)
+        : (STATE.students || []).filter(s => (typeof isStudentActive === 'function' ? isStudentActive(s) : true));
 
     let markedCount = 0;
     let preservedJustifiedCount = 0;
@@ -23117,28 +23185,8 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
 
     // Filtrar estudiantes con coincidencia perfecta de grado y sección
     const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
-    const rawQ = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
-    let qGradeNum = 0;
-    if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
-    else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
-    else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
-    const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
-
-    const students = (STATE.students || []).filter(s => {
-        if (!isStudentActive(s)) return false;
-        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
-        let sGradeNum = 0;
-        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
-        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
-        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
-        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
-
-        return (qGradeNum === sGradeNum) && (qSec === sSec);
-    }).sort((a, b) => {
-        const nameA = formatStudentDisplayName(a, 'lastFirst');
-        const nameB = formatStudentDisplayName(b, 'lastFirst');
-        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
-    });
+    const currentCourseObj = (courseId && courseId !== 'GENERAL') ? (STATE.pensum || []).find(p => p.id === courseId) : null;
+    const students = getAttendanceStudents(gradeCode, currentCourseObj);
 
     if (students.length === 0) {
         showToast("No hay estudiantes registrados en este grado para generar la planilla de asistencia.", "warning");
@@ -23342,28 +23390,8 @@ function exportAttendanceOfficialExcel() {
     const daysInMonth = new Date(year, month, 0).getDate();
 
     const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
-    const rawQ = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
-    let qGradeNum = 0;
-    if (rawQ.includes('6') || rawQ.includes('SEXTO') || rawQ.includes('6TO')) qGradeNum = 6;
-    else if (rawQ.includes('5') || rawQ.includes('QUINTO') || rawQ.includes('5TO')) qGradeNum = 5;
-    else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
-    const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
-
-    const students = (STATE.students || []).filter(s => {
-        if (!isStudentActive(s)) return false;
-        const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
-        let sGradeNum = 0;
-        if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
-        else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
-        else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
-        const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || rawS);
-
-        return (qGradeNum === sGradeNum) && (qSec === sSec);
-    }).sort((a, b) => {
-        const nameA = formatStudentDisplayName(a, 'lastFirst');
-        const nameB = formatStudentDisplayName(b, 'lastFirst');
-        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
-    });
+    const currentCourseObj = (courseId && courseId !== 'GENERAL') ? (STATE.pensum || []).find(p => p.id === courseId) : null;
+    const students = getAttendanceStudents(gradeCode, currentCourseObj);
 
     if (students.length === 0) {
         showToast("No hay estudiantes para exportar.", "warning");
