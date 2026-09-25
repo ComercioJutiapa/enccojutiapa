@@ -531,10 +531,7 @@
             <!-- Selector de Ciclo Lectivo Dinámico -->
             <div class="cycle-selector-box">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                    <label style="margin:0; font-size:0.70rem; font-weight:700; color:white;"><i class="fa-solid fa-calendar-days"></i> Ciclo Lectivo:</label>
-                    <button type="button" class="btn btn-xs role-restricted" data-allowed="admin,director,secretaria,profesor_auxiliar" onclick="openCycleModal()" title="Ingresar o Gestionar Ciclos Escolares" style="background:rgba(255,255,255,0.18); border:none; color:white; border-radius:4px; padding:1px 6px; cursor:pointer; font-size:0.68rem; font-weight:700;">
-                        <i class="fa-solid fa-plus"></i> Ingresar
-                    </button>
+                    <label style="margin:0; font-size:0.72rem; font-weight:700; color:white;"><i class="fa-solid fa-calendar-days"></i> Ciclo Lectivo Activo:</label>
                 </div>
                 <select id="sidebarCycleSelect" class="form-control" onchange="changeAcademicCycle(this.value)">
                     <!-- Cargado dinámicamente con los ciclos lectivos ingresados -->
@@ -674,10 +671,6 @@
             <!-- HEADER DE LA APLICACIÓN -->
             <header class="app-header">
                 <div class="header-left">
-                    <button type="button" class="mobile-toggle" id="globalSidebarToggleBtn" onclick="toggleSidebar()" title="Abrir/Cerrar Menú">
-                        <i class="fa-solid fa-bars"></i>
-                        <span class="mobile-toggle-text">Menú</span>
-                    </button>
                     <div class="page-title-box">
                         <h1 id="pageTitle">Panel Principal</h1>
                         <p id="pageSubtitle">Escuela Nacional de Ciencias Comerciales Jutiapa (1970)</p>
@@ -695,10 +688,7 @@
                         <span class="notification-badge" id="notifBadge">3</span>
                     </div>
 
-                    <div class="current-role-indicator">
-                        <span class="indicator-dot"></span>
-                        <span id="currentRoleText">Acceso: Super Administrador</span>
-                    </div>
+                    <span id="currentRoleText" style="display:none;"></span>
                 </div>
             </header>
 

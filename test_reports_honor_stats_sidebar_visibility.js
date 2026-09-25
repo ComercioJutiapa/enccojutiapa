@@ -47,10 +47,10 @@ console.log('  ✅ Test 2 Superado: Los módulos están en la estructura origina
 // TEST 3: RBAC en app.js no oculta grade-stats para docentes y personal escolar
 console.log('\n▶ [TEST 3] Verificando permisos en app.js para docentes y auxiliares...');
 
-assert(app.includes("allowedStats = ['director', 'direccion', 'secretaria', 'admin', 'super_usuario', 'docente', 'catedratico', 'profesor_auxiliar', 'auxiliar', 'auxiliatura']"),
-  'allowedStats en app.js debe incluir docente y profesor_auxiliar para grade-stats');
+assert(app.includes("allowedStats = ['director', 'direccion', 'secretaria', 'admin', 'super_usuario', 'profesor_auxiliar', 'auxiliar', 'auxiliatura']"),
+  'allowedStats en app.js debe restringir docente según instrucción oficial');
 
-console.log('  ✅ Test 3 Superado: grade-stats accesible para docentes y autoridades sin ser bloqueado.');
+console.log('  ✅ Test 3 Superado: grade-stats accesible para autoridades y restringido para docentes.');
 
 console.log('\n================================================================');
 console.log('🎉 TODAS LAS VERIFICACIONES DE VISIBILIDAD PASARON AL 100%');
