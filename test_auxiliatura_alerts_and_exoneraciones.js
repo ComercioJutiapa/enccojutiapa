@@ -117,6 +117,9 @@ assert(htmlContent.includes('data-view="exoneraciones-log" data-perm="exoneracio
 assert(htmlContent.includes('data-view="permissions-history" data-perm="permissions-history" data-allowed="*"'), "Sidebar debe permitir acceso universal (*) a permisos de ausencia");
 assert(htmlContent.includes('id="btnNewExoneracionToolbar"'), "Botón de nueva exoneración debe tener id btnNewExoneracionToolbar");
 assert(htmlContent.includes('id="btnNewPermHistory"'), "Botón de nuevo permiso en modal debe tener id btnNewPermHistory");
+assert(htmlContent.includes('id="view-permissions-history"'), "Debe existir la vista completa view-permissions-history idéntica a exoneraciones");
+assert(appContent.includes("function renderPermissionsHistoryView"), "app.js debe definir renderPermissionsHistoryView");
+assert(appContent.includes("function printPermissionsLog"), "app.js debe definir printPermissionsLog");
 
 // 9.2 Verificación de funciones de app.js
 assert(appContent.includes("testKey === 'exoneraciones-log'"), "app.js debe comprobar exoneraciones-log en RBAC");

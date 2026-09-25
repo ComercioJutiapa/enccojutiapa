@@ -8583,6 +8583,7 @@ function navigateTo(viewName, event = null) {
         'carnets': { title: 'Generador e Impresión de Carnés Estudiantiles', sub: 'Credenciales oficiales formato CR80 con código de barras e impresión masiva' },
         'auxiliatura-log': { title: 'Bitácora Diaria de Ausencias y Alertas Escolares', sub: 'Monitoreo en tiempo real de inasistencias en aula, avisos a padres y verificación de auxiliatura' },
         'exoneraciones-log': { title: 'Libro de Registro Oficial de Exoneraciones Académicas', sub: 'Archivo central de alumnos con consideraciones especiales, dispensas y resoluciones ministeriales' },
+        'permissions-history': { title: 'Libro de Registro Oficial de Permisos de Ausencia', sub: 'Archivo central de justificaciones de inasistencia, pases de salida y licencias emitidas por Auxiliatura' },
     };
     const t = titles[viewName];
     if (t) {
@@ -8620,6 +8621,7 @@ function renderCurrentView() {
         case 'carnets': if (typeof renderCarnetsView === 'function') renderCarnetsView(); break;
         case 'auxiliatura-log': if (typeof renderAuxiliaturaLogView === 'function') renderAuxiliaturaLogView(); break;
         case 'exoneraciones-log': if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView(); break;
+        case 'permissions-history': if (typeof renderPermissionsHistoryView === 'function') renderPermissionsHistoryView(); break;
     }
 }
 
@@ -23499,18 +23501,13 @@ function applyStudentPermission(perm) {
 window.applyStudentPermission = applyStudentPermission;
 
 function openPermissionsHistoryModal() {
+    if (typeof navigateTo === 'function') {
+        navigateTo('permissions-history');
+        return;
+    }
     const modal = document.getElementById('permissionsHistoryModal');
     if (!modal) return;
-
-    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
-    const canManagePerms = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
-    const btnNew = document.getElementById('btnNewPermHistory');
-    if (btnNew) {
-        btnNew.style.display = canManagePerms ? 'inline-flex' : 'none';
-    }
-
     renderPermissionsHistoryTable();
-
     modal.classList.add('active');
     modal.style.setProperty('display', 'flex', 'important');
     modal.style.display = 'flex';
@@ -34270,3 +34267,273 @@ window.renderExoneracionesLogView = renderExoneracionesLogView;
 window.printExoneracionesLog = printExoneracionesLog;
 window.openExonerationDetailModal = openExonerationDetailModal;
 window.closeExonerationDetailDocenteModal = closeExonerationDetailDocenteModal;
+
+
+// ==========================================================================
+// REGISTRO OFICIAL DE PERMISOS DE AUSENCIA (VISTA COMPLETA TIPO EXONERACIONES)
+// ==========================================================================
+function renderPermissionsHistoryView() {
+    const gradeSelect = document.getElementById('permissionsLogGradeFilter');
+    const catSelect = document.getElementById('permissionsLogCategoryFilter');
+    const searchInput = document.getElementById('permissionsLogSearchInput');
+    const tbody = document.getElementById('permissionsLogTableBody');
+
+    if (!tbody) return;
+
+    // Control de visibilidad del botón + Nuevo Permiso en la barra superior
+    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
+    const canManagePerms = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
+    const btnNewPerm = document.getElementById('btnNewPermViewToolbar');
+    if (btnNewPerm) {
+        btnNewPerm.style.display = canManagePerms ? 'inline-flex' : 'none';
+    }
+
+    // Poblar select de grados si solo tiene la opción por defecto
+    if (gradeSelect && gradeSelect.options.length <= 1) {
+        let optHtml = '<option value="ALL">-- Todos los Grados --</option>';
+        (STATE.gradesList || []).forEach(g => {
+            optHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} - Sección ${escapeHtml(g.section || '')}</option>`;
+        });
+        gradeSelect.innerHTML = optHtml;
+    }
+
+    const selGrade = gradeSelect ? gradeSelect.value : 'ALL';
+    const selCat = catSelect ? catSelect.value : 'ALL';
+    const searchQuery = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+    let perms = Array.isArray(STATE.studentPermissions) ? [...STATE.studentPermissions] : [];
+
+    // Filtro por grado
+    if (selGrade !== 'ALL') {
+        perms = perms.filter(p => {
+            const pGrade = (p.grade || '').toLowerCase();
+            const pSec = (p.section || '').toLowerCase();
+            return pGrade.includes(selGrade.toLowerCase()) || `${pGrade} ${pSec}`.includes(selGrade.toLowerCase());
+        });
+    }
+
+    // Filtro por categoría/motivo
+    if (selCat !== 'ALL') {
+        perms = perms.filter(p => (p.reasonCategory || '').toLowerCase() === selCat.toLowerCase());
+    }
+
+    // Filtro por búsqueda
+    if (searchQuery) {
+        perms = perms.filter(p => {
+            const text = `${p.studentName || ''} ${p.personalCode || ''} ${p.reasonCategory || ''} ${p.reasonDetail || ''} ${p.authorizedBy || ''} ${p.startDate || ''} ${p.endDate || ''}`.toLowerCase();
+            return text.includes(searchQuery);
+        });
+    }
+
+    // Ordenar de más reciente a más antiguo
+    perms.sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
+
+    if (perms.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align:center; padding:35px 20px; color:#64748b;">
+                    <i class="fa-solid fa-clipboard-check" style="font-size:2.2rem; color:#fde68a; display:block; margin-bottom:8px;"></i>
+                    <strong style="color:#0f172a; font-size:1rem;">Sin registros de permisos de ausencia</strong>
+                    <div style="font-size:0.84rem; margin-top:4px;">No se encontraron registros de estudiantes con permisos autorizados bajo los filtros seleccionados.</div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = perms.map((p, idx) => {
+        const isSingleDay = !p.endDate || p.endDate === p.startDate;
+        const dateDisplay = isSingleDay 
+            ? `<strong style="color:#0f172a;">${escapeHtml(p.startDate)}</strong>` 
+            : `<strong style="color:#0f172a;">${escapeHtml(p.startDate)}</strong><br><small style="color:#64748b;">al ${escapeHtml(p.endDate)}</small>`;
+        const refTag = p.docRef ? `<br><small style="color:#64748b;"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(p.docRef)}</small>` : '';
+
+        return `
+            <tr style="border-bottom:1px solid #f1f5f9;">
+                <td style="text-align:center; font-weight:700; color:#64748b;">${idx + 1}</td>
+                <td style="white-space:nowrap;">
+                    <div style="font-size:0.84rem; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-calendar-check" style="color:#d97706;"></i>
+                        <div>${dateDisplay}</div>
+                    </div>
+                </td>
+                <td>
+                    <strong style="color:#0f172a; font-size:0.9rem;">${escapeHtml(p.studentName)}</strong>
+                    <div style="font-size:0.76rem; color:#64748b;">Código / Carné: <code>${escapeHtml(p.personalCode || 'S/C')}</code></div>
+                </td>
+                <td>
+                    <span style="font-weight:600; color:#334155;">${escapeHtml(p.grade || 'Grado Oficial')} (${escapeHtml(p.section || 'A')})</span>
+                </td>
+                <td>
+                    <span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.75rem; border:1px solid #fed7aa;">
+                        ${escapeHtml(p.reasonCategory)}
+                    </span>
+                    <div style="font-size:0.83rem; margin-top:3px; color:#334155; line-height:1.35;">${escapeHtml(p.reasonDetail)}</div>
+                    ${refTag}
+                </td>
+                <td>
+                    <div style="font-size:0.82rem; font-weight:600; color:#0f172a; display:flex; align-items:center; gap:5px;">
+                        <i class="fa-solid fa-user-shield" style="color:#10b981;"></i>
+                        <span>${escapeHtml(p.authorizedBy || 'Auxiliatura')}</span>
+                    </div>
+                </td>
+                <td style="text-align:center; white-space:nowrap;">
+                    <div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="printStudentPermissionPass('${p.id}')" title="Imprimir Comprobante Oficial de Permiso" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
+                            <i class="fa-solid fa-print"></i> Pase
+                        </button>
+                        ${canManagePerms ? `
+                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="revokeStudentPermission('${p.id}')" title="Anular este permiso de ausencia" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+window.renderPermissionsHistoryView = renderPermissionsHistoryView;
+
+function printPermissionsLog() {
+    const gradeSelect = document.getElementById('permissionsLogGradeFilter');
+    const catSelect = document.getElementById('permissionsLogCategoryFilter');
+    const targetGrade = gradeSelect ? gradeSelect.value : 'ALL';
+    const targetCat = catSelect ? catSelect.value : 'ALL';
+    const cycle = STATE.activeCycle || '2026';
+
+    let perms = Array.isArray(STATE.studentPermissions) ? [...STATE.studentPermissions] : [];
+
+    if (targetGrade !== 'ALL') {
+        perms = perms.filter(p => {
+            const pGrade = (p.grade || '').toLowerCase();
+            const pSec = (p.section || '').toLowerCase();
+            return pGrade.includes(targetGrade.toLowerCase()) || `${pGrade} ${pSec}`.includes(targetGrade.toLowerCase());
+        });
+    }
+
+    if (targetCat !== 'ALL') {
+        perms = perms.filter(p => (p.reasonCategory || '').toLowerCase() === targetCat.toLowerCase());
+    }
+
+    perms.sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
+
+    let rowsHtml = '';
+    if (perms.length === 0) {
+        rowsHtml = '<tr><td colspan="6" style="text-align:center; padding:25px; color:#64748b;">No se registran permisos de ausencia autorizados bajo los criterios seleccionados.</td></tr>';
+    } else {
+        rowsHtml = perms.map((p, idx) => {
+            const isSingleDay = !p.endDate || p.endDate === p.startDate;
+            const dateStr = isSingleDay ? p.startDate : `${p.startDate} al ${p.endDate}`;
+            return `
+                <tr>
+                    <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+                    <td style="text-align:center;">${escapeHtml(dateStr)}</td>
+                    <td>
+                        <strong>${escapeHtml(p.studentName)}</strong><br>
+                        <small>Cód: ${escapeHtml(p.personalCode || 'S/C')}</small>
+                    </td>
+                    <td>${escapeHtml(p.grade || '')} ${escapeHtml(p.section || '')}</td>
+                    <td>
+                        <strong>[${escapeHtml(p.reasonCategory)}]</strong> ${escapeHtml(p.reasonDetail)}
+                        ${p.docRef ? `<br><small>Ref: ${escapeHtml(p.docRef)}</small>` : ''}
+                    </td>
+                    <td style="text-align:center;"><small>${escapeHtml(p.authorizedBy || 'Auxiliatura')}</small></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast("Habilite las ventanas emergentes (pop-ups) para imprimir.", "warning");
+        return;
+    }
+
+    const printContent = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Libro Oficial de Permisos de Ausencia - ENCCO - ${cycle}</title>
+    <style>
+        @page { size: letter landscape; margin: 12mm 15mm; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #1e293b; margin: 0; padding: 0; line-height: 1.35; }
+        .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #d97706; padding-bottom: 10px; margin-bottom: 14px; }
+        .header-logo { width: 65px; height: auto; }
+        .header-center { text-align: center; flex: 1; margin: 0 15px; }
+        .header-center h1 { font-size: 13pt; margin: 0; font-weight: 800; text-transform: uppercase; color: #0f172a; }
+        .header-center h2 { font-size: 11pt; margin: 3px 0 0 0; color: #d97706; font-weight: 700; text-transform: uppercase; }
+        .header-center p { font-size: 8.5pt; margin: 2px 0 0 0; color: #475569; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 8.5pt; }
+        th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; vertical-align: top; }
+        th { background: #fffbeb; font-weight: 700; color: #b45309; text-transform: uppercase; font-size: 8pt; text-align: center; }
+        
+        .signatures { display: flex; justify-content: space-around; margin-top: 40px; page-break-inside: avoid; }
+        .sign-box { width: 35%; text-align: center; font-size: 8.5pt; }
+        .sign-line { border-top: 1.5px solid #334155; margin-bottom: 5px; }
+        
+        .footer-note { font-size: 7.5pt; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 6px; margin-top: 15px; }
+        @media print {
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="logo.png" alt="Logo ENCCO" class="header-logo" onerror="this.style.display='none'">
+        <div class="header-center">
+            <h1>Escuela Nacional de Ciencias Comerciales</h1>
+            <h2>Libro de Registro Oficial de Permisos de Ausencia</h2>
+            <p>Jutiapa, Guatemala &bull; Ciclo Escolar Oficial ${escapeHtml(cycle)} &bull; Archivo Institucional de Auxiliatura y Dirección</p>
+        </div>
+        <div style="width:65px; text-align:right; font-size:8pt; color:#64748b;">
+            Control de<br>Asistencia
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width:25px;">No.</th>
+                <th style="width:110px;">Fecha(s)</th>
+                <th>Estudiante</th>
+                <th>Grado y Sección</th>
+                <th>Motivo y Justificación</th>
+                <th style="width:130px;">Autorizado por</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml}
+        </tbody>
+    </table>
+
+    <div class="signatures">
+        <div class="sign-box">
+            <div class="sign-line"></div>
+            <strong>Profesor(a) Auxiliar de Disciplina</strong><br>
+            ENCCO Jutiapa
+        </div>
+        <div class="sign-box">
+            <div class="sign-line"></div>
+            <strong>Dirección del Plantel</strong><br>
+            Vo.Bo. Institucional
+        </div>
+    </div>
+
+    <div class="footer-note">
+        Documento oficial generado por la Plataforma Digital ENCCO &bull; Emitido: ${new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })} &bull; Página 1 de 1
+    </div>
+
+    <script>
+        window.onload = function() {
+            window.print();
+        };
+    </script>
+</body>
+</html>`;
+
+    printWin.document.open();
+    printWin.document.write(printContent);
+    printWin.document.close();
+}
+window.printPermissionsLog = printPermissionsLog;

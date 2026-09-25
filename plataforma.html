@@ -630,7 +630,7 @@
                     <i class="fa-solid fa-file-shield"></i>
                     <span>Registro de Exoneraciones</span>
                 </a>
-                <a href="#" class="nav-item" data-view="permissions-history" data-perm="permissions-history" data-allowed="*" onclick="openPermissionsHistoryModal(); return false;">
+                <a href="#" class="nav-item" data-view="permissions-history" data-perm="permissions-history" data-allowed="*" onclick="navigateTo('permissions-history', event)">
                     <i class="fa-solid fa-clipboard-list"></i>
                     <span>Permisos de Ausencia</span>
                 </a>
@@ -2178,7 +2178,7 @@
                                 <button type="button" class="btn btn-warning btn-sm" onclick="openCreatePermissionModal()" title="Autorizar permiso oficial de ausencia (Auxiliatura / Dirección)" style="height:38px; font-size:0.86rem; font-weight:800; padding:0 14px; background:#f59e0b; border-color:#d97706; color:#ffffff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 1px 3px rgba(217,119,6,0.25);">
                                     <i class="fa-solid fa-file-signature"></i> Autorizar Permiso
                                 </button>
-                                <button type="button" class="btn btn-outline-warning btn-sm" onclick="openPermissionsHistoryModal()" title="Ver historial de permisos de ausencia autorizados" style="height:38px; font-size:0.86rem; font-weight:700; padding:0 12px; display:inline-flex; align-items:center; gap:6px;">
+                                <button type="button" class="btn btn-outline-warning btn-sm" onclick="navigateTo('permissions-history')" title="Ver registro oficial de permisos de ausencia autorizados" style="height:38px; font-size:0.86rem; font-weight:700; padding:0 12px; display:inline-flex; align-items:center; gap:6px;">
                                     <i class="fa-solid fa-clipboard-list"></i> Historial Permisos
                                 </button>
                                 <button type="button" class="btn btn-success btn-sm" onclick="markAllPresentToday()" title="Marcar a todos los alumnos como Presentes hoy (respeta automáticamente los permisos de Auxiliatura)" style="height:38px; font-size:0.86rem; font-weight:800; padding:0 14px; background:#15803d; border-color:#0f5127; color:#ffffff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(21,128,61,0.25);">
@@ -2416,6 +2416,77 @@
                                     </tr>
                                 </thead>
                                 <tbody id="exoneracionesLogTableBody">
+                                    <!-- Se llena dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 7.3. REGISTRO OFICIAL DE PERMISOS DE AUSENCIA (AUXILIATURA Y DIRECCIÓN) -->
+                <section class="app-view" id="view-permissions-history">
+                    <div class="section-toolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+                        <div>
+                            <h3 style="margin:0; color:#0f172a; font-weight:800; display:flex; align-items:center; gap:8px;">
+                                <i class="fa-solid fa-clipboard-list" style="color:#d97706;"></i>
+                                Libro de Registro Oficial de Permisos de Ausencia
+                            </h3>
+                            <p style="margin:4px 0 0 0; color:#64748b; font-size:0.85rem;">
+                                Archivo central de justificaciones de inasistencia, pases de salida y licencias emitidas por Auxiliatura.
+                            </p>
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button type="button" id="btnNewPermViewToolbar" class="btn btn-warning" onclick="openCreatePermissionModal()" style="background:#f59e0b; border-color:#d97706; color:#ffffff; font-weight:700;">
+                                <i class="fa-solid fa-plus-circle"></i> + Nuevo Permiso
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="printPermissionsLog()" style="background:#0284c7; border-color:#0284c7; font-weight:700;">
+                                <i class="fa-solid fa-print"></i> Imprimir Libro de Permisos
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- BARRA DE FILTROS -->
+                    <div style="background:#ffffff; border-radius:10px; padding:12px 16px; border:1px solid #e2e8f0; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                        <div style="min-width:200px;">
+                            <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:3px;">Grado / Sección:</label>
+                            <select id="permissionsLogGradeFilter" class="form-control" onchange="renderPermissionsHistoryView()" style="font-size:0.84rem; font-weight:600;">
+                                <option value="ALL">-- Todos los Grados --</option>
+                            </select>
+                        </div>
+                        <div style="min-width:160px;">
+                            <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:3px;">Motivo / Tipo:</label>
+                            <select id="permissionsLogCategoryFilter" class="form-control" onchange="renderPermissionsHistoryView()" style="font-size:0.84rem; font-weight:600;">
+                                <option value="ALL">-- Todos los Motivos --</option>
+                                <option value="Enfermedad">Enfermedad / Salud</option>
+                                <option value="Cita Médica">Cita Médica</option>
+                                <option value="Duelo Familiar">Duelo Familiar</option>
+                                <option value="Fuerza Mayor">Fuerza Mayor / Personal</option>
+                                <option value="Trámite Oficial">Trámite Oficial / Cédula</option>
+                                <option value="Representación Escolar">Representación Escolar / Deporte</option>
+                            </select>
+                        </div>
+                        <div style="flex:1; min-width:200px;">
+                            <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:3px;">Buscar Estudiante:</label>
+                            <input type="text" id="permissionsLogSearchInput" class="form-control" placeholder="Buscar por apellidos, nombres, carné o motivo..." oninput="renderPermissionsHistoryView()" style="font-size:0.84rem;">
+                        </div>
+                    </div>
+
+                    <!-- TABLA CONSOLIDADA DE PERMISOS -->
+                    <div style="background:#ffffff; border-radius:10px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 2px 4px rgba(0,0,0,0.02);">
+                        <div class="table-responsive">
+                            <table class="data-table" style="width:100%; border-collapse:collapse; font-size:0.86rem;">
+                                <thead>
+                                    <tr style="background:#fffbeb; border-bottom:2px solid #fde68a;">
+                                        <th style="width:40px; text-align:center;">No.</th>
+                                        <th style="width:140px;">Fecha(s)</th>
+                                        <th>Estudiante</th>
+                                        <th>Grado y Sección</th>
+                                        <th>Motivo / Justificación</th>
+                                        <th>Autorizado por</th>
+                                        <th style="width:120px; text-align:center;">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="permissionsLogTableBody">
                                     <!-- Se llena dinámicamente -->
                                 </tbody>
                             </table>
