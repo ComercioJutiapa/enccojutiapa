@@ -880,8 +880,32 @@ const EnccoAuthStore = {
             }
         });
 
+        // 2.5 Grupos colapsables (.nav-group): ocultar si ningún item hijo está visible
+        document.querySelectorAll('.nav-group').forEach(group => {
+            const items = group.querySelectorAll('.nav-item');
+            let hasVisible = false;
+            items.forEach(item => {
+                const isHidden = item.classList.contains('hidden') || 
+                                 item.style.display === 'none' || 
+                                 (item.getAttribute && (item.getAttribute('style') || '').includes('display: none'));
+                if (!isHidden) hasVisible = true;
+            });
+            if (hasVisible) {
+                group.style.removeProperty('display');
+                group.classList.remove('hidden');
+            } else {
+                group.style.setProperty('display', 'none', 'important');
+                group.classList.add('hidden');
+            }
+        });
+
         // 3. Encabezados de sección (.nav-section-label): ocultar si no tienen ningún ítem visible
         document.querySelectorAll('.nav-section-label').forEach(header => {
+            if (header.closest('.nav-group')) {
+                header.style.removeProperty('display');
+                header.classList.remove('hidden');
+                return;
+            }
             let sibling = header.nextElementSibling;
             let hasVisibleChild = false;
             while (sibling && !sibling.classList.contains('nav-section-label')) {
@@ -29720,6 +29744,11 @@ function applyUserRole(role = STATE.currentRole) {
 
     // 2. Encabezados de sección (.nav-section-label): ocultar si no tienen ningún ítem visible
     document.querySelectorAll('.nav-section-label').forEach(header => {
+        if (header.closest('.nav-group')) {
+            header.style.removeProperty('display');
+            header.classList.remove('hidden');
+            return;
+        }
         let sibling = header.nextElementSibling;
         let hasVisibleChild = false;
         while (sibling && !sibling.classList.contains('nav-section-label')) {

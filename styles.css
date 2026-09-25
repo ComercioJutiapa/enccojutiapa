@@ -2881,6 +2881,11 @@ body.theme-dark .cell-day-today {
     padding: 0;
     cursor: pointer;
     flex: 1;
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #67e8f9 !important;
+    letter-spacing: 0.6px;
+    display: block !important;
 }
 
 .nav-group-arrow {
