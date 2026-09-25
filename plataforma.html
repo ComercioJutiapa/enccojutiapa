@@ -2158,7 +2158,7 @@
                                     <label style="font-size:0.82rem; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:4px;">
                                         <i class="fa-solid fa-calendar-days"></i> 4. Mes:
                                     </label>
-                                    <select id="attendanceMonthSelect" class="form-control" style="width:130px; height:38px; font-size:0.88rem; font-weight:700;" onchange="loadAttendanceList()">
+                                    <select id="attendanceMonthSelect" class="form-control" style="width:130px; height:38px; font-size:0.88rem; font-weight:700;" onchange="onAttendanceMonthSelectChange()">
                                         <option value="1">Enero</option>
                                         <option value="2">Febrero</option>
                                         <option value="3">Marzo</option>
@@ -2166,11 +2166,18 @@
                                         <option value="5">Mayo</option>
                                         <option value="6">Junio</option>
                                         <option value="7">Julio</option>
-                                        <option value="8" selected>Agosto</option>
+                                        <option value="8">Agosto</option>
                                         <option value="9">Septiembre</option>
                                         <option value="10">Octubre</option>
                                         <option value="11">Noviembre</option>
                                     </select>
+                                </div>
+
+                                <div>
+                                    <label style="font-size:0.82rem; font-weight:700; color:var(--text-secondary); display:block; margin-bottom:4px;">
+                                        <i class="fa-solid fa-calendar-day"></i> 5. Fecha de Asistencia:
+                                    </label>
+                                    <input type="date" id="attendanceDateInput" class="form-control" style="width:160px; height:38px; font-size:0.88rem; font-weight:700; background:#f0fdf4; border-color:#86efac; color:#14532d;" onchange="onAttendanceDateInputChange()" title="Fecha seleccionada para registrar asistencia">
                                 </div>
                             </div>
 
@@ -2181,8 +2188,8 @@
                                 <button type="button" class="btn btn-outline-warning btn-sm" onclick="navigateTo('permissions-history')" title="Ver registro oficial de permisos de ausencia autorizados" style="height:38px; font-size:0.86rem; font-weight:700; padding:0 12px; display:inline-flex; align-items:center; gap:6px;">
                                     <i class="fa-solid fa-clipboard-list"></i> Historial Permisos
                                 </button>
-                                <button type="button" class="btn btn-success btn-sm" onclick="markAllPresentToday()" title="Marcar a todos los alumnos como Presentes hoy (respeta automáticamente los permisos de Auxiliatura)" style="height:38px; font-size:0.86rem; font-weight:800; padding:0 14px; background:#15803d; border-color:#0f5127; color:#ffffff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(21,128,61,0.25);">
-                                    <i class="fa-solid fa-check-double"></i> Marcar Todos Presentes
+                                <button type="button" id="btnMarkAllPresent" class="btn btn-success btn-sm" onclick="markAllPresentToday()" title="Marcar a todos los alumnos como Presentes en la fecha seleccionada (respeta automáticamente los permisos de Auxiliatura)" style="height:38px; font-size:0.86rem; font-weight:800; padding:0 14px; background:#15803d; border-color:#0f5127; color:#ffffff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(21,128,61,0.25);">
+                                    <i class="fa-solid fa-check-double"></i> <span id="btnMarkAllPresentLabel">Marcar Todos Presentes</span>
                                 </button>
                                 <button type="button" class="btn btn-primary btn-sm" onclick="saveAttendanceRecords()" title="Guardar cambios de asistencia" style="height:38px; font-size:0.86rem; font-weight:700; padding:0 14px;">
                                     <i class="fa-solid fa-floppy-disk"></i> Guardar Asistencia
