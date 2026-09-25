@@ -27,7 +27,14 @@
       },
       "students": {
         ".read": true,
-        ".write": "newData.exists()"
+        ".write": "newData.exists()",
+        ".indexOn": [
+          "code",
+          "cui",
+          "gradeCode",
+          "section",
+          "status"
+        ]
       },
       "gradesList": {
         ".read": true,
@@ -35,12 +42,66 @@
       },
       "activityAuditLog": {
         ".read": true,
-        ".write": "newData.exists()"
+        ".write": "newData.exists()",
+        ".indexOn": [
+          "timestamp",
+          "user",
+          "action"
+        ]
       },
       "lockoutRecords": {
         ".read": true,
         ".write": true
       }
+    },
+    "scholarships": {
+      ".read": true,
+      ".write": "newData.exists()",
+      ".indexOn": [
+        "studentId",
+        "studentCode",
+        "gradeCode",
+        "section",
+        "scholarshipType",
+        "status"
+      ]
+    },
+    "attendance": {
+      ".read": true,
+      ".write": "newData.exists()",
+      ".indexOn": [
+        "date",
+        "gradeCode",
+        "section",
+        "month"
+      ]
+    },
+    "exoneraciones": {
+      ".read": true,
+      ".write": "newData.exists()",
+      ".indexOn": [
+        "studentId",
+        "gradeCode",
+        "status"
+      ]
+    },
+    "permissions": {
+      ".read": true,
+      ".write": "newData.exists()",
+      ".indexOn": [
+        "studentId",
+        "date",
+        "status"
+      ]
+    },
+    "auxiliatura_alerts": {
+      ".read": true,
+      ".write": "newData.exists()",
+      ".indexOn": [
+        "timestamp",
+        "status",
+        "studentId"
+      ]
     }
   }
 }

@@ -35367,3 +35367,70 @@ function printScholarshipsReport() {
     printWin.document.close();
 }
 window.printScholarshipsReport = printScholarshipsReport;
+
+
+// ==========================================================================
+// UTILIDAD DE RESPALDO Y PRESERVACIÓN DE BASE DE DATOS EN FORMATO JSON
+// ==========================================================================
+async function exportDatabaseBackupJSON() {
+    if (typeof showToast === 'function') {
+        showToast('Generando copia de seguridad completa de la base de datos...', 'info');
+    }
+
+    try {
+        const backupData = {
+            metadata: {
+                appName: 'ENCCO Jutiapa Plataforma Oficial',
+                version: '2026.09',
+                exportTimestamp: new Date().toISOString(),
+                exportedBy: (STATE.currentUser && STATE.currentUser.username) || 'admin',
+                activeCycleKey: STATE.activeCycleKey || (new Date().getFullYear().toString())
+            },
+            encc_school_state: null,
+            scholarships: null,
+            exoneraciones: null,
+            permissions: null,
+            localCacheSummary: {
+                studentsCount: (STATE.students && STATE.students.length) || 0,
+                gradesCount: (STATE.grades && STATE.grades.length) || 0,
+                usersCount: (STATE.users && STATE.users.length) || 0,
+                activeCycle: STATE.activeCycleKey || '2026'
+            }
+        };
+
+        if (typeof firebase !== 'undefined' && firebase.database) {
+            const db = firebase.database();
+            const [stateSnap, schSnap, exonSnap, permSnap] = await Promise.all([
+                db.ref('encc_school_state').once('value').catch(() => null),
+                db.ref('scholarships').once('value').catch(() => null),
+                db.ref('exoneraciones').once('value').catch(() => null),
+                db.ref('permissions').once('value').catch(() => null)
+            ]);
+
+            if (stateSnap && stateSnap.exists()) backupData.encc_school_state = stateSnap.val();
+            if (schSnap && schSnap.exists()) backupData.scholarships = schSnap.val();
+            if (exonSnap && exonSnap.exists()) backupData.exoneraciones = exonSnap.val();
+            if (permSnap && permSnap.exists()) backupData.permissions = permSnap.val();
+        }
+
+        const jsonStr = JSON.stringify(backupData, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const dateStr = new Date().toISOString().slice(0, 10);
+        link.download = `Copia_Seguridad_ENCCO_${STATE.activeCycleKey || '2026'}_${dateStr}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        if (typeof showToast === 'function') {
+            showToast('Copia de seguridad JSON generada y descargada exitosamente.', 'success');
+        }
+    } catch (err) {
+        console.error('Error al exportar respaldo JSON:', err);
+        if (typeof showToast === 'function') {
+            showToast('Error al exportar respaldo: ' + (err.message || ''), 'danger');
+        }
+    }
+}
+window.exportDatabaseBackupJSON = exportDatabaseBackupJSON;
