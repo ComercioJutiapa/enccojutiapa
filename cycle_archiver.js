@@ -585,9 +585,191 @@
                 showToast(`Copia de seguridad oficial del Ciclo ${targetCycle} descargada exitosamente (.json).`, 'success');
             }
             return true;
+        },
+
+        // ======================================================================
+        // MEJORA 1: RÉCORD HISTÓRICO DE UN ALUMNO EN SU EXPEDIENTE
+        // Consulta silenciosamente todos los ciclos archivados y filtra por alumno.
+        // ======================================================================
+        async loadStudentHistoricalRecord(studentId) {
+            const loadingEl = document.getElementById('profHistoricoLoading');
+            const contentEl = document.getElementById('profHistoricoContent');
+            if (!studentId || !contentEl) return;
+
+            if (loadingEl) loadingEl.style.display = 'block';
+            contentEl.innerHTML = '';
+
+            try {
+                // 1. Obtener lista de ciclos históricos disponibles desde STATE o localStorage
+                const STATE = window.STATE || {};
+                const cycles = (STATE.cycles || []).filter(c => c.status === 'Histórico' || c.isHistorico);
+                
+                // También buscar claves de localStorage con prefijo ENCCO_HISTORICO_
+                const localCycles = new Set(cycles.map(c => String(c.year || c.id || '')));
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('ENCCO_HISTORICO_')) {
+                        const yr = key.replace('ENCCO_HISTORICO_', '');
+                        localCycles.add(yr);
+                    }
+                }
+
+                const yearsToCheck = Array.from(localCycles).sort((a, b) => b - a); // más reciente primero
+
+                if (yearsToCheck.length === 0) {
+                    contentEl.innerHTML = `
+                        <div style="text-align:center; padding:28px 20px; background:#f5f3ff; border:1.5px dashed #c4b5fd; border-radius:6px;">
+                            <i class="fa-solid fa-box-archive" style="font-size:2rem; color:#7c3aed; margin-bottom:10px; display:block;"></i>
+                            <p style="font-size:0.88rem; color:#6d28d9; font-weight:600; margin:0;">No hay ciclos históricos archivados aún.<br>
+                            <span style="font-weight:400; color:#7c3aed;">Los registros aparecerán aquí una vez que se archive el primer ciclo escolar.</span></p>
+                        </div>`;
+                    return;
+                }
+
+                let foundAny = false;
+                let resultHtml = '';
+
+                for (const yr of yearsToCheck) {
+                    let archiveData = null;
+
+                    // Primero intentar desde localStorage (sin consumir cuota de Firebase)
+                    const localKey = `ENCCO_HISTORICO_${yr}`;
+                    const localRaw = localStorage.getItem(localKey);
+                    if (localRaw) {
+                        try { archiveData = JSON.parse(localRaw); } catch(e) { /* continúa */ }
+                    }
+
+                    // Si no está en localStorage, intentar Firebase
+                    if (!archiveData) {
+                        try {
+                            const dbUrl = this.getFirebaseUrl();
+                            const token = (typeof getFirebaseIdToken === 'function') ? await getFirebaseIdToken() : null;
+                            const authSuffix = token ? `?auth=${token}` : '';
+                            const resp = await fetch(`${dbUrl}/historico/${yr}.json${authSuffix}`);
+                            if (resp.ok) {
+                                archiveData = await resp.json();
+                            }
+                        } catch(fetchErr) {
+                            // Firebase no disponible para este año, continúa
+                        }
+                    }
+
+                    if (!archiveData) continue;
+
+                    // Buscar registros del estudiante en el snapshot
+                    const studentsSnap = archiveData.studentsSnapshot || archiveData.students || {};
+                    const studentRecord = studentsSnap[studentId] || null;
+
+                    if (!studentRecord) continue;
+                    foundAny = true;
+
+                    // Notas del alumno en ese ciclo
+                    const grades = studentRecord.gradebookDetails || studentRecord.grades || {};
+                    const avg = studentRecord.finalAverage || studentRecord.average || null;
+                    const status = studentRecord.status || 'N/D';
+                    const grade = studentRecord.grade || 'N/D';
+                    const archivedAt = archiveData.summary ? archiveData.summary.archivedAt : (archiveData.archivedAt || '');
+                    const archivedDate = archivedAt ? new Date(archivedAt).toLocaleDateString('es-GT') : 'Fecha N/D';
+
+                    // Construir tabla de notas
+                    let subjectRows = '';
+                    const subjects = Object.keys(grades);
+                    if (subjects.length > 0) {
+                        subjects.forEach(subj => {
+                            const subjGrades = grades[subj];
+                            // Soporte para gradebookDetails {b1: {zona,exam}, ...} y grades simples {b1, b2, b3, b4}
+                            let b1, b2, b3, b4, subjAvg;
+                            if (subjGrades && typeof subjGrades === 'object' && subjGrades['1'] && typeof subjGrades['1'] === 'object') {
+                                // Formato gradebookDetails: {1: {zona, exam}, 2: ...}
+                                const calcBim = (b) => {
+                                    const bData = subjGrades[b] || {};
+                                    const z = parseFloat(bData.zona || 0);
+                                    const e = parseFloat(bData.exam || 0);
+                                    return (z + e) > 0 ? (z + e) : null;
+                                };
+                                b1 = calcBim('1'); b2 = calcBim('2'); b3 = calcBim('3'); b4 = calcBim('4');
+                            } else if (subjGrades && typeof subjGrades === 'object') {
+                                b1 = parseFloat(subjGrades.b1 || subjGrades['1'] || 0) || null;
+                                b2 = parseFloat(subjGrades.b2 || subjGrades['2'] || 0) || null;
+                                b3 = parseFloat(subjGrades.b3 || subjGrades['3'] || 0) || null;
+                                b4 = parseFloat(subjGrades.b4 || subjGrades['4'] || 0) || null;
+                            }
+                            const validGrades = [b1, b2, b3, b4].filter(v => v !== null && v > 0);
+                            subjAvg = validGrades.length > 0 ? (validGrades.reduce((a, b) => a + b, 0) / validGrades.length).toFixed(1) : '-';
+                            const fmtGrade = (v) => v !== null && v > 0 ? v.toFixed(1) : '-';
+                            const color = parseFloat(subjAvg) >= 60 ? '#166534' : (subjAvg === '-' ? '#64748b' : '#991b1b');
+                            subjectRows += `<tr>
+                                <td style="padding:4px 8px; font-weight:600;">${subj}</td>
+                                <td style="text-align:center; padding:4px 8px;">${fmtGrade(b1)}</td>
+                                <td style="text-align:center; padding:4px 8px;">${fmtGrade(b2)}</td>
+                                <td style="text-align:center; padding:4px 8px;">${fmtGrade(b3)}</td>
+                                <td style="text-align:center; padding:4px 8px;">${fmtGrade(b4)}</td>
+                                <td style="text-align:center; padding:4px 8px; font-weight:800; color:${color};">${subjAvg}</td>
+                            </tr>`;
+                        });
+                    } else {
+                        subjectRows = `<tr><td colspan="6" style="text-align:center; padding:12px; color:#64748b;">Sin calificaciones registradas para este ciclo.</td></tr>`;
+                    }
+
+                    const avgColor = avg !== null ? (parseFloat(avg) >= 60 ? '#16a34a' : '#dc2626') : '#64748b';
+
+                    resultHtml += `
+                        <div style="margin-bottom:20px; border:1.5px solid #ddd6fe; border-radius:8px; overflow:hidden;">
+                            <div style="background:#4c1d95; color:#fff; padding:8px 14px; display:flex; justify-content:space-between; align-items:center;">
+                                <span style="font-weight:800; font-size:0.9rem;"><i class="fa-solid fa-calendar-days"></i> Ciclo Escolar ${yr}</span>
+                                <div style="font-size:0.78rem; display:flex; gap:14px; align-items:center;">
+                                    <span>${grade}</span>
+                                    <span>Estado: ${status}</span>
+                                    ${avg !== null ? `<span style="font-weight:900; font-size:0.92rem; color:${avgColor === '#16a34a' ? '#86efac' : '#fca5a5'};">Prom. Final: ${parseFloat(avg).toFixed(2)}</span>` : ''}
+                                    <span style="opacity:0.75;">Archivado: ${archivedDate}</span>
+                                </div>
+                            </div>
+                            <div style="overflow-x:auto;">
+                                <table style="width:100%; border-collapse:collapse; font-size:0.84rem;">
+                                    <thead>
+                                        <tr style="background:#ede9fe; color:#4c1d95; font-weight:700;">
+                                            <th style="padding:5px 8px; text-align:left;">Asignatura</th>
+                                            <th style="width:56px; text-align:center; padding:5px 8px;">B1</th>
+                                            <th style="width:56px; text-align:center; padding:5px 8px;">B2</th>
+                                            <th style="width:56px; text-align:center; padding:5px 8px;">B3</th>
+                                            <th style="width:56px; text-align:center; padding:5px 8px;">B4</th>
+                                            <th style="width:70px; text-align:center; padding:5px 8px;">Prom.</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${subjectRows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>`;
+                }
+
+                if (!foundAny) {
+                    contentEl.innerHTML = `
+                        <div style="text-align:center; padding:28px 20px; background:#f5f3ff; border:1.5px dashed #c4b5fd; border-radius:6px;">
+                            <i class="fa-solid fa-user-clock" style="font-size:2rem; color:#7c3aed; margin-bottom:10px; display:block;"></i>
+                            <p style="font-size:0.88rem; color:#6d28d9; font-weight:600; margin:0;">No se encontraron registros históricos para este estudiante.<br>
+                            <span style="font-weight:400; color:#7c3aed;">Puede que el alumno no haya cursado en ciclos anteriores archivados.</span></p>
+                        </div>`;
+                } else {
+                    contentEl.innerHTML = resultHtml;
+                }
+
+            } catch(err) {
+                contentEl.innerHTML = `<div style="padding:14px; background:#fef2f2; border:1px solid #fecaca; border-radius:6px; color:#991b1b; font-size:0.88rem;"><i class="fa-solid fa-circle-exclamation"></i> Error al cargar historial: ${err.message || err}</div>`;
+            } finally {
+                if (loadingEl) loadingEl.style.display = 'none';
+            }
         }
     };
 
     window.EnccoCycleArchiver = EnccoCycleArchiver;
+
+    // Wrapper global para llamar desde el HTML directamente
+    window.loadStudentHistoricalRecord = function(studentId) {
+        if (window.EnccoCycleArchiver && typeof window.EnccoCycleArchiver.loadStudentHistoricalRecord === 'function') {
+            window.EnccoCycleArchiver.loadStudentHistoricalRecord(studentId);
+        }
+    };
 
 })(typeof window !== 'undefined' ? window : global);

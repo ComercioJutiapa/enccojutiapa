@@ -18464,12 +18464,15 @@ function openCyclePromotionModal(e) {
     populatePromotionCycleSelects();
     renderPromotionStudentsTable();
 
-    // 🔒 El botón de descarga previa del respaldo (.json) solo es visible para Dirección (y Admin)
+    // 🔒 Botones exclusivos de Dirección y Admin
     const role = ((window.STATE && window.STATE.currentRole) || '').toLowerCase();
+    const isDirector = (role === 'director' || role === 'admin');
+
     const backupBtn = document.getElementById('btnDownloadCycleBackup');
-    if (backupBtn) {
-        backupBtn.style.display = (role === 'director' || role === 'admin') ? 'inline-flex' : 'none';
-    }
+    if (backupBtn) backupBtn.style.display = isDirector ? 'inline-flex' : 'none';
+
+    const printActBtn = document.getElementById('btnPrintPromotionAct');
+    if (printActBtn) printActBtn.style.display = isDirector ? 'inline-flex' : 'none';
 
     showModalById('cyclePromotionModal');
 }
@@ -32448,6 +32451,8 @@ function renderPromotionStudentsTable() {
 
         // Checkbox: pre-seleccionado si está aprobado
         const isChecked = item.isApproved ? 'checked' : '';
+        // Sección actual del alumno (para pre-selección)
+        const currentSection = s.section || (s.grade ? (s.grade.match(/Secci[oó]n\s*([A-Z])/i) || [])[1] || 'A' : 'A');
 
         return `
             <tr style="border-bottom:1px solid #e2e8f0; background:${item.isApproved ? '#ffffff' : '#fff5f5'};">
@@ -32461,7 +32466,12 @@ function renderPromotionStudentsTable() {
                 <td style="text-align:center; vertical-align:middle; font-weight:800; color:${info.average >= 60 ? '#16a34a' : '#dc2626'};">${avg}</td>
                 <td style="text-align:center; vertical-align:middle;">${dictamenHtml}</td>
                 <td style="vertical-align:middle;">
-                    <input type="text" class="promo-target-grade-input form-control form-control-sm" data-student-id="${s.id}" value="${item.nextGrade}" style="font-size:0.8rem; padding:3px 8px; height:28px;">
+                    <input type="text" class="promo-target-grade-input form-control form-control-sm" data-student-id="${s.id}" value="${item.nextGrade}" style="font-size:0.8rem; padding:3px 8px; height:28px; margin-bottom:3px;" placeholder="Grado destino">
+                    <select class="promo-target-section-select form-control form-control-sm" data-student-id="${s.id}" style="font-size:0.8rem; padding:2px 4px; height:26px; font-weight:700;">
+                        <option value="A" ${currentSection === 'A' ? 'selected' : ''}>Sección A</option>
+                        <option value="B" ${currentSection === 'B' ? 'selected' : ''}>Sección B</option>
+                        <option value="C" ${currentSection === 'C' ? 'selected' : ''}>Sección C</option>
+                    </select>
                 </td>
             </tr>
         `;
@@ -32519,16 +32529,19 @@ async function executeCyclePromotion(e) {
         return;
     }
 
-    // Construir mapa de estudiantes con su grado destino
+    // Construir mapa de estudiantes con su grado y sección destino
     const studentOverrides = {};
     selectedBoxes.forEach(cb => {
         const studentId = cb.getAttribute('data-student-id');
         const gradeInput = document.querySelector(`.promo-target-grade-input[data-student-id="${studentId}"]`);
+        const sectionSelect = document.querySelector(`.promo-target-section-select[data-student-id="${studentId}"]`);
         const targetGrade = gradeInput ? gradeInput.value.trim() : '';
+        const targetSection = sectionSelect ? sectionSelect.value : 'A';
         const isEgresado = /egresado|graduand/i.test(targetGrade);
 
         studentOverrides[studentId] = {
             targetGrade: targetGrade,
+            targetSection: targetSection,
             status: isEgresado ? 'Egresado' : 'Inscrito',
             shouldPromote: true
         };
@@ -32585,6 +32598,184 @@ async function executeCyclePromotion(e) {
     }
 }
 window.executeCyclePromotion = executeCyclePromotion;
+
+// ======================================================================
+// MEJORA 2: ACTA OFICIAL DE PROMOCIÓN ANUAL (FORMATO MINEDUC / SUPERVISIÓN)
+// ======================================================================
+function printCyclePromotionAct() {
+    const role = window.STATE?.currentRole || '';
+    if (!['admin', 'director'].includes(role)) {
+        showToast('Esta función es exclusiva de Dirección del Plantel.', 'warning');
+        return;
+    }
+
+    const originSelect = document.getElementById('promoOriginCycleSelect');
+    const criteriaSelect = document.getElementById('promoCriteriaSelect');
+    const cycleYear = originSelect ? originSelect.value : (window.STATE?.activeCycle || '2026');
+    const criteria = criteriaSelect ? criteriaSelect.value : 'MINEDUC_STRICT';
+
+    const allStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+    const cycleStudents = allStudents.filter(s => !s.academicCycle || s.academicCycle === cycleYear);
+
+    // Agrupar por grado
+    const gradeGroups = {};
+    let grandTotalAvg = 0;
+    let grandTotalCount = 0;
+
+    cycleStudents.forEach(student => {
+        const info = typeof getStudentAcademicInfo === 'function'
+            ? getStudentAcademicInfo(student)
+            : { average: 0, hasFailedGrade: false };
+        const avg = typeof info.average === 'number' ? info.average : 0;
+        let isApproved = criteria === 'GENERAL_AVG' ? (avg >= 60) : (!info.hasFailedGrade && avg >= 60);
+        const isGraduando = info.is6to || /6|sexto/i.test(student.grade || '');
+        const gradeKey = student.grade || 'Sin Grado';
+        if (!gradeGroups[gradeKey]) gradeGroups[gradeKey] = { approved: [], failed: [], totalAvg: 0, count: 0 };
+        gradeGroups[gradeKey].count++;
+        gradeGroups[gradeKey].totalAvg += avg;
+        if (isApproved) {
+            gradeGroups[gradeKey].approved.push({ student, avg, isGraduando });
+        } else {
+            gradeGroups[gradeKey].failed.push({ student, avg });
+        }
+        grandTotalAvg += avg;
+        grandTotalCount++;
+    });
+
+    const institutionalAvg = grandTotalCount > 0 ? (grandTotalAvg / grandTotalCount).toFixed(2) : '0.00';
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('es-GT', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    // Construir secciones de tabla por grado
+    let gradeSectionsHtml = '';
+    Object.entries(gradeGroups).sort(([a], [b]) => a.localeCompare(b)).forEach(([gradeName, data]) => {
+        const gradeAvg = data.count > 0 ? (data.totalAvg / data.count).toFixed(2) : '0.00';
+        const approvedRows = data.approved.map((item, i) => {
+            const s = item.student;
+            const name = `${s.lastName || s.apellidos || ''}, ${s.firstName || s.nombres || ''}`.trim() || s.name || 'Sin Nombre';
+            return `<tr>
+                <td style="text-align:center;">${i + 1}</td>
+                <td>${s.carne || s.id || '-'}</td>
+                <td>${name}</td>
+                <td style="text-align:center; font-weight:700; color:#166534;">${item.avg.toFixed(2)}</td>
+                <td style="text-align:center;">${item.isGraduando ? '🎓 Graduado' : '✅ Promovido'}</td>
+            </tr>`;
+        }).join('');
+        const failedRows = data.failed.map((item, i) => {
+            const s = item.student;
+            const name = `${s.lastName || s.apellidos || ''}, ${s.firstName || s.nombres || ''}`.trim() || s.name || 'Sin Nombre';
+            return `<tr>
+                <td style="text-align:center;">${i + 1}</td>
+                <td>${s.carne || s.id || '-'}</td>
+                <td>${name}</td>
+                <td style="text-align:center; font-weight:700; color:#991b1b;">${item.avg.toFixed(2)}</td>
+                <td style="text-align:center;">⚠️ Pendiente Recuperación</td>
+            </tr>`;
+        }).join('');
+
+        gradeSectionsHtml += `
+            <div style="margin-bottom:28px; break-inside:avoid;">
+                <div style="background:#0f172a; color:#fff; padding:6px 14px; font-weight:800; font-size:0.95rem; border-radius:4px 4px 0 0; display:flex; justify-content:space-between;">
+                    <span>📚 ${gradeName}</span>
+                    <span>Promedio Sección: ${gradeAvg} | Total: ${data.count} estudiantes</span>
+                </div>
+                ${approvedRows || failedRows ? `
+                <table style="width:100%; border-collapse:collapse; font-size:0.88rem; border:1px solid #cbd5e1;">
+                    <thead>
+                        <tr style="background:#e2e8f0; font-weight:700;">
+                            <th style="padding:5px 8px; border:1px solid #cbd5e1; width:40px;">#</th>
+                            <th style="padding:5px 8px; border:1px solid #cbd5e1; width:120px;">Carné</th>
+                            <th style="padding:5px 8px; border:1px solid #cbd5e1;">Apellidos y Nombres</th>
+                            <th style="padding:5px 8px; border:1px solid #cbd5e1; width:80px; text-align:center;">Prom. Final</th>
+                            <th style="padding:5px 8px; border:1px solid #cbd5e1; width:160px; text-align:center;">Dictamen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${approvedRows}
+                        ${failedRows}
+                    </tbody>
+                </table>` : '<p style="padding:8px; background:#f1f5f9; border:1px solid #cbd5e1; font-size:0.85rem; color:#64748b;">Sin estudiantes registrados en este grado para el ciclo seleccionado.</p>'}
+                <div style="padding:6px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-top:none; font-size:0.82rem; display:flex; gap:20px;">
+                    <span>✅ Promovidos: <strong>${data.approved.length}</strong></span>
+                    <span>⚠️ Pendientes: <strong>${data.failed.length}</strong></span>
+                </div>
+            </div>`;
+    });
+
+    // Construir documento de impresión
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) { showToast('Habilite ventanas emergentes para imprimir.', 'warning'); return; }
+
+    printWindow.document.open();
+    printWindow.document.write(`<!DOCTYPE html><html lang="es"><head>
+        <meta charset="UTF-8">
+        <title>Acta de Promoción ${cycleYear} — ENCCO</title>
+        <style>
+            @media print { @page { size: letter portrait; margin: 1.5cm; } body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .no-print { display:none !important; } }
+            body { font-family: 'Arial', sans-serif; font-size: 13px; color: #1e293b; margin: 0; padding: 20px; }
+            .header { text-align: center; border-bottom: 3px double #0f172a; padding-bottom: 12px; margin-bottom: 20px; }
+            .header h1 { font-size: 1.15rem; margin: 0 0 4px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+            .header h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 4px 0; color: #334155; }
+            .header p { font-size: 0.82rem; color: #64748b; margin: 0; }
+            .intro-block { border: 1px solid #cbd5e1; padding: 12px 16px; margin-bottom: 20px; border-radius: 4px; background: #f8fafc; font-size: 0.88rem; line-height: 1.7; }
+            .summary-bar { display: flex; gap: 20px; justify-content: center; background: #0f172a; color: #fff; padding: 10px 16px; border-radius: 6px; margin-bottom: 22px; font-weight: 700; font-size: 0.9rem; }
+            .signatures { margin-top: 60px; display: flex; justify-content: space-around; }
+            .sig-line { text-align: center; }
+            .sig-line .line { border-top: 1.5px solid #334155; width: 200px; margin: 0 auto 6px auto; }
+            .sig-line p { font-size: 0.82rem; font-weight: 700; margin: 0; }
+            .sig-line small { font-size: 0.75rem; color: #64748b; }
+            .btn-print { background:#0f172a; color:#fff; border:none; padding:10px 22px; border-radius:6px; cursor:pointer; font-weight:700; font-size:0.9rem; margin-bottom:18px; }
+        </style>
+    </head><body>
+        <div class="no-print" style="text-align:center; margin-bottom:10px;">
+            <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+        </div>
+        <div class="header">
+            <div style="font-size:0.78rem; font-weight:700; letter-spacing:1px; color:#0369a1; margin-bottom:4px;">MINISTERIO DE EDUCACIÓN — DIRECCIÓN DEPARTAMENTAL DE EDUCACIÓN JUTIAPA</div>
+            <h1>ESCUELA NORMAL DE COMERCIO Y CIENCIAS COMERCIALES "ENCCO"</h1>
+            <h2>JUTIAPA, GUATEMALA — FUNDADA EN 1970</h2>
+            <p>Código DRE: 22-01-0340-43 | Jornada: Matutina | Ciclo Lectivo: ${cycleYear}</p>
+        </div>
+
+        <div class="intro-block">
+            <strong>ACTA DE PROMOCIÓN ANUAL — CICLO ESCOLAR ${cycleYear}</strong><br>
+            Yo, Director(a) del Plantel, hago constar que en la ciudad de Jutiapa, el día <strong>${dateStr}</strong>,
+            previa revisión de los registros académicos oficiales del Ciclo Escolar ${cycleYear}, se emite el siguiente
+            cuadro oficial de promoción para su entrega a la Supervisión Educativa Municipal correspondiente,
+            conforme el artículo 36 del Reglamento de Evaluación Vigente.
+        </div>
+
+        <div class="summary-bar">
+            <span>📊 Total Evaluados: ${grandTotalCount}</span>
+            <span>✅ Promovidos: ${Object.values(gradeGroups).reduce((a, g) => a + g.approved.length, 0)}</span>
+            <span>⚠️ Pendientes: ${Object.values(gradeGroups).reduce((a, g) => a + g.failed.length, 0)}</span>
+            <span>📈 Promedio Institucional: ${institutionalAvg}</span>
+        </div>
+
+        ${gradeSectionsHtml}
+
+        <div class="signatures">
+            <div class="sig-line">
+                <div class="line"></div>
+                <p>Director(a) del Plantel</p>
+                <small>ENCCO Jutiapa</small>
+            </div>
+            <div class="sig-line">
+                <div class="line"></div>
+                <p>Secretaria Académica</p>
+                <small>ENCCO Jutiapa</small>
+            </div>
+            <div class="sig-line">
+                <div class="line"></div>
+                <p>Supervisor(a) Educativo(a)</p>
+                <small>Municipio de Jutiapa</small>
+            </div>
+        </div>
+    </body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+}
+window.printCyclePromotionAct = printCyclePromotionAct;
 
 function printCurrentSectionSireReport(sectionCode = null) {
     if (typeof printOfficialSireSectionReport === 'function') {

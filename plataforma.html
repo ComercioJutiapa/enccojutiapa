@@ -4013,6 +4013,9 @@
                     <button type="button" class="btn btn-outline-primary btn-sm" id="btnDownloadCycleBackup" onclick="downloadCyclePreArchivingBackup()" style="display:none; font-weight:700; align-items:center; gap:6px;">
                         <i class="fa-solid fa-file-arrow-down"></i> Descargar Copia de Seguridad (.json)
                     </button>
+                    <button type="button" class="btn btn-outline-warning btn-sm" id="btnPrintPromotionAct" onclick="printCyclePromotionAct()" style="display:none; font-weight:700; align-items:center; gap:6px;" title="Genera el Acta Oficial de Promoción formato MINEDUC para entregar a Supervisión">
+                        <i class="fa-solid fa-print"></i> Imprimir Acta de Promoción
+                    </button>
                 </div>
                 <button type="button" class="btn btn-success" id="btnExecutePromotion" onclick="executeCyclePromotion()" style="font-weight:800; padding:8px 18px; font-size:0.92rem; box-shadow:0 2px 6px rgba(21,128,61,0.3);">
                     <i class="fa-solid fa-rocket"></i> Abrir Nuevo Ciclo y Trasladar Estudiantes Aprobados
@@ -4062,6 +4065,9 @@
                         </button>
                         <button type="button" class="profile-tab-btn" id="profTabBtn-grades" onclick="switchStudentProfileTab('grades')">
                             <i class="fa-solid fa-graduation-cap"></i> 3. Récord de Calificaciones
+                        </button>
+                        <button type="button" class="profile-tab-btn" id="profTabBtn-historico" onclick="switchStudentProfileTab('historico'); loadStudentHistoricalRecord(STATE.selectedStudentId)">
+                            <i class="fa-solid fa-clock-rotate-left"></i> 4. Historial de Años Anteriores
                         </button>
                     </div>
 
@@ -4228,6 +4234,35 @@
                             <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; padding:6px 14px; font-size:0.82rem;">
                                 <i class="fa-solid fa-circle-info"></i> Los docentes pueden gestionar sus materias asignadas en el módulo de Ingreso de Notas.
                             </span>
+                        </div>
+                    </div>
+
+                    <!-- ======================================================== -->
+                    <!-- PESTAÑA 4: HISTORIAL DE AÑOS ANTERIORES (RÉCORD HISTÓRICO) -->
+                    <!-- ======================================================== -->
+                    <div class="profile-tab-content" id="profTab-historico" style="display:none;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                            <div>
+                                <h4 style="margin:0; color:#7c3aed; font-size:1rem; font-weight:800;">
+                                    <i class="fa-solid fa-clock-rotate-left"></i> Historial Académico de Ciclos Anteriores
+                                </h4>
+                                <p style="margin:2px 0 0 0; font-size:0.82rem; color:var(--text-secondary);">Calificaciones archivadas de ciclos escolares previos (modo solo lectura).</p>
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadStudentHistoricalRecord(STATE.selectedStudentId)" title="Actualizar datos históricos">
+                                <i class="fa-solid fa-arrows-rotate"></i> Actualizar
+                            </button>
+                        </div>
+                        <!-- Indicador de carga -->
+                        <div id="profHistoricoLoading" style="display:none; text-align:center; padding:20px; color:#7c3aed;">
+                            <i class="fa-solid fa-spinner fa-spin" style="font-size:1.6rem; margin-bottom:8px; display:block;"></i>
+                            <span style="font-size:0.88rem; font-weight:600;">Consultando registros históricos...</span>
+                        </div>
+                        <!-- Contenedor del historial renderizado -->
+                        <div id="profHistoricoContent">
+                            <div style="text-align:center; padding:30px 20px; background:#f5f3ff; border:1.5px dashed #c4b5fd; border-radius:6px;">
+                                <i class="fa-solid fa-clock-rotate-left" style="font-size:2rem; color:#7c3aed; margin-bottom:10px; display:block;"></i>
+                                <p style="font-size:0.88rem; color:#6d28d9; font-weight:600; margin:0;">Haga clic en esta pestaña para cargar el historial de ciclos anteriores.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
