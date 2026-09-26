@@ -1084,7 +1084,10 @@ function updateCycleSelects() {
     // Generar opciones con formato oficial limpio
     const options = cycles.map(c => {
         const isSelected = (c.name === STATE.activeCycle || c.year === STATE.activeCycle) ? 'selected' : '';
-        return `<option value="${c.name}" ${isSelected}>Ciclo Escolar ${c.year || c.name} ${c.status === 'Activo' ? '(Activo)' : '(Hist?rico)'}</option>`;
+        const isHistorical = c.status !== 'Activo' || c.isArchived;
+        const icon = isHistorical ? '📦' : '🟢';
+        const label = isHistorical ? '(Histórico)' : '(Activo)';
+        return `<option value="${c.name}" ${isSelected}>${icon} Ciclo Escolar ${c.year || c.name} ${label}</option>`;
     }).join('');
 
     if (sidebarSelect) {
@@ -1093,7 +1096,7 @@ function updateCycleSelects() {
         if (STATE.activeCycle) {
             sidebarSelect.value = STATE.activeCycle;
         }
-        // Si a?n no coincide, forzar el primer ?tem para que nunca est? en blanco
+        // Si aún no coincide, forzar el primer ítem para que nunca esté en blanco
         if (!sidebarSelect.value && sidebarSelect.options.length > 0) {
             sidebarSelect.selectedIndex = 0;
             STATE.activeCycle = sidebarSelect.value;
@@ -8682,6 +8685,19 @@ function saveStateToLocalStorage() {
 window.saveStateToLocalStorage = saveStateToLocalStorage;
 
 function changeAcademicCycle(cycle) {
+    if (!cycle) return;
+
+    // 📦 Si se selecciona un ciclo histórico archivado, activar modo de consulta histórica de solo lectura
+    if (window.EnccoCycleArchiver && window.STATE && Array.isArray(window.STATE.cycles)) {
+        const found = window.STATE.cycles.find(c => c.name === cycle || c.year === cycle);
+        if (found && (found.status === 'Histórico' || found.isArchived)) {
+            EnccoCycleArchiver.loadHistoricalCycle(cycle);
+            return;
+        } else if (window.STATE.isHistoricalReadOnlyMode) {
+            EnccoCycleArchiver.exitHistoricalView();
+        }
+    }
+
     STATE.activeCycle = cycle;
     saveStateToLocalStorage();
     if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
@@ -32242,36 +32258,325 @@ function closeCyclePromotionModal() {
     }
 }
 
-function selectAllPromotedStudents(checkAll = true) {
-    const checkboxes = document.querySelectorAll('#promotionStudentsList input[type="checkbox"]');
-    checkboxes.forEach(cb => cb.checked = checkAll);
+function populatePromotionCycleSelects() {
+    const originSelect = document.getElementById('promoOriginCycleSelect');
+    const targetInput = document.getElementById('promoTargetCycleInput');
+    const gradeFilter = document.getElementById('promoGradeFilter');
+
+    const cycles = (window.STATE && Array.isArray(window.STATE.cycles)) ? window.STATE.cycles : [];
+    const activeCycle = (window.STATE && window.STATE.activeCycle) || '2026';
+
+    if (originSelect) {
+        originSelect.innerHTML = cycles.map(c => {
+            const isSelected = (c.name === activeCycle || c.year === activeCycle) ? 'selected' : '';
+            const isHistorical = c.status !== 'Activo' || c.isArchived;
+            return `<option value="${c.name || c.year}" ${isSelected}>${isHistorical ? '📦' : '🟢'} Ciclo ${c.year || c.name} (${c.status || 'Activo'})</option>`;
+        }).join('') || `<option value="${activeCycle}" selected>Ciclo ${activeCycle} (Activo)</option>`;
+    }
+
+    if (targetInput) {
+        const yrNum = parseInt(activeCycle);
+        targetInput.value = !isNaN(yrNum) ? String(yrNum + 1) : '';
+    }
+
+    if (gradeFilter) {
+        const students = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+        const uniqueGrades = Array.from(new Set(students.map(s => (s.grade || s.gradeLabel || '').trim()).filter(Boolean))).sort();
+        gradeFilter.innerHTML = '<option value="ALL">-- Todos los Grados --</option>' +
+            uniqueGrades.map(g => `<option value="${g}">${g}</option>`).join('');
+    }
 }
+window.populatePromotionCycleSelects = populatePromotionCycleSelects;
 
-function executeCyclePromotion(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    if (!checkEnrolmentPermissions()) return;
+function getNextGradeLevel(currentGrade) {
+    if (!currentGrade) return 'Quinto';
+    const g = currentGrade.trim();
+    const upper = g.toUpperCase();
+    
+    // Si contiene 4 o Cuarto -> cambiar a 5to / Quinto
+    if (upper.includes('4TO') || upper.includes('4.º') || upper.includes('4°') || upper.includes('CUARTO')) {
+        return g.replace(/4TO|4\.º|4°/gi, '5to').replace(/Cuarto/gi, 'Quinto').replace(/CUARTO/gi, 'QUINTO');
+    }
+    // Si contiene 5 o Quinto -> cambiar a 6to / Sexto
+    if (upper.includes('5TO') || upper.includes('5.º') || upper.includes('5°') || upper.includes('QUINTO')) {
+        return g.replace(/5TO|5\.º|5°/gi, '6to').replace(/Quinto/gi, 'Sexto').replace(/QUINTO/gi, 'SEXTO');
+    }
+    // Si contiene 6 o Sexto -> Graduando / Egresado
+    if (upper.includes('6TO') || upper.includes('6.º') || upper.includes('6°') || upper.includes('SEXTO')) {
+        return 'Graduando / Egresado';
+    }
+    return g;
+}
+window.getNextGradeLevel = getNextGradeLevel;
 
-    const targetCycle = document.getElementById('promoTargetCycleSelect')?.value;
-    const selectedBoxes = document.querySelectorAll('#promotionStudentsList input[type="checkbox"]:checked');
+function renderPromotionStudentsTable() {
+    const originSelect = document.getElementById('promoOriginCycleSelect');
+    const targetInput = document.getElementById('promoTargetCycleInput');
+    const criteriaSelect = document.getElementById('promoCriteriaSelect');
+    const searchInput = document.getElementById('promoSearchInput');
+    const gradeFilter = document.getElementById('promoGradeFilter');
+    const tableBody = document.getElementById('promoTableBody');
+    const kpiCards = document.getElementById('promoKpiCards');
+    const countBadge = document.getElementById('promoCountBadge');
 
-    if (!targetCycle || selectedBoxes.length === 0) {
-        showToast('Seleccione el ciclo destino y al menos un estudiante a promover.', 'warning');
+    if (!tableBody) return;
+
+    const originCycle = originSelect ? originSelect.value : (window.STATE?.activeCycle || '2026');
+    const criteria = criteriaSelect ? criteriaSelect.value : 'MINEDUC_STRICT';
+    const searchTerm = (searchInput ? searchInput.value : '').toLowerCase().trim();
+    const filterGrade = gradeFilter ? gradeFilter.value : 'ALL';
+
+    const allStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+    
+    // Filtrar por ciclo de origen (estudiantes de este ciclo o sin ciclo asignado)
+    let cycleStudents = allStudents.filter(s => {
+        if (!s.academicCycle) return true;
+        return s.academicCycle === originCycle;
+    });
+
+    let totalCount = cycleStudents.length;
+    let approvedCount = 0;
+    let failedCount = 0;
+    let graduandoCount = 0;
+
+    // Calcular estatus académico y sugerencia de grado para cada estudiante
+    const studentsWithAnalysis = cycleStudents.map(student => {
+        const info = (typeof getStudentAcademicInfo === 'function') 
+            ? getStudentAcademicInfo(student) 
+            : { average: 0, hasFailedGrade: false, failedSubjectsList: [] };
+
+        const avg = typeof info.average === 'number' ? info.average : 0;
+        let isApproved = false;
+
+        if (criteria === 'GENERAL_AVG') {
+            isApproved = (avg >= 60);
+        } else {
+            // MINEDUC_STRICT: 0 materias reprobadas y promedio >= 60
+            isApproved = (!info.hasFailedGrade && avg >= 60);
+        }
+
+        const isGraduando = (info.is6to || /6|sexto/i.test(student.grade || ''));
+        const nextGrade = getNextGradeLevel(student.grade);
+
+        if (isGraduando && isApproved) {
+            graduandoCount++;
+        } else if (isApproved) {
+            approvedCount++;
+        } else {
+            failedCount++;
+        }
+
+        return {
+            student,
+            info,
+            isApproved,
+            isGraduando,
+            nextGrade
+        };
+    });
+
+    // Renderizar KPIs
+    if (kpiCards) {
+        kpiCards.innerHTML = `
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px; text-align:center;">
+                <div style="font-size:0.75rem; font-weight:700; color:#166534; text-transform:uppercase;">Alumnos Evaluados</div>
+                <div style="font-size:1.45rem; font-weight:900; color:#15803d;">${totalCount}</div>
+            </div>
+            <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 14px; text-align:center;">
+                <div style="font-size:0.75rem; font-weight:700; color:#1e40af; text-transform:uppercase;">Promovibles (Aprobados)</div>
+                <div style="font-size:1.45rem; font-weight:900; color:#2563eb;">${approvedCount}</div>
+            </div>
+            <div style="background:#fefce8; border:1px solid #fef08a; border-radius:8px; padding:10px 14px; text-align:center;">
+                <div style="font-size:0.75rem; font-weight:700; color:#854d0e; text-transform:uppercase;">Graduandos (6to)</div>
+                <div style="font-size:1.45rem; font-weight:900; color:#ca8a04;">${graduandoCount}</div>
+            </div>
+            <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 14px; text-align:center;">
+                <div style="font-size:0.75rem; font-weight:700; color:#991b1b; text-transform:uppercase;">Reprobados / Pendientes</div>
+                <div style="font-size:1.45rem; font-weight:900; color:#dc2626;">${failedCount}</div>
+            </div>
+        `;
+    }
+
+    if (countBadge) {
+        countBadge.textContent = `${totalCount} Alumnos`;
+    }
+
+    // Filtrar para la vista de tabla (búsqueda y grado)
+    let visibleList = studentsWithAnalysis;
+    if (filterGrade !== 'ALL') {
+        visibleList = visibleList.filter(item => (item.student.grade || '').trim() === filterGrade);
+    }
+    if (searchTerm) {
+        visibleList = visibleList.filter(item => {
+            const s = item.student;
+            const fullName = `${s.lastName || s.apellidos || ''} ${s.firstName || s.nombres || ''} ${s.name || ''}`.toLowerCase();
+            const carne = (s.carne || s.id || '').toLowerCase();
+            return fullName.includes(searchTerm) || carne.includes(searchTerm);
+        });
+    }
+
+    if (visibleList.length === 0) {
+        tableBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:25px; color:#64748b; font-weight:600;">No se encontraron estudiantes para los filtros seleccionados.</td></tr>`;
         return;
     }
 
-    selectedBoxes.forEach(cb => {
-        const studentId = cb.value;
-        const student = (STATE.students || []).find(s => s.id === studentId);
-        if (student) {
-            student.academicCycle = targetCycle;
+    tableBody.innerHTML = visibleList.map((item, idx) => {
+        const s = item.student;
+        const info = item.info;
+        const fullName = `${s.lastName || s.apellidos || ''}, ${s.firstName || s.nombres || ''}`.trim() || s.name || 'Sin Nombre';
+        const carne = s.carne || s.codigoPersonal || s.id || 'S/N';
+        const grade = s.grade || s.gradeLabel || 'No asignado';
+        const avg = info.average > 0 ? info.average.toFixed(1) : (info.average === 0 ? '0.0' : '-');
+        
+        // Estatus dictamen
+        let dictamenHtml = '';
+        if (item.isGraduando && item.isApproved) {
+            dictamenHtml = '<span class="badge badge-primary" style="background:#2563eb; color:#fff; font-size:0.75rem;"><i class="fa-solid fa-graduation-cap"></i> Graduado</span>';
+        } else if (item.isApproved) {
+            dictamenHtml = '<span class="badge badge-success" style="background:#16a34a; color:#fff; font-size:0.75rem;"><i class="fa-solid fa-check"></i> Aprobado</span>';
+        } else {
+            dictamenHtml = '<span class="badge badge-danger" style="background:#dc2626; color:#fff; font-size:0.75rem;"><i class="fa-solid fa-xmark"></i> Reprobado</span>';
+        }
+
+        // Checkbox: pre-seleccionado si está aprobado
+        const isChecked = item.isApproved ? 'checked' : '';
+
+        return `
+            <tr style="border-bottom:1px solid #e2e8f0; background:${item.isApproved ? '#ffffff' : '#fff5f5'};">
+                <td style="text-align:center; vertical-align:middle;">
+                    <input type="checkbox" class="promo-student-check" data-student-id="${s.id}" data-is-approved="${item.isApproved}" ${isChecked}>
+                </td>
+                <td style="text-align:center; vertical-align:middle; color:#64748b; font-weight:600;">${idx + 1}</td>
+                <td style="vertical-align:middle; font-weight:700; color:#0f172a; font-family:monospace;">${carne}</td>
+                <td style="vertical-align:middle; font-weight:600; color:#1e293b;">${fullName}</td>
+                <td style="vertical-align:middle; font-size:0.8rem; color:#475569;">${grade}</td>
+                <td style="text-align:center; vertical-align:middle; font-weight:800; color:${info.average >= 60 ? '#16a34a' : '#dc2626'};">${avg}</td>
+                <td style="text-align:center; vertical-align:middle;">${dictamenHtml}</td>
+                <td style="vertical-align:middle;">
+                    <input type="text" class="promo-target-grade-input form-control form-control-sm" data-student-id="${s.id}" value="${item.nextGrade}" style="font-size:0.8rem; padding:3px 8px; height:28px;">
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+window.renderPromotionStudentsTable = renderPromotionStudentsTable;
+
+function filterPromotionTable() {
+    renderPromotionStudentsTable();
+}
+window.filterPromotionTable = filterPromotionTable;
+
+function selectAllPromotedStudents(checkAll = true) {
+    const checkboxes = document.querySelectorAll('.promo-student-check');
+    checkboxes.forEach(cb => {
+        if (checkAll) {
+            const isApproved = cb.getAttribute('data-is-approved') === 'true';
+            cb.checked = isApproved;
+        } else {
+            cb.checked = false;
         }
     });
-
-    saveStateToLocalStorage();
-    closeCyclePromotionModal();
-    if (typeof renderCyclesTable === 'function') renderCyclesTable();
-    showToast(`Promoción académica ejecutada exitosamente para ${selectedBoxes.length} estudiantes al ciclo ${targetCycle}.`, 'success');
 }
+window.selectAllPromotedStudents = selectAllPromotedStudents;
+
+function toggleAllPromotionCheckboxes(checked) {
+    const checkboxes = document.querySelectorAll('.promo-student-check');
+    checkboxes.forEach(cb => cb.checked = !!checked);
+}
+window.toggleAllPromotionCheckboxes = toggleAllPromotionCheckboxes;
+
+async function executeCyclePromotion(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!checkEnrolmentPermissions()) return;
+
+    const originSelect = document.getElementById('promoOriginCycleSelect');
+    const targetInput = document.getElementById('promoTargetCycleInput');
+    const originCycle = originSelect ? originSelect.value : (window.STATE?.activeCycle || '2026');
+    const targetCycle = targetInput ? targetInput.value.trim() : '';
+
+    if (!targetCycle || !/^\d{4}$/.test(targetCycle)) {
+        showToast('Por favor especifique un año válido de 4 dígitos para el nuevo ciclo escolar (ej: 2027).', 'warning');
+        if (targetInput) targetInput.focus();
+        return;
+    }
+
+    if (targetCycle === originCycle) {
+        showToast(`El ciclo destino (${targetCycle}) debe ser distinto al ciclo origen (${originCycle}).`, 'warning');
+        return;
+    }
+
+    const selectedBoxes = Array.from(document.querySelectorAll('.promo-student-check:checked'));
+    if (selectedBoxes.length === 0) {
+        showToast('Seleccione al menos un estudiante para ser promovido al nuevo ciclo.', 'warning');
+        return;
+    }
+
+    // Construir mapa de estudiantes con su grado destino
+    const studentOverrides = {};
+    selectedBoxes.forEach(cb => {
+        const studentId = cb.getAttribute('data-student-id');
+        const gradeInput = document.querySelector(`.promo-target-grade-input[data-student-id="${studentId}"]`);
+        const targetGrade = gradeInput ? gradeInput.value.trim() : '';
+        const isEgresado = /egresado|graduand/i.test(targetGrade);
+
+        studentOverrides[studentId] = {
+            targetGrade: targetGrade,
+            status: isEgresado ? 'Egresado' : 'Inscrito',
+            shouldPromote: true
+        };
+    });
+
+    const unselectedBoxes = Array.from(document.querySelectorAll('.promo-student-check:not(:checked)'));
+    unselectedBoxes.forEach(cb => {
+        const studentId = cb.getAttribute('data-student-id');
+        const student = (window.STATE?.students || []).find(s => s.id === studentId);
+        // Quienes no fueron promovidos permanecen en el mismo grado con estado En Recuperación o Pendiente
+        studentOverrides[studentId] = {
+            targetGrade: student ? student.grade : '',
+            status: 'Pendiente',
+            shouldPromote: false
+        };
+    });
+
+    const submitBtn = document.getElementById('btnExecutePromotion');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Archivando ciclo y aperturando nuevo ciclo...';
+    }
+
+    try {
+        if (!window.EnccoCycleArchiver) {
+            throw new Error("El módulo EnccoCycleArchiver no está disponible en la plataforma.");
+        }
+
+        showToast(`Archivando ciclo ${originCycle} e iniciando ciclo ${targetCycle}...`, 'info');
+
+        const result = await EnccoCycleArchiver.openNewAcademicCycle(targetCycle, {
+            archiveCurrent: true,
+            promoteStudents: false, // Manejado precisamente por studentOverrides
+            studentOverrides: studentOverrides
+        });
+
+        if (result && result.success) {
+            closeCyclePromotionModal();
+            showToast(`¡Ciclo lectivo ${targetCycle} iniciado exitosamente! Registros previos resguardados en /historico/${originCycle}/.`, 'success');
+            if (typeof updateCycleSelects === 'function') updateCycleSelects();
+            if (typeof renderStudentsTable === 'function') renderStudentsTable();
+            if (typeof renderCyclesTable === 'function') renderCyclesTable();
+        } else {
+            showToast(`Error al procesar la apertura del ciclo: ${result?.message || 'Error desconocido'}`, 'danger');
+        }
+    } catch(err) {
+        console.error("Error al ejecutar promoción de ciclo:", err);
+        showToast(`Error al ejecutar promoción de ciclo: ${err.message || err}`, 'danger');
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-rocket"></i> Abrir Nuevo Ciclo y Trasladar Estudiantes Aprobados';
+        }
+    }
+}
+window.executeCyclePromotion = executeCyclePromotion;
 
 function printCurrentSectionSireReport(sectionCode = null) {
     if (typeof printOfficialSireSectionReport === 'function') {
@@ -32280,7 +32585,7 @@ function printCurrentSectionSireReport(sectionCode = null) {
 }
 
 // ======================================================================
-// EXPORTACIONES GLOBALES EXPLCITAS A WINDOW (100% REACTIVIDAD DINMICA)
+// EXPORTACIONES GLOBALES EXPLÍCITAS A WINDOW (100% REACTIVIDAD DINÁMICA)
 // ======================================================================
 window.getInitialData = getInitialData;
 window.deleteUser = deleteUser;
@@ -32312,9 +32617,7 @@ window.printCurrentSectionSireReport = printCurrentSectionSireReport;
 window.onPromotionCycleChange = function() { if (typeof renderPromotionStudentsTable === 'function') renderPromotionStudentsTable(); };
 window.renderPromotionTable = function() { if (typeof renderPromotionStudentsTable === 'function') renderPromotionStudentsTable(); };
 window.filterPromotionTable = function() { if (typeof renderPromotionStudentsTable === 'function') renderPromotionStudentsTable(); };
-window.toggleAllPromotionCheckboxes = function(checked) {
-    document.querySelectorAll('#promotionStudentsList input[type="checkbox"], .promo-student-check').forEach(cb => cb.checked = !!checked);
-};
+window.toggleAllPromotionCheckboxes = toggleAllPromotionCheckboxes;
 
 window.EnccoSecurityShield = EnccoSecurityShield;
 window.saveStateRecursively = saveStateRecursively;

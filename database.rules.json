@@ -90,6 +90,14 @@
         "status",
         "studentId"
       ]
+    },
+    "historico": {
+      ".read": true,
+      ".write": "newData.exists()",
+      ".indexOn": [
+        "cycle",
+        "archivedAt"
+      ]
     }
   }
 }
