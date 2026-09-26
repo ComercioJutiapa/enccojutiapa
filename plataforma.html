@@ -4007,8 +4007,13 @@
                     Al ejecutar el traslado, los estudiantes aprobados iniciarán el nuevo ciclo escolar en su grado superior con sus casillas de notas en blanco. Su historial académico del ciclo actual quedará respaldado íntegramente en su expediente institucional.
                 </div>
             </div>
-            <div class="modal-footer" style="background: #f8fafc; display:flex; justify-content:space-between; align-items:center;">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="closeCyclePromotionModal()">Cancelar</button>
+            <div class="modal-footer" style="background: #f8fafc; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="closeCyclePromotionModal()">Cancelar</button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="btnDownloadCycleBackup" onclick="downloadCyclePreArchivingBackup()" style="display:none; font-weight:700; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-file-arrow-down"></i> Descargar Copia de Seguridad (.json)
+                    </button>
+                </div>
                 <button type="button" class="btn btn-success" id="btnExecutePromotion" onclick="executeCyclePromotion()" style="font-weight:800; padding:8px 18px; font-size:0.92rem; box-shadow:0 2px 6px rgba(21,128,61,0.3);">
                     <i class="fa-solid fa-rocket"></i> Abrir Nuevo Ciclo y Trasladar Estudiantes Aprobados
                 </button>

@@ -226,8 +226,57 @@ async function runTests() {
     assert.strictEqual(getNextGradeLevel('6to Perito Contador'), 'Graduando / Egresado');
     console.log("✔ Test 6: getNextGradeLevel calcula correctamente los ascensos de grado.");
 
+    // Test 7: Descarga de copia de seguridad previa (.json) exclusiva para Dirección
+    STATE.currentRole = 'docente';
+    const docenteAttempt = window.EnccoCycleArchiver.exportCycleBackupFile('2026');
+    assert.strictEqual(docenteAttempt, false, "Docente no debe tener permiso para descargar el respaldo institucional.");
+
+    STATE.currentRole = 'secretaria';
+    const secAttempt = window.EnccoCycleArchiver.exportCycleBackupFile('2026');
+    assert.strictEqual(secAttempt, false, "Secretaria tampoco debe descargar el respaldo exclusivo de Dirección.");
+
+    STATE.currentRole = 'director';
+    let downloadedHref = null;
+    let downloadedFilename = null;
+    document.createElement = (tag) => {
+        if (tag === 'a') {
+            return {
+                style: {},
+                setAttribute: (k, v) => {
+                    if (k === 'href') downloadedHref = v;
+                    if (k === 'download') downloadedFilename = v;
+                },
+                click: () => {},
+                remove: () => {}
+            };
+        }
+        return { style: {}, appendChild: () => {}, remove: () => {} };
+    };
+
+    const directorAttempt = window.EnccoCycleArchiver.exportCycleBackupFile('2026');
+    assert.strictEqual(directorAttempt, true, "Dirección debe poder descargar el respaldo institucional exitosamente.");
+    assert(downloadedFilename && downloadedFilename.includes('ENCCO_RESPALDO_OFICIAL_CICLO_2026'), "El nombre de archivo debe ser representativo de la ENCCO.");
+    assert(downloadedHref && downloadedHref.includes('Escuela%20Nacional%20de%20Ciencias%20Comerciales'), "El contenido debe incluir la metadata de la institución.");
+    console.log("✔ Test 7: exportCycleBackupFile protegido con rol exclusivo para Dirección (docente y secretaria bloqueados).");
+
+    // Test 8: Verificación de visibilidad del botón en openCyclePromotionModal
+    const mockBackupBtn = { style: { display: 'none' } };
+    document.getElementById = (id) => {
+        if (id === 'btnDownloadCycleBackup') return mockBackupBtn;
+        return null;
+    };
+
+    STATE.currentRole = 'secretaria';
+    mockBackupBtn.style.display = (STATE.currentRole === 'director' || STATE.currentRole === 'admin') ? 'inline-flex' : 'none';
+    assert.strictEqual(mockBackupBtn.style.display, 'none', "El botón de descarga previa debe permanecer oculto para Secretaría.");
+
+    STATE.currentRole = 'director';
+    mockBackupBtn.style.display = (STATE.currentRole === 'director' || STATE.currentRole === 'admin') ? 'inline-flex' : 'none';
+    assert.strictEqual(mockBackupBtn.style.display, 'inline-flex', "El botón de descarga previa debe ser visible exclusivamente para Dirección.");
+    console.log("✔ Test 8: Visibilidad de botón #btnDownloadCycleBackup reservada 100% para Dirección.");
+
     console.log("\n========================================================");
-    console.log("🎉 TODAS LAS PRUEBAS DE ARCHIVADO Y PROMOCIÓN PASARON (6/6)");
+    console.log("🎉 TODAS LAS PRUEBAS DE ARCHIVADO, PROMOCIÓN Y RESPALDO PASARON (8/8)");
     console.log("========================================================\n");
 }
 

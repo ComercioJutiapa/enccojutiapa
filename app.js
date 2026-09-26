@@ -8569,8 +8569,8 @@ function computeStateChecksum(dataStr) {
 window.computeStateChecksum = computeStateChecksum;
 
 function saveStateRecursively(options = { syncCloud: false, isAutoSave: false }) {
-    if (window.STATE && window.STATE.isLocalReadOnlyMode) {
-        console.warn("🛡️ [Solo Lectura] Guardado cancelado: modo inspección activo.");
+    if (window.STATE && (window.STATE.isLocalReadOnlyMode || window.STATE.isHistoricalReadOnlyMode)) {
+        console.warn("🛡️ [Solo Lectura] Guardado cancelado: modo consulta histórica o inspección activo.");
         return false;
     }
 
@@ -18463,6 +18463,14 @@ function openCyclePromotionModal(e) {
     if (!checkEnrolmentPermissions()) return;
     populatePromotionCycleSelects();
     renderPromotionStudentsTable();
+
+    // 🔒 El botón de descarga previa del respaldo (.json) solo es visible para Dirección (y Admin)
+    const role = ((window.STATE && window.STATE.currentRole) || '').toLowerCase();
+    const backupBtn = document.getElementById('btnDownloadCycleBackup');
+    if (backupBtn) {
+        backupBtn.style.display = (role === 'director' || role === 'admin') ? 'inline-flex' : 'none';
+    }
+
     showModalById('cyclePromotionModal');
 }
 
@@ -32614,6 +32622,19 @@ window.openCyclePromotionModal = openCyclePromotionModal;
 window.selectAllPromotedStudents = selectAllPromotedStudents;
 window.executeCyclePromotion = executeCyclePromotion;
 window.printCurrentSectionSireReport = printCurrentSectionSireReport;
+function downloadCyclePreArchivingBackup() {
+    const role = ((window.STATE && window.STATE.currentRole) || '').toLowerCase();
+    if (role !== 'director' && role !== 'admin') {
+        showToast('Acceso denegado: La descarga del respaldo oficial previo es exclusiva de Dirección.', 'danger');
+        return false;
+    }
+    if (window.EnccoCycleArchiver && typeof window.EnccoCycleArchiver.exportCycleBackupFile === 'function') {
+        return window.EnccoCycleArchiver.exportCycleBackupFile();
+    }
+    showToast('Error: El componente EnccoCycleArchiver no está disponible.', 'danger');
+    return false;
+}
+window.downloadCyclePreArchivingBackup = downloadCyclePreArchivingBackup;
 window.onPromotionCycleChange = function() { if (typeof renderPromotionStudentsTable === 'function') renderPromotionStudentsTable(); };
 window.renderPromotionTable = function() { if (typeof renderPromotionStudentsTable === 'function') renderPromotionStudentsTable(); };
 window.filterPromotionTable = function() { if (typeof renderPromotionStudentsTable === 'function') renderPromotionStudentsTable(); };

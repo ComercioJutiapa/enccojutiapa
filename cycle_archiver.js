@@ -521,6 +521,70 @@
                     }
                 });
             });
+        },
+
+        /**
+         * Exporta y descarga un archivo .json con la copia de seguridad completa del ciclo (Exclusivo Dirección y Admin)
+         */
+        exportCycleBackupFile(cycleYear = null) {
+            const role = ((window.STATE && window.STATE.currentRole) || '').toLowerCase();
+            if (role !== 'director' && role !== 'admin') {
+                if (typeof showToast === 'function') {
+                    showToast('Acceso restringido: La descarga de respaldo institucional es una potestad exclusiva de Dirección.', 'danger');
+                }
+                return false;
+            }
+
+            const originSelect = document.getElementById('promoOriginCycleSelect');
+            const targetCycle = String(cycleYear || (originSelect ? originSelect.value : '') || (window.STATE && window.STATE.activeCycle) || '2026').trim();
+
+            const students = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+            const attendance = (window.STATE && window.STATE.attendanceRecords) ? window.STATE.attendanceRecords : {};
+            const discipline = (window.STATE && Array.isArray(window.STATE.disciplineReports)) ? window.STATE.disciplineReports : [];
+            const permissions = (window.STATE && Array.isArray(window.STATE.studentPermissions)) ? window.STATE.studentPermissions : [];
+            const pensum = (window.STATE && Array.isArray(window.STATE.pensum)) ? window.STATE.pensum : [];
+            const gradesList = (window.STATE && Array.isArray(window.STATE.gradesList)) ? window.STATE.gradesList : [];
+
+            const backupPayload = {
+                institution: "Escuela Nacional de Ciencias Comerciales Jutiapa (ENCCO)",
+                system: "Plataforma Institucional de Control Académico",
+                backupType: "Respaldo Completo Pre-Archivado de Ciclo Lectivo",
+                cycle: targetCycle,
+                exportedAt: new Date().toISOString(),
+                exportedTimestamp: Date.now(),
+                exportedBy: (window.STATE && window.STATE.currentUser) 
+                    ? `${window.STATE.currentUser.name} (${(window.STATE.currentUser.role || 'director').toUpperCase()})` 
+                    : 'Dirección Institucional',
+                summary: {
+                    totalStudents: students.length,
+                    totalAttendanceDates: Object.keys(attendance).length,
+                    totalDisciplineReports: discipline.length,
+                    totalPermissions: permissions.length,
+                    totalCourses: pensum.length
+                },
+                studentsSnapshot: students,
+                attendanceSnapshot: attendance,
+                disciplineSnapshot: discipline,
+                permissionsSnapshot: permissions,
+                pensumSnapshot: pensum,
+                gradesListSnapshot: gradesList
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPayload, null, 2));
+            const downloadAnchor = document.createElement('a');
+            const dateStr = new Date().toISOString().slice(0, 10);
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `ENCCO_RESPALDO_OFICIAL_CICLO_${targetCycle}_${dateStr}.json`);
+            if (document.body) {
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+            }
+
+            if (typeof showToast === 'function') {
+                showToast(`Copia de seguridad oficial del Ciclo ${targetCycle} descargada exitosamente (.json).`, 'success');
+            }
+            return true;
         }
     };
 
