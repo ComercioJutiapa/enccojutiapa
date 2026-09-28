@@ -4385,17 +4385,30 @@ function initFirebaseRealtimeConnection() {
                         }
                     } else if (cleanPath === 'attendanceRecords' || cleanPath.startsWith('attendanceRecords/')) {
                         if (nodeData && typeof nodeData === 'object') {
+                            if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
                             if (cleanPath === 'attendanceRecords') {
-                                STATE.attendanceRecords = nodeData;
+                                Object.keys(nodeData).forEach(k => {
+                                    if (!STATE.attendanceRecords[k]) STATE.attendanceRecords[k] = {};
+                                    if (typeof nodeData[k] === 'object') {
+                                        Object.assign(STATE.attendanceRecords[k], nodeData[k]);
+                                    } else {
+                                        STATE.attendanceRecords[k] = nodeData[k];
+                                    }
+                                });
                             } else {
                                 const sub = cleanPath.replace(/^attendanceRecords\/?/, '');
                                 if (sub) {
-                                    if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
-                                    STATE.attendanceRecords[sub] = nodeData;
+                                    if (!STATE.attendanceRecords[sub]) STATE.attendanceRecords[sub] = {};
+                                    if (typeof nodeData === 'object') {
+                                        Object.assign(STATE.attendanceRecords[sub], nodeData);
+                                    } else {
+                                        STATE.attendanceRecords[sub] = nodeData;
+                                    }
                                 }
                             }
-                            if (STATE.activeView === 'attendance' && typeof updateAttendanceLiveStats === 'function') {
-                                updateAttendanceLiveStats();
+                            if (STATE.activeView === 'attendance') {
+                                if (typeof updateAttendanceLiveStats === 'function') updateAttendanceLiveStats();
+                                if (typeof loadAttendanceList === 'function') loadAttendanceList();
                             }
                         }
                     } else if (cleanPath === 'attendanceAlerts' || cleanPath.startsWith('attendanceAlerts')) {
@@ -4515,8 +4528,9 @@ function initFirebaseRealtimeConnection() {
                                     STATE.attendanceRecords[subPath] = { ...(STATE.attendanceRecords[subPath] || {}), ...data.data };
                                 }
                             }
-                            if (STATE.activeView === 'attendance' && typeof updateAttendanceLiveStats === 'function') {
-                                updateAttendanceLiveStats();
+                            if (STATE.activeView === 'attendance') {
+                                if (typeof updateAttendanceLiveStats === 'function') updateAttendanceLiveStats();
+                                if (typeof loadAttendanceList === 'function') loadAttendanceList();
                             }
                         } else if (data.path === '/attendanceAlerts' || data.path.startsWith('/attendanceAlerts')) {
                             // 🚨 Entrega reactiva inmediata de alertas de inasistencia por SSE patch
@@ -8383,10 +8397,18 @@ function applyIncomingCloudState(incomingState, force = false) {
     }
     if (Array.isArray(incomingState.careers) && (incomingState.careers.length > 0 || !STATE.careers || STATE.careers.length === 0)) STATE.careers = incomingState.careers;
 
-    // 5. Asistencia y Disciplina (Fusión protegida anti-sobrescritura)
-    if (incomingState.attendanceRecords) {
+    // 5. Asistencia y Disciplina (Fusión protegida anti-sobrescritura multidimensional)
+    if (incomingState.attendanceRecords && typeof incomingState.attendanceRecords === 'object') {
         if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
-        STATE.attendanceRecords = { ...STATE.attendanceRecords, ...incomingState.attendanceRecords };
+        for (const [recKey, studentsMap] of Object.entries(incomingState.attendanceRecords)) {
+            if (!studentsMap || typeof studentsMap !== 'object') continue;
+            if (!STATE.attendanceRecords[recKey]) STATE.attendanceRecords[recKey] = {};
+            for (const [sId, daysMap] of Object.entries(studentsMap)) {
+                if (!daysMap || typeof daysMap !== 'object') continue;
+                if (!STATE.attendanceRecords[recKey][sId]) STATE.attendanceRecords[recKey][sId] = {};
+                Object.assign(STATE.attendanceRecords[recKey][sId], daysMap);
+            }
+        }
     }
     if (incomingState.attendanceAlerts) {
         const cloudAlerts = Array.isArray(incomingState.attendanceAlerts) 
@@ -22387,6 +22409,86 @@ function getAttendanceRecordKey(gradeCode, month, courseId) {
     return `${cycleKey}_M${month}_${gradeCode}`;
 }
 
+function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
+    if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+    const cycleKey = STATE.activeCycle || '2026';
+    const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
+    const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
+
+    const relatedKeys = new Set();
+    relatedKeys.add(recordKey);
+    relatedKeys.add(getAttendanceRecordKey(gradeCode, month, 'GENERAL'));
+
+    if (qGradeObj) {
+        if (qGradeObj.code) {
+            relatedKeys.add(getAttendanceRecordKey(qGradeObj.code, month, courseId));
+            relatedKeys.add(getAttendanceRecordKey(qGradeObj.code, month, 'GENERAL'));
+        }
+        if (qGradeObj.id) {
+            relatedKeys.add(getAttendanceRecordKey(qGradeObj.id, month, courseId));
+            relatedKeys.add(getAttendanceRecordKey(qGradeObj.id, month, 'GENERAL'));
+        }
+    }
+
+    const rawGradeStr = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
+    let targetNum = 0;
+    if (rawGradeStr.includes('6') || rawGradeStr.includes('SEXTO') || rawGradeStr.includes('6TO')) targetNum = 6;
+    else if (rawGradeStr.includes('5') || rawGradeStr.includes('QUINTO') || rawGradeStr.includes('5TO')) targetNum = 5;
+    else if (rawGradeStr.includes('4') || rawGradeStr.includes('CUARTO') || rawGradeStr.includes('4TO')) targetNum = 4;
+    const targetSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
+
+    Object.keys(STATE.attendanceRecords).forEach(k => {
+        if (!k.startsWith(`${cycleKey}_M${month}_`)) return;
+        const kUpper = k.toUpperCase();
+        let kNum = 0;
+        if (kUpper.includes('6') || kUpper.includes('SEXTO') || kUpper.includes('6TO')) kNum = 6;
+        else if (kUpper.includes('5') || kUpper.includes('QUINTO') || kUpper.includes('5TO')) kNum = 5;
+        else if (kUpper.includes('4') || kUpper.includes('CUARTO') || kUpper.includes('4TO')) kNum = 4;
+        const kSec = getCleanSectionLetter(k);
+
+        if (targetNum > 0 && kNum === targetNum && targetSec && kSec === targetSec) {
+            if (courseId === 'GENERAL') {
+                relatedKeys.add(k);
+            } else if (!k.includes('_pen-') || k.endsWith(`_${courseId}`)) {
+                relatedKeys.add(k);
+            }
+        }
+    });
+
+    const monthData = {};
+    relatedKeys.forEach(k => {
+        if (k === recordKey) return;
+        const src = STATE.attendanceRecords[k];
+        if (src && typeof src === 'object') {
+            for (const [sId, daysObj] of Object.entries(src)) {
+                if (!daysObj || typeof daysObj !== 'object') continue;
+                if (!monthData[sId]) monthData[sId] = {};
+                for (const [d, val] of Object.entries(daysObj)) {
+                    if (val && !monthData[sId][d]) {
+                        monthData[sId][d] = val;
+                    }
+                }
+            }
+        }
+    });
+
+    const primarySrc = STATE.attendanceRecords[recordKey];
+    if (primarySrc && typeof primarySrc === 'object') {
+        for (const [sId, daysObj] of Object.entries(primarySrc)) {
+            if (!daysObj || typeof daysObj !== 'object') continue;
+            if (!monthData[sId]) monthData[sId] = {};
+            for (const [d, val] of Object.entries(daysObj)) {
+                if (val) {
+                    monthData[sId][d] = val;
+                }
+            }
+        }
+    }
+
+    return monthData;
+}
+window.getConsolidatedAttendanceMonthData = getConsolidatedAttendanceMonthData;
+
 function getStudentPermissionForDay(studentId, year, month, day) {
     if (!studentId) return null;
     const y = parseInt(year) || 2026;
@@ -22647,25 +22749,86 @@ function loadAttendanceList() {
         return;
     }
 
-    // 3. RECUPERAR REGISTROS DE ASISTENCIA (CON RESOLUCIÓN INTELIGENTE DE ALIAS)
+    // 3. RECUPERAR REGISTROS DE ASISTENCIA (CON FUSIÓN MULTIDIMENSIONAL INTELIGENTE Y BLINDAJE ANTI-PÉRDIDA)
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+    const cycleKey = STATE.activeCycle || '2026';
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
-    let monthData = STATE.attendanceRecords[recordKey] || {};
+    
+    // Conjunto de claves vinculadas al mismo grado, sección y ciclo
+    const relatedKeys = new Set();
+    relatedKeys.add(recordKey);
 
-    if (!monthData || Object.keys(monthData).length === 0) {
-        const altKeys = [];
-        if (qGradeObj) {
-            if (qGradeObj.code && qGradeObj.code !== gradeCode) altKeys.push(getAttendanceRecordKey(qGradeObj.code, month, courseId));
-            if (qGradeObj.id && qGradeObj.id !== gradeCode) altKeys.push(getAttendanceRecordKey(qGradeObj.id, month, courseId));
+    // 1. Clave GENERAL del grado
+    relatedKeys.add(getAttendanceRecordKey(gradeCode, month, 'GENERAL'));
+
+    // 2. Claves de alias por objeto de grado (id, code, name)
+    if (qGradeObj) {
+        if (qGradeObj.code) {
+            relatedKeys.add(getAttendanceRecordKey(qGradeObj.code, month, courseId));
+            relatedKeys.add(getAttendanceRecordKey(qGradeObj.code, month, 'GENERAL'));
         }
-        if (courseId !== 'GENERAL') {
-            altKeys.push(getAttendanceRecordKey(gradeCode, month, 'GENERAL'));
-            if (qGradeObj && qGradeObj.code) altKeys.push(getAttendanceRecordKey(qGradeObj.code, month, 'GENERAL'));
+        if (qGradeObj.id) {
+            relatedKeys.add(getAttendanceRecordKey(qGradeObj.id, month, courseId));
+            relatedKeys.add(getAttendanceRecordKey(qGradeObj.id, month, 'GENERAL'));
         }
-        for (const ak of altKeys) {
-            if (STATE.attendanceRecords[ak] && Object.keys(STATE.attendanceRecords[ak]).length > 0) {
-                monthData = STATE.attendanceRecords[ak];
-                break;
+    }
+
+    // 3. Buscar claves que compartan el mismo grado/sección en STATE.attendanceRecords
+    // (Ej: 4to B vs 4to PC B vs 4to Perito Contador)
+    const rawGradeStr = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
+    let targetNum = 0;
+    if (rawGradeStr.includes('6') || rawGradeStr.includes('SEXTO') || rawGradeStr.includes('6TO')) targetNum = 6;
+    else if (rawGradeStr.includes('5') || rawGradeStr.includes('QUINTO') || rawGradeStr.includes('5TO')) targetNum = 5;
+    else if (rawGradeStr.includes('4') || rawGradeStr.includes('CUARTO') || rawGradeStr.includes('4TO')) targetNum = 4;
+    const targetSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
+
+    Object.keys(STATE.attendanceRecords).forEach(k => {
+        if (!k.startsWith(`${cycleKey}_M${month}_`)) return;
+        const kUpper = k.toUpperCase();
+        let kNum = 0;
+        if (kUpper.includes('6') || kUpper.includes('SEXTO') || kUpper.includes('6TO')) kNum = 6;
+        else if (kUpper.includes('5') || kUpper.includes('QUINTO') || kUpper.includes('5TO')) kNum = 5;
+        else if (kUpper.includes('4') || kUpper.includes('CUARTO') || kUpper.includes('4TO')) kNum = 4;
+        const kSec = getCleanSectionLetter(k);
+
+        if (targetNum > 0 && kNum === targetNum && targetSec && kSec === targetSec) {
+            if (courseId === 'GENERAL') {
+                relatedKeys.add(k);
+            } else if (!k.includes('_pen-') || k.endsWith(`_${courseId}`)) {
+                relatedKeys.add(k);
+            }
+        }
+    });
+
+    // Fusión inteligente bidireccional:
+    // a) Empezar consolidando registros de claves generales/alias (asistencias pasadas o tomadas en general)
+    const monthData = {};
+    relatedKeys.forEach(k => {
+        if (k === recordKey) return; // Se prioriza la clave activa al final
+        const src = STATE.attendanceRecords[k];
+        if (src && typeof src === 'object') {
+            for (const [sId, daysObj] of Object.entries(src)) {
+                if (!daysObj || typeof daysObj !== 'object') continue;
+                if (!monthData[sId]) monthData[sId] = {};
+                for (const [d, val] of Object.entries(daysObj)) {
+                    if (val && !monthData[sId][d]) {
+                        monthData[sId][d] = val;
+                    }
+                }
+            }
+        }
+    });
+
+    // b) Sobreponer la clave específica actual (para que sus marcas específicas tengan la máxima prioridad)
+    const primarySrc = STATE.attendanceRecords[recordKey];
+    if (primarySrc && typeof primarySrc === 'object') {
+        for (const [sId, daysObj] of Object.entries(primarySrc)) {
+            if (!daysObj || typeof daysObj !== 'object') continue;
+            if (!monthData[sId]) monthData[sId] = {};
+            for (const [d, val] of Object.entries(daysObj)) {
+                if (val) {
+                    monthData[sId][d] = val;
+                }
             }
         }
     }
@@ -23070,6 +23233,17 @@ function toggleAttendanceCell(studentId, day) {
         delete STATE.attendanceRecords[recordKey][studentId][day];
     }
 
+    // 🛡️ Sincronización bidireccional con el control General de Asistencia del Grado
+    if (courseId !== 'GENERAL' && genKey) {
+        if (!STATE.attendanceRecords[genKey]) STATE.attendanceRecords[genKey] = {};
+        if (!STATE.attendanceRecords[genKey][studentId]) STATE.attendanceRecords[genKey][studentId] = {};
+        if (next) {
+            STATE.attendanceRecords[genKey][studentId][day] = next;
+        } else {
+            delete STATE.attendanceRecords[genKey][studentId][day];
+        }
+    }
+
     // 🛡️ Control Técnico: Guardar indicador origin_role e is_locked_by_admin
     const metaKey = `${studentId}_${month}_${day}`;
     if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
@@ -23398,11 +23572,21 @@ function markAllPresentToday() {
 
         if (currentVal === 'J' || genVal === 'J' || hasPermit) {
             STATE.attendanceRecords[recordKey][s.id][todayDay] = 'J';
+            if (genRecordKey) {
+                if (!STATE.attendanceRecords[genRecordKey]) STATE.attendanceRecords[genRecordKey] = {};
+                if (!STATE.attendanceRecords[genRecordKey][s.id]) STATE.attendanceRecords[genRecordKey][s.id] = {};
+                STATE.attendanceRecords[genRecordKey][s.id][todayDay] = 'J';
+            }
             preservedJustifiedCount++;
             return;
         }
 
         STATE.attendanceRecords[recordKey][s.id][todayDay] = 'P';
+        if (genRecordKey) {
+            if (!STATE.attendanceRecords[genRecordKey]) STATE.attendanceRecords[genRecordKey] = {};
+            if (!STATE.attendanceRecords[genRecordKey][s.id]) STATE.attendanceRecords[genRecordKey][s.id] = {};
+            STATE.attendanceRecords[genRecordKey][s.id][todayDay] = 'P';
+        }
         markedCount++;
     });
 
@@ -23753,6 +23937,11 @@ function registerAttendanceByCode(rawCode) {
 
     if (curVal === 'J' || genVal === 'J' || hasPermit) {
         STATE.attendanceRecords[recordKey][student.id][targetDay] = 'J';
+        if (genRecKey) {
+            if (!STATE.attendanceRecords[genRecKey]) STATE.attendanceRecords[genRecKey] = {};
+            if (!STATE.attendanceRecords[genRecKey][student.id]) STATE.attendanceRecords[genRecKey][student.id] = {};
+            STATE.attendanceRecords[genRecKey][student.id][targetDay] = 'J';
+        }
         if (typeof saveAttendanceRecords === 'function') saveAttendanceRecords(false);
         playAttendanceBeep(true);
         if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([70, 40, 70]);
@@ -23762,6 +23951,11 @@ function registerAttendanceByCode(rawCode) {
         }
     } else {
         STATE.attendanceRecords[recordKey][student.id][targetDay] = 'P';
+        if (genRecKey) {
+            if (!STATE.attendanceRecords[genRecKey]) STATE.attendanceRecords[genRecKey] = {};
+            if (!STATE.attendanceRecords[genRecKey][student.id]) STATE.attendanceRecords[genRecKey][student.id] = {};
+            STATE.attendanceRecords[genRecKey][student.id][targetDay] = 'P';
+        }
         _attendanceTodayScannedCount++;
 
         // Guardado optimista instantáneo
@@ -23996,7 +24190,7 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
     }
 
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
-    const monthData = (STATE.attendanceRecords && STATE.attendanceRecords[recordKey]) || {};
+    const monthData = getConsolidatedAttendanceMonthData(gradeCode, month, courseId);
 
     let printWin = window.open('', '_blank');
     if (!printWin) {
@@ -24216,7 +24410,7 @@ function exportAttendanceOfficialExcel() {
     }
 
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
-    const monthData = (STATE.attendanceRecords && STATE.attendanceRecords[recordKey]) || {};
+    const monthData = getConsolidatedAttendanceMonthData(gradeCode, month, courseId);
 
     let csv = `\uFEFFNo,Codigo_Personal,Apellidos y Nombres,`;
     for (let d = 1; d <= daysInMonth; d++) csv += `Dia_${d},`;
