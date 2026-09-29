@@ -22415,74 +22415,158 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
     const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
 
-    const relatedKeys = new Set();
-    relatedKeys.add(recordKey);
-    relatedKeys.add(getAttendanceRecordKey(gradeCode, month, 'GENERAL'));
-
-    if (qGradeObj) {
-        if (qGradeObj.code) {
-            relatedKeys.add(getAttendanceRecordKey(qGradeObj.code, month, courseId));
-            relatedKeys.add(getAttendanceRecordKey(qGradeObj.code, month, 'GENERAL'));
-        }
-        if (qGradeObj.id) {
-            relatedKeys.add(getAttendanceRecordKey(qGradeObj.id, month, courseId));
-            relatedKeys.add(getAttendanceRecordKey(qGradeObj.id, month, 'GENERAL'));
-        }
-    }
-
-    const rawGradeStr = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
-    let targetNum = 0;
-    if (rawGradeStr.includes('6') || rawGradeStr.includes('SEXTO') || rawGradeStr.includes('6TO')) targetNum = 6;
-    else if (rawGradeStr.includes('5') || rawGradeStr.includes('QUINTO') || rawGradeStr.includes('5TO')) targetNum = 5;
-    else if (rawGradeStr.includes('4') || rawGradeStr.includes('CUARTO') || rawGradeStr.includes('4TO')) targetNum = 4;
-    const targetSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
-
-    Object.keys(STATE.attendanceRecords).forEach(k => {
-        if (!k.startsWith(`${cycleKey}_M${month}_`)) return;
-        const kUpper = k.toUpperCase();
-        let kNum = 0;
-        if (kUpper.includes('6') || kUpper.includes('SEXTO') || kUpper.includes('6TO')) kNum = 6;
-        else if (kUpper.includes('5') || kUpper.includes('QUINTO') || kUpper.includes('5TO')) kNum = 5;
-        else if (kUpper.includes('4') || kUpper.includes('CUARTO') || kUpper.includes('4TO')) kNum = 4;
-        const kSec = getCleanSectionLetter(k);
-
-        if (targetNum > 0 && kNum === targetNum && targetSec && kSec === targetSec) {
-            if (courseId === 'GENERAL') {
-                relatedKeys.add(k);
-            } else if (!k.includes('_pen-') || k.endsWith(`_${courseId}`)) {
-                relatedKeys.add(k);
-            }
-        }
-    });
-
     const monthData = {};
-    relatedKeys.forEach(k => {
-        if (k === recordKey) return;
-        const src = STATE.attendanceRecords[k];
-        if (src && typeof src === 'object') {
-            for (const [sId, daysObj] of Object.entries(src)) {
-                if (!daysObj || typeof daysObj !== 'object') continue;
-                if (!monthData[sId]) monthData[sId] = {};
-                for (const [d, val] of Object.entries(daysObj)) {
-                    if (val && !monthData[sId][d]) {
-                        monthData[sId][d] = val;
+    const authorityRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
+
+    if (courseId && courseId !== 'GENERAL') {
+        // =========================================================================
+        // REGLA 1: LA ASISTENCIA ES INDIVIDUAL PARA CADA DOCENTE / CÁTEDRA
+        // Solo se cargan registros correspondientes a esta cátedra específica.
+        // =========================================================================
+        const courseKeys = new Set();
+        courseKeys.add(recordKey);
+
+        if (qGradeObj) {
+            if (qGradeObj.code) courseKeys.add(getAttendanceRecordKey(qGradeObj.code, month, courseId));
+            if (qGradeObj.id) courseKeys.add(getAttendanceRecordKey(qGradeObj.id, month, courseId));
+        }
+
+        const rawGradeStr = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
+        let targetNum = 0;
+        if (rawGradeStr.includes('6') || rawGradeStr.includes('SEXTO') || rawGradeStr.includes('6TO')) targetNum = 6;
+        else if (rawGradeStr.includes('5') || rawGradeStr.includes('QUINTO') || rawGradeStr.includes('5TO')) targetNum = 5;
+        else if (rawGradeStr.includes('4') || rawGradeStr.includes('CUARTO') || rawGradeStr.includes('4TO')) targetNum = 4;
+        const targetSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
+
+        // Claves que pertenezcan estrictamente al MISMO curso (courseId)
+        Object.keys(STATE.attendanceRecords).forEach(k => {
+            if (!k.startsWith(`${cycleKey}_M${month}_`)) return;
+            if (!k.endsWith(`_${courseId}`)) return; // Cero mezcla entre diferentes cátedras
+
+            const kUpper = k.toUpperCase();
+            let kNum = 0;
+            if (kUpper.includes('6') || kUpper.includes('SEXTO') || kUpper.includes('6TO')) kNum = 6;
+            else if (kUpper.includes('5') || kUpper.includes('QUINTO') || kUpper.includes('5TO')) kNum = 5;
+            else if (kUpper.includes('4') || kUpper.includes('CUARTO') || kUpper.includes('4TO')) kNum = 4;
+            const kSec = getCleanSectionLetter(k);
+
+            if (targetNum > 0 && kNum === targetNum && targetSec && kSec === targetSec) {
+                courseKeys.add(k);
+            }
+        });
+
+        // Consolidar registros propios de la cátedra
+        courseKeys.forEach(k => {
+            const src = STATE.attendanceRecords[k];
+            if (src && typeof src === 'object') {
+                for (const [sId, daysObj] of Object.entries(src)) {
+                    if (!daysObj || typeof daysObj !== 'object') continue;
+                    if (!monthData[sId]) monthData[sId] = {};
+                    for (const [d, val] of Object.entries(daysObj)) {
+                        if (val) monthData[sId][d] = val;
                     }
                 }
             }
-        }
-    });
+        });
 
-    const primarySrc = STATE.attendanceRecords[recordKey];
-    if (primarySrc && typeof primarySrc === 'object') {
-        for (const [sId, daysObj] of Object.entries(primarySrc)) {
-            if (!daysObj || typeof daysObj !== 'object') continue;
-            if (!monthData[sId]) monthData[sId] = {};
-            for (const [d, val] of Object.entries(daysObj)) {
-                if (val) {
-                    monthData[sId][d] = val;
+        // =========================================================================
+        // REGLA 2: "SOLO SI DIRECCIÓN, SECRETARÍA O AUXILIATURA JUSTIFICA, ES PARA TODOS"
+        // Si hay una justificación oficial de una autoridad, aplica para todos los docentes (sobrescribe con 'J')
+        // =========================================================================
+        const genKey = getAttendanceRecordKey(gradeCode, month, 'GENERAL');
+        const genSrc = (STATE.attendanceRecords && STATE.attendanceRecords[genKey]) || {};
+        const year = parseInt(cycleKey) || 2026;
+
+        (STATE.students || []).forEach(s => {
+            const sId = s.id;
+            for (let day = 1; day <= 31; day++) {
+                // a) ¿Permiso oficial registrado en studentPermissions?
+                const perm = typeof getStudentPermissionForDay === 'function' ? getStudentPermissionForDay(sId, year, month, day) : null;
+                const permOrigin = perm ? (perm.origin_role || perm.originRole || '').toLowerCase() : '';
+                const permIsAdmin = perm && (perm.is_locked_by_admin || authorityRoles.includes(permOrigin) || permOrigin !== 'docente');
+
+                // b) ¿Justificación en attendancePermissionsMeta autorizada por autoridad?
+                const metaKey = `${sId}_${month}_${day}`;
+                const meta = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]) || null;
+                const metaOrigin = meta ? (meta.origin_role || '').toLowerCase() : '';
+                const metaIsAdmin = meta && (meta.is_locked_by_admin === true || authorityRoles.includes(metaOrigin));
+
+                // c) ¿Justificación 'J' en GENERAL registrada por una autoridad?
+                const genVal = genSrc[sId] ? genSrc[sId][day] : null;
+                const genIsAdminJ = (genVal === 'J') && (permIsAdmin || metaIsAdmin || (metaOrigin !== 'docente' && (!meta || authorityRoles.includes(metaOrigin))));
+
+                if (permIsAdmin || metaIsAdmin || genIsAdminJ) {
+                    if (!monthData[sId]) monthData[sId] = {};
+                    monthData[sId][day] = 'J'; // Oficial para todas las materias
                 }
             }
+        });
+
+    } else {
+        // =========================================================================
+        // VISTA GENERAL (Control Institucional / Dirección / Auxiliatura / Secretaría)
+        // =========================================================================
+        const genKeys = new Set();
+        genKeys.add(recordKey);
+
+        if (qGradeObj) {
+            if (qGradeObj.code) genKeys.add(getAttendanceRecordKey(qGradeObj.code, month, 'GENERAL'));
+            if (qGradeObj.id) genKeys.add(getAttendanceRecordKey(qGradeObj.id, month, 'GENERAL'));
         }
+
+        const rawGradeStr = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
+        let targetNum = 0;
+        if (rawGradeStr.includes('6') || rawGradeStr.includes('SEXTO') || rawGradeStr.includes('6TO')) targetNum = 6;
+        else if (rawGradeStr.includes('5') || rawGradeStr.includes('QUINTO') || rawGradeStr.includes('5TO')) targetNum = 5;
+        else if (rawGradeStr.includes('4') || rawGradeStr.includes('CUARTO') || rawGradeStr.includes('4TO')) targetNum = 4;
+        const targetSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
+
+        Object.keys(STATE.attendanceRecords).forEach(k => {
+            if (!k.startsWith(`${cycleKey}_M${month}_`)) return;
+            if (k.includes('_pen-')) return; // No mezclar cátedras específicas en vista general
+
+            const kUpper = k.toUpperCase();
+            let kNum = 0;
+            if (kUpper.includes('6') || kUpper.includes('SEXTO') || kUpper.includes('6TO')) kNum = 6;
+            else if (kUpper.includes('5') || kUpper.includes('QUINTO') || kUpper.includes('5TO')) kNum = 5;
+            else if (kUpper.includes('4') || kUpper.includes('CUARTO') || kUpper.includes('4TO')) kNum = 4;
+            const kSec = getCleanSectionLetter(k);
+
+            if (targetNum > 0 && kNum === targetNum && targetSec && kSec === targetSec) {
+                genKeys.add(k);
+            }
+        });
+
+        genKeys.forEach(k => {
+            const src = STATE.attendanceRecords[k];
+            if (src && typeof src === 'object') {
+                for (const [sId, daysObj] of Object.entries(src)) {
+                    if (!daysObj || typeof daysObj !== 'object') continue;
+                    if (!monthData[sId]) monthData[sId] = {};
+                    for (const [d, val] of Object.entries(daysObj)) {
+                        if (val && !monthData[sId][d]) {
+                            monthData[sId][d] = val;
+                        }
+                    }
+                }
+            }
+        });
+
+        // Asegurar que las justificaciones oficiales aparezcan como 'J'
+        const year = parseInt(cycleKey) || 2026;
+        (STATE.students || []).forEach(s => {
+            const sId = s.id;
+            for (let day = 1; day <= 31; day++) {
+                const perm = typeof getStudentPermissionForDay === 'function' ? getStudentPermissionForDay(sId, year, month, day) : null;
+                const metaKey = `${sId}_${month}_${day}`;
+                const meta = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]) || null;
+                const metaOrigin = meta ? (meta.origin_role || '').toLowerCase() : '';
+                if (perm || (meta && (meta.is_locked_by_admin || authorityRoles.includes(metaOrigin)))) {
+                    if (!monthData[sId]) monthData[sId] = {};
+                    monthData[sId][day] = 'J';
+                }
+            }
+        });
     }
 
     return monthData;
@@ -22749,89 +22833,11 @@ function loadAttendanceList() {
         return;
     }
 
-    // 3. RECUPERAR REGISTROS DE ASISTENCIA (CON FUSIÓN MULTIDIMENSIONAL INTELIGENTE Y BLINDAJE ANTI-PÉRDIDA)
+    // 3. RECUPERAR REGISTROS DE ASISTENCIA (INDIVIDUAL POR DOCENTE, JUSTIFICACIÓN OFICIAL UNIVERSAL)
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
     const cycleKey = STATE.activeCycle || '2026';
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
-    
-    // Conjunto de claves vinculadas al mismo grado, sección y ciclo
-    const relatedKeys = new Set();
-    relatedKeys.add(recordKey);
-
-    // 1. Clave GENERAL del grado
-    relatedKeys.add(getAttendanceRecordKey(gradeCode, month, 'GENERAL'));
-
-    // 2. Claves de alias por objeto de grado (id, code, name)
-    if (qGradeObj) {
-        if (qGradeObj.code) {
-            relatedKeys.add(getAttendanceRecordKey(qGradeObj.code, month, courseId));
-            relatedKeys.add(getAttendanceRecordKey(qGradeObj.code, month, 'GENERAL'));
-        }
-        if (qGradeObj.id) {
-            relatedKeys.add(getAttendanceRecordKey(qGradeObj.id, month, courseId));
-            relatedKeys.add(getAttendanceRecordKey(qGradeObj.id, month, 'GENERAL'));
-        }
-    }
-
-    // 3. Buscar claves que compartan el mismo grado/sección en STATE.attendanceRecords
-    // (Ej: 4to B vs 4to PC B vs 4to Perito Contador)
-    const rawGradeStr = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
-    let targetNum = 0;
-    if (rawGradeStr.includes('6') || rawGradeStr.includes('SEXTO') || rawGradeStr.includes('6TO')) targetNum = 6;
-    else if (rawGradeStr.includes('5') || rawGradeStr.includes('QUINTO') || rawGradeStr.includes('5TO')) targetNum = 5;
-    else if (rawGradeStr.includes('4') || rawGradeStr.includes('CUARTO') || rawGradeStr.includes('4TO')) targetNum = 4;
-    const targetSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : gradeCode);
-
-    Object.keys(STATE.attendanceRecords).forEach(k => {
-        if (!k.startsWith(`${cycleKey}_M${month}_`)) return;
-        const kUpper = k.toUpperCase();
-        let kNum = 0;
-        if (kUpper.includes('6') || kUpper.includes('SEXTO') || kUpper.includes('6TO')) kNum = 6;
-        else if (kUpper.includes('5') || kUpper.includes('QUINTO') || kUpper.includes('5TO')) kNum = 5;
-        else if (kUpper.includes('4') || kUpper.includes('CUARTO') || kUpper.includes('4TO')) kNum = 4;
-        const kSec = getCleanSectionLetter(k);
-
-        if (targetNum > 0 && kNum === targetNum && targetSec && kSec === targetSec) {
-            if (courseId === 'GENERAL') {
-                relatedKeys.add(k);
-            } else if (!k.includes('_pen-') || k.endsWith(`_${courseId}`)) {
-                relatedKeys.add(k);
-            }
-        }
-    });
-
-    // Fusión inteligente bidireccional:
-    // a) Empezar consolidando registros de claves generales/alias (asistencias pasadas o tomadas en general)
-    const monthData = {};
-    relatedKeys.forEach(k => {
-        if (k === recordKey) return; // Se prioriza la clave activa al final
-        const src = STATE.attendanceRecords[k];
-        if (src && typeof src === 'object') {
-            for (const [sId, daysObj] of Object.entries(src)) {
-                if (!daysObj || typeof daysObj !== 'object') continue;
-                if (!monthData[sId]) monthData[sId] = {};
-                for (const [d, val] of Object.entries(daysObj)) {
-                    if (val && !monthData[sId][d]) {
-                        monthData[sId][d] = val;
-                    }
-                }
-            }
-        }
-    });
-
-    // b) Sobreponer la clave específica actual (para que sus marcas específicas tengan la máxima prioridad)
-    const primarySrc = STATE.attendanceRecords[recordKey];
-    if (primarySrc && typeof primarySrc === 'object') {
-        for (const [sId, daysObj] of Object.entries(primarySrc)) {
-            if (!daysObj || typeof daysObj !== 'object') continue;
-            if (!monthData[sId]) monthData[sId] = {};
-            for (const [d, val] of Object.entries(daysObj)) {
-                if (val) {
-                    monthData[sId][d] = val;
-                }
-            }
-        }
-    }
+    const monthData = getConsolidatedAttendanceMonthData(gradeCode, month, courseId);
 
     let tbodyHtml = '';
     let dayPresentTotals = new Array(daysInMonth + 1).fill(0);
@@ -23134,7 +23140,7 @@ function toggleAttendanceCell(studentId, day) {
     const todayDay = now.getDate();
 
     const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
-    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
+    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
     const isDocente = (currentRole === 'docente');
 
     if (isDocente && !isAuditRole) {
@@ -23233,23 +23239,15 @@ function toggleAttendanceCell(studentId, day) {
         delete STATE.attendanceRecords[recordKey][studentId][day];
     }
 
-    // 🛡️ Sincronización bidireccional con el control General de Asistencia del Grado
-    if (courseId !== 'GENERAL' && genKey) {
-        if (!STATE.attendanceRecords[genKey]) STATE.attendanceRecords[genKey] = {};
-        if (!STATE.attendanceRecords[genKey][studentId]) STATE.attendanceRecords[genKey][studentId] = {};
-        if (next) {
-            STATE.attendanceRecords[genKey][studentId][day] = next;
-        } else {
-            delete STATE.attendanceRecords[genKey][studentId][day];
-        }
-    }
-
-    // 🛡️ Control Técnico: Guardar indicador origin_role e is_locked_by_admin
+    // 🛡️ Control Técnico de Justificaciones y Permisos
     const metaKey = `${studentId}_${month}_${day}`;
     if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
 
     if (next === 'J') {
         if (isAuditRole) {
+            // =========================================================================
+            // REGLA: "SOLO SI DIRECCIÓN, SECRETARÍA O AUXILIATURA JUSTIFICA, ES PARA TODOS"
+            // =========================================================================
             STATE.attendancePermissionsMeta[metaKey] = {
                 reasonCategory: 'Permiso / Justificación Oficial',
                 reasonDetail: 'Justificación autorizada por ' + currentRole.toUpperCase(),
@@ -23258,7 +23256,24 @@ function toggleAttendanceCell(studentId, day) {
                 is_locked_by_admin: true,
                 timestamp: Date.now()
             };
+
+            // 1. Guardar en GENERAL para control central
+            if (genKey) {
+                if (!STATE.attendanceRecords[genKey]) STATE.attendanceRecords[genKey] = {};
+                if (!STATE.attendanceRecords[genKey][studentId]) STATE.attendanceRecords[genKey][studentId] = {};
+                STATE.attendanceRecords[genKey][studentId][day] = 'J';
+            }
+
+            // 2. Propagar 'J' a todas las cátedras del grado para este alumno
+            const cycleKey = STATE.activeCycle || '2026';
+            Object.keys(STATE.attendanceRecords).forEach(k => {
+                if (k.startsWith(`${cycleKey}_M${month}_${gradeCode}_`)) {
+                    if (!STATE.attendanceRecords[k][studentId]) STATE.attendanceRecords[k][studentId] = {};
+                    STATE.attendanceRecords[k][studentId][day] = 'J';
+                }
+            });
         } else {
+            // Justificación en aula por el docente: INDIVIDUAL de su propia cátedra
             STATE.attendancePermissionsMeta[metaKey] = {
                 reasonCategory: 'Justificación en Aula por Docente',
                 reasonDetail: 'Registrado directamente por el catedrático titular',
@@ -23267,14 +23282,19 @@ function toggleAttendanceCell(studentId, day) {
                 is_locked_by_admin: false,
                 timestamp: Date.now()
             };
+            // No se propaga a GENERAL ni a otras materias
         }
     } else if (cur === 'J') {
+        // Se revirtió la 'J'
         if (STATE.attendancePermissionsMeta[metaKey]) {
             const metaOrigin = (STATE.attendancePermissionsMeta[metaKey].origin_role || '').toLowerCase();
             const metaLocked = STATE.attendancePermissionsMeta[metaKey].is_locked_by_admin;
             if (isAuditRole || metaOrigin === 'docente' || metaLocked === false) {
                 delete STATE.attendancePermissionsMeta[metaKey];
             }
+        }
+        if (isAuditRole && genKey && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][studentId]) {
+            delete STATE.attendanceRecords[genKey][studentId][day];
         }
     }
 
@@ -23516,7 +23536,7 @@ function markAllPresentToday() {
     const courseId = courseSelect ? courseSelect.value : 'GENERAL';
 
     const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
-    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
+    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
     const isDocente = (currentRole === 'docente');
 
     if (isDocente && !isAuditRole) {
@@ -23572,21 +23592,11 @@ function markAllPresentToday() {
 
         if (currentVal === 'J' || genVal === 'J' || hasPermit) {
             STATE.attendanceRecords[recordKey][s.id][todayDay] = 'J';
-            if (genRecordKey) {
-                if (!STATE.attendanceRecords[genRecordKey]) STATE.attendanceRecords[genRecordKey] = {};
-                if (!STATE.attendanceRecords[genRecordKey][s.id]) STATE.attendanceRecords[genRecordKey][s.id] = {};
-                STATE.attendanceRecords[genRecordKey][s.id][todayDay] = 'J';
-            }
             preservedJustifiedCount++;
             return;
         }
 
         STATE.attendanceRecords[recordKey][s.id][todayDay] = 'P';
-        if (genRecordKey) {
-            if (!STATE.attendanceRecords[genRecordKey]) STATE.attendanceRecords[genRecordKey] = {};
-            if (!STATE.attendanceRecords[genRecordKey][s.id]) STATE.attendanceRecords[genRecordKey][s.id] = {};
-            STATE.attendanceRecords[genRecordKey][s.id][todayDay] = 'P';
-        }
         markedCount++;
     });
 
@@ -23937,11 +23947,6 @@ function registerAttendanceByCode(rawCode) {
 
     if (curVal === 'J' || genVal === 'J' || hasPermit) {
         STATE.attendanceRecords[recordKey][student.id][targetDay] = 'J';
-        if (genRecKey) {
-            if (!STATE.attendanceRecords[genRecKey]) STATE.attendanceRecords[genRecKey] = {};
-            if (!STATE.attendanceRecords[genRecKey][student.id]) STATE.attendanceRecords[genRecKey][student.id] = {};
-            STATE.attendanceRecords[genRecKey][student.id][targetDay] = 'J';
-        }
         if (typeof saveAttendanceRecords === 'function') saveAttendanceRecords(false);
         playAttendanceBeep(true);
         if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([70, 40, 70]);
@@ -23951,11 +23956,6 @@ function registerAttendanceByCode(rawCode) {
         }
     } else {
         STATE.attendanceRecords[recordKey][student.id][targetDay] = 'P';
-        if (genRecKey) {
-            if (!STATE.attendanceRecords[genRecKey]) STATE.attendanceRecords[genRecKey] = {};
-            if (!STATE.attendanceRecords[genRecKey][student.id]) STATE.attendanceRecords[genRecKey][student.id] = {};
-            STATE.attendanceRecords[genRecKey][student.id][targetDay] = 'P';
-        }
         _attendanceTodayScannedCount++;
 
         // Guardado optimista instantáneo
