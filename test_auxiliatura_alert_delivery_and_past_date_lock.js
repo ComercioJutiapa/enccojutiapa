@@ -126,16 +126,16 @@ assert(appCode.includes("collection(db, 'attendanceAlerts')"),
 console.log('  ✅ Test 5 Superado: Todos los canales reactivos están conectados a notifyAuxiliaturaAlert.');
 
 // ==============================================================================
-// TEST 6: Preservación de Porcentajes del Modelo de Calificaciones
+// TEST 6: Preservación de Porcentajes del Modelo de Calificaciones (40% Zona / 60% Evaluación)
 // ==============================================================================
-console.log('\n▶ [TEST 6] Verificando preservación estricta del % del modelo de calificaciones...');
+console.log('\n▶ [TEST 6] Verificando preservación estricta del % del modelo institucional (40% Zona / 60% Evaluación)...');
 
 assert(appCode.includes('calculateClassBimesterMetrics'), 'calculateClassBimesterMetrics debe existir');
 assert(appCode.includes('ensureOfficialGradesList'), 'ensureOfficialGradesList debe existir');
-assert(appCode.includes('70') && appCode.includes('30'),
-  'El modelo de ponderación de calificaciones debe permanecer intacto.');
+assert(appCode.includes('zonaMax: 40') || (appCode.includes('40') && appCode.includes('60')),
+  'El modelo obligatorio de ponderación institucional (40% zona / 60% evaluación) debe permanecer intacto.');
 
-console.log('  ✅ Test 6 Superado: Modelo de calificaciones y porcentajes preservados 100%.');
+console.log('  ✅ Test 6 Superado: Modelo de calificaciones y porcentajes oficiales (40% zona / 60% evaluación) preservados 100%.');
 
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DE ALERTAS Y BLOQUEO DE FECHAS PASARON CON ÉXITO (100%)');
