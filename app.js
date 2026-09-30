@@ -20412,6 +20412,15 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
     const gradeRecords = [];
     const localStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
 
+    if (!window._rtdbStudentIndexMap || window._rtdbStudentIndexMap.size === 0) {
+        window._rtdbStudentIndexMap = new Map();
+        localStudents.forEach((st, idx) => {
+            if (st && st.id) window._rtdbStudentIndexMap.set(st.id, idx);
+            if (st && st.personalCode) window._rtdbStudentIndexMap.set(st.personalCode, idx);
+            if (st && st.carne) window._rtdbStudentIndexMap.set(st.carne, idx);
+        });
+    }
+
     for (const item of courseStudents) {
         if (!item) continue;
         let student = item;
@@ -27945,8 +27954,8 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         }
     }
 
-    const activePensum = fallbackPensum || (STATE.pensum || [])[0];
-    const activeUnit = fallbackUnit || parseInt(document.getElementById('gradebookBimestreSelect')?.value) || 1;
+    let activePensum = fallbackPensum || (STATE.pensum || [])[0];
+    let activeUnit = fallbackUnit || parseInt(document.getElementById('gradebookBimestreSelect')?.value) || 1;
     const isDocente = (STATE.currentRole === 'docente');
     const currentUser = STATE.currentUser || (STATE.users || []).find(u => u.role === 'docente');
 
@@ -27959,6 +27968,81 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         const fNorm = cleanStr(fileName);
         const pFound = (STATE.pensum || []).find(p => p && p.subject && fNorm.includes(cleanStr(p.subject)));
         if (pFound) detectedSubject = pFound.subject;
+    }
+
+    // 🚀 AUTO-ENRUTAMIENTO INTELIGENTE: Si el archivo define su propia materia, grado y/o sección,
+    // sincronizar y seleccionar automáticamente la cátedra y bimestre asignados correctos del docente
+    // para que la importación funcione inmediatamente en el primer intento sin obligar a cambiar selectores a mano.
+    if (detectedSubject || detectedGrade || detectedSection) {
+        const cleanDetSubj = cleanStr(detectedSubject || '');
+        const gNumFile = (detectedGrade || fileName || '').toString().match(/(\d+)/)?.[1] || '';
+        const secFile = cleanStr(detectedSection || fileName || '').replace(/^seccion/, '').match(/([a-d])/i)?.[1]?.toLowerCase() || '';
+
+        const teacherPensumList = (STATE.pensum || []).filter(p => {
+            if (!p) return false;
+            if (isDocente && currentUser && typeof isCourseAssignedToTeacher === 'function') {
+                return isCourseAssignedToTeacher(p, currentUser);
+            }
+            return true;
+        });
+
+        const candidates = teacherPensumList.filter(p => {
+            if (gNumFile) {
+                const gNumP = (p.grade || p.gradeCode || '').toString().match(/(\d+)/)?.[1] || '';
+                if (gNumP && gNumP !== gNumFile) return false;
+            }
+            if (secFile) {
+                const secP = cleanStr(p.section || p.gradeCode || '').replace(/^seccion/, '').match(/([a-d])/i)?.[1]?.toLowerCase() || '';
+                if (secP && secP !== secFile) return false;
+            }
+            return true;
+        });
+
+        let autoPensum = null;
+        if (cleanDetSubj) {
+            autoPensum = candidates.find(p => {
+                const cleanP = cleanStr(p.subject || '');
+                return cleanP === cleanDetSubj || cleanP.includes(cleanDetSubj) || cleanDetSubj.includes(cleanP);
+            });
+        }
+        if (!autoPensum && fileName) {
+            const cleanFn = cleanStr(fileName);
+            autoPensum = candidates.find(p => cleanFn.includes(cleanStr(p.subject || '')));
+        }
+        if (!autoPensum && candidates.length === 1) {
+            autoPensum = candidates[0];
+        }
+
+        if (autoPensum) {
+            activePensum = autoPensum;
+            const courseSelect = document.getElementById('teacherCourseSelect');
+            if (courseSelect && courseSelect.value !== autoPensum.id) {
+                courseSelect.value = autoPensum.id;
+            }
+            try {
+                sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', autoPensum.id);
+                localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', autoPensum.id);
+                if (autoPensum.grade) {
+                    sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_GRADE', autoPensum.grade);
+                    localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_GRADE', autoPensum.grade);
+                    STATE.selectedGradebookGrade = autoPensum.grade;
+                }
+                STATE.selectedGradebookCourseId = autoPensum.id;
+            } catch(e) {}
+        }
+    }
+
+    // Auto-sincronizar Bimestre detectado automáticamente
+    if (hasExplicitUnit && detectedUnit >= 1 && detectedUnit <= 4) {
+        activeUnit = detectedUnit;
+        const bSelect = document.getElementById('gradebookBimestreSelect');
+        if (bSelect && parseInt(bSelect.value) !== detectedUnit) {
+            bSelect.value = String(detectedUnit);
+        }
+        try {
+            sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', String(detectedUnit));
+            localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', String(detectedUnit));
+        } catch(e) {}
     }
 
     if (detectedSubject && activePensum && activePensum.subject) {
@@ -28244,10 +28328,15 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     }
 
     // 7. Filtrado estricto de alumnos de la sección para evitar colisiones entre secciones
+    const pGradeNum = (targetPensum.grade || targetPensum.gradeCode || '').match(/(\d+)/)?.[1] || '';
+    const pSecLet = (targetPensum.gradeCode || targetPensum.section || '').replace(/secci[oó]n/i, '').match(/([A-D])/i)?.[1]?.toUpperCase() || '';
+
     const courseStudents = (STATE.students || []).filter(s => {
         if (!s) return false;
-        const gMatch = (s.grade === targetPensum.grade || (s.gradeLabel && s.gradeLabel.includes(targetPensum.grade.split(' ')[0])));
-        const sMatch = (s.section === targetPensum.section || (s.section && s.section.includes(targetPensum.section.replace('Sección ', ''))));
+        const sGradeNum = (s.grade || s.gradeLabel || s.gradeCode || '').match(/(\d+)/)?.[1] || '';
+        const sSecLet = (s.gradeCode || s.section || '').replace(/secci[oó]n/i, '').match(/([A-D])/i)?.[1]?.toUpperCase() || '';
+        const gMatch = (pGradeNum && sGradeNum) ? (pGradeNum === sGradeNum) : (s.grade === targetPensum.grade || (s.gradeLabel && s.gradeLabel.includes(targetPensum.grade.split(' ')[0])));
+        const sMatch = (pSecLet && sSecLet) ? (pSecLet === sSecLet) : (s.section === targetPensum.section || (s.section && s.section.includes(targetPensum.section.replace('Sección ', ''))));
         return gMatch && sMatch;
     });
 
@@ -28261,16 +28350,16 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     const areNamesMatching = (rowName, studentObj) => {
         if (!rowName || !studentObj) return false;
         const fullTarget = `${studentObj.lastName || ''} ${studentObj.firstName || ''} ${studentObj.name || ''}`;
-        const tokensRow = normalizeTokens(rowName);
-        const tokensTarget = normalizeTokens(fullTarget);
+        const tokensRow = Array.from(new Set(normalizeTokens(rowName)));
+        const tokensTarget = Array.from(new Set(normalizeTokens(fullTarget)));
         if (tokensRow.length === 0 || tokensTarget.length === 0) return false;
 
         const common = tokensRow.filter(t => tokensTarget.includes(t));
         const minTokens = Math.min(tokensRow.length, tokensTarget.length);
         if (minTokens <= 2) {
-            return common.length === minTokens; // Exigir coincidencia exacta si son 1 o 2 tokens
+            return common.length === minTokens;
         }
-        return common.length >= 2 && (common.length / minTokens >= 0.65);
+        return common.length >= 2 && (common.length / minTokens >= 0.60);
     };
 
     let updatedCount = 0;
@@ -28393,7 +28482,16 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         return;
     }
 
-    // 8. Actualización optimista de interfaz a 0ms
+    // 8. Actualización optimista de interfaz a 0ms sincronizando dropdowns activos
+    const courseSelect = document.getElementById('teacherCourseSelect');
+    if (courseSelect && targetPensum && targetPensum.id) {
+        courseSelect.value = targetPensum.id;
+    }
+    const bSelect = document.getElementById('gradebookBimestreSelect');
+    if (bSelect && effectiveUnit) {
+        bSelect.value = String(effectiveUnit);
+    }
+
     saveStateToLocalStorage();
     if (typeof loadTeacherGradebook === 'function') {
         loadTeacherGradebook();
@@ -28412,19 +28510,19 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     studentsToSync.forEach(st => window._locallyDirtyStudentIds.add(st.id));
 
     if (typeof saveBulkStudentGradesAtomic === 'function') {
-        saveBulkStudentGradesAtomic(studentsToSync, effectiveSubject, effectiveUnit).catch(err => {
+        try {
+            await saveBulkStudentGradesAtomic(studentsToSync, effectiveSubject, effectiveUnit);
+        } catch (err) {
             console.warn("Aviso en guardado atómico por lotes tras importación:", err);
-        });
+        }
     } else if (typeof saveStudentSubjectGradeAtomic === 'function') {
-        (async () => {
-            for (const stu of studentsToSync) {
-                if (stu && stu.grades && stu.grades[effectiveSubject]) {
-                    try {
-                        await saveStudentSubjectGradeAtomic(stu, effectiveSubject, effectiveUnit);
-                    } catch(e) {}
-                }
+        for (const stu of studentsToSync) {
+            if (stu && stu.grades && stu.grades[effectiveSubject]) {
+                try {
+                    await saveStudentSubjectGradeAtomic(stu, effectiveSubject, effectiveUnit);
+                } catch(e) {}
             }
-        })();
+        }
     }
 }
 
