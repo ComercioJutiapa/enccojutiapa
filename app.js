@@ -22149,9 +22149,10 @@ function populateAttendanceTeacherFilter() {
     const directorBanner = document.getElementById('attendanceDirectorBanner');
     if (!teacherSelect || !filterGroup) return;
 
-    const isDirectorOrAdmin = (STATE.currentRole === 'director' || STATE.currentRole === 'admin' || STATE.currentRole === 'secretaria');
+    const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
+    const isAuthorityRole = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(currentRole);
 
-    if (!isDirectorOrAdmin) {
+    if (!isAuthorityRole) {
         filterGroup.style.display = 'none';
         if (directorBanner) directorBanner.style.display = 'none';
         return;
@@ -22161,7 +22162,7 @@ function populateAttendanceTeacherFilter() {
     if (directorBanner) directorBanner.style.display = 'flex';
 
     const currentVal = teacherSelect.value;
-    const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || u.role === 'director' || u.role === 'secretaria');
+    const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || u.role === 'director' || u.role === 'secretaria' || u.role === 'profesor_auxiliar' || u.role === 'auxiliar');
 
     let html = `<option value="">⭐ General por Grado (Todos los Maestros)</option>`;
     if (teachers.length > 0) {
@@ -22195,8 +22196,10 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
     if (!gradeSelect) return;
 
     const currentUser = STATE.currentUser || STATE.users[0];
-    const isDocente = (STATE.currentRole === 'docente');
-    const isDirectorOrAdmin = (STATE.currentRole === 'director' || STATE.currentRole === 'admin' || STATE.currentRole === 'secretaria');
+    const currentRole = (STATE.currentRole || (currentUser && currentUser.role) || '').toLowerCase();
+    const isAuthorityRole = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(currentRole);
+    const isDocente = (currentRole === 'docente');
+    const isDirectorOrAdmin = isAuthorityRole;
     const currentSelectedGrade = gradeSelect.value;
 
     const activeTeacherId = filterTeacherId !== null ? filterTeacherId : (teacherSelect ? teacherSelect.value : '');
@@ -22204,7 +22207,7 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
 
     let gradeOptionsHtml = '';
 
-    if (isDocente && currentUser && !isDirectorOrAdmin) {
+    if (isDocente && currentUser && !isAuthorityRole) {
         const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
 
         const uniqueGrades = new Map();
@@ -22247,10 +22250,23 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
                 gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
             });
             gradeOptionsHtml += `</optgroup>`;
+
+            gradeOptionsHtml += `<optgroup label="🏫 Todos los Grados y Secciones (Plantel Completo)">`;
+            const sortedAll = sortGrades(STATE.gradesList || []);
+            sortedAll.forEach(g => {
+                gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
+            });
+            gradeOptionsHtml += `</optgroup>`;
         } else {
             gradeOptionsHtml = `<option value="">-- No tiene grados ni clases asignadas --</option>`;
+            gradeOptionsHtml += `<optgroup label="🏫 Todos los Grados y Secciones (Plantel Completo)">`;
+            const sortedAll = sortGrades(STATE.gradesList || []);
+            sortedAll.forEach(g => {
+                gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
+            });
+            gradeOptionsHtml += `</optgroup>`;
         }
-    } else if (isDirectorOrAdmin && activeTeacherObj) {
+    } else if (isAuthorityRole && activeTeacherObj) {
         // SUPERVISIÓN POR MAESTRO ESPECÍFICO
         const teacherClasses = (STATE.pensum || []).filter(p => 
             p.teacherId === activeTeacherObj.id || 
@@ -22349,8 +22365,10 @@ function updateAttendanceCoursesList() {
 
     const selGrade = gradeSelect.value;
     const currentUser = STATE.currentUser || STATE.users[0];
-    const isDocente = (STATE.currentRole === 'docente');
-    const isDirectorOrAdmin = (STATE.currentRole === 'director' || STATE.currentRole === 'admin' || STATE.currentRole === 'secretaria');
+    const currentRole = (STATE.currentRole || (currentUser && currentUser.role) || '').toLowerCase();
+    const isAuthorityRole = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(currentRole);
+    const isDocente = (currentRole === 'docente');
+    const isDirectorOrAdmin = isAuthorityRole;
     const activeTeacherId = teacherSelect ? teacherSelect.value : '';
     const activeTeacherObj = (STATE.users || []).find(u => u.id === activeTeacherId);
 
@@ -22363,7 +22381,7 @@ function updateAttendanceCoursesList() {
     const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : selGrade);
 
     let coursesHtml = '';
-    if (!isDocente || isDirectorOrAdmin) {
+    if (isAuthorityRole) {
         coursesHtml += `<option value="GENERAL">📑 Control General de Asistencia (Jornada Diaria)</option>`;
     }
     
@@ -22380,30 +22398,30 @@ function updateAttendanceCoursesList() {
         return true;
     });
 
-    if (isDocente && currentUser && !isDirectorOrAdmin) {
+    if (isDocente && currentUser && !isAuthorityRole) {
         matchingPensum = matchingPensum.filter(p => isCourseAssignedToTeacher(p, currentUser));
-    } else if (isDirectorOrAdmin && activeTeacherObj) {
+    } else if (isAuthorityRole && activeTeacherObj) {
         matchingPensum = matchingPensum.filter(p => isCourseAssignedToTeacher(p, activeTeacherObj));
     }
 
     if (matchingPensum.length > 0) {
-        const groupTitle = (isDirectorOrAdmin && activeTeacherObj) 
+        const groupTitle = (isAuthorityRole && activeTeacherObj) 
             ? `📚 Cátedras de ${activeTeacherObj.name}`
-            : (isDirectorOrAdmin ? '📚 Todas las Clases Asignadas a este Grado' : '📚 Mis Clases Asignadas');
+            : (isAuthorityRole ? '📚 Todas las Clases Asignadas a este Grado' : '📚 Mis Clases Asignadas');
 
         coursesHtml += `<optgroup label="${groupTitle}">`;
         matchingPensum.forEach(p => {
             const teacherLabel = p.teacher ? ` — Catedrático: ${p.teacher}` : ' (Sin docente)';
-            coursesHtml += `<option value="${p.id}">📘 ${p.subject}${isDirectorOrAdmin ? teacherLabel : ''}</option>`;
+            coursesHtml += `<option value="${p.id}">📘 ${p.subject}${isAuthorityRole ? teacherLabel : ''}</option>`;
         });
         coursesHtml += `</optgroup>`;
-    } else if (isDocente && !isDirectorOrAdmin) {
+    } else if (isDocente && !isAuthorityRole) {
         coursesHtml = `<option value="">-- Sin clases asignadas en este grado --</option>`;
     }
 
     courseSelect.innerHTML = coursesHtml;
 
-    if (isDocente && !isDirectorOrAdmin && matchingPensum.length > 0) {
+    if (isDocente && !isAuthorityRole && matchingPensum.length > 0) {
         if (!courseSelect.value || courseSelect.value === 'GENERAL' || !matchingPensum.some(p => p.id === courseSelect.value)) {
             courseSelect.value = matchingPensum[0].id;
         }
@@ -22452,12 +22470,13 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
             if (!k.startsWith(`${cycleKey}_M${month}_`)) return;
             if (!k.endsWith(`_${courseId}`)) return; // Cero mezcla entre diferentes cátedras
 
-            const kUpper = k.toUpperCase();
+            const gradePart = k.replace(new RegExp(`_${courseId}$`), '').replace(`${cycleKey}_M${month}_`, '');
+            const kUpper = gradePart.toUpperCase();
             let kNum = 0;
             if (kUpper.includes('6') || kUpper.includes('SEXTO') || kUpper.includes('6TO')) kNum = 6;
             else if (kUpper.includes('5') || kUpper.includes('QUINTO') || kUpper.includes('5TO')) kNum = 5;
             else if (kUpper.includes('4') || kUpper.includes('CUARTO') || kUpper.includes('4TO')) kNum = 4;
-            const kSec = getCleanSectionLetter(k);
+            const kSec = getCleanSectionLetter(gradePart);
 
             if (targetNum > 0 && kNum === targetNum && targetSec && kSec === targetSec) {
                 courseKeys.add(k);
@@ -22773,7 +22792,7 @@ function loadAttendanceList() {
         if (currentCourseObj && currentCourseObj.teacher) {
             currentTeacherBadge.innerHTML = `<i class="fa-solid fa-chalkboard-user"></i> Catedrático: <strong>${currentCourseObj.teacher}</strong>`;
             currentTeacherBadge.style.display = 'inline-block';
-        } else if (isDirectorOrAdmin) {
+        } else if (isAuditRole) {
             currentTeacherBadge.innerHTML = `<i class="fa-solid fa-school"></i> Monitoreo Institucional Completo`;
             currentTeacherBadge.style.display = 'inline-block';
         } else {
@@ -22842,7 +22861,7 @@ function loadAttendanceList() {
         return;
     }
 
-    // 3. RECUPERAR REGISTROS DE ASISTENCIA (INDIVIDUAL POR DOCENTE, JUSTIFICACIÓN OFICIAL UNIVERSAL)
+    // 3. RECUPERAR REGISTROS DE ASISTENCIA (CON RESOLUCIÓN INTELIGENTE DE ALIAS) (INDIVIDUAL POR DOCENTE, JUSTIFICACIÓN OFICIAL UNIVERSAL)
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
     const cycleKey = STATE.activeCycle || '2026';
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
@@ -23921,6 +23940,29 @@ function registerAttendanceByCode(rawCode) {
     let activeMonth = monthSelect ? (parseInt(monthSelect.value) || todayMonth) : todayMonth;
     let activeCourse = courseSelect ? courseSelect.value : 'GENERAL';
 
+    const currentScanRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
+    const isScanAuthority = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentScanRole);
+    const isScanDocente = (currentScanRole === 'docente');
+
+    if (isScanDocente && !isScanAuthority) {
+        const currentUser = STATE.currentUser || (STATE.users || [])[0];
+        const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
+        if (!activeCourse || activeCourse === 'GENERAL' || !myClasses.some(p => p.id === activeCourse)) {
+            const matchingClass = myClasses.find(p => {
+                const pSec = getCleanSectionLetter(p.section || p.gradeCode || p.grade);
+                const sSec = getCleanSectionLetter(student.section || student.gradeCode || student.grade);
+                const pGrade = (p.grade || '').toLowerCase();
+                const sGrade = (student.grade || '').toLowerCase();
+                return ((pGrade.includes('4') && sGrade.includes('4')) || (pGrade.includes('5') && sGrade.includes('5')) || (pGrade.includes('6') && sGrade.includes('6'))) && (!pSec || !sSec || pSec === sSec);
+            }) || myClasses[0];
+
+            if (matchingClass) {
+                activeCourse = matchingClass.id;
+                if (courseSelect) courseSelect.value = activeCourse;
+            }
+        }
+    }
+
     // Si el usuario tiene seleccionado otro grado y el estudiante pertenece a un grado registrado en el select
     if (gradeSelect && gradeSelect.value !== studentGradeCode && studentGradeCode) {
         for (let i = 0; i < gradeSelect.options.length; i++) {
@@ -24149,7 +24191,7 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
     const courseId = courseSelect ? courseSelect.value : 'GENERAL';
 
     const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
-    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
+    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
     const isDocente = (currentRole === 'docente');
 
     if (isDocente && !isAuditRole) {
@@ -24393,7 +24435,7 @@ function exportAttendanceOfficialExcel() {
     const courseId = courseSelect ? courseSelect.value : 'GENERAL';
 
     const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
-    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
+    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
     const isDocente = (currentRole === 'docente');
 
     if (isDocente && !isAuditRole) {
