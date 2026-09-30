@@ -67,7 +67,7 @@ test('JS: Se define isAuditRole excluyendo al docente', () => {
 test('JS: Mantiene visible attendanceMonthContainer para todos los roles (histórico mensual)', () => {
     assert(jsSrc.includes("getElementById('attendanceMonthContainer')"),
         'No se encontró getElementById attendanceMonthContainer');
-    assert(jsSrc.includes("if (monthContainer) monthContainer.style.display = ''"),
+    assert(jsSrc.includes("monthContainer.style.display = 'block'") || jsSrc.includes("monthContainer.style.display = ''"),
         'No se encontró que monthContainer permanezca visible');
 });
 

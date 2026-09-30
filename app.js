@@ -22193,6 +22193,10 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
 
     const gradeSelect = document.getElementById('attendanceGradeSelect');
     const teacherSelect = document.getElementById('attendanceTeacherSelect');
+    const monthContainer = document.getElementById('attendanceMonthContainer');
+    if (monthContainer) {
+        monthContainer.style.display = 'block';
+    }
     if (!gradeSelect) return;
 
     const currentUser = STATE.currentUser || STATE.users[0];
@@ -22685,6 +22689,10 @@ function loadAttendanceList() {
     const statsSummary = document.getElementById('attendanceStatsSummary');
     const directorBanner = document.getElementById('attendanceDirectorBanner');
     const currentTeacherBadge = document.getElementById('attendanceCurrentTeacherBadge');
+    const monthContainer = document.getElementById('attendanceMonthContainer');
+    if (monthContainer) {
+        monthContainer.style.display = 'block';
+    }
 
     if (!gradeSelect || !head || !body) return;
 
@@ -22762,10 +22770,9 @@ function loadAttendanceList() {
     }
 
     // --- Visibilidad por rol: selector de mes y botón Autorizar Permiso ---
-    const monthContainer = document.getElementById('attendanceMonthContainer');
     const btnAutorizarPermiso = document.getElementById('btnAutorizarPermiso');
     // El selector de mes permanece siempre visible para todos los roles para poder consultar el histórico mensual
-    if (monthContainer) monthContainer.style.display = '';
+    if (monthContainer) monthContainer.style.display = 'block';
     if (!isAuditRole) {
         // Docentes: ocultar botón Autorizar Permiso (reservado para Auxiliatura / Dirección / Secretaría)
         if (btnAutorizarPermiso) btnAutorizarPermiso.style.display = 'none';
