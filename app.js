@@ -22764,21 +22764,16 @@ function loadAttendanceList() {
     // --- Visibilidad por rol: selector de mes y botón Autorizar Permiso ---
     const monthContainer = document.getElementById('attendanceMonthContainer');
     const btnAutorizarPermiso = document.getElementById('btnAutorizarPermiso');
+    // El selector de mes permanece siempre visible para todos los roles para poder consultar el histórico mensual
+    if (monthContainer) monthContainer.style.display = '';
     if (!isAuditRole) {
-        // Docentes: ocultar selector de mes y forzar mes actual
-        if (monthContainer) monthContainer.style.display = 'none';
-        if (monthSelect) {
-            monthSelect.value = String(todayMonth);
-            STATE.attendanceSelectedMonth = String(todayMonth);
-        }
-        // Docentes: ocultar botón Autorizar Permiso
+        // Docentes: ocultar botón Autorizar Permiso (reservado para Auxiliatura / Dirección / Secretaría)
         if (btnAutorizarPermiso) btnAutorizarPermiso.style.display = 'none';
     } else {
-        // Roles de auditoría: mostrar selector de mes y botón Autorizar Permiso
-        if (monthContainer) monthContainer.style.display = '';
+        // Roles de auditoría: mostrar botón Autorizar Permiso
         if (btnAutorizarPermiso) btnAutorizarPermiso.style.display = '';
     }
-    // Recalcular mes y días después de posible forzado por rol
+    // Recalcular mes y días según el selector seleccionado
     month = parseInt(monthSelect ? monthSelect.value : String(todayMonth)) || todayMonth;
     daysInMonth = new Date(year, month, 0).getDate();
 
@@ -23367,10 +23362,12 @@ function toggleAttendanceCell(studentId, day) {
     }
 
     saveAttendanceRecords(false);
-    updateAttendanceLiveStats();
+    updateAttendanceLiveStats(studentId);
 }
 
-function updateAttendanceLiveStats() {
+let _attendanceStatsRaf = null;
+
+function updateAttendanceLiveStats(targetStudentId = null) {
     const gradeSelect = document.getElementById('attendanceGradeSelect');
     const monthSelect = document.getElementById('attendanceMonthSelect');
     const foot = document.getElementById('attendanceExcelGridFoot');
@@ -23381,6 +23378,75 @@ function updateAttendanceLiveStats() {
     const year = 2026;
     const daysInMonth = new Date(year, month, 0).getDate();
 
+    if (targetStudentId) {
+        const tr = document.querySelector(`#attendanceExcelGridBody tr[data-student-id="${targetStudentId}"]`);
+        if (tr) {
+            const cells = tr.querySelectorAll('td.att-cell:not([data-weekend="true"])');
+            let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
+            cells.forEach(td => {
+                const text = (td.textContent || '').trim();
+                if (text === 'P') pCount++;
+                else if (text === 'A') aCount++;
+                else if (text === 'J') jCount++;
+                else if (text === 'T') tCount++;
+            });
+
+            const totalLogged = pCount + aCount + jCount + tCount;
+            let pct = 100;
+            if (totalLogged > 0) {
+                pct = Math.round(((pCount + jCount + (tCount * 0.5)) / totalLogged) * 100);
+            }
+
+            let barColor = '#16a34a';
+            let badgeStyle = 'background:#dcfce7; color:#15803d; border:1px solid #86efac;';
+            if (pct < 85 && pct >= 70) {
+                barColor = '#ca8a04';
+                badgeStyle = 'background:#fef9c3; color:#ca8a04; border:1px solid #fde047;';
+            } else if (pct < 70) {
+                barColor = '#dc2626';
+                badgeStyle = 'background:#fee2e2; color:#dc2626; border:1px solid #fca5a5;';
+            }
+
+            const pEl = document.getElementById(`statP_${targetStudentId}`);
+            if (pEl) pEl.textContent = pCount;
+            const aEl = document.getElementById(`statA_${targetStudentId}`);
+            if (aEl) aEl.textContent = aCount;
+            const jEl = document.getElementById(`statJ_${targetStudentId}`);
+            if (jEl) jEl.textContent = jCount;
+            const tEl = document.getElementById(`statT_${targetStudentId}`);
+            if (tEl) tEl.textContent = tCount;
+            const totEl = document.getElementById(`statTot_${targetStudentId}`);
+            if (totEl) totEl.textContent = totalLogged;
+
+            const pctEl = document.getElementById(`pctCol_${targetStudentId}`);
+            if (pctEl) {
+                pctEl.innerHTML = `
+                    <div class="att-pct-container" title="Asistencia Horizontal: ${pct}% (${pCount} Presentes / ${totalLogged} Días)">
+                        <div class="att-pct-bar-bg">
+                            <div class="att-pct-bar-fill" style="width:${pct}%; background:${barColor};"></div>
+                        </div>
+                        <span class="att-pct-badge" style="${badgeStyle}">
+                            ${pct}%
+                        </span>
+                    </div>
+                `;
+            }
+        }
+
+        const scheduleRaf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : (cb) => setTimeout(cb, 16);
+        const cancelRaf = (typeof cancelAnimationFrame === 'function') ? cancelAnimationFrame : clearTimeout;
+
+        if (_attendanceStatsRaf) cancelRaf(_attendanceStatsRaf);
+        _attendanceStatsRaf = scheduleRaf(() => {
+            _renderAttendanceFooterAndSummary(daysInMonth, year, month, foot, statsSummary);
+        });
+        return;
+    }
+
+    _renderAttendanceFullTableStats(daysInMonth, year, month, foot, statsSummary);
+}
+
+function _renderAttendanceFullTableStats(daysInMonth, year, month, foot, statsSummary) {
     const rows = document.querySelectorAll('#attendanceExcelGridBody tr[data-student-id]');
     let dayPresentTotals = new Array(daysInMonth + 1).fill(0);
     let dayAbsentTotals = new Array(daysInMonth + 1).fill(0);
@@ -23457,6 +23523,47 @@ function updateAttendanceLiveStats() {
         }
     });
 
+    _renderAttendanceFooterAndSummaryFromData(rows.length, daysInMonth, year, month, foot, statsSummary, dayPresentTotals, dayAbsentTotals, dayJustTotals, dayTardyTotals, totalClassPresent, totalClassLogs);
+}
+
+function _renderAttendanceFooterAndSummary(daysInMonth, year, month, foot, statsSummary) {
+    const rows = document.querySelectorAll('#attendanceExcelGridBody tr[data-student-id]');
+    let dayPresentTotals = new Array(daysInMonth + 1).fill(0);
+    let dayAbsentTotals = new Array(daysInMonth + 1).fill(0);
+    let dayJustTotals = new Array(daysInMonth + 1).fill(0);
+    let dayTardyTotals = new Array(daysInMonth + 1).fill(0);
+    let totalClassLogs = 0;
+    let totalClassPresent = 0;
+
+    rows.forEach(tr => {
+        const cells = tr.querySelectorAll('td.att-cell:not([data-weekend="true"])');
+        let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
+        cells.forEach(td => {
+            const day = parseInt(td.getAttribute('data-day')) || 0;
+            const text = (td.textContent || '').trim();
+            if (text === 'P') {
+                pCount++;
+                if (day > 0) dayPresentTotals[day]++;
+            } else if (text === 'A') {
+                aCount++;
+                if (day > 0) dayAbsentTotals[day]++;
+            } else if (text === 'J') {
+                jCount++;
+                if (day > 0) dayJustTotals[day]++;
+            } else if (text === 'T') {
+                tCount++;
+                if (day > 0) dayTardyTotals[day]++;
+            }
+        });
+        const totalLogged = pCount + aCount + jCount + tCount;
+        totalClassPresent += (pCount + jCount + (tCount * 0.5));
+        totalClassLogs += (totalLogged > 0 ? totalLogged : 0);
+    });
+
+    _renderAttendanceFooterAndSummaryFromData(rows.length, daysInMonth, year, month, foot, statsSummary, dayPresentTotals, dayAbsentTotals, dayJustTotals, dayTardyTotals, totalClassPresent, totalClassLogs);
+}
+
+function _renderAttendanceFooterAndSummaryFromData(rowCount, daysInMonth, year, month, foot, statsSummary, dayPresentTotals, dayAbsentTotals, dayJustTotals, dayTardyTotals, totalClassPresent, totalClassLogs) {
     const globalSumP = dayPresentTotals.reduce((a, b) => a + b, 0);
     const globalSumA = dayAbsentTotals.reduce((a, b) => a + b, 0);
     const globalSumJ = dayJustTotals.reduce((a, b) => a + b, 0);
@@ -23494,7 +23601,7 @@ function updateAttendanceLiveStats() {
                 <i class="fa-solid fa-chart-pie"></i> PROMEDIO HORIZONTAL DE ASISTENCIA DEL GRADO:
             </td>
             <td colspan="4" style="text-align:center; font-weight:800; font-size:0.8rem; background:#1e293b !important; color:#94a3b8 !important;">
-                ${rows.length} Alumnos
+                ${rowCount} Alumnos
             </td>
             <td style="text-align:center; font-weight:800; background:#1e293b !important; color:#ffffff !important;">
                 ${globalTotalLogged} Regs
@@ -23518,7 +23625,7 @@ function updateAttendanceLiveStats() {
             <div class="attendance-stats-horizontal">
                 <span class="att-stat-card-horizontal">
                     <i class="fa-solid fa-users" style="color:var(--brand-green);"></i>
-                    <span><strong>${rows.length}</strong> Alumnos</span>
+                    <span><strong>${rowCount}</strong> Alumnos</span>
                 </span>
                 <span class="att-stat-card-horizontal">
                     <i class="fa-solid fa-check" style="color:#16a34a;"></i>
@@ -23649,22 +23756,20 @@ function saveAttendanceRecords(showToastMsg = true, e = null) {
         if (e.stopPropagation) e.stopPropagation();
     }
 
-    // 0ms Optimistic UI: Persistir inmediatamente en localStorage
-    saveStateToLocalStorage();
-
-    if (showToastMsg) {
-        showToast('Planilla de asistencia guardada y sincronizada exitosamente.', 'success');
-    }
-
-    // Si es un cambio rápido de celda (showToastMsg = false), aplicar debounce de 400ms para evitar sobrecarga de red
+    // Si es un cambio rápido de celda (showToastMsg = false), aplicar debounce de 350ms para persistir en disco y sincronizar en segundo plano sin congelar la UI
     if (!showToastMsg) {
         if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
         _attendanceSaveTimeout = setTimeout(() => {
+            saveStateToLocalStorage();
             _syncAttendanceToFirebaseBackground();
-        }, 400);
+        }, 350);
     } else {
         if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
+        saveStateToLocalStorage();
         _syncAttendanceToFirebaseBackground();
+        if (typeof showToast === 'function') {
+            showToast('Planilla de asistencia guardada y sincronizada exitosamente.', 'success');
+        }
     }
 }
 
@@ -34168,7 +34273,7 @@ function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) 
         existingAlert.time = timeStr;
         existingAlert.courseName = courseName;
         existingAlert.teacherName = teacherName;
-        saveStateToLocalStorage();
+        _debounceAlertStateSave();
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
             EnccoCloudSync.patchNode(`attendanceAlerts/${existingAlert.id}`, existingAlert).catch(() => {});
         }
@@ -34200,7 +34305,7 @@ function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) 
     };
 
     STATE.attendanceAlerts.unshift(alertObj);
-    saveStateToLocalStorage();
+    _debounceAlertStateSave();
 
     // 🚨 Sincronización Multi-Vía de Alta Confiabilidad hacia Auxiliatura
     // 1. BroadcastChannel inter-pestañas instantáneo (0ms)
@@ -34235,6 +34340,14 @@ function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) 
     notifyAuxiliaturaAlert(alertObj);
 }
 
+let _alertSaveTimeout = null;
+function _debounceAlertStateSave() {
+    if (_alertSaveTimeout) clearTimeout(_alertSaveTimeout);
+    _alertSaveTimeout = setTimeout(() => {
+        saveStateToLocalStorage();
+    }, 350);
+}
+
 function dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) {
     if (!STATE.attendanceAlerts || STATE.attendanceAlerts.length === 0) return;
     const todayDateStr = new Date().toISOString().split('T')[0];
@@ -34248,7 +34361,7 @@ function dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, mont
     if (alertObj) {
         alertObj.status = 'corregida';
         alertObj.notes = 'Rectificación en aula: el catedrático cambió la marca de inasistencia.';
-        saveStateToLocalStorage();
+        _debounceAlertStateSave();
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
             EnccoCloudSync.patchNode(`attendanceAlerts/${alertObj.id}`, alertObj).catch(() => {});
         }

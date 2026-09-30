@@ -34,6 +34,9 @@ const sandbox = {
         ],
         gradesList: [
             { code: '4PC_A', name: 'Cuarto Perito Contador', section: 'A' }
+        ],
+        pensum: [
+            { id: 'GENERAL', teacher: 'Docente Titular' }
         ]
     },
     document: {
@@ -55,6 +58,7 @@ const sandbox = {
     saveAttendanceRecords: function() {},
     loadAttendanceList: function() {},
     isStudentActive: function() { return true; },
+    isCourseAssignedToTeacher: function() { return true; },
     formatStudentDisplayName: function(s) { return s.name; },
     getCleanSectionLetter: function() { return 'A'; },
     getAttendanceRecordKey: function(g, m, c) { return g + '_' + m + '_' + c; },

@@ -63,12 +63,12 @@ test('JS: Se define isAuditRole excluyendo al docente', () => {
     assert(expr.includes('super_usuario'), 'super_usuario debe estar en isAuditRole');
 });
 
-// TEST 4: JS oculta el selector de mes para no-audit roles
-test('JS: Oculta attendanceMonthContainer cuando !isAuditRole', () => {
+// TEST 4: JS mantiene visible attendanceMonthContainer para consulta histórica
+test('JS: Mantiene visible attendanceMonthContainer para todos los roles (histórico mensual)', () => {
     assert(jsSrc.includes("getElementById('attendanceMonthContainer')"),
         'No se encontró getElementById attendanceMonthContainer');
-    assert(jsSrc.includes("monthContainer.style.display = 'none'"),
-        'No se encontró monthContainer.style.display = none');
+    assert(jsSrc.includes("if (monthContainer) monthContainer.style.display = ''"),
+        'No se encontró que monthContainer permanezca visible');
 });
 
 // TEST 5: JS oculta el botón Autorizar Permiso para no-audit roles
@@ -79,34 +79,23 @@ test('JS: Oculta btnAutorizarPermiso cuando !isAuditRole', () => {
         'No se encontró btnAutorizarPermiso.style.display = none');
 });
 
-// TEST 6: JS fuerza mes actual para docentes
-test('JS: Fuerza monthSelect.value a todayMonth para docentes', () => {
-    // Dentro del bloque !isAuditRole, debe forzar monthSelect.value = String(todayMonth)
-    const block = jsSrc.match(/if\s*\(\s*!isAuditRole\s*\)\s*\{([\s\S]*?)\}\s*else/);
-    assert(block, 'No se encontró el bloque if(!isAuditRole)');
-    assert(block[1].includes("monthSelect.value = String(todayMonth)"),
-        'No se fuerza monthSelect.value a todayMonth dentro de !isAuditRole');
+// TEST 6: JS permite seleccionar cualquier mes para consultar el histórico
+test('JS: Permite a los docentes seleccionar cualquier mes para consultar el histórico', () => {
+    assert(jsSrc.includes("month = parseInt(monthSelect ? monthSelect.value : String(todayMonth)) || todayMonth;"),
+        'No se recalcula month según el mes seleccionado en monthSelect');
 });
 
-// TEST 7: JS recalcula month y daysInMonth después del bloque de rol
-test('JS: Recalcula month y daysInMonth después del bloque de visibilidad', () => {
-    // month y daysInMonth deben ser 'let' (no 'const')
-    assert(jsSrc.includes('let month = parseInt('),
-        'month debe ser let, no const');
-    assert(jsSrc.includes('let daysInMonth = new Date('),
-        'daysInMonth debe ser let, no const');
-    // Recálculo después del bloque
-    assert(jsSrc.includes('// Recalcular mes y días después de posible forzado por rol'),
-        'No se encontró el comentario de recálculo');
+// TEST 7: JS recalcula month y daysInMonth después de leer el selector
+test('JS: Recalcula month y daysInMonth según el mes seleccionado', () => {
+    assert(jsSrc.includes('month = parseInt(monthSelect ? monthSelect.value : String(todayMonth)) || todayMonth;'),
+        'month debe ser recalculado con el valor seleccionado');
+    assert(jsSrc.includes('daysInMonth = new Date(year, month, 0).getDate();'),
+        'daysInMonth debe ser recalculado con el mes seleccionado');
 });
 
 // TEST 8: JS restaura visibilidad para roles de auditoría
-test('JS: Restaura visibilidad de monthContainer y btnAutorizarPermiso para audit roles', () => {
-    const elseBlock = jsSrc.match(/}\s*else\s*\{\s*\/\/ Roles de auditoría([\s\S]*?)\}/);
-    assert(elseBlock, 'No se encontró el bloque else de auditoría');
-    assert(elseBlock[1].includes("monthContainer.style.display = ''"),
-        'No restaura monthContainer.style.display para audit');
-    assert(elseBlock[1].includes("btnAutorizarPermiso.style.display = ''"),
+test('JS: Restaura visibilidad de btnAutorizarPermiso para audit roles', () => {
+    assert(jsSrc.includes("btnAutorizarPermiso.style.display = ''"),
         'No restaura btnAutorizarPermiso.style.display para audit');
 });
 
