@@ -1188,7 +1188,6 @@ select.form-control-sm option {
         visibility: hidden !important;
         z-index: -1 !important;
     }
-}
 
     .sidebar {
         transition: margin-left 0.3s ease, width 0.3s ease, opacity 0.25s ease !important;
@@ -2096,19 +2095,14 @@ body.theme-dark .att-global-pct-bar {
         gap: 6px;
     }
 
-    .modal-content {
-        width: 95vw !important;
-        max-width: 95vw !important;
-        margin: 10px auto !important;
-        max-height: 90vh !important;
-        overflow-y: auto !important;
-    }
-
     .table-responsive {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        margin-bottom: 12px;
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        margin-bottom: 14px !important;
+        overscroll-behavior-x: contain !important;
+        scrollbar-width: thin !important;
+        border-radius: var(--radius-md) !important;
     }
 
     .form-row {
@@ -2141,32 +2135,260 @@ body.theme-dark .att-global-pct-bar {
     }
 
     .btn {
-        min-height: 38px;
-        touch-action: manipulation;
+        min-height: 40px !important;
+        touch-action: manipulation !important;
     }
 
-    /* Asistencia en Celular: Ocultar Código Personal para dar espacio completo al nombre */
+    /* --- TABLA DE ASISTENCIA EN CELULAR: COLUMNAS STICKY --- */
     .attendance-excel-table .col-carne,
     .attendance-excel-table th.col-carne {
         display: none !important;
     }
 
-    .attendance-excel-table .col-name {
-        min-width: 140px !important;
-        max-width: 180px !important;
-        font-size: 0.82rem !important;
+    .attendance-excel-table .col-num,
+    .attendance-excel-table td.col-num {
+        position: sticky !important;
+        left: 0 !important;
+        width: 36px !important;
+        min-width: 36px !important;
+        max-width: 36px !important;
+        z-index: 12 !important;
+        background: #ffffff !important;
+        border-right: 1px solid #cbd5e1 !important;
     }
 
+    .attendance-excel-table thead th.col-num {
+        position: sticky !important;
+        left: 0 !important;
+        top: 0 !important;
+        z-index: 30 !important;
+        background: #f1f5f9 !important;
+        border-right: 1px solid #cbd5e1 !important;
+    }
+
+    .attendance-excel-table .col-name,
+    .attendance-excel-table td.col-name {
+        position: sticky !important;
+        left: 36px !important;
+        min-width: 145px !important;
+        max-width: 185px !important;
+        font-size: 0.82rem !important;
+        z-index: 12 !important;
+        background: #ffffff !important;
+        box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.12) !important;
+        border-right: 2px solid #94a3b8 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .attendance-excel-table thead th.col-name {
+        position: sticky !important;
+        left: 36px !important;
+        top: 0 !important;
+        z-index: 30 !important;
+        background: #f1f5f9 !important;
+        box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.12) !important;
+        border-right: 2px solid #94a3b8 !important;
+    }
+
+    .attendance-excel-table tr:hover td.col-num {
+        background: #f1f5f9 !important;
+    }
+    .attendance-excel-table tr:hover td.col-name {
+        background: #f8fafc !important;
+    }
+
+    body.theme-dark .attendance-excel-table .col-num,
+    body.theme-dark .attendance-excel-table td.col-num {
+        background: #091a35 !important;
+        border-right-color: #1e3a29 !important;
+    }
+    body.theme-dark .attendance-excel-table thead th.col-num {
+        background: #0d2818 !important;
+        border-right-color: #1e3a29 !important;
+    }
+    body.theme-dark .attendance-excel-table .col-name,
+    body.theme-dark .attendance-excel-table td.col-name {
+        background: #0d274c !important;
+        border-right-color: #3b82f6 !important;
+    }
+    body.theme-dark .attendance-excel-table thead th.col-name {
+        background: #0d2818 !important;
+        border-right-color: #3b82f6 !important;
+    }
+    body.theme-dark .attendance-excel-table tr:hover td.col-num {
+        background: #0e2a52 !important;
+    }
+    body.theme-dark .attendance-excel-table tr:hover td.col-name {
+        background: #123466 !important;
+    }
+
+    /* Celdas de día interactivas agrandadas para toques precisos */
     .att-cell,
     .att-day-cell {
-        min-width: 34px !important;
-        width: 34px !important;
-        height: 34px !important;
-        font-size: 0.84rem !important;
+        min-width: 38px !important;
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 0.88rem !important;
+        border-radius: 4px !important;
+        touch-action: manipulation !important;
     }
 
+    /* --- TABLAS DE CALIFICACIONES EN CELULAR: COLUMNAS STICKY --- */
+    #gradebookActivitiesTable td:first-child,
+    #gradebookSummaryTable td:first-child,
+    #gradebookAveragesTable td:first-child {
+        position: sticky !important;
+        left: 0 !important;
+        width: 36px !important;
+        min-width: 36px !important;
+        max-width: 36px !important;
+        z-index: 12 !important;
+        background: #ffffff !important;
+        text-align: center !important;
+        border-right: 1px solid #e2e8f0 !important;
+    }
+
+    #gradebookActivitiesTable thead th:first-child,
+    #gradebookSummaryTable thead th:first-child,
+    #gradebookAveragesTable thead th:first-child {
+        position: sticky !important;
+        left: 0 !important;
+        top: 0 !important;
+        z-index: 30 !important;
+        background: #f8fafc !important;
+        border-right: 1px solid #e2e8f0 !important;
+    }
+
+    #gradebookActivitiesTable td:nth-child(2),
+    #gradebookSummaryTable td:nth-child(2),
+    #gradebookAveragesTable td:nth-child(2) {
+        position: sticky !important;
+        left: 36px !important;
+        min-width: 145px !important;
+        max-width: 185px !important;
+        font-size: 0.82rem !important;
+        z-index: 12 !important;
+        background: #ffffff !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.12) !important;
+        border-right: 2px solid #cbd5e1 !important;
+    }
+
+    #gradebookActivitiesTable thead th:nth-child(2),
+    #gradebookSummaryTable thead th:nth-child(2),
+    #gradebookAveragesTable thead th:nth-child(2) {
+        position: sticky !important;
+        left: 36px !important;
+        top: 0 !important;
+        z-index: 30 !important;
+        background: #f8fafc !important;
+        box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.12) !important;
+        border-right: 2px solid #cbd5e1 !important;
+    }
+
+    #gradebookActivitiesTable tr:hover td:first-child,
+    #gradebookActivitiesTable tr:hover td:nth-child(2),
+    #gradebookSummaryTable tr:hover td:first-child,
+    #gradebookSummaryTable tr:hover td:nth-child(2),
+    #gradebookAveragesTable tr:hover td:first-child,
+    #gradebookAveragesTable tr:hover td:nth-child(2) {
+        background: #f1f5f9 !important;
+    }
+
+    body.theme-dark #gradebookActivitiesTable td:first-child,
+    body.theme-dark #gradebookActivitiesTable td:nth-child(2),
+    body.theme-dark #gradebookSummaryTable td:first-child,
+    body.theme-dark #gradebookSummaryTable td:nth-child(2),
+    body.theme-dark #gradebookAveragesTable td:first-child,
+    body.theme-dark #gradebookAveragesTable td:nth-child(2) {
+        background: #0f172a !important;
+        color: #f8fafc !important;
+        border-right-color: #334155 !important;
+    }
+
+    body.theme-dark #gradebookActivitiesTable thead th:first-child,
+    body.theme-dark #gradebookActivitiesTable thead th:nth-child(2),
+    body.theme-dark #gradebookSummaryTable thead th:first-child,
+    body.theme-dark #gradebookSummaryTable thead th:nth-child(2),
+    body.theme-dark #gradebookAveragesTable thead th:first-child,
+    body.theme-dark #gradebookAveragesTable thead th:nth-child(2) {
+        background: #1e293b !important;
+        color: #f8fafc !important;
+        border-right-color: #334155 !important;
+    }
+
+    /* Inputs de notas adaptados para pantallas táctiles */
+    .grade-box-input {
+        min-width: 44px !important;
+        height: 38px !important;
+        font-size: 16px !important;
+        border-radius: 6px !important;
+        touch-action: manipulation !important;
+    }
+
+    .grade-box-input-exam {
+        min-width: 60px !important;
+        height: 38px !important;
+        font-size: 16px !important;
+        border-radius: 6px !important;
+        touch-action: manipulation !important;
+    }
+
+    /* Pestañas de Cuadro de Notas deslizables en móvil */
+    .gradebook-tabs-nav {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+        padding-bottom: 6px !important;
+        gap: 6px !important;
+    }
+    .gradebook-tabs-nav::-webkit-scrollbar {
+        display: none !important;
+    }
+    .gb-tab-btn {
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
+        font-size: 0.82rem !important;
+        padding: 8px 12px !important;
+        min-height: 40px !important;
+    }
+
+    /* Barras de control de asistencia y calificaciones */
     .attendance-control-bar {
         padding: 12px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+    .attendance-control-bar select,
+    .attendance-control-bar .form-control {
+        min-width: 100% !important;
+        width: 100% !important;
+        height: 42px !important;
+        font-size: 16px !important;
+    }
+    .attendance-control-bar > div,
+    .attendance-control-bar > div > div {
+        width: 100% !important;
+    }
+
+    .gradebook-header-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+    }
+    .course-selector-box,
+    .course-selector-box select {
+        min-width: 100% !important;
+        width: 100% !important;
+        height: 42px !important;
+        font-size: 16px !important;
     }
 
     .attendance-quick-scan-bar {
@@ -2178,20 +2400,261 @@ body.theme-dark .att-global-pct-bar {
     }
 }
 
+/* SMARTPHONES ESTRECHOS (<= 540px) */
+@media screen and (max-width: 540px) {
+    .kpi-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+    .attendance-quick-scan-bar .btn {
+        width: 100% !important;
+    }
+}
+
+/* SMARTPHONES Y PANTALLAS COMPACTAS (<= 640px): MODALES TIPO BOTTOM-SHEET ERGONÓMICOS */
+@media screen and (max-width: 640px) {
+    .modal-overlay {
+        align-items: flex-end !important;
+        padding: 0 !important;
+    }
+
+    .modal-container,
+    .modal-container.medium,
+    .modal-content {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        max-height: 92vh !important;
+        border-radius: 20px 20px 0 0 !important;
+        margin: 0 !important;
+        border-bottom: none !important;
+        box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.4) !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .modal-header {
+        padding: 14px 18px !important;
+        flex-shrink: 0 !important;
+        border-top-left-radius: 20px !important;
+        border-top-right-radius: 20px !important;
+    }
+
+    .modal-body {
+        padding: 16px 18px !important;
+        max-height: calc(92vh - 128px) !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        flex: 1 1 auto !important;
+    }
+
+    .modal-footer {
+        padding: 12px 16px !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .modal-footer .btn {
+        width: 100% !important;
+        min-height: 44px !important;
+        font-size: 0.95rem !important;
+        justify-content: center !important;
+        touch-action: manipulation !important;
+    }
+}
+
 /* TABLETS EN HORIZONTAL Y VERTICAL (769px - 1024px) */
 @media screen and (min-width: 769px) and (max-width: 1024px) {
-    .attendance-excel-table .col-name {
-        min-width: 180px !important;
-        max-width: 220px !important;
+    .table-responsive {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-x: contain !important;
+        scrollbar-width: thin !important;
     }
+
+    /* Tabla de Asistencia en Tablets */
+    .attendance-excel-table .col-num,
+    .attendance-excel-table td.col-num {
+        position: sticky !important;
+        left: 0 !important;
+        width: 36px !important;
+        min-width: 36px !important;
+        z-index: 12 !important;
+        background: #ffffff !important;
+        border-right: 1px solid #cbd5e1 !important;
+    }
+
+    .attendance-excel-table thead th.col-num {
+        position: sticky !important;
+        left: 0 !important;
+        top: 0 !important;
+        z-index: 30 !important;
+        background: #f1f5f9 !important;
+        border-right: 1px solid #cbd5e1 !important;
+    }
+
+    .attendance-excel-table .col-name,
+    .attendance-excel-table td.col-name {
+        position: sticky !important;
+        left: 36px !important;
+        min-width: 180px !important;
+        max-width: 230px !important;
+        z-index: 12 !important;
+        background: #ffffff !important;
+        box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.12) !important;
+        border-right: 2px solid #94a3b8 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    .attendance-excel-table thead th.col-name {
+        position: sticky !important;
+        left: 36px !important;
+        top: 0 !important;
+        z-index: 30 !important;
+        background: #f1f5f9 !important;
+        box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.12) !important;
+        border-right: 2px solid #94a3b8 !important;
+    }
+
+    .attendance-excel-table tr:hover td.col-num {
+        background: #f1f5f9 !important;
+    }
+    .attendance-excel-table tr:hover td.col-name {
+        background: #f8fafc !important;
+    }
+
+    body.theme-dark .attendance-excel-table .col-num,
+    body.theme-dark .attendance-excel-table td.col-num {
+        background: #091a35 !important;
+    }
+    body.theme-dark .attendance-excel-table thead th.col-num {
+        background: #0d2818 !important;
+    }
+    body.theme-dark .attendance-excel-table .col-name,
+    body.theme-dark .attendance-excel-table td.col-name {
+        background: #0d274c !important;
+    }
+    body.theme-dark .attendance-excel-table thead th.col-name {
+        background: #0d2818 !important;
+    }
+
+    /* Tablas de Calificaciones en Tablets */
+    #gradebookActivitiesTable td:first-child,
+    #gradebookSummaryTable td:first-child,
+    #gradebookAveragesTable td:first-child {
+        position: sticky !important;
+        left: 0 !important;
+        width: 36px !important;
+        min-width: 36px !important;
+        z-index: 12 !important;
+        background: #ffffff !important;
+        text-align: center !important;
+        border-right: 1px solid #e2e8f0 !important;
+    }
+
+    #gradebookActivitiesTable thead th:first-child,
+    #gradebookSummaryTable thead th:first-child,
+    #gradebookAveragesTable thead th:first-child {
+        position: sticky !important;
+        left: 0 !important;
+        top: 0 !important;
+        z-index: 30 !important;
+        background: #f8fafc !important;
+        border-right: 1px solid #e2e8f0 !important;
+    }
+
+    #gradebookActivitiesTable td:nth-child(2),
+    #gradebookSummaryTable td:nth-child(2),
+    #gradebookAveragesTable td:nth-child(2) {
+        position: sticky !important;
+        left: 36px !important;
+        min-width: 190px !important;
+        max-width: 240px !important;
+        z-index: 12 !important;
+        background: #ffffff !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.12) !important;
+        border-right: 2px solid #cbd5e1 !important;
+    }
+
+    #gradebookActivitiesTable thead th:nth-child(2),
+    #gradebookSummaryTable thead th:nth-child(2),
+    #gradebookAveragesTable thead th:nth-child(2) {
+        position: sticky !important;
+        left: 36px !important;
+        top: 0 !important;
+        z-index: 30 !important;
+        background: #f8fafc !important;
+        box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.12) !important;
+        border-right: 2px solid #cbd5e1 !important;
+    }
+
+    #gradebookActivitiesTable tr:hover td:first-child,
+    #gradebookActivitiesTable tr:hover td:nth-child(2),
+    #gradebookSummaryTable tr:hover td:first-child,
+    #gradebookSummaryTable tr:hover td:nth-child(2),
+    #gradebookAveragesTable tr:hover td:first-child,
+    #gradebookAveragesTable tr:hover td:nth-child(2) {
+        background: #f1f5f9 !important;
+    }
+
+    body.theme-dark #gradebookActivitiesTable td:first-child,
+    body.theme-dark #gradebookActivitiesTable td:nth-child(2),
+    body.theme-dark #gradebookSummaryTable td:first-child,
+    body.theme-dark #gradebookSummaryTable td:nth-child(2),
+    body.theme-dark #gradebookAveragesTable td:first-child,
+    body.theme-dark #gradebookAveragesTable td:nth-child(2) {
+        background: #0f172a !important;
+        color: #f8fafc !important;
+    }
+
+    body.theme-dark #gradebookActivitiesTable thead th:first-child,
+    body.theme-dark #gradebookActivitiesTable thead th:nth-child(2),
+    body.theme-dark #gradebookSummaryTable thead th:first-child,
+    body.theme-dark #gradebookSummaryTable thead th:nth-child(2),
+    body.theme-dark #gradebookAveragesTable thead th:first-child,
+    body.theme-dark #gradebookAveragesTable thead th:nth-child(2) {
+        background: #1e293b !important;
+        color: #f8fafc !important;
+    }
+
     .att-cell,
     .att-day-cell {
-        min-width: 30px !important;
-        width: 30px !important;
-        height: 32px !important;
+        min-width: 34px !important;
+        width: 34px !important;
+        height: 34px !important;
+        font-size: 0.84rem !important;
+        border-radius: 4px !important;
     }
+
+    .grade-box-input {
+        min-width: 44px !important;
+        height: 36px !important;
+        font-size: 16px !important;
+        border-radius: 5px !important;
+    }
+
     .kpi-grid {
         grid-template-columns: repeat(2, 1fr) !important;
+        gap: 14px !important;
+    }
+
+    .modal-container,
+    .modal-container.medium {
+        width: 90vw !important;
+        max-width: 680px !important;
+        max-height: 88vh !important;
+        border-radius: 14px !important;
+        margin: auto !important;
+    }
+
+    .modal-body {
+        max-height: calc(88vh - 130px) !important;
     }
 }
 
