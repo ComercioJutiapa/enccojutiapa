@@ -22522,6 +22522,31 @@ function populateAttendanceTeacherFilter() {
     filterGroup.style.display = 'block';
     if (directorBanner) directorBanner.style.display = 'flex';
 
+    const roleBadge = document.getElementById('attendanceBannerRoleBadge');
+    const roleText = document.getElementById('attendanceBannerRoleText');
+    if (roleBadge) {
+        if (['profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole)) {
+            roleBadge.innerHTML = `<i class="fa-solid fa-clipboard-user"></i> Auditoría de Auxiliatura`;
+            roleBadge.style.background = '#d97706';
+        } else if (['secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar'].includes(currentRole)) {
+            roleBadge.innerHTML = `<i class="fa-solid fa-file-signature"></i> Supervisión de Secretaría`;
+            roleBadge.style.background = '#7c3aed';
+        } else if (['admin', 'super_usuario'].includes(currentRole)) {
+            roleBadge.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Auditoría Administrativa`;
+            roleBadge.style.background = '#0f172a';
+        } else {
+            roleBadge.innerHTML = `<i class="fa-solid fa-crown"></i> Supervisión Directiva`;
+            roleBadge.style.background = '#15803d';
+        }
+    }
+    if (roleText) {
+        if (['profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole)) {
+            roleText.textContent = 'Panel de Auditoría y Control de Asistencia tomada por los Catedráticos en cada clase.';
+        } else {
+            roleText.textContent = 'Panel de Monitoreo General de Asistencia a todas las Clases y Cátedras de la Escuela.';
+        }
+    }
+
     const currentVal = teacherSelect.value;
     const teachers = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'admin' || u.role === 'director' || u.role === 'secretaria' || u.role === 'profesor_auxiliar' || u.role === 'auxiliar');
 
@@ -22622,8 +22647,12 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
         // SUPERVISIÓN POR MAESTRO ESPECÍFICO
         const teacherClasses = (STATE.pensum || []).filter(p => 
             p.teacherId === activeTeacherObj.id || 
-            (p.teacher && p.teacher.toLowerCase() === activeTeacherObj.name.toLowerCase()) ||
-            (activeTeacherObj.name && p.teacher && p.teacher.toLowerCase().includes(activeTeacherObj.name.toLowerCase()))
+            (typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, activeTeacherObj)) ||
+            (p.teacher && activeTeacherObj.name && (
+                p.teacher.toLowerCase() === activeTeacherObj.name.toLowerCase() ||
+                p.teacher.toLowerCase().includes(activeTeacherObj.name.toLowerCase()) ||
+                activeTeacherObj.name.toLowerCase().includes(p.teacher.toLowerCase())
+            ))
         );
 
         const uniqueGrades = new Map();
@@ -22769,7 +22798,15 @@ function updateAttendanceCoursesList() {
     if (isDocente && currentUser && !isAuthorityRole) {
         matchingPensum = matchingPensum.filter(p => isCourseAssignedToTeacher(p, currentUser));
     } else if (isAuthorityRole && activeTeacherObj) {
-        matchingPensum = matchingPensum.filter(p => isCourseAssignedToTeacher(p, activeTeacherObj));
+        matchingPensum = matchingPensum.filter(p => 
+            p.teacherId === activeTeacherObj.id ||
+            (typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, activeTeacherObj)) ||
+            (p.teacher && activeTeacherObj.name && (
+                p.teacher.toLowerCase() === activeTeacherObj.name.toLowerCase() ||
+                p.teacher.toLowerCase().includes(activeTeacherObj.name.toLowerCase()) ||
+                activeTeacherObj.name.toLowerCase().includes(p.teacher.toLowerCase())
+            ))
+        );
     }
 
     if (matchingPensum.length > 0) {
@@ -22789,9 +22826,16 @@ function updateAttendanceCoursesList() {
 
     courseSelect.innerHTML = coursesHtml;
 
-    if (isDocente && !isAuthorityRole && matchingPensum.length > 0) {
-        if (!courseSelect.value || courseSelect.value === 'GENERAL' || !matchingPensum.some(p => p.id === courseSelect.value)) {
-            courseSelect.value = matchingPensum[0].id;
+    if (matchingPensum.length > 0) {
+        if (isDocente && !isAuthorityRole) {
+            if (!courseSelect.value || courseSelect.value === 'GENERAL' || !matchingPensum.some(p => p.id === courseSelect.value)) {
+                courseSelect.value = matchingPensum[0].id;
+            }
+        } else if (isAuthorityRole && activeTeacherObj) {
+            // Cuando una autoridad o Auxiliatura filtra por docente específico, enfocar de inmediato su cátedra asignada
+            if (!courseSelect.value || courseSelect.value === 'GENERAL' || !matchingPensum.some(p => p.id === courseSelect.value)) {
+                courseSelect.value = matchingPensum[0].id;
+            }
         }
     }
 }
