@@ -1391,10 +1391,20 @@ function canRoleModify(moduleKey, role = null) {
 }
 window.canRoleModify = canRoleModify;
 
+function isDirectorOrSuperAdmin() {
+    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
+    const rLower = String(curRole).toLowerCase();
+    const userRole = (window.STATE && STATE.currentUser && STATE.currentUser.role) ? String(STATE.currentUser.role).toLowerCase() : '';
+    const valid = ['director', 'direccion', 'admin', 'super_usuario'];
+    return valid.includes(rLower) || valid.includes(userRole);
+}
+window.isDirectorOrSuperAdmin = isDirectorOrSuperAdmin;
+
 function renderActiveRolePermissionsGrid(activePerms = []) {
     const container = document.getElementById('activeRolePermissionsContainer');
     if (!container) return;
 
+    const canEditPermissions = isDirectorOrSuperAdmin();
     const isMasterAdminRole = (_selectedRoleKeyForEditing === 'admin');
     const r = (STATE.rolesConfig || []).find(x => x.key === _selectedRoleKeyForEditing);
 
@@ -1418,7 +1428,7 @@ function renderActiveRolePermissionsGrid(activePerms = []) {
             'none': { bg: '#f8fafc', border: '#e2e8f0', text: '🔴 Bloqueado (Oculto)', textColor: '#94a3b8' }
         };
         const s = cardStyles[currentLevel] || cardStyles['none'];
-        const isDisabled = isMasterAdminRole;
+        const isDisabled = isMasterAdminRole || !canEditPermissions;
 
         return `
             <div class="perm-level-card" id="permCard_${mod.key}" style="background:${s.bg}; border:2px solid ${s.border}; border-radius:10px; padding:14px; display:flex; flex-direction:column; justify-content:space-between; gap:10px; transition:all 0.15s ease;">
@@ -1456,6 +1466,11 @@ function renderActiveRolePermissionsGrid(activePerms = []) {
 window.renderActiveRolePermissionsGrid = renderActiveRolePermissionsGrid;
 
 function updatePermCardStyle(modKey, level) {
+    if (!isDirectorOrSuperAdmin()) {
+        showToast('La configuración de permisos está reservada exclusivamente a la Dirección General.', 'warning');
+        return;
+    }
+
     const card = document.getElementById(`permCard_${modKey}`);
     const badge = document.getElementById(`permBadge_${modKey}`);
     const lblEdit = document.getElementById(`lbl_edit_${modKey}`);
@@ -1517,6 +1532,11 @@ function updatePermCardStyle(modKey, level) {
 window.updatePermCardStyle = updatePermCardStyle;
 
 function setAllPermissionsLevel(targetLevel = 'edit') {
+    if (!isDirectorOrSuperAdmin()) {
+        showToast('La configuración de permisos está reservada exclusivamente a la Dirección General.', 'warning');
+        return;
+    }
+
     if (_selectedRoleKeyForEditing === 'admin') {
         showToast('El Super Administrador siempre conserva acceso total de modificación.', 'info');
         return;
@@ -2118,11 +2138,66 @@ let _selectedRoleKeyForEditing = 'admin';
 
 function renderRolesManagementView() {
     normalizeRolesConfig();
+    renderRolesPermissionBanner();
     renderRoleSelectorTabs();
     loadRoleIntoPermissionsPanel(_selectedRoleKeyForEditing || 'admin');
     renderRolesTable();
 }
 window.renderRolesManagementView = renderRolesManagementView;
+
+function renderRolesPermissionBanner() {
+    const bannerContainer = document.getElementById('rolesPermissionStatusBanner');
+    if (!bannerContainer) return;
+
+    const canEdit = isDirectorOrSuperAdmin();
+
+    if (canEdit) {
+        bannerContainer.innerHTML = `
+            <div style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%); border: 1.5px solid #86efac; border-left: 6px solid #16a34a; border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.08); margin-bottom: 6px;">
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <div style="width:42px; height:42px; border-radius:10px; background:#dcfce7; color:#15803d; display:flex; align-items:center; justify-content:center; font-size:1.25rem; flex-shrink:0;">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:800; color:#14532d; font-size:0.95rem; display:flex; align-items:center; gap:8px;">
+                            <span>Gestión Institucional de Permisos</span>
+                            <span style="background:#16a34a; color:#ffffff; font-size:0.70rem; font-weight:800; padding:2px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">Dirección General</span>
+                        </div>
+                        <div style="font-size:0.82rem; color:#166534; margin-top:2px;">
+                            Usted cuenta con facultades exclusivas para modificar privilegios, habilitar o restringir módulos y guardar configuraciones institucionales.
+                        </div>
+                    </div>
+                </div>
+                <div style="font-size:0.80rem; font-weight:700; color:#15803d; background:#dcfce7; padding:6px 12px; border-radius:8px; display:flex; align-items:center; gap:6px; white-space:nowrap;">
+                    <i class="fa-solid fa-circle-check"></i> Modo Edición Habilitado
+                </div>
+            </div>
+        `;
+    } else {
+        bannerContainer.innerHTML = `
+            <div style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border: 1.5px solid #bfdbfe; border-left: 6px solid #2563eb; border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.06); margin-bottom: 6px;">
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <div style="width:42px; height:42px; border-radius:10px; background:#dbeafe; color:#1d4ed8; display:flex; align-items:center; justify-content:center; font-size:1.25rem; flex-shrink:0;">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:800; color:#1e3a8a; font-size:0.95rem; display:flex; align-items:center; gap:8px;">
+                            <span>Modo de Consulta Institucional</span>
+                            <span style="background:#2563eb; color:#ffffff; font-size:0.70rem; font-weight:800; padding:2px 10px; border-radius:12px; text-transform:uppercase; letter-spacing:0.5px;">Solo Lectura</span>
+                        </div>
+                        <div style="font-size:0.82rem; color:#475569; margin-top:2px;">
+                            La edición, configuración y guardado de permisos en el sistema está reservada <strong>exclusivamente a la Dirección General</strong>.
+                        </div>
+                    </div>
+                </div>
+                <div style="font-size:0.80rem; font-weight:700; color:#1e40af; background:#dbeafe; padding:6px 12px; border-radius:8px; display:flex; align-items:center; gap:6px; white-space:nowrap;">
+                    <i class="fa-solid fa-eye"></i> Solo Visualización
+                </div>
+            </div>
+        `;
+    }
+}
+window.renderRolesPermissionBanner = renderRolesPermissionBanner;
 
 function renderRoleSelectorTabs() {
     const container = document.getElementById('roleSelectorTabsContainer');
@@ -2151,6 +2226,11 @@ function selectRoleForEditing(roleKey) {
 window.selectRoleForEditing = selectRoleForEditing;
 
 function initNewRoleForm() {
+    if (!isDirectorOrSuperAdmin()) {
+        showToast('Acceso Restringido: Solo la Dirección General puede crear nuevos roles.', 'warning');
+        return;
+    }
+
     _selectedRoleKeyForEditing = 'nuevo';
     renderRoleSelectorTabs();
 
@@ -2175,6 +2255,7 @@ function loadRoleIntoPermissionsPanel(roleKey) {
     if (!r) return;
 
     _selectedRoleKeyForEditing = r.key;
+    const canEdit = isDirectorOrSuperAdmin();
 
     const keyInput = document.getElementById('activeRoleKey');
     const nameInput = document.getElementById('activeRoleName');
@@ -2185,41 +2266,58 @@ function loadRoleIntoPermissionsPanel(roleKey) {
         ? window.SYSTEM_ROLE_KEYS 
         : ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente', 'estudiante'];
     const isSystemRole = (r.isSystem || SYSTEM_ROLE_KEYS.includes(r.key));
+    const isLocked = isSystemRole || !canEdit;
 
     if (keyInput) { 
         keyInput.value = r.key; 
-        keyInput.readOnly = isSystemRole; 
-        keyInput.style.backgroundColor = isSystemRole ? '#f1f5f9' : '#ffffff';
-        keyInput.style.cursor = isSystemRole ? 'not-allowed' : 'text';
+        keyInput.readOnly = isLocked; 
+        keyInput.style.backgroundColor = isLocked ? '#f1f5f9' : '#ffffff';
+        keyInput.style.cursor = isLocked ? 'not-allowed' : 'text';
     }
     if (nameInput) {
-        nameInput.value = r.name;
-        nameInput.readOnly = isSystemRole;
-        nameInput.style.backgroundColor = isSystemRole ? '#f1f5f9' : '#ffffff';
-        nameInput.style.cursor = isSystemRole ? 'not-allowed' : 'text';
+        nameInput.value = r.name; 
+        nameInput.readOnly = isLocked; 
+        nameInput.style.backgroundColor = isLocked ? '#f1f5f9' : '#ffffff';
+        nameInput.style.cursor = isLocked ? 'not-allowed' : 'text';
     }
     if (descInput) {
-        descInput.value = r.description || '';
-        descInput.readOnly = isSystemRole;
-        descInput.style.backgroundColor = isSystemRole ? '#f1f5f9' : '#ffffff';
-        descInput.style.cursor = isSystemRole ? 'not-allowed' : 'text';
+        descInput.value = r.description || ''; 
+        descInput.readOnly = isLocked; 
+        descInput.style.backgroundColor = isLocked ? '#f1f5f9' : '#ffffff';
+        descInput.style.cursor = isLocked ? 'not-allowed' : 'text';
     }
     if (colorInput) {
-        colorInput.value = r.color || '#0284c7';
-        colorInput.disabled = isSystemRole;
-        colorInput.style.cursor = isSystemRole ? 'not-allowed' : 'pointer';
+        colorInput.value = r.color || '#0284c7'; 
+        colorInput.disabled = isLocked; 
+        colorInput.style.cursor = isLocked ? 'not-allowed' : 'pointer';
     }
 
     renderActiveRolePermissionsGrid(r.permissions || []);
 
     const delBtn = document.getElementById('btnDeleteActiveRole');
     if (delBtn) {
-        if (isSystemRole) {
+        if (isSystemRole || !canEdit) {
             delBtn.style.display = 'none';
         } else {
             delBtn.style.display = 'inline-flex';
             delBtn.setAttribute('onclick', `deleteRole('${r.key}')`);
         }
+    }
+
+    // Adaptar controles y botones de guardado según facultades del usuario
+    const saveBtns = document.querySelectorAll('button[onclick="saveActiveRolePermissions()"]');
+    saveBtns.forEach(btn => {
+        btn.style.display = canEdit ? 'inline-flex' : 'none';
+    });
+
+    const bulkBtns = document.querySelectorAll('button[onclick^="setAllPermissionsLevel"]');
+    bulkBtns.forEach(btn => {
+        btn.style.display = canEdit ? 'inline-flex' : 'none';
+    });
+
+    const newRoleBtn = document.getElementById('btnCreateNewRoleHeader');
+    if (newRoleBtn) {
+        newRoleBtn.style.display = canEdit ? 'inline-flex' : 'none';
     }
 }
 window.loadRoleIntoPermissionsPanel = loadRoleIntoPermissionsPanel;
@@ -2227,8 +2325,8 @@ window.loadRoleIntoPermissionsPanel = loadRoleIntoPermissionsPanel;
 
 
 async function saveActiveRolePermissions() {
-    if (STATE.currentRole !== 'admin' && STATE.currentUser?.role !== 'admin') {
-        showToast('Solo el Super Administrador del Sistema puede guardar roles y permisos.', 'warning');
+    if (!isDirectorOrSuperAdmin()) {
+        showToast('Acceso Restringido: La edición y configuración de permisos está reservada exclusivamente a la Dirección General.', 'warning');
         return;
     }
 
@@ -2460,7 +2558,7 @@ function initDefaultRolesConfig() {
             description: 'Supervisión institucional, auditoría de notas y aprobación de nóminas',
             color: '#16a34a',
             isSystem: true,
-            permissions: allKeys.filter(k => k !== 'roles')
+            permissions: allKeys
         },
         {
             key: 'secretaria',
@@ -3074,19 +3172,22 @@ function renderRolesTable(filterVal = '') {
                         <button type="button" class="btn btn-primary btn-xs" onclick="selectRoleAndScroll('${r.key}')" title="Configurar Matriz Detallada de Permisos (Modificar / Solo Ver / Bloquear)" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; background:#0284c7; border-color:#0284c7; color:#fff; border-radius:6px;">
                             <i class="fa-solid fa-sliders"></i> Permisos
                         </button>
-                        ${!isSystemRole ? `
+                        ${(!isSystemRole && isDirectorOrSuperAdmin()) ? `
                         <button type="button" class="btn btn-outline-primary btn-xs" onclick="openRoleModal('${r.key}')" title="Editar Nombre, Descripción, Color y Módulos del Rol" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; border-radius:6px;">
                             <i class="fa-solid fa-pen-to-square"></i> Editar
                         </button>
                         <button type="button" class="btn btn-outline-danger btn-xs" onclick="deleteRole('${r.key}')" title="Eliminar Rol Personalizado" style="font-weight:700; padding:5px 10px; display:inline-flex; align-items:center; gap:5px; border-radius:6px; color:#dc2626; border-color:#fca5a5;">
                             <i class="fa-solid fa-trash-can"></i> Eliminar
                         </button>
+                        ` : (!isSystemRole ? `
+                        <span class="badge" style="background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; font-size:0.75rem; padding:4px 8px; border-radius:6px;">
+                            <i class="fa-solid fa-shield"></i> Personalizado
+                        </span>
                         ` : `
                         <span class="badge" style="background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1; font-size:0.75rem; padding:4px 8px; border-radius:6px;" title="Rol oficial permanente del sistema — solo se pueden configurar sus permisos">
                             <i class="fa-solid fa-lock"></i> Permanente
                         </span>
-                        `}
-                    </div>
+                        `)}</div>
                 </td>
             </tr>
         `;
@@ -3095,8 +3196,8 @@ function renderRolesTable(filterVal = '') {
 window.renderRolesTable = renderRolesTable;
 
 function deleteRole(roleKey) {
-    if (STATE.currentRole !== 'admin' && STATE.currentUser?.role !== 'admin') {
-        showToast('Solo el Super Administrador tiene autorización para eliminar roles.', 'warning');
+    if (!isDirectorOrSuperAdmin()) {
+        showToast('Acceso Restringido: Solo la Dirección General tiene autorización para eliminar roles.', 'warning');
         return;
     }
 
@@ -24638,17 +24739,51 @@ function printAttendanceExcelSheet() { printAttendanceOfficialSheet(); }
 // ==========================================================================
 
 function openCreatePermissionModal(preselectedStudentId = null) {
-    const modal = document.getElementById('createPermissionModal');
-    if (!modal) return;
-
     const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
     const canManagePerms = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
-    if (!canManagePerms) {
-        showToast("Acceso Restringido: La autorización de permisos de ausencia es competencia exclusiva de Auxiliatura y Dirección.", "warning");
+    const isTeacher = !canManagePerms || curRole.toLowerCase() === 'docente' || (STATE.currentUser && STATE.currentUser.role === 'docente');
+    if (isTeacher) {
+        showToast("Acceso Restringido: El registro y autorización oficial de permisos de ausencia corresponde a Auxiliatura y Dirección.", "warning");
         return;
     }
 
-    // Poblar filtros de grado
+    const modal = document.getElementById('createPermissionModal');
+    if (!modal) return;
+
+    // Resetear modo de edición si existía previamente
+    const editingInput = document.getElementById('permEditingId');
+    if (editingInput) editingInput.value = '';
+
+    const titleEl = document.getElementById('createPermissionModalTitle');
+    if (titleEl) {
+        titleEl.innerHTML = '<i class="fa-solid fa-file-signature"></i> Autorizar Permiso Oficial de Ausencia';
+    }
+    const headerEl = document.getElementById('createPermissionModalHeader');
+    if (headerEl) {
+        headerEl.style.background = 'linear-gradient(135deg, #d97706, #b45309)';
+    }
+    const infoNotice = document.getElementById('permModalInfoNotice');
+    if (infoNotice) {
+        infoNotice.innerHTML = `
+            <i class="fa-solid fa-circle-info" style="font-size:1.25rem; margin-top:2px; flex-shrink:0; color:#d97706;"></i>
+            <div>
+                <strong style="color:#b45309;">Efecto Automático en Toda la Plataforma:</strong> Al autorizar este permiso, se registrará como <strong style="color:#15803d;">"J" (Justificado)</strong> en las listas de asistencia de <strong>TODOS los catedráticos</strong> y se mostrará la justificación oficial en pantalla.
+            </div>
+        `;
+        infoNotice.style.background = '#fffbeb';
+        infoNotice.style.borderColor = '#fde68a';
+        infoNotice.style.borderLeftColor = '#f59e0b';
+    }
+    const studentSelect = document.getElementById('permStudentSelect');
+    if (studentSelect) studentSelect.disabled = false;
+
+    const submitBtn = document.getElementById('createPermissionSubmitBtn');
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Autorizar y Aplicar Permiso';
+        submitBtn.style.background = '#d97706';
+        submitBtn.style.borderColor = '#b45309';
+    }
+
     populatePermissionGradeFilter();
 
     // Resetear formulario
@@ -24697,6 +24832,39 @@ function closeCreatePermissionModal() {
     modal.classList.remove('active');
     modal.style.setProperty('display', 'none', 'important');
     modal.style.display = 'none';
+
+    const editingInput = document.getElementById('permEditingId');
+    if (editingInput) editingInput.value = '';
+
+    const titleEl = document.getElementById('createPermissionModalTitle');
+    if (titleEl) {
+        titleEl.innerHTML = '<i class="fa-solid fa-file-signature"></i> Autorizar Permiso Oficial de Ausencia';
+    }
+    const headerEl = document.getElementById('createPermissionModalHeader');
+    if (headerEl) {
+        headerEl.style.background = 'linear-gradient(135deg, #d97706, #b45309)';
+    }
+    const infoNotice = document.getElementById('permModalInfoNotice');
+    if (infoNotice) {
+        infoNotice.innerHTML = `
+            <i class="fa-solid fa-circle-info" style="font-size:1.25rem; margin-top:2px; flex-shrink:0; color:#d97706;"></i>
+            <div>
+                <strong style="color:#b45309;">Efecto Automático en Toda la Plataforma:</strong> Al autorizar este permiso, se registrará como <strong style="color:#15803d;">"J" (Justificado)</strong> en las listas de asistencia de <strong>TODOS los catedráticos</strong> y se mostrará la justificación oficial en pantalla.
+            </div>
+        `;
+        infoNotice.style.background = '#fffbeb';
+        infoNotice.style.borderColor = '#fde68a';
+        infoNotice.style.borderLeftColor = '#f59e0b';
+    }
+    const studentSelect = document.getElementById('permStudentSelect');
+    if (studentSelect) studentSelect.disabled = false;
+
+    const submitBtn = document.getElementById('createPermissionSubmitBtn');
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Autorizar y Aplicar Permiso';
+        submitBtn.style.background = '#d97706';
+        submitBtn.style.borderColor = '#b45309';
+    }
 }
 window.closeCreatePermissionModal = closeCreatePermissionModal;
 
@@ -24798,6 +24966,91 @@ function saveStudentPermissionForm(e) {
     if (e) {
         e.preventDefault();
         e.stopPropagation();
+    }
+
+    const editingId = (document.getElementById('permEditingId')?.value || '').trim();
+    if (editingId) {
+        if (!isDirectorOrSuperAdmin()) {
+            showToast('Acceso Restringido: Solo la Dirección General puede editar permisos de ausencia existentes.', 'warning');
+            return;
+        }
+
+        const perm = (STATE.studentPermissions || []).find(p => p.id === editingId);
+        if (!perm) {
+            showToast('El permiso que intenta editar no fue encontrado.', 'danger');
+            return;
+        }
+
+        const startDate = (document.getElementById('permStartDate')?.value || '').trim();
+        if (!startDate) {
+            showToast('Por favor ingrese la fecha de inicio del permiso.', 'warning');
+            return;
+        }
+
+        const endDate = (document.getElementById('permEndDate')?.value || '').trim() || startDate;
+        if (endDate < startDate) {
+            showToast('La fecha final no puede ser anterior a la fecha inicial.', 'warning');
+            return;
+        }
+
+        const reasonCategory = (document.getElementById('permReasonCategory')?.value || 'Salud / Cita Médica').trim();
+        const reasonDetail = (document.getElementById('permReasonDetail')?.value || '').trim();
+        if (!reasonDetail) {
+            showToast('Por favor especifique la justificación o razón detallada del permiso.', 'warning');
+            return;
+        }
+
+        const docRef = (document.getElementById('permDocRef')?.value || '').trim();
+        const authorizedBy = (document.getElementById('permAuthorizedBy')?.value || 'Dirección General').trim();
+
+        // 1. Limpiar metadata anterior asociada al rango de fechas previo
+        const oldStart = new Date(perm.startDate + 'T00:00:00');
+        const oldEnd = new Date((perm.endDate || perm.startDate) + 'T00:00:00');
+        let curD = new Date(oldStart);
+        while (curD <= oldEnd) {
+            const m = curD.getMonth() + 1;
+            const d = curD.getDate();
+            const metaKey = `${perm.studentId}_${m}_${d}`;
+            if (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]) {
+                delete STATE.attendancePermissionsMeta[metaKey];
+            }
+            curD.setDate(curD.getDate() + 1);
+        }
+
+        // 2. Actualizar datos del permiso
+        perm.startDate = startDate;
+        perm.endDate = endDate;
+        perm.reasonCategory = reasonCategory;
+        perm.reasonDetail = reasonDetail;
+        perm.docRef = docRef;
+        perm.authorizedBy = authorizedBy;
+        perm.lastEditedAt = new Date().toISOString();
+        perm.lastEditedBy = 'Dirección General';
+
+        // 3. Re-aplicar nuevo rango
+        applyStudentPermission(perm);
+
+        saveAttendanceRecords(false);
+
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
+            EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta);
+        }
+
+        closeCreatePermissionModal();
+
+        if (typeof loadAttendanceList === 'function') {
+            loadAttendanceList();
+        }
+        if (typeof renderPermissionsHistoryTable === 'function') {
+            renderPermissionsHistoryTable();
+        }
+        if (typeof renderPermissionsHistoryView === 'function') {
+            renderPermissionsHistoryView();
+        }
+
+        showToast(`✅ Permiso actualizado exitosamente para ${perm.studentName} por Dirección General.`, 'success');
+        return;
     }
 
     const studentSelect = document.getElementById('permStudentSelect');
@@ -24987,6 +25240,84 @@ function applyStudentPermission(perm) {
 }
 window.applyStudentPermission = applyStudentPermission;
 
+function openEditStudentPermissionModal(permId) {
+    if (!isDirectorOrSuperAdmin()) {
+        showToast('Acceso Restringido: La edición de permisos de ausencia está reservada exclusivamente a la Dirección General.', 'warning');
+        return;
+    }
+
+    const perm = (STATE.studentPermissions || []).find(p => p.id === permId);
+    if (!perm) {
+        showToast('El permiso solicitado no existe o fue removido.', 'warning');
+        return;
+    }
+
+    const modal = document.getElementById('createPermissionModal');
+    if (!modal) return;
+
+    populatePermissionGradeFilter();
+
+    const editingInput = document.getElementById('permEditingId');
+    if (editingInput) editingInput.value = perm.id;
+
+    const titleEl = document.getElementById('createPermissionModalTitle');
+    if (titleEl) {
+        titleEl.innerHTML = '<i class="fa-solid fa-file-pen"></i> Editar Permiso Oficial de Ausencia (Dirección General)';
+    }
+    const headerEl = document.getElementById('createPermissionModalHeader');
+    if (headerEl) {
+        headerEl.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
+    }
+    const infoNotice = document.getElementById('permModalInfoNotice');
+    if (infoNotice) {
+        infoNotice.innerHTML = `
+            <i class="fa-solid fa-shield-halved" style="font-size:1.25rem; margin-top:2px; flex-shrink:0; color:#16a34a;"></i>
+            <div>
+                <strong style="color:#15803d;">Modo de Edición Exclusivo de Dirección General:</strong> Modifique las fechas, justificación o comprobantes de <strong>${escapeHtml(perm.studentName)}</strong>. Los cambios se actualizarán automáticamente en la asistencia de todos los docentes.
+            </div>
+        `;
+        infoNotice.style.background = '#f0fdf4';
+        infoNotice.style.borderColor = '#bbf7d0';
+        infoNotice.style.borderLeftColor = '#16a34a';
+    }
+
+    const studentSelect = document.getElementById('permStudentSelect');
+    if (studentSelect) {
+        studentSelect.innerHTML = `<option value="${perm.studentId}" selected>${escapeHtml(perm.studentName)} (${perm.grade || 'Grado'} ${perm.section || ''})</option>`;
+        studentSelect.disabled = true;
+    }
+
+    const startInput = document.getElementById('permStartDate');
+    if (startInput) startInput.value = perm.startDate || '';
+
+    const endInput = document.getElementById('permEndDate');
+    if (endInput) endInput.value = perm.endDate || '';
+
+    const catSelect = document.getElementById('permReasonCategory');
+    if (catSelect) catSelect.value = perm.reasonCategory || 'Salud / Cita Médica';
+
+    const detailInput = document.getElementById('permReasonDetail');
+    if (detailInput) detailInput.value = perm.reasonDetail || '';
+
+    const docInput = document.getElementById('permDocRef');
+    if (docInput) docInput.value = perm.docRef || '';
+
+    const authInput = document.getElementById('permAuthorizedBy');
+    if (authInput) authInput.value = perm.authorizedBy || 'Dirección General';
+
+    const submitBtn = document.getElementById('createPermissionSubmitBtn');
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios del Permiso';
+        submitBtn.style.background = '#16a34a';
+        submitBtn.style.borderColor = '#15803d';
+    }
+
+    modal.classList.add('active');
+    modal.style.setProperty('display', 'flex', 'important');
+    modal.style.display = 'flex';
+}
+window.openEditStudentPermissionModal = openEditStudentPermissionModal;
+
 function openPermissionsHistoryModal() {
     if (typeof navigateTo === 'function') {
         navigateTo('permissions-history');
@@ -25077,8 +25408,11 @@ function renderPermissionsHistoryTable() {
                     <button type="button" class="btn btn-outline-primary btn-xs" onclick="printStudentPermissionPass('${p.id}')" title="Imprimir Comprobante Oficial" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
                         <i class="fa-solid fa-print"></i> Pase
                     </button>
-                    ${canManagePerms ? `
-                    <button type="button" class="btn btn-outline-danger btn-xs" onclick="revokeStudentPermission('${p.id}')" title="Anular este permiso" style="padding:3px 8px; font-size:0.75rem; font-weight:700; margin-left:4px;">
+                    ${isDirectorOrSuperAdmin() ? `
+                    <button type="button" class="btn btn-outline-warning btn-xs" onclick="openEditStudentPermissionModal('${p.id}')" title="Editar este permiso (Dirección General)" style="padding:3px 8px; font-size:0.75rem; font-weight:700; margin-left:4px; color:#b45309; border-color:#f59e0b; background:#fffbeb;">
+                        <i class="fa-solid fa-pen-to-square"></i> Editar
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-xs" onclick="revokeStudentPermission('${p.id}')" title="Anular este permiso (Dirección General)" style="padding:3px 8px; font-size:0.75rem; font-weight:700; margin-left:4px;">
                         <i class="fa-solid fa-trash"></i>
                     </button>` : ''}
                 </td>
@@ -25090,10 +25424,8 @@ window.renderPermissionsHistoryTable = renderPermissionsHistoryTable;
 
 function revokeStudentPermission(permId) {
     if (!permId) return;
-    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
-    const canManagePerms = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
-    if (!canManagePerms) {
-        showToast("Acceso Restringido: Solo el personal de Auxiliatura y Dirección puede anular permisos.", "warning");
+    if (!isDirectorOrSuperAdmin()) {
+        showToast("Acceso Restringido: La anulación o revocación de permisos está reservada exclusivamente a la Dirección General.", "warning");
         return;
     }
     const perm = (STATE.studentPermissions || []).find(p => p.id === permId);
@@ -35882,8 +36214,11 @@ function renderPermissionsHistoryView() {
                         <button type="button" class="btn btn-xs btn-outline-primary" onclick="printStudentPermissionPass('${p.id}')" title="Imprimir Comprobante Oficial de Permiso" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
                             <i class="fa-solid fa-print"></i> Pase
                         </button>
-                        ${canManagePerms ? `
-                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="revokeStudentPermission('${p.id}')" title="Anular este permiso de ausencia" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
+                        ${isDirectorOrSuperAdmin() ? `
+                        <button type="button" class="btn btn-xs btn-outline-warning" onclick="openEditStudentPermissionModal('${p.id}')" title="Editar este permiso de ausencia (Dirección General)" style="padding:3px 8px; font-size:0.75rem; font-weight:700; color:#b45309; border-color:#f59e0b; background:#fffbeb;">
+                            <i class="fa-solid fa-pen-to-square"></i> Editar
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="revokeStudentPermission('${p.id}')" title="Anular este permiso de ausencia (Dirección General)" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
                             <i class="fa-solid fa-trash"></i>
                         </button>` : ''}
                     </div>

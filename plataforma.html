@@ -2794,7 +2794,7 @@
                             </p>
                         </div>
                         <div>
-                            <button type="button" class="btn btn-primary" onclick="initNewRoleForm()" style="font-weight:700; background:#0284c7; border-color:#0369a1; display:inline-flex; align-items:center; gap:8px;">
+                            <button type="button" class="btn btn-primary" id="btnCreateNewRoleHeader" onclick="initNewRoleForm()" style="font-weight:700; background:#0284c7; border-color:#0369a1; display:inline-flex; align-items:center; gap:8px;">
                                 <i class="fa-solid fa-plus-circle"></i> + Crear Nuevo Rol
                             </button>
                         </div>
@@ -2809,6 +2809,9 @@
                             <!-- Inyectado dinámicamente con renderRoleSelectorTabs() -->
                         </div>
                     </div>
+
+                    <!-- BANNER EJECUTIVO / MODO CONSULTA PARA PERMISOS DE ROLES -->
+                    <div id="rolesPermissionStatusBanner" style="margin-bottom:18px;"></div>
 
                     <!-- PANEL PRINCIPAL DE EDICIÓN Y ACTIVACIÓN/DESACTIVACIÓN DE PERMISOS -->
                     <div class="table-card" style="padding:22px; border-top:4px solid #0284c7; margin-bottom:24px; border-radius:12px; background:#ffffff; box-shadow:0 4px 6px -1px rgba(0,0,0,0.06);">
@@ -4645,15 +4648,16 @@
     <!-- MODAL AUTORIZAR PERMISO DE AUSENCIA (AUXILIATURA / DIRECCIÓN) -->
     <div class="modal-overlay" id="createPermissionModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeCreatePermissionModal()">
         <div class="modal-container" style="max-width: 660px; width:100%; border-radius:14px; overflow:hidden; border:1px solid #cbd5e1; box-shadow:0 25px 50px -12px rgba(15,23,42,0.35);">
-            <div class="modal-header" style="background:linear-gradient(135deg, #d97706, #b45309); color:#ffffff; padding:18px 24px; display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="margin:0; font-size:1.18rem; color:#ffffff; display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:-0.01em;">
+            <div class="modal-header" id="createPermissionModalHeader" style="background:linear-gradient(135deg, #d97706, #b45309); color:#ffffff; padding:18px 24px; display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="createPermissionModalTitle" style="margin:0; font-size:1.18rem; color:#ffffff; display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:-0.01em;">
                     <i class="fa-solid fa-file-signature"></i> Autorizar Permiso Oficial de Ausencia
                 </h3>
                 <button type="button" class="modal-close" onclick="closeCreatePermissionModal()" style="color:#fff; background:rgba(255,255,255,0.15); border:none; width:34px; height:34px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.4rem; cursor:pointer;" title="Cerrar">&times;</button>
             </div>
             <form onsubmit="saveStudentPermissionForm(event)">
+                <input type="hidden" id="permEditingId" value="">
                 <div class="modal-body" style="padding:22px 24px; max-height:78vh; overflow-y:auto;">
-                    <div style="background:#fffbeb; border:1.5px solid #fde68a; border-left:4px solid #f59e0b; border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:0.90rem; line-height:1.55; color:#1e293b; display:flex; align-items:flex-start; gap:10px;">
+                    <div id="permModalInfoNotice" style="background:#fffbeb; border:1.5px solid #fde68a; border-left:4px solid #f59e0b; border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:0.90rem; line-height:1.55; color:#1e293b; display:flex; align-items:flex-start; gap:10px;">
                         <i class="fa-solid fa-circle-info" style="font-size:1.25rem; margin-top:2px; flex-shrink:0; color:#d97706;"></i>
                         <div>
                             <strong style="color:#b45309;">Efecto Automático en Toda la Plataforma:</strong> Al autorizar este permiso, se registrará como <strong style="color:#15803d;">"J" (Justificado)</strong> en las listas de asistencia de <strong>TODOS los catedráticos</strong> y se mostrará la justificación oficial en pantalla.
@@ -4749,7 +4753,7 @@
                     </button>
                     <div style="display:flex; gap:8px;">
                         <button type="button" class="btn btn-secondary" onclick="closeCreatePermissionModal()" style="font-weight:700; font-size:0.84rem;">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" style="background:#d97706; border-color:#b45309; font-weight:800; font-size:0.84rem; display:inline-flex; align-items:center; gap:6px;">
+                        <button type="submit" id="createPermissionSubmitBtn" class="btn btn-primary" style="background:#d97706; border-color:#b45309; font-weight:800; font-size:0.84rem; display:inline-flex; align-items:center; gap:6px;">
                             <i class="fa-solid fa-check"></i> Autorizar y Aplicar Permiso
                         </button>
                     </div>
