@@ -5875,8 +5875,9 @@ function getAttendanceStudents(gradeCode, currentCourseObj = null) {
     const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : (currentCourseObj ? (currentCourseObj.section || currentCourseObj.gradeCode) : gradeCode));
 
     let students = (STATE.students || []).filter(s => {
-        if (!s || s.active === false) return false;
-        if (s.status === 'Retirado' || s.status === 'Inactivo') return false;
+        if (!s) return false;
+        if (s.active === false && s.status !== 'Retirado') return false;
+        if (s.status === 'Inactivo') return false;
 
         // 1. Coincidencia directa por código exacto de grado
         if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
@@ -5899,7 +5900,7 @@ function getAttendanceStudents(gradeCode, currentCourseObj = null) {
     // Fallback de ultra-seguridad: si la nómina está vacía pero hay alumnos registrados en el sistema para ese grado
     if (students.length === 0 && Array.isArray(STATE.students) && STATE.students.length > 0 && qGradeNum > 0) {
         students = STATE.students.filter(s => {
-            if (!s || s.active === false || s.status === 'Retirado' || s.status === 'Inactivo') return false;
+            if (!s || (s.active === false && s.status !== 'Retirado') || s.status === 'Inactivo') return false;
             const text = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''} ${s.section || ''}`.toUpperCase();
             const hasNum = text.includes(String(qGradeNum)) || (qGradeNum === 4 && (text.includes('CUARTO') || text.includes('4TO'))) || (qGradeNum === 5 && (text.includes('QUINTO') || text.includes('5TO'))) || (qGradeNum === 6 && (text.includes('SEXTO') || text.includes('6TO')));
             const hasSec = !qSec || text.includes(qSec);
@@ -6308,6 +6309,57 @@ function ensureSireOfficialStudents() {
             kStudent.gradeCode = kStudent.gradeCode || '4to PC B';
             kStudent.section = kStudent.section || 'Sección B';
             kStudent.active = true;
+        }
+    }
+
+    // 🛡️ Garantizar presencia inmutable de Méndez López, Julio Luis Elias en la nómina oficial (4to Perito Contador Sección B)
+    const hasJulioMendez = (STATE.students || []).some(s => s && (
+        s.id === 'stu-sire-H380PHM' || 
+        s.personalCode === 'H380PHM' || 
+        (s.carne && s.carne.includes('2026-CB-022')) ||
+        (s.name && s.name.toUpperCase().includes('MÉNDEZ LÓPEZ') && s.name.toUpperCase().includes('JULIO'))
+    ));
+    if (!hasJulioMendez) {
+        STATE.students.push({
+            id: 'stu-sire-H380PHM',
+            personalCode: 'H380PHM',
+            carne: '2026-CB-022',
+            cui: '2125842002201',
+            no: 22,
+            firstName: 'JULIO LUIS ELIAS',
+            lastName: 'MÉNDEZ LÓPEZ',
+            name: 'MÉNDEZ LÓPEZ JULIO LUIS ELIAS',
+            grade: '4to Perito Contador',
+            gradeCode: '4to PC B',
+            gradeLabel: '4to Perito Contador (Sección B)',
+            section: 'Sección B',
+            career: 'Perito Contador',
+            careerCode: 'PC',
+            cycle: '2026',
+            gender: 'MASCULINO',
+            status: 'Activo',
+            statusSire: 'INSCRITO',
+            active: true
+        });
+    } else {
+        const jStudent = (STATE.students || []).find(s => s && (
+            s.id === 'stu-sire-H380PHM' || 
+            s.personalCode === 'H380PHM' || 
+            (s.carne && s.carne.includes('2026-CB-022')) ||
+            (s.name && s.name.toUpperCase().includes('MÉNDEZ LÓPEZ') && s.name.toUpperCase().includes('JULIO'))
+        ));
+        if (jStudent) {
+            jStudent.id = jStudent.id || 'stu-sire-H380PHM';
+            jStudent.personalCode = jStudent.personalCode || 'H380PHM';
+            jStudent.carne = jStudent.carne || '2026-CB-022';
+            jStudent.name = jStudent.name || 'MÉNDEZ LÓPEZ JULIO LUIS ELIAS';
+            jStudent.grade = jStudent.grade || '4to Perito Contador';
+            jStudent.gradeCode = jStudent.gradeCode || '4to PC B';
+            jStudent.section = jStudent.section || 'Sección B';
+            jStudent.active = true;
+            if (jStudent.status !== 'Retirado' && jStudent.status !== 'Ausente') {
+                jStudent.status = 'Activo';
+            }
         }
     }
 
@@ -10376,7 +10428,7 @@ function resetStudentFilters() {
         subjSelect.value = '';
     }
     if (hiddenGradeSelect) hiddenGradeSelect.value = '';
-    if (statusSelect) statusSelect.value = 'Activo';
+    if (statusSelect) statusSelect.value = 'ALL';
     if (searchInput) searchInput.value = '';
 
     renderStudentsTable();
@@ -10426,7 +10478,7 @@ function renderStudentsTable() {
 
     const careerVal = careerSelect ? careerSelect.value : '';
     const gradeVal = gradeSelect ? gradeSelect.value : '';
-    const statusVal = statusSelect ? statusSelect.value : 'Activo';
+    const statusVal = statusSelect ? statusSelect.value : 'ALL';
     const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
     const summaryBox = document.getElementById('studentsFilterSummary');
@@ -12046,32 +12098,21 @@ async function saveAcademicExoneration(e) {
 
             if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
                 try {
-                    const studentIndex = (STATE.students || []).findIndex(s => String(s.id) === String(student.id));
-                    // 🛡️ BLINDAJE ABSOLUTO DE IDENTIDAD ESTUDIANTIL:
-                    // Se envía siempre la identidad inmutable completa del alumno junto a sus excepciones.
-                    // Esto hace imposible que una petición de red en Firebase deje en blanco el nombre, carné o grado.
-                    const safeIdentityPayload = {
-                        id: student.id,
-                        carne: student.carne,
-                        personalCode: student.personalCode || '',
-                        firstName: student.firstName,
-                        lastName: student.lastName,
-                        name: student.name || `${student.lastName} ${student.firstName}`,
-                        grade: student.grade,
-                        gradeCode: student.gradeCode || '',
-                        gradeLabel: student.gradeLabel || '',
-                        section: student.section,
-                        career: student.career || 'Perito Contador',
-                        status: student.status || 'Activo',
-                        statusSire: student.statusSire || 'INSCRITO',
-                        active: student.active !== false,
-                        academicExceptions: student.academicExceptions,
-                        exoneraciones: student.exoneraciones
-                    };
+                    const studentIndex = (STATE.students || []).findIndex(s => s && (
+                        String(s.id) === String(student.id) ||
+                        (s.personalCode && s.personalCode === student.personalCode) ||
+                        (s.carne && s.carne === student.carne)
+                    ));
 
                     if (studentIndex !== -1) {
+                        // 🛡️ Actualización atómica exclusiva de excepciones académicas:
+                        // No sobreescribe datos personales, calificaciones ni la identidad del estudiante.
                         await withTimeout(
-                            EnccoCloudSync.patchNode(`students/${studentIndex}`, safeIdentityPayload),
+                            EnccoCloudSync.patchNode(`students/${studentIndex}`, {
+                                academicExceptions: student.academicExceptions || [],
+                                exoneraciones: student.exoneraciones || [],
+                                lastModified: nowTime
+                            }),
                             8000,
                             'Tiempo de espera en Realtime Database agotado.'
                         );
@@ -12163,28 +12204,18 @@ async function deleteAcademicExoneration(studentId, exIndex) {
     }
 
     if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-        const studentIndex = (STATE.students || []).findIndex(s => String(s.id) === String(student.id));
-        const safeIdentityPayload = {
-            id: student.id,
-            carne: student.carne,
-            personalCode: student.personalCode || '',
-            firstName: student.firstName,
-            lastName: student.lastName,
-            name: student.name || `${student.lastName} ${student.firstName}`,
-            grade: student.grade,
-            gradeCode: student.gradeCode || '',
-            gradeLabel: student.gradeLabel || '',
-            section: student.section,
-            career: student.career || 'Perito Contador',
-            status: student.status || 'Activo',
-            statusSire: student.statusSire || 'INSCRITO',
-            active: student.active !== false,
-            academicExceptions: student.academicExceptions,
-            exoneraciones: student.exoneraciones
-        };
+        const studentIndex = (STATE.students || []).findIndex(s => s && (
+            String(s.id) === String(student.id) ||
+            (s.personalCode && s.personalCode === student.personalCode) ||
+            (s.carne && s.carne === student.carne)
+        ));
 
         if (studentIndex !== -1) {
-            EnccoCloudSync.patchNode(`students/${studentIndex}`, safeIdentityPayload);
+            EnccoCloudSync.patchNode(`students/${studentIndex}`, {
+                academicExceptions: student.academicExceptions || [],
+                exoneraciones: student.exoneraciones || [],
+                lastModified: nowTime
+            });
         }
         if (removedEx && removedEx.id) {
             EnccoCloudSync.patchNode(`exoneraciones/${removedEx.id}`, { active: false, deletedAt: new Date().toISOString() });
