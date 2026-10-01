@@ -1972,6 +1972,27 @@ const EnccoCloudSync = {
 
     async patchNode(nodeName, partialData) {
         if (!nodeName || typeof partialData !== 'object') return false;
+
+        // 🛡️ GUARDA DE ARQUITECTURA DE BASE DE DATOS PARA /students:
+        // Si se intenta patchear con una clave alfanumérica dentro de students/ (ej. students/stu-sire-...),
+        // se redirige al índice numérico correspondiente para no desestructurar el array en Firebase RTDB.
+        if (nodeName.startsWith('students/')) {
+            const subParts = nodeName.split('/');
+            const subKey = subParts[1];
+            const isNum = !isNaN(parseInt(subKey)) && String(parseInt(subKey)) === subKey;
+            if (!isNum) {
+                const studentsArr = (typeof STATE !== 'undefined' && Array.isArray(STATE.students)) ? STATE.students : [];
+                const stIdx = studentsArr.findIndex(s => s && (s.id === subKey || s.personalCode === subKey || s.carne === subKey));
+                if (stIdx !== -1) {
+                    subParts[1] = String(stIdx);
+                    nodeName = subParts.join('/');
+                } else {
+                    console.warn(`🛡️ [EnccoCloudSync.patchNode] Bloqueada escritura de clave no numérica '${subKey}' en /students.`);
+                    return false;
+                }
+            }
+        }
+
         const firebaseUrl = this.getUrl();
         const now = Date.now();
         if (typeof STATE !== 'undefined' && STATE) {
@@ -2037,6 +2058,10 @@ const EnccoCloudSync = {
 
     async syncNode(nodeName, data) {
         if (!nodeName) return false;
+        if ((nodeName === 'students' || nodeName.startsWith('students')) && (!Array.isArray(data) || data.length < 50)) {
+            console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar colección de estudiantes truncada (${Array.isArray(data) ? data.length : typeof data}). Operación cancelada para proteger integridad.`);
+            return false;
+        }
         if ((nodeName === 'users' || nodeName.startsWith('users')) && (!Array.isArray(data) || data.length === 0)) {
             console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar colección de usuarios truncada (${data.length} < 20). Operación cancelada para proteger integridad.`);
             return false;
@@ -4686,6 +4711,32 @@ function initFirebaseRealtimeConnection() {
                                 STATE.config = { ...(STATE.config || {}), ...nodeData };
                             }
                         }
+                    } else if (cleanPath === 'exoneraciones' || cleanPath.startsWith('exoneraciones')) {
+                        if (nodeData && typeof nodeData === 'object') {
+                            if (!STATE.exoneraciones) STATE.exoneraciones = {};
+                            if (cleanPath === 'exoneraciones') {
+                                if (Array.isArray(nodeData)) {
+                                    nodeData.forEach(ex => {
+                                        if (ex && ex.id) STATE.exoneraciones[ex.id] = ex;
+                                    });
+                                } else {
+                                    Object.assign(STATE.exoneraciones, nodeData);
+                                }
+                            } else {
+                                const sub = cleanPath.replace(/^exoneraciones\/?/, '');
+                                const exId = sub || nodeData.id;
+                                if (exId) STATE.exoneraciones[exId] = nodeData;
+                            }
+                            if (Array.isArray(STATE.students)) {
+                                STATE.students.forEach(st => {
+                                    if (st && typeof getStudentExonerationsList === 'function') getStudentExonerationsList(st);
+                                });
+                            }
+                            if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView();
+                            if (typeof renderStudentsTable === 'function') renderStudentsTable();
+                            if (typeof loadAttendanceList === 'function') loadAttendanceList();
+                            if (typeof loadHonorRoll === 'function') loadHonorRoll();
+                        }
                     }
                     updateDbSyncStatus('synced');
                 } catch(err) {
@@ -4704,6 +4755,25 @@ function initFirebaseRealtimeConnection() {
                             } else {
                                 STATE.config = { ...(STATE.config || {}), ...data.data };
                             }
+                        } else if (data.path === '/exoneraciones' || data.path.startsWith('/exoneraciones')) {
+                            if (!STATE.exoneraciones) STATE.exoneraciones = {};
+                            if (data.path === '/exoneraciones') {
+                                Object.assign(STATE.exoneraciones, data.data);
+                            } else {
+                                const subPath = data.path.replace(/^\/exoneraciones\/?/, '');
+                                if (subPath) {
+                                    STATE.exoneraciones[subPath] = { ...(STATE.exoneraciones[subPath] || {}), ...data.data };
+                                }
+                            }
+                            if (Array.isArray(STATE.students)) {
+                                STATE.students.forEach(st => {
+                                    if (st && typeof getStudentExonerationsList === 'function') getStudentExonerationsList(st);
+                                });
+                            }
+                            if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView();
+                            if (typeof renderStudentsTable === 'function') renderStudentsTable();
+                            if (typeof loadAttendanceList === 'function') loadAttendanceList();
+                            if (typeof loadHonorRoll === 'function') loadHonorRoll();
                         } else if (data.path === '/attendanceRecords' || data.path.startsWith('/attendanceRecords')) {
                             // 🛡️ Actualización reactiva atómica de asistencia: no recargar toda la plataforma ni resetear selectores
                             if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
