@@ -1,0 +1,763 @@
+[
+  {
+    "pensumId": "pen-cnb-006",
+    "grade": "4",
+    "sec": "D",
+    "subject": "Matemática Comercial",
+    "teacher": "Roberto Alex Tobar Cermeño",
+    "matchedFiles": [
+      "ALEX TOBAR\\Notas Alex - 3°Bim - 4 D - Matemática 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-007",
+    "grade": "4",
+    "sec": "A",
+    "subject": "Introducción a la Economía",
+    "teacher": "Wiliams Esmely Gudiel Paredes",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-009",
+    "grade": "5",
+    "sec": "A",
+    "subject": "Cálculo Mercantil y Financiero",
+    "teacher": "Nehemias Yalil Salguero Sagastume",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-010",
+    "grade": "5",
+    "sec": "B",
+    "subject": "Mecanografía",
+    "teacher": "Wiliams Esmely Gudiel Paredes",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-011",
+    "grade": "4",
+    "sec": "C",
+    "subject": "Administración y Organización de Empresas",
+    "teacher": "Lilian Alas Grijalva",
+    "matchedFiles": [
+      "PEM. LILIAN ALAS\\Notas Lilian - 3°Bim - 4 C - Admon org. 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-013",
+    "grade": "4",
+    "sec": "D",
+    "subject": "Redacción y Correspondencia Mercantil",
+    "teacher": "Nery Benjamín Galvez Ramos",
+    "matchedFiles": [
+      "LIC. NERY\\Notas Nery - 3°Bim - 4 D - Correspon. 2026 lleno.xlsx",
+      "LIC. NERY REVISAR\\Notas Nery - 3°Bim - 4 D - Correspon. 2026 lleno.xlsx"
+    ],
+    "count": 2
+  },
+  {
+    "pensumId": "pen-cnb-014",
+    "grade": "4",
+    "sec": "B",
+    "subject": "Introducción a la Economía",
+    "teacher": "Nery Benjamín Galvez Ramos",
+    "matchedFiles": [
+      "LIC. NERY\\Notas Nery - 3°Bim - 4 B - Economía 2026 lleno.xlsx",
+      "LIC. NERY REVISAR\\Notas Nery - 3°Bim - 4 B - Economía 2026 lleno.xlsx"
+    ],
+    "count": 2
+  },
+  {
+    "pensumId": "pen-cnb-015",
+    "grade": "4",
+    "sec": "D",
+    "subject": "Contabilidad de Sociedades",
+    "teacher": "Edvin Osvaldo López Recinos",
+    "matchedFiles": [
+      "lic. osvaldo\\Notas Osvaldo - 3°Bim - 4 D - Sociedades 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-018",
+    "grade": "4",
+    "sec": "C",
+    "subject": "Inglés Comercial I",
+    "teacher": "Gamaliel Uzias Medrano Mayén",
+    "matchedFiles": [
+      "GAMALIEL\\Notas Gamaliel - 3°Bim - 4 C - Ingles 1 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-019",
+    "grade": "4",
+    "sec": "B",
+    "subject": "Inglés Comercial I",
+    "teacher": "Gamaliel Uzias Medrano Mayén",
+    "matchedFiles": [
+      "GAMALIEL\\Notas Gamaliel - 3°Bim - 4 B - Ingles 1 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-020",
+    "grade": "4",
+    "sec": "A",
+    "subject": "Matemática Comercial",
+    "teacher": "Roberto Alex Tobar Cermeño",
+    "matchedFiles": [
+      "ALEX TOBAR\\Notas Alex - 3°Bim - 4 A - Matemática 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-021",
+    "grade": "4",
+    "sec": "B",
+    "subject": "Matemática Comercial",
+    "teacher": "Roberto Alex Tobar Cermeño",
+    "matchedFiles": [
+      "ALEX TOBAR\\Notas Alex - 3°Bim - 4 B - Matemática 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-022",
+    "grade": "4",
+    "sec": "C",
+    "subject": "Matemática Comercial",
+    "teacher": "Roberto Alex Tobar Cermeño",
+    "matchedFiles": [
+      "ALEX TOBAR\\Notas Alex - 3°Bim - 4 C - Matemática 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-023",
+    "grade": "4",
+    "sec": "A",
+    "subject": "Inglés Comercial I",
+    "teacher": "Gamaliel Uzias Medrano Mayén",
+    "matchedFiles": [
+      "GAMALIEL\\Notas Gamaliel - 3°Bim - 4 A - Ingles 1 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-024",
+    "grade": "5",
+    "sec": "B",
+    "subject": "Contabilidad de Costos",
+    "teacher": "Héctor Noé Hernández Linares",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-025",
+    "grade": "5",
+    "sec": "A",
+    "subject": "Contabilidad de Costos",
+    "teacher": "Héctor Noé Hernández Linares",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-026",
+    "grade": "5",
+    "sec": "C",
+    "subject": "Contabilidad de Costos",
+    "teacher": "Héctor Noé Hernández Linares",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-027",
+    "grade": "5",
+    "sec": "D",
+    "subject": "Contabilidad de Costos",
+    "teacher": "Héctor Noé Hernández Linares",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-028",
+    "grade": "5",
+    "sec": "C",
+    "subject": "Cálculo Mercantil y Financiero",
+    "teacher": "Héctor Noé Hernández Linares",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-033",
+    "grade": "4",
+    "sec": "A",
+    "subject": "Fundamentos de Derecho",
+    "teacher": "Wilder Porfirio Pérez López",
+    "matchedFiles": [
+      "LIC.WILDER\\Notas Wilder - 3°Bim - 4 A - Fundamentos 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-034",
+    "grade": "4",
+    "sec": "B",
+    "subject": "Fundamentos de Derecho",
+    "teacher": "Wilder Porfirio Pérez López",
+    "matchedFiles": [
+      "LIC.WILDER\\Notas Wilder - 3°Bim - 4 B - Fundamentos 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-035",
+    "grade": "4",
+    "sec": "C",
+    "subject": "Fundamentos de Derecho",
+    "teacher": "Wilder Porfirio Pérez López",
+    "matchedFiles": [
+      "LIC.WILDER\\Notas Wilder - 3°Bim - 4 C - Fundamentos 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-036",
+    "grade": "4",
+    "sec": "A",
+    "subject": "Computación I",
+    "teacher": "Sandra Julissa Arana Lucero",
+    "matchedFiles": [
+      "LICDA. JULLISA\\Notas Julissa - 3°Bim - 4 A - Compu 1 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-037",
+    "grade": "4",
+    "sec": "B",
+    "subject": "Computación I",
+    "teacher": "Sandra Julissa Arana Lucero",
+    "matchedFiles": [
+      "LICDA. JULLISA\\Notas Julissa - 3°Bim - 4 B - Compu 1 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-038",
+    "grade": "4",
+    "sec": "C",
+    "subject": "Computación I",
+    "teacher": "Sandra Julissa Arana Lucero",
+    "matchedFiles": [
+      "LICDA. JULLISA\\Notas Julissa - 3°Bim - 4 C - Compu 1 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-039",
+    "grade": "4",
+    "sec": "D",
+    "subject": "Computación I",
+    "teacher": "Sandra Julissa Arana Lucero",
+    "matchedFiles": [
+      "LICDA. JULLISA\\Notas Julissa - 3°Bim - 4 D - Compu 1 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-040",
+    "grade": "4",
+    "sec": "B",
+    "subject": "Caligrafía y Ortografía",
+    "teacher": "Damaris Violeta Escobar Contreras de Salguero",
+    "matchedFiles": [
+      "LIC. DAMARIS\\Notas Damaris - 3°Bim - 4 B - Caligrafía  y  Ortografía 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-041",
+    "grade": "5",
+    "sec": "D",
+    "subject": "Geografía Económica",
+    "teacher": "Wiliams Esmely Gudiel Paredes",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-042",
+    "grade": "5",
+    "sec": "A",
+    "subject": "Catalogación y Archivo",
+    "teacher": "Wiliams Esmely Gudiel Paredes",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-043",
+    "grade": "5",
+    "sec": "B",
+    "subject": "Catalogación y Archivo",
+    "teacher": "Wiliams Esmely Gudiel Paredes",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-044",
+    "grade": "5",
+    "sec": "A",
+    "subject": "Mecanografía",
+    "teacher": "Wiliams Esmely Gudiel Paredes",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-046",
+    "grade": "5",
+    "sec": "B",
+    "subject": "Cálculo Mercantil y Financiero",
+    "teacher": "Elda Argentina López Monzón",
+    "matchedFiles": [
+      "PEM. ELDA LOPEZ\\Notas Elda - 3°Bim - 5 B - Calculo 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-049",
+    "grade": "4",
+    "sec": "A",
+    "subject": "Contabilidad de Sociedades",
+    "teacher": "Wilder Porfirio Pérez López",
+    "matchedFiles": [
+      "LIC.WILDER\\Notas Wilder - 3°Bim - 4 A - Sociedades 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-051",
+    "grade": "4",
+    "sec": "D",
+    "subject": "Inglés Comercial I",
+    "teacher": "Elda Argentina López Monzón",
+    "matchedFiles": [
+      "PEM. ELDA LOPEZ\\Notas Elda - 3°Bim - 4 D - Ingles 1 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-052",
+    "grade": "4",
+    "sec": "B",
+    "subject": "Administración y Organización de Empresas",
+    "teacher": "Lilian Alas Grijalva",
+    "matchedFiles": [
+      "PEM. LILIAN ALAS\\Notas Lilian - 3°Bim - 4 B - Admon org. 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-053",
+    "grade": "5",
+    "sec": "C",
+    "subject": "Legislación Fiscal y Aduanera",
+    "teacher": "Lilian Alas Grijalva",
+    "matchedFiles": [
+      "PEM. LILIAN ALAS\\Notas Lilian - 3°Bim - 5 C - Legislacion 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-054",
+    "grade": "5",
+    "sec": "D",
+    "subject": "Finanzas Públicas",
+    "teacher": "Lilian Alas Grijalva",
+    "matchedFiles": [
+      "PEM. LILIAN ALAS\\Notas Lilian - 3°Bim - 5 D - Finanzas 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-055",
+    "grade": "5",
+    "sec": "A",
+    "subject": "Finanzas Públicas",
+    "teacher": "Elda Argentina López Monzón",
+    "matchedFiles": [
+      "PEM. ELDA LOPEZ\\Notas Elda - 3°Bim - 5 A - Finanzas 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-056",
+    "grade": "5",
+    "sec": "B",
+    "subject": "Geografía Económica",
+    "teacher": "Lilian Alas Grijalva",
+    "matchedFiles": [
+      "PEM. LILIAN ALAS\\Notas Lilian - 3°Bim - 5 B - Geografia 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-057",
+    "grade": "4",
+    "sec": "C",
+    "subject": "Caligrafía y Ortografía",
+    "teacher": "Nery Benjamín Galvez Ramos",
+    "matchedFiles": [
+      "LIC. NERY\\Notas Nery - 3°Bim - 4 C - Caligrafía 2026 lleno.xlsx",
+      "LIC. NERY REVISAR\\Notas Nery - 3°Bim - 4 C - Caligrafía 2026 lleno.xlsx"
+    ],
+    "count": 2
+  },
+  {
+    "pensumId": "pen-cnb-058",
+    "grade": "5",
+    "sec": "B",
+    "subject": "Finanzas Públicas",
+    "teacher": "Nery Benjamín Galvez Ramos",
+    "matchedFiles": [
+      "LIC. NERY\\Notas Nery - 3°Bim - 5 B - Finanzas 2026 lleno.xlsx",
+      "LIC. NERY REVISAR\\Notas Nery - 3°Bim - 5 B - Finanzas 2026 lleno.xlsx"
+    ],
+    "count": 2
+  },
+  {
+    "pensumId": "pen-cnb-059",
+    "grade": "5",
+    "sec": "A",
+    "subject": "Geografía Económica",
+    "teacher": "Carlos Augusto Juárez Alvarez",
+    "matchedFiles": [
+      "LIC. CARLOS JUAREZ\\Copia de Notas Carlos J - 3°Bim - 5 A - Geografia 2026 (1).xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-065",
+    "grade": "5",
+    "sec": "D",
+    "subject": "Cálculo Mercantil y Financiero",
+    "teacher": "Héctor Noé Hernández Linares",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-070",
+    "grade": "4",
+    "sec": "A",
+    "subject": "Caligrafía y Ortografía",
+    "teacher": "María Jannete Salguero Mellado",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-072",
+    "grade": "4",
+    "sec": "B",
+    "subject": "Contabilidad de Sociedades",
+    "teacher": "Wilder Porfirio Pérez López",
+    "matchedFiles": [
+      "LIC.WILDER\\Notas Wilder - 3°Bim - 4 B - Sociedades 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-073",
+    "grade": "4",
+    "sec": "B",
+    "subject": "Redacción y Correspondencia Mercantil",
+    "teacher": "Nery Benjamín Galvez Ramos",
+    "matchedFiles": [
+      "LIC. NERY\\Notas Nery - 3°Bim - 4 B - Correspon. 2026 lleno.xlsx",
+      "LIC. NERY REVISAR\\Notas Nery - 3°Bim - 4 B - Correspon. 2026 lleno.xlsx"
+    ],
+    "count": 2
+  },
+  {
+    "pensumId": "pen-cnb-075",
+    "grade": "4",
+    "sec": "C",
+    "subject": "Contabilidad de Sociedades",
+    "teacher": "Wilder Porfirio Pérez López",
+    "matchedFiles": [
+      "LIC.WILDER\\Notas Wilder - 3°Bim - 4 C - Sociedades 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-077",
+    "grade": "4",
+    "sec": "D",
+    "subject": "Introducción a la Economía",
+    "teacher": "Nery Benjamín Galvez Ramos",
+    "matchedFiles": [
+      "LIC. NERY\\Notas Nery - 3°Bim - 4 D - Economía 2026 lleno.xlsx",
+      "LIC. NERY REVISAR\\Notas Nery - 3°Bim - 4 D - Economía 2026 lleno.xlsx"
+    ],
+    "count": 2
+  },
+  {
+    "pensumId": "pen-cnb-078",
+    "grade": "4",
+    "sec": "D",
+    "subject": "Caligrafía y Ortografía",
+    "teacher": "María Jannete Salguero Mellado",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-079",
+    "grade": "5",
+    "sec": "A",
+    "subject": "Computación II",
+    "teacher": "Nehemias Yalil Salguero Sagastume",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-080",
+    "grade": "5",
+    "sec": "A",
+    "subject": "Legislación Fiscal y Aduanera",
+    "teacher": "Sandra Paola Bernal Yanes de Argueta",
+    "matchedFiles": [
+      "Licda, PAola Bernal\\Notas Paola - 3°Bim - 5 A - Legislacion 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-081",
+    "grade": "5",
+    "sec": "B",
+    "subject": "Computación II",
+    "teacher": "Nehemias Yalil Salguero Sagastume",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-082",
+    "grade": "5",
+    "sec": "B",
+    "subject": "Inglés Comercial II",
+    "teacher": "Milvia Aracely Jacobo Escobar",
+    "matchedFiles": [
+      "PEM. MILVIA\\Notas Milvia - 3°Bim - 5 B - Ingles 2 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-083",
+    "grade": "5",
+    "sec": "B",
+    "subject": "Legislación Fiscal y Aduanera",
+    "teacher": "Lilian Alas Grijalva",
+    "matchedFiles": [
+      "PEM. LILIAN ALAS\\Notas Lilian - 3°Bim - 5 B - Legislacion 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-084",
+    "grade": "5",
+    "sec": "A",
+    "subject": "Inglés Comercial II",
+    "teacher": "Milvia Aracely Jacobo Escobar",
+    "matchedFiles": [
+      "PEM. MILVIA\\Notas Milvia - 3°Bim - 5 A - Ingles 2 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-085",
+    "grade": "5",
+    "sec": "C",
+    "subject": "Computación II",
+    "teacher": "Nehemias Yalil Salguero Sagastume",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-086",
+    "grade": "5",
+    "sec": "C",
+    "subject": "Inglés Comercial II",
+    "teacher": "Elda Argentina López Monzón",
+    "matchedFiles": [
+      "PEM. ELDA LOPEZ\\Notas Elda - 3°Bim - 5 C - Ingles 2 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-087",
+    "grade": "5",
+    "sec": "C",
+    "subject": "Mecanografía",
+    "teacher": "Aleida Maribel Escobar de Palma",
+    "matchedFiles": [
+      "PEM. ALEIDA\\Notas Aleida - 3°Bim - 5 C - Meca 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-088",
+    "grade": "5",
+    "sec": "C",
+    "subject": "Finanzas Públicas",
+    "teacher": "Enma Leticia Macario Xúm de Ruano",
+    "matchedFiles": [
+      "LICDA. ENMA\\Notas Enma - 3°Bim - 5 C - Finanzas 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-089",
+    "grade": "5",
+    "sec": "D",
+    "subject": "Computación II",
+    "teacher": "Nehemias Yalil Salguero Sagastume",
+    "matchedFiles": [],
+    "count": 0
+  },
+  {
+    "pensumId": "pen-cnb-090",
+    "grade": "5",
+    "sec": "D",
+    "subject": "Inglés Comercial II",
+    "teacher": "Milvia Aracely Jacobo Escobar",
+    "matchedFiles": [
+      "PEM. MILVIA\\Notas Milvia - 3°Bim - 5 D - Ingles 2 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-091",
+    "grade": "5",
+    "sec": "D",
+    "subject": "Legislación Fiscal y Aduanera",
+    "teacher": "Elda Argentina López Monzón",
+    "matchedFiles": [
+      "PEM. ELDA LOPEZ\\Notas Elda - 3°Bim - 5 D - Legislacion 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-092",
+    "grade": "5",
+    "sec": "D",
+    "subject": "Mecanografía",
+    "teacher": "Aleida Maribel Escobar de Palma",
+    "matchedFiles": [
+      "PEM. ALEIDA\\Notas Aleida - 3°Bim - 5 D - Meca 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-107",
+    "grade": "5",
+    "sec": "C",
+    "subject": "Geografía Económica",
+    "teacher": "Juan Carlos Pereira Quan",
+    "matchedFiles": [
+      "Pereira\\Notas Juan Carlos - 3°Bim - 5 C - Geografia 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-108",
+    "grade": "4",
+    "sec": "A",
+    "subject": "Administración y Organización de Empresas",
+    "teacher": "Damaris Violeta Escobar Contreras de Salguero",
+    "matchedFiles": [
+      "LIC. DAMARIS\\Notas Damaris - 3°Bim - 4 A - Administración 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-109",
+    "grade": "4",
+    "sec": "C",
+    "subject": "Redacción y Correspondencia Mercantil",
+    "teacher": "Damaris Violeta Escobar Contreras de Salguero",
+    "matchedFiles": [
+      "LIC. DAMARIS\\Notas Damaris - 3°Bim - 4 C - Correspondencia 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-110",
+    "grade": "4",
+    "sec": "A",
+    "subject": "Redacción y Correspondencia Mercantil",
+    "teacher": "Damaris Violeta Escobar Contreras de Salguero",
+    "matchedFiles": [
+      "LIC. DAMARIS\\Notas Damaris - 3°Bim - 4 A - Correspondencia 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-112",
+    "grade": "4",
+    "sec": "C",
+    "subject": "Introducción a la Economía",
+    "teacher": "Milvia Aracely Jacobo Escobar",
+    "matchedFiles": [
+      "PEM. MILVIA\\Notas Milvia - 3°Bim - 4 C - Economía 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-113",
+    "grade": "4",
+    "sec": "D",
+    "subject": "Administración y Organización de Empresas",
+    "teacher": "Lilian Alas Grijalva",
+    "matchedFiles": [
+      "PEM. LILIAN ALAS\\Notas Lilian - 3°Bim - 4 D - Admon org. 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-114",
+    "grade": "5",
+    "sec": "C",
+    "subject": "Catalogación y Archivo",
+    "teacher": "Sandra Paola Bernal Yanes de Argueta",
+    "matchedFiles": [
+      "Licda, PAola Bernal\\Notas Paola - 3°Bim - 5 C - Archivo 2026.xlsx"
+    ],
+    "count": 1
+  },
+  {
+    "pensumId": "pen-cnb-115",
+    "grade": "5",
+    "sec": "D",
+    "subject": "Catalogación y Archivo",
+    "teacher": "Sandra Paola Bernal Yanes de Argueta",
+    "matchedFiles": [
+      "Licda, PAola Bernal\\Notas Paola - 3°Bim - 5 D - Archivo 2026 (1).xlsx",
+      "Licda, PAola Bernal\\Notas Paola - 3°Bim - 5 D - Archivo 2026.xlsx"
+    ],
+    "count": 2
+  },
+  {
+    "pensumId": "pen-cnb-116",
+    "grade": "4",
+    "sec": "D",
+    "subject": "Fundamentos de Derecho",
+    "teacher": "Sandra Paola Bernal Yanes de Argueta",
+    "matchedFiles": [
+      "Licda, PAola Bernal\\Notas Paola - 3°Bim - 4 D - Fundamentos 2026.xlsx"
+    ],
+    "count": 1
+  }
+]
