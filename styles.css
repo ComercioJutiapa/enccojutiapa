@@ -3426,3 +3426,30 @@ body.theme-dark .cell-day-today {
     color: #c2410c;
 }
 
+/* 🛑 Fila y celdas de alumnos retirados en la cuadrícula de asistencia */
+tr.row-student-retired,
+tr.row-student-retired td {
+    background-color: #fee2e2 !important;
+    color: #991b1b !important;
+}
+
+tr.row-student-retired td.col-name strong {
+    color: #991b1b !important;
+}
+
+tr.row-student-retired td.att-cell,
+.att-cell.att-cell-retired-readonly {
+    background: #fecaca !important;
+    color: #b91c1c !important;
+    cursor: not-allowed !important;
+    user-select: none !important;
+    border-color: #fca5a5 !important;
+}
+
+tr.row-student-retired td.att-cell:hover,
+.att-cell.att-cell-retired-readonly:hover {
+    transform: none !important;
+    background: #fca5a5 !important;
+    filter: none !important;
+}
+

@@ -10071,22 +10071,25 @@ function printCourseAttendanceSheet(courseId, monthNum = null) {
     }
 
     const rowsHtml = students.map((s, idx) => {
+        const isRet = (s.status === 'Retirado' || s.status === 'Inactivo');
         let dayCells = '';
         for (let d = 1; d <= daysInMonth; d++) {
             const dateObj = new Date(year, month - 1, d);
             const dayOfWeek = dateObj.getDay();
             const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-            const bg = isWeekend ? '#e2e8f0' : '#ffffff';
-            dayCells += `<td style="background:${bg}; border:1px solid #64748b; padding:0; height:18px;"></td>`;
+            const bg = isRet ? '#f8fafc' : (isWeekend ? '#e2e8f0' : '#ffffff');
+            const cellText = isRet ? '<span style="color:#94a3b8; font-weight:bold; font-size:7.5px;">—</span>' : '';
+            dayCells += `<td style="background:${bg}; border:1px solid #64748b; padding:0; height:18px; text-align:center;">${cellText}</td>`;
         }
+        const retTag = isRet ? ' <span style="color:#dc2626; font-weight:800; font-size:6.5px;">[RETIRADO]</span>' : '';
         return `
-            <tr>
+            <tr style="${isRet ? 'background:#fef2f2; color:#64748b;' : ''}">
                 <td style="border:1px solid #333; text-align:center; font-weight:bold; font-size:7.5px; padding:2px;">${idx + 1}</td>
                 <td style="border:1px solid #333; font-family:monospace; font-size:7.5px; text-align:center; padding:2px;">${s.personalCode || s.carne || ''}</td>
-                <td style="border:1px solid #333; font-weight:600; font-size:7.5px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:2px 4px;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst')).toUpperCase()}</td>
+                <td style="border:1px solid #333; font-weight:600; font-size:7.5px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:2px 4px;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst')).toUpperCase()}${retTag}</td>
                 ${dayCells}
-                <td style="border:1px solid #333; width:22px;"></td>
-                <td style="border:1px solid #333; width:22px;"></td>
+                <td style="border:1px solid #333; width:22px; text-align:center; font-size:7px;">${isRet ? '—' : ''}</td>
+                <td style="border:1px solid #333; width:22px; text-align:center; font-size:7px;">${isRet ? '—' : ''}</td>
             </tr>
         `;
     }).join('');
@@ -12584,6 +12587,12 @@ function printStudentReportCardFromProfile(studentId) {
     const s = (STATE.students || []).find(x => x.id === studentId);
     if (!s) {
         showToast("Estudiante no encontrado para imprimir boletín.", "warning");
+        return;
+    }
+
+    // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les imprimen tarjetas / boletines
+    if (s.status === 'Retirado' || s.status === 'Inactivo') {
+        showToast(`No se pueden imprimir tarjetas/boletines para estudiantes con estado "${s.status}".`, "warning");
         return;
     }
 
@@ -18136,6 +18145,8 @@ window.onReportSectionFilterChange = onReportSectionFilterChange;
 
 function getFilteredReportStudents() {
     let students = STATE.students || [];
+    // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les imprimen tarjetas / boletines
+    students = students.filter(s => s && s.status !== 'Retirado' && s.status !== 'Inactivo');
     const gradeVal = document.getElementById('reportGradeFilter')?.value || '';
     const sectionVal = document.getElementById('reportSectionFilter')?.value || '';
 
@@ -18586,6 +18597,20 @@ function previewStudentReportCard(studentId) {
         return;
     }
 
+    // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les imprimen tarjetas / boletines
+    if (s.status === 'Retirado' || s.status === 'Inactivo') {
+        container.innerHTML = `
+            <div style="text-align:center; padding:40px 20px; background:#fef2f2; border:1.5px dashed #f87171; border-radius:10px; margin:20px 0;">
+                <i class="fa-solid fa-user-slash" style="font-size:2.4rem; color:#dc2626; display:block; margin-bottom:12px;"></i>
+                <h4 style="margin:0 0 6px 0; color:#991b1b; font-weight:800; text-transform:uppercase;">Estudiante con Estado: ${s.status}</h4>
+                <p style="margin:0; font-size:0.92rem; color:#7f1d1d; max-width:550px; display:inline-block;">
+                    El estudiante <strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong> no cuenta con emisión de tarjetas ni boletines de calificaciones debido a su estado de retiro oficial.
+                </p>
+            </div>
+        `;
+        return;
+    }
+
     container.innerHTML = buildStudentReportCardInnerHtml(s);
 }
 window.previewStudentReportCard = previewStudentReportCard;
@@ -18605,6 +18630,12 @@ function printStudentReportCardOfficial(targetStudentId) {
     const s = (STATE.students || []).find(x => x.id === studentId);
     if (!s) {
         showToast("Seleccione un estudiante para imprimir su boletín.", "warning");
+        return;
+    }
+
+    // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les imprimen tarjetas / boletines
+    if (s.status === 'Retirado' || s.status === 'Inactivo') {
+        showToast(`No se pueden imprimir tarjetas/boletines para estudiantes con estado "${s.status}".`, "warning");
         return;
     }
 
@@ -18702,7 +18733,9 @@ function printBatchReportCardsOfficial() {
         return;
     }
 
-    const students = getFilteredReportStudents();
+    let students = getFilteredReportStudents();
+    // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les imprimen tarjetas / boletines
+    students = (students || []).filter(s => s && s.status !== 'Retirado' && s.status !== 'Inactivo');
     if (!students || students.length === 0) {
         showToast("No hay estudiantes para imprimir con el filtro seleccionado.", "warning");
         return;
@@ -20614,6 +20647,12 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
         return false;
     }
 
+    // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les coloca nota
+    if (student.status === 'Retirado' || student.status === 'Inactivo') {
+        console.warn(`Estudiante ${student.name || studentIdentifier} está ${student.status}: No se permite ingreso de calificaciones.`);
+        return false;
+    }
+
     const pensumCourse = (STATE.pensum || []).find(p => p.id === subjectIdentifier || p.code === subjectIdentifier || p.subject === subjectIdentifier);
     const subjectName = pensumCourse ? pensumCourse.subject : subjectIdentifier;
     if (!subjectName) {
@@ -20830,6 +20869,8 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
             });
         }
         if (!student || !student.id) continue;
+        // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les coloca nota
+        if (student.status === 'Retirado' || student.status === 'Inactivo') continue;
 
         ensureStudentGradebookStructure(student, effectiveSubject, effectiveUnit);
 
@@ -22303,6 +22344,12 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
 
     const student = (STATE.students || []).find(s => s.id === studentId);
     if (!student) return;
+    // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les coloca nota
+    if (student.status === 'Retirado' || student.status === 'Inactivo') {
+        showToast("Estudiante Retirado: No se permite registrar calificaciones a alumnos retirados.", "warning");
+        loadTeacherGradebook();
+        return;
+    }
     if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, subjectName, unit)) {
         showToast("Estudiante Exonerado: Las notas de este bimestre no se registran ni aplican.", "warning");
         loadTeacherGradebook();
@@ -22401,6 +22448,12 @@ function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = f
 
     const student = (STATE.students || []).find(s => s.id === studentId);
     if (!student) return;
+    // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les coloca nota
+    if (student.status === 'Retirado' || student.status === 'Inactivo') {
+        showToast("Estudiante Retirado: No se permite registrar calificaciones a alumnos retirados.", "warning");
+        loadTeacherGradebook();
+        return;
+    }
     if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, subjectName, unit)) {
         showToast("Estudiante Exonerado: Las notas de este bimestre no se registran ni aplican.", "warning");
         loadTeacherGradebook();
@@ -23333,6 +23386,7 @@ function loadAttendanceList() {
         let cellsHtml = '';
         const studentFullName = formatStudentDisplayName(s, 'lastFirst');
         const isAbsentStatus = (s.status === 'Ausente');
+        const isRetired = (s.status === 'Retirado' || s.status === 'Inactivo');
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dObj = new Date(year, month - 1, day);
@@ -23341,6 +23395,20 @@ function loadAttendanceList() {
 
             if (isWeekend) {
                 cellsHtml += `<td class="att-cell ${weekendClass}" data-weekend="true">-</td>`;
+            } else if (isRetired) {
+                // 🛑 Alumno Retirado: Relleno distintivo suave, casillas bloqueadas con guión
+                cellsHtml += `
+                    <td class="att-cell att-cell-locked att-cell-retired-readonly" 
+                        data-student-id="${s.id}" 
+                        data-day="${day}" 
+                        data-val=""
+                        data-readonly="true" aria-readonly="true"
+                        disabled="disabled" aria-disabled="true"
+                        title="${studentFullName} — Alumno Retirado (Sin registro de asistencia)"
+                        style="background:#fecaca !important; color:#991b1b !important; border-color:#fca5a5 !important; cursor:not-allowed; text-align:center; font-weight:800; font-size:0.85rem;">
+                        —
+                    </td>
+                `;
             } else {
                 let rawVal = sRecords[day];
                 // Las casillas de asistencia aparecen en blanco inicialmente; al marcarse muestran su letra y color asignado
@@ -23465,13 +23533,15 @@ function loadAttendanceList() {
             }
         }
 
-        const totalLogged = pCount + aCount + jCount + tCount;
-        totalClassPresent += (pCount + jCount + (tCount * 0.5));
-        totalClassLogs += (totalLogged > 0 ? totalLogged : 0);
+        const totalLogged = isRetired ? 0 : (pCount + aCount + jCount + tCount);
+        if (!isRetired) {
+            totalClassPresent += (pCount + jCount + (tCount * 0.5));
+            totalClassLogs += (totalLogged > 0 ? totalLogged : 0);
+        }
 
         // Cálculo de porcentaje individual de asistencia horizontal
         let pct = 100;
-        if (totalLogged > 0) {
+        if (!isRetired && totalLogged > 0) {
             pct = Math.round(((pCount + jCount + (tCount * 0.5)) / totalLogged) * 100);
         }
 
@@ -23486,38 +23556,45 @@ function loadAttendanceList() {
         }
 
         let statusTag = '';
-        if (isAbsentStatus) {
+        if (isRetired) {
+            statusTag = `<span class="badge badge-danger" style="font-size:0.68rem; margin-left:5px; background:#fee2e2; color:#b91c1c; border:1px solid #f87171; font-weight:700;"><i class="fa-solid fa-user-slash"></i> Retirado</span>`;
+        } else if (isAbsentStatus) {
             statusTag = `<span class="badge" style="font-size:0.68rem; margin-left:5px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d;">Ausente</span>`;
         }
 
-        const studentAnnotsCount = (typeof getStudentAnnotations === 'function') ? getStudentAnnotations(s.id).length : 0;
-        const annotBtn = `<button type="button" class="btn btn-xs ${studentAnnotsCount > 0 ? 'btn-info' : 'btn-outline-secondary'}" onclick="openStudentAnnotationModal('${s.id}')" title="${studentAnnotsCount > 0 ? studentAnnotsCount + ' anotación(es) registrada(s)' : 'Agregar o consultar anotaciones'}" style="padding:1px 5px; font-size:0.68rem; margin-left:6px; border-radius:4px; line-height:1.2;">
-            <i class="fa-solid fa-comment-dots"></i> ${studentAnnotsCount > 0 ? studentAnnotsCount : '+'}
-        </button>`;
+        const pctColumnHtml = isRetired ? `
+            <td class="col-pct" id="pctCol_${s.id}" style="text-align:center; background:#fee2e2 !important;">
+                <span class="badge badge-danger" style="background:#dc2626; color:#ffffff; border:1px solid #b91c1c; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px; display:inline-block; box-shadow:0 1px 3px rgba(0,0,0,0.15);">
+                    <i class="fa-solid fa-ban"></i> Retirado
+                </span>
+            </td>
+        ` : `
+            <td class="col-pct" id="pctCol_${s.id}">
+                <div class="att-pct-container" title="Asistencia Horizontal: ${pct}% (${pCount} Presentes / ${totalLogged} Días)">
+                    <div class="att-pct-bar-bg">
+                        <div class="att-pct-bar-fill" style="width:${pct}%; background:${barColor};"></div>
+                    </div>
+                    <span class="att-pct-badge" style="${badgeStyle}">
+                        ${pct}%
+                    </span>
+                </div>
+            </td>
+        `;
 
         tbodyHtml += `
-            <tr data-student-id="${s.id}">
-                <td class="col-num">${idx + 1}</td>
-                <td class="col-carne"><code>${s.personalCode || s.cui || s.carne || 'S/C'}</code></td>
-                <td class="col-name" title="${studentFullName}">
-                    <strong>${studentFullName}</strong>${statusTag}${annotBtn}
+            <tr data-student-id="${s.id}" class="${isRetired ? 'row-student-retired' : ''}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">
+                <td class="col-num" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b; font-weight:bold;' : ''}">${idx + 1}</td>
+                <td class="col-carne" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}"><code>${s.personalCode || s.cui || s.carne || 'S/C'}</code></td>
+                <td class="col-name" title="${studentFullName}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">
+                    <strong style="${isRetired ? 'color:#991b1b;' : ''}">${studentFullName}</strong>${statusTag}
                 </td>
                 ${cellsHtml}
-                <td class="col-stat col-stat-p" id="statP_${s.id}">${pCount}</td>
-                <td class="col-stat col-stat-a" id="statA_${s.id}">${aCount}</td>
-                <td class="col-stat col-stat-j" id="statJ_${s.id}">${jCount}</td>
-                <td class="col-stat col-stat-t" id="statT_${s.id}">${tCount}</td>
-                <td class="col-stat" id="statTot_${s.id}" style="font-weight:700;">${totalLogged}</td>
-                <td class="col-pct" id="pctCol_${s.id}">
-                    <div class="att-pct-container" title="Asistencia Horizontal: ${pct}% (${pCount} Presentes / ${totalLogged} Días)">
-                        <div class="att-pct-bar-bg">
-                            <div class="att-pct-bar-fill" style="width:${pct}%; background:${barColor};"></div>
-                        </div>
-                        <span class="att-pct-badge" style="${badgeStyle}">
-                            ${pct}%
-                        </span>
-                    </div>
-                </td>
+                <td class="col-stat col-stat-p" id="statP_${s.id}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isRetired ? '—' : pCount}</td>
+                <td class="col-stat col-stat-a" id="statA_${s.id}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isRetired ? '—' : aCount}</td>
+                <td class="col-stat col-stat-j" id="statJ_${s.id}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isRetired ? '—' : jCount}</td>
+                <td class="col-stat col-stat-t" id="statT_${s.id}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isRetired ? '—' : tCount}</td>
+                <td class="col-stat" id="statTot_${s.id}" style="font-weight:700; ${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isRetired ? '—' : totalLogged}</td>
+                ${pctColumnHtml}
             </tr>
         `;
     });
@@ -23538,11 +23615,12 @@ function loadAttendanceList() {
     }
     const globalSumP = dayPresentTotals.reduce((a, b) => a + b, 0);
     const globalSumA = dayAbsentTotals.reduce((a, b) => a + b, 0);
-    const globalSumJ = students.reduce((acc, s) => {
+    const activeStudentsForStats = students.filter(st => st.status !== 'Retirado' && st.status !== 'Inactivo');
+    const globalSumJ = activeStudentsForStats.reduce((acc, s) => {
         const sRecords = monthData[s.id] || {};
         return acc + Object.values(sRecords).filter(v => v === 'J').length;
     }, 0);
-    const globalSumT = students.reduce((acc, s) => {
+    const globalSumT = activeStudentsForStats.reduce((acc, s) => {
         const sRecords = monthData[s.id] || {};
         return acc + Object.values(sRecords).filter(v => v === 'T').length;
     }, 0);
@@ -23616,6 +23694,15 @@ function loadAttendanceList() {
 }
 
 function toggleAttendanceCell(studentId, day) {
+    const targetStudent = (STATE.students || []).find(s => String(s.id) === String(studentId));
+    if (targetStudent && (targetStudent.status === 'Retirado' || targetStudent.status === 'Inactivo')) {
+        const sName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(targetStudent, 'lastFirst') : `${targetStudent.firstName || ''} ${targetStudent.lastName || ''}`;
+        if (typeof showToast === 'function') {
+            showToast(`⚠️ Alumno Retirado: No se puede tomar ni registrar asistencia para "${sName}" debido a su estado institucional de Retirado.`, 'warning');
+        }
+        return;
+    }
+
     const gradeSelect = document.getElementById('attendanceGradeSelect');
     const monthSelect = document.getElementById('attendanceMonthSelect');
     const courseSelect = document.getElementById('attendanceCourseSelect');
@@ -24455,8 +24542,7 @@ function registerAttendanceByCode(rawCode) {
     const rawTarget = cleanCode.toUpperCase();
 
     const students = STATE.students || [];
-    const student = students.find(s => {
-        if (typeof isStudentActive === 'function' && !isStudentActive(s)) return false;
+    const matchedStudent = students.find(s => {
         const pCode = (s.personalCode || '').toUpperCase();
         const carne = (s.carne || '').toUpperCase();
         const cui = (s.cui || '').toString().trim();
@@ -24469,6 +24555,17 @@ function registerAttendanceByCode(rawCode) {
         }
         return false;
     });
+
+    if (matchedStudent && (matchedStudent.status === 'Retirado' || matchedStudent.status === 'Inactivo')) {
+        playAttendanceBeep(false);
+        if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([200]);
+        const sDispName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(matchedStudent, 'lastFirst') : `${matchedStudent.firstName || ''} ${matchedStudent.lastName || ''}`;
+        updateLastScannedBanner(null, 'error', `Estudiante RETIRADO: ${sDispName}. No se permite registrar asistencia a alumnos retirados.`);
+        if (typeof showToast === 'function') showToast(`⚠️ El estudiante ${sDispName} se encuentra RETIRADO. No se puede registrar asistencia.`, 'error');
+        return false;
+    }
+
+    const student = (matchedStudent && (typeof isStudentActive !== 'function' || isStudentActive(matchedStudent))) ? matchedStudent : null;
 
     if (!student) {
         playAttendanceBeep(false);
@@ -24850,6 +24947,7 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
         const sRecords = monthData[s.id] || {};
         let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
         let dayCells = '';
+        const isRet = (s.status === 'Retirado' || s.status === 'Inactivo');
         const studentFullName = formatStudentDisplayName(s, 'lastFirst').toUpperCase();
 
         for (let day = 1; day <= daysInMonth; day++) {
@@ -24858,6 +24956,8 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
 
             if (isWeekend) {
                 dayCells += `<td style="background:#e2e8f0; text-align:center; color:#94a3b8; font-size:8pt; border:1px solid #64748b;">-</td>`;
+            } else if (isRet) {
+                dayCells += `<td style="background:#f8fafc; text-align:center; color:#94a3b8; font-size:8pt; font-weight:bold; border:1px solid #64748b;">—</td>`;
             } else {
                 let rawVal = sRecords[day];
                 let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : '';
@@ -24873,20 +24973,21 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
             }
         }
 
-        const totalLogged = pCount + aCount + jCount + tCount;
-        const pct = totalLogged > 0 ? Math.round(((pCount + jCount + (tCount * 0.5)) / totalLogged) * 100) : 100;
+        const totalLogged = isRet ? 0 : (pCount + aCount + jCount + tCount);
+        const pct = (!isRet && totalLogged > 0) ? Math.round(((pCount + jCount + (tCount * 0.5)) / totalLogged) * 100) : 100;
+        const retTag = isRet ? ' <span style="color:#b91c1c; font-weight:900; font-size:7.5pt;">[RETIRADO]</span>' : '';
 
         tbodyRows += `
-            <tr style="${idx % 2 === 1 ? 'background-color:#f8fafc;' : ''}">
+            <tr style="${isRet ? 'background-color:#fef2f2; color:#64748b;' : (idx % 2 === 1 ? 'background-color:#f8fafc;' : '')}">
                 <td style="text-align:center; font-weight:bold; border:1px solid #64748b; padding:4px 2px;">${idx + 1}</td>
                 <td style="font-family:monospace; font-weight:bold; border:1px solid #64748b; padding:4px 4px; font-size:7.8pt;">${s.personalCode || s.cui || s.carne || 'S/C'}</td>
-                <td style="font-weight:bold; border:1px solid #64748b; padding:4px 6px; white-space:nowrap; font-size:8.2pt;">${studentFullName}</td>
+                <td style="font-weight:bold; border:1px solid #64748b; padding:4px 6px; white-space:nowrap; font-size:8.2pt;">${studentFullName}${retTag}</td>
                 ${dayCells}
-                <td style="text-align:center; font-weight:bold; color:#15803d; border:1px solid #64748b; font-size:8pt;">${pCount}</td>
-                <td style="text-align:center; font-weight:bold; color:#b91c1c; border:1px solid #64748b; font-size:8pt;">${aCount}</td>
-                <td style="text-align:center; font-weight:bold; color:#c2410c; border:1px solid #64748b; font-size:8pt;">${jCount}</td>
-                <td style="text-align:center; font-weight:bold; color:#0369a1; border:1px solid #64748b; font-size:8pt;">${tCount}</td>
-                <td style="text-align:center; font-weight:bold; background:#f1f5f9; border:1px solid #64748b; font-size:8.5pt;">${pct}%</td>
+                <td style="text-align:center; font-weight:bold; color:#15803d; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : pCount}</td>
+                <td style="text-align:center; font-weight:bold; color:#b91c1c; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : aCount}</td>
+                <td style="text-align:center; font-weight:bold; color:#c2410c; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : jCount}</td>
+                <td style="text-align:center; font-weight:bold; color:#0369a1; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : tCount}</td>
+                <td style="text-align:center; font-weight:bold; background:${isRet ? '#fee2e2' : '#f1f5f9'}; border:1px solid #64748b; font-size:8.5pt;">${isRet ? '<span style="color:#b91c1c; font-weight:800; font-size:7.5pt;">RETIRADO</span>' : pct + '%'}</td>
             </tr>
         `;
     });
@@ -29344,6 +29445,12 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
 
         // Si no hay nombres coincidentes, no colocar nada (se omite la fila)
         if (!matched) {
+            omittedCount++;
+            continue;
+        }
+
+        // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les coloca nota
+        if (matched.status === 'Retirado' || matched.status === 'Inactivo') {
             omittedCount++;
             continue;
         }

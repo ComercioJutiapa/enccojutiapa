@@ -1556,6 +1556,15 @@
             } else {
                 const student = (window.STATE && window.STATE.students) ? window.STATE.students.find(s => s.id === id) : null;
                 if (!student) return;
+                if (student.status === 'Retirado' || student.status === 'Inactivo') {
+                    const stName = (typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(student, 'lastFirst') : (student.name || ''));
+                    if (typeof showToast === 'function') {
+                        showToast(`🔒 Impresión de Carné Bloqueada: El estudiante "${stName}" se encuentra RETIRADO. No se emiten carnés para alumnos retirados.`, 'warning');
+                    } else {
+                        alert(`El estudiante "${stName}" se encuentra RETIRADO. No se emiten carnés para alumnos retirados.`);
+                    }
+                    return;
+                }
                 frontHtml = this.renderStudentCardFrontHtml(student);
                 backHtml = this.renderStudentCardBackHtml(student);
                 title = `Carné Estudiantil - ${(typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(student, 'lastFirst') : (student.name || ''))}`;
@@ -1675,6 +1684,8 @@
 
                 itemsToPrint = allStudents.filter(st => {
                     if (!st) return false;
+                    // 🛑 Excluir estrictamente a estudiantes Retirados o Inactivos de la impresión masiva de carnés
+                    if (st.status === 'Retirado' || st.status === 'Inactivo') return false;
                     const carMatch = (carFilter === 'ALL' || !carFilter || (st.career || '').toLowerCase() === carFilter.toLowerCase());
                     const grdMatch = (grdFilter === 'ALL' || !grdFilter || (st.grade || '').toLowerCase() === grdFilter.toLowerCase());
                     const secMatch = (secFilter === 'ALL' || !secFilter || (st.section || '').toLowerCase() === secFilter.toLowerCase());
@@ -1958,6 +1969,7 @@
                     ` : (isTeachers ? filteredTeachers : filteredStudents).map(entity => {
                         const isDoc = isTeachers;
                         const cardId = entity.id;
+                        const isRetired = !isDoc && (entity.status === 'Retirado' || entity.status === 'Inactivo');
                         const cardHtml = isDoc 
                             ? EnccoCarnets.renderTeacherCardFrontHtml(entity) 
                             : EnccoCarnets.renderStudentCardFrontHtml(entity);
@@ -1967,15 +1979,26 @@
                                 <div id="carnetCardBox_${cardId}">
                                     ${cardHtml}
                                 </div>
+                                ${isRetired ? `
+                                    <div style="font-size:0.70rem; font-weight:800; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:2px 8px; border-radius:4px;">
+                                        <i class="fa-solid fa-user-slash"></i> ESTUDIANTE RETIRADO
+                                    </div>
+                                ` : ''}
                                 
                                 <!-- BOTONES DE ACCIÓN INDIVIDUAL -->
                                 <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px; margin-top:2px;">
                                     <button type="button" class="btn btn-xs btn-outline-secondary" onclick="EnccoCarnets.toggleCardSide('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.70rem; font-weight:700; padding:2px 7px;" title="Alternar entre Frente y Reverso">
                                         <i class="fa-solid fa-arrows-rotate"></i> Voltear
                                     </button>
-                                    <button type="button" class="btn btn-xs btn-outline-primary" onclick="EnccoCarnets.printSingleCard('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.70rem; font-weight:700; padding:2px 7px;" title="Imprimir carné individual">
-                                        <i class="fa-solid fa-print"></i> Imprimir
-                                    </button>
+                                    ${isRetired ? `
+                                        <button type="button" class="btn btn-xs btn-outline-danger" disabled style="font-size:0.70rem; font-weight:700; padding:2px 7px; opacity:0.65; cursor:not-allowed;" title="Estudiante Retirado - No se emite carné institucional">
+                                            <i class="fa-solid fa-ban"></i> Retirado
+                                        </button>
+                                    ` : `
+                                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="EnccoCarnets.printSingleCard('${cardId}', '${isDoc ? 'teacher' : 'student'}')" style="font-size:0.70rem; font-weight:700; padding:2px 7px;" title="Imprimir carné individual">
+                                            <i class="fa-solid fa-print"></i> Imprimir
+                                        </button>
+                                    `}
                                     <button type="button" class="btn btn-xs btn-outline-warning" onclick="EnccoCarnets.openPhotoModal('${cardId}', '${isDoc ? 'teacher' : 'student'}', 'camera')" style="font-size:0.70rem; font-weight:700; padding:2px 7px; color:#b45309; border-color:#f59e0b;" title="Tomar foto con cámara web en vivo">
                                         <i class="fa-solid fa-camera"></i> Cámara
                                     </button>
