@@ -25086,19 +25086,8 @@ function saveStudentPermissionForm(e) {
         const docRef = (document.getElementById('permDocRef')?.value || '').trim();
         const authorizedBy = (document.getElementById('permAuthorizedBy')?.value || 'Dirección General').trim();
 
-        // 1. Limpiar metadata anterior asociada al rango de fechas previo
-        const oldStart = new Date(perm.startDate + 'T00:00:00');
-        const oldEnd = new Date((perm.endDate || perm.startDate) + 'T00:00:00');
-        let curD = new Date(oldStart);
-        while (curD <= oldEnd) {
-            const m = curD.getMonth() + 1;
-            const d = curD.getDate();
-            const metaKey = `${perm.studentId}_${m}_${d}`;
-            if (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]) {
-                delete STATE.attendancePermissionsMeta[metaKey];
-            }
-            curD.setDate(curD.getDate() + 1);
-        }
+        // 1. Limpiar asistencia y metadata de las fechas antiguas que ya no pertenezcan al nuevo rango
+        removeStudentPermissionDatesFromAttendance(perm, perm.startDate, perm.endDate, startDate, endDate);
 
         // 2. Actualizar datos del permiso
         perm.startDate = startDate;
@@ -25110,13 +25099,14 @@ function saveStudentPermissionForm(e) {
         perm.lastEditedAt = new Date().toISOString();
         perm.lastEditedBy = 'Dirección General';
 
-        // 3. Re-aplicar nuevo rango
+        // 3. Re-aplicar nuevo rango a la asistencia institucional
         applyStudentPermission(perm);
 
         saveAttendanceRecords(false);
 
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
             EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
+            EnccoCloudSync.syncNode('attendanceRecords', STATE.attendanceRecords);
             EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta);
         }
 
@@ -25131,8 +25121,11 @@ function saveStudentPermissionForm(e) {
         if (typeof renderPermissionsHistoryView === 'function') {
             renderPermissionsHistoryView();
         }
+        if (typeof renderAuxiliaturaLogView === 'function' && STATE.activeView === 'auxiliatura-log') {
+            renderAuxiliaturaLogView();
+        }
 
-        showToast(`✅ Permiso actualizado exitosamente para ${perm.studentName} por Dirección General.`, 'success');
+        showToast(`✅ Permiso actualizado exitosamente para ${perm.studentName} por Dirección General. La asistencia se ha sincronizado automáticamente.`, 'success');
         return;
     }
 
@@ -25206,6 +25199,7 @@ function saveStudentPermissionForm(e) {
     // Sincronizar en la nube si está disponible
     if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
         EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
+        EnccoCloudSync.syncNode('attendanceRecords', STATE.attendanceRecords);
         EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta);
     }
 
@@ -25226,6 +25220,90 @@ function saveStudentPermissionForm(e) {
     }, 400);
 }
 window.saveStudentPermissionForm = saveStudentPermissionForm;
+
+function removeStudentPermissionDatesFromAttendance(perm, oldStartDate, oldEndDate, newStartDate = null, newEndDate = null) {
+    if (!perm || !perm.studentId || !oldStartDate) return;
+
+    if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+    if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
+
+    const oldStart = new Date(oldStartDate + 'T00:00:00');
+    const oldEnd = new Date((oldEndDate || oldStartDate) + 'T00:00:00');
+
+    // Encontrar estudiante y sus códigos
+    const student = (STATE.students || []).find(s => s.id === perm.studentId);
+    const sGradeNum = extractGradeNumber(student ? (student.grade || student.gradeCode || student.gradeLabel) : (perm.grade || perm.gradeCode));
+    const sSec = extractSectionLetter(student ? (student.section || student.gradeCode || student.gradeLabel) : (perm.section || perm.grade));
+    const directGradeCode = (student && (student.gradeCode || student.grade)) || perm.gradeCode || perm.grade;
+
+    const matchingGradeCodes = new Set();
+    if (directGradeCode) matchingGradeCodes.add(directGradeCode);
+
+    (STATE.gradesList || []).forEach(g => {
+        const gNum = extractGradeNumber(g.name || g.code);
+        const gSec = extractSectionLetter(g.section || g.name || g.code);
+        if (sGradeNum > 0 && gNum > 0 && sGradeNum === gNum) {
+            if (!sSec || !gSec || sSec === gSec) {
+                if (g.code) matchingGradeCodes.add(g.code);
+                if (g.name) matchingGradeCodes.add(g.name);
+            }
+        }
+    });
+
+    const matchingCourses = (STATE.pensum || []).filter(p => {
+        const pGradeNum = extractGradeNumber(p.grade || p.gradeCode);
+        const pSec = extractSectionLetter(p.section || p.gradeCode);
+        if (sGradeNum > 0 && pGradeNum > 0 && sGradeNum !== pGradeNum) return false;
+        if (sSec && pSec && sSec !== pSec) return false;
+        return true;
+    });
+
+    const studentAliases = new Set([perm.studentId]);
+    if (student) {
+        if (student.id) studentAliases.add(student.id);
+        if (student.personalCode) studentAliases.add(student.personalCode);
+        if (student.carne) studentAliases.add(student.carne);
+    }
+    if (perm.personalCode) studentAliases.add(perm.personalCode);
+    if (perm.carne) studentAliases.add(perm.carne);
+
+    let curDate = new Date(oldStart);
+    while (curDate <= oldEnd) {
+        const y = curDate.getFullYear();
+        const m = curDate.getMonth() + 1;
+        const d = curDate.getDate();
+        const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+        const isStillInNewRange = newStartDate && (dateStr >= newStartDate && dateStr <= (newEndDate || newStartDate));
+        if (!isStillInNewRange) {
+            studentAliases.forEach(aliasId => {
+                // 1. Eliminar metadata asociada
+                const metaKey = `${aliasId}_${m}_${d}`;
+                const meta = STATE.attendancePermissionsMeta[metaKey];
+                if (!meta || meta.permissionId === perm.id || !meta.permissionId) {
+                    delete STATE.attendancePermissionsMeta[metaKey];
+                }
+
+                // 2. Limpiar 'J' de la asistencia general y de cada cátedra
+                matchingGradeCodes.forEach(gCode => {
+                    const genKey = getAttendanceRecordKey(gCode, m, 'GENERAL');
+                    if (STATE.attendanceRecords[genKey]?.[aliasId]?.[d] === 'J') {
+                        delete STATE.attendanceRecords[genKey][aliasId][d];
+                    }
+
+                    matchingCourses.forEach(c => {
+                        const cKey = getAttendanceRecordKey(gCode, m, c.id);
+                        if (STATE.attendanceRecords[cKey]?.[aliasId]?.[d] === 'J') {
+                            delete STATE.attendanceRecords[cKey][aliasId][d];
+                        }
+                    });
+                });
+            });
+        }
+        curDate.setDate(curDate.getDate() + 1);
+    }
+}
+window.removeStudentPermissionDatesFromAttendance = removeStudentPermissionDatesFromAttendance;
 
 function applyStudentPermission(perm) {
     if (!perm || !perm.studentId || !perm.startDate) return;
@@ -25514,39 +25592,37 @@ function revokeStudentPermission(permId) {
     const perm = (STATE.studentPermissions || []).find(p => p.id === permId);
     if (!perm) return;
 
-    if (!confirm(`¿Está seguro de que desea anular el permiso de ausencia de ${perm.studentName} (${perm.startDate})?\n\nAl anularlo, se mantendrán las asistencias actuales pero se removerá la etiqueta oficial de Auxiliatura.`)) {
+    if (!confirm(`¿Está seguro de que desea anular el permiso de ausencia de ${perm.studentName} (${perm.startDate})?\n\nAl anularlo, se removerá la justificación de la asistencia y se restablecerán los registros correspondientes.`)) {
         return;
     }
 
-    // Remover metadata asociada
-    const start = new Date(perm.startDate + 'T00:00:00');
-    const end = new Date((perm.endDate || perm.startDate) + 'T00:00:00');
-    let curDate = new Date(start);
-    while (curDate <= end) {
-        const m = curDate.getMonth() + 1;
-        const d = curDate.getDate();
-        const metaKey = `${perm.studentId}_${m}_${d}`;
-        if (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]) {
-            delete STATE.attendancePermissionsMeta[metaKey];
-        }
-        curDate.setDate(curDate.getDate() + 1);
-    }
+    // 1. Remover automáticamente la marca de justificación ('J') y metadata de todas las asistencias vinculadas
+    removeStudentPermissionDatesFromAttendance(perm, perm.startDate, perm.endDate, null, null);
 
-    // Remover de la lista
+    // 2. Remover de la lista oficial de permisos
     STATE.studentPermissions = (STATE.studentPermissions || []).filter(p => p.id !== permId);
 
     saveAttendanceRecords(false);
 
     if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
         EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
+        EnccoCloudSync.syncNode('attendanceRecords', STATE.attendanceRecords);
         EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta);
     }
 
-    renderPermissionsHistoryTable();
+    if (typeof renderPermissionsHistoryTable === 'function') {
+        renderPermissionsHistoryTable();
+    }
+    if (typeof renderPermissionsHistoryView === 'function') {
+        renderPermissionsHistoryView();
+    }
+    if (typeof renderAuxiliaturaLogView === 'function' && STATE.activeView === 'auxiliatura-log') {
+        renderAuxiliaturaLogView();
+    }
     if (typeof loadAttendanceList === 'function') {
         loadAttendanceList();
     }
-    showToast('Permiso anulado correctamente.', 'info');
+    showToast(`✅ Permiso de ${perm.studentName} anulado exitosamente. La asistencia se ha actualizado automáticamente.`, 'info');
 }
 window.revokeStudentPermission = revokeStudentPermission;
 
