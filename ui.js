@@ -354,8 +354,11 @@
             return;
         }
 
-        const studentsList = (window.STATE && window.STATE.students) ? window.STATE.students : [];
-        const student = studentsList.find(s => s.id === studentId || s.personalCode === studentId);
+        let studentsList = (window.STATE && window.STATE.students) ? window.STATE.students : [];
+        if (!Array.isArray(studentsList) && typeof studentsList === 'object') {
+            studentsList = Object.values(studentsList);
+        }
+        const student = (studentsList || []).find(s => s && (s.id === studentId || s.personalCode === studentId || s.carne === studentId));
         if (!student) {
             showToast("Estudiante no encontrado.", "warning");
             return;
@@ -468,6 +471,9 @@
             // Notificar a la UI para recalcular cuadro de honor y calificaciones
             if (typeof window.renderHonorRoll === 'function') window.renderHonorRoll();
             if (typeof window.renderDashboard === 'function') window.renderDashboard();
+            if (typeof window.renderStudentsTable === 'function') window.renderStudentsTable();
+            if (typeof window.loadAttendanceList === 'function') window.loadAttendanceList();
+            if (typeof window.renderExoneracionesLogView === 'function') window.renderExoneracionesLogView();
 
         } catch (err) {
             showToast("Error al guardar exoneración: " + err.message, "danger");

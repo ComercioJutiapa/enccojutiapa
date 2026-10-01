@@ -4519,8 +4519,8 @@ function initFirebaseRealtimeConnection() {
                     } else if (cleanPath.startsWith('students/')) {
                         const subParts = cleanPath.split('/');
                         const rtdbIdx = parseInt(subParts[1]);
+                        let targetStudent = null;
                         if (!isNaN(rtdbIdx)) {
-                            let targetStudent = null;
                             if (window._rtdbIndexToIdMap && window._rtdbIndexToIdMap.has(rtdbIdx)) {
                                 const stId = window._rtdbIndexToIdMap.get(rtdbIdx);
                                 targetStudent = (STATE.students || []).find(s => s.id === stId);
@@ -4528,42 +4528,47 @@ function initFirebaseRealtimeConnection() {
                             if (!targetStudent && Array.isArray(STATE.students) && STATE.students[rtdbIdx]) {
                                 targetStudent = STATE.students[rtdbIdx];
                             }
+                        } else {
+                            const rawId = subParts[1];
+                            targetStudent = (STATE.students || []).find(s => s && (s.id === rawId || s.personalCode === rawId || s.carne === rawId));
+                        }
 
-                            if (targetStudent) {
-                                if (window._locallyDirtyStudentIds && window._locallyDirtyStudentIds.has(targetStudent.id)) {
-                                    return;
-                                }
-                                if (subParts.length === 2) {
-                                    if (nodeData && typeof nodeData === 'object') {
-                                        Object.assign(targetStudent, nodeData);
-                                    }
-                                } else if (subParts[2] === 'grades') {
-                                    if (subParts.length === 3) {
-                                        targetStudent.grades = { ...(targetStudent.grades || {}), ...(nodeData || {}) };
-                                    } else if (subParts.length >= 4) {
-                                        const subj = decodeURIComponent(subParts[3]);
-                                        if (!targetStudent.grades) targetStudent.grades = {};
-                                        targetStudent.grades[subj] = nodeData;
-                                    }
-                                } else if (subParts[2] === 'gradebookDetails') {
-                                    if (subParts.length === 3) {
-                                        targetStudent.gradebookDetails = { ...(targetStudent.gradebookDetails || {}), ...(nodeData || {}) };
-                                    } else if (subParts.length === 4) {
-                                        const subj = decodeURIComponent(subParts[3]);
-                                        if (!targetStudent.gradebookDetails) targetStudent.gradebookDetails = {};
-                                        targetStudent.gradebookDetails[subj] = { ...(targetStudent.gradebookDetails[subj] || {}), ...(nodeData || {}) };
-                                    } else if (subParts.length >= 5) {
-                                        const subj = decodeURIComponent(subParts[3]);
-                                        const unitStr = subParts[4];
-                                        if (!targetStudent.gradebookDetails) targetStudent.gradebookDetails = {};
-                                        if (!targetStudent.gradebookDetails[subj]) targetStudent.gradebookDetails[subj] = {};
-                                        targetStudent.gradebookDetails[subj][unitStr] = nodeData;
-                                    }
-                                }
-                                if (typeof renderGradebookTable === 'function') renderGradebookTable();
-                                if (typeof renderStudentsTable === 'function') renderStudentsTable();
-                                if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+                        if (targetStudent) {
+                            if (window._locallyDirtyStudentIds && window._locallyDirtyStudentIds.has(targetStudent.id)) {
+                                return;
                             }
+                            if (subParts.length === 2) {
+                                if (nodeData && typeof nodeData === 'object') {
+                                    Object.assign(targetStudent, nodeData);
+                                }
+                            } else if (subParts[2] === 'grades') {
+                                if (subParts.length === 3) {
+                                    targetStudent.grades = { ...(targetStudent.grades || {}), ...(nodeData || {}) };
+                                } else if (subParts.length >= 4) {
+                                    const subj = decodeURIComponent(subParts[3]);
+                                    if (!targetStudent.grades) targetStudent.grades = {};
+                                    targetStudent.grades[subj] = nodeData;
+                                }
+                            } else if (subParts[2] === 'gradebookDetails') {
+                                if (subParts.length === 3) {
+                                    targetStudent.gradebookDetails = { ...(targetStudent.gradebookDetails || {}), ...(nodeData || {}) };
+                                } else if (subParts.length === 4) {
+                                    const subj = decodeURIComponent(subParts[3]);
+                                    if (!targetStudent.gradebookDetails) targetStudent.gradebookDetails = {};
+                                    targetStudent.gradebookDetails[subj] = { ...(targetStudent.gradebookDetails[subj] || {}), ...(nodeData || {}) };
+                                } else if (subParts.length >= 5) {
+                                    const subj = decodeURIComponent(subParts[3]);
+                                    const unitStr = subParts[4];
+                                    if (!targetStudent.gradebookDetails) targetStudent.gradebookDetails = {};
+                                    if (!targetStudent.gradebookDetails[subj]) targetStudent.gradebookDetails[subj] = {};
+                                    targetStudent.gradebookDetails[subj][unitStr] = nodeData;
+                                }
+                            }
+                            if (typeof renderGradebookTable === 'function') renderGradebookTable();
+                            if (typeof renderStudentsTable === 'function') renderStudentsTable();
+                            if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+                            if (typeof loadAttendanceList === 'function') loadAttendanceList();
+                            if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView();
                         }
                     } else if (cleanPath === 'attendanceRecords' || cleanPath.startsWith('attendanceRecords/')) {
                         if (nodeData && typeof nodeData === 'object') {
@@ -11699,13 +11704,17 @@ function getStudentAcademicInfo(student) {
 
 function openAcademicExonerationModal(studentId) {
     const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
-    const curRole = (STATE.currentRole || '').toLowerCase();
+    const curRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || (window.STATE && window.STATE.currentRole) || (typeof window.EnccoAuthStore !== 'undefined' && window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
     if (!allowedRoles.includes(curRole)) {
         showToast("Acceso Restringido: La exoneración de estudiantes es facultad única y exclusiva de Dirección, Secretaría o Auxiliatura.", "warning");
         return;
     }
 
-    const student = (STATE.students || []).find(s => s.id === studentId || s.personalCode === studentId);
+    let studentsList = STATE.students || [];
+    if (!Array.isArray(studentsList) && typeof studentsList === 'object') {
+        studentsList = Object.values(studentsList);
+    }
+    const student = (studentsList || []).find(s => s && (s.id === studentId || s.personalCode === studentId || s.carne === studentId));
     if (!student) {
         showToast("No se encontró el expediente del estudiante.", "warning");
         return;
