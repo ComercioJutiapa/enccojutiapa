@@ -65,16 +65,16 @@ assert(appCode.includes('window.getAttendanceStudents = getAttendanceStudents'),
 console.log('  ✅ Test 3 Superado: getAttendanceStudents está implementada y disponible globalmente.');
 
 // ==============================================================================
-// TEST 4: populateAttendanceSelects siempre muestra grados asignados + plantel completo para docentes
+// TEST 4: populateAttendanceSelects muestra exclusivamente grados y clases asignadas al docente
 // ==============================================================================
-console.log('\n▶ [TEST 4] Verificando que ningún grado desaparezca en el selector del docente...');
+console.log('\n▶ [TEST 4] Verificando que solo aparezcan grados y clases asignadas al docente...');
 assert(appCode.includes('Mis Grados Asignados'), 'Debe incluir optgroup de Mis Grados Asignados.');
-assert(appCode.includes('Todos los Grados y Secciones (Plantel Completo)'),
-  'Debe incluir siempre optgroup del Plantel Completo para que ningún grado desaparezca.');
+assert(!appCode.includes('Todos los Grados y Secciones (Plantel Completo)'),
+  'No debe incluir grados no asignados para evitar accesos restringidos y mantener una interfaz limpia.');
 assert(appCode.includes('const resolvedCode = gMatch ? gMatch.code :'),
   'Debe resolver el código de grado contra gradesList oficial.');
 
-console.log('  ✅ Test 4 Superado: Los docentes disponen de sus grados prioritarios y de todos los grados del plantel.');
+console.log('  ✅ Test 4 Superado: Los docentes disponen exclusivamente de sus grados y clases asignadas.');
 
 // ==============================================================================
 // TEST 5: loadAttendanceList, markAllPresentToday, export y print usan getAttendanceStudents

@@ -22440,21 +22440,8 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
                 gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
             });
             gradeOptionsHtml += `</optgroup>`;
-
-            gradeOptionsHtml += `<optgroup label="🏫 Todos los Grados y Secciones (Plantel Completo)">`;
-            const sortedAll = sortGrades(STATE.gradesList || []);
-            sortedAll.forEach(g => {
-                gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
-            });
-            gradeOptionsHtml += `</optgroup>`;
         } else {
             gradeOptionsHtml = `<option value="">-- No tiene grados ni clases asignadas --</option>`;
-            gradeOptionsHtml += `<optgroup label="🏫 Todos los Grados y Secciones (Plantel Completo)">`;
-            const sortedAll = sortGrades(STATE.gradesList || []);
-            sortedAll.forEach(g => {
-                gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
-            });
-            gradeOptionsHtml += `</optgroup>`;
         }
     } else if (isAuthorityRole && activeTeacherObj) {
         // SUPERVISIÓN POR MAESTRO ESPECÍFICO
@@ -22530,10 +22517,20 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
         } else if (gradeSelect.options && gradeSelect.options.length > 0) {
             gradeSelect.selectedIndex = 0;
             STATE.attendanceSelectedGrade = gradeSelect.value;
+            try {
+                if (typeof sessionStorage !== 'undefined') {
+                    sessionStorage.setItem('ENCCO_SELECTED_ATTENDANCE_GRADE', gradeSelect.value);
+                }
+            } catch(e) {}
         }
     } else if (gradeSelect.options && gradeSelect.options.length > 0) {
         gradeSelect.selectedIndex = 0;
         STATE.attendanceSelectedGrade = gradeSelect.value;
+        try {
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.setItem('ENCCO_SELECTED_ATTENDANCE_GRADE', gradeSelect.value);
+            }
+        } catch(e) {}
     }
 
     updateAttendanceCoursesList();
