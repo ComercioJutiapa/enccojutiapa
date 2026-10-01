@@ -6419,6 +6419,7 @@ var STATE = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {
     attendancePermissionsMeta: {},
     attendanceRecords: {},
     dismissedAlerts: {},
+    studentAnnotations: [],
     gradeEditRequests: [],
     schoolHeader: { schoolName: 'Escuela Nacional de Ciencias Comerciales', schoolCode: '22-01-0014-46', location: 'Jutiapa, Guatemala' },
     config: { activeBimestre: 1, activeUnits: [1], globalLocked: false, minPassingScore: 60, teacherBypass: {} }
@@ -8628,6 +8629,7 @@ function saveStateRecursively(options = { syncCloud: false, isAutoSave: false })
             studentPermissions: recursiveDeepClone(STATE.studentPermissions || []),
             attendancePermissionsMeta: recursiveDeepClone(STATE.attendancePermissionsMeta || {}),
             attendanceRecords: recursiveDeepClone(STATE.attendanceRecords || {}),
+            studentAnnotations: recursiveDeepClone(STATE.studentAnnotations || []),
             dismissedAlerts: recursiveDeepClone(STATE.dismissedAlerts || {}),
             rolesConfig: recursiveDeepClone(STATE.rolesConfig || (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : [])),
             schoolHeader: recursiveDeepClone(STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {})),
@@ -12057,6 +12059,9 @@ function openStudentProfileModal(id) {
         if (docenteView) docenteView.style.display = 'none';
         renderStudentProfileGrades(student);
     }
+
+    // 5. Cargar y sincronizar la Pestaña de Bitácora y Anotaciones
+    renderStudentProfileAnnotations(id);
 
     // Activar por defecto la Pestaña 1
     switchStudentProfileTab('data');
@@ -22990,6 +22995,14 @@ function loadAttendanceList() {
                 const cellLockAdminAttr = isOfficialJustified ? 'data-locked-by-admin="true"' : 'data-locked-by-admin="false"';
                 const cellOriginRoleAttr = `data-origin-role="${cellOriginRole}"`;
 
+                const cellDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayAnnots = (typeof getStudentAnnotationsForDate === 'function') ? getStudentAnnotationsForDate(s.id, cellDateStr) : [];
+                if (dayAnnots.length > 0) {
+                    const annotTextPreview = dayAnnots.map(x => `[${x.authorName}]: ${x.text}`).join(' | ');
+                    cellTitle += ` — 📌 Anotación: ${annotTextPreview}`;
+                    cellInnerHtml += `<span style="font-size:0.55rem; color:#0284c7; margin-left:1px;" title="${escapeHtml(annotTextPreview)}">📌</span>`;
+                }
+
                 cellsHtml += `
                     <td class="att-cell ${cellClass} ${todayColClass}" 
                         data-student-id="${s.id}" 
@@ -23032,12 +23045,17 @@ function loadAttendanceList() {
             statusTag = `<span class="badge" style="font-size:0.68rem; margin-left:5px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d;">Ausente</span>`;
         }
 
+        const studentAnnotsCount = (typeof getStudentAnnotations === 'function') ? getStudentAnnotations(s.id).length : 0;
+        const annotBtn = `<button type="button" class="btn btn-xs ${studentAnnotsCount > 0 ? 'btn-info' : 'btn-outline-secondary'}" onclick="openStudentAnnotationModal('${s.id}')" title="${studentAnnotsCount > 0 ? studentAnnotsCount + ' anotación(es) registrada(s)' : 'Agregar o consultar anotaciones'}" style="padding:1px 5px; font-size:0.68rem; margin-left:6px; border-radius:4px; line-height:1.2;">
+            <i class="fa-solid fa-comment-dots"></i> ${studentAnnotsCount > 0 ? studentAnnotsCount : '+'}
+        </button>`;
+
         tbodyHtml += `
             <tr data-student-id="${s.id}">
                 <td class="col-num">${idx + 1}</td>
                 <td class="col-carne"><code>${s.personalCode || s.cui || s.carne || 'S/C'}</code></td>
                 <td class="col-name" title="${studentFullName}">
-                    <strong>${studentFullName}</strong>${statusTag}
+                    <strong>${studentFullName}</strong>${statusTag}${annotBtn}
                 </td>
                 ${cellsHtml}
                 <td class="col-stat col-stat-p" id="statP_${s.id}">${pCount}</td>
@@ -34623,6 +34641,15 @@ function renderAuxiliaturaLogView() {
 
         const notesTooltip = a.notes ? `<div style="font-size:0.75rem; color:#475569; margin-top:4px; background:#f8fafc; border-left:3px solid #3b82f6; padding:3px 6px; border-radius:2px;"><strong>Nota:</strong> ${escapeHtml(a.notes)}</div>` : '';
 
+        // Anotaciones universales de seguimiento vinculadas al estudiante o fecha
+        const targetAlertDate = a.date || (a.timestamp ? new Date(a.timestamp).toISOString().split('T')[0] : '');
+        const alertAnnots = (typeof getStudentAnnotationsForDate === 'function') ? getStudentAnnotationsForDate(a.studentId, targetAlertDate) : [];
+        const annotsHtml = alertAnnots.map(an => `
+            <div style="font-size:0.75rem; color:#0369a1; margin-top:3px; background:#f0f9ff; border-left:3px solid #0284c7; padding:3px 6px; border-radius:2px;" title="Registrado por ${escapeHtml(an.authorName)} (${an.time})">
+                <strong>📌 [${escapeHtml(an.authorName)}]:</strong> ${escapeHtml(an.text)}
+            </div>
+        `).join('');
+
         return `
             <tr style="border-bottom:1px solid #f1f5f9; ${a.status === 'pendiente' || !a.status ? 'background:rgba(254,242,242,0.35);' : ''}">
                 <td style="text-align:center; font-weight:700; color:#475569;">
@@ -34632,6 +34659,7 @@ function renderAuxiliaturaLogView() {
                     <strong style="color:#0f172a; font-size:0.9rem;">${escapeHtml(a.studentName)}</strong>${monthAbsenceBadge}
                     <div style="font-size:0.76rem; color:#64748b;">Carné: <code>${escapeHtml(a.carne || '---')}</code></div>
                     ${notesTooltip}
+                    ${annotsHtml}
                 </td>
                 <td>
                     <span style="font-weight:600; color:#334155;">${escapeHtml(a.gradeLabel)}</span>
@@ -34653,6 +34681,9 @@ function renderAuxiliaturaLogView() {
                     <div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">
                         <button type="button" class="btn btn-sm btn-primary" onclick="openAuxiliaturaJustifyModal('${a.id}')" style="font-size:0.75rem; padding:3px 8px; font-weight:700;" title="Justificar o emitir citación oficial">
                             <i class="fa-solid fa-pen-to-square"></i> Atender
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-info" onclick="openStudentAnnotationModalForAlert('${a.id}')" style="font-size:0.75rem; padding:3px 8px; font-weight:700;" title="Registrar anotación u observación de seguimiento">
+                            <i class="fa-solid fa-comment-dots"></i> Anotar
                         </button>
                         ${a.status !== 'verificada' && a.status !== 'justificada' ? `
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="markAuxiliaturaAlertStatus('${a.id}', 'verificada')" title="Marcar falta como verificada / no justificada" style="font-size:0.75rem; padding:3px 8px;">
@@ -34954,6 +34985,362 @@ function printAuxiliaturaLog() {
         } catch(e) {}
     }, 400);
 }
+
+// ==========================================================================
+// 📌 SISTEMA UNIVERSAL DE ANOTACIONES, OBSERVACIONES Y BITÁCORA ESCOLAR
+// ==========================================================================
+
+function getStudentAnnotations(studentId) {
+    if (!STATE.studentAnnotations) STATE.studentAnnotations = [];
+    if (!studentId) return [...STATE.studentAnnotations].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+    return STATE.studentAnnotations
+        .filter(a => a && a.studentId === studentId)
+        .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+}
+window.getStudentAnnotations = getStudentAnnotations;
+
+function getStudentAnnotationsForDate(studentId, dateStr) {
+    if (!STATE.studentAnnotations) STATE.studentAnnotations = [];
+    return STATE.studentAnnotations.filter(a => a && a.studentId === studentId && a.date === dateStr);
+}
+window.getStudentAnnotationsForDate = getStudentAnnotationsForDate;
+
+function addStudentAnnotation(data) {
+    if (!STATE.studentAnnotations) STATE.studentAnnotations = [];
+    const currentUser = STATE.currentUser || (STATE.users || [])[0];
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || 'profesor_auxiliar';
+    
+    const roleLabels = {
+        'admin': 'Administrador',
+        'director': 'Dirección',
+        'secretaria': 'Secretaría',
+        'profesor_auxiliar': 'Profesor Auxiliar / Auxiliatura',
+        'auxiliar': 'Auxiliatura',
+        'docente': 'Catedrático Titular'
+    };
+
+    const newAnnotation = {
+        id: 'ANNOT_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+        studentId: data.studentId,
+        studentName: data.studentName || 'Estudiante',
+        gradeCode: data.gradeCode || '',
+        category: data.category || 'general',
+        date: data.date || new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' }),
+        text: (data.text || '').trim(),
+        authorName: (currentUser && currentUser.name) ? currentUser.name : (roleLabels[currentRole] || 'Personal Docente'),
+        authorRole: currentRole,
+        authorRoleLabel: roleLabels[currentRole] || currentRole,
+        alertId: data.alertId || null,
+        createdAt: new Date().toISOString()
+    };
+
+    STATE.studentAnnotations.unshift(newAnnotation);
+    saveStateToLocalStorage();
+
+    // Sincronizar en segundo plano si Firebase / CloudSync está disponible
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+        EnccoCloudSync.patchNode(`studentAnnotations/${newAnnotation.id}`, newAnnotation).catch(() => {});
+    }
+
+    return newAnnotation;
+}
+window.addStudentAnnotation = addStudentAnnotation;
+
+function deleteStudentAnnotation(annotationId) {
+    if (!STATE.studentAnnotations) STATE.studentAnnotations = [];
+    const idx = STATE.studentAnnotations.findIndex(a => a && a.id === annotationId);
+    if (idx === -1) return false;
+
+    const ann = STATE.studentAnnotations[idx];
+    const currentUser = STATE.currentUser || (STATE.users || [])[0];
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
+    const isAuthority = ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+    const isAuthor = (currentUser && currentUser.name === ann.authorName);
+
+    if (!isAuthority && !isAuthor) {
+        showToast("Solo el autor de la anotación o el personal de Auxiliatura/Dirección puede eliminarla.", "warning");
+        return false;
+    }
+
+    STATE.studentAnnotations.splice(idx, 1);
+    saveStateToLocalStorage();
+
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.deleteNode) {
+        EnccoCloudSync.deleteNode(`studentAnnotations/${annotationId}`).catch(() => {});
+    }
+
+    showToast("Anotación eliminada correctamente.", "info");
+    
+    // Refrescar vistas
+    if (STATE.selectedStudentId) {
+        renderStudentAnnotationsList(STATE.selectedStudentId);
+        renderStudentProfileAnnotations(STATE.selectedStudentId);
+    }
+    if (STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') {
+        loadAttendanceList();
+    }
+    if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
+        renderAuxiliaturaLogView();
+    }
+    return true;
+}
+window.deleteStudentAnnotation = deleteStudentAnnotation;
+
+function openStudentAnnotationModal(studentId = null, defaultDate = null, alertId = null) {
+    if (!studentId) {
+        studentId = STATE.selectedStudentId;
+    }
+    if (!studentId && STATE.students && STATE.students.length > 0) {
+        studentId = STATE.students[0].id;
+    }
+    if (!studentId) {
+        showToast("Seleccione un estudiante para registrar o ver anotaciones.", "warning");
+        return;
+    }
+
+    const student = (STATE.students || []).find(s => s.id === studentId);
+    if (!student) {
+        showToast("Estudiante no encontrado.", "warning");
+        return;
+    }
+
+    STATE.selectedStudentId = studentId;
+    const modal = document.getElementById('studentAnnotationModal');
+    if (!modal) return;
+
+    document.getElementById('annotStudentId').value = student.id;
+    document.getElementById('annotGradeCode').value = student.gradeCode || student.grade || '';
+    document.getElementById('annotAlertId').value = alertId || '';
+    
+    const studentDisplayName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(student, 'lastFirst') : (student.name || 'Estudiante');
+    document.getElementById('annotStudentName').textContent = studentDisplayName;
+    document.getElementById('annotStudentMeta').textContent = `Carné: ${student.carne || student.personalCode || 'S/C'} | Grado: ${student.grade || ''} ${student.section ? `(${student.section})` : ''} | Carrera: ${student.career || 'Perito Contador'}`;
+
+    const dateInput = document.getElementById('annotDate');
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateInput) {
+        dateInput.value = defaultDate || todayStr;
+    }
+
+    const textArea = document.getElementById('annotText');
+    if (textArea) {
+        textArea.value = '';
+    }
+
+    renderStudentAnnotationsList(studentId);
+
+    modal.classList.add('active');
+    modal.style.setProperty('display', 'flex', 'important');
+}
+window.openStudentAnnotationModal = openStudentAnnotationModal;
+
+function openStudentAnnotationModalForAlert(alertId) {
+    const alertObj = (STATE.attendanceAlerts || []).find(a => a.id === alertId);
+    if (!alertObj) {
+        showToast("Alerta no encontrada.", "warning");
+        return;
+    }
+    const todayStr = new Date().toISOString().split('T')[0];
+    const targetDate = alertObj.date || (alertObj.timestamp ? new Date(alertObj.timestamp).toISOString().split('T')[0] : todayStr);
+    openStudentAnnotationModal(alertObj.studentId, targetDate, alertId);
+}
+window.openStudentAnnotationModalForAlert = openStudentAnnotationModalForAlert;
+
+function closeStudentAnnotationModal() {
+    const modal = document.getElementById('studentAnnotationModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+    }
+}
+window.closeStudentAnnotationModal = closeStudentAnnotationModal;
+
+function saveQuickAnnotation() {
+    const studentId = document.getElementById('annotStudentId')?.value;
+    const gradeCode = document.getElementById('annotGradeCode')?.value;
+    const alertId = document.getElementById('annotAlertId')?.value;
+    const category = document.getElementById('annotCategory')?.value || 'general';
+    const date = document.getElementById('annotDate')?.value || new Date().toISOString().split('T')[0];
+    const text = (document.getElementById('annotText')?.value || '').trim();
+
+    if (!studentId) {
+        showToast("Debe especificar un estudiante.", "warning");
+        return;
+    }
+    if (!text) {
+        showToast("Escriba el detalle de la anotación antes de guardar.", "warning");
+        return;
+    }
+
+    const student = (STATE.students || []).find(s => s.id === studentId);
+    const studentName = student ? ((typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(student, 'lastFirst') : student.name) : 'Estudiante';
+
+    addStudentAnnotation({
+        studentId,
+        studentName,
+        gradeCode,
+        category,
+        date,
+        text,
+        alertId
+    });
+
+    // Limpiar texto
+    const textArea = document.getElementById('annotText');
+    if (textArea) textArea.value = '';
+
+    renderStudentAnnotationsList(studentId);
+    renderStudentProfileAnnotations(studentId);
+
+    // Refrescar asistencia si está activa
+    if (STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') {
+        loadAttendanceList();
+    }
+    // Refrescar bitácora si está activa
+    if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
+        renderAuxiliaturaLogView();
+    }
+
+    showToast("Anotación registrada y compartida con éxito.", "success");
+}
+window.saveQuickAnnotation = saveQuickAnnotation;
+
+function renderStudentAnnotationsList(studentId) {
+    const container = document.getElementById('annotHistoryList');
+    const countEl = document.getElementById('annotHistoryCount');
+    if (!container) return;
+
+    const list = getStudentAnnotations(studentId);
+    if (countEl) countEl.textContent = list.length;
+
+    if (list.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:25px 15px; color:#64748b; background:#ffffff; border:1px dashed #cbd5e1; border-radius:6px;">
+                <i class="fa-solid fa-clipboard-check" style="font-size:1.8rem; color:#94a3b8; display:block; margin-bottom:6px;"></i>
+                <span style="font-weight:600; font-size:0.86rem; color:#334155;">Sin anotaciones previas</span>
+                <div style="font-size:0.78rem; color:#64748b; margin-top:2px;">Utilice el formulario superior para registrar la primera nota o acuerdo de convivencia.</div>
+            </div>
+        `;
+        return;
+    }
+
+    const categoryBadges = {
+        'asistencia': { bg: '#e0f2fe', color: '#0369a1', icon: 'fa-solid fa-clock', label: 'Asistencia / Puntualidad' },
+        'llamada': { bg: '#fef3c7', color: '#92400e', icon: 'fa-solid fa-phone', label: 'Comunicación con Padres' },
+        'conducta': { bg: '#fee2e2', color: '#991b1b', icon: 'fa-solid fa-scale-balanced', label: 'Conducta / Convivencia' },
+        'acuerdo': { bg: '#dcfce7', color: '#166534', icon: 'fa-solid fa-handshake', label: 'Compromiso o Acuerdo' },
+        'pedagogica': { bg: '#f3e8ff', color: '#6b21a8', icon: 'fa-solid fa-book-open-reader', label: 'Seguimiento Académico' },
+        'general': { bg: '#f1f5f9', color: '#334155', icon: 'fa-solid fa-note-sticky', label: 'Observación General' }
+    };
+
+    const currentUser = STATE.currentUser || (STATE.users || [])[0];
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
+    const canDelete = ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+
+    container.innerHTML = list.map(a => {
+        const cat = categoryBadges[a.category] || categoryBadges.general;
+        const deleteBtn = canDelete ? `
+            <button type="button" class="btn btn-xs btn-outline-danger" onclick="deleteStudentAnnotation('${a.id}')" title="Eliminar anotación" style="padding:1px 6px; font-size:0.70rem;">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        ` : '';
+
+        return `
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:4px;">
+                    <span class="badge" style="background:${cat.bg}; color:${cat.color}; font-size:0.74rem; font-weight:700; padding:3px 8px; border-radius:4px;">
+                        <i class="${cat.icon}"></i> ${cat.label}
+                    </span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:0.75rem; color:#64748b; font-weight:600;">
+                            <i class="fa-regular fa-calendar"></i> ${a.date} ${a.time ? `(${a.time})` : ''}
+                        </span>
+                        ${deleteBtn}
+                    </div>
+                </div>
+                <div style="font-size:0.86rem; color:#1e293b; line-height:1.45; margin:6px 0;">
+                    ${escapeHtml(a.text)}
+                </div>
+                <div style="font-size:0.75rem; color:#0369a1; border-top:1px dashed #f1f5f9; padding-top:4px; display:flex; justify-content:space-between; align-items:center;">
+                    <span><i class="fa-solid fa-user-pen" style="color:#94a3b8; margin-right:3px;"></i> <strong>Autor:</strong> ${escapeHtml(a.authorName || 'Auxiliatura')} <small style="color:#64748b;">(${escapeHtml(a.authorRoleLabel || a.authorRole || 'Personal')})</small></span>
+                    <span style="color:#10b981; font-weight:600;"><i class="fa-solid fa-check"></i> Registrado</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+window.renderStudentAnnotationsList = renderStudentAnnotationsList;
+
+function renderStudentProfileAnnotations(studentId) {
+    const container = document.getElementById('profAnnotationsListContainer');
+    const tabCountEl = document.getElementById('profAnnotationsTabCount');
+    if (!studentId) studentId = STATE.selectedStudentId;
+    if (!container || !studentId) return;
+
+    const list = getStudentAnnotations(studentId);
+    if (tabCountEl) tabCountEl.textContent = list.length;
+
+    if (list.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:30px 15px; color:#64748b;">
+                <i class="fa-solid fa-clipboard-check" style="font-size:2rem; color:#94a3b8; display:block; margin-bottom:8px;"></i>
+                <strong style="color:#334155; font-size:0.95rem;">Sin anotaciones registradas</strong>
+                <p style="margin:4px 0 10px 0; font-size:0.82rem; color:#64748b;">El estudiante no tiene notas de seguimiento escolar, avisos a padres ni reportes de convivencia.</p>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="openStudentAnnotationModal('${studentId}')" style="font-weight:700;">
+                    <i class="fa-solid fa-plus"></i> Registrar Primera Anotación
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    const categoryBadges = {
+        'asistencia': { bg: '#e0f2fe', color: '#0369a1', icon: 'fa-solid fa-clock', label: 'Asistencia / Puntualidad' },
+        'llamada': { bg: '#fef3c7', color: '#92400e', icon: 'fa-solid fa-phone', label: 'Comunicación con Padres' },
+        'conducta': { bg: '#fee2e2', color: '#991b1b', icon: 'fa-solid fa-scale-balanced', label: 'Conducta / Convivencia' },
+        'acuerdo': { bg: '#dcfce7', color: '#166534', icon: 'fa-solid fa-handshake', label: 'Compromiso o Acuerdo' },
+        'pedagogica': { bg: '#f3e8ff', color: '#6b21a8', icon: 'fa-solid fa-book-open-reader', label: 'Seguimiento Académico' },
+        'general': { bg: '#f1f5f9', color: '#334155', icon: 'fa-solid fa-note-sticky', label: 'Observación General' }
+    };
+
+    const currentUser = STATE.currentUser || (STATE.users || [])[0];
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
+    const canDelete = ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+
+    container.innerHTML = list.map(a => {
+        const cat = categoryBadges[a.category] || categoryBadges.general;
+        const deleteBtn = canDelete ? `
+            <button type="button" class="btn btn-xs btn-outline-danger" onclick="deleteStudentAnnotation('${a.id}')" title="Eliminar anotación" style="padding:1px 6px; font-size:0.70rem;">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        ` : '';
+
+        return `
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:10px 14px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:4px;">
+                    <span class="badge" style="background:${cat.bg}; color:${cat.color}; font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:4px;">
+                        <i class="${cat.icon}"></i> ${cat.label}
+                    </span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:0.76rem; color:#64748b; font-weight:600;">
+                            <i class="fa-regular fa-calendar"></i> ${a.date} ${a.time ? `(${a.time})` : ''}
+                        </span>
+                        ${deleteBtn}
+                    </div>
+                </div>
+                <div style="font-size:0.88rem; color:#1e293b; line-height:1.45; margin:6px 0;">
+                    ${escapeHtml(a.text)}
+                </div>
+                <div style="font-size:0.75rem; color:#0369a1; border-top:1px dashed #f1f5f9; padding-top:4px; display:flex; justify-content:space-between; align-items:center;">
+                    <span><i class="fa-solid fa-user-pen" style="color:#94a3b8; margin-right:3px;"></i> <strong>Autor:</strong> ${escapeHtml(a.authorName || 'Auxiliatura')} <small style="color:#64748b;">(${escapeHtml(a.authorRoleLabel || a.authorRole || 'Personal')})</small></span>
+                    <span style="color:#10b981; font-weight:600;"><i class="fa-solid fa-eye"></i> Visible a todo el personal</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+window.renderStudentProfileAnnotations = renderStudentProfileAnnotations;
 
 // ==========================================================================
 // 🛡️ MÓDULO OFICIAL: LIBRO DE REGISTRO DE EXONERACIONES Y DETALLE PARA DOCENTE

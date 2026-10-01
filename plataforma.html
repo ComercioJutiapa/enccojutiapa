@@ -2170,6 +2170,9 @@
                                 <button type="button" class="btn btn-outline-warning btn-sm" onclick="navigateTo('permissions-history')" title="Ver registro oficial de permisos de ausencia autorizados" style="height:38px; font-size:0.86rem; font-weight:700; padding:0 12px; display:inline-flex; align-items:center; gap:6px;">
                                     <i class="fa-solid fa-clipboard-list"></i> Historial Permisos
                                 </button>
+                                <button type="button" class="btn btn-outline-info btn-sm" onclick="openStudentAnnotationModal()" title="Consultar o registrar anotaciones y observaciones de seguimiento" style="height:38px; font-size:0.86rem; font-weight:700; padding:0 12px; display:inline-flex; align-items:center; gap:6px;">
+                                    <i class="fa-solid fa-comment-dots"></i> Anotaciones
+                                </button>
                                 <button type="button" id="btnMarkAllPresent" class="btn btn-success btn-sm" onclick="markAllPresentToday()" title="Marcar a todos los alumnos como Presentes hoy (respeta automáticamente los permisos de Auxiliatura)" style="height:38px; font-size:0.86rem; font-weight:800; padding:0 14px; background:#15803d; border-color:#0f5127; color:#ffffff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(21,128,61,0.25);">
                                     <i class="fa-solid fa-check-double"></i> Marcar Todos Presentes
                                 </button>
@@ -4064,11 +4067,14 @@
                         <button type="button" class="profile-tab-btn" id="profTabBtn-discipline" onclick="switchStudentProfileTab('discipline')">
                             <i class="fa-solid fa-triangle-exclamation"></i> 2. Reportes Disciplinarios (<span id="profDisciplineCount">0</span>)
                         </button>
+                        <button type="button" class="profile-tab-btn" id="profTabBtn-annotations" onclick="switchStudentProfileTab('annotations')">
+                            <i class="fa-solid fa-comment-dots"></i> 3. Bitácora y Anotaciones (<span id="profAnnotationsTabCount">0</span>)
+                        </button>
                         <button type="button" class="profile-tab-btn" id="profTabBtn-grades" onclick="switchStudentProfileTab('grades')">
-                            <i class="fa-solid fa-graduation-cap"></i> 3. Récord de Calificaciones
+                            <i class="fa-solid fa-graduation-cap"></i> 4. Récord de Calificaciones
                         </button>
                         <button type="button" class="profile-tab-btn" id="profTabBtn-historico" onclick="switchStudentProfileTab('historico'); loadStudentHistoricalRecord(STATE.selectedStudentId)">
-                            <i class="fa-solid fa-clock-rotate-left"></i> 4. Historial de Años Anteriores
+                            <i class="fa-solid fa-clock-rotate-left"></i> 5. Historial de Años Anteriores
                         </button>
                     </div>
 
@@ -4181,7 +4187,25 @@
                     </div>
 
                     <!-- ======================================================== -->
-                    <!-- PESTAÑA 3: RÉCORD DE CALIFICACIONES (RESTRINGIDO SEGÚN ROL) -->
+                    <!-- PESTAÑA 3: BITÁCORA Y ANOTACIONES DEL ESTUDIANTE (UNIVERSAL) -->
+                    <!-- ======================================================== -->
+                    <div class="profile-tab-content" id="profTab-annotations" style="display:none;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+                            <div>
+                                <h4 style="margin:0; color:#0369a1; font-size:1rem; font-weight:800;">
+                                    <i class="fa-solid fa-comment-dots"></i> Bitácora de Observaciones y Convivencia
+                                </h4>
+                                <p style="margin:2px 0 0 0; font-size:0.82rem; color:var(--text-secondary);">Anotaciones de seguimiento escolar, avisos y acuerdos con padres.</p>
+                            </div>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="openStudentAnnotationModal(STATE.selectedStudentId)" style="font-weight:700;">
+                                <i class="fa-solid fa-plus-circle"></i> Nueva Anotación
+                            </button>
+                        </div>
+                        <div id="profAnnotationsListContainer" style="font-size:0.86rem; min-height:140px; max-height:300px; overflow-y:auto; background:var(--bg-main); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-color); display:flex; flex-direction:column; gap:8px;"></div>
+                    </div>
+
+                    <!-- ======================================================== -->
+                    <!-- PESTAÑA 4: RÉCORD DE CALIFICACIONES (RESTRINGIDO SEGÚN ROL) -->
                     <!-- ======================================================== -->
                     <div class="profile-tab-content" id="profTab-grades" style="display:none;">
                         
@@ -4400,6 +4424,75 @@
                 <button type="button" class="btn btn-success btn-sm" onclick="submitAuxiliaturaJustification()" style="font-weight:800;">
                     <i class="fa-solid fa-floppy-disk"></i> Guardar Resolución
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE ANOTACIONES Y BITÁCORA DE CONVIVENCIA (ACCESO Y LECTURA UNIVERSAL) -->
+    <div class="modal-overlay" id="studentAnnotationModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeStudentAnnotationModal()">
+        <div class="modal-container" style="max-width:620px;">
+            <div class="modal-header" style="background:#0284c7; color:#ffffff;">
+                <h3 style="color:#ffffff;"><i class="fa-solid fa-comment-dots"></i> Bitácora y Anotaciones de Estudiante</h3>
+                <button type="button" class="modal-close" onclick="closeStudentAnnotationModal()" style="color:#ffffff;">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:18px;">
+                <input type="hidden" id="annotStudentId">
+                <input type="hidden" id="annotGradeCode">
+                <input type="hidden" id="annotAlertId">
+                
+                <div style="background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:8px; padding:12px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <strong style="color:#0369a1; font-size:1.02rem; display:block;" id="annotStudentName">ALUMNO</strong>
+                        <div style="font-size:0.82rem; color:#475569;" id="annotStudentMeta">Grado | Sección</div>
+                    </div>
+                    <span class="badge badge-info" style="font-size:0.75rem; padding:4px 8px;">
+                        <i class="fa-solid fa-eye"></i> Lectura Abierta Docentes y Dirección
+                    </span>
+                </div>
+
+                <!-- FORMULARIO PARA REGISTRAR NUEVA ANOTACIÓN -->
+                <div id="annotFormContainer" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:14px; margin-bottom:16px;">
+                    <div style="font-weight:700; font-size:0.88rem; color:#0f172a; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-pen-clip" style="color:#0284c7;"></i> Nueva Anotación / Observación
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-weight:700; font-size:0.80rem; color:#334155;">Categoría *</label>
+                            <select id="annotCategory" class="form-control" style="font-size:0.85rem; height:34px;">
+                                <option value="asistencia">⏰ Asistencia / Puntualidad</option>
+                                <option value="llamada">📞 Llamada / Comunicación con Padres</option>
+                                <option value="conducta">⚖️ Conducta y Convivencia</option>
+                                <option value="acuerdo">🤝 Compromiso o Acuerdo</option>
+                                <option value="pedagogica">📚 Desempeño y Seguimiento Académico</option>
+                                <option value="general">📝 Observación General</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label style="font-weight:700; font-size:0.80rem; color:#334155;">Fecha de Referencia *</label>
+                            <input type="date" id="annotDate" class="form-control" style="font-size:0.85rem; height:34px;">
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <label style="font-weight:700; font-size:0.80rem; color:#334155;">Detalle de la Anotación *</label>
+                        <textarea id="annotText" class="form-control" rows="3" placeholder="Escriba aquí la observación, motivo de tardanza, acuerdo con el encargado o seguimiento..." style="font-size:0.85rem;"></textarea>
+                    </div>
+                    <div style="text-align:right;">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="saveQuickAnnotation()" style="font-weight:700; padding:6px 14px;">
+                            <i class="fa-solid fa-floppy-disk"></i> Guardar Anotación
+                        </button>
+                    </div>
+                </div>
+
+                <!-- HISTORIAL CRONOLÓGICO DE ANOTACIONES -->
+                <div style="font-weight:700; font-size:0.88rem; color:#0f172a; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <span><i class="fa-solid fa-timeline" style="color:#64748b;"></i> Historial de Anotaciones (<span id="annotHistoryCount">0</span>)</span>
+                </div>
+                <div id="annotHistoryList" style="max-height:240px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
+                    <!-- Se llena dinámicamente -->
+                </div>
+            </div>
+            <div class="modal-footer" style="background:#f8fafc; padding:10px 16px; display:flex; justify-content:flex-end;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeStudentAnnotationModal()">Cerrar</button>
             </div>
         </div>
     </div>
