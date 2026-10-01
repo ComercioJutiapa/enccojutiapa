@@ -1965,8 +1965,17 @@ body.theme-dark .att-global-pct-bar {
     .kpi-grid,
     .info-alert,
     .modal-backdrop,
-    .modal-container {
+    .modal-container,
+    .sidebar,
+    .sidebar-backdrop,
+    .modal-overlay,
+    .mobile-toggle {
         display: none !important;
+    }
+
+    .table-responsive {
+        overflow: visible !important;
+        width: 100% !important;
     }
 
     .main-content {

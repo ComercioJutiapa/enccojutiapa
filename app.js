@@ -2503,6 +2503,74 @@ async function saveActiveRolePermissions() {
 }
 window.saveActiveRolePermissions = saveActiveRolePermissions;
 
+// ======================================================================
+// 🛡️ BÓVEDA DE RESPALDO SEGURO INSTITUCIONAL (EXCLUSIVO DIRECCIÓN GENERAL)
+// ======================================================================
+function exportSystemSafeBackup() {
+    if (typeof isDirectorOrSuperAdmin === 'function' && !isDirectorOrSuperAdmin()) {
+        if (typeof showToast === 'function') {
+            showToast('🔒 Acción restringida: La descarga de respaldo institucional está reservada exclusivamente a la Dirección General.', 'warning', 5000);
+        } else {
+            alert('Acción restringida exclusivamente a la Dirección General.');
+        }
+        return;
+    }
+
+    try {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const h = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+
+        const currentUser = (window.STATE && window.STATE.currentUser) || {};
+        const role = (window.STATE && window.STATE.currentRole) || 'direccion';
+
+        const backupData = {
+            institution: "ESCUELA NACIONAL DE CIENCIAS COMERCIALES DE JUTIAPA (ENCO)",
+            backupTimestamp: now.toISOString(),
+            formattedDate: `${d}/${m}/${y} ${h}:${min}`,
+            academicModel: "40% Zona / 60% Examen (100% Total)",
+            exportedBy: currentUser.name || role,
+            stateSnapshot: {
+                activeCycle: STATE.activeCycle || y,
+                studentsCount: Array.isArray(STATE.students) ? STATE.students.length : 0,
+                students: STATE.students || [],
+                gradesList: STATE.gradesList || [],
+                pensum: STATE.pensum || [],
+                rolesConfig: STATE.rolesConfig || [],
+                attendanceRecords: STATE.attendanceRecords || {},
+                attendancePermissionsMeta: STATE.attendancePermissionsMeta || {},
+                studentPermissions: STATE.studentPermissions || [],
+                auxiliaturaLog: STATE.auxiliaturaLog || [],
+                exoneraciones: STATE.exoneraciones || []
+            }
+        };
+
+        const jsonStr = JSON.stringify(backupData, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ENCO_RESPALDO_OFICIAL_${y}-${m}-${d}_${h}${min}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        if (typeof showToast === 'function') {
+            showToast(`✅ Respaldo Oficial Descargado: Se exportaron ${backupData.stateSnapshot.studentsCount} estudiantes y registros institucionales con éxito.`, 'success', 6000);
+        }
+    } catch(err) {
+        console.error("Error al exportar respaldo seguro:", err);
+        if (typeof showToast === 'function') {
+            showToast('Error al generar la descarga de respaldo.', 'danger');
+        }
+    }
+}
+window.exportSystemSafeBackup = exportSystemSafeBackup;
+
 
 // ======================================================================
 //   SISTEMA MAESTRO DE CONTROL DINÁMICO DE ROLES Y PERMISOS (V118)
@@ -10496,8 +10564,17 @@ function renderStudentsTable() {
     }).join('');
 }
 
-function filterStudentsTable() {
-    renderStudentsTable();
+let _studentFilterDebounceTimer = null;
+function filterStudentsTable(immediate = false) {
+    if (immediate) {
+        if (_studentFilterDebounceTimer) clearTimeout(_studentFilterDebounceTimer);
+        renderStudentsTable();
+        return;
+    }
+    if (_studentFilterDebounceTimer) clearTimeout(_studentFilterDebounceTimer);
+    _studentFilterDebounceTimer = setTimeout(() => {
+        renderStudentsTable();
+    }, 120);
 }
 
 function resetStudentFilters() {
@@ -22428,8 +22505,9 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
     gradeSelect.innerHTML = gradeOptionsHtml;
 
     // 🛡️ Preservación inmutable del grado y sección seleccionado para cualquier grado (4to, 5to, 6to A, B, C, D, etc.)
-    const targetGrade = (!resetSelection && (currentSelectedGrade || STATE.attendanceSelectedGrade)) 
-        ? (currentSelectedGrade || STATE.attendanceSelectedGrade) 
+    const savedAttGrade = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('ENCCO_SELECTED_ATTENDANCE_GRADE') : null;
+    const targetGrade = (!resetSelection && (currentSelectedGrade || STATE.attendanceSelectedGrade || savedAttGrade)) 
+        ? (currentSelectedGrade || STATE.attendanceSelectedGrade || savedAttGrade) 
         : null;
 
     if (targetGrade && Array.from(gradeSelect.options || []).some(o => o.value === targetGrade)) {
@@ -22462,6 +22540,11 @@ function onAttendanceGradeChange() {
     const gradeSelect = document.getElementById('attendanceGradeSelect');
     if (gradeSelect && gradeSelect.value) {
         STATE.attendanceSelectedGrade = gradeSelect.value;
+        try {
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.setItem('ENCCO_SELECTED_ATTENDANCE_GRADE', gradeSelect.value);
+            }
+        } catch(e) {}
     }
     updateAttendanceCoursesList();
     loadAttendanceList();
@@ -34845,6 +34928,15 @@ function openWhatsAppPrompt(studentName, guardianPhone, gradeLabel, accumulatedA
     window.open(url, '_blank');
 }
 
+let _auxiliaturaLogDebounceTimer = null;
+function renderAuxiliaturaLogViewDebounced() {
+    if (_auxiliaturaLogDebounceTimer) clearTimeout(_auxiliaturaLogDebounceTimer);
+    _auxiliaturaLogDebounceTimer = setTimeout(() => {
+        renderAuxiliaturaLogView();
+    }, 120);
+}
+window.renderAuxiliaturaLogViewDebounced = renderAuxiliaturaLogViewDebounced;
+
 function renderAuxiliaturaLogView() {
     updateAuxChimeButtonUI();
 
@@ -36104,6 +36196,15 @@ window.closeExonerationDetailDocenteModal = closeExonerationDetailDocenteModal;
 // ==========================================================================
 // REGISTRO OFICIAL DE PERMISOS DE AUSENCIA (VISTA COMPLETA TIPO EXONERACIONES)
 // ==========================================================================
+let _permissionsHistoryDebounceTimer = null;
+function renderPermissionsHistoryViewDebounced() {
+    if (_permissionsHistoryDebounceTimer) clearTimeout(_permissionsHistoryDebounceTimer);
+    _permissionsHistoryDebounceTimer = setTimeout(() => {
+        renderPermissionsHistoryView();
+    }, 120);
+}
+window.renderPermissionsHistoryViewDebounced = renderPermissionsHistoryViewDebounced;
+
 function renderPermissionsHistoryView() {
     const gradeSelect = document.getElementById('permissionsLogGradeFilter');
     const catSelect = document.getElementById('permissionsLogCategoryFilter');
