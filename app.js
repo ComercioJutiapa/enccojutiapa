@@ -4458,10 +4458,16 @@ function initFirebaseRealtimeConnection() {
                             }
                         }
                     } else if (cleanPath === 'students') {
+                        let incomingList = null;
                         if (Array.isArray(nodeData)) {
+                            incomingList = nodeData.filter(Boolean);
+                        } else if (nodeData && typeof nodeData === 'object') {
+                            incomingList = Object.values(nodeData).filter(Boolean);
+                        }
+                        if (incomingList && incomingList.length > 0) {
                             if (!window._rtdbStudentIndexMap) window._rtdbStudentIndexMap = new Map();
                             if (!window._rtdbIndexToIdMap) window._rtdbIndexToIdMap = new Map();
-                            nodeData.forEach((st, idx) => {
+                            incomingList.forEach((st, idx) => {
                                 if (st && st.id) {
                                     window._rtdbStudentIndexMap.set(st.id, idx);
                                     window._rtdbIndexToIdMap.set(idx, st.id);
@@ -4472,10 +4478,14 @@ function initFirebaseRealtimeConnection() {
                             if (Array.isArray(STATE.students) && STATE.students.length > 0) {
                                 const localDirty = window._locallyDirtyStudentIds || new Set();
                                 const studentMap = new Map();
-                                STATE.students.forEach(st => studentMap.set(st.id || st.personalCode, st));
+                                STATE.students.forEach(st => {
+                                    if (st) studentMap.set(st.id || st.personalCode, st);
+                                });
 
-                                nodeData.forEach(incSt => {
+                                incomingList.forEach(incSt => {
+                                    if (!incSt) return;
                                     const key = incSt.id || incSt.personalCode;
+                                    if (!key) return;
                                     const localSt = studentMap.get(key);
                                     if (!localSt) {
                                         studentMap.set(key, incSt);
@@ -4496,12 +4506,15 @@ function initFirebaseRealtimeConnection() {
                                         });
                                     }
                                 });
+                                STATE.students = deduplicateStudentsCollection(Array.from(studentMap.values()));
                             } else {
-                                STATE.students = nodeData;
+                                STATE.students = deduplicateStudentsCollection(incomingList);
                             }
                             if (typeof renderGradebookTable === 'function') renderGradebookTable();
                             if (typeof renderStudentsTable === 'function') renderStudentsTable();
                             if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+                            if (typeof loadAttendanceList === 'function') loadAttendanceList();
+                            if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView();
                         }
                     } else if (cleanPath.startsWith('students/')) {
                         const subParts = cleanPath.split('/');
@@ -6093,10 +6106,13 @@ window.getAdditionalNomina2026Details = getAdditionalNomina2026Details;
 
 function ensureSireOfficialStudents() {
     if (!Array.isArray(STATE.students)) {
-        STATE.students = [];
-    } else {
-        STATE.students = deduplicateStudentsCollection(STATE.students);
+        if (STATE.students && typeof STATE.students === 'object') {
+            STATE.students = Object.values(STATE.students);
+        } else {
+            STATE.students = [];
+        }
     }
+    STATE.students = deduplicateStudentsCollection(STATE.students);
 
     // 🌟 Normalizar estatus 'Inscrito' a 'Activo' y garantizar Grado y Sección asignados para cada alumno
     (STATE.students || []).forEach(s => {
@@ -6306,13 +6322,21 @@ function deduplicateUsersCollection(users) {
 window.deduplicateUsersCollection = deduplicateUsersCollection;
 
 function deduplicateStudentsCollection(students) {
-    if (!Array.isArray(students)) return [];
+    if (!students) return [];
+    if (!Array.isArray(students)) {
+        if (typeof students === 'object') {
+            students = Object.values(students);
+        } else {
+            return [];
+        }
+    }
     const seen = new Set();
     const result = [];
     students.forEach(s => {
         if (!s) return;
         const key = (s.carne || s.personalCode || s.id || '').trim();
-        const nameKey = ((s.firstName || '') + ' ' + (s.lastName || '') + '_' + (s.grade || '') + '_' + (s.section || '')).trim().toLowerCase();
+        const rawName = (s.name || ((s.firstName || '') + ' ' + (s.lastName || ''))).trim();
+        const nameKey = rawName ? (rawName + '_' + (s.grade || '') + '_' + (s.section || '')).trim().toLowerCase() : '';
         if (key && seen.has(key)) return;
         if (nameKey && seen.has(nameKey)) return;
         if (key) seen.add(key);
@@ -8234,7 +8258,13 @@ window.resetDemoData = reiniciarBaseDeDatosTotal;
 
 function loadDefaults(autoSave = false) {
     if (!Array.isArray(STATE.users)) STATE.users = [];
-    if (!Array.isArray(STATE.students)) STATE.students = [];
+    if (!Array.isArray(STATE.students)) {
+        if (STATE.students && typeof STATE.students === 'object') {
+            STATE.students = Object.values(STATE.students);
+        } else {
+            STATE.students = [];
+        }
+    }
     if (!Array.isArray(STATE.pensum)) STATE.pensum = [];
     if (!Array.isArray(STATE.gradesList)) STATE.gradesList = [];
     if (!Array.isArray(STATE.careers)) STATE.careers = [];
@@ -8522,7 +8552,9 @@ function applyIncomingCloudState(incomingState, force = false) {
             STATE.students = deduplicateStudentsCollection(Array.from(studentMap.values()));
             console.log("⚡ [Multiusuario] Fusión inteligente de calificaciones completada sin colisiones entre docentes.");
         } else {
-            STATE.students = deduplicateStudentsCollection(incomingState.students || []);
+            const rawInc = incomingState.students;
+            const incArr = Array.isArray(rawInc) ? rawInc : (rawInc && typeof rawInc === 'object' ? Object.values(rawInc) : []);
+            STATE.students = deduplicateStudentsCollection(incArr);
         }
     }
 
@@ -11792,24 +11824,29 @@ function renderAcademicExonerationsList(student) {
 }
 
 async function saveAcademicExoneration(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    if (e && e.stopPropagation) e.stopPropagation();
+    let payload = null;
+    if (e && (e.studentId || e.id || e.personalCode)) {
+        payload = e;
+    } else {
+        if (e && e.preventDefault) e.preventDefault();
+        if (e && e.stopPropagation) e.stopPropagation();
+    }
 
     const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
-    const curRole = (STATE.currentRole || '').toLowerCase();
+    const curRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || (window.STATE && window.STATE.currentRole) || (typeof window.EnccoAuthStore !== 'undefined' && window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
     if (!allowedRoles.includes(curRole)) {
         showToast("Acceso Denegado: La exoneración de estudiantes es facultad única y exclusiva de Dirección, Secretaría o Auxiliatura.", "danger");
         return;
     }
 
-    const studentId = STATE.exonerationStudentId;
+    const studentId = payload ? (payload.studentId || payload.id || payload.personalCode) : (STATE.exonerationStudentId || (window._activeExonStudent ? window._activeExonStudent.id : null));
     if (!studentId || studentId === 'undefined' || studentId === 'null') {
         console.error("Error: ID del estudiante no encontrado o indefinido.");
         showToast("Error: Estudiante no seleccionado.", "danger");
         return;
     }
 
-    const student = (STATE.students || []).find(s => String(s.id) === String(studentId));
+    const student = (STATE.students || []).find(s => String(s.id) === String(studentId) || (s.personalCode && s.personalCode === studentId) || (s.carne && s.carne === studentId));
     if (!student) {
         showToast("Estudiante no encontrado en nómina.", "warning");
         return;
@@ -11820,17 +11857,17 @@ async function saveAcademicExoneration(e) {
         return;
     }
 
-    const subject = document.getElementById('exonFormSubject')?.value || 'ALL';
-    const bimestre = document.getElementById('exonFormBimestre')?.value || '2';
-    const type = document.getElementById('exonFormType')?.value || 'EXONERADO';
-    let reason = (document.getElementById('exonFormReason')?.value || '').trim();
+    const subject = payload ? (payload.subject || 'ALL') : (document.getElementById('exonFormSubject')?.value || 'ALL');
+    const bimestre = payload ? (payload.bimestre || 'ALL') : (document.getElementById('exonFormBimestre')?.value || '2');
+    const type = payload ? (payload.type || 'EXONERADO') : (document.getElementById('exonFormType')?.value || 'EXONERADO');
+    let reason = payload ? (payload.reason || '') : (document.getElementById('exonFormReason')?.value || '').trim();
     if (!reason) {
         reason = 'Exoneración Oficial Autorizada por Dirección';
     }
 
-    const submitBtn = document.getElementById('academicExonerationSubmitBtn') || document.querySelector('#academicExonerationForm button[type="submit"]');
-    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Aplicar Consideración';
-    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
+    const submitBtn = (typeof document !== 'undefined' && document) ? (document.getElementById?.('academicExonerationSubmitBtn') || document.querySelector?.('#academicExonerationForm button[type="submit"]')) : null;
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute?.('data-orig-html') || submitBtn.innerHTML) : 'Aplicar Consideración';
+    if (submitBtn && typeof submitBtn.getAttribute === 'function' && !submitBtn.getAttribute('data-orig-html')) {
         submitBtn.setAttribute('data-orig-html', origBtnHtml);
     }
 
@@ -11841,23 +11878,41 @@ async function saveAcademicExoneration(e) {
 
     try {
         if (!student.academicExceptions) student.academicExceptions = [];
+        if (!student.exoneraciones) student.exoneraciones = [];
+        if (!STATE.exoneraciones) STATE.exoneraciones = {};
 
+        const cleanStr = s => (s || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+        const exonId = `exon_${student.id}_${cleanStr(subject)}_${bimestre}`;
         const newEx = {
-            id: `exon-${Date.now()}`,
+            id: exonId,
+            studentId: student.id,
+            personalCode: student.personalCode || '',
+            carne: student.carne || '',
             subject: subject,
             bimestre: bimestre,
             type: type,
             reason: reason,
             date: new Date().toLocaleDateString('es-GT'),
+            createdAt: new Date().toISOString(),
+            active: true,
             authorizedBy: STATE.currentUser ? STATE.currentUser.name : 'Dirección / Secretaría ENCCO'
         };
-        student.academicExceptions.push(newEx);
+
+        const existAccIdx = student.academicExceptions.findIndex(x => x.id === exonId || (x.subject === subject && String(x.bimestre) === String(bimestre)));
+        if (existAccIdx !== -1) student.academicExceptions[existAccIdx] = newEx;
+        else student.academicExceptions.push(newEx);
+
+        const existExIdx = student.exoneraciones.findIndex(x => x.id === exonId || (x.subject === subject && String(x.bimestre) === String(bimestre)));
+        if (existExIdx !== -1) student.exoneraciones[existExIdx] = newEx;
+        else student.exoneraciones.push(newEx);
+
+        STATE.exoneraciones[exonId] = newEx;
 
         // 🌟 Las calificaciones se preservan intactas e inmutables (no se purgan ni se ponen a cero)
         const nowTime = Date.now();
         STATE.lastModified = nowTime;
 
-        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
+        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms en todas las vistas)
         saveStateToLocalStorage();
         renderAcademicExonerationsList(student);
         if (typeof renderStudentProfileGrades === 'function') {
@@ -11868,6 +11923,18 @@ async function saveAcademicExoneration(e) {
         }
         if (typeof loadTeacherGradebook === 'function') {
             loadTeacherGradebook();
+        }
+        if (typeof renderStudentsTable === 'function') {
+            renderStudentsTable();
+        }
+        if (typeof renderExoneracionesLogView === 'function') {
+            renderExoneracionesLogView();
+        }
+        if (typeof loadAttendanceList === 'function') {
+            loadAttendanceList();
+        }
+        if (typeof renderDashboard === 'function') {
+            renderDashboard();
         }
 
         const form = document.getElementById('academicExonerationForm');
@@ -11883,10 +11950,15 @@ async function saveAcademicExoneration(e) {
                     const stuRef = doc(db, 'students', student.id);
                     const stuPayload = {
                         academicExceptions: student.academicExceptions,
+                        exoneraciones: student.exoneraciones,
                         lastModified: nowTime
                     };
                     if (typeof setDoc === 'function') {
                         await withTimeout(setDoc(stuRef, stuPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
+                    }
+                    const exoRef = doc(db, 'exoneraciones', exonId);
+                    if (typeof setDoc === 'function') {
+                        await withTimeout(setDoc(exoRef, newEx, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
                     }
                 } catch(fsErr) {
                     console.warn("Aviso en Firestore al guardar exoneración:", fsErr);
@@ -11914,7 +11986,8 @@ async function saveAcademicExoneration(e) {
                         status: student.status || 'Activo',
                         statusSire: student.statusSire || 'INSCRITO',
                         active: student.active !== false,
-                        academicExceptions: student.academicExceptions
+                        academicExceptions: student.academicExceptions,
+                        exoneraciones: student.exoneraciones
                     };
 
                     if (studentIndex !== -1) {
@@ -11924,13 +11997,12 @@ async function saveAcademicExoneration(e) {
                             'Tiempo de espera en Realtime Database agotado.'
                         );
                     }
-                    if (student.id) {
-                        await withTimeout(
-                            EnccoCloudSync.patchNode(`students/${student.id}`, safeIdentityPayload),
-                            8000,
-                            'Tiempo de espera en Realtime Database agotado.'
-                        );
-                    }
+                    // 🛡️ Guardar en el nodo dedicado de exoneraciones sin corromper la colección /students en RTDB
+                    await withTimeout(
+                        EnccoCloudSync.patchNode(`exoneraciones/${exonId}`, newEx),
+                        8000,
+                        'Tiempo de espera en Realtime Database agotado.'
+                    );
                 } catch(rtdbErr) {
                     console.warn("Aviso en RTDB al guardar exoneración:", rtdbErr);
                 }
@@ -11949,7 +12021,7 @@ async function saveAcademicExoneration(e) {
 
 async function deleteAcademicExoneration(studentId, exIndex) {
     const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
-    const curRole = (STATE.currentRole || '').toLowerCase();
+    const curRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || (window.STATE && window.STATE.currentRole) || (typeof window.EnccoAuthStore !== 'undefined' && window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
     if (!allowedRoles.includes(curRole)) {
         showToast("Acceso Denegado: Solo Dirección, Secretaría o Auxiliatura pueden eliminar exoneraciones.", "danger");
         return;
@@ -11958,11 +12030,18 @@ async function deleteAcademicExoneration(studentId, exIndex) {
     const student = (STATE.students || []).find(s => String(s.id) === String(studentId));
     if (!student || !student.academicExceptions) return;
 
-    if (!confirm("¿Desea eliminar esta exoneración? La nota regular volverá a ser evaluada en el Cuadro de Honor.")) {
+    if (typeof confirm === 'function' && !confirm("¿Desea eliminar esta exoneración? La nota regular volverá a ser evaluada en el Cuadro de Honor.")) {
         return;
     }
 
-    student.academicExceptions.splice(exIndex, 1);
+    const removedEx = student.academicExceptions.splice(exIndex, 1)[0];
+    if (student.exoneraciones && Array.isArray(student.exoneraciones)) {
+        const exIdx2 = student.exoneraciones.findIndex(x => x.id === (removedEx && removedEx.id) || (removedEx && x.subject === removedEx.subject && String(x.bimestre) === String(removedEx.bimestre)));
+        if (exIdx2 !== -1) student.exoneraciones.splice(exIdx2, 1);
+    }
+    if (removedEx && removedEx.id && STATE.exoneraciones) {
+        delete STATE.exoneraciones[removedEx.id];
+    }
     const nowTime = Date.now();
     STATE.lastModified = nowTime;
 
@@ -11974,6 +12053,21 @@ async function deleteAcademicExoneration(studentId, exIndex) {
     if (typeof loadHonorRoll === 'function') {
         loadHonorRoll();
     }
+    if (typeof loadTeacherGradebook === 'function') {
+        loadTeacherGradebook();
+    }
+    if (typeof renderStudentsTable === 'function') {
+        renderStudentsTable();
+    }
+    if (typeof renderExoneracionesLogView === 'function') {
+        renderExoneracionesLogView();
+    }
+    if (typeof loadAttendanceList === 'function') {
+        loadAttendanceList();
+    }
+    if (typeof renderDashboard === 'function') {
+        renderDashboard();
+    }
     showToast("Exoneración eliminada del expediente del alumno.", "info");
 
     try {
@@ -11981,6 +12075,7 @@ async function deleteAcademicExoneration(studentId, exIndex) {
         if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
             await modular.setDoc(modular.doc(modular.db, 'students', student.id), {
                 academicExceptions: student.academicExceptions,
+                exoneraciones: student.exoneraciones,
                 lastModified: nowTime
             }, { merge: true });
         }
@@ -12005,14 +12100,15 @@ async function deleteAcademicExoneration(studentId, exIndex) {
             status: student.status || 'Activo',
             statusSire: student.statusSire || 'INSCRITO',
             active: student.active !== false,
-            academicExceptions: student.academicExceptions
+            academicExceptions: student.academicExceptions,
+            exoneraciones: student.exoneraciones
         };
 
         if (studentIndex !== -1) {
             EnccoCloudSync.patchNode(`students/${studentIndex}`, safeIdentityPayload);
         }
-        if (student.id) {
-            EnccoCloudSync.patchNode(`students/${student.id}`, safeIdentityPayload);
+        if (removedEx && removedEx.id) {
+            EnccoCloudSync.patchNode(`exoneraciones/${removedEx.id}`, { active: false, deletedAt: new Date().toISOString() });
         }
     }
 }
