@@ -6271,6 +6271,9 @@ function ensureSireOfficialStudents() {
             existingPerm.is_locked_by_admin = true;
             existingPerm.startDate = existingPerm.startDate || '2026-01-01';
             existingPerm.endDate = existingPerm.endDate || '2026-11-30';
+            if (typeof removeStudentPermissionDatesFromAttendance === 'function') {
+                removeStudentPermissionDatesFromAttendance(existingPerm, '2026-01-01', '2026-11-30', existingPerm.startDate, existingPerm.endDate);
+            }
             if (typeof applyStudentPermission === 'function') {
                 applyStudentPermission(existingPerm);
             }
@@ -22854,6 +22857,17 @@ function getStudentPermissionForDay(studentId, year, month, day) {
         for (const mk of metaKeys) {
             if (STATE.attendancePermissionsMeta[mk]) {
                 const meta = STATE.attendancePermissionsMeta[mk];
+                if (meta.permissionId && Array.isArray(STATE.studentPermissions)) {
+                    const linkedPerm = STATE.studentPermissions.find(p => p && p.id === meta.permissionId);
+                    if (linkedPerm) {
+                        const lStart = linkedPerm.startDate;
+                        const lEnd = linkedPerm.endDate || linkedPerm.startDate;
+                        if (targetDateStr < lStart || targetDateStr > lEnd) {
+                            delete STATE.attendancePermissionsMeta[mk];
+                            continue;
+                        }
+                    }
+                }
                 const oRole = (meta.origin_role || meta.originRole || (meta.is_locked_by_admin === false ? 'docente' : 'profesor_auxiliar')).toLowerCase();
                 const isLocked = (meta.is_locked_by_admin !== undefined) ? !!meta.is_locked_by_admin : (oRole !== 'docente');
                 return {
