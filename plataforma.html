@@ -2197,6 +2197,13 @@
                                 <button type="button" class="btn btn-outline-info btn-sm" onclick="openStudentAnnotationModal()" title="Consultar o registrar anotaciones y observaciones de seguimiento" style="height:38px; font-size:0.86rem; font-weight:700; padding:0 12px; display:inline-flex; align-items:center; gap:6px;">
                                     <i class="fa-solid fa-comment-dots"></i> Anotaciones
                                 </button>
+                                <div style="display:inline-flex; align-items:center; position:relative; min-width:180px;">
+                                    <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; color:#94a3b8; font-size:0.8rem; pointer-events:none;"></i>
+                                    <input type="text" id="attendanceStudentSearchInput" class="form-control" placeholder="Buscar estudiante..." oninput="filterAttendanceTableStudents(this.value)" style="padding-left:28px; height:38px; font-size:0.84rem; border-radius:6px; min-width:180px;">
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="scrollToTodayAttendanceColumn()" title="Desplazar la vista al día de hoy" style="height:38px; font-size:0.86rem; font-weight:700; padding:0 12px; display:inline-flex; align-items:center; gap:5px;">
+                                    <i class="fa-solid fa-crosshairs" style="color:#16a34a;"></i> Ir a Hoy
+                                </button>
                                 <button type="button" id="btnMarkAllPresent" class="btn btn-success btn-sm" onclick="markAllPresentToday()" title="Marcar a todos los alumnos como Presentes hoy (respeta automáticamente los permisos de Auxiliatura)" style="height:38px; font-size:0.86rem; font-weight:800; padding:0 14px; background:#15803d; border-color:#0f5127; color:#ffffff; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(21,128,61,0.25);">
                                     <i class="fa-solid fa-check-double"></i> Marcar Todos Presentes
                                 </button>
@@ -2219,6 +2226,7 @@
                                 <span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:800; padding:4px 8px; font-size:0.8rem;">A = Ausente / Falta</span>
                                 <span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; padding:4px 8px; font-size:0.8rem;" title="Justificado por Auxiliatura / Dirección. Bloqueado para edición en la vista del docente."><i class="fa-solid fa-lock" style="font-size:0.75rem; margin-right:3px;"></i>J = Justificado (Protegido)</span>
                                 <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800; padding:4px 8px; font-size:0.8rem;">T = Tardanza</span>
+                                <span class="badge" style="background:#f1f5f9; color:#475569; font-weight:700; padding:4px 8px; font-size:0.78rem;" title="Presione P, A, J, T o Espacio en el teclado para marcar la casilla activa"><i class="fa-solid fa-keyboard"></i> Teclas: P / A / J / T</span>
                             </div>
                             <div id="attendanceStatsSummary" style="font-weight:800; color:var(--brand-green-dark); font-size:0.88rem;">
                                 <!-- Resumen en vivo -->

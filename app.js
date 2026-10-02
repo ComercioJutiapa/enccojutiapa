@@ -23602,6 +23602,8 @@ function loadAttendanceList() {
                         data-student-id="${s.id}" 
                         data-day="${day}" 
                         data-val="${val}"
+                        tabindex="${isCellReadonly ? '-1' : '0'}"
+                        onkeydown="handleAttendanceCellKeyDown(event, '${s.id}', ${day})"
                         ${isCellReadonly ? 'data-readonly="true" aria-readonly="true"' : ''}
                         ${cellDisabledAttr}
                         ${cellLockAdminAttr}
@@ -23772,9 +23774,98 @@ function loadAttendanceList() {
             </div>
         `;
     }
+
+    // Auto-scroll a la columna del día de hoy si estamos en el mes actual
+    if (isCurrentCalendarMonth) {
+        scrollToTodayAttendanceColumn();
+    }
 }
 
-function toggleAttendanceCell(studentId, day) {
+function scrollToTodayAttendanceColumn() {
+    setTimeout(() => {
+        const todayTh = document.querySelector('#attendanceExcelGrid th.col-day-today');
+        if (todayTh) {
+            const container = todayTh.closest('.table-responsive') || document.querySelector('.attendance-excel-container .table-responsive');
+            if (container) {
+                const thLeft = todayTh.offsetLeft;
+                const containerWidth = container.clientWidth;
+                const targetScroll = Math.max(0, thLeft - (containerWidth / 2) + 20);
+                container.scrollTo({ left: targetScroll, behavior: 'smooth' });
+            }
+        }
+    }, 60);
+}
+window.scrollToTodayAttendanceColumn = scrollToTodayAttendanceColumn;
+
+function filterAttendanceTableStudents(term) {
+    const rawTerm = (term || '').trim().toLowerCase();
+    const rows = document.querySelectorAll('#attendanceExcelGridBody tr[data-student-id]');
+    rows.forEach(tr => {
+        if (!rawTerm) {
+            tr.style.display = '';
+            return;
+        }
+        const text = (tr.textContent || '').toLowerCase();
+        tr.style.display = text.includes(rawTerm) ? '' : 'none';
+    });
+}
+window.filterAttendanceTableStudents = filterAttendanceTableStudents;
+
+function handleAttendanceCellKeyDown(event, studentId, day) {
+    if (!event) return;
+    const key = (event.key || '').toUpperCase();
+    if (['P', 'A', 'J', 'T'].includes(key)) {
+        event.preventDefault();
+        toggleAttendanceCell(studentId, day, key);
+    } else if (event.key === ' ' || event.key === 'Enter') {
+        event.preventDefault();
+        toggleAttendanceCell(studentId, day);
+    } else if (event.key === 'Backspace' || event.key === 'Delete') {
+        event.preventDefault();
+        toggleAttendanceCell(studentId, day, '');
+    } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+        handleAttendanceGridArrowNav(event);
+    }
+}
+window.handleAttendanceCellKeyDown = handleAttendanceCellKeyDown;
+
+function handleAttendanceGridArrowNav(e) {
+    const active = document.activeElement;
+    if (!active || !active.classList.contains('att-cell')) return;
+    const tr = active.closest('tr');
+    if (!tr) return;
+    const tbody = tr.closest('tbody');
+    if (!tbody) return;
+
+    const rowCells = Array.from(tr.querySelectorAll('td.att-cell:not([data-weekend="true"])'));
+    const colIdx = rowCells.indexOf(active);
+    const allRows = Array.from(tbody.querySelectorAll('tr[data-student-id]'));
+    const rowIdx = allRows.indexOf(tr);
+
+    let target = null;
+    if (e.key === 'ArrowRight' && colIdx + 1 < rowCells.length) {
+        e.preventDefault();
+        target = rowCells[colIdx + 1];
+    } else if (e.key === 'ArrowLeft' && colIdx > 0) {
+        e.preventDefault();
+        target = rowCells[colIdx - 1];
+    } else if (e.key === 'ArrowDown' && rowIdx + 1 < allRows.length) {
+        e.preventDefault();
+        const nextRowCells = Array.from(allRows[rowIdx + 1].querySelectorAll('td.att-cell:not([data-weekend="true"])'));
+        if (colIdx >= 0 && colIdx < nextRowCells.length) target = nextRowCells[colIdx];
+    } else if (e.key === 'ArrowUp' && rowIdx > 0) {
+        e.preventDefault();
+        const prevRowCells = Array.from(allRows[rowIdx - 1].querySelectorAll('td.att-cell:not([data-weekend="true"])'));
+        if (colIdx >= 0 && colIdx < prevRowCells.length) target = prevRowCells[colIdx];
+    }
+
+    if (target) {
+        target.focus();
+    }
+}
+window.handleAttendanceGridArrowNav = handleAttendanceGridArrowNav;
+
+function toggleAttendanceCell(studentId, day, forcedValue = null) {
     const targetStudent = (STATE.students || []).find(s => String(s.id) === String(studentId));
     if (targetStudent && (targetStudent.status === 'Retirado' || targetStudent.status === 'Inactivo')) {
         const sName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(targetStudent, 'lastFirst') : `${targetStudent.firstName || ''} ${targetStudent.lastName || ''}`;
@@ -23887,7 +23978,9 @@ function toggleAttendanceCell(studentId, day) {
     }
 
     let next = 'P';
-    if (!cur || cur === '') next = 'P';
+    if (forcedValue !== null && forcedValue !== undefined) {
+        next = forcedValue;
+    } else if (!cur || cur === '') next = 'P';
     else if (cur === 'P') next = 'A';
     else if (cur === 'A') next = 'J';
     else if (cur === 'J') next = 'T';
@@ -24165,6 +24258,47 @@ function _renderAttendanceFullTableStats(daysInMonth, year, month, foot, statsSu
 }
 
 function _renderAttendanceFooterAndSummary(daysInMonth, year, month, foot, statsSummary) {
+    const gradeSelect = document.getElementById('attendanceGradeSelect');
+    const courseSelect = document.getElementById('attendanceCourseSelect');
+    const gradeCode = gradeSelect ? gradeSelect.value : '';
+    const courseId = courseSelect ? courseSelect.value : 'GENERAL';
+
+    if (gradeCode && STATE.attendanceRecords) {
+        const monthData = (typeof getConsolidatedAttendanceMonthData === 'function')
+            ? getConsolidatedAttendanceMonthData(gradeCode, month, courseId)
+            : ((STATE.attendanceRecords && STATE.attendanceRecords[`${gradeCode}_${month}_${courseId}`]) || {});
+        const currentCourseObj = (courseId && courseId !== 'GENERAL') ? (STATE.pensum || []).find(p => p.id === courseId) : null;
+        const students = (typeof getAttendanceStudents === 'function')
+            ? getAttendanceStudents(gradeCode, currentCourseObj)
+            : (STATE.students || []).filter(s => s.gradeCode === gradeCode || s.grade === gradeCode);
+
+        let dayPresentTotals = new Array(daysInMonth + 1).fill(0);
+        let dayAbsentTotals = new Array(daysInMonth + 1).fill(0);
+        let dayJustTotals = new Array(daysInMonth + 1).fill(0);
+        let dayTardyTotals = new Array(daysInMonth + 1).fill(0);
+        let totalClassLogs = 0;
+        let totalClassPresent = 0;
+
+        students.forEach(s => {
+            if (s.status === 'Retirado' || s.status === 'Inactivo') return;
+            const sRecords = monthData[s.id] || {};
+            let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
+            for (let day = 1; day <= daysInMonth; day++) {
+                const val = sRecords[day];
+                if (val === 'P') { pCount++; dayPresentTotals[day]++; }
+                else if (val === 'A') { aCount++; dayAbsentTotals[day]++; }
+                else if (val === 'J') { jCount++; dayJustTotals[day]++; }
+                else if (val === 'T') { tCount++; dayTardyTotals[day]++; }
+            }
+            const totalLogged = pCount + aCount + jCount + tCount;
+            totalClassPresent += (pCount + jCount + (tCount * 0.5));
+            totalClassLogs += (totalLogged > 0 ? totalLogged : 0);
+        });
+
+        _renderAttendanceFooterAndSummaryFromData(students.length, daysInMonth, year, month, foot, statsSummary, dayPresentTotals, dayAbsentTotals, dayJustTotals, dayTardyTotals, totalClassPresent, totalClassLogs);
+        return;
+    }
+
     const rows = document.querySelectorAll('#attendanceExcelGridBody tr[data-student-id]');
     let dayPresentTotals = new Array(daysInMonth + 1).fill(0);
     let dayAbsentTotals = new Array(daysInMonth + 1).fill(0);
@@ -24352,6 +24486,11 @@ function markAllPresentToday() {
     const genRecordKey = (courseId && courseId !== 'GENERAL') ? getAttendanceRecordKey(gradeCode, todayMonth, 'GENERAL') : null;
 
     students.forEach(s => {
+        if (!s) return;
+        // 🛑 BLINDAJE INSTITUCIONAL: A los alumnos retirados o inactivos NO se les registra asistencia
+        if (s.status === 'Retirado' || s.status === 'Inactivo') {
+            return;
+        }
         if (!STATE.attendanceRecords[recordKey][s.id]) STATE.attendanceRecords[recordKey][s.id] = {};
         
         // 🛡️ Regla de oro: No sobrescribir alumnos con permiso oficial justificado 'J' de Auxiliatura o Dirección
@@ -24386,7 +24525,7 @@ window.markAllPresentToday = markAllPresentToday;
 
 let _attendanceSaveTimeout = null;
 
-function saveAttendanceRecords(showToastMsg = true, e = null) {
+function saveAttendanceRecords(showToastMsg = true, e = null, recordKey = null) {
     if (e) {
         if (e._enccoHandled) return;
         e._enccoHandled = true;
@@ -24399,19 +24538,20 @@ function saveAttendanceRecords(showToastMsg = true, e = null) {
         if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
         _attendanceSaveTimeout = setTimeout(() => {
             saveStateToLocalStorage();
-            _syncAttendanceToFirebaseBackground();
+            _syncAttendanceToFirebaseBackground(recordKey);
         }, 350);
     } else {
         if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
         saveStateToLocalStorage();
-        _syncAttendanceToFirebaseBackground();
+        _syncAttendanceToFirebaseBackground(recordKey);
         if (typeof showToast === 'function') {
             showToast('Planilla de asistencia guardada y sincronizada exitosamente.', 'success');
         }
     }
 }
+window.saveAttendanceRecords = saveAttendanceRecords;
 
-async function _syncAttendanceToFirebaseBackground() {
+async function _syncAttendanceToFirebaseBackground(targetRecordKey = null) {
     try {
         const modular = window.FirebaseModular;
         if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
@@ -24430,9 +24570,15 @@ async function _syncAttendanceToFirebaseBackground() {
 
     try {
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-            EnccoCloudSync.patchNode('attendanceRecords', STATE.attendanceRecords || {}).catch(rtErr => {
-                console.warn("Aviso en Realtime Database al guardar asistencia:", rtErr);
-            });
+            if (targetRecordKey && STATE.attendanceRecords && STATE.attendanceRecords[targetRecordKey]) {
+                EnccoCloudSync.patchNode(`attendanceRecords/${targetRecordKey}`, STATE.attendanceRecords[targetRecordKey]).catch(rtErr => {
+                    console.warn("Aviso en Realtime Database al guardar nodo asistencia:", rtErr);
+                });
+            } else {
+                EnccoCloudSync.patchNode('attendanceRecords', STATE.attendanceRecords || {}).catch(rtErr => {
+                    console.warn("Aviso en Realtime Database al guardar asistencia:", rtErr);
+                });
+            }
             EnccoCloudSync.patchNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta || {}).catch(rtErr => {
                 console.warn("Aviso en Realtime Database al guardar attendancePermissionsMeta:", rtErr);
             });
