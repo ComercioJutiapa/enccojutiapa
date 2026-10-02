@@ -11,6 +11,11 @@
  * ======================================================================
  */
 
+if (typeof window !== 'undefined') {
+    window._appBootStartTime = window._appBootStartTime || Date.now();
+    window._isAppBootCompleted = false;
+}
+
 function openAboutSystemModal() {
     const modal = document.getElementById('aboutSystemModal');
     if (modal) {
@@ -7483,6 +7488,11 @@ async function initApp() {
     if (typeof applyUserRole === 'function') {
         applyUserRole(STATE.currentRole || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : 'guest'));
     }
+
+    // 🚀 Marcar fin del período de arranque silencioso (Silent Boot) tras 3 segundos
+    setTimeout(() => {
+        if (typeof window !== 'undefined') window._isAppBootCompleted = true;
+    }, 3000);
 
     // 🛡️ Notificación amigable en caso de redirección por intento de acceso denegado a "Datos para Sire"
     try {
@@ -17083,20 +17093,34 @@ function filterUsersTable(val) {
 // ==========================================================================
 
 
-function showToast(msg, type = 'info') {
+function showToast(msg, type = 'info', duration = 4000) {
     if (typeof window !== 'undefined' && typeof window.showToast === 'function' && window.showToast !== showToast) {
-        return window.showToast(msg, type);
+        return window.showToast(msg, type, duration);
     }
     const container = document.getElementById('toastContainer');
     if (!container) return;
+
+    // 🛡️ Anti-apilamiento estricto: máximo 2 toasts visibles para no cubrir la ventana
+    while (container.children.length >= 2) {
+        if (container.firstElementChild) {
+            container.firstElementChild.remove();
+        } else {
+            break;
+        }
+    }
+
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.style.display = 'flex';
     toast.style.alignItems = 'center';
     toast.style.gap = '8px';
-    toast.innerHTML = `<i class="fa-solid fa-bell"></i> <span style="flex:1;">${msg}</span><button type="button" onclick="this.parentElement.remove()" style="background:none; border:none; color:inherit; font-size:1.1rem; font-weight:700; cursor:pointer; padding:0 4px; line-height:1; margin-left:8px; opacity:0.8;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'" title="Cerrar aviso">&times;</button>`;
+    toast.style.pointerEvents = 'auto';
+    toast.style.animation = 'fadeIn 0.2s ease-out';
+    toast.innerHTML = `<i class="fa-solid fa-bell"></i> <span style="flex:1;">${msg}</span><button type="button" onclick="this.closest('.toast').remove()" style="background:none; border:none; color:inherit; font-size:1.1rem; font-weight:700; cursor:pointer; padding:0 4px; line-height:1; margin-left:8px; opacity:0.8;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'" title="Cerrar aviso">&times;</button>`;
     if (container && typeof container.appendChild === 'function') container.appendChild(toast);
-    setTimeout(() => { if (toast.parentNode) toast.remove(); }, 5000);
+    
+    const timeoutMs = (typeof duration === 'number' && duration > 0) ? Math.min(duration, 4500) : 4000;
+    setTimeout(() => { if (toast.parentNode) toast.remove(); }, timeoutMs);
 }
 
 // ==========================================================================
@@ -17460,6 +17484,19 @@ function getUserAlerts() {
                 message: `Catedráticos reportaron ${pendingToday.length} alumno(s) ausente(s) en el aula hoy. Requiere verificación en bitácora.`,
                 action: "navigateTo('auxiliatura-log')",
                 actionLabel: 'Ver Bitácora'
+            });
+
+            // Apilar alertas individuales de inasistencia en el Centro de Notificaciones y Avisos
+            pendingToday.slice(0, 5).forEach(alertItem => {
+                rawAlerts.push({
+                    id: `alert_item_${alertItem.id}`,
+                    type: 'danger',
+                    icon: 'fa-user-xmark',
+                    title: `Ausencia: ${alertItem.studentName}`,
+                    message: `${alertItem.gradeLabel || ''} - ${alertItem.courseName || ''} (${alertItem.time || ''}). Catedrático: ${alertItem.teacherName || 'Docente'}.`,
+                    action: "navigateTo('auxiliatura-log')",
+                    actionLabel: 'Ver en Bitácora'
+                });
             });
         }
 
@@ -35684,7 +35721,7 @@ function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) 
             EnccoCloudSync.patchNode(`attendanceAlerts/${existingAlert.id}`, existingAlert).catch(() => {});
         }
         updateAuxiliaturaBadge();
-        notifyAuxiliaturaAlert(existingAlert);
+        notifyAuxiliaturaAlert(existingAlert, { forceImmediate: true });
         return;
     }
 
@@ -35743,7 +35780,7 @@ function emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month) 
     }
 
     updateAuxiliaturaBadge();
-    notifyAuxiliaturaAlert(alertObj);
+    notifyAuxiliaturaAlert(alertObj, { forceImmediate: true });
 }
 
 let _alertSaveTimeout = null;
@@ -35778,31 +35815,54 @@ function dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, mont
     }
 }
 
-function notifyAuxiliaturaAlert(alertObj) {
+function notifyAuxiliaturaAlert(alertObj, options = {}) {
     if (!alertObj) return;
+
+    // 1. Asegurar que la alerta quede apilada en el estado local de alertas
+    if (!STATE.attendanceAlerts) STATE.attendanceAlerts = [];
+    const exIdx = STATE.attendanceAlerts.findIndex(a => a && a.id === alertObj.id);
+    if (exIdx === -1) {
+        STATE.attendanceAlerts.unshift(alertObj);
+    } else {
+        STATE.attendanceAlerts[exIdx] = { ...STATE.attendanceAlerts[exIdx], ...alertObj };
+    }
+
+    // 2. Mantener siempre actualizadas las insignias y el Centro de Notificaciones y Avisos
+    if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
+    if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
+
+    // 3. 🛡️ Modo Silencioso en el Arranque (Silent Boot):
+    // Durante los primeros 3 segundos tras iniciar o recargar la página, no reproducir sonido ni lanzar toasts
+    // para evitar saturación de pantalla con las alertas históricas provenientes de Firebase o almacenamiento local.
+    const isBooting = !window._isAppBootCompleted || (Date.now() - (window._appBootStartTime || 0) < 3000);
+    if (isBooting && !options.forceImmediate) {
+        return;
+    }
+
+    // 4. Filtrar por rol de usuario
     const role = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
     const relevantRoles = ['profesor_auxiliar', 'auxiliar', 'auxiliatura', 'secretaria', 'director', 'direccion', 'admin', 'super_usuario'];
     if (role && !relevantRoles.includes(role)) {
         return; // Alerta exclusiva para Auxiliatura, Dirección y Secretaría
     }
 
-    // 1. Chime acústico
+    // 5. Chime acústico - SIEMPRE suena cuando llegan nuevas notificaciones en vivo
     playAlertChime();
 
-    // 2. Parpadeo en pestaña del navegador
+    // 6. Parpadeo en pestaña del navegador
     flashTabTitle(`🚨 ¡AUSENCIA! ${alertObj.studentName}`);
 
-    // 3. Notificación emergente visual
+    // 7. Notificación emergente visual (anti-apilamiento, máx 2 toasts en pantalla, 4s de duración)
     if (typeof showToast === 'function') {
-        showToast(`🚨 ALERTA DE AUXILIATURA: Inasistencia reportada para ${alertObj.studentName} (${alertObj.gradeLabel}) en ${alertObj.courseName}`, 'warning', 9000);
+        showToast(`🚨 Inasistencia: ${alertObj.studentName} (${alertObj.gradeLabel || ''}) - ${alertObj.courseName || 'Cátedra'}`, 'warning', 4000);
     }
 
-    // 4. Si la vista actual es la bitácora, actualizarla de inmediato
+    // 8. Si la vista actual es la bitácora, actualizarla de inmediato
     if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
         renderAuxiliaturaLogView();
     }
 
-    // 5. Notificación nativa del sistema operativo (escritorio / móvil en segundo plano)
+    // 9. Notificación nativa del sistema operativo (escritorio / móvil en segundo plano)
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
         try {
             new Notification(`🚨 ENCCO: Inasistencia en Aula`, {

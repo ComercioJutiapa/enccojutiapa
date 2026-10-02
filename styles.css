@@ -896,8 +896,8 @@ select.form-control-sm option {
     background: #f8fafc; 
 }
 
-.toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 3000; display: flex; flex-direction: column; gap: 10px; }
-.toast { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-left: 5px solid var(--brand-green); padding: 14px 20px; border-radius: var(--radius-md); box-shadow: var(--shadow-md); display: flex; align-items: center; gap: 12px; font-size: 0.88rem; font-weight: 700; }
+.toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 3000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; max-width: 440px; }
+.toast { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-left: 5px solid var(--brand-green); padding: 14px 20px; border-radius: var(--radius-md); box-shadow: var(--shadow-md); display: flex; align-items: center; gap: 12px; font-size: 0.88rem; font-weight: 700; pointer-events: auto; }
 
 /* Boletines & Impresión Oficial (Media Hoja Oficio 8.5" × 6.5" con márgenes seguros de impresión) */
 .report-controls-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
