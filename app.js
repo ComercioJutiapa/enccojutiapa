@@ -7224,6 +7224,19 @@ async function initApp() {
         }
     }
 
+    // 🧹 Limpieza preventiva de almacenamiento local huérfano para evitar saturación de memoria
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const stalePrefixes = ['encco_temp_', 'xlsx_preview_', 'raw_import_cache_'];
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const k = localStorage.key(i);
+                if (k && stalePrefixes.some(p => k.startsWith(p))) {
+                    localStorage.removeItem(k);
+                }
+            }
+        }
+    } catch(e) {}
+
     // ⏳ Iniciar ciclo de hidratación: mostrar overlay y bloquear UI hasta carga completa (TASK 1)
     if (window.EnccoAuthStore && typeof window.EnccoAuthStore.setHydrating === 'function') {
         window.EnccoAuthStore.setHydrating('Cargando base institucional y verificando perfil...');

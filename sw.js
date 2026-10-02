@@ -6,15 +6,19 @@
  * Copyright (c) 2026 Escuela Nacional de Ciencias Comerciales - ENCCO
  * ======================================================================
  */
-const CACHE_NAME = 'encco-cache-v2026-09';
+const CACHE_NAME = 'encco-cache-v2026-10-perf';
 const STATIC_ASSETS = [
     './',
     'index.html',
+    'login.html',
     'plataforma.html',
+    'bloqueo-notas.html',
     'styles.css',
     'logo.png',
+    'firma_director_sello.png',
     'manifest.json',
-    'qrcode.min.js'
+    'qrcode.min.js',
+    'xlsx.full.min.js'
 ];
 
 self.addEventListener('install', event => {
@@ -40,20 +44,42 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // 🔒 REGLA ESTRICTA: NUNCA cachear peticiones de Firebase, APIs o transacciones dinámicas
+    // 🔒 REGLA ESTRICTA DE SEGURIDAD: NUNCA interceptar Firebase, APIs dinámicas ni métodos que no sean GET
     if (url.hostname.includes('firebaseio.com') || 
         url.hostname.includes('firestore.googleapis.com') || 
         url.hostname.includes('firebaseapp.com') ||
+        url.hostname.includes('identitytoolkit.googleapis.com') ||
         url.pathname.includes('/stream') ||
         event.request.method !== 'GET') {
         return;
     }
 
-    // Estrategia Network-First con recuperación en Cache para disponibilidad sin conexión
+    // ⚡ 2. Fuentes y CDN externas (FontAwesome, Google Fonts): Cache-First para evitar parpadeos y acelerar carga
+    const isFontOrCdn = url.hostname.includes('fonts.googleapis.com') || 
+                        url.hostname.includes('fonts.gstatic.com') || 
+                        url.hostname.includes('cdnjs.cloudflare.com');
+
+    if (isFontOrCdn) {
+        event.respondWith(
+            caches.match(event.request).then(cachedResponse => {
+                if (cachedResponse) return cachedResponse;
+                return fetch(event.request).then(networkResponse => {
+                    if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
+                        const clone = networkResponse.clone();
+                        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+                    }
+                    return networkResponse;
+                }).catch(() => cachedResponse);
+            })
+        );
+        return;
+    }
+
+    // 🚀 3. Recursos de la plataforma: Network-First con respaldo inmediato en caché
     event.respondWith(
         fetch(event.request)
             .then(networkResponse => {
-                if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+                if (networkResponse && networkResponse.status === 200) {
                     const responseClone = networkResponse.clone();
                     caches.open(CACHE_NAME).then(cache => {
                         cache.put(event.request, responseClone);
