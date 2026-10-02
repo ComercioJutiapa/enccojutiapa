@@ -17104,6 +17104,119 @@ function showToast(msg, type = 'info') {
 // 🔔 SISTEMA INTELIGENTE DE NOTIFICACIONES Y ALERTAS POR ROL / USUARIO
 // ==========================================================================
 
+function getStudentsAtAttendanceRisk(filterGradeCodes = null) {
+    const atRisk = [];
+    const activeStudents = (STATE.students || []).filter(s => s && s.status !== 'Retirado' && s.status !== 'Inactivo');
+    const targetStudents = (filterGradeCodes && Array.isArray(filterGradeCodes) && filterGradeCodes.length > 0)
+        ? activeStudents.filter(s => filterGradeCodes.includes(s.grade))
+        : activeStudents;
+
+    if (!STATE.attendanceRecords || Object.keys(STATE.attendanceRecords).length === 0) return atRisk;
+
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+    const cycleKey = STATE.activeCycle || '2026';
+
+    targetStudents.forEach(s => {
+        let totalAbsences = 0;
+        let consecutiveAbsences = 0;
+        let maxConsecutive = 0;
+        const absentDays = [];
+
+        const gradeCode = s.grade;
+        const prefix = `${cycleKey}_M${currentMonth}_${gradeCode}`;
+        const dayStatusMap = {};
+
+        Object.keys(STATE.attendanceRecords).forEach(rk => {
+            if (rk.startsWith(prefix) || rk === `${cycleKey}_M${currentMonth}_${gradeCode}` || rk === `${cycleKey}_M${currentMonth}_${gradeCode}_GENERAL`) {
+                const rec = STATE.attendanceRecords[rk];
+                if (rec && rec[s.id]) {
+                    const days = rec[s.id];
+                    for (let d = 1; d <= 31; d++) {
+                        const val = days[d] || days[String(d)];
+                        if (val && !dayStatusMap[d]) {
+                            dayStatusMap[d] = val;
+                        }
+                    }
+                }
+            }
+        });
+
+        for (let d = 1; d <= 31; d++) {
+            const val = dayStatusMap[d];
+            if (val === 'A') {
+                totalAbsences++;
+                consecutiveAbsences++;
+                absentDays.push(d);
+                if (consecutiveAbsences > maxConsecutive) {
+                    maxConsecutive = consecutiveAbsences;
+                }
+            } else if (val === 'P' || val === 'J' || val === 'T') {
+                consecutiveAbsences = 0;
+            }
+        }
+
+        if (maxConsecutive >= 3 || totalAbsences >= 5) {
+            atRisk.push({
+                student: s,
+                totalAbsences,
+                maxConsecutive,
+                absentDays,
+                month: currentMonth
+            });
+        }
+    });
+
+    return atRisk;
+}
+window.getStudentsAtAttendanceRisk = getStudentsAtAttendanceRisk;
+
+function openAttendanceWhatsAppContact(studentId, absencesCount) {
+    const student = (STATE.students || []).find(s => String(s.id) === String(studentId));
+    if (!student) return;
+    const phone = student.tutorPhone || student.guardianPhone || student.phone || student.motherPhone || student.fatherPhone || '';
+    const studentName = `${student.lastName || ''} ${student.firstName || ''}`.trim() || student.name || 'el estudiante';
+    const gradeLabel = student.grade || student.gradeLabel || '';
+
+    if (typeof openWhatsAppPrompt === 'function') {
+        openWhatsAppPrompt(studentName, phone, gradeLabel, absencesCount);
+    } else {
+        const cleanPhone = String(phone).replace(/\D/g, '');
+        if (cleanPhone) {
+            const msg = `Estimado(a) padre/madre de familia de ${studentName} (${gradeLabel}): Le saludamos de la Escuela Nacional de Ciencias Comerciales ENCCO Jutiapa para verificar el motivo de ${absencesCount || 3} inasistencias registradas este mes. Favor comunicarse a la Auxiliatura.`;
+            window.open(`https://wa.me/502${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+        } else if (typeof showToast === 'function') {
+            showToast("No hay número telefónico registrado para este encargado.", "warning");
+        }
+    }
+}
+window.openAttendanceWhatsAppContact = openAttendanceWhatsAppContact;
+
+function requestBrowserNotificationPermission() {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+        if (typeof showToast === 'function') showToast("Su navegador no soporta notificaciones de escritorio.", "warning");
+        return;
+    }
+    if (Notification.permission === 'granted') {
+        if (typeof showToast === 'function') showToast("Las notificaciones de escritorio ya están activadas.", "info");
+        return;
+    }
+    Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+            if (typeof showToast === 'function') showToast("✔ Notificaciones de escritorio activadas para ENCCO.", "success");
+            try {
+                new Notification("ENCCO Jutiapa", {
+                    body: "Alertas institucionales en segundo plano activas.",
+                    icon: "logo.png"
+                });
+            } catch(e) {}
+        } else {
+            if (typeof showToast === 'function') showToast("No se otorgaron permisos de notificación en el navegador.", "info");
+        }
+    });
+}
+window.requestBrowserNotificationPermission = requestBrowserNotificationPermission;
+
 function getUserAlerts() {
     const rawAlerts = [];
     const role = STATE.currentRole;
@@ -17180,7 +17293,7 @@ function getUserAlerts() {
             });
         }
 
-        // 4. Asistencia
+        // 4. Asistencia Diaria
         rawAlerts.push({
             id: `alert_docente_attendance_${activeCycle}`,
             type: 'info',
@@ -17190,6 +17303,55 @@ function getUserAlerts() {
             action: "navigateTo('attendance')",
             actionLabel: 'Tomar Asistencia'
         });
+
+        // 5. Alerta Preventiva: Alumnos con Zona Crítica (< 24 / 40 pts)
+        if (!isGlobalLocked) {
+            let lowZoneStudentsCount = 0;
+            (myClasses || []).forEach(course => {
+                const courseSubj = course.name || course.subject;
+                const gradeStudents = (STATE.students || []).filter(s => s && s.grade === (course.gradeCode || course.grade) && s.status !== 'Retirado' && s.status !== 'Inactivo');
+                gradeStudents.forEach(st => {
+                    if (!st.gradebookDetails || !st.gradebookDetails[courseSubj]) return;
+                    const bData = st.gradebookDetails[courseSubj][activeBimestre];
+                    if (!bData) return;
+                    let sumZona = 0;
+                    if (Array.isArray(bData.activities)) {
+                        sumZona = bData.activities.reduce((acc, v) => acc + (parseFloat(v) || 0), 0);
+                    } else if (bData.zona !== undefined) {
+                        sumZona = parseFloat(bData.zona) || 0;
+                    }
+                    if (sumZona > 0 && sumZona < 24) {
+                        lowZoneStudentsCount++;
+                    }
+                });
+            });
+
+            if (lowZoneStudentsCount > 0) {
+                rawAlerts.push({
+                    id: `alert_docente_low_zone_${activeBimestre}_${lowZoneStudentsCount}`,
+                    type: 'warning',
+                    icon: 'fa-triangle-exclamation',
+                    title: `Zona Crítica (< 24/40 pts): ${lowZoneStudentsCount} Alumnos`,
+                    message: `Detectados ${lowZoneStudentsCount} caso(s) en sus cátedras con puntaje de zona menor al 60% institucional (24/40 pts). Requieren reforzamiento antes de evaluaciones.`,
+                    action: "navigateTo('gradebook')",
+                    actionLabel: 'Revisar Cuadro'
+                });
+            }
+        }
+
+        // 6. Alerta de Inasistencias en sus Cátedras (3 o más faltas en el mes)
+        const docenteAttRisk = getStudentsAtAttendanceRisk(myGradeCodes);
+        if (docenteAttRisk.length > 0) {
+            rawAlerts.push({
+                id: `alert_docente_att_risk_${docenteAttRisk.length}_${activeCycle}`,
+                type: 'warning',
+                icon: 'fa-user-clock',
+                title: `Inasistencias en sus Secciones (${docenteAttRisk.length} Casos)`,
+                message: `Hay ${docenteAttRisk.length} alumno(s) en sus grados con 3 o más faltas en el mes actual.`,
+                action: "navigateTo('attendance')",
+                actionLabel: 'Revisar Asistencia'
+            });
+        }
 
     } else if (role === 'director') {
         // 1. Llamadas de atención graves / muy graves
@@ -17254,6 +17416,91 @@ function getUserAlerts() {
             actionLabel: 'Supervisar Asistencia'
         });
 
+        // 6. Alerta de Deserción Escolar por Inasistencias Críticas (>=3 faltas)
+        const dirAttRisk = getStudentsAtAttendanceRisk();
+        if (dirAttRisk.length > 0) {
+            rawAlerts.push({
+                id: `alert_director_att_risk_summary_${dirAttRisk.length}`,
+                type: 'danger',
+                icon: 'fa-user-clock',
+                title: `Alerta de Inasistencias Críticas (${dirAttRisk.length} Casos)`,
+                message: `${dirAttRisk.length} estudiante(s) registran 3 o más faltas en el mes actual. Alto riesgo de abandono escolar.`,
+                action: "navigateTo('auxiliatura-log')",
+                actionLabel: 'Ver Bitácora'
+            });
+            // Acceso directo de WhatsApp para los 2 casos con mayor número de ausencias
+            dirAttRisk.slice(0, 2).forEach(item => {
+                const sName = `${item.student.lastName || ''} ${item.student.firstName || ''}`.trim();
+                rawAlerts.push({
+                    id: `alert_dir_wa_${item.student.id}`,
+                    type: 'danger',
+                    icon: 'fa-comment-sms',
+                    title: `Citación por Faltas: ${sName}`,
+                    message: `${item.student.grade || ''}: Acumula ${item.totalAbsences} faltas en el mes (${item.maxConsecutive} consecutivas).`,
+                    action: `openAttendanceWhatsAppContact('${item.student.id}', ${item.totalAbsences})`,
+                    actionLabel: 'WhatsApp a Padre'
+                });
+            });
+        }
+
+    } else if (role === 'profesor_auxiliar' || role === 'auxiliar' || role === 'auxiliatura') {
+        // 1. Ausencias registradas hoy en el aula
+        const today = new Date().toISOString().split('T')[0];
+        const pendingToday = (STATE.attendanceAlerts || []).filter(a => {
+            const isToday = (a.date === today || (!a.date && new Date(a.timestamp || 0).toISOString().split('T')[0] === today));
+            return isToday && (a.status === 'pendiente' || !a.status);
+        });
+
+        if (pendingToday.length > 0) {
+            rawAlerts.push({
+                id: `alert_aux_pending_${today}_${pendingToday.length}`,
+                type: 'danger',
+                icon: 'fa-bell',
+                title: `${pendingToday.length} Inasistencia(s) Reportada(s) Hoy`,
+                message: `Catedráticos reportaron ${pendingToday.length} alumno(s) ausente(s) en el aula hoy. Requiere verificación en bitácora.`,
+                action: "navigateTo('auxiliatura-log')",
+                actionLabel: 'Ver Bitácora'
+            });
+        }
+
+        // 2. Alumnos con riesgo de inasistencias acumuladas (3 consecutivas o >=5)
+        const auxRisk = getStudentsAtAttendanceRisk();
+        if (auxRisk.length > 0) {
+            rawAlerts.push({
+                id: `alert_aux_risk_summary_${auxRisk.length}`,
+                type: 'warning',
+                icon: 'fa-triangle-exclamation',
+                title: `${auxRisk.length} Alumnos con Faltas Reiteradas`,
+                message: `Estudiantes acumulan 3 o más faltas en el mes. Se recomienda citación inmediata a padres de familia.`,
+                action: "navigateTo('auxiliatura-log')",
+                actionLabel: 'Revisar Casos'
+            });
+            // Casos directos con enlace WhatsApp
+            auxRisk.slice(0, 3).forEach(item => {
+                const sName = `${item.student.lastName || ''} ${item.student.firstName || ''}`.trim();
+                rawAlerts.push({
+                    id: `alert_aux_whatsapp_${item.student.id}`,
+                    type: 'warning',
+                    icon: 'fa-comment-sms',
+                    title: `Citación: ${sName}`,
+                    message: `${item.student.grade || ''}: ${item.totalAbsences} faltas en el mes (${item.maxConsecutive} consecutivas).`,
+                    action: `openAttendanceWhatsAppContact('${item.student.id}', ${item.totalAbsences})`,
+                    actionLabel: 'WhatsApp a Tutor'
+                });
+            });
+        }
+
+        // 3. Atajo a Toma Rápida de Asistencia
+        rawAlerts.push({
+            id: `alert_aux_kiosk_shortcut`,
+            type: 'info',
+            icon: 'fa-qrcode',
+            title: 'Control de Puerta y Carnés',
+            message: 'Utilice el escáner de código de barras para registrar ingresos y llegadas tardías en recepción.',
+            action: "navigateTo('attendance')",
+            actionLabel: 'Ir al Escáner'
+        });
+
     } else if (role === 'secretaria') {
         // 1. Expedientes con datos incompletos
         const incomplete = (STATE.students || []).filter(s => !s.cui || !s.personalCode);
@@ -17306,6 +17553,20 @@ function getUserAlerts() {
             });
         }
 
+        // 5. Inasistencias Críticas
+        const secAttRisk = getStudentsAtAttendanceRisk();
+        if (secAttRisk.length > 0) {
+            rawAlerts.push({
+                id: `alert_sec_att_risk_${secAttRisk.length}`,
+                type: 'warning',
+                icon: 'fa-user-clock',
+                title: `Inasistencias Relevantes (${secAttRisk.length} Casos)`,
+                message: `${secAttRisk.length} estudiante(s) con faltas acumuladas para seguimiento de secretaría.`,
+                action: "navigateTo('attendance')",
+                actionLabel: 'Ver Asistencia'
+            });
+        }
+
     } else { // admin
         rawAlerts.push({
             id: 'alert_admin_security_status',
@@ -17347,6 +17608,19 @@ function getUserAlerts() {
                 message: `Total de ${discCount} reporte(s) disciplinario(s) en el sistema.`,
                 action: "navigateTo('discipline')",
                 actionLabel: 'Ver Reportes'
+            });
+        }
+
+        const adminAttRisk = getStudentsAtAttendanceRisk();
+        if (adminAttRisk.length > 0) {
+            rawAlerts.push({
+                id: `alert_admin_att_risk_${adminAttRisk.length}`,
+                type: 'warning',
+                icon: 'fa-user-clock',
+                title: `Monitoreo de Asistencia (${adminAttRisk.length} Casos en Riesgo)`,
+                message: `Existen ${adminAttRisk.length} estudiantes con 3 o más faltas en el mes actual.`,
+                action: "navigateTo('attendance')",
+                actionLabel: 'Ver Asistencia'
             });
         }
     }
@@ -17391,6 +17665,16 @@ function dismissAlert(alertId, e, showToastNotice = true) {
     saveStateToLocalStorage();
     updateUserAlertsUI();
     renderCurrentDashboardAlerts();
+
+    // Sincronización en segundo plano con Firebase RTDB para persistencia multidispositivo
+    if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.patchNode === 'function') {
+        try {
+            EnccoCloudSync.patchNode(`userAlertsDismissed/${currentUserId}`, {
+                dismissed: STATE.dismissedAlerts[currentUserId] || [],
+                updatedAt: new Date().toISOString()
+            }).catch(() => {});
+        } catch(syncErr) {}
+    }
 
     // 🛡️ Ocultar del DOM si existe el elemento con ID directo
     const el = document.getElementById(alertId);
@@ -17460,6 +17744,17 @@ function dismissAllAlerts() {
     saveStateToLocalStorage();
     updateUserAlertsUI();
     renderCurrentDashboardAlerts();
+
+    if (typeof EnccoCloudSync !== 'undefined' && typeof EnccoCloudSync.patchNode === 'function') {
+        try {
+            EnccoCloudSync.patchNode(`userAlertsDismissed/${currentUserId}`, {
+                dismissed: STATE.dismissedAlerts[currentUserId] || [],
+                allCleared: true,
+                updatedAt: new Date().toISOString()
+            }).catch(() => {});
+        } catch(syncErr) {}
+    }
+
     showToast("Todas las alertas han sido marcadas como resueltas.", "success");
 }
 
@@ -35505,6 +35800,17 @@ function notifyAuxiliaturaAlert(alertObj) {
     // 4. Si la vista actual es la bitácora, actualizarla de inmediato
     if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
         renderAuxiliaturaLogView();
+    }
+
+    // 5. Notificación nativa del sistema operativo (escritorio / móvil en segundo plano)
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+            new Notification(`🚨 ENCCO: Inasistencia en Aula`, {
+                body: `${alertObj.studentName || 'Estudiante'} (${alertObj.gradeLabel || ''}) - ${alertObj.courseName || 'Cátedra'}`,
+                icon: 'logo.png',
+                tag: `absence_${alertObj.studentId || alertObj.studentName || 'gen'}_${Date.now()}`
+            });
+        } catch(notifErr) {}
     }
 }
 

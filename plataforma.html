@@ -5044,7 +5044,10 @@
                     <div style="font-size:0.86rem; color:var(--text-secondary);" id="notifModalUserLabel">
                         Alertas activas para su usuario
                     </div>
-                    <div style="display:flex; gap:6px; align-items:center;">
+                    <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="requestBrowserNotificationPermission()" title="Activar avisos de escritorio en segundo plano">
+                            <i class="fa-solid fa-desktop"></i> Avisos PC/Móvil
+                        </button>
                         <button type="button" class="btn btn-xs btn-outline-success" onclick="dismissAllAlerts()" title="Marcar todas las alertas como leídas / resueltas">
                             <i class="fa-solid fa-check-double"></i> Marcar todas resueltas
                         </button>
