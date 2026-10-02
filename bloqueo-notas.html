@@ -478,12 +478,15 @@
                             <span>Unidad 4</span>
                         </label>
                     </div>
-                    <div style="display:flex; gap:8px; margin-top:12px;">
+                    <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
                         <button type="button" class="btn btn-xs btn-outline-primary" onclick="setAllUnits(true)" style="font-size:0.75rem; padding:4px 10px; border-radius:6px;">
                             <i class="fa-solid fa-check-double"></i> Habilitar Todas
                         </button>
                         <button type="button" class="btn btn-xs btn-outline-secondary" onclick="setOnlyPrimaryUnit()" style="font-size:0.75rem; padding:4px 10px; border-radius:6px;">
                             <i class="fa-solid fa-filter"></i> Solo Principal
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="setAllUnits(false)" style="font-size:0.75rem; padding:4px 10px; border-radius:6px;">
+                            <i class="fa-solid fa-ban"></i> Bloquear Todas
                         </button>
                     </div>
                 </div>
@@ -647,9 +650,9 @@
             const bRoman = ['I', 'II', 'III', 'IV'][activeBim - 1] || 'I';
             document.getElementById('kpiActiveBimestre').textContent = `${activeBim}º Bimestre (${bRoman})`;
             
-            const unitsStr = activeUnits.map(u => `U${u}`).join(', ');
+            const unitsStr = activeUnits.length > 0 ? activeUnits.map(u => `U${u}`).join(', ') : 'Ninguna (Bloqueado)';
             document.getElementById('kpiActiveUnitsBadge').textContent = `[${unitsStr}]`;
-            document.getElementById('kpiActiveUnitsDesc').textContent = `${activeUnits.length} unidad(es) habilitada(s)`;
+            document.getElementById('kpiActiveUnitsDesc').textContent = activeUnits.length > 0 ? `${activeUnits.length} unidad(es) habilitada(s)` : 'Todos los bimestres cerrados';
 
             document.getElementById('kpiGlobalLockStatus').textContent = isLocked ? 'Bloqueado' : 'Habilitado';
             document.getElementById('kpiGlobalLockStatus').style.color = isLocked ? '#dc2626' : '#16a34a';
@@ -718,21 +721,25 @@
                 const chk = document.getElementById('checkActiveUnit' + u);
                 if (chk && chk.checked) activeUnits.push(u);
             });
-            if (activeUnits.length === 0) activeUnits = [unitNum];
 
             const now = Date.now();
             const nowIso = new Date().toISOString();
+            const isCurrentlyLocked = (CONFIG_DATA.estadoBloqueoGlobal === 'BLOQUEADO' || !!CONFIG_DATA.globalLocked);
+            const estadoGlobal = isCurrentlyLocked ? "BLOQUEADO" : "HABILITADO";
 
             CONFIG_DATA.activeBimestre = unitNum;
             CONFIG_DATA.bimestreActivoOficial = unitNum;
             CONFIG_DATA.activeUnits = activeUnits;
+            CONFIG_DATA.estadoBloqueoGlobal = estadoGlobal;
+            CONFIG_DATA.globalLocked = isCurrentlyLocked;
             CONFIG_DATA.lastModified = now;
 
             const payload = {
                 activeBimestre: unitNum,
                 bimestreActivoOficial: unitNum,
                 activeUnits: activeUnits,
-                estadoBloqueoGlobal: "HABILITADO",
+                estadoBloqueoGlobal: estadoGlobal,
+                globalLocked: isCurrentlyLocked,
                 lastModified: now,
                 ultimaActualizacion: nowIso
             };

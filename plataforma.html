@@ -1759,12 +1759,15 @@
                                             <span>Unidad 4 (IV)</span>
                                         </label>
                                     </div>
-                                    <div style="display:flex; gap:8px; margin-top:10px;">
+                                    <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
                                         <button type="button" class="btn btn-xs btn-outline-primary" onclick="setAllUnitsActive(true)" style="font-size:0.75rem; padding:3px 8px;">
                                             <i class="fa-solid fa-check-double"></i> Habilitar Todas
                                         </button>
                                         <button type="button" class="btn btn-xs btn-outline-secondary" onclick="setOnlyPrimaryUnitActive()" style="font-size:0.75rem; padding:3px 8px;">
                                             <i class="fa-solid fa-filter"></i> Solo Principal
+                                        </button>
+                                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="setAllUnitsActive(false)" style="font-size:0.75rem; padding:3px 8px;">
+                                            <i class="fa-solid fa-ban"></i> Bloquear Todas
                                         </button>
                                     </div>
                                 </div>

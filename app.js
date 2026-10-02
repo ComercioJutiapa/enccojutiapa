@@ -8431,15 +8431,13 @@ function applyBimestreAndLockConfig(configData, isBroadcaster = false) {
 
     // 2. Unidades activas
     let unitsChanged = false;
-    if (Array.isArray(configData.activeUnits) && configData.activeUnits.length > 0) {
+    if (Array.isArray(configData.activeUnits)) {
         const newUnits = configData.activeUnits.map(Number).filter(n => n >= 1 && n <= 4);
-        if (newUnits.length > 0) {
-            const sortedNew = [...newUnits].sort().join(',');
-            const sortedPrev = [...prevUnits].sort().join(',');
-            if (sortedNew !== sortedPrev) unitsChanged = true;
-            STATE.config.activeUnits = newUnits;
-        }
-    } else if (!STATE.config.activeUnits || STATE.config.activeUnits.length === 0) {
+        const sortedNew = [...newUnits].sort().join(',');
+        const sortedPrev = [...prevUnits].sort().join(',');
+        if (sortedNew !== sortedPrev) unitsChanged = true;
+        STATE.config.activeUnits = newUnits;
+    } else if (!STATE.config.activeUnits) {
         STATE.config.activeUnits = [STATE.config.activeBimestre || 1];
     }
 
@@ -8461,7 +8459,7 @@ function applyBimestreAndLockConfig(configData, isBroadcaster = false) {
     }
 
     const curBim = parseInt(STATE.config.activeBimestre) || 1;
-    const curUnits = (Array.isArray(STATE.config.activeUnits) && STATE.config.activeUnits.length > 0) 
+    const curUnits = Array.isArray(STATE.config.activeUnits) 
         ? STATE.config.activeUnits 
         : [curBim];
 
@@ -15758,9 +15756,8 @@ function setOnlyPrimaryUnitActive() {
 window.setOnlyPrimaryUnitActive = setOnlyPrimaryUnitActive;
 
 function onPrimaryBimestreSelectChange(val) {
-    const num = parseInt(val) || 1;
-    const chk = document.getElementById('checkActiveUnit' + num);
-    if (chk) chk.checked = true;
+    // Permitir total independencia entre el bimestre de vista inicial y las unidades habilitadas para edición.
+    // No forzamos auto-marcar la casilla para que el usuario pueda tenerla cerrada si así lo desea.
 }
 window.onPrimaryBimestreSelectChange = onPrimaryBimestreSelectChange;
 
@@ -16023,18 +16020,17 @@ async function setOfficialActiveBimestre() {
         const chk = document.getElementById('checkActiveUnit' + u);
         if (chk && chk.checked) activeUnits.push(u);
     });
-    if (activeUnits.length === 0) {
-        activeUnits = [unitNum];
-        const chk = document.getElementById('checkActiveUnit' + unitNum);
-        if (chk) chk.checked = true;
-    }
+
+    const currentGlobalLock = !!(STATE.config?.globalLocked);
+    const currentEstado = STATE.config?.estadoBloqueoGlobal || (currentGlobalLock ? "BLOQUEADO" : "HABILITADO");
 
     const nowTime = Date.now();
     const configPayload = {
         activeBimestre: unitNum,
         bimestreActivoOficial: bimestreSeleccionado,
         activeUnits: activeUnits,
-        estadoBloqueoGlobal: "HABILITADO",
+        estadoBloqueoGlobal: currentEstado,
+        globalLocked: currentGlobalLock,
         ultimaActualizacion: new Date().toISOString(),
         fechaModificacion: new Date().toISOString(),
         lastModified: nowTime
@@ -16279,7 +16275,7 @@ function isGradebookEditableForUser(pensumId, unit) {
 
     const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
     const currentUnit = parseInt(unit) || activeBim;
-    const activeUnits = (Array.isArray(STATE.config?.activeUnits) && STATE.config.activeUnits.length > 0)
+    const activeUnits = Array.isArray(STATE.config?.activeUnits)
         ? STATE.config.activeUnits.map(Number)
         : [activeBim];
 
@@ -16308,8 +16304,8 @@ function isGradebookEditableForUser(pensumId, unit) {
         };
     }
 
-    // Si es un bimestre / unidad activa habilitada por Dirección
-    if (activeUnits.includes(currentUnit) || currentUnit === activeBim) {
+    // Si es un bimestre / unidad activa habilitada explícitamente por Dirección
+    if (activeUnits.includes(currentUnit)) {
         if (isGlobalLocked && !hasGlobalBypass) {
             return {
                 editable: false,
@@ -16321,11 +16317,13 @@ function isGradebookEditableForUser(pensumId, unit) {
     }
 
     // Si no es un bimestre activo y no cuenta con solicitud aprobada vigente
-    const activeNames = activeUnits.map(u => 'Unidad ' + u).join(', ');
+    const activeNames = activeUnits.length > 0 
+        ? activeUnits.map(u => 'Unidad ' + u).join(', ')
+        : 'Ninguna (Todos los bimestres se encuentran bloqueados)';
     return {
         editable: false,
         reason: 'bimestre_closed',
-        message: 'La Unidad ' + currentUnit + ' se encuentra cerrada oficialmente (Las unidades habilitadas son: ' + activeNames + ').'
+        message: 'La Unidad ' + currentUnit + ' se encuentra cerrada oficialmente (Unidades habilitadas: ' + activeNames + ').'
     };
 }
 window.isGradebookEditableForUser = isGradebookEditableForUser;
@@ -19890,7 +19888,7 @@ function populateGradebookBimestreSelect(forceOfficial = false) {
     if (!select) return;
 
     const activeB = parseInt(STATE.config?.activeBimestre) || 1;
-    const activeUnits = (Array.isArray(STATE.config?.activeUnits) && STATE.config.activeUnits.length > 0)
+    const activeUnits = Array.isArray(STATE.config?.activeUnits)
         ? STATE.config.activeUnits.map(Number)
         : [activeB];
 
@@ -19905,16 +19903,20 @@ function populateGradebookBimestreSelect(forceOfficial = false) {
     const savedBim = parseInt(sessionStorage.getItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE') || localStorage.getItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE'));
     const prevVal = select.value ? parseInt(select.value) : (savedBim || null);
     let selectedBim = activeB;
-    if (!forceOfficial && prevVal && prevVal >= 1 && prevVal <= 4 && (activeUnits.includes(prevVal) || prevVal === activeB)) {
+    if (!forceOfficial && prevVal && prevVal >= 1 && prevVal <= 4) {
         selectedBim = prevVal;
     }
 
     let optionsHtml = '';
     for (let u = 1; u <= 4; u++) {
+        const isPrimary = (u === activeB);
+        const isEditable = activeUnits.includes(u);
         let tag = '';
-        if (u === activeB) {
+        if (isPrimary && isEditable) {
             tag = ' ⭐ (Oficial Principal - Habilitado)';
-        } else if (activeUnits.includes(u)) {
+        } else if (isPrimary && !isEditable) {
+            tag = ' 🔒 (Oficial Principal - Cerrado)';
+        } else if (isEditable) {
             tag = ' ✅ (Habilitado para Modificar)';
         } else {
             tag = ' 🔒 (Cerrado)';
@@ -19934,12 +19936,19 @@ function populateGradebookBimestreSelect(forceOfficial = false) {
 
     if (notice && noticeText) {
         notice.style.display = 'block';
-        if (selectedBim === activeB) {
+        const isCurrentEditable = activeUnits.includes(selectedBim);
+        if (selectedBim === activeB && isCurrentEditable) {
             notice.style.background = '#ecfdf5';
             notice.style.borderColor = '#a7f3d0';
             notice.style.color = '#065f46';
-            noticeText.innerHTML = `<i class="fa-solid fa-circle-check"></i> <strong>Bimestre Activo Oficial Principal:</strong> ${bNames[activeB] || ('Unidad ' + activeB)} (Habilitado por Dirección y Secretaría para ingreso de notas).`;
-        } else if (activeUnits.includes(selectedBim)) {
+            noticeText.innerHTML = `<i class="fa-solid fa-circle-check"></i> <strong>Bimestre Principal:</strong> ${bNames[activeB] || ('Unidad ' + activeB)} (Habilitado por Dirección y Secretaría para ingreso de notas).`;
+        } else if (selectedBim === activeB && !isCurrentEditable) {
+            notice.style.background = '#fef3c7';
+            notice.style.borderColor = '#fde68a';
+            notice.style.color = '#92400e';
+            const activeListStr = activeUnits.length > 0 ? activeUnits.map(u => bNames[u]).join(', ') : 'Ninguna';
+            noticeText.innerHTML = `<i class="fa-solid fa-lock"></i> <strong>Bimestre Principal:</strong> ${bNames[activeB] || ('Unidad ' + activeB)} (Cerrado oficialmente para ingreso de notas. Unidades habilitadas: ${activeListStr}).`;
+        } else if (isCurrentEditable) {
             notice.style.background = '#ecfdf5';
             notice.style.borderColor = '#a7f3d0';
             notice.style.color = '#065f46';
@@ -19948,7 +19957,7 @@ function populateGradebookBimestreSelect(forceOfficial = false) {
             notice.style.background = '#fef3c7';
             notice.style.borderColor = '#fde68a';
             notice.style.color = '#92400e';
-            const activeListStr = activeUnits.map(u => bNames[u]).join(', ');
+            const activeListStr = activeUnits.length > 0 ? activeUnits.map(u => bNames[u]).join(', ') : 'Ninguna';
             noticeText.innerHTML = `<i class="fa-solid fa-calendar-days"></i> <strong>Visualizando:</strong> ${bNames[selectedBim] || ('Unidad ' + selectedBim)} (Cerrado para edición directa. Unidades habilitadas: ${activeListStr}).`;
         }
     }
