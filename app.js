@@ -15768,6 +15768,19 @@ function setOnlyPrimaryUnitActive() {
 }
 window.setOnlyPrimaryUnitActive = setOnlyPrimaryUnitActive;
 
+function applyPresetTransition(closedUpTo, nextUnit) {
+    const sel = document.getElementById('officialActiveBimestreSelect') || document.getElementById('selectBimestreActivo');
+    if (sel) sel.value = String(nextUnit);
+    [1, 2, 3, 4].forEach(u => {
+        const chk = document.getElementById('checkActiveUnit' + u);
+        if (chk) chk.checked = (u === nextUnit);
+    });
+    if (typeof showToast === 'function') {
+        showToast(`Transición preparada: Unidad ${nextUnit} habilitada y anteriores cerradas. Haga clic en 'Fijar' para confirmar.`, 'info');
+    }
+}
+window.applyPresetTransition = applyPresetTransition;
+
 function onPrimaryBimestreSelectChange(val) {
     // Permitir total independencia entre el bimestre de vista inicial y las unidades habilitadas para edición.
     // No forzamos auto-marcar la casilla para que el usuario pueda tenerla cerrada si así lo desea.
@@ -22127,33 +22140,89 @@ function loadTeacherGradebook() {
     }
 
     // 📊 Barra e Indicador de Progreso en Vivo para Docentes y Dirección
-    const progressBadge = document.getElementById('gradebookProgressBadge');
-    if (progressBadge) {
-        const activeStudents = students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo');
-        const completedCount = activeStudents.filter(s => {
-            const uData = s.gradebookDetails && s.gradebookDetails[subjectName] && s.gradebookDetails[subjectName][currentUnit];
-            const t = (uData && uData.total) || (s.grades && s.grades[subjectName] && s.grades[subjectName][currentUnit - 1]) || 0;
-            return parseInt(t) > 0;
-        }).length;
-        const totalActive = activeStudents.length;
-        const pct = totalActive > 0 ? Math.round((completedCount / totalActive) * 100) : 0;
-        progressBadge.innerHTML = `<i class="fa-solid fa-chart-pie"></i> Avance: <strong>${completedCount}/${totalActive}</strong> calificados (${pct}%)`;
-        progressBadge.style.display = 'inline-flex';
+    refreshLiveGradeProgressBadge(subjectName, currentUnit);
+}
+
+// 📊 Barra e Indicador de Progreso en Vivo para Docentes y Dirección
+function refreshLiveGradeProgressBadge(subjectName, unit) {
+    const badge = document.getElementById('gradebookProgressBadge');
+    const barContainer = document.getElementById('gradebookProgressBarContainer');
+    const barFill = document.getElementById('gradebookProgressBarFill');
+
+    if (!badge && !barContainer && !barFill) return;
+
+    const courseSelect = document.getElementById('teacherCourseSelect');
+    const selectedId = courseSelect?.value || STATE.selectedGradebookCourseId;
+    let targetPensum = (STATE.pensum || []).find(p => p.id === selectedId);
+    if (!targetPensum && subjectName) {
+        targetPensum = (STATE.pensum || []).find(p => p.subject === subjectName);
+    }
+    if (!targetPensum) return;
+
+    const currentSubject = targetPensum.subject || subjectName;
+    const currentUnitNum = parseInt(unit) || parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+    const gradeCode = targetPensum.gradeCode || '4TO_PERITO_A';
+
+    const students = (typeof getSortedGradebookStudents === 'function')
+        ? getSortedGradebookStudents(gradeCode, targetPensum)
+        : (STATE.students || []).filter(s => s.gradeCode === gradeCode || s.grade === targetPensum.grade);
+
+    const activeStudents = students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo' && s.status !== 'Ausente');
+    const totalActive = activeStudents.length;
+
+    if (totalActive === 0) {
+        if (badge) badge.style.display = 'none';
+        if (barContainer) barContainer.style.display = 'none';
+        return;
+    }
+
+    const completedCount = activeStudents.filter(s => {
+        if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, currentSubject, currentUnitNum)) {
+            return true;
+        }
+        const uData = s.gradebookDetails && s.gradebookDetails[currentSubject] && s.gradebookDetails[currentSubject][currentUnitNum];
+        const t = (uData && (uData.total !== undefined && uData.total !== null))
+            ? parseInt(uData.total)
+            : (s.grades && s.grades[currentSubject] && s.grades[currentSubject][currentUnitNum - 1] !== undefined ? parseInt(s.grades[currentSubject][currentUnitNum - 1]) : 0);
+        return !isNaN(t) && t > 0;
+    }).length;
+
+    const pct = totalActive > 0 ? Math.round((completedCount / totalActive) * 100) : 0;
+
+    if (badge) {
+        badge.innerHTML = `<i class="fa-solid fa-chart-pie"></i> Avance de Sección: <strong>${completedCount}/${totalActive}</strong> (${pct}%)`;
+        badge.style.display = 'inline-flex';
         if (pct === 100) {
-            progressBadge.style.background = '#dcfce7';
-            progressBadge.style.color = '#15803d';
-            progressBadge.style.border = '1px solid #86efac';
-        } else if (pct > 50) {
-            progressBadge.style.background = '#fef9c3';
-            progressBadge.style.color = '#854d0e';
-            progressBadge.style.border = '1px solid #fde047';
+            badge.style.background = '#dcfce7';
+            badge.style.color = '#15803d';
+            badge.style.border = '1px solid #86efac';
+        } else if (pct >= 50) {
+            badge.style.background = '#fef9c3';
+            badge.style.color = '#854d0e';
+            badge.style.border = '1px solid #fde047';
         } else {
-            progressBadge.style.background = '#f1f5f9';
-            progressBadge.style.color = '#475569';
-            progressBadge.style.border = '1px solid #cbd5e1';
+            badge.style.background = '#f1f5f9';
+            badge.style.color = '#475569';
+            badge.style.border = '1px solid #cbd5e1';
+        }
+    }
+
+    if (barContainer) {
+        barContainer.style.display = 'block';
+    }
+    if (barFill) {
+        barFill.style.width = `${Math.min(pct, 100)}%`;
+        if (pct === 100) {
+            barFill.style.background = 'linear-gradient(90deg, #10b981, #059669)';
+        } else if (pct >= 50) {
+            barFill.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
+        } else {
+            barFill.style.background = 'linear-gradient(90deg, #3b82f6, #2563eb)';
         }
     }
 }
+window.refreshLiveGradeProgressBadge = refreshLiveGradeProgressBadge;
+
 
 // 🌐 SELECCIÓN Y ENFOQUE UNIVERSAL CROSS-BROWSER (Safari, Chrome, Firefox, Opera, Edge, Brave)
 function handleGradeInputFocus(input) {
@@ -22338,19 +22407,9 @@ function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, 
         }
     }
 
-    // 4. Actualizar barra de avance calificado en vivo
-    const progressBadge = document.getElementById('gradebookProgressBadge');
-    if (progressBadge) {
-        const students = STATE.students || [];
-        const activeStudents = students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo');
-        const completedCount = activeStudents.filter(s => {
-            const uData = s.gradebookDetails && s.gradebookDetails[subjectName] && s.gradebookDetails[subjectName][unit];
-            const t = (uData && uData.total) || (s.grades && s.grades[subjectName] && s.grades[subjectName][unit - 1]) || 0;
-            return parseInt(t) > 0;
-        }).length;
-        const totalActive = activeStudents.length;
-        const pct = totalActive > 0 ? Math.round((completedCount / totalActive) * 100) : 0;
-        progressBadge.innerHTML = `<i class="fa-solid fa-chart-pie"></i> Avance: <strong>${completedCount}/${totalActive}</strong> calificados (${pct}%)`;
+    // 4. Actualizar barra e indicador de avance calificado en vivo de la sección
+    if (typeof refreshLiveGradeProgressBadge === 'function') {
+        refreshLiveGradeProgressBadge(subjectName, unit);
     }
 }
 

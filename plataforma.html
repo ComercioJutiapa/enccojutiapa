@@ -1770,6 +1770,22 @@
                                             <i class="fa-solid fa-ban"></i> Bloquear Todas
                                         </button>
                                     </div>
+                                    <div style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-color);">
+                                        <span style="font-size:0.78rem; font-weight:700; color:var(--text-muted); display:block; margin-bottom:6px;">
+                                            <i class="fa-solid fa-wand-magic-sparkles"></i> Transiciones Rápidas Asistidas:
+                                        </span>
+                                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                            <button type="button" class="btn btn-xs btn-outline-info" onclick="applyPresetTransition(1, 2)" style="font-size:0.75rem; padding:3px 8px; border-radius:6px;" title="Cierra Bimestre 1, abre Bimestre 2">
+                                                Cerrar I ➔ Abrir II
+                                            </button>
+                                            <button type="button" class="btn btn-xs btn-outline-info" onclick="applyPresetTransition(2, 3)" style="font-size:0.75rem; padding:3px 8px; border-radius:6px;" title="Cierra Bimestres 1 y 2, abre Bimestre 3">
+                                                Cerrar II ➔ Abrir III
+                                            </button>
+                                            <button type="button" class="btn btn-xs btn-outline-info" onclick="applyPresetTransition(3, 4)" style="font-size:0.75rem; padding:3px 8px; border-radius:6px;" title="Cierra Bimestres 1, 2 y 3, abre Bimestre 4">
+                                                Cerrar III ➔ Abrir IV
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <button type="button" id="btnFijarBimestre" class="btn btn-success btn-block" onclick="setOfficialActiveBimestre(event)" style="font-weight:700;">
@@ -1931,18 +1947,23 @@
                         </div>
                     </div>
 
-                    <!-- BARRA INFORMATIVA DE PONDERACIÓN VIGENTE DEL BIMESTRE -->
-                    <div id="gradebookWeightInfoBar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:var(--radius-sm); padding:10px 16px; margin-bottom:14px;">
-                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                            <span style="font-weight:800; color:#166534; font-size:0.92rem;"><i class="fa-solid fa-scale-balanced"></i> Ponderación Bimestral Configurada:</span>
-                            <span class="badge" style="background:#dcfce7; color:#15803d; font-weight:800; font-size:0.85rem; padding:4px 10px;" id="badgeZonaMaxDisplay">Zona: 40 pts</span>
-                            <span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.85rem; padding:4px 10px;" id="badgeExamMaxDisplay">Examen / Evaluación: 60 pts</span>
-                            <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:900; font-size:0.85rem; padding:4px 10px;">Total: 100 pts</span>
-                            <span class="badge" id="gradebookProgressBadge" style="display:none; font-weight:800; font-size:0.85rem; padding:4px 10px; align-items:center; gap:6px;"></span>
+                    <!-- BARRA INFORMATIVA DE PONDERACIÓN VIGENTE DEL BIMESTRE Y AVANCE DE SECCIÓN -->
+                    <div id="gradebookWeightInfoBar" style="display:flex; flex-direction:column; gap:8px; background:#f0fdf4; border:1.5px solid #86efac; border-radius:var(--radius-sm); padding:10px 16px; margin-bottom:14px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                                <span style="font-weight:800; color:#166534; font-size:0.92rem;"><i class="fa-solid fa-scale-balanced"></i> Ponderación Bimestral:</span>
+                                <span class="badge" style="background:#dcfce7; color:#15803d; font-weight:800; font-size:0.85rem; padding:4px 10px;" id="badgeZonaMaxDisplay">Zona: 40 pts</span>
+                                <span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.85rem; padding:4px 10px;" id="badgeExamMaxDisplay">Examen: 60 pts</span>
+                                <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:900; font-size:0.85rem; padding:4px 10px;">Total: 100 pts</span>
+                                <span class="badge" id="gradebookProgressBadge" style="display:none; font-weight:800; font-size:0.85rem; padding:4px 10px; align-items:center; gap:6px;"></span>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="openGradingConfigModal()" style="font-weight:700;">
+                                <i class="fa-solid fa-pen-to-square"></i> Cambiar Valor de Zona y Examen
+                            </button>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-success" onclick="openGradingConfigModal()" style="font-weight:700;">
-                            <i class="fa-solid fa-pen-to-square"></i> Cambiar Valor de Zona y Examen
-                        </button>
+                        <div id="gradebookProgressBarContainer" style="display:none; width:100%; background:#e2e8f0; border-radius:10px; height:7px; overflow:hidden;">
+                            <div id="gradebookProgressBarFill" style="height:100%; width:0%; background:linear-gradient(90deg, #10b981, #059669); transition:width 0.3s ease;"></div>
+                        </div>
                     </div>
 
                     <!-- Pestañas de Modo de Calificación (10 Casillas, Examen/Resumen, Totales de Evaluación) -->

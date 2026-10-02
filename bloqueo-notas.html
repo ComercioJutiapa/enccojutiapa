@@ -489,6 +489,22 @@
                             <i class="fa-solid fa-ban"></i> Bloquear Todas
                         </button>
                     </div>
+                    <div style="margin-top:10px; padding-top:10px; border-top:1px dashed #cbd5e1;">
+                        <span style="font-size:0.78rem; font-weight:700; color:#64748b; display:block; margin-bottom:6px;">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Transiciones Rápidas Asistidas:
+                        </span>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button type="button" class="btn btn-xs btn-outline-info" onclick="applyPresetTransition(1, 2)" style="font-size:0.75rem; padding:3px 8px; border-radius:6px;" title="Cierra Bimestre 1, abre Bimestre 2">
+                                Cerrar I ➔ Abrir II
+                            </button>
+                            <button type="button" class="btn btn-xs btn-outline-info" onclick="applyPresetTransition(2, 3)" style="font-size:0.75rem; padding:3px 8px; border-radius:6px;" title="Cierra Bimestres 1 y 2, abre Bimestre 3">
+                                Cerrar II ➔ Abrir III
+                            </button>
+                            <button type="button" class="btn btn-xs btn-outline-info" onclick="applyPresetTransition(3, 4)" style="font-size:0.75rem; padding:3px 8px; border-radius:6px;" title="Cierra Bimestres 1, 2 y 3, abre Bimestre 4">
+                                Cerrar III ➔ Abrir IV
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <button id="btnFijarBimestre" class="btn btn-success btn-block" onclick="fijarBimestreEnFirebase()" style="font-weight:800; border-radius:8px; padding:10px; width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
@@ -702,6 +718,15 @@
             [1, 2, 3, 4].forEach(u => {
                 const chk = document.getElementById('checkActiveUnit' + u);
                 if (chk) chk.checked = (u === primary);
+            });
+        }
+
+        function applyPresetTransition(closedUpTo, nextUnit) {
+            const select = document.getElementById('officialActiveBimestreSelect');
+            if (select) select.value = String(nextUnit);
+            [1, 2, 3, 4].forEach(u => {
+                const chk = document.getElementById('checkActiveUnit' + u);
+                if (chk) chk.checked = (u === nextUnit);
             });
         }
 
