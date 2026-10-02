@@ -3453,3 +3453,109 @@ tr.row-student-retired td.att-cell:hover,
     filter: none !important;
 }
 
+/* ==========================================================================
+   PANEL INSTITUCIONAL DE CONTROL, FILTROS Y ACCIONES DE NÓMINA (#view-students)
+   ========================================================================== */
+.students-control-panel {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 16px 18px !important;
+    margin-bottom: 16px !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+}
+
+.students-filters-grid {
+    display: grid !important;
+    grid-template-columns: 1.25fr 1fr 0.9fr 1.05fr 1fr !important;
+    gap: 12px !important;
+    align-items: flex-end !important;
+    width: 100% !important;
+}
+
+.students-filters-grid > div {
+    min-width: 0 !important;
+}
+
+.students-actions-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    width: 100% !important;
+}
+
+.students-search-wrapper {
+    flex: 1 1 300px !important;
+    max-width: 440px !important;
+    position: relative !important;
+}
+
+.students-search-wrapper input {
+    width: 100% !important;
+    height: 40px !important;
+    padding-left: 38px !important;
+    padding-right: 14px !important;
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    border: 1.5px solid #cbd5e1 !important;
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    transition: all 0.2s ease !important;
+}
+
+.students-search-wrapper input:focus {
+    background: #ffffff !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+    outline: none !important;
+}
+
+.students-buttons-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+}
+
+@media (max-width: 1100px) and (min-width: 769px) {
+    .students-filters-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .students-filters-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+    .students-actions-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    .students-search-wrapper {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    .students-buttons-group {
+        width: 100% !important;
+        flex-direction: column !important;
+    }
+    .students-buttons-group .btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+}
+
+@media print {
+    .students-control-panel {
+        display: none !important;
+    }
+}
+
+
