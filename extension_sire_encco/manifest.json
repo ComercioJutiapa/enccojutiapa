@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "ENCCO Jutiapa - Conector Oficial SIRE MINEDUC",
+  "version": "1.0.0",
+  "description": "Extensión para extraer fichas de estudiantes directamente desde el portal oficial SIRE MINEDUC y autollenar la inscripción en la plataforma ENCCO Jutiapa.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://sire.mineduc.gob.gt/*",
+    "*://comerciojutiapa.github.io/*",
+    "*://localhost/*",
+    "*://127.0.0.1/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Conector ENCCO - SIRE MINEDUC"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://sire.mineduc.gob.gt/*"
+      ],
+      "js": [
+        "content_sire.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://comerciojutiapa.github.io/*",
+        "*://localhost/*",
+        "*://127.0.0.1/*"
+      ],
+      "js": [
+        "content_encco.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
