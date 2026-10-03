@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Interactivo: Inscripción Asistida ENCCO & SIRE MINEDUC</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: #0f172a; color: #f8fafc; min-height: 100vh; padding: 20px; }
+        
+        .header-title { text-align: center; margin-bottom: 20px; }
+        .header-title h1 { font-size: 1.5rem; color: #38bdf8; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .header-title p { font-size: 0.85rem; color: #94a3b8; margin-top: 4px; }
+
+        .split-workspace {
+            display: grid;
+            grid-template-columns: 1fr 60px 1fr;
+            gap: 15px;
+            max-width: 1350px;
+            margin: 0 auto;
+            align-items: stretch;
+        }
+
+        .screen-card {
+            background: #ffffff;
+            color: #0f172a;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            border: 2px solid #334155;
+        }
+
+        .screen-header {
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #ffffff;
+        }
+        .header-encco { background: linear-gradient(135deg, #0f2b5c 0%, #15803d 100%); border-bottom: 3px solid #ea580c; }
+        .header-sire { background: linear-gradient(135deg, #1e3a8a 0%, #0369a1 100%); border-bottom: 3px solid #facc15; }
+
+        .screen-header .badge {
+            font-size: 0.72rem;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            background: rgba(255,255,255,0.2);
+        }
+
+        .screen-body { padding: 18px; flex: 1; display: flex; flex-direction: column; gap: 12px; }
+
+        .bridge-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .bridge-pill {
+            background: #1e293b;
+            border: 2px solid #38bdf8;
+            color: #38bdf8;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .bridge-pill:hover { transform: scale(1.1); }
+        .bridge-line {
+            width: 2px;
+            background: linear-gradient(180deg, #10b981, #38bdf8, #f59e0b);
+            flex: 1;
+            margin: 10px 0;
+            opacity: 0.6;
+        }
+
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 0.75rem; font-weight: 700; color: #334155; }
+        .form-control {
+            padding: 8px 10px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .form-control:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
+        .form-control.filled-green {
+            background-color: #f0fdf4 !important;
+            border-color: #16a34a !important;
+            box-shadow: 0 0 0 2px rgba(22,163,74,0.15);
+        }
+
+        .btn-action {
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-encco { background: #15803d; color: #fff; }
+        .btn-encco:hover { background: #166534; transform: translateY(-1px); }
+        .btn-sire { background: #0284c7; color: #fff; }
+        .btn-sire:hover { background: #0369a1; transform: translateY(-1px); }
+
+        .sire-banner {
+            display: none;
+            background: #f0fdf4;
+            border: 2px solid #86efac;
+            border-radius: 10px;
+            padding: 12px;
+            color: #14532d;
+            font-size: 0.80rem;
+            line-height: 1.4;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+        .log-box {
+            background: #091322;
+            color: #38bdf8;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid #1e293b;
+            min-height: 60px;
+            max-height: 90px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-title">
+        <h1><i class="fa-solid fa-arrows-split-up-and-left"></i> Simulador: Inscripción Asistida en 1 Clic (ENCCO ⇄ SIRE)</h1>
+        <p>Demostración en vivo de transferencia y pre-llenado oficial ministerial entre la Plataforma Institucional y el Portal SIRE MINEDUC</p>
+    </div>
+
+    <div class="split-workspace">
+        
+        <!-- PANTALLA IZQUIERDA: PLATAFORMA ENCCO -->
+        <div class="screen-card">
+            <div class="screen-header header-encco">
+                <div>
+                    <h3 style="font-size:0.95rem; font-weight:800;"><i class="fa-solid fa-graduation-cap"></i> Plataforma ENCCO Jutiapa</h3>
+                    <small style="opacity:0.9; font-size:0.72rem;">Módulo: Inscripción y Matrícula</small>
+                </div>
+                <span class="badge">Pestaña 1</span>
+            </div>
+            <div class="screen-body">
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:8px 12px; border-radius:8px; font-size:0.75rem; color:#475569;">
+                    <i class="fa-solid fa-circle-info" style="color:#0284c7;"></i> Ingrese los datos del estudiante o use un alumno de prueba y presione <strong>"Guardar en ENCCO y Asistir en SIRE"</strong>.
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div class="form-group">
+                        <label>Código Personal (SIRE)</label>
+                        <input type="text" id="simEnccoCode" class="form-control" value="G790ASN" style="font-weight:700; color:#15803d; text-transform:uppercase;">
+                    </div>
+                    <div class="form-group">
+                        <label>CUI (DPI RENAP)</label>
+                        <input type="text" id="simEnccoCui" class="form-control" value="3024 89123 2201">
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div class="form-group">
+                        <label>Nombres</label>
+                        <input type="text" id="simEnccoFirstName" class="form-control" value="Carlos Roberto">
+                    </div>
+                    <div class="form-group">
+                        <label>Apellidos</label>
+                        <input type="text" id="simEnccoLastName" class="form-control" value="García Pérez">
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:8px;">
+                    <div class="form-group">
+                        <label>Grado / Carrera Asignada</label>
+                        <select id="simEnccoGrade" class="form-control" style="font-weight:600;">
+                            <option value="4to Perito Contador Sección A">4to Perito Contador Sección A</option>
+                            <option value="5to Perito Contador Sección B">5to Perito Contador Sección B</option>
+                            <option value="6to Perito Contador Sección A">6to Perito Contador Sección A</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Nacimiento</label>
+                        <input type="date" id="simEnccoBirth" class="form-control" value="2009-04-18">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Nombre del Encargado / Tutor</label>
+                    <input type="text" id="simEnccoGuardian" class="form-control" value="Roberto García Gómez (DPI: 2018 45912 2201)">
+                </div>
+
+                <button type="button" class="btn-action btn-encco" onclick="executeSimulationStep1()">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> 1. Guardar en ENCCO y Asistir en SIRE
+                </button>
+
+                <div class="log-box" id="enccoLogBox">
+                    > Plataforma ENCCO lista. Presione el botón verde para iniciar la prueba.
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMNA CENTRAL: PUENTE / EXTENSIÓN -->
+        <div class="bridge-column">
+            <div class="bridge-line"></div>
+            <div class="bridge-pill" title="Extensión ENCCO Conector SIRE" id="bridgeIcon" onclick="executeSimulationStep1()">
+                <i class="fa-solid fa-bolt"></i>
+            </div>
+            <div class="bridge-line"></div>
+        </div>
+
+        <!-- PANTALLA DERECHA: PORTAL SIRE MINEDUC -->
+        <div class="screen-card">
+            <div class="screen-header header-sire">
+                <div>
+                    <h3 style="font-size:0.95rem; font-weight:800;"><i class="fa-solid fa-landmark"></i> SIRE MINEDUC Guatemala</h3>
+                    <small style="opacity:0.9; font-size:0.72rem;">Código Establecimiento: 22-01-0014-46</small>
+                </div>
+                <span class="badge" style="background:#facc15; color:#713f12;">Pestaña 2</span>
+            </div>
+            <div class="screen-body">
+                
+                <div class="sire-banner" id="sireAssistantBanner">
+                    <div style="font-weight:800; display:flex; align-items:center; gap:6px; color:#15803d; margin-bottom:4px;">
+                        <i class="fa-solid fa-circle-check"></i> Asistente ENCCO: Datos prellenados con éxito
+                    </div>
+                    <div id="sireBannerDetails">
+                        Alumno verificado. Revise las casillas verdes y confirme la matrícula.
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div class="form-group">
+                        <label>Código Personal MINEDUC</label>
+                        <input type="text" id="simSireCode" class="form-control" placeholder="Vacío..." readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>CUI del Estudiante</label>
+                        <input type="text" id="simSireCui" class="form-control" placeholder="Vacío..." readonly>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div class="form-group">
+                        <label>Nombres Completos</label>
+                        <input type="text" id="simSireName" class="form-control" placeholder="Vacío..." readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Nacimiento</label>
+                        <input type="text" id="simSireBirth" class="form-control" placeholder="Vacío..." readonly>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Grado / Carrera en Centro 22-01-0014-46</label>
+                    <input type="text" id="simSireGrade" class="form-control" placeholder="Vacío..." readonly>
+                </div>
+
+                <div class="form-group">
+                    <label>Padre / Madre / Encargado Legal</label>
+                    <input type="text" id="simSireGuardian" class="form-control" placeholder="Vacío..." readonly>
+                </div>
+
+                <button type="button" class="btn-action btn-sire" id="btnConfirmSire" disabled onclick="executeSimulationStep2()">
+                    <i class="fa-solid fa-stamp"></i> 2. Confirmar Matrícula Oficial en SIRE
+                </button>
+
+                <div class="log-box" id="sireLogBox">
+                    > Portal SIRE en espera de transferencia...
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function log(boxId, msg) {
+            const box = document.getElementById(boxId);
+            if (box) {
+                box.innerHTML += `<br>> ${msg}`;
+                box.scrollTop = box.scrollHeight;
+            }
+        }
+
+        function executeSimulationStep1() {
+            const code = document.getElementById('simEnccoCode').value;
+            const cui = document.getElementById('simEnccoCui').value;
+            const firstName = document.getElementById('simEnccoFirstName').value;
+            const lastName = document.getElementById('simEnccoLastName').value;
+            const grade = document.getElementById('simEnccoGrade').value;
+            const birth = document.getElementById('simEnccoBirth').value;
+            const guardian = document.getElementById('simEnccoGuardian').value;
+
+            const icon = document.getElementById('bridgeIcon');
+            icon.style.transform = 'scale(1.25) rotate(360deg)';
+            icon.style.borderColor = '#10b981';
+
+            log('enccoLogBox', `Inscripción guardada en ENCCO: ${firstName} ${lastName} (${code})`);
+            log('enccoLogBox', `⚡ Disparando evento 'encco:student-enrolled' hacia la extensión...`);
+
+            setTimeout(() => {
+                log('sireLogBox', `📡 Conector ENCCO interceptó la ficha. Cambiando foco a portal SIRE...`);
+                log('sireLogBox', `📥 Rellenando casillas oficiales del MINEDUC...`);
+
+                // Llenar en SIRE con animación
+                const fields = [
+                    { id: 'simSireCode', val: code },
+                    { id: 'simSireCui', val: cui },
+                    { id: 'simSireName', val: `${firstName} ${lastName}` },
+                    { id: 'simSireBirth', val: birth },
+                    { id: 'simSireGrade', val: grade },
+                    { id: 'simSireGuardian', val: guardian }
+                ];
+
+                fields.forEach((f, idx) => {
+                    setTimeout(() => {
+                        const el = document.getElementById(f.id);
+                        if (el) {
+                            el.value = f.val;
+                            el.classList.add('filled-green');
+                        }
+                    }, idx * 120);
+                });
+
+                setTimeout(() => {
+                    const banner = document.getElementById('sireAssistantBanner');
+                    banner.style.display = 'block';
+                    document.getElementById('sireBannerDetails').innerHTML = `
+                        <strong>${firstName} ${lastName}</strong> | Código: <code>${code}</code><br>
+                        Grado: <strong>${grade}</strong> | Encargado: ${guardian}
+                    `;
+
+                    const btnConfirm = document.getElementById('btnConfirmSire');
+                    btnConfirm.disabled = false;
+                    btnConfirm.style.background = '#16a34a';
+
+                    log('sireLogBox', `✅ Todas las casillas completadas. Esperando clic final de confirmación humana.`);
+                    icon.style.transform = 'scale(1)';
+                }, fields.length * 120 + 200);
+
+            }, 400);
+        }
+
+        function executeSimulationStep2() {
+            const btn = document.getElementById('btnConfirmSire');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Asentando matrícula oficial...';
+
+            log('sireLogBox', `🏛️ Enviando confirmación de matrícula al MINEDUC...`);
+
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Matrícula Asentada Exitosamente';
+                btn.style.background = '#059669';
+
+                log('sireLogBox', `🎉 MATRÍCULA APROBADA: Alumno registrado legalmente en el SIRE para el Ciclo 2026.`);
+                log('enccoLogBox', `✔ Sincronización bidireccional finalizada con éxito (100%).`);
+                alert('🎉 ¡Simulación completada con éxito!\n\n1. El alumno se inscribió en la plataforma ENCCO.\n2. La extensión rellenó automáticamente el SIRE en 0 segundos.\n3. La confirmación final en el SIRE legalizó la matrícula sin errores.');
+            }, 1200);
+        }
+    </script>
+</body>
+</html>

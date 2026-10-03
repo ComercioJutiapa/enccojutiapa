@@ -1,5 +1,5 @@
 // content_encco.js - Script inyectado en la plataforma ENCCO Jutiapa
-console.log("🏛️ [ENCCO Extensión] Receptor de datos SIRE conectado");
+console.log("🏛️ [ENCCO Extensión] Receptor y despachador de datos SIRE conectado");
 
 function fillEnrollmentForm(data) {
     if (!data) return;
@@ -84,7 +84,7 @@ function fillEnrollmentForm(data) {
     }, 300);
 }
 
-// Escuchar mensaje en vivo
+// Escuchar mensaje en vivo desde la extensión
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'AUTOFILL_ENROLLMENT') {
         fillEnrollmentForm(request.data);
@@ -98,4 +98,38 @@ chrome.storage.local.get(['pendingAutofill'], (result) => {
         fillEnrollmentForm(result.pendingAutofill);
         chrome.storage.local.remove('pendingAutofill');
     }
+});
+
+// OPCIÓN 3: Escuchar evento de inscripción en la plataforma ENCCO para sincronizar con SIRE
+document.addEventListener('encco:student-enrolled', (e) => {
+    const student = e.detail;
+    if (!student) return;
+
+    console.log("🏛️ [ENCCO Extensión] Inscripción detectada en ENCCO. Preparando asistencia en SIRE...", student);
+
+    // Enviar a background worker para transferir a la pestaña de SIRE
+    chrome.runtime.sendMessage({
+        action: 'ENROLL_TO_SIRE',
+        data: {
+            personalCode: student.personalCode || student.codigoPersonal || '',
+            cui: student.cui || '',
+            firstName: student.firstName || '',
+            lastName: student.lastName || '',
+            name: student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+            birthDate: student.birthDate || '',
+            gender: student.gender || '',
+            grade: student.grade || student.gradeCode || '',
+            cycle: student.cycle || '2026',
+            shift: student.shift || 'Matutina',
+            phone: student.phone || '',
+            address: student.address || '',
+            guardianName: student.guardianName || student.tutor || '',
+            guardianDpi: student.guardianDpi || student.tutorDpi || '',
+            guardianPhone: student.guardianPhone || student.tutorPhone || ''
+        }
+    }, (res) => {
+        if (typeof window.showToast === 'function') {
+            window.showToast("🚀 Ficha enviada a portal SIRE para confirmación ministerial.", "info");
+        }
+    });
 });

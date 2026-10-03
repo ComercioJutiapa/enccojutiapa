@@ -11417,6 +11417,9 @@ async function saveStudentForm(e) {
         if (typeof renderDashboard === 'function') renderDashboard();
 
         showToast(`Estudiante "${firstName} ${lastName}" guardado exitosamente.`, 'success');
+        try {
+            document.dispatchEvent(new CustomEvent('encco:student-enrolled', { detail: studentObj }));
+        } catch(evErr) {}
         if (!studentId && typeof resetStudentEnrollmentForm === 'function') {
             resetStudentEnrollmentForm();
         }
