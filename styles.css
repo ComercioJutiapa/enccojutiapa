@@ -3558,4 +3558,228 @@ tr.row-student-retired td.att-cell:hover,
     }
 }
 
+/* ==========================================================================
+   ✨ ENHANCED VISUAL SYSTEM (UI/UX 2026 - ENCCO JUTIAPA)
+   1. Jerarquía Visual, Sombras Multicapa y Profundidad (Glassmorphism)
+   2. Experiencia en Tablas Densas (Data Grids, Tabular Nums & Sticky Headers)
+   3. Barra Lateral (Sidebar Navigation Transitions & Badges)
+   4. Tarjetas de Métricas (KPI Cards Hover & Dynamic Gradients)
+   5. Microinteracciones, Estados de Carga (Skeleton Shimmer) y Botones
+   6. Previsualización de Impresión en Papel Físico (Realistic Paper Preview)
+   ========================================================================== */
+
+/* 1. Jerarquía Visual, Sombras Multicapa y Glassmorphism */
+.app-header {
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    background-color: rgba(255, 255, 255, 0.94) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+body.theme-dark .app-header {
+    background-color: rgba(10, 31, 18, 0.92) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dash-card, .table-card {
+    border: 1px solid rgba(226, 232, 240, 0.85) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 4px -1px rgba(15, 23, 42, 0.04), 0 4px 10px -2px rgba(15, 23, 42, 0.05) !important;
+    transition: box-shadow 0.25s ease, border-color 0.25s ease !important;
+}
+
+.modal-container, .modal-card, .modal-content-box {
+    border-radius: 14px !important;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(15, 23, 42, 0.05) !important;
+}
+
+.modal-overlay, .modal-backdrop {
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    background-color: rgba(15, 23, 42, 0.65) !important;
+}
+
+/* 2. Experiencia en Tablas Densas (Data Grids, Tabular Nums & Sticky Headers) */
+.custom-table, .table, .custom-table td, .table td, .custom-table th, .table th,
+.grade-input, .student-code, .cell-numeric, [data-tabular="true"] {
+    font-variant-numeric: tabular-nums lining-nums !important;
+}
+
+.table-responsive {
+    position: relative;
+    border-radius: 10px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+
+.table-responsive::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.45);
+    border-radius: 4px;
+}
+
+.custom-table thead th, .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    letter-spacing: 0.4px;
+}
+
+.custom-table tbody tr:nth-child(even), .table tbody tr:nth-child(even) {
+    background-color: rgba(248, 250, 252, 0.65);
+}
+
+body.theme-dark .custom-table tbody tr:nth-child(even),
+body.theme-dark .table tbody tr:nth-child(even) {
+    background-color: rgba(14, 30, 20, 0.45);
+}
+
+.custom-table tbody tr, .table tbody tr {
+    transition: background-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.custom-table tbody tr:hover, .table tbody tr:hover {
+    background-color: #eff6ff !important;
+}
+
+body.theme-dark .custom-table tbody tr:hover,
+body.theme-dark .table tbody tr:hover {
+    background-color: rgba(29, 78, 216, 0.18) !important;
+}
+
+.custom-table tbody tr:hover td:first-child, .table tbody tr:hover td:first-child {
+    box-shadow: inset 3.5px 0 0 #1d4ed8;
+}
+
+/* Insignias de estado enriquecidas con pulso sutil */
+.badge-active, .badge-success, .status-pill-activo {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+}
+
+.badge-active::before, .badge-success::before, .status-pill-activo::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #10b981;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
+    animation: enccoPulseDot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes enccoPulseDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.75); }
+}
+
+/* 3. Barra Lateral (Sidebar Navigation Transitions & Badges) */
+.nav-item {
+    transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.nav-item:hover {
+    transform: translateX(3px) !important;
+}
+
+.nav-item.active {
+    background: linear-gradient(135deg, #1d4ed8 0%, #059669 100%) !important;
+    border-left: 3px solid #f97316 !important;
+    box-shadow: 0 4px 14px rgba(29, 78, 216, 0.35) !important;
+}
+
+.nav-section-label {
+    letter-spacing: 0.8px !important;
+    text-transform: uppercase !important;
+    opacity: 0.9 !important;
+}
+
+/* 4. Tarjetas de Métricas (KPI Cards Hover & Dynamic Gradients) */
+.kpi-card, .stat-card {
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.22s ease !important;
+}
+
+.kpi-card:hover, .stat-card:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 10px 20px -5px rgba(15, 23, 42, 0.1), 0 6px 8px -4px rgba(15, 23, 42, 0.05) !important;
+    border-color: rgba(29, 78, 216, 0.25) !important;
+}
+
+.kpi-icon {
+    transition: transform 0.22s ease, box-shadow 0.22s ease !important;
+}
+
+.kpi-card:hover .kpi-icon {
+    transform: scale(1.08) !important;
+}
+
+.kpi-icon.green {
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.18) !important;
+}
+
+.kpi-icon.blue {
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.18) !important;
+}
+
+.kpi-icon.orange {
+    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.18) !important;
+}
+
+/* 5. Microinteracciones, Estados de Carga (Skeleton Shimmer) y Botones */
+.btn {
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.15s ease, background 0.15s ease, opacity 0.15s ease !important;
+}
+
+.btn:hover {
+    transform: translateY(-1px) !important;
+}
+
+.btn:active {
+    transform: scale(0.97) !important;
+}
+
+.skeleton-shimmer, .skeleton-loading {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%) !important;
+    background-size: 200% 100% !important;
+    animation: enccoShimmer 1.6s infinite cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border-radius: 6px !important;
+}
+
+@keyframes enccoShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+input[type="text"]:focus, input[type="search"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+    outline: none !important;
+}
+
+/* 6. Previsualización de Impresión en Papel Físico (Realistic Paper Preview) */
+.official-document-preview-container, .print-preview-paper-wrapper, .oficio-sheet-preview, .print-sheet-preview {
+    background: #e2e8f0;
+    padding: 24px 16px;
+    border-radius: 12px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+}
+
+.official-document-preview-container .print-sheet,
+.print-preview-paper-wrapper .print-sheet,
+.oficio-sheet-preview .print-page-oficio,
+.print-sheet-preview .print-sheet {
+    background: #ffffff;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05);
+    border-radius: 2px;
+}
+
+
 
