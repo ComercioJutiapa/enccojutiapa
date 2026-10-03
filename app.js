@@ -1331,8 +1331,8 @@ function hasRolePermission(permKey, role = null) {
         return allowedCarnets.includes(targetRole);
     }
 
-    // 🛡️ BLINDAJE RBAC: "Bitácora de Auxiliatura" (Auxiliares, Secretaría, Dirección, Admin)
-    if (testKey === 'auxiliatura-log') {
+    // 🛡️ BLINDAJE RBAC: "Bitácora de Auxiliatura" y "Centro de Control" (Auxiliares, Secretaría, Dirección, Admin)
+    if (testKey === 'auxiliatura-log' || testKey === 'auxiliatura-center') {
         const allowedAux = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
         return allowedAux.includes(targetRole);
     }
@@ -2635,7 +2635,8 @@ var SYSTEM_MODULES_LIST = [
     { key: 'predictive-analytics', name: 'Analítica Predictiva y Riesgo Escolar', icon: 'fa-chart-line', category: 'Académico', desc: 'Semáforo de riesgo de deserción, ranking de cursos críticos y citaciones.' },
     { key: 'carnets', name: 'Carnés Estudiantiles CR80', icon: 'fa-id-card', category: 'Secretaría y Alumnos', desc: 'Generador de credenciales con código de barras Code 39 e impresión masiva en hoja Carta.' },
     { key: 'exoneraciones-log', name: 'Libro de Exoneraciones', icon: 'fa-file-shield', category: 'Secretaría y Alumnos', desc: 'Libro de registro oficial de exoneraciones y consideraciones académicas especiales.' },
-    { key: 'permissions-history', name: 'Historial de Permisos', icon: 'fa-clipboard-list', category: 'Estudiantil', desc: 'Historial oficial de permisos de ausencia autorizados por Auxiliatura.' }
+    { key: 'permissions-history', name: 'Historial de Permisos', icon: 'fa-clipboard-list', category: 'Estudiantil', desc: 'Historial oficial de permisos de ausencia autorizados por Auxiliatura.' },
+    { key: 'auxiliatura-center', name: 'Centro de Control Estudiantil', icon: 'fa-gauge-high', category: 'Estudiantil', desc: 'Panel unificado de monitoreo, ficha 360°, disciplina y permisos para Auxiliatura y Secretaría.' }
 ];
 window.SYSTEM_MODULES_LIST = SYSTEM_MODULES_LIST;
 
@@ -2677,7 +2678,7 @@ function initDefaultRolesConfig() {
             description: 'Coordinación disciplinaria escolar, control de asistencia y convivencia',
             color: '#d97706',
             isSystem: true,
-            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history']
+            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'auxiliatura-center', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history']
         },
         {
             key: 'docente',
@@ -9496,6 +9497,7 @@ function navigateTo(viewName, event = null) {
         'auxiliatura-log': { title: 'Bitácora Diaria de Ausencias y Alertas Escolares', sub: 'Monitoreo en tiempo real de inasistencias en aula, avisos a padres y verificación de auxiliatura' },
         'exoneraciones-log': { title: 'Libro de Registro Oficial de Exoneraciones Académicas', sub: 'Archivo central de alumnos con consideraciones especiales, dispensas y resoluciones ministeriales' },
         'permissions-history': { title: 'Libro de Registro Oficial de Permisos de Ausencia', sub: 'Archivo central de justificaciones de inasistencia, pases de salida y licencias emitidas por Auxiliatura' },
+        'auxiliatura-center': { title: 'Centro de Control Estudiantil y Disciplinario', sub: 'Ficha 360°, monitoreo activo de inasistencias, emisión de permisos y resolución de incidencias' },
     };
     const t = titles[viewName];
     if (t) {
@@ -9532,6 +9534,7 @@ function renderCurrentView() {
         case 'grade-stats': renderGradeStatsView(); break;
         case 'predictive-analytics': if (typeof renderPredictiveAnalyticsView === 'function') renderPredictiveAnalyticsView(); break;
         case 'carnets': if (typeof renderCarnetsView === 'function') renderCarnetsView(); break;
+        case 'auxiliatura-center': if (typeof renderAuxiliaturaCenterView === 'function') renderAuxiliaturaCenterView(); break;
         case 'auxiliatura-log': if (typeof renderAuxiliaturaLogView === 'function') renderAuxiliaturaLogView(); break;
         case 'exoneraciones-log': if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView(); break;
         case 'permissions-history': if (typeof renderPermissionsHistoryView === 'function') renderPermissionsHistoryView(); break;
@@ -24830,10 +24833,10 @@ function loadAttendanceList() {
                             // BLOQUEADO PARA DOCENTE: Solo lectura (disabled)
                             isCellReadonly = true;
                             cellClass += ' att-cell-locked att-cell-justified-readonly';
-                            cellTitle += ' — 🔒 REGISTRO OFICIAL BLOQUEADO: Justificado por Auxiliatura / Dirección / Secretaría. No modificable por docentes.';
-                            cellInnerHtml = `<span style="display:inline-flex; align-items:center; justify-content:center; gap:2px;"><i class="fa-solid fa-lock" style="font-size:0.60rem; opacity:0.85; color:#c2410c;"></i>J</span>`;
+                            cellTitle += ' — 🔒 REGISTRO OFICIAL BLOQUEADO: Justificado por Auxiliatura / Dirección / Secretaría. Haga clic para ver detalles.';
+                            cellInnerHtml = `<span onclick="event.stopPropagation(); if(typeof showJustificationDetailModal==='function') showJustificationDetailModal('${s.id}', ${day}, '${month}');" style="display:inline-flex; align-items:center; justify-content:center; gap:2px; cursor:pointer;" title="Clic para consultar quién autorizó esta inasistencia"><i class="fa-solid fa-lock" style="font-size:0.60rem; opacity:0.85; color:#c2410c;"></i>J</span>`;
                         } else {
-                            cellInnerHtml = `<span style="display:inline-flex; align-items:center; justify-content:center; gap:2px;"><i class="fa-solid fa-shield-halved" style="font-size:0.62rem; color:#ea580c;"></i>J</span>`;
+                            cellInnerHtml = `<span onclick="event.stopPropagation(); if(typeof showJustificationDetailModal==='function') showJustificationDetailModal('${s.id}', ${day}, '${month}');" style="display:inline-flex; align-items:center; justify-content:center; gap:2px; cursor:pointer;" title="Clic para consultar detalle oficial de la inasistencia"><i class="fa-solid fa-shield-halved" style="font-size:0.62rem; color:#ea580c;"></i>J</span>`;
                         }
                     } else {
                         // J COLOCADA DIRECTAMENTE POR EL DOCENTE (Editable libremente)
@@ -29140,9 +29143,15 @@ function renderDisciplineTable() {
         // Vista previa de la resolución del maestro auxiliar o dirección
         let resSnippet = '';
         if (d.resolution) {
+            const resAuthor = d.resolvedBy || 'Auxiliatura General';
+            const resDateStr = d.resolutionDate ? new Date(d.resolutionDate).toLocaleDateString('es-GT') : (d.date || '');
             resSnippet = `
-                <div style="font-size:0.82rem; color:#15803d; font-weight:600; margin-top:3px;">
-                    <i class="fa-solid fa-gavel"></i> <strong>Dictamen:</strong> ${d.actionType || 'Medida aplicada'}
+                <div style="font-size:0.8rem; color:#166534; background:#f0fdf4; border-left:3px solid #16a34a; padding:4px 8px; border-radius:3px; margin-top:4px;">
+                    <div><i class="fa-solid fa-gavel"></i> <strong>Dictamen:</strong> ${d.actionType || 'Medida aplicada'}</div>
+                    <div style="font-size:0.75rem; color:#15803d; margin-top:1px;">
+                        <i class="fa-solid fa-user-check"></i> <strong>Resuelto por:</strong> ${resAuthor} ${resDateStr ? `(${resDateStr})` : ''}
+                    </div>
+                    ${d.resolution ? `<div style="font-size:0.75rem; color:#334155; font-style:italic; margin-top:1px;">"${d.resolution}"</div>` : ''}
                 </div>
             `;
         } else {
