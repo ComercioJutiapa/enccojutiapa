@@ -3819,43 +3819,132 @@ body.theme-dark ::-webkit-scrollbar-thumb:hover {
     background: rgba(16, 185, 129, 0.6);
 }
 
-/* 2. Barra Lateral (Sidebar) - Ergonomía y Jerarquía */
+/* 2. Barra Lateral (Sidebar) - Modo Compacto de Alta Densidad y Legibilidad */
 .sidebar {
+    width: 236px !important;
+    padding: 6px 6px !important;
     transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
+.school-brand {
+    padding-bottom: 5px !important;
+    margin-bottom: 5px !important;
+    gap: 7px !important;
+}
+.school-logo-img {
+    width: 30px !important;
+    height: 30px !important;
+}
+.school-info h2 {
+    font-size: 0.92rem !important;
+    line-height: 1.05 !important;
+}
+.school-info p {
+    font-size: 0.60rem !important;
+    line-height: 1.12 !important;
+}
+.user-profile-card {
+    padding: 3px 6px !important;
+    margin-bottom: 4px !important;
+    gap: 6px !important;
+}
+.user-avatar {
+    width: 26px !important;
+    height: 26px !important;
+    font-size: 0.70rem !important;
+}
+.user-details h4 {
+    font-size: 0.74rem !important;
+    margin: 0 !important;
+    line-height: 1.15 !important;
+}
+.user-role-badge {
+    font-size: 0.54rem !important;
+    padding: 1px 5px !important;
+}
+.cycle-selector-box {
+    padding: 3px 6px !important;
+    margin-bottom: 4px !important;
+}
+.cycle-selector-box label {
+    font-size: 0.62rem !important;
+    margin-bottom: 1px !important;
+}
+.cycle-selector-box select {
+    padding: 1px 4px !important;
+    font-size: 0.72rem !important;
+    height: 22px !important;
+    line-height: 1 !important;
+}
 .sidebar-nav {
-    padding: 8px 6px !important;
+    padding: 2px 2px !important;
+    gap: 1px !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(56, 189, 248, 0.35) transparent !important;
+}
+.sidebar-nav::-webkit-scrollbar {
+    width: 3px !important;
+}
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(56, 189, 248, 0.35) !important;
+    border-radius: 3px !important;
 }
 .nav-item {
-    padding: 8px 12px !important;
-    margin: 2px 6px !important;
-    border-radius: 8px !important;
-    font-size: 0.84rem !important;
+    padding: 4px 8px !important;
+    margin: 1px 2px !important;
+    border-radius: 6px !important;
+    font-size: 0.77rem !important;
     font-weight: 500 !important;
+    line-height: 1.25 !important;
     display: flex !important;
     align-items: center !important;
-    gap: 10px !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    gap: 8px !important;
+    min-height: 27px !important;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 .nav-item:hover {
     background: rgba(255, 255, 255, 0.08) !important;
     color: #ffffff !important;
-    transform: translateX(3px) !important;
+    transform: translateX(2px) !important;
 }
 .nav-item.active {
     background: linear-gradient(90deg, rgba(2, 132, 199, 0.28) 0%, rgba(2, 132, 199, 0.08) 100%) !important;
     color: #38bdf8 !important;
     font-weight: 700 !important;
     border-left: 3px solid #38bdf8 !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1) !important;
+}
+.nav-item i {
+    font-size: 0.85rem !important;
+    width: 15px !important;
+    text-align: center !important;
+    flex-shrink: 0 !important;
+}
+.nav-item span {
+    font-size: 0.77rem !important;
 }
 .nav-section-label {
-    padding: 12px 14px 4px 14px !important;
-    font-size: 0.64rem !important;
+    padding: 6px 8px 2px 8px !important;
+    margin: 3px 0 1px 0 !important;
+    font-size: 0.58rem !important;
     font-weight: 800 !important;
-    letter-spacing: 0.07em !important;
-    color: rgba(255, 255, 255, 0.45) !important;
+    letter-spacing: 0.06em !important;
+    color: #67e8f9 !important;
+    opacity: 0.9 !important;
     text-transform: uppercase !important;
+}
+.sidebar-footer {
+    padding-top: 5px !important;
+    margin-top: auto !important;
+}
+.sidebar-footer .btn {
+    padding: 3px 6px !important;
+    font-size: 0.72rem !important;
+}
+.sidebar-copyright-box {
+    margin-top: 5px !important;
+    padding-top: 4px !important;
+    font-size: 0.60rem !important;
+    line-height: 1.25 !important;
 }
 
 /* 3. Tarjetas KPI y Métricas de Alto Impacto */
