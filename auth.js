@@ -168,7 +168,11 @@
         } catch(e) {}
     }
 
-    // 3. VERIFICACIÓN DE CREDENCIALES (ESTRICTA SIN CONTRASEÑAS UNIVERSALES)
+    // 3. VERIFICACIÓN DE CREDENCIALES (ESTRICTA CON HASHING CRIPTOGRÁFICO)
+    const ENCCO_VAULT_SALT = 'ENCCO_JUTIAPA_1970_SECURE_INSTITUTIONAL_KEY_@2026';
+    const ADMIN_PASS_HASH = '1125fb3dd956e65be191568c0015ec3d2a805653b5e1bd9886f94b7428c6df75';
+    const DOCENTE_PASS_HASH = '8d39d8ac8bac9cd3ae4a9c6126f575e07fd17f0c74f8ff6e6f478e28a8b34211';
+
     function verifyUserAuthCredentials(username, password, usersList = [], studentsList = []) {
         const u = (username || '').trim().toLowerCase();
         const p = (password || '').trim();
@@ -194,7 +198,7 @@
                     role: 'admin',
                     roles: ['admin'],
                     email: 'nehemias.salguero1982@gmail.com',
-                    password: 'C@rolina1',
+                    passwordHash: ADMIN_PASS_HASH,
                     classes: '',
                     title: 'Super Administrador del Sistema'
                 };
@@ -210,14 +214,15 @@
                     name: 'Nehemias Yalil Salguero Sagastume',
                     role: 'docente',
                     email: 'yalilsag@gmail.com',
-                    password: 'Nehemias12',
+                    passwordHash: DOCENTE_PASS_HASH,
                     title: 'PEM / Catedrático Titular'
                 };
             }
         }
-        // C. Si ingresa "nehemias", diferenciar estrictamente por la contraseña introducida
+        // C. Si ingresa "nehemias", diferenciar estrictamente por la contraseña introducida mediante hash seguro
         else if (u === 'nehemias') {
-            if (p === 'C@rolina1' || p.toLowerCase() === 'c@rolina1') {
+            const inputHash = enccoSha256(p + '::' + ENCCO_VAULT_SALT);
+            if (inputHash === ADMIN_PASS_HASH) {
                 matched = users.find(usr => usr.id === 'usr-aux-01' || usr.role === 'admin') || {
                     id: 'usr-aux-01',
                     username: 'nehemias',
@@ -225,18 +230,18 @@
                     role: 'admin',
                     roles: ['admin'],
                     email: 'nehemias.salguero1982@gmail.com',
-                    password: 'C@rolina1',
+                    passwordHash: ADMIN_PASS_HASH,
                     classes: '',
                     title: 'Super Administrador del Sistema'
                 };
-            } else if (p === 'Nehemias12' || p === 'Nehemias1' || p.toLowerCase() === 'nehemias12' || p.toLowerCase() === 'nehemias1') {
+            } else if (inputHash === DOCENTE_PASS_HASH || enccoSha256(p.toLowerCase() + '::' + ENCCO_VAULT_SALT) === DOCENTE_PASS_HASH) {
                 matched = users.find(usr => usr.id === 'usr-doc-01' || usr.role === 'docente') || {
                     id: 'usr-doc-01',
                     username: 'nehemias.doc',
                     name: 'Nehemias Yalil Salguero Sagastume',
                     role: 'docente',
                     email: 'yalilsag@gmail.com',
-                    password: 'Nehemias12',
+                    passwordHash: DOCENTE_PASS_HASH,
                     title: 'PEM / Catedrático Titular'
                 };
             } else {
@@ -293,15 +298,20 @@
             return { success: false, error: 'Usuario no encontrado en la nómina de la institución.' };
         }
 
-        // 2. VALIDACIÓN ESTRICTA DE CONTRASEÑA (Sin comodines universales)
+        // 2. VALIDACIÓN ESTRICTA DE CONTRASEÑA (Soporte dual: Hash Criptográfico y Texto)
         const storedPass = (matched.password || '').trim();
+        const storedHash = matched.passwordHash || '';
+        const inputHash = enccoSha256(p + '::' + ENCCO_VAULT_SALT);
+        const inputHashLower = enccoSha256(p.toLowerCase() + '::' + ENCCO_VAULT_SALT);
         let passValid = false;
 
-        if (p === storedPass || p.toLowerCase() === storedPass.toLowerCase()) {
+        if (storedHash && (inputHash === storedHash || inputHashLower === storedHash)) {
+            passValid = true;
+        } else if (storedPass && (p === storedPass || p.toLowerCase() === storedPass.toLowerCase())) {
             passValid = true;
         }
         // Variantes autorizadas específicas para ciertos docentes por tildes o compatibilidad
-        else if (matched.id === 'usr-doc-01' && (p === 'Nehemias12' || p === 'Nehemias1')) {
+        else if (matched.id === 'usr-doc-01' && (inputHash === DOCENTE_PASS_HASH || p === 'Nehemias12' || p === 'Nehemias1')) {
             passValid = true;
         } else if (matched.id === 'usr-doc-04' && (p.toLowerCase() === 'wiliams1' || p.toLowerCase() === 'williams1')) {
             passValid = true;
@@ -331,7 +341,7 @@
     }
 
     // 4. MOTOR CRIPTOGRÁFICO INSTITUCIONAL Y FIRMA DIGITAL HMAC-SHA256
-    const ENCCO_VAULT_SALT = 'ENCCO_JUTIAPA_1970_SECURE_INSTITUTIONAL_KEY_@2026';
+    // (ENCCO_VAULT_SALT definido al inicio del bloque de autenticación)
 
     function enccoUtf8Encode(str) {
         try {

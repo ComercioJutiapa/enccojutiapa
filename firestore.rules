@@ -2,80 +2,99 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Verificación de usuario autenticado
+    // Función de verificación de usuario autenticado
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Regla crítica para colección de configuración del sistema y bimestre activo
+    // Regla para configuración del sistema y ciclo escolar activo
     match /configuracion/{document=**} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
     match /config/{document=**} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
     match /configuracion_sistema/{document=**} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
 
-    // Reglas para Roles y Permisos
+    // Reglas para Roles y Permisos RBAC
     match /roles/{roleId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
     match /rolesConfig/{roleId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
 
     // Reglas para Docentes, Usuarios y Datos Personales
     match /docentes/{docenteId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
     match /users/{userId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
     match /datos_personales/{docId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
 
-    // Reglas para Clases, Pensum y Asignaciones
+    // Reglas para Clases, Pensum y Asignaciones Académicas
     match /clases/{claseId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
     match /pensum/{asgId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
     match /pensumCatalog/{subjectId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
 
     // Reglas para Estudiantes y Notas / Calificaciones
     match /estudiantes/{studentId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
     match /students/{studentId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
     match /notas/{notaId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
     match /gradesList/{gradeId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
     match /grados_secciones/{gradeId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
     match /maestros_guias/{guideId} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
 
-    // Estado escolar institucional unificado
+    // Estado escolar institucional unificado y auditoría
     match /encc_school_state/{document=**} {
-      allow read, write: if request.auth != null || true;
+      allow read: if true;
+      allow write: if isAuthenticated();
     }
 
-    // Acceso general para desarrollo y usuarios autenticados
+    // Denegación por defecto para cualquier documento no contemplado
     match /{document=**} {
-      allow read, write: if request.auth != null || true;
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
   }
 }

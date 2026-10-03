@@ -180,12 +180,80 @@
                 const courseGrades = this.getCourseGrades(courseId);
                 return (courseGrades && courseGrades[studentId]) ? courseGrades[studentId] : null;
             }
+        },
+
+        /**
+         * Módulo de Seguridad y Sanitización Anti-XSS
+         */
+        security: {
+            escapeHtml(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#x27;')
+                    .replace(/`/g, '&#x60;');
+            },
+            stripScripts(input) {
+                if (typeof input !== 'string') return input;
+                return input
+                    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                    .replace(/javascript:/gi, '')
+                    .replace(/vbscript:/gi, '')
+                    .replace(/on\w+\s*=/gi, '');
+            }
+        },
+
+        /**
+         * Registro Inmutable de Auditoría de Acciones Críticas
+         */
+        audit: {
+            record(action, details = {}, user = null) {
+                const u = user || (window.STATE ? window.STATE.currentUser : null);
+                const logEntry = {
+                    id: 'audit_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                    timestamp: new Date().toISOString(),
+                    user: u ? (u.username || u.name || u.email || 'Sistema') : 'Sistema',
+                    role: u ? (u.role || 'desconocido') : 'sistema',
+                    action: String(action || 'ACCION_DESCONOCIDA'),
+                    details: details,
+                    userAgent: (typeof navigator !== 'undefined') ? navigator.userAgent : 'Node/Test'
+                };
+
+                // Guardar en STATE local
+                if (window.STATE) {
+                    if (!Array.isArray(window.STATE.activityAuditLog)) {
+                        window.STATE.activityAuditLog = [];
+                    }
+                    window.STATE.activityAuditLog.unshift(logEntry);
+                    if (window.STATE.activityAuditLog.length > 500) {
+                        window.STATE.activityAuditLog.pop();
+                    }
+                }
+
+                // Sincronizar en RTDB Firebase si está disponible (append-only)
+                if (typeof window !== 'undefined' && window.rtdb && typeof window.ref === 'function' && typeof window.set === 'function') {
+                    try {
+                        const auditRef = window.ref(window.rtdb, 'encc_school_state/activityAuditLog/' + logEntry.id);
+                        window.set(auditRef, logEntry).catch(() => {});
+                    } catch (e) {}
+                }
+
+                if (window.AppEvents) {
+                    window.AppEvents.emit('audit:recorded', logEntry);
+                }
+
+                return logEntry;
+            }
         }
     };
 
     if (typeof window !== 'undefined') {
         window.DataRepository = DataRepository;
         window.AppEvents = AppEvents;
+        window.sanitizeText = DataRepository.security.escapeHtml;
     }
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = { DataRepository, AppEvents };

@@ -20,6 +20,7 @@ const CRITICAL_SUITES = [
     'test_excel_import_role_permission.js',
     'test_auxiliatura_control_center.js',
     'test_architecture_modules.js',
+    'test_security_hardening.js',
     'test_retired_students_rules.js',
     'test_exoneration_and_student_lists_resilience.js',
     'test_independent_bimestres.js',
