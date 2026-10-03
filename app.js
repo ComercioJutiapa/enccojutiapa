@@ -9914,6 +9914,13 @@ function printCourseStudentList(courseId) {
         return;
     }
 
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+    if (isDocente && currentDocenteUser && !isCourseAssignedToTeacher(targetCourse, currentDocenteUser)) {
+        showToast("Acceso Denegado: Como docente, únicamente tiene autorización para imprimir la nómina de sus propias clases asignadas.", "danger");
+        return;
+    }
+
     const gradeCode = targetCourse.gradeCode || targetCourse.grade;
     const students = (typeof getSortedGradebookStudents === 'function')
         ? getSortedGradebookStudents(gradeCode, targetCourse)
@@ -10049,6 +10056,13 @@ function printCourseAttendanceSheet(courseId, monthNum = null) {
     const targetCourse = (STATE.pensum || []).find(p => p.id === courseId);
     if (!targetCourse) {
         showToast("Cátedra no encontrada para imprimir la asistencia.", "warning");
+        return;
+    }
+
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+    if (isDocente && currentDocenteUser && !isCourseAssignedToTeacher(targetCourse, currentDocenteUser)) {
+        showToast("Acceso Denegado: Como docente, únicamente tiene autorización para imprimir la asistencia de sus propias clases asignadas.", "danger");
         return;
     }
 
@@ -12988,14 +13002,7 @@ function updatePrintModelSelects() {
     let careers = STATE.careers || [];
 
     if (isDocente && currentDocenteUser) {
-        const uName = (currentDocenteUser.name || '').trim().toLowerCase();
-        const uId = currentDocenteUser.id || '';
-
-        const myAssignments = (STATE.pensum || []).filter(a => {
-            const tName = (a.teacher || '').trim().toLowerCase();
-            return (uId && a.teacherId === uId) || (tName && (tName === uName || uName.includes(tName) || tName.includes(uName)));
-        });
-
+        const myAssignments = (STATE.pensum || []).filter(a => isCourseAssignedToTeacher(a, currentDocenteUser));
         const assignedCareerNames = [...new Set(myAssignments.map(a => a.career).filter(Boolean))];
         careers = careers.filter(c => assignedCareerNames.some(ac => ac.toLowerCase() === c.name.toLowerCase()));
 
@@ -13128,13 +13135,7 @@ function onPrintModelCareerChange(careerName) {
     let grades = sortGrades((STATE.gradesList || []).filter(g => g.career === careerName));
 
     if (isDocente && currentDocenteUser) {
-        const uName = (currentDocenteUser.name || '').trim().toLowerCase();
-        const uId = currentDocenteUser.id || '';
-
-        const myAssignments = (STATE.pensum || []).filter(a => {
-            const tName = (a.teacher || '').trim().toLowerCase();
-            return (uId && a.teacherId === uId) || (tName && (tName === uName || uName.includes(tName) || tName.includes(uName)));
-        });
+        const myAssignments = (STATE.pensum || []).filter(a => isCourseAssignedToTeacher(a, currentDocenteUser));
 
         grades = grades.filter(g => {
             const rawG = `${g.code || ''} ${g.name || ''} ${g.section || ''}`.toUpperCase();
@@ -13208,13 +13209,8 @@ function onPrintModelGradeChange(gradeCode) {
     let availableAssignments = [];
 
     if (isDocente && currentDocenteUser) {
-        const uName = (currentDocenteUser.name || '').trim().toLowerCase();
-        const uId = currentDocenteUser.id || '';
-
         availableAssignments = (STATE.pensum || []).filter(a => {
-            const tName = (a.teacher || '').trim().toLowerCase();
-            const isMyTeacher = (uId && a.teacherId === uId) || (tName && (tName === uName || uName.includes(tName) || tName.includes(uName)));
-            if (!isMyTeacher) return false;
+            if (!isCourseAssignedToTeacher(a, currentDocenteUser)) return false;
 
             const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
             let aGradeNum = 0;
@@ -13310,6 +13306,35 @@ function generateOfficialPrintList(opts = null) {
 
     const subjectName = getFullOfficialSubjectName(rawSubVal, gGradeNum || 0);
 
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+
+    // REGLA ESTRICTA INSTITUCIONAL: Los docentes solo pueden imprimir listas de las clases que tienen asignadas
+    if (isDocente && currentDocenteUser) {
+        const hasAssignedClassInGrade = (STATE.pensum || []).some(a => {
+            if (!isCourseAssignedToTeacher(a, currentDocenteUser)) return false;
+            const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+            let aGradeNum = 0;
+            if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+            else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+            else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+            const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
+            const isMatchGrade = (gGradeNum === 0 || aGradeNum === 0 || gGradeNum === aGradeNum);
+            const isMatchSec = (!gSec || !aSec || gSec === aSec);
+            return isMatchGrade && isMatchSec;
+        });
+
+        if (!hasAssignedClassInGrade) {
+            showToast("Acceso Denegado: Como docente, únicamente tiene autorización para generar e imprimir listas de los grados y secciones donde imparte clases.", "danger");
+            return;
+        }
+
+        if (targetPensum && !isCourseAssignedToTeacher(targetPensum, currentDocenteUser)) {
+            showToast("Acceso Denegado: Como docente, únicamente tiene autorización para generar e imprimir listas de sus propias clases asignadas.", "danger");
+            return;
+        }
+    }
+
     if (!subjectName && !targetPensum && modelType !== 'NOMINA_OFICIAL') {
         showToast("Por favor seleccione la Asignatura correspondiente a su cátedra.", "warning");
         return;
@@ -13317,17 +13342,9 @@ function generateOfficialPrintList(opts = null) {
 
     // Identificar el pensum si no fue provisto
     if (!targetPensum && subjectName) {
-        const isDocente = (STATE.currentRole === 'docente');
-        const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
-
         if (isDocente && currentDocenteUser) {
-            const uName = (currentDocenteUser.name || '').trim().toLowerCase();
-            const uId = currentDocenteUser.id || '';
-
             targetPensum = (STATE.pensum || []).find(a => {
-                const tName = (a.teacher || '').trim().toLowerCase();
-                const isMyTeacher = (uId && a.teacherId === uId) || (tName && (tName === uName || uName.includes(tName) || tName.includes(uName)));
-                if (!isMyTeacher) return false;
+                if (!isCourseAssignedToTeacher(a, currentDocenteUser)) return false;
 
                 const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
                 let aGradeNum = 0;
@@ -13373,6 +13390,11 @@ function generateOfficialPrintList(opts = null) {
                 return isMatchGrade && isMatchSec && isMatchSub;
             });
         }
+    }
+
+    if (isDocente && modelType !== 'NOMINA_OFICIAL' && !targetPensum) {
+        showToast("Acceso Denegado: Como docente, únicamente tiene autorización para generar e imprimir listas de sus propias clases asignadas.", "danger");
+        return;
     }
 
     const bNum = parseInt(bimestreNum) || 1;
@@ -13805,34 +13827,8 @@ function generateOfficialPrintList(opts = null) {
 
             const pageIndicator = totalPages > 1 ? `<div style="text-align:right; font-size:7px; color:#64748b; margin:1px 0 0 0; line-height:1;">Página ${pageIdx + 1} de ${totalPages}</div>` : '';
 
-            // Bloque de firmas institucionales en la última página
-            let signatureHtml = '';
-            if (isLastPage) {
-                if (modelType === 'ASISTENCIA_MENSUAL') {
-                    signatureHtml = `
-                    <div style="margin-top:14px; display:flex; justify-content:space-around; text-align:center; font-size:7.5px; color:#1e293b;">
-                        <div style="width:220px; border-top:1.2px solid #000; padding-top:3px;">
-                            <strong>${effectiveTeacher}</strong><br>Catedrático(a) Titular
-                        </div>
-                        <div style="width:220px; border-top:1.2px solid #000; padding-top:3px;">
-                            <strong>Profesor(a) Auxiliar</strong><br>Control y Registro de Asistencia
-                        </div>
-                    </div>`;
-                } else {
-                    signatureHtml = `
-                    <div style="margin-top:14px; display:flex; justify-content:space-around; text-align:center; font-size:7.5px; color:#1e293b;">
-                        <div style="width:190px; border-top:1.2px solid #000; padding-top:3px;">
-                            <strong>${effectiveTeacher}</strong><br>Catedrático(a) Titular
-                        </div>
-                        <div style="width:190px; border-top:1.2px solid #000; padding-top:3px;">
-                            <strong>Comisión de Evaluación</strong><br>ENCCO Jutiapa
-                        </div>
-                        <div style="width:190px; border-top:1.2px solid #000; padding-top:3px;">
-                            <strong>Vo.Bo. Dirección General</strong><br>Sello y Firma
-                        </div>
-                    </div>`;
-                }
-            }
+            // Ninguno de los listados debe llevar firmas (Regla Oficial Institucional ENCCO)
+            const signatureHtml = '';
 
             return `
             <div class="print-page-wrapper"${totalPages > 1 && pageIdx > 0 ? ' style="page-break-before:always;"' : ''}>
@@ -13900,7 +13896,6 @@ function generateOfficialPrintList(opts = null) {
                 </div>
 
                 ${tableHtml}
-                ${signatureHtml}
                 ${pageIndicator}
             </div>`;
         };
@@ -14105,25 +14100,80 @@ function generateOfficialExcelList(opts = null) {
     const gSec = getCleanSectionLetter(gradeObj ? gradeObj.section : (targetPensum ? targetPensum.section : gradeCode));
     const subjectName = getFullOfficialSubjectName(rawSubVal, gGradeNum || 0);
 
-    if (!subjectName && !targetPensum && modelType !== 'NOMINA_OFICIAL') {
-        showToast("Por favor seleccione la Asignatura correspondiente.", "warning");
-        return;
-    }
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
 
-    if (!targetPensum && subjectName) {
-        targetPensum = (STATE.pensum || []).find(a => {
+    // RESTRICCIÓN DOCENTE: Verificar que el docente imparte clases en este grado/sección
+    if (isDocente && currentDocenteUser) {
+        const hasAssignedClassInGrade = (STATE.pensum || []).some(a => {
+            if (!isCourseAssignedToTeacher(a, currentDocenteUser)) return false;
             const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
             let aGradeNum = 0;
             if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
             else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
             else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
             const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
-            const aOfficial = getFullOfficialSubjectName(a.subject || a.name || '', aGradeNum).toLowerCase();
-            const sOfficial = subjectName.toLowerCase();
             const isMatchGrade = (gGradeNum === 0 || aGradeNum === 0 || gGradeNum === aGradeNum);
             const isMatchSec = (!gSec || !aSec || gSec === aSec);
-            return isMatchGrade && isMatchSec && (aOfficial === sOfficial || aOfficial.includes(sOfficial) || sOfficial.includes(aOfficial));
+            return isMatchGrade && isMatchSec;
         });
+
+        if (!hasAssignedClassInGrade) {
+            showToast("Acceso Denegado: Como docente, únicamente tiene autorización para exportar listas de los grados y secciones donde imparte clases.", "danger");
+            return;
+        }
+
+        if (targetPensum && !isCourseAssignedToTeacher(targetPensum, currentDocenteUser)) {
+            showToast("Acceso Denegado: Como docente, únicamente tiene autorización para exportar listas de sus propias clases asignadas.", "danger");
+            return;
+        }
+    }
+
+    if (!subjectName && !targetPensum && modelType !== 'NOMINA_OFICIAL') {
+        showToast("Por favor seleccione la Asignatura correspondiente.", "warning");
+        return;
+    }
+
+    if (!targetPensum && subjectName) {
+        if (isDocente && currentDocenteUser) {
+            targetPensum = (STATE.pensum || []).find(a => {
+                if (!isCourseAssignedToTeacher(a, currentDocenteUser)) return false;
+                const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+                let aGradeNum = 0;
+                if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+                else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+                else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+                const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
+                const aOfficial = getFullOfficialSubjectName(a.subject || a.name || '', aGradeNum).toLowerCase();
+                const sOfficial = subjectName.toLowerCase();
+                const isMatchGrade = (gGradeNum === 0 || aGradeNum === 0 || gGradeNum === aGradeNum);
+                const isMatchSec = (!gSec || !aSec || gSec === aSec);
+                return isMatchGrade && isMatchSec && (aOfficial === sOfficial || aOfficial.includes(sOfficial) || sOfficial.includes(aOfficial));
+            });
+            if (!targetPensum && modelType !== 'NOMINA_OFICIAL') {
+                showToast("Acceso Denegado: Como docente, únicamente tiene autorización para exportar listas de sus propias clases asignadas.", "danger");
+                return;
+            }
+        } else {
+            targetPensum = (STATE.pensum || []).find(a => {
+                const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+                let aGradeNum = 0;
+                if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+                else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+                else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+                const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
+                const aOfficial = getFullOfficialSubjectName(a.subject || a.name || '', aGradeNum).toLowerCase();
+                const sOfficial = subjectName.toLowerCase();
+                const isMatchGrade = (gGradeNum === 0 || aGradeNum === 0 || gGradeNum === aGradeNum);
+                const isMatchSec = (!gSec || !aSec || gSec === aSec);
+                return isMatchGrade && isMatchSec && (aOfficial === sOfficial || aOfficial.includes(sOfficial) || sOfficial.includes(aOfficial));
+            });
+        }
+    }
+
+    if (isDocente && modelType !== 'NOMINA_OFICIAL' && !targetPensum) {
+        showToast("Acceso Denegado: Como docente, únicamente tiene autorización para exportar listas de sus propias clases asignadas.", "danger");
+        return;
     }
 
     const bNum = parseInt(bimestreNum) || 1;
@@ -15671,6 +15721,30 @@ function printStudentsOfficialList(targetGrade = null) {
         ? getCleanSectionLetter(targetGradeObj ? targetGradeObj.section : gradeVal)
         : (targetGradeObj ? targetGradeObj.section : gradeVal).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
 
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+    if (isDocente && currentDocenteUser) {
+        const hasAssignedClassInGrade = (STATE.pensum || []).some(a => {
+            if (!isCourseAssignedToTeacher(a, currentDocenteUser)) return false;
+            const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+            let aGradeNum = 0;
+            if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+            else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+            else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+            const aSec = typeof getCleanSectionLetter === 'function'
+                ? getCleanSectionLetter(a.section || a.gradeCode || rawA)
+                : (a.section || a.gradeCode || rawA).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+            const isMatchGrade = (qGradeNum === 0 || aGradeNum === 0 || qGradeNum === aGradeNum);
+            const isMatchSec = (!qSec || !aSec || qSec === aSec);
+            return isMatchGrade && isMatchSec;
+        });
+
+        if (!hasAssignedClassInGrade) {
+            showToast("Acceso Denegado: Como docente, únicamente tiene autorización para imprimir nóminas de los grados y secciones donde imparte clases.", "danger");
+            return;
+        }
+    }
+
     list = list.filter(s => {
         const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
         let sGradeNum = 0;
@@ -15816,17 +15890,9 @@ function printStudentsOfficialList(targetGrade = null) {
             </tbody>
         </table>
 
-        <div style="margin-top:40px; display:flex; justify-content:space-around; text-align:center; font-size:8.5pt; font-family:'Segoe UI', Arial, sans-serif; page-break-inside:avoid;">
-            <div style="width:260px;">
-                <div style="border-bottom:1.5px solid #000; margin-bottom:5px; height:35px;"></div>
-                <strong>${guideTeacher}</strong><br>
-                <span style="color:#475569; font-size:8pt;">Catedrático(a) Guía</span>
-            </div>
-            <div style="width:260px;">
-                <div style="border-bottom:1.5px solid #000; margin-bottom:5px; height:35px;"></div>
-                <strong>${h.director || 'Licda. María Elena Morales'}</strong><br>
-                <span style="color:#475569; font-size:8pt;">Dirección / Vo.Bo.</span>
-            </div>
+        <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center; font-size:7.5pt; color:#64748b; font-family:'Segoe UI', Arial, sans-serif; border-top:1px solid #cbd5e1; padding-top:4px;">
+            <span>ENCCO Jutiapa • Sistema Oficial de Control Académico • Nómina Oficial de Estudiantes</span>
+            <span>Total Alumnos: ${list.length} • Emisión: ${capDate}</span>
         </div>
     `;
 
@@ -15868,6 +15934,30 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
     const qSec = typeof getCleanSectionLetter === 'function'
         ? getCleanSectionLetter(targetGradeObj ? targetGradeObj.section : gradeVal)
         : (targetGradeObj ? targetGradeObj.section : gradeVal).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+    if (isDocente && currentDocenteUser) {
+        const hasAssignedClassInGrade = (STATE.pensum || []).some(a => {
+            if (!isCourseAssignedToTeacher(a, currentDocenteUser)) return false;
+            const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+            let aGradeNum = 0;
+            if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+            else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+            else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+            const aSec = typeof getCleanSectionLetter === 'function'
+                ? getCleanSectionLetter(a.section || a.gradeCode || rawA)
+                : (a.section || a.gradeCode || rawA).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+            const isMatchGrade = (qGradeNum === 0 || aGradeNum === 0 || qGradeNum === aGradeNum);
+            const isMatchSec = (!qSec || !aSec || qSec === aSec);
+            return isMatchGrade && isMatchSec;
+        });
+
+        if (!hasAssignedClassInGrade) {
+            showToast("Acceso Denegado: Como docente, únicamente tiene autorización para imprimir nóminas de los grados y secciones donde imparte clases.", "danger");
+            return;
+        }
+    }
 
     list = list.filter(s => {
         const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
@@ -31859,6 +31949,21 @@ function closeSectionStudentsModal() {
 window.closeSectionStudentsModal = closeSectionStudentsModal;
 
 function printSectionStudentsList(gradeCode, section) {
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+    if (isDocente && currentDocenteUser) {
+        const hasAssignedClassInGrade = (STATE.pensum || []).some(a => {
+            if (!isCourseAssignedToTeacher(a, currentDocenteUser)) return false;
+            const matchGrade = (a.gradeCode === gradeCode || a.grade === gradeCode || (a.gradeLabel && a.gradeLabel.includes(gradeCode)));
+            const matchSec = (!section || a.section === section);
+            return matchGrade && matchSec;
+        });
+        if (!hasAssignedClassInGrade) {
+            showToast("Acceso Denegado: Como docente, únicamente tiene autorización para imprimir nóminas de las secciones donde imparte clases.", "danger");
+            return;
+        }
+    }
+
     const students = (STATE.students || []).filter(s => (s.gradeCode === gradeCode || s.grade === gradeCode || (s.gradeLabel && s.gradeLabel.includes(gradeCode))) && (!section || s.section === section));
     students.sort((a, b) => {
         const nameA = formatStudentDisplayName(a, 'lastFirst');
