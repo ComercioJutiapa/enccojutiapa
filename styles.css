@@ -3934,10 +3934,67 @@ body.theme-dark ::-webkit-scrollbar-thumb:hover {
     line-height: 1.15 !important;
     flex: 1 !important;
 }
-.nav-item .badge {
-    font-size: 0.55rem !important;
-    padding: 1px 4px !important;
-    line-height: 1.1 !important;
+/* Micro-Insignias Numéricas en la Esquina de la Barra Lateral */
+.nav-item .badge,
+.nav-item .nav-badge-counter {
+    margin-left: auto !important;
+    min-width: 17px !important;
+    height: 17px !important;
+    max-height: 17px !important;
+    padding: 0 4px !important;
+    border-radius: 999px !important;
+    font-size: 0.60rem !important;
+    font-weight: 900 !important;
+    line-height: 17px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+    letter-spacing: 0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Ocultación garantizada cuando el valor es 0 o está oculto */
+.nav-item .badge[style*="display: none"],
+.nav-item .badge[style*="display:none"],
+.nav-item .badge.hidden {
+    display: none !important;
+}
+
+/* Fondos de colores diferenciados para cada tipo de notificación */
+#pendingGradeRequestsBadge,
+.nav-item .badge-reqs {
+    background: #ef4444 !important; /* Rojo: Solicitudes de desbloqueo */
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.45) !important;
+}
+
+#auxiliaturaCenterPendingBadge,
+.nav-item .badge-center {
+    background: #0284c7 !important; /* Azul cielo: Pendientes Centro de Control */
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.45) !important;
+}
+
+#auxiliaturaAlertsBadge,
+.nav-item .badge-alerts {
+    background: #ea580c !important; /* Naranja intenso: Alertas de Inasistencias */
+    color: #ffffff !important;
+    border: 1px solid rgba(255, 255, 255, 0.45) !important;
+}
+
+.nav-item .nav-badge-risk {
+    background: #7c3aed !important; /* Púrpura: IA / Riesgo */
+    color: #ffffff !important;
+    font-size: 0.52rem !important;
+    padding: 0 4px !important;
+    min-width: 17px !important;
+    height: 15px !important;
+    line-height: 15px !important;
+    border-radius: 4px !important;
 }
 .nav-section-label {
     padding: 5px 7px 1px 7px !important;
@@ -4029,18 +4086,24 @@ body.theme-dark ::-webkit-scrollbar-thumb:hover {
     vertical-align: middle !important;
 }
 
-/* Insignias de Estado y Badges Estandarizadas */
-.badge, .pill-badge, .aux-chip {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 4px !important;
-    padding: 3px 9px !important;
-    border-radius: 9999px !important;
-    font-weight: 700 !important;
-    font-size: 0.72rem !important;
-    letter-spacing: 0.01em !important;
-    line-height: 1.2 !important;
+/* Insignias de Estado y Badges Estandarizadas (Tablas y Módulos Generales) */
+.badge:not(.nav-item .badge), .pill-badge, .aux-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 3px 9px;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+}
+
+.badge[style*="display: none"],
+.badge[style*="display:none"],
+.badge.hidden {
+    display: none !important;
 }
 
 /* 5. Modales con Efecto Cristal (Backdrop Filter) y Ergonomía */

@@ -166,7 +166,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="styles.css?v=20261003_v4_dense_compact">
+    <link rel="stylesheet" href="styles.css?v=20261003_v5_micro_badges">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -593,7 +593,7 @@
                 <a href="#" class="nav-item" data-view="grade-lock" data-perm="grade-lock" onclick="navigateTo('grade-lock', event)">
                     <i class="fa-solid fa-lock"></i>
                     <span>Bloqueo de Bimestres</span>
-                    <span id="pendingGradeRequestsBadge" class="badge badge-danger" style="display:none; margin-left:auto; font-size:0.7rem; padding:2px 6px; border-radius:10px;">0</span>
+                    <span id="pendingGradeRequestsBadge" class="badge nav-badge-counter badge-reqs" style="display:none;">0</span>
                 </a>
                 <a href="#" class="nav-item" data-perm="cycles" onclick="openCycleModal(event)">
                     <i class="fa-solid fa-calendar-days"></i>
@@ -621,12 +621,12 @@
                 <a href="#" class="nav-item" data-view="auxiliatura-center" data-perm="auxiliatura-center" data-allowed="director,secretaria,profesor_auxiliar,admin" onclick="navigateTo('auxiliatura-center', event)">
                     <i class="fa-solid fa-gauge-high"></i>
                     <span>Centro de Control</span>
-                    <span id="auxiliaturaCenterPendingBadge" class="badge" style="margin-left:auto; font-size:0.68rem; padding:2px 6px; background:#0284c7; color:#fff; border-radius:999px; font-weight:800; display:none;">0</span>
+                    <span id="auxiliaturaCenterPendingBadge" class="badge nav-badge-counter badge-center" style="display:none;">0</span>
                 </a>
                 <a href="#" class="nav-item" data-view="auxiliatura-log" data-perm="auxiliatura-log" data-allowed="director,secretaria,profesor_auxiliar,admin" onclick="navigateTo('auxiliatura-log', event)">
                     <i class="fa-solid fa-clipboard-user"></i>
                     <span>Bitácora de Auxiliatura</span>
-                    <span id="auxiliaturaAlertsBadge" class="badge" style="margin-left:auto; font-size:0.68rem; padding:2px 6px; background:#dc2626; color:#fff; border-radius:999px; font-weight:800; display:none;">0</span>
+                    <span id="auxiliaturaAlertsBadge" class="badge nav-badge-counter badge-alerts" style="display:none;">0</span>
                 </a>
                 <a href="#" class="nav-item" data-view="exoneraciones-log" data-perm="exoneraciones-log" data-allowed="*" onclick="navigateTo('exoneraciones-log', event)">
                     <i class="fa-solid fa-file-shield"></i>
@@ -654,7 +654,7 @@
                 <a href="#" class="nav-item" data-view="predictive-analytics" data-perm="predictive-analytics" data-allowed="director,secretaria,admin" onclick="navigateTo('predictive-analytics', event)">
                     <i class="fa-solid fa-chart-line"></i>
                     <span>Analítica y Riesgo Escolar</span>
-                    <span class="badge" style="margin-left:auto; font-size:0.65rem; padding:2px 6px; background:#e11d48; color:#fff; border-radius:4px; font-weight:700;">IA/Riesgo</span>
+                    <span class="badge nav-badge-risk" title="Analítica Predictiva con Inteligencia Artificial">IA</span>
                 </a>
             </nav>
 
