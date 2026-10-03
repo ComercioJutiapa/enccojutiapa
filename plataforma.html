@@ -4209,6 +4209,7 @@
                                 <span class="badge badge-success" id="profStatusBadge">Activo</span>
                                 <span id="profCareerBadge" class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700;">Perito Contador</span>
                                 <span id="profGradeDisplayBadge" class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:700;"><i class="fa-solid fa-graduation-cap"></i> Grado y Sección</span>
+                                <span id="profAbsencesBadge" class="badge" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; font-weight:700; display:none;"><i class="fa-solid fa-calendar-xmark"></i> <span id="profAbsencesBadgeText">0 Faltas</span></span>
                             </div>
                         </div>
                     </div>
@@ -4219,7 +4220,7 @@
                             <i class="fa-solid fa-user"></i> 1. Ficha de Datos Personales
                         </button>
                         <button type="button" class="profile-tab-btn" id="profTabBtn-discipline" onclick="switchStudentProfileTab('discipline')">
-                            <i class="fa-solid fa-triangle-exclamation"></i> 2. Reportes Disciplinarios (<span id="profDisciplineCount">0</span>)
+                            <i class="fa-solid fa-triangle-exclamation"></i> 2. Incidencias y Asistencia (<span id="profDisciplineCount">0</span>)
                         </button>
                         <button type="button" class="profile-tab-btn" id="profTabBtn-annotations" onclick="switchStudentProfileTab('annotations')">
                             <i class="fa-solid fa-comment-dots"></i> 3. Bitácora y Anotaciones (<span id="profAnnotationsTabCount">0</span>)
@@ -4323,21 +4324,57 @@
                     </div>
 
                     <!-- ======================================================== -->
-                    <!-- PESTAÑA 2: REPORTES Y CONDUCTA DISCIPLINARIA -->
+                    <!-- PESTAÑA 2: INCIDENCIAS, ASISTENCIA Y DISCIPLINA -->
                     <!-- ======================================================== -->
                     <div class="profile-tab-content" id="profTab-discipline" style="display:none;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-                            <div>
-                                <h4 style="margin:0; color:var(--brand-green-dark); font-size:1rem; font-weight:800;">
-                                    <i class="fa-solid fa-triangle-exclamation"></i> Historial y Llamadas de Atención
-                                </h4>
-                                <p style="margin:2px 0 0 0; font-size:0.82rem; color:var(--text-secondary);">Registro de conducta, observaciones y citaciones de padres.</p>
+                        <!-- RESUMEN DE INCIDENCIAS DEL ESTUDIANTE -->
+                        <div id="profIncidentsKpiBar" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:14px;">
+                            <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:8px 12px; text-align:center;">
+                                <div style="font-size:0.72rem; font-weight:700; color:#991b1b; text-transform:uppercase;">Inasistencias Ciclo</div>
+                                <div id="profKpiTotalAbsences" style="font-size:1.25rem; font-weight:900; color:#dc2626;">0</div>
                             </div>
-                            <button type="button" class="btn btn-warning btn-sm" onclick="openDisciplineModalForStudent(STATE.selectedStudentId)" style="font-weight:700;">
-                                <i class="fa-solid fa-plus-circle"></i> Nueva Llamada de Atención
-                            </button>
+                            <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:8px 12px; text-align:center;">
+                                <div style="font-size:0.72rem; font-weight:700; color:#92400e; text-transform:uppercase;">Faltas Este Mes</div>
+                                <div id="profKpiMonthAbsences" style="font-size:1.25rem; font-weight:900; color:#d97706;">0</div>
+                            </div>
+                            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:8px 12px; text-align:center;">
+                                <div style="font-size:0.72rem; font-weight:700; color:#166534; text-transform:uppercase;">Justificadas</div>
+                                <div id="profKpiJustifiedAbsences" style="font-size:1.25rem; font-weight:900; color:#16a34a;">0</div>
+                            </div>
+                            <div style="background:#fdf2f8; border:1px solid #fbcfe8; border-radius:8px; padding:8px 12px; text-align:center;">
+                                <div style="font-size:0.72rem; font-weight:700; color:#9d174d; text-transform:uppercase;">Llamadas Atención</div>
+                                <div id="profKpiDisciplineCount" style="font-size:1.25rem; font-weight:900; color:#db2777;">0</div>
+                            </div>
                         </div>
-                        <div id="studentDisciplineHistory" style="font-size:0.86rem; min-height:140px; max-height:280px; overflow-y:auto; background:var(--bg-main); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-color);"></div>
+
+                        <!-- SECCIÓN 1: HISTORIAL DE INASISTENCIAS REPORTADAS EN AULA -->
+                        <div style="margin-bottom:16px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <div>
+                                    <h4 style="margin:0; color:#0369a1; font-size:0.95rem; font-weight:800;">
+                                        <i class="fa-solid fa-user-xmark"></i> Historial de Inasistencias y Ausencias en Aula
+                                    </h4>
+                                    <p style="margin:2px 0 0 0; font-size:0.78rem; color:var(--text-secondary);">Registro de faltas reportadas por cátedra, pases y resoluciones de Auxiliatura.</p>
+                                </div>
+                            </div>
+                            <div id="studentAttendanceHistory" style="font-size:0.84rem; min-height:80px; max-height:220px; overflow-y:auto; background:var(--bg-main); padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border-color);"></div>
+                        </div>
+
+                        <!-- SECCIÓN 2: REPORTES DISCIPLINARIOS Y LLAMADAS DE ATENCIÓN -->
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+                                <div>
+                                    <h4 style="margin:0; color:var(--brand-green-dark); font-size:0.95rem; font-weight:800;">
+                                        <i class="fa-solid fa-triangle-exclamation"></i> Llamadas de Atención y Conducta
+                                    </h4>
+                                    <p style="margin:2px 0 0 0; font-size:0.78rem; color:var(--text-secondary);">Faltas leves, moderadas o graves y acuerdos disciplinarios.</p>
+                                </div>
+                                <button type="button" class="btn btn-warning btn-sm" onclick="openDisciplineModalForStudent(STATE.selectedStudentId)" style="font-weight:700; font-size:0.78rem; padding:3px 10px;">
+                                    <i class="fa-solid fa-plus-circle"></i> Nueva Llamada de Atención
+                                </button>
+                            </div>
+                            <div id="studentDisciplineHistory" style="font-size:0.86rem; min-height:100px; max-height:220px; overflow-y:auto; background:var(--bg-main); padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border-color);"></div>
+                        </div>
                     </div>
 
                     <!-- ======================================================== -->

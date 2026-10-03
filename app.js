@@ -12429,10 +12429,130 @@ function openStudentProfileModal(id) {
         retDate.readOnly = !canEdit;
     }
 
-    // 3. Pestaña 2: Reportes Disciplinarios
-    const discList = (STATE.disciplineReports || []).filter(d => d.studentId === id);
+    // 3. Pestaña 2: Incidencias, Inasistencias y Disciplina
+    const discList = (STATE.disciplineReports || []).filter(d => d.studentId === id || (student.carne && d.carne === student.carne));
+    const attAlerts = (STATE.attendanceAlerts || []).filter(a => {
+        if (!a) return false;
+        if (a.studentId && a.studentId === id) return true;
+        if (student.carne && a.carne && a.carne === student.carne) return true;
+        const sFullName = formatStudentDisplayName(student, 'lastFirst').toLowerCase();
+        if (a.studentName && sFullName.includes(a.studentName.toLowerCase())) return true;
+        return false;
+    });
+
+    const currentMonth = new Date().getMonth() + 1;
+    const monthAbsencesCount = (typeof getStudentMonthAbsenceDays === 'function') ? getStudentMonthAbsenceDays(id, currentMonth) : 0;
+    const totalCycleAbsences = Math.max(attAlerts.filter(a => a.status !== 'corregida').length, monthAbsencesCount);
+    const justifiedCount = attAlerts.filter(a => a.status === 'justificada').length;
+    const totalIncidents = discList.length + totalCycleAbsences;
+
+    // Badges en cabecera del perfil
     const countBadge = document.getElementById('profDisciplineCount');
-    if (countBadge) countBadge.textContent = discList.length;
+    if (countBadge) countBadge.textContent = totalIncidents;
+
+    const absBadge = document.getElementById('profAbsencesBadge');
+    const absBadgeText = document.getElementById('profAbsencesBadgeText');
+    if (absBadge && absBadgeText) {
+        if (totalCycleAbsences > 0) {
+            absBadge.style.display = 'inline-flex';
+            absBadgeText.textContent = `${totalCycleAbsences} Inasistencia${totalCycleAbsences > 1 ? 's' : ''}`;
+            if (monthAbsencesCount >= 3) {
+                absBadge.style.background = '#fee2e2';
+                absBadge.style.color = '#991b1b';
+                absBadge.style.borderColor = '#fca5a5';
+                absBadge.title = `Estudiante en riesgo: ${monthAbsencesCount} inasistencias este mes`;
+            } else {
+                absBadge.style.background = '#fef3c7';
+                absBadge.style.color = '#92400e';
+                absBadge.style.borderColor = '#fde68a';
+            }
+        } else {
+            absBadge.style.display = 'none';
+        }
+    }
+
+    // KPIs dentro de la Pestaña 2
+    const elKpiTotAbs = document.getElementById('profKpiTotalAbsences');
+    const elKpiMonAbs = document.getElementById('profKpiMonthAbsences');
+    const elKpiJust = document.getElementById('profKpiJustifiedAbsences');
+    const elKpiDisc = document.getElementById('profKpiDisciplineCount');
+    if (elKpiTotAbs) elKpiTotAbs.textContent = totalCycleAbsences;
+    if (elKpiMonAbs) elKpiMonAbs.textContent = monthAbsencesCount || attAlerts.filter(a => a.status === 'pendiente' || !a.status).length;
+    if (elKpiJust) elKpiJust.textContent = justifiedCount;
+    if (elKpiDisc) elKpiDisc.textContent = discList.length;
+
+    // Renderizar Historial de Inasistencias en Aula
+    const attBox = document.getElementById('studentAttendanceHistory');
+    if (attBox) {
+        if (attAlerts.length === 0 && monthAbsencesCount === 0) {
+            attBox.innerHTML = `
+                <div style="text-align:center; padding:18px 10px; color:var(--text-muted);">
+                    <i class="fa-solid fa-circle-check" style="color:var(--brand-green); font-size:1.6rem; margin-bottom:4px; display:block;"></i>
+                    <strong style="color:var(--text-primary); font-size:0.88rem;">Sin Inasistencias Reportadas</strong>
+                    <p style="margin:2px 0 0 0; font-size:0.78rem;">El estudiante mantiene asistencia regular sin faltas registradas en el ciclo escolar.</p>
+                </div>
+            `;
+        } else {
+            attBox.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    ${attAlerts.map(a => {
+                        let statusColor = '#dc2626';
+                        let statusBg = '#fee2e2';
+                        let statusBorder = '#fca5a5';
+                        let statusLabel = 'Pendiente de Justificar';
+                        let statusIcon = 'fa-clock';
+
+                        if (a.status === 'justificada') {
+                            statusColor = '#166534';
+                            statusBg = '#dcfce7';
+                            statusBorder = '#86efac';
+                            statusLabel = 'Justificada con Permiso';
+                            statusIcon = 'fa-circle-check';
+                        } else if (a.status === 'citacion') {
+                            statusColor = '#854d0e';
+                            statusBg = '#fef9c3';
+                            statusBorder = '#fde047';
+                            statusLabel = 'Con Citación a Padre';
+                            statusIcon = 'fa-envelope-open-text';
+                        } else if (a.status === 'verificada') {
+                            statusColor = '#334155';
+                            statusBg = '#f1f5f9';
+                            statusBorder = '#cbd5e1';
+                            statusLabel = 'Falta Verificada / Injustificada';
+                            statusIcon = 'fa-check-double';
+                        }
+
+                        const canJustify = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria' || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar');
+
+                        return `
+                            <div style="border:1px solid #e2e8f0; border-radius:6px; padding:8px 10px; background:#ffffff; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                                <div style="flex:1; min-width:200px;">
+                                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                                        <span style="font-weight:800; font-size:0.82rem; color:#0f172a;"><i class="fa-regular fa-calendar" style="color:#0369a1;"></i> ${a.date || 'Fecha actual'}</span>
+                                        ${a.time ? `<span style="font-size:0.75rem; color:#64748b;">(${a.time})</span>` : ''}
+                                        <span class="badge" style="background:${statusBg}; color:${statusColor}; border:1px solid ${statusBorder}; font-size:0.7rem; font-weight:700;">
+                                            <i class="fa-solid ${statusIcon}"></i> ${statusLabel}
+                                        </span>
+                                    </div>
+                                    <div style="font-size:0.78rem; color:#334155;">
+                                        <strong>Cátedra:</strong> ${escapeHtml(a.courseName || a.subject || 'Asignatura')} &bull; <strong>Catedrático:</strong> ${escapeHtml(a.teacherName || 'Docente')}
+                                    </div>
+                                    ${a.notes ? `<div style="font-size:0.74rem; color:#475569; font-style:italic; margin-top:2px; background:#f8fafc; padding:2px 6px; border-radius:3px;">📝 ${escapeHtml(a.notes)}</div>` : ''}
+                                </div>
+                                ${canJustify && a.status !== 'justificada' ? `
+                                    <div style="display:flex; gap:4px;">
+                                        <button type="button" class="btn btn-xs btn-outline-success" onclick="openAuxiliaturaJustifyModal('${a.id}')" style="font-size:0.72rem; padding:2px 6px; font-weight:700;">
+                                            <i class="fa-solid fa-pen-to-square"></i> Justificar
+                                        </button>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+    }
 
     const discBox = document.getElementById('studentDisciplineHistory');
     if (discBox) {
@@ -12444,26 +12564,29 @@ function openStudentProfileModal(id) {
                     <p style="margin:4px 0 0 0; font-size:0.82rem;">El estudiante no cuenta con llamadas de atención ni reportes de conducta registrados.</p>
                 </div>
             `;
-        } else {
+            const canResolveDiscipline = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar');
             const canDeleteDiscipline = typeof checkDisciplineDirectorPermission === 'function' ? checkDisciplineDirectorPermission() : false;
             discBox.innerHTML = discList.map((d, index) => {
                 const isGrav = d.severity === 'Grave' || d.severity === 'Muy Grave';
-                const deleteBtnHtml = canDeleteDiscipline ? '<button type="button" class="btn btn-xs btn-outline-danger" onclick="deleteDisciplineReport(\'' + d.id + '\')" title="Eliminar reporte (Dirección)" style="padding:2px 7px; font-weight:700; font-size:0.75rem;"><i class="fa-solid fa-trash"></i> Eliminar</button>' : '';
+                const resolveBtnHtml = canResolveDiscipline ? `<button type="button" class="btn btn-xs btn-outline-primary" onclick="openDisciplineResolutionModal('${d.id}')" title="Atender o emitir resolución" style="padding:2px 7px; font-weight:700; font-size:0.75rem;"><i class="fa-solid fa-pen-to-square"></i> ${d.status === 'Resuelto' ? 'Ver Resolución' : 'Atender'}</button>` : '';
+                const deleteBtnHtml = canDeleteDiscipline ? '<button type="button" class="btn btn-xs btn-outline-danger" onclick="deleteDisciplineReport(\'' + d.id + '\')" title="Eliminar reporte (Dirección)" style="padding:2px 7px; font-weight:700; font-size:0.75rem;"><i class="fa-solid fa-trash"></i></button>' : '';
                 return `
                     <div style="margin-bottom:8px; border:1px solid #e2e8f0; background:#ffffff; border-radius:6px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; flex-wrap:wrap; gap:6px;">
                             <span class="badge ${isGrav ? 'badge-danger' : 'badge-warning'}" style="font-weight:700;">
-                                <i class="fa-solid fa-triangle-exclamation"></i> ${d.severity || 'Falta Leve'}
+                                <i class="fa-solid fa-triangle-exclamation"></i> ${d.severity || 'Falta Leve'} &bull; ${escapeHtml(d.status || 'Pendiente')}
                             </span>
-                            <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="display:flex; align-items:center; gap:6px;">
                                 <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;"><i class="fa-regular fa-clock"></i> ${d.date}</span>
+                                ${resolveBtnHtml}
                                 ${deleteBtnHtml}
                             </div>
                         </div>
-                        <div style="font-weight:700; color:#1e293b; font-size:0.88rem; margin-bottom:2px;">${d.reason}</div>
-                        ${d.notes ? `<div style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:4px; font-style:italic;">"${d.notes}"</div>` : ''}
+                        <div style="font-weight:700; color:#1e293b; font-size:0.88rem; margin-bottom:2px;">${escapeHtml(d.reason)}</div>
+                        ${d.notes ? `<div style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:4px; font-style:italic;">"${escapeHtml(d.notes)}"</div>` : ''}
+                        ${d.status === 'Resuelto' ? `<div style="font-size:0.76rem; color:#166534; background:#dcfce7; border-left:3px solid #16a34a; padding:3px 6px; margin-top:4px; border-radius:2px;"><strong>Resolución:</strong> ${escapeHtml(d.resolution || d.resolutionText || 'Caso resuelto')} <span style="color:#64748b;">(${escapeHtml(d.resolvedBy || 'Auxiliatura')})</span></div>` : ''}
                         <div style="font-size:0.78rem; color:#0369a1; display:flex; justify-content:space-between; border-top:1px dashed #e2e8f0; padding-top:4px; margin-top:4px;">
-                            <span><strong>Reportado por:</strong> ${d.teacher || 'Catedrático Titular'}</span>
+                            <span><strong>Reportado por:</strong> ${escapeHtml(d.teacher || 'Catedrático Titular')}</span>
                             ${d.tutorNotified ? '<span style="color:#15803d; font-weight:700;"><i class="fa-solid fa-phone-volume"></i> Padres Notificados</span>' : '<span style="color:#b45309;">Sin notificar a padres</span>'}
                         </div>
                     </div>
@@ -18143,21 +18266,49 @@ function getUserAlerts() {
                 type: 'danger',
                 icon: 'fa-bell',
                 title: `${pendingToday.length} Inasistencia(s) Reportada(s) Hoy`,
-                message: `Catedráticos reportaron ${pendingToday.length} alumno(s) ausente(s) en el aula hoy. Requiere verificación en bitácora.`,
+                message: `Catedráticos reportaron ${pendingToday.length} alumno(s) ausente(s) en el aula hoy. Requiere verificación y resolución.`,
                 action: "navigateTo('auxiliatura-log')",
                 actionLabel: 'Ver Bitácora'
             });
 
-            // Apilar alertas individuales de inasistencia en el Centro de Notificaciones y Avisos
-            pendingToday.slice(0, 5).forEach(alertItem => {
+            // Apilar alertas individuales de inasistencia con acción directa para Justificar / Resolver
+            pendingToday.forEach(alertItem => {
                 rawAlerts.push({
                     id: `alert_item_${alertItem.id}`,
                     type: 'danger',
                     icon: 'fa-user-xmark',
                     title: `Ausencia: ${alertItem.studentName}`,
                     message: `${alertItem.gradeLabel || ''} - ${alertItem.courseName || ''} (${alertItem.time || ''}). Catedrático: ${alertItem.teacherName || 'Docente'}.`,
-                    action: "navigateTo('auxiliatura-log')",
-                    actionLabel: 'Ver en Bitácora'
+                    action: `openAuxiliaturaJustifyModal('${alertItem.id}')`,
+                    actionLabel: 'Resolver Falta'
+                });
+            });
+        }
+
+        // 2. Reportes de Conducta / Llamadas de Atención pendientes
+        const pendingDisc = (STATE.disciplineReports || []).filter(d => d.status === 'Pendiente' || !d.status);
+        if (pendingDisc.length > 0) {
+            rawAlerts.push({
+                id: `alert_aux_disc_pending_${pendingDisc.length}`,
+                type: 'warning',
+                icon: 'fa-triangle-exclamation',
+                title: `${pendingDisc.length} Reporte(s) de Conducta Pendiente(s)`,
+                message: `Existen incidencias disciplinarias remitidas por catedráticos pendientes de atención en Auxiliatura.`,
+                action: "navigateTo('discipline')",
+                actionLabel: 'Ver Incidencias'
+            });
+
+            // Apilar alertas individuales de disciplina para resolver directamente
+            pendingDisc.forEach(rep => {
+                let badgeType = rep.severity === 'Muy Grave' ? 'danger' : (rep.severity === 'Grave' ? 'warning' : 'info');
+                rawAlerts.push({
+                    id: `alert_aux_disc_${rep.id}`,
+                    type: badgeType,
+                    icon: 'fa-scale-unbalanced',
+                    title: `Incidencia (${rep.severity || 'Leve'}): ${rep.studentName || 'Estudiante'}`,
+                    message: `${rep.grade || ''}: ${rep.reason || 'Sin detalles'}. Docente: ${rep.teacher || 'Catedrático'}.`,
+                    action: `openDisciplineResolutionModal('${rep.id}')`,
+                    actionLabel: 'Atender Caso'
                 });
             });
         }
@@ -28717,6 +28868,14 @@ async function saveDisciplineResolutionForm(e) {
     closeDisciplineResolutionModal();
     renderDisciplineTable();
     if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
+    if (typeof renderCurrentDashboardAlerts === 'function') renderCurrentDashboardAlerts();
+    const profModal = document.getElementById('studentProfileModal');
+    if (profModal && (profModal.classList.contains('active') || profModal.style.display !== 'none')) {
+        if (STATE.selectedStudentId && typeof openStudentProfileModal === 'function') {
+            openStudentProfileModal(STATE.selectedStudentId);
+        }
+    }
     
     if (isDirector) {
         showToast(`Resolución actualizada y validada con éxito por la Dirección.`, 'success');
@@ -36853,6 +37012,15 @@ async function submitAuxiliaturaJustification() {
     closeAuxiliaturaJustifyModal();
     updateAuxiliaturaBadge();
     renderAuxiliaturaLogView();
+    if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
+    if (typeof renderCurrentDashboardAlerts === 'function') renderCurrentDashboardAlerts();
+    if (typeof renderDashboardView === 'function') renderDashboardView();
+    const profModal = document.getElementById('studentProfileModal');
+    if (profModal && (profModal.classList.contains('active') || profModal.style.display !== 'none')) {
+        if (STATE.selectedStudentId && typeof openStudentProfileModal === 'function') {
+            openStudentProfileModal(STATE.selectedStudentId);
+        }
+    }
 
     const typeLabels = {
         'justificada': 'Falta Justificada con éxito (Asistencia actualizada a "J")',
@@ -36877,6 +37045,14 @@ function markAuxiliaturaAlertStatus(alertId, newStatus) {
 
     updateAuxiliaturaBadge();
     renderAuxiliaturaLogView();
+    if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
+    if (typeof renderCurrentDashboardAlerts === 'function') renderCurrentDashboardAlerts();
+    const profModalAux = document.getElementById('studentProfileModal');
+    if (profModalAux && (profModalAux.classList.contains('active') || profModalAux.style.display !== 'none')) {
+        if (STATE.selectedStudentId && typeof openStudentProfileModal === 'function') {
+            openStudentProfileModal(STATE.selectedStudentId);
+        }
+    }
     showToast(`Alerta actualizada a: ${newStatus.toUpperCase()}`, 'info');
 }
 
