@@ -870,6 +870,11 @@ const EnccoAuthStore = {
             let hasAccess = false;
             if (isSuper) {
                 hasAccess = true;
+            } else if (el.dataset.allowed === '*' || el.getAttribute('data-allowed') === '*') {
+                hasAccess = true;
+            } else if (el.dataset.allowed) {
+                const allowedList = el.dataset.allowed.split(',').map(r => r.trim().toLowerCase());
+                hasAccess = allowedList.includes(role.toLowerCase()) && (permKey ? hasRolePermission(permKey, role) : true);
             } else if (permKey) {
                 hasAccess = hasRolePermission(permKey, role);
             } else if (targetView) {
@@ -1199,7 +1204,7 @@ function normalizePermKey(key) {
     if (!key) return '';
     let k = String(key).trim().toLowerCase();
     if (k === 'guide_teachers' || k === 'guide-teachers' || k === 'maestros_guias' || k === 'maestros-guias' || k === 'maestrosguias' || k === 'docentes_guias' || k === 'docentes-guias' || k === 'guias') return 'guide-teachers';
-    if (k === 'excel_import') return 'excel-import';
+    if (k === 'excel_import' || k === 'excel-import' || k === 'plantillas' || k === 'plantillas-excel' || k === 'plantillas_excel' || k === 'listas-excel' || k === 'listas_excel' || k === 'plantillas_listas_excel' || k === 'plantillas-listas-excel') return 'excel-import';
     if (k === 'datos-sire' || k === 'datos_sire' || k === 'datossire' || k === 'sire') return 'datos-sire';
     if (k === 'grade_lock') return 'grade-lock';
     if (k === 'honor_roll') return 'honor-roll';
@@ -2611,7 +2616,7 @@ var SYSTEM_MODULES_LIST = [
     { key: 'datos-sire', name: 'Datos para Sire', icon: 'fa-cloud-arrow-up', category: 'Secretaría y Alumnos', desc: 'Módulo oficial SIRE MINEDUC: conexión segura, cálculo de promedios y exportación.' },
     { key: 'enrollment', name: 'Inscripción y Matrícula', icon: 'fa-user-plus', category: 'Secretaría y Alumnos', desc: 'Formulario de registro y carga de fotos de estudiantes.' },
     { key: 'students', name: 'Expedientes de Estudiantes', icon: 'fa-id-card', category: 'Secretaría y Alumnos', desc: 'Consulta, edición y fichas médicas de los 412 alumnos.' },
-    { key: 'excel-import', name: 'Importación SIRE / Excel', icon: 'fa-file-excel', category: 'Secretaría y Alumnos', desc: 'Carga masiva de nóminas oficiales del MINEDUC.' },
+    { key: 'excel-import', name: 'Plantillas y Listas Excel', icon: 'fa-file-excel', category: 'Secretaría y Alumnos', desc: 'Generación, impresión y exportación de listas oficiales y plantillas Excel.' },
     { key: 'grades', name: 'Editor de Grados y Secciones', icon: 'fa-graduation-cap', category: 'Académico', desc: 'Configuración de grados y secciones (Dirección y Secretaría).' },
     { key: 'guide-teachers', name: 'Apartado de Maestros Guías', icon: 'fa-person-chalkboard', category: 'Académico', desc: 'Directorio oficial, consulta y asignación de catedráticos guías por grado y sección.' },
     { key: 'pensum', name: 'Pensum Oficial CNB', icon: 'fa-book-open', category: 'Académico', desc: 'Malla curricular oficial de 28 asignaturas del ciclo.' },
@@ -9186,8 +9191,8 @@ function switchRole(role) {
     updateUserAlertsUI();
 
     // Si el rol es profesor_auxiliar o docente y la vista activa es administrativa, redirigir a dashboard
-    const forbiddenViewsForAuxiliar = ['enrollment', 'pensum', 'class-assignments', 'grade-lock', 'cycles', 'database', 'excel-import', 'settings'];
-    if (role === 'profesor_auxiliar' && forbiddenViewsForAuxiliar.includes(STATE.currentView)) {
+    const forbiddenViewsForAuxiliar = ['enrollment', 'pensum', 'class-assignments', 'grade-lock', 'cycles', 'database', 'settings'];
+    if (role === 'profesor_auxiliar' && (forbiddenViewsForAuxiliar.includes(STATE.currentView) || STATE.currentView === 'excel-import') && !hasRolePermission(STATE.currentView, role)) {
         navigateTo('dashboard');
     }
     
@@ -9235,7 +9240,11 @@ function impersonateUser(userId) {
     synchronizeGlobalDynamicUI();
 
     if (targetUser.role === 'docente') {
-        navigateTo('excel-import');
+        if (hasRolePermission('excel-import', 'docente')) {
+            navigateTo('excel-import');
+        } else {
+            navigateTo('dashboard');
+        }
     } else {
         navigateTo('dashboard');
     }
@@ -32618,7 +32627,7 @@ function getAvailablePermissionsList() {
         { key: 'discipline_resolve', label: 'Dictamen y Resolución Oficial de Faltas', category: 'Disciplina' },
         { key: 'reports', label: 'Boletas y Cuadros Oficiales de Notas (Impresión)', category: 'Reportes' },
         { key: 'honor-roll', label: 'Cuadro de Honor y Rendimiento Escolar', category: 'Reportes' },
-        { key: 'excel-import', label: 'Importación Masiva de Excel y Formatos', category: 'Herramientas' },
+        { key: 'excel-import', label: 'Plantillas y Listas Excel', category: 'Herramientas' },
         { key: 'database', label: 'Base de Datos y Nube Firebase', category: 'Avanzado' },
         { key: 'roles', label: 'Gestor de Roles y Permisos Personalizados', category: 'Avanzado' },
         { key: 'settings', label: 'Configuraciones Globales del Sistema', category: 'Avanzado' }
