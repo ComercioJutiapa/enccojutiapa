@@ -13036,6 +13036,80 @@ function updatePrintModelSelects() {
     }
 }
 
+function selectPrintModelCard(modelKey) {
+    const sel = document.getElementById('printModelTypeSelect');
+    if (sel) {
+        sel.value = modelKey;
+    }
+    syncPrintModelCards(modelKey);
+}
+
+function syncPrintModelCards(modelKey) {
+    const cards = document.querySelectorAll('.print-model-chip-card');
+    cards.forEach(c => {
+        const isMatch = (c.getAttribute('data-model') === modelKey);
+        c.classList.toggle('active', isMatch);
+        c.style.border = isMatch ? '2px solid #15803d' : '1px solid #cbd5e1';
+        c.style.background = isMatch ? '#ffffff' : '#f8fafc';
+        c.style.boxShadow = isMatch ? '0 2px 8px rgba(21,128,61,0.18)' : 'none';
+        const titleEl = c.querySelector('div > div > div:first-child');
+        if (titleEl) {
+            titleEl.style.color = isMatch ? '#15803d' : '#334155';
+            titleEl.style.fontWeight = isMatch ? '800' : '700';
+        }
+    });
+}
+
+function updatePrintModelStats(gradeCode) {
+    const statsBox = document.getElementById('printModelSectionStats');
+    if (!statsBox) return;
+    if (!gradeCode) {
+        statsBox.style.display = 'none';
+        return;
+    }
+    const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode);
+    const students = (STATE.students || []).filter(s => {
+        if (s.active === false || s.status === 'Retirado') return false;
+        if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
+        if (gradeObj) {
+            const sg = `${s.grade || ''} ${s.section || ''}`.toLowerCase();
+            const tg = `${gradeObj.name || ''} ${gradeObj.section || ''}`.toLowerCase();
+            return sg.includes(tg);
+        }
+        return false;
+    });
+
+    const total = students.length;
+    const males = students.filter(s => {
+        const g = (s.gender || s.genero || '').toLowerCase();
+        return g.startsWith('m') || g === 'varón' || g === 'hombre';
+    }).length;
+    const females = students.filter(s => {
+        const g = (s.gender || s.genero || '').toLowerCase();
+        return g.startsWith('f') || g === 'mujer';
+    }).length;
+
+    const guideTeacher = gradeObj ? (typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(gradeObj).name : (gradeObj.guideTeacher || 'Por Asignar')) : 'Por Asignar';
+    const gradeTitle = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : gradeCode;
+
+    const gEl = document.getElementById('printModelStatsGrade');
+    const tEl = document.getElementById('printModelStatsTotal');
+    const mEl = document.getElementById('printModelStatsMale');
+    const fEl = document.getElementById('printModelStatsFemale');
+    const guideEl = document.getElementById('printModelStatsGuide');
+
+    if (gEl) gEl.textContent = gradeTitle;
+    if (tEl) tEl.textContent = total;
+    if (mEl) mEl.textContent = males;
+    if (fEl) fEl.textContent = females;
+    if (guideEl) guideEl.textContent = guideTeacher;
+
+    statsBox.style.display = 'flex';
+}
+window.selectPrintModelCard = selectPrintModelCard;
+window.syncPrintModelCards = syncPrintModelCards;
+window.updatePrintModelStats = updatePrintModelStats;
+
 function onPrintModelCareerChange(careerName) {
     const gradeSelect = document.getElementById('printModelGradeSelect');
     const subjectSelect = document.getElementById('printModelSubjectSelect');
@@ -13044,6 +13118,7 @@ function onPrintModelCareerChange(careerName) {
     if (!careerName) {
         gradeSelect.innerHTML = '<option value="">-- Primero elija carrera --</option>';
         if (subjectSelect) subjectSelect.innerHTML = '<option value="">-- Primero elija grado --</option>';
+        updatePrintModelStats(null);
         return;
     }
 
@@ -13086,6 +13161,7 @@ function onPrintModelCareerChange(careerName) {
         if (grades.length === 0) {
             gradeSelect.innerHTML = '<option value="">-- Sin grados asignados para esta carrera --</option>';
             if (subjectSelect) subjectSelect.innerHTML = '<option value="">-- Sin materias asignadas --</option>';
+            updatePrintModelStats(null);
             return;
         }
     }
@@ -13093,6 +13169,7 @@ function onPrintModelCareerChange(careerName) {
     if (grades.length === 0) {
         gradeSelect.innerHTML = '<option value="">-- Sin grados registrados para esta carrera --</option>';
         if (subjectSelect) subjectSelect.innerHTML = '<option value="">-- Sin materias --</option>';
+        updatePrintModelStats(null);
     } else {
         gradeSelect.innerHTML = '<option value="">-- Seleccione Grado y Sección --</option>' + grades.map(g => {
             const count = getStudentCountByGradeAndSection(g.code, g.name, g.section);
@@ -13104,11 +13181,13 @@ function onPrintModelCareerChange(careerName) {
             onPrintModelGradeChange(grades[0].code);
         } else {
             if (subjectSelect) subjectSelect.innerHTML = '<option value="">-- Seleccione Grado y Sección primero --</option>';
+            updatePrintModelStats(null);
         }
     }
 }
 
 function onPrintModelGradeChange(gradeCode) {
+    updatePrintModelStats(gradeCode);
     const subjectSelect = document.getElementById('printModelSubjectSelect');
     const hiddenSubjectInput = document.getElementById('printModelSubjectName');
     const teacherNameInput = document.getElementById('printModelTeacherName');

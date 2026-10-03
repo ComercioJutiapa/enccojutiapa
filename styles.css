@@ -2867,7 +2867,7 @@ body.theme-dark .att-global-pct-bar {
 /* === AJUSTE DE ALTA DENSIDAD Y AJUSTE A VENTANA (V79) === */
 .page-title-box {
     min-width: 0;
-    max-width: 340px;
+    max-width: clamp(340px, 50vw, 720px);
     overflow: hidden;
 }
 .page-title-box h1 {
