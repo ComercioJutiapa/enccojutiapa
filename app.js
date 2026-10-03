@@ -34387,16 +34387,137 @@ function checkClassAssignmentConflict() {
 
 // Bloque heredado reemplazado por controlador moderno de asignaciones
 
+// ==========================================================================
+// 🎛️ CONTROLADOR INTEGRAL Y VISUAL DE ASIGNACIÓN DE CÁTEDRAS A DOCENTES
+// ==========================================================================
+
+let currentAssignmentsViewMode = 'table';
+let currentAssignmentQuickFilter = 'ALL';
+
+function getCnbAreaInfo(subjectName = '') {
+    const s = String(subjectName).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (s.includes('contab') || s.includes('auditor') || s.includes('costo') || s.includes('bancar') || s.includes('gubernamental') || s.includes('calculo') || s.includes('financ') || s.includes('sociedad')) {
+        return { name: 'Área Contable y Financiera', shortName: 'Contable', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe', icon: 'fa-calculator' };
+    }
+    if (s.includes('legislac') || s.includes('derecho') || s.includes('jurid') || s.includes('etica') || s.includes('civis') || s.includes('relaciones publicas')) {
+        return { name: 'Área Jurídica y Social', shortName: 'Jurídica', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', icon: 'fa-scale-balanced' };
+    }
+    if (s.includes('comput') || s.includes('mecanograf') || s.includes('practica supervisada') || s.includes('tecnolog') || s.includes('sistema') || s.includes('programac')) {
+        return { name: 'Área Tecnología y Práctica', shortName: 'Tecnología', color: '#059669', bg: '#ecfdf5', border: '#a7f3d0', icon: 'fa-laptop-code' };
+    }
+    if (s.includes('ingles') || s.includes('idioma') || s.includes('redacc') || s.includes('correspond') || s.includes('literatur') || s.includes('lengua') || s.includes('ortocaligraf')) {
+        return { name: 'Área Comunicación e Idiomas', shortName: 'Idiomas', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', icon: 'fa-comments' };
+    }
+    if (s.includes('administrac') || s.includes('econom') || s.includes('estadist') || s.includes('mercad') || s.includes('organizac') || s.includes('comercial')) {
+        return { name: 'Área Administrativa y Económica', shortName: 'Administración', color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc', icon: 'fa-briefcase' };
+    }
+    return { name: 'Área Formación General', shortName: 'General', color: '#475569', bg: '#f8fafc', border: '#cbd5e1', icon: 'fa-book-open' };
+}
+window.getCnbAreaInfo = getCnbAreaInfo;
+
+function isAssignmentUnassigned(a) {
+    if (!a) return true;
+    const t = (a.teacher || a.teacherName || '').trim().toLowerCase();
+    if (!t) return true;
+    if (t === 'sin asignar' || t === 'sin catedratico' || t === 'sin catedrático' || t === 'pendiente' || t === 'no asignado') return true;
+    if (!a.teacherId && t.includes('sin ')) return true;
+    return false;
+}
+
+function updateAssignmentsKpis(list) {
+    const totalEl = document.getElementById('kpiTotalAssignments');
+    const teachersEl = document.getElementById('kpiAssignedTeachers');
+    const unassignedEl = document.getElementById('kpiUnassignedSubjects');
+    const periodsEl = document.getElementById('kpiTotalWeeklyPeriods');
+
+    if (!Array.isArray(list)) list = [];
+
+    const totalCount = list.length;
+    let unassignedCount = 0;
+    const assignedTeacherSet = new Set();
+    let totalWeeklyPeriods = 0;
+
+    list.forEach(a => {
+        const unassigned = isAssignmentUnassigned(a);
+        if (unassigned) {
+            unassignedCount++;
+        } else {
+            const tKey = a.teacherId || (a.teacher || a.teacherName || '').trim().toLowerCase();
+            if (tKey) assignedTeacherSet.add(tKey);
+        }
+        const p = parseInt(a.periodsPerWeek || a.hours || a.periods) || 4;
+        totalWeeklyPeriods += p;
+    });
+
+    if (totalEl) totalEl.textContent = totalCount;
+    if (teachersEl) teachersEl.textContent = assignedTeacherSet.size;
+    if (unassignedEl) unassignedEl.textContent = unassignedCount;
+    if (periodsEl) periodsEl.textContent = totalWeeklyPeriods;
+}
+
+function switchAssignmentsViewMode(mode) {
+    currentAssignmentsViewMode = mode || 'table';
+
+    const btnTable = document.getElementById('asgViewModeTableBtn');
+    const btnGrade = document.getElementById('asgViewModeGradeBtn');
+    const btnTeacher = document.getElementById('asgViewModeTeacherBtn');
+
+    if (btnTable) {
+        btnTable.className = `btn btn-sm ${currentAssignmentsViewMode === 'table' ? 'btn-primary' : 'btn-outline-secondary'} asg-view-mode-btn`;
+    }
+    if (btnGrade) {
+        btnGrade.className = `btn btn-sm ${currentAssignmentsViewMode === 'byGrade' ? 'btn-primary' : 'btn-outline-secondary'} asg-view-mode-btn`;
+    }
+    if (btnTeacher) {
+        btnTeacher.className = `btn btn-sm ${currentAssignmentsViewMode === 'byTeacher' ? 'btn-primary' : 'btn-outline-secondary'} asg-view-mode-btn`;
+    }
+
+    const tableView = document.getElementById('assignmentsTableView');
+    const gradeView = document.getElementById('assignmentsByGradeView');
+    const teacherView = document.getElementById('assignmentsByTeacherView');
+
+    if (tableView) tableView.style.display = currentAssignmentsViewMode === 'table' ? 'block' : 'none';
+    if (gradeView) gradeView.style.display = currentAssignmentsViewMode === 'byGrade' ? 'block' : 'none';
+    if (teacherView) teacherView.style.display = currentAssignmentsViewMode === 'byTeacher' ? 'block' : 'none';
+
+    renderAssignmentsTable();
+}
+window.switchAssignmentsViewMode = switchAssignmentsViewMode;
+
+function setAssignmentQuickFilter(filterType, btn) {
+    currentAssignmentQuickFilter = filterType || 'ALL';
+
+    document.querySelectorAll('.asg-quick-grade-pill').forEach(p => {
+        p.classList.remove('active');
+        p.style.background = '#f8fafc';
+        p.style.color = '#334155';
+        p.style.borderColor = '#cbd5e1';
+    });
+
+    if (btn) {
+        btn.classList.add('active');
+        if (filterType === 'UNASSIGNED') {
+            btn.style.background = '#ea580c';
+            btn.style.color = '#ffffff';
+            btn.style.borderColor = '#ea580c';
+        } else {
+            btn.style.background = '#0284c7';
+            btn.style.color = '#ffffff';
+            btn.style.borderColor = '#0284c7';
+        }
+    }
+
+    renderAssignmentsTable();
+}
+window.setAssignmentQuickFilter = setAssignmentQuickFilter;
+
 function filterAssignmentsTable(searchQuery = '') {
     renderAssignmentsTable(searchQuery);
 }
+window.filterAssignmentsTable = filterAssignmentsTable;
 
 function renderAssignmentsTable(searchQuery = '') {
-    const tbody = document.getElementById('assignmentsTableBody');
-    if (!tbody) return;
-
     const rutaColeccion = 'pensum';
-    console.log("Consultando asignaciones en ruta:", rutaColeccion);
     if ((!STATE.pensum || STATE.pensum.length === 0) && typeof loadPensumFromCloudFallback === 'function') {
         loadPensumFromCloudFallback();
     }
@@ -34409,10 +34530,35 @@ function renderAssignmentsTable(searchQuery = '') {
     const gradeFilter = (document.getElementById('assignmentGradeFilter')?.value || 'ALL');
     const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('assignmentSearchInput')?.value || '')).toLowerCase().trim();
 
-    let list = Array.isArray(STATE.pensum) && STATE.pensum.length > 0
+    let fullList = Array.isArray(STATE.pensum) && STATE.pensum.length > 0
         ? [...STATE.pensum]
         : (typeof getInitialData === 'function' && Array.isArray(getInitialData().pensum) ? [...getInitialData().pensum] : []);
 
+    // 1. Actualizar siempre los KPIs institucionales con el pensum completo
+    updateAssignmentsKpis(fullList);
+
+    // 2. Aplicar Filtro Rápido (Todos, 4to, 5to, 6to, Sin Asignar)
+    let list = [...fullList];
+    if (currentAssignmentQuickFilter === 'UNASSIGNED') {
+        list = list.filter(a => isAssignmentUnassigned(a));
+    } else if (currentAssignmentQuickFilter === '4to') {
+        list = list.filter(a => {
+            const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toLowerCase();
+            return rawG.includes('4') || rawG.includes('cuarto') || rawG.includes('4to');
+        });
+    } else if (currentAssignmentQuickFilter === '5to') {
+        list = list.filter(a => {
+            const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toLowerCase();
+            return rawG.includes('5') || rawG.includes('quinto') || rawG.includes('5to');
+        });
+    } else if (currentAssignmentQuickFilter === '6to') {
+        list = list.filter(a => {
+            const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toLowerCase();
+            return rawG.includes('6') || rawG.includes('sexto') || rawG.includes('6to');
+        });
+    }
+
+    // 3. Filtro por Catedrático
     if (teacherFilter && teacherFilter !== 'ALL') {
         const targetUser = (STATE.users || []).find(u => u.name === teacherFilter || u.id === teacherFilter) || { name: teacherFilter, id: teacherFilter };
         list = list.filter(a => {
@@ -34429,6 +34575,7 @@ function renderAssignmentsTable(searchQuery = '') {
         });
     }
 
+    // 4. Filtro por Grado y Sección
     if (gradeFilter && gradeFilter !== 'ALL') {
         list = list.filter(a => 
             a.gradeCode === gradeFilter || 
@@ -34439,6 +34586,7 @@ function renderAssignmentsTable(searchQuery = '') {
         );
     }
 
+    // 5. Búsqueda de texto libre
     if (q) {
         const normQ = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         list = list.filter(a => {
@@ -34447,18 +34595,34 @@ function renderAssignmentsTable(searchQuery = '') {
         });
     }
 
+    // 6. Despachar renderizado según el Modo de Vista activo
+    if (currentAssignmentsViewMode === 'byGrade') {
+        renderAssignmentsByGradeMatrix(list);
+    } else if (currentAssignmentsViewMode === 'byTeacher') {
+        renderAssignmentsByTeacherWorkload(list);
+    } else {
+        renderAssignmentsTableBody(list);
+    }
+}
+window.renderAssignmentsTable = renderAssignmentsTable;
+
+function renderAssignmentsTableBody(list) {
+    const tbody = document.getElementById('assignmentsTableBody');
+    if (!tbody) return;
+
     if (list.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" style="text-align:center; padding:35px; color:var(--text-muted);">
                     <i class="fa-solid fa-chalkboard-user" style="font-size:2.2rem; margin-bottom:10px; display:block; color:var(--brand-green);"></i>
-                    <strong>No hay asignaciones de cátedras que coincidan con los filtros.</strong><br>
-                    <span style="font-size:0.85rem;">Haga clic en <strong>"+ Asignar Clase a Docente"</strong> para crear una nueva asignación de materia a un catedrático.</span>
+                    <strong>No hay asignaciones de cátedras que coincidan con los filtros seleccionados.</strong><br>
+                    <span style="font-size:0.85rem;">Utilice el botón <strong>"+ Asignar Clase a Docente"</strong> o restablezca los filtros para visualizar la carga completa.</span>
                 </td>
             </tr>
         `;
         return;
     }
+
     tbody.innerHTML = list.map(a => {
         const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toUpperCase();
         let gGradeNum = 0;
@@ -34467,15 +34631,32 @@ function renderAssignmentsTable(searchQuery = '') {
         else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
 
         const subName = getFullOfficialSubjectName(a.subject || a.name || 'Asignatura', gGradeNum);
+        const cnbArea = getCnbAreaInfo(subName);
+        const unassigned = isAssignmentUnassigned(a);
+        const officialTeacher = (typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(a) : (a.teacher || a.teacherName || 'Sin asignar');
+
         return `
         <tr>
             <td><span class="badge badge-info" style="font-weight:700;">${a.career || 'Perito Contador'}</span></td>
             <td><strong>${a.grade || a.gradeCode} (${a.section || 'A'})</strong></td>
             <td>
+                <span class="badge" style="background:${cnbArea.bg}; color:${cnbArea.color}; border:1px solid ${cnbArea.border}; font-weight:700; font-size:0.72rem; margin-right:4px;" title="${cnbArea.name}">
+                    <i class="fa-solid ${cnbArea.icon}" style="margin-right:3px;"></i>${cnbArea.shortName}
+                </span>
                 ${a.code ? `<span class="badge" style="font-family:'Courier New',Courier,monospace; font-size:0.75rem; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; margin-right:5px; font-weight:800;"><i class="fa-solid fa-barcode" style="font-size:0.7rem; margin-right:3px;"></i>${a.code}</span>` : ''}
                 <strong style="color:var(--brand-green-dark); font-size:0.95rem;">${subName}</strong>
             </td>
-            <td><strong style="color:var(--text-primary);"><i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${(typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(a) : (a.teacher || a.teacherName || 'Sin asignar')}</strong></td>
+            <td>
+                ${unassigned ? `
+                    <span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; font-weight:700; font-size:0.8rem; padding:4px 8px;">
+                        <i class="fa-solid fa-triangle-exclamation" style="margin-right:4px;"></i> Sin Asignar
+                    </span>
+                ` : `
+                    <strong style="color:var(--text-primary);">
+                        <i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${officialTeacher}
+                    </strong>
+                `}
+            </td>
             <td style="text-align:center; font-weight:700;">${a.periodsPerWeek || a.hours || a.periods || 4} períodos/sem</td>
             <td style="text-align:center; white-space:nowrap;">
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${a.id}')" title="Editar asignación" style="padding:3px 8px; margin-right:4px;"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -34485,6 +34666,376 @@ function renderAssignmentsTable(searchQuery = '') {
         `;
     }).join('');
 }
+
+function renderAssignmentsByGradeMatrix(list) {
+    const container = document.getElementById('assignmentsByGradeContainer');
+    if (!container) return;
+
+    if (list.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column:1/-1; text-align:center; padding:40px; background:#ffffff; border-radius:12px; border:1px dashed #cbd5e1; color:var(--text-muted);">
+                <i class="fa-solid fa-graduation-cap" style="font-size:2.2rem; color:var(--brand-green); margin-bottom:10px; display:block;"></i>
+                <strong>No se encontraron secciones ni asignaturas con los filtros seleccionados.</strong>
+            </div>
+        `;
+        return;
+    }
+
+    // Agrupar cursos por Sección (ej. 4to Perito Contador Sección A)
+    const groups = {};
+    list.forEach(a => {
+        const secKey = `${a.grade || a.gradeCode || 'Grado'} - Sección ${a.section || 'A'}`;
+        if (!groups[secKey]) {
+            groups[secKey] = {
+                title: secKey,
+                grade: a.grade || a.gradeCode,
+                section: a.section || 'A',
+                career: a.career || 'Perito Contador',
+                items: []
+            };
+        }
+        groups[secKey].items.push(a);
+    });
+
+    // Ordenar secciones: 4to, 5to, 6to
+    const sortedKeys = Object.keys(groups).sort((x, y) => x.localeCompare(y, 'es', { numeric: true }));
+
+    container.innerHTML = sortedKeys.map(key => {
+        const grp = groups[key];
+        const totalSec = grp.items.length;
+        const assignedSec = grp.items.filter(c => !isAssignmentUnassigned(c)).length;
+        const coveragePct = totalSec > 0 ? Math.round((assignedSec / totalSec) * 100) : 0;
+        const isComplete = coveragePct === 100;
+        const barColor = isComplete ? '#10b981' : (coveragePct >= 70 ? '#0284c7' : '#ea580c');
+
+        return `
+        <div style="background:#ffffff; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 2px 6px rgba(0,0,0,0.04); overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding:12px 16px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="font-size:0.95rem; color:#0f172a;"><i class="fa-solid fa-chalkboard" style="color:var(--brand-blue); margin-right:6px;"></i> ${grp.title}</strong>
+                    <span class="badge ${isComplete ? 'badge-success' : 'badge-warning'}" style="font-size:0.75rem; font-weight:800;">
+                        ${assignedSec}/${totalSec} Cubiertas (${coveragePct}%)
+                    </span>
+                </div>
+                <div style="width:100%; height:6px; background:#e2e8f0; border-radius:3px; margin-top:8px; overflow:hidden;">
+                    <div style="width:${coveragePct}%; height:100%; background:${barColor}; border-radius:3px; transition:width 0.3s ease;"></div>
+                </div>
+            </div>
+            <div style="padding:10px 14px; flex:1; display:flex; flex-direction:column; gap:8px;">
+                ${grp.items.map(c => {
+                    const cnbArea = getCnbAreaInfo(c.subject || c.name);
+                    const unassigned = isAssignmentUnassigned(c);
+                    const tName = (typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(c) : (c.teacher || 'Sin asignar');
+                    return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:7px 10px; background:#fcfcfd; border:1px solid #f1f5f9; border-radius:8px; font-size:0.83rem;">
+                        <div style="flex:1; min-width:0; padding-right:8px;">
+                            <div style="display:flex; align-items:center; gap:5px; margin-bottom:2px;">
+                                <span class="badge" style="background:${cnbArea.bg}; color:${cnbArea.color}; border:1px solid ${cnbArea.border}; font-size:0.68rem; padding:2px 5px; font-weight:700;">
+                                    <i class="fa-solid ${cnbArea.icon}" style="margin-right:2px;"></i>${cnbArea.shortName}
+                                </span>
+                                ${c.code ? `<span style="font-family:'Courier New',Courier,monospace; font-size:0.7rem; font-weight:800; color:#0369a1;">[${c.code}]</span>` : ''}
+                                <span style="font-weight:700; color:#1e293b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${c.subject || c.name}">${c.subject || c.name}</span>
+                            </div>
+                            <div style="font-size:0.78rem; display:flex; align-items:center; gap:6px;">
+                                ${unassigned ? `
+                                    <span style="color:#dc2626; font-weight:700;"><i class="fa-solid fa-triangle-exclamation"></i> Sin asignar</span>
+                                ` : `
+                                    <span style="color:#059669; font-weight:600;"><i class="fa-solid fa-user-tie"></i> ${tName}</span>
+                                `}
+                                <span style="color:#64748b;">• ${c.periodsPerWeek || c.hours || c.periods || 4}p/sem</span>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${c.id}')" title="Modificar asignación" style="padding:2px 7px; font-size:0.75rem;">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                    </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+function renderAssignmentsByTeacherWorkload(list) {
+    const container = document.getElementById('assignmentsByTeacherContainer');
+    if (!container) return;
+
+    if (list.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column:1/-1; text-align:center; padding:40px; background:#ffffff; border-radius:12px; border:1px dashed #cbd5e1; color:var(--text-muted);">
+                <i class="fa-solid fa-user-tie" style="font-size:2.2rem; color:var(--brand-green); margin-bottom:10px; display:block;"></i>
+                <strong>No se encontraron docentes con los criterios de búsqueda actuales.</strong>
+            </div>
+        `;
+        return;
+    }
+
+    // Agrupar cátedras por Catedrático
+    const teachersMap = {};
+    const unassignedCourses = [];
+
+    list.forEach(a => {
+        if (isAssignmentUnassigned(a)) {
+            unassignedCourses.push(a);
+        } else {
+            const tName = (typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(a) : (a.teacher || a.teacherName || 'Docente').trim();
+            const tId = a.teacherId || tName;
+            if (!teachersMap[tId]) {
+                const uMatch = (STATE.users || []).find(u => u.id === tId || u.name === tName) || {};
+                teachersMap[tId] = {
+                    id: tId,
+                    name: tName,
+                    title: uMatch.title || 'Catedrático Titular',
+                    email: uMatch.email || '',
+                    courses: []
+                };
+            }
+            teachersMap[tId].courses.push(a);
+        }
+    });
+
+    const teacherList = Object.values(teachersMap).sort((a, b) => a.name.localeCompare(b.name, 'es'));
+
+    let html = '';
+
+    // Si hay materias sin asignar, mostrarlas como tarjeta de atención prioritaria
+    if (unassignedCourses.length > 0) {
+        html += `
+        <div style="grid-column:1/-1; background:#fff7ed; border-radius:12px; border:1px solid #fed7aa; padding:14px 18px; margin-bottom:8px; box-shadow:0 2px 5px rgba(234,88,12,0.06);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <strong style="color:#c2410c; font-size:0.95rem;">
+                    <i class="fa-solid fa-triangle-exclamation" style="margin-right:6px;"></i> Cátedras Pendientes de Asignación (${unassignedCourses.length} materias)
+                </strong>
+                <span class="badge badge-warning" style="font-weight:700;">Requieren Asignación</span>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                ${unassignedCourses.map(c => `
+                    <div style="background:#ffffff; border:1px solid #fdba74; padding:6px 10px; border-radius:8px; font-size:0.8rem; display:flex; align-items:center; gap:8px;">
+                        <span style="font-weight:800; color:#ea580c;">${c.grade || c.gradeCode} (${c.section || 'A'})</span>
+                        <strong style="color:#1e293b;">${c.subject || c.name}</strong>
+                        <span style="color:#64748b;">(${c.periodsPerWeek || 4}p)</span>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="openEditClassAssignmentModal('${c.id}')" title="Asignar catedrático ahora" style="padding:1px 6px; font-size:0.72rem; margin-left:4px;">
+                            <i class="fa-solid fa-plus"></i> Asignar
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        `;
+    }
+
+    html += teacherList.map(t => {
+        const totalCourses = t.courses.length;
+        const totalPeriods = t.courses.reduce((sum, c) => sum + (parseInt(c.periodsPerWeek || c.hours || c.periods) || 4), 0);
+
+        let badgeStatus = { text: 'Carga Óptima', bg: '#ecfdf5', color: '#059669', border: '#a7f3d0' };
+        if (totalPeriods === 0) {
+            badgeStatus = { text: 'Sin Carga', bg: '#f1f5f9', color: '#64748b', border: '#cbd5e1' };
+        } else if (totalPeriods <= 15) {
+            badgeStatus = { text: 'Carga Parcial', bg: '#eff6ff', color: '#0284c7', border: '#bae6fd' };
+        } else if (totalPeriods >= 30 && totalPeriods <= 36) {
+            badgeStatus = { text: 'Carga Completa', bg: '#f5f3ff', color: '#7c3aed', border: '#ddd6fe' };
+        } else if (totalPeriods > 36) {
+            badgeStatus = { text: 'Sobrecarga', bg: '#fff7ed', color: '#ea580c', border: '#fed7aa' };
+        }
+
+        return `
+        <div style="background:#ffffff; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 2px 6px rgba(0,0,0,0.04); overflow:hidden; display:flex; flex-direction:column;">
+            <div style="padding:14px 16px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                    <div>
+                        <strong style="font-size:0.95rem; color:#0f172a; display:block;">
+                            <i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:5px;"></i> ${t.name}
+                        </strong>
+                        <span style="font-size:0.75rem; color:#64748b;">${t.title}</span>
+                    </div>
+                    <span class="badge" style="background:${badgeStatus.bg}; color:${badgeStatus.color}; border:1px solid ${badgeStatus.border}; font-weight:800; font-size:0.72rem; padding:3px 8px;">
+                        ${badgeStatus.text}
+                    </span>
+                </div>
+                <div style="display:flex; gap:12px; margin-top:10px; font-size:0.8rem; font-weight:700;">
+                    <span style="color:#0284c7;"><i class="fa-solid fa-book-open"></i> ${totalCourses} Cátedras</span>
+                    <span style="color:#059669;"><i class="fa-solid fa-clock"></i> ${totalPeriods} Períodos/sem</span>
+                </div>
+            </div>
+            <div style="padding:12px 14px; flex:1; display:flex; flex-direction:column; gap:6px;">
+                ${t.courses.map(c => {
+                    const cnbArea = getCnbAreaInfo(c.subject || c.name);
+                    return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#fcfcfd; border:1px solid #f1f5f9; border-radius:8px; font-size:0.82rem;">
+                        <div style="flex:1; min-width:0; padding-right:6px;">
+                            <span style="font-weight:800; color:var(--brand-blue-dark); font-size:0.75rem; margin-right:4px;">[${c.grade || c.gradeCode} ${c.section || 'A'}]</span>
+                            <span style="font-weight:600; color:#334155;">${c.subject || c.name}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span class="badge" style="background:${cnbArea.bg}; color:${cnbArea.color}; font-size:0.68rem; padding:2px 5px; font-weight:700;">${c.periodsPerWeek || 4}p</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${c.id}')" title="Editar asignación" style="padding:1px 6px; font-size:0.72rem;">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                        </div>
+                    </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+        `;
+    }).join('');
+
+    container.innerHTML = html;
+}
+
+function printClassAssignmentsReport() {
+    let list = Array.isArray(STATE.pensum) && STATE.pensum.length > 0
+        ? [...STATE.pensum]
+        : (typeof getInitialData === 'function' && Array.isArray(getInitialData().pensum) ? [...getInitialData().pensum] : []);
+
+    if (list.length === 0) {
+        showToast('No hay asignaciones de cátedras para imprimir.', 'warning');
+        return;
+    }
+
+    // Ordenar por Grado, Sección y Materia
+    list.sort((a, b) => {
+        const ga = `${a.grade || ''} ${a.section || ''}`.toLowerCase();
+        const gb = `${b.grade || ''} ${b.section || ''}`.toLowerCase();
+        if (ga !== gb) return ga.localeCompare(gb, 'es', { numeric: true });
+        return (a.subject || a.name || '').localeCompare(b.subject || b.name || '', 'es');
+    });
+
+    const totalCatedras = list.length;
+    let totalPeriodos = 0;
+    const docentesSet = new Set();
+    list.forEach(a => {
+        totalPeriodos += (parseInt(a.periodsPerWeek || a.hours || a.periods) || 4);
+        if (!isAssignmentUnassigned(a)) {
+            docentesSet.add(a.teacherId || a.teacher);
+        }
+    });
+
+    const now = new Date();
+    const fechaEmision = now.toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    const printHtml = `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Distribución Oficial de Cátedras - ENCCO Jutiapa</title>
+        <style>
+            @page { size: letter portrait; margin: 15mm 12mm 15mm 12mm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; margin: 0; padding: 10px; }
+            .header { text-align: center; border-bottom: 2px solid #0f2b5c; padding-bottom: 10px; margin-bottom: 12px; }
+            .header h1 { font-size: 14pt; margin: 0; color: #0f2b5c; text-transform: uppercase; letter-spacing: 0.5px; }
+            .header h2 { font-size: 11pt; margin: 3px 0; color: #059669; font-weight: 700; }
+            .header h3 { font-size: 9.5pt; margin: 2px 0; color: #475569; font-weight: 600; text-transform: uppercase; }
+            .stats-bar { display: flex; justify-content: space-around; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; margin-bottom: 14px; font-size: 9pt; }
+            .stats-bar span { font-weight: 700; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 8.5pt; }
+            th { background: #0f2b5c; color: #ffffff; padding: 6px 8px; text-align: left; font-size: 8.5pt; font-weight: 700; }
+            td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            .signatures { margin-top: 40px; display: flex; justify-content: space-between; page-break-inside: avoid; text-align: center; }
+            .sig-box { width: 30%; border-top: 1px solid #334155; padding-top: 6px; font-size: 8pt; font-weight: 700; color: #334155; }
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <h1>Escuela Nacional de Ciencias Comerciales</h1>
+            <h2>Jornada Diurna — Jutiapa, Guatemala</h2>
+            <h3>Distribución Oficial de Cátedras y Carga Docente — Ciclo Escolar 2026</h3>
+            <div style="font-size:8pt; color:#64748b; margin-top:4px;">Emisión: ${fechaEmision}</div>
+        </div>
+
+        <div class="stats-bar">
+            <div>Total Cátedras: <span>${totalCatedras}</span></div>
+            <div>Docentes Titulares: <span>${docentesSet.size}</span></div>
+            <div>Períodos Semanales Activos: <span>${totalPeriodos} períodos</span></div>
+            <div>Carrera: <span>Perito Contador</span></div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:4%; text-align:center;">No.</th>
+                    <th style="width:20%;">Grado y Sección</th>
+                    <th style="width:12%;">Área CNB</th>
+                    <th style="width:10%;">Código</th>
+                    <th style="width:28%;">Asignatura Oficial</th>
+                    <th style="width:20%;">Catedrático Titular</th>
+                    <th style="width:6%; text-align:center;">Per.</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${list.map((c, idx) => {
+                    const rawG = `${c.grade || ''} ${c.gradeCode || ''}`.toUpperCase();
+                    let gGradeNum = 0;
+                    if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+                    else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+                    else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
+
+                    const subName = getFullOfficialSubjectName(c.subject || c.name || 'Asignatura', gGradeNum);
+                    const cnbArea = getCnbAreaInfo(subName);
+                    const unassigned = isAssignmentUnassigned(c);
+                    const tName = unassigned ? '⚠️ Sin Asignar' : ((typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(c) : (c.teacher || 'Catedrático'));
+
+                    return `
+                    <tr>
+                        <td style="text-align:center; font-weight:700; color:#64748b;">${idx + 1}</td>
+                        <td><strong>${c.grade || c.gradeCode} (${c.section || 'A'})</strong></td>
+                        <td><span style="color:${cnbArea.color}; font-weight:700;">${cnbArea.shortName}</span></td>
+                        <td style="font-family:'Courier New',Courier,monospace; font-weight:700;">${c.code || '—'}</td>
+                        <td><strong>${subName}</strong></td>
+                        <td style="${unassigned ? 'color:#dc2626; font-weight:700;' : 'font-weight:600;'}">${tName}</td>
+                        <td style="text-align:center; font-weight:700;">${c.periodsPerWeek || c.hours || c.periods || 4}</td>
+                    </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+
+        <div class="signatures">
+            <div class="sig-box">
+                Vo.Bo. Dirección General<br>
+                <span>ENCCO Jutiapa</span>
+            </div>
+            <div class="sig-box">
+                Comisión de Horarios y Cátedras<br>
+                <span>Claustro de Docentes</span>
+            </div>
+            <div class="sig-box">
+                Secretaría Técnico-Pedagógica<br>
+                <span>Registro Académico</span>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(printHtml);
+    doc.close();
+
+    iframe.contentWindow.focus();
+    setTimeout(() => {
+        iframe.contentWindow.print();
+        setTimeout(() => {
+            document.body.removeChild(iframe);
+        }, 2000);
+    }, 400);
+}
+window.printClassAssignmentsReport = printClassAssignmentsReport;
+
 
 // ==========================================================================
 // 🎛️ CONTROLADOR INTEGRAL DE ASIGNACIONES DE CLASES A DOCENTES
@@ -34952,102 +35503,8 @@ async function deleteClassAssignment(asgId) {
     })();
 }
 
-function filterAssignmentsTable(searchQuery = '') {
-    renderAssignmentsTable(searchQuery);
-}
+// Fin de operaciones CRUD de asignaciones de cátedras
 
-function renderAssignmentsTable(searchQuery = '') {
-    const tbody = document.getElementById('assignmentsTableBody');
-    if (!tbody) return;
-
-    const rutaColeccion = 'pensum';
-    console.log("Consultando asignaciones en ruta:", rutaColeccion);
-    if ((!STATE.pensum || STATE.pensum.length === 0) && typeof loadPensumFromCloudFallback === 'function') {
-        loadPensumFromCloudFallback();
-    }
-
-    if (typeof updateClassAssignmentSelects === 'function') {
-        updateClassAssignmentSelects();
-    }
-
-    const teacherFilter = (document.getElementById('assignmentTeacherFilter')?.value || 'ALL');
-    const gradeFilter = (document.getElementById('assignmentGradeFilter')?.value || 'ALL');
-    const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('assignmentSearchInput')?.value || '')).toLowerCase().trim();
-
-    let list = Array.isArray(STATE.pensum) && STATE.pensum.length > 0
-        ? [...STATE.pensum]
-        : (typeof getInitialData === 'function' && Array.isArray(getInitialData().pensum) ? [...getInitialData().pensum] : []);
-
-    if (teacherFilter && teacherFilter !== 'ALL') {
-        const targetUser = (STATE.users || []).find(u => u.name === teacherFilter || u.id === teacherFilter) || { name: teacherFilter, id: teacherFilter };
-        list = list.filter(a => {
-            if (typeof isCourseAssignedToTeacher === 'function') {
-                return isCourseAssignedToTeacher(a, targetUser);
-            }
-            if (a.teacherId && targetUser.id && a.teacherId === targetUser.id) return true;
-            if (a.teacher && targetUser.name) {
-                const normA = a.teacher.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                const normT = targetUser.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                return normA.includes(normT) || normT.includes(normA);
-            }
-            return false;
-        });
-    }
-
-    if (gradeFilter && gradeFilter !== 'ALL') {
-        list = list.filter(a => 
-            a.gradeCode === gradeFilter || 
-            `${a.grade} (${a.section})` === gradeFilter ||
-            `${a.grade} ${a.section}` === gradeFilter ||
-            (a.section && a.grade && `${a.grade} (${a.section})`.toLowerCase() === gradeFilter.toLowerCase()) ||
-            (a.gradeCode && a.gradeCode.toLowerCase() === gradeFilter.toLowerCase())
-        );
-    }
-
-    if (q) {
-        const normQ = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        list = list.filter(a => {
-            const raw = `${a.teacher || ''} ${a.subject || a.name || a.subjectName || ''} ${a.grade || ''} ${a.section || ''} ${a.gradeCode || ''} ${a.career || ''}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-            return raw.includes(normQ);
-        });
-    }
-
-    if (list.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align:center; padding:35px; color:var(--text-muted);">
-                    <i class="fa-solid fa-chalkboard-user" style="font-size:2.2rem; margin-bottom:10px; display:block; color:var(--brand-green);"></i>
-                    <strong>No hay asignaciones de cátedras que coincidan con los filtros.</strong><br>
-                    <span style="font-size:0.85rem;">Haga clic en <strong>"+ Asignar Clase a Docente"</strong> para crear una nueva asignación de materia a un catedrático.</span>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    tbody.innerHTML = list.map(a => {
-        const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toUpperCase();
-        let gGradeNum = 0;
-        if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
-        else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
-        else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
-
-        const subName = getFullOfficialSubjectName(a.subject || a.name || 'Asignatura', gGradeNum);
-        return `
-        <tr>
-            <td><span class="badge badge-info" style="font-weight:700;">${a.career || 'Perito Contador'}</span></td>
-            <td><strong>${a.grade || a.gradeCode} (${a.section || 'A'})</strong></td>
-            <td><strong style="color:var(--brand-green-dark); font-size:0.95rem;">${subName}</strong></td>
-            <td><strong style="color:var(--text-primary);"><i class="fa-solid fa-user-tie" style="color:var(--brand-green); margin-right:4px;"></i> ${(typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(a) : (a.teacher || a.teacherName || 'Sin asignar')}</strong></td>
-            <td style="text-align:center; font-weight:700;">${a.periodsPerWeek || a.hours || a.periods || 4} períodos/sem</td>
-            <td style="text-align:center; white-space:nowrap;">
-                <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${a.id}')" title="Editar asignación" style="padding:3px 8px; margin-right:4px;"><i class="fa-solid fa-pen-to-square"></i></button>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteClassAssignment('${a.id}')" title="Eliminar asignación" style="padding:3px 8px;"><i class="fa-solid fa-trash"></i></button>
-            </td>
-        </tr>
-        `;
-    }).join('');
-}
-window.renderAssignmentsTable = renderAssignmentsTable;
 
 function closeCyclePromotionModal() {
     const modal = document.getElementById('cyclePromotionModal');

@@ -1744,7 +1744,69 @@
 
                 <!-- 4C. ASIGNACIÓN DE CLASES A CATEDRÁTICOS -->
                 <section class="app-view" id="view-class-assignments">
-                    <div class="section-toolbar">
+                    <!-- KPI CARDS SUPERIORES -->
+                    <div class="kpi-grid" id="assignmentsKpiGrid" style="margin-bottom:12px; display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px;">
+                        <div class="kpi-card" style="padding:12px 16px; margin:0;">
+                            <div class="kpi-icon blue"><i class="fa-solid fa-book-open"></i></div>
+                            <div>
+                                <span style="font-size:0.75rem; color:#64748b; font-weight:700;">Total Cátedras</span>
+                                <h3 id="kpiTotalAssignments" style="font-size:1.3rem; font-weight:800; color:#0f2b5c; margin:0;">0</h3>
+                            </div>
+                        </div>
+                        <div class="kpi-card" style="padding:12px 16px; margin:0;">
+                            <div class="kpi-icon green"><i class="fa-solid fa-chalkboard-user"></i></div>
+                            <div>
+                                <span style="font-size:0.75rem; color:#64748b; font-weight:700;">Docentes Asignados</span>
+                                <h3 id="kpiAssignedTeachers" style="font-size:1.3rem; font-weight:800; color:#15803d; margin:0;">0</h3>
+                            </div>
+                        </div>
+                        <div class="kpi-card" style="padding:12px 16px; margin:0;">
+                            <div class="kpi-icon orange"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                            <div>
+                                <span style="font-size:0.75rem; color:#64748b; font-weight:700;">Cátedras Sin Asignar</span>
+                                <h3 id="kpiUnassignedSubjects" style="font-size:1.3rem; font-weight:800; color:#ea580c; margin:0;">0</h3>
+                            </div>
+                        </div>
+                        <div class="kpi-card" style="padding:12px 16px; margin:0;">
+                            <div class="kpi-icon blue"><i class="fa-solid fa-clock"></i></div>
+                            <div>
+                                <span style="font-size:0.75rem; color:#64748b; font-weight:700;">Períodos Semanales</span>
+                                <h3 id="kpiTotalWeeklyPeriods" style="font-size:1.3rem; font-weight:800; color:#0369a1; margin:0;">0</h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BARRA DE MODOS DE VISTA Y ACCIONES -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; background:#ffffff; padding:10px 14px; border-radius:10px; border:1px solid #e2e8f0;">
+                        <!-- SELECTOR DE MODOS DE VISTA -->
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button type="button" class="btn btn-sm btn-primary asg-view-mode-btn active" id="asgViewModeTableBtn" onclick="switchAssignmentsViewMode('table')" style="font-size:0.78rem; font-weight:700; padding:5px 12px;">
+                                <i class="fa-solid fa-table-list"></i> Tabla General
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary asg-view-mode-btn" id="asgViewModeGradeBtn" onclick="switchAssignmentsViewMode('byGrade')" style="font-size:0.78rem; font-weight:700; padding:5px 12px;">
+                                <i class="fa-solid fa-graduation-cap"></i> Por Grado / Cobertura
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary asg-view-mode-btn" id="asgViewModeTeacherBtn" onclick="switchAssignmentsViewMode('byTeacher')" style="font-size:0.78rem; font-weight:700; padding:5px 12px;">
+                                <i class="fa-solid fa-user-tie"></i> Carga Docente
+                            </button>
+                        </div>
+
+                        <!-- FILTROS RÁPIDOS POR GRADO E IMPRESIÓN -->
+                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                            <span style="font-size:0.74rem; font-weight:700; color:#64748b;">Grado:</span>
+                            <button type="button" class="asg-quick-grade-pill active" onclick="setAssignmentQuickFilter('ALL', this)" style="padding:3px 9px; border-radius:6px; font-size:0.74rem; font-weight:700; border:1px solid #0284c7; background:#0284c7; color:#fff; cursor:pointer;">Todos</button>
+                            <button type="button" class="asg-quick-grade-pill" onclick="setAssignmentQuickFilter('4to', this)" style="padding:3px 9px; border-radius:6px; font-size:0.74rem; font-weight:700; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; cursor:pointer;">4to</button>
+                            <button type="button" class="asg-quick-grade-pill" onclick="setAssignmentQuickFilter('5to', this)" style="padding:3px 9px; border-radius:6px; font-size:0.74rem; font-weight:700; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; cursor:pointer;">5to</button>
+                            <button type="button" class="asg-quick-grade-pill" onclick="setAssignmentQuickFilter('6to', this)" style="padding:3px 9px; border-radius:6px; font-size:0.74rem; font-weight:700; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; cursor:pointer;">6to</button>
+                            <button type="button" class="asg-quick-grade-pill" onclick="setAssignmentQuickFilter('UNASSIGNED', this)" style="padding:3px 9px; border-radius:6px; font-size:0.74rem; font-weight:700; border:1px solid #f97316; background:#fff7ed; color:#c2410c; cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i> Sin Asignar</button>
+                            
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="printClassAssignmentsReport()" style="font-size:0.78rem; font-weight:700; padding:5px 12px; margin-left:6px;" title="Imprimir distribución oficial de cátedras">
+                                <i class="fa-solid fa-print"></i> Imprimir Distribución
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="section-toolbar" style="margin-bottom:12px;">
                         <div class="toolbar-search">
                             <input type="text" id="assignmentSearchInput" placeholder="Buscar por docente, clase, grado o sección..." oninput="filterAssignmentsTable(this.value)" onkeyup="filterAssignmentsTable(this.value)">
                         </div>
@@ -1763,14 +1825,8 @@
                         </div>
                     </div>
 
-                    <div class="info-alert" style="display:none; margin-bottom:16px;">
-                        <i class="fa-solid fa-chalkboard-user"></i>
-                        <div>
-                            <strong>Asignación de Clases a Docentes:</strong> Asigne las materias del pensum a cada grado y sección con su respectivo catedrático para el ingreso de notas y control de asistencia.
-                        <button type="button" onclick="dismissBannerAlert(this)" title="Cerrar esta alerta" style="margin-left:auto; background:none; border:none; color:inherit; font-size:1.25rem; font-weight:700; cursor:pointer; opacity:0.65; padding:0 4px; line-height:1;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.65'">&times;</button></div>
-                    </div>
-
-                    <div class="table-card">
+                    <!-- VISTA 1: TABLA GENERAL -->
+                    <div class="table-card" id="assignmentsTableView">
                         <div class="table-responsive">
                             <table class="custom-table">
                                 <thead>
@@ -1779,13 +1835,23 @@
                                         <th>Grado y Sección</th>
                                         <th>Asignatura Asignada</th>
                                         <th>Catedrático Titular</th>
-                                        <th>Períodos</th>
-                                        <th>Acciones</th>
+                                        <th style="text-align:center;">Períodos</th>
+                                        <th style="text-align:center;">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody id="assignmentsTableBody"></tbody>
                             </table>
                         </div>
+                    </div>
+
+                    <!-- VISTA 2: POR GRADO Y SECCIÓN (MATRIZ DE COBERTURA) -->
+                    <div id="assignmentsByGradeView" style="display:none;">
+                        <div id="assignmentsByGradeContainer" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(360px, 1fr)); gap:14px;"></div>
+                    </div>
+
+                    <!-- VISTA 3: CARGA POR DOCENTE -->
+                    <div id="assignmentsByTeacherView" style="display:none;">
+                        <div id="assignmentsByTeacherContainer" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:14px;"></div>
                     </div>
                 </section>
 
