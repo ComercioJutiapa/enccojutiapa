@@ -5927,6 +5927,123 @@ function getAttendanceStudents(gradeCode, currentCourseObj = null) {
 window.getAttendanceStudents = getAttendanceStudents;
 
 
+function getStudentsCountByGradeAndSection(gradeName, sectionName, gradeCode = '') {
+    if (!window.STATE || !Array.isArray(window.STATE.students)) return 0;
+    const cleanSec = (sectionName || '').replace(/^Sección\s+/i, '').trim().toUpperCase();
+    const cleanGName = (gradeName || '').toLowerCase().trim();
+    const gWord = cleanGName.split(' ')[0]; // '4to', '5to', '6to'
+
+    return window.STATE.students.filter(s => {
+        if (!s || s.status === 'Retirado') return false;
+        
+        if (gradeCode && s.gradeCode && s.gradeCode.trim().toLowerCase() === gradeCode.trim().toLowerCase()) {
+            return true;
+        }
+
+        const assign = (typeof getStudentAssignment === 'function') ? getStudentAssignment(s) : { grade: s.grade || '', section: s.section || '' };
+        const sSec = (s.section || assign.section || '').replace(/^Sección\s+/i, '').trim().toUpperCase();
+        const sGrade = (s.grade || assign.grade || '').toLowerCase().trim();
+        const sWord = sGrade.split(' ')[0];
+
+        return (sWord === gWord && sSec === cleanSec);
+    }).length;
+}
+window.getStudentsCountByGradeAndSection = getStudentsCountByGradeAndSection;
+
+function updateEnrollmentSectionLiveBadge() {
+    const sel = document.getElementById('studentFormGrade');
+    const badgeText = document.getElementById('enrollmentSectionLiveBadgeText');
+    if (!sel || !badgeText) return;
+
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) {
+        badgeText.textContent = 'Seleccione una sección';
+        return;
+    }
+
+    const gName = opt.getAttribute('data-grade') || opt.value.split(' - ')[0] || '';
+    const gSec = opt.getAttribute('data-section') || opt.value.split(' - ')[1] || '';
+    const gCode = opt.getAttribute('data-code') || '';
+    const count = getStudentsCountByGradeAndSection(gName, gSec, gCode);
+
+    badgeText.innerHTML = `Inscritos en esta sección: <strong style="color:#0f5127; font-size:0.82rem;">${count} estudiantes activos</strong>`;
+    
+    const card = document.getElementById('enrollmentAllSectionsSummaryCard');
+    if (card && card.style.display !== 'none') {
+        renderEnrollmentSectionsDistribution();
+    }
+}
+window.updateEnrollmentSectionLiveBadge = updateEnrollmentSectionLiveBadge;
+
+function toggleEnrollmentSectionsSummary(force = null) {
+    const card = document.getElementById('enrollmentAllSectionsSummaryCard');
+    if (!card) return;
+    const isVisible = card.style.display !== 'none';
+    const show = (force !== null) ? force : !isVisible;
+    card.style.display = show ? 'block' : 'none';
+    if (show) {
+        renderEnrollmentSectionsDistribution();
+    }
+}
+window.toggleEnrollmentSectionsSummary = toggleEnrollmentSectionsSummary;
+
+function renderEnrollmentSectionsDistribution() {
+    const container = document.getElementById('enrollmentSectionsDistributionGrid');
+    if (!container) return;
+
+    const grades = (STATE.gradesList && STATE.gradesList.length > 0) ? sortGrades(STATE.gradesList) : [];
+    const groups = { '4to': [], '5to': [], '6to': [] };
+    grades.forEach(g => {
+        const word = (g.name || '').split(' ')[0].toLowerCase();
+        if (groups[word]) groups[word].push(g);
+        else groups['4to'].push(g);
+    });
+
+    let html = '';
+    const groupTitles = {
+        '4to': '4to Perito Contador',
+        '5to': '5to Perito Contador',
+        '6to': '6to Perito Contador'
+    };
+
+    const currentSelectedVal = document.getElementById('studentFormGrade')?.value || '';
+
+    Object.keys(groupTitles).forEach(lvl => {
+        const list = groups[lvl] || [];
+        let totalLvl = 0;
+        let itemsHtml = '';
+
+        list.forEach(g => {
+            const count = getStudentsCountByGradeAndSection(g.name, g.section, g.code);
+            totalLvl += count;
+            const val = g.name + ' - ' + g.section;
+            const isSelected = (val === currentSelectedVal);
+            const bg = isSelected ? '#dcfce7' : '#f8fafc';
+            const border = isSelected ? '2px solid #16a34a' : '1px solid #cbd5e1';
+
+            itemsHtml += `
+                <div style="background:${bg}; border:${border}; border-radius:6px; padding:4px 8px; display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-size:0.75rem;">
+                    <span style="font-weight:${isSelected ? '800' : '600'}; color:${isSelected ? '#15803d' : '#334155'};">${g.section}</span>
+                    <strong style="color:${isSelected ? '#15803d' : '#0f172a'}; font-family:monospace; font-size:0.82rem;">${count}</strong>
+                </div>
+            `;
+        });
+
+        html += `
+            <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #e2e8f0; padding-bottom:4px; margin-bottom:6px;">
+                    <span style="font-weight:800; font-size:0.78rem; color:#0f2b5c;">${groupTitles[lvl]}</span>
+                    <span style="font-size:0.70rem; font-weight:700; background:#e0f2fe; color:#0369a1; padding:1px 6px; border-radius:4px;">${totalLvl} total</span>
+                </div>
+                ${itemsHtml}
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+window.renderEnrollmentSectionsDistribution = renderEnrollmentSectionsDistribution;
+
 function updateGradeSelects() {
     try {
         const gradeSelects = document.querySelectorAll('.grade-select, #studentGradeFilter, #studentFormGrade, #pensumSubjectGrade, #gradeFilterSelect, #reportsGradeSelect, #honorRollGradeSelect, #profGradeSelect');
@@ -5936,14 +6053,21 @@ function updateGradeSelects() {
                 if (!sel) return;
                 const currentVal = sel.value;
                 const isProfileSel = (sel.id === 'profGradeSelect');
+                const isEnrollmentForm = (sel.id === 'studentFormGrade');
                 let opts = isProfileSel ? '<option value="">-- Seleccione Grado y Sección --</option>' : '<option value="">Todos los Grados / Secciones</option>';
                 grades.forEach(g => {
                     const val = g.name + ' - ' + g.section;
-                    opts += `<option value="${val}" data-grade="${escapeHtml(g.name)}" data-section="${escapeHtml(g.section)}" data-code="${escapeHtml(g.code)}">${g.name} (${g.section})</option>`;
+                    let label = `${g.name} (${g.section})`;
+                    if (isEnrollmentForm) {
+                        const count = getStudentsCountByGradeAndSection(g.name, g.section, g.code);
+                        label += ` — [${count} ${count === 1 ? 'estudiante' : 'estudiantes'}]`;
+                    }
+                    opts += `<option value="${val}" data-grade="${escapeHtml(g.name)}" data-section="${escapeHtml(g.section)}" data-code="${escapeHtml(g.code)}">${label}</option>`;
                 });
                 sel.innerHTML = opts;
                 if (currentVal) sel.value = currentVal;
             });
+            updateEnrollmentSectionLiveBadge();
         }
     } catch(e) {}
 }

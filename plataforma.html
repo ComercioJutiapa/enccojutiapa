@@ -932,10 +932,18 @@
 
                                 <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:8px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:8px 10px; margin-top:2px;">
                                     <div class="compact-group">
-                                        <label style="color:#166534 !important;">Grado y Sección a Asignar <span style="color:#ef4444;">*</span></label>
-                                        <select id="studentFormGrade" class="form-control" required style="font-weight:700;">
+                                        <label style="color:#166534 !important; display:flex; justify-content:space-between; align-items:center;">
+                                            <span>Grado y Sección a Asignar <span style="color:#ef4444;">*</span></span>
+                                            <button type="button" onclick="toggleEnrollmentSectionsSummary()" style="background:none; border:none; color:#0284c7; font-weight:700; font-size:0.72rem; cursor:pointer; text-decoration:underline;">
+                                                <i class="fa-solid fa-chart-pie"></i> Ver cupos de todas las secciones
+                                            </button>
+                                        </label>
+                                        <select id="studentFormGrade" class="form-control" required style="font-weight:700;" onchange="updateEnrollmentSectionLiveBadge()">
                                             <!-- Cargado dinámicamente con conteo de alumnos -->
                                         </select>
+                                        <div id="enrollmentSectionLiveBadge" style="margin-top:4px; font-size:0.75rem; color:#15803d; font-weight:700; display:flex; align-items:center; gap:5px;">
+                                            <i class="fa-solid fa-users"></i> <span id="enrollmentSectionLiveBadgeText">Inscritos: calculando...</span>
+                                        </div>
                                     </div>
                                     <div class="compact-group">
                                         <label style="color:#166534 !important;">Ciclo Escolar <span style="color:#ef4444;">*</span></label>
@@ -949,6 +957,21 @@
                                             <option value="Matutina">Matutina</option>
                                             <option value="Vespertina">Vespertina</option>
                                         </select>
+                                    </div>
+                                </div>
+
+                                <!-- PANEL DESPLEGABLE: MONITOREO DE ALUMNOS POR CADA SECCIÓN -->
+                                <div id="enrollmentAllSectionsSummaryCard" style="display:none; background:#ffffff; border:1.5px solid #0284c7; border-radius:8px; padding:10px 14px; margin-top:8px;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                        <span style="font-size:0.80rem; font-weight:800; color:#0369a1; display:flex; align-items:center; gap:6px;">
+                                            <i class="fa-solid fa-users-rectangle"></i> Conteo Oficial de Estudiantes Inscritos por Sección (Ciclo 2026)
+                                        </span>
+                                        <button type="button" onclick="toggleEnrollmentSectionsSummary(false)" style="background:none; border:none; color:#64748b; font-size:0.8rem; cursor:pointer;" title="Cerrar">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </div>
+                                    <div id="enrollmentSectionsDistributionGrid" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+                                        <!-- Se llena dinámicamente con conteos de 4to, 5to y 6to -->
                                     </div>
                                 </div>
 
