@@ -13202,6 +13202,8 @@ function generateOfficialPrintList(opts = null) {
     let career = opts?.career || document.getElementById('printModelCareerSelect')?.value;
     let gradeCode = opts?.gradeCode || document.getElementById('printModelGradeSelect')?.value;
     let modelType = opts?.modelType || document.getElementById('printModelTypeSelect')?.value || 'CUADRO_CALIFICACIONES_EXCEL';
+    const fillMode = opts?.fillMode || document.getElementById('printModelFillModeSelect')?.value || 'lleno';
+    const isVacio = (fillMode === 'vacio');
     const subjectSelect = document.getElementById('printModelSubjectSelect');
     let rawSubVal = opts?.subjectName || (subjectSelect ? subjectSelect.value : (document.getElementById('printModelSubjectName')?.value || '')).trim();
     let teacherName = opts?.teacherName || (document.getElementById('printModelTeacherName')?.value || '').trim();
@@ -13414,17 +13416,21 @@ function generateOfficialPrintList(opts = null) {
                     const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
                     const claveVal = s.clave || (startNo + idx + 1);
                     const genderShort = (s.gender === 'Femenino' || s.genero === 'Femenino') ? 'F' : 'M';
-                    const statusText = s.status || 'Inscrito';
+                    const guardianName = isVacio ? '' : (s.guardianName || s.tutor || s.fatherName || s.motherName || 'No registrado');
+                    const guardianDpi = isVacio ? '' : (s.guardianDpi || s.tutorDpi || s.fatherDpi || s.motherDpi || '-');
+                    const statusText = isVacio ? '' : (s.status || 'Inscrito').toUpperCase();
+
                     return `
                     <tr style="height:${rowHeight};">
-                        <td style="text-align:center; font-weight:bold; width:26px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
-                        <td style="text-align:center; font-weight:700; width:34px; padding:${cellPadding}; font-size:${rowFontSize};">${claveVal}</td>
-                        <td style="text-align:center; font-family:monospace; width:80px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
-                        <td style="text-align:center; font-family:monospace; width:95px; padding:${cellPadding}; font-size:${rowFontSize};">${s.cui || s.dpi || '-'}</td>
-                        <td style="text-align:left; padding-left:5px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
-                        <td style="text-align:center; font-weight:700; width:30px; padding:${cellPadding}; font-size:${rowFontSize};">${genderShort}</td>
-                        <td style="text-align:center; width:55px; padding:${cellPadding}; font-size:6.8px; font-weight:700; color:#15803d;">${statusText.toUpperCase()}</td>
-                        <td style="width:140px; padding:${cellPadding}; border-bottom:1px solid #94a3b8;"></td>
+                        <td style="text-align:center; font-weight:700; width:28px; padding:${cellPadding}; font-size:${rowFontSize};">${claveVal}</td>
+                        <td style="text-align:center; font-family:monospace; width:72px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
+                        <td style="text-align:center; font-family:monospace; width:88px; padding:${cellPadding}; font-size:${rowFontSize};">${s.cui || s.dpi || '-'}</td>
+                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
+                        <td style="text-align:center; font-weight:700; width:26px; padding:${cellPadding}; font-size:${rowFontSize};">${genderShort}</td>
+                        <td style="text-align:left; padding-left:4px; width:135px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${guardianName}</td>
+                        <td style="text-align:center; font-family:monospace; width:82px; padding:${cellPadding}; font-size:${rowFontSize};">${guardianDpi}</td>
+                        <td style="text-align:center; width:52px; padding:${cellPadding}; font-size:6.8px; font-weight:700; color:#15803d;">${statusText}</td>
+                        <td style="width:90px; padding:${cellPadding}; border-bottom:1px solid #94a3b8;"></td>
                     </tr>`;
                 }).join('');
 
@@ -13432,24 +13438,44 @@ function generateOfficialPrintList(opts = null) {
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th style="width:26px;">No.</th>
-                            <th style="width:34px;">CLAVE</th>
-                            <th style="width:80px;">CÓDIGO PERSONAL</th>
-                            <th style="width:95px;">CUI / DPI</th>
-                            <th>APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
-                            <th style="width:30px;">SEXO</th>
-                            <th style="width:55px;">ESTADO</th>
-                            <th style="width:140px;">FIRMA / OBSERVACIONES</th>
+                            <th style="width:28px;">CLAVE</th>
+                            <th style="width:72px;">CÓD. PERSONAL</th>
+                            <th style="width:88px;">CUI</th>
+                            <th>ALUMNO</th>
+                            <th style="width:26px;">SEXO</th>
+                            <th style="width:135px;">NOMBRE ENCARGADO</th>
+                            <th style="width:82px;">DPI DEL ENCARGADO</th>
+                            <th style="width:52px;">ESTADO</th>
+                            <th style="width:90px;">FIRMA</th>
                         </tr>
                     </thead>
                     <tbody>${rowsHtml}</tbody>
                 </table>`;
 
             } else if (modelType === 'ASISTENCIA_MENSUAL') {
-                const daysHeaders = Array.from({ length: 31 }, (_, i) => `<th style="width:17px; padding:1px 0; font-size:6.5px;">${i + 1}</th>`).join('');
+                const monthIndex = (bNum === 1) ? 1 : (bNum === 2) ? 3 : (bNum === 3) ? 5 : 7;
+                const daysInfo = Array.from({ length: 31 }, (_, i) => {
+                    const dayNum = i + 1;
+                    const dateObj = new Date(2026, monthIndex, dayNum);
+                    const dayOfWeek = dateObj.getDay();
+                    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+                    const letter = ['D', 'L', 'M', 'M', 'J', 'V', 'S'][dayOfWeek];
+                    return { dayNum, isWeekend, letter };
+                });
+
+                const daysHeaders = daysInfo.map(d => `
+                    <th style="width:16px; padding:1px 0; font-size:6px; ${d.isWeekend ? 'background:#cbd5e1; color:#475569;' : ''}" title="${d.isWeekend ? (d.letter === 'S' ? 'Sábado' : 'Domingo') : ''}">
+                        ${d.dayNum}<br><span style="font-size:5.5px; font-weight:normal;">${d.letter}</span>
+                    </th>
+                `).join('');
+
                 const rowsHtml = pageStudents.map((s, idx) => {
                     const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
-                    const daysCells = Array.from({ length: 31 }, () => `<td style="width:17px; padding:0; text-align:center; font-size:7px; border:1px solid #94a3b8;"></td>`).join('');
+                    const daysCells = daysInfo.map(d => {
+                        const bgStyle = d.isWeekend ? 'background:#f1f5f9;' : '';
+                        return `<td style="width:16px; padding:0; text-align:center; font-size:7px; border:1px solid #94a3b8; ${bgStyle}"></td>`;
+                    }).join('');
+
                     return `
                     <tr style="height:18px;">
                         <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
@@ -13493,23 +13519,25 @@ function generateOfficialPrintList(opts = null) {
 
                     let sumZona = 0;
                     let hasAnyAct = false;
-                    const acts = uData ? (uData.activities || []) : [];
+                    const acts = (!isVacio && uData) ? (uData.activities || []) : [];
 
                     const actCells = activitiesList.map((a, actIdx) => {
-                        const score = acts[actIdx];
-                        if (score !== undefined && score !== null && score !== '' && !isNaN(score)) {
-                            const numScore = parseFloat(score);
-                            sumZona += numScore;
-                            hasAnyAct = true;
-                            return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; font-weight:700; color:#0f172a;">${numScore}</td>`;
+                        if (!isVacio) {
+                            const score = acts[actIdx];
+                            if (score !== undefined && score !== null && score !== '' && !isNaN(score)) {
+                                const numScore = parseFloat(score);
+                                sumZona += numScore;
+                                hasAnyAct = true;
+                                return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; font-weight:700; color:#0f172a;">${numScore}</td>`;
+                            }
                         }
                         return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; color:#94a3b8;"></td>`;
                     }).join('');
 
-                    const zonaText = (hasAnyAct || sumZona > 0) ? sumZona : '';
-                    const percentCompliance = cfgZonaMax > 0 ? Math.round((sumZona / cfgZonaMax) * 100) : 0;
+                    const zonaText = (!isVacio && (hasAnyAct || sumZona > 0)) ? sumZona : '';
                     let complianceBadge = '';
-                    if (hasAnyAct) {
+                    if (!isVacio && hasAnyAct) {
+                        const percentCompliance = cfgZonaMax > 0 ? Math.round((sumZona / cfgZonaMax) * 100) : 0;
                         complianceBadge = percentCompliance >= 75
                             ? `<strong style="color:#15803d; font-size:6.8px;">${percentCompliance}% (ALTO)</strong>`
                             : (percentCompliance >= 50 ? `<span style="color:#b45309; font-size:6.8px;">${percentCompliance}% (MEDIO)</span>`
@@ -13562,7 +13590,13 @@ function generateOfficialPrintList(opts = null) {
                     let examVal = '';
                     let totalVal = '';
 
-                    if (isInactive) {
+                    if (isVacio) {
+                        // Modo VACÍO: Celdas limpias con bordes para uso en aula
+                        actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center;"></td>`).join('');
+                        zonaVal = '';
+                        examVal = '';
+                        totalVal = '';
+                    } else if (isInactive) {
                         actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#94a3b8; font-size:${rowFontSize};">-</td>`).join('');
                         zonaVal = '-';
                         examVal = '-';
@@ -13723,8 +13757,18 @@ function generateOfficialPrintList(opts = null) {
             </div>`;
         };
 
-        const allPagesHtml = pages.map((pageStudents, idx) => renderPageTable(pageStudents, idx, pages.length)).join('');
         const pageOrientation = isLandscape ? 'landscape' : 'portrait';
+        window._currentPrintModalOrientation = pageOrientation;
+        window._currentPrintModalParams = {
+            career,
+            gradeCode,
+            modelType,
+            fillMode,
+            subjectName: rawSubVal,
+            teacherName,
+            bimestreNum,
+            targetPensum
+        };
 
         if (opts?.previewModal) {
             renderAndShowPrintDocument(docTitle, allPagesHtml, pageOrientation);
@@ -13904,6 +13948,378 @@ function printGradebookOfficialList() {
     });
 }
 
+function executePrintModalToExcel() {
+    const params = window._currentPrintModalParams || {};
+    generateOfficialExcelList(params);
+}
+
+function generateOfficialExcelList(opts = null) {
+    let career = opts?.career || document.getElementById('printModelCareerSelect')?.value;
+    let gradeCode = opts?.gradeCode || document.getElementById('printModelGradeSelect')?.value;
+    let modelType = opts?.modelType || document.getElementById('printModelTypeSelect')?.value || 'CUADRO_CALIFICACIONES_EXCEL';
+    const fillMode = opts?.fillMode || document.getElementById('printModelFillModeSelect')?.value || 'lleno';
+    const isVacio = (fillMode === 'vacio');
+    const subjectSelect = document.getElementById('printModelSubjectSelect');
+    let rawSubVal = opts?.subjectName || (subjectSelect ? subjectSelect.value : (document.getElementById('printModelSubjectName')?.value || '')).trim();
+    let teacherName = opts?.teacherName || (document.getElementById('printModelTeacherName')?.value || '').trim();
+    let bimestreNum = opts?.bimestreNum || document.getElementById('printModelBimestreSelect')?.value || '1';
+    let targetPensum = opts?.targetPensum || null;
+
+    if (!targetPensum && (!career || !gradeCode)) {
+        showToast("Por favor seleccione la Carrera y el Grado/Sección para exportar a Excel.", "warning");
+        return;
+    }
+
+    const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode);
+    const gradeTitle = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : (targetPensum ? `${targetPensum.grade} (${targetPensum.section || 'A'})` : gradeCode);
+    const rawGradeName = gradeObj ? gradeObj.name : (targetPensum ? targetPensum.grade : '4to Perito');
+    const rawSection = gradeObj ? gradeObj.section : (targetPensum ? (targetPensum.section || 'A') : 'A');
+
+    const rawG = `${gradeCode || ''} ${gradeObj ? (gradeObj.name + ' ' + gradeObj.section) : ''} ${targetPensum ? (targetPensum.grade + ' ' + targetPensum.section) : ''}`.toUpperCase();
+    let gGradeNum = 0;
+    if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+    else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+    else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
+
+    const gSec = getCleanSectionLetter(gradeObj ? gradeObj.section : (targetPensum ? targetPensum.section : gradeCode));
+    const subjectName = getFullOfficialSubjectName(rawSubVal, gGradeNum || 0);
+
+    if (!subjectName && !targetPensum && modelType !== 'NOMINA_OFICIAL') {
+        showToast("Por favor seleccione la Asignatura correspondiente.", "warning");
+        return;
+    }
+
+    if (!targetPensum && subjectName) {
+        targetPensum = (STATE.pensum || []).find(a => {
+            const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+            let aGradeNum = 0;
+            if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+            else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+            else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+            const aSec = getCleanSectionLetter(a.section || a.gradeCode || rawA);
+            const aOfficial = getFullOfficialSubjectName(a.subject || a.name || '', aGradeNum).toLowerCase();
+            const sOfficial = subjectName.toLowerCase();
+            const isMatchGrade = (gGradeNum === 0 || aGradeNum === 0 || gGradeNum === aGradeNum);
+            const isMatchSec = (!gSec || !aSec || gSec === aSec);
+            return isMatchGrade && isMatchSec && (aOfficial === sOfficial || aOfficial.includes(sOfficial) || sOfficial.includes(aOfficial));
+        });
+    }
+
+    const bNum = parseInt(bimestreNum) || 1;
+    const finalSubjectName = targetPensum ? targetPensum.subject : subjectName;
+    const effectiveTeacher = targetPensum ? (targetPensum.teacher || teacherName) : (teacherName || 'Catedrático Titular');
+
+    let activitiesList = [];
+    let cfgZonaMax = 40;
+    let cfgExamMax = 60;
+
+    if (targetPensum && typeof getGradingConfig === 'function') {
+        const cfg = getGradingConfig(targetPensum, bNum);
+        cfgZonaMax = cfg.zonaMax || 40;
+        cfgExamMax = cfg.examMax || 60;
+        if (Array.isArray(cfg.activities)) {
+            const assignedActs = cfg.activities.filter(act => {
+                const maxPts = parseFloat(act.max) || 0;
+                const customName = (act.name || '').trim();
+                return maxPts > 0 || (customName && !customName.startsWith('Act. ') && !customName.startsWith('Actividad '));
+            });
+            if (assignedActs.length > 0) {
+                activitiesList = assignedActs.map((act, idx) => ({
+                    num: idx + 1,
+                    label: act.name || `Act ${idx + 1}`,
+                    shortLabel: (act.name && act.name.length > 9) ? act.name.slice(0, 9) + '.' : (act.name || `Act ${idx + 1}`),
+                    pts: parseFloat(act.max) || 0
+                }));
+            }
+        }
+    }
+
+    let students = (typeof getSortedGradebookStudents === 'function') ? getSortedGradebookStudents(gradeCode, targetPensum) : [];
+    if (!students || students.length === 0) {
+        students = (STATE.students || []).filter(s => {
+            if (s.active === false) return false;
+            if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
+            const sg = `${s.grade || ''} ${s.section || ''}`.toLowerCase();
+            const tg = `${rawGradeName} ${rawSection}`.toLowerCase();
+            return sg.includes(tg);
+        });
+    }
+
+    if (activitiesList.length === 0) {
+        activitiesList = [
+            { num: 1, label: 'Actividad 1', shortLabel: 'Act 1', pts: 10 },
+            { num: 2, label: 'Actividad 2', shortLabel: 'Act 2', pts: 10 },
+            { num: 3, label: 'Actividad 3', shortLabel: 'Act 3', pts: 10 },
+            { num: 4, label: 'Actividad 4', shortLabel: 'Act 4', pts: 10 }
+        ];
+    }
+
+    students.sort((a, b) => {
+        const nameA = formatStudentDisplayName(a, 'lastFirst');
+        const nameB = formatStudentDisplayName(b, 'lastFirst');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
+
+    const isLandscape = (modelType === 'ASISTENCIA_MENSUAL' || modelType === 'CUADRO_CALIFICACIONES_EXCEL' || (modelType === 'LISTA_COTEJO' && activitiesList.length > 5));
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
+    const cleanGrade = (gradeTitle || 'Grado').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const fillSuffix = isVacio ? 'Vacio' : 'Lleno';
+
+    let fileBaseName = '';
+    let docHeaderTitle = '';
+
+    if (modelType === 'NOMINA_OFICIAL') {
+        fileBaseName = `Nomina_Oficial_${cleanGrade}_${fillSuffix}_2026.xlsx`;
+        docHeaderTitle = 'NÓMINA OFICIAL DE ESTUDIANTES INSCRITOS - CICLO ESCOLAR 2026';
+    } else if (modelType === 'ASISTENCIA_MENSUAL') {
+        fileBaseName = `Control_Asistencia_${cleanGrade}_B${bNum}_${fillSuffix}_2026.xlsx`;
+        docHeaderTitle = `CONTROL MENSUAL DE ASISTENCIA Y PUNTUALIDAD (BIMESTRE ${bNum}) - CICLO 2026`;
+    } else if (modelType === 'LISTA_COTEJO') {
+        fileBaseName = `Lista_Cotejo_${cleanGrade}_B${bNum}_${fillSuffix}_2026.xlsx`;
+        docHeaderTitle = `LISTA DE COTEJO DE ACTIVIDADES DE ZONA (${cfgZonaMax} PTS - BIMESTRE ${bNum}) - CICLO 2026`;
+    } else {
+        fileBaseName = `Cuadro_Calificaciones_${cleanGrade}_B${bNum}_${fillSuffix}_2026.xlsx`;
+        docHeaderTitle = `CUADRO DE CONTROL DE ZONA Y EVALUACIONES (BIMESTRE ${bNum}) - CICLO 2026`;
+    }
+
+    if (window.XLSX) {
+        try {
+            const wb = XLSX.utils.book_new();
+            const aoa = [];
+
+            // Fila 1: Título Institucional
+            aoa.push([h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES - ENCCO JUTIAPA']);
+            // Fila 2: Subtítulo
+            aoa.push(['Jornada Matutina • Ciclo Escolar 2026 • Documento Oficial']);
+            // Fila 3: Título del Formato
+            aoa.push([docHeaderTitle + (isVacio ? ' [FORMATO EN BLANCO PARA AULA]' : ' [CUADRO CON DATOS ASENTADOS]')]);
+            // Fila 4: Metadatos
+            aoa.push([
+                `CARRERA: ${career || 'Perito Contador'}`,
+                '',
+                `GRADO Y SECCIÓN: ${gradeTitle}`,
+                '',
+                `CÁTEDRA: ${finalSubjectName}`,
+                '',
+                `CATEDRÁTICO: ${effectiveTeacher}`,
+                '',
+                `BIMESTRE: ${bNum}`
+            ]);
+            // Fila 5: Espacio en blanco
+            aoa.push([]);
+
+            let headers = [];
+            let colWidths = [];
+
+            if (modelType === 'NOMINA_OFICIAL') {
+                // Exactamente 9 columnas oficiales
+                headers = [
+                    'CLAVE',
+                    'CÓD. PERSONAL',
+                    'CUI',
+                    'ALUMNO',
+                    'SEXO',
+                    'NOMBRE ENCARGADO',
+                    'DPI DEL ENCARGADO',
+                    'ESTADO',
+                    'FIRMA'
+                ];
+                colWidths = [
+                    { wch: 8 },   // CLAVE
+                    { wch: 16 },  // CÓD. PERSONAL
+                    { wch: 18 },  // CUI
+                    { wch: 40 },  // ALUMNO
+                    { wch: 8 },   // SEXO
+                    { wch: 32 },  // NOMBRE ENCARGADO
+                    { wch: 18 },  // DPI DEL ENCARGADO
+                    { wch: 14 },  // ESTADO
+                    { wch: 22 }   // FIRMA
+                ];
+                aoa.push(headers);
+
+                students.forEach((s, idx) => {
+                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const claveVal = s.clave || (idx + 1);
+                    const genderShort = (s.gender === 'Femenino' || s.genero === 'Femenino') ? 'F' : 'M';
+                    const guardianName = isVacio ? '' : (s.guardianName || s.tutor || s.fatherName || s.motherName || 'No registrado');
+                    const guardianDpi = isVacio ? '' : (s.guardianDpi || s.tutorDpi || s.fatherDpi || s.motherDpi || '-');
+                    const statusText = isVacio ? '' : (s.status || 'Inscrito').toUpperCase();
+
+                    aoa.push([
+                        claveVal,
+                        { t: 's', v: s.personalCode || s.carne || '' },
+                        { t: 's', v: s.cui || s.dpi || '' },
+                        fullNameDisplay,
+                        genderShort,
+                        guardianName,
+                        { t: 's', v: guardianDpi },
+                        statusText,
+                        ''
+                    ]);
+                });
+
+            } else if (modelType === 'ASISTENCIA_MENSUAL') {
+                headers = ['No.', 'CLAVE', 'CÓDIGO PERSONAL', 'APELLIDOS Y NOMBRES DEL ESTUDIANTE'];
+                for (let d = 1; d <= 31; d++) headers.push(String(d));
+                headers.push('P', 'A', 'J', '% ASISTENCIA');
+
+                colWidths = [{ wch: 6 }, { wch: 8 }, { wch: 16 }, { wch: 36 }];
+                for (let d = 1; d <= 31; d++) colWidths.push({ wch: 4 });
+                colWidths.push({ wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 12 });
+
+                aoa.push(headers);
+
+                const dataStartRow = aoa.length; // 1-indexed next row
+                students.forEach((s, idx) => {
+                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const claveVal = s.clave || (idx + 1);
+                    const rowIdx = dataStartRow + idx + 1; // Excel row
+                    const dayColStart = 'E';
+                    const dayColEnd = 'AI';
+                    const pCol = 'AJ';
+                    const aCol = 'AK';
+                    const jCol = 'AL';
+
+                    const row = [
+                        idx + 1,
+                        claveVal,
+                        { t: 's', v: s.personalCode || s.carne || '' },
+                        fullNameDisplay
+                    ];
+                    for (let d = 1; d <= 31; d++) row.push('');
+                    row.push({ f: `COUNTIF(${dayColStart}${rowIdx}:${dayColEnd}${rowIdx}, "P")` });
+                    row.push({ f: `COUNTIF(${dayColStart}${rowIdx}:${dayColEnd}${rowIdx}, "A")` });
+                    row.push({ f: `COUNTIF(${dayColStart}${rowIdx}:${dayColEnd}${rowIdx}, "J")` });
+                    row.push({ f: `IF((${pCol}${rowIdx}+${aCol}${rowIdx}+${jCol}${rowIdx})>0, ROUND((${pCol}${rowIdx}/(${pCol}${rowIdx}+${aCol}${rowIdx}+${jCol}${rowIdx}))*100, 0), "")` });
+                    aoa.push(row);
+                });
+
+            } else if (modelType === 'LISTA_COTEJO') {
+                headers = ['No.', 'CLAVE', 'CÓDIGO PERSONAL', 'APELLIDOS Y NOMBRES DEL ESTUDIANTE'];
+                activitiesList.forEach(a => headers.push(`${a.label} (${a.pts}p)`));
+                headers.push(`TOTAL ZONA (${cfgZonaMax}p)`, 'NIVEL DE LOGRO', 'OBSERVACIONES');
+
+                colWidths = [{ wch: 6 }, { wch: 8 }, { wch: 16 }, { wch: 38 }];
+                activitiesList.forEach(() => colWidths.push({ wch: 14 }));
+                colWidths.push({ wch: 14 }, { wch: 16 }, { wch: 28 });
+
+                aoa.push(headers);
+
+                const dataStartRow = aoa.length;
+                const actStartColIdx = 4; // Columna E (0-based)
+                const actEndColIdx = actStartColIdx + activitiesList.length - 1;
+                const actStartLetter = XLSX.utils.encode_col(actStartColIdx);
+                const actEndLetter = XLSX.utils.encode_col(actEndColIdx);
+                const totalZonaLetter = XLSX.utils.encode_col(actEndColIdx + 1);
+
+                students.forEach((s, idx) => {
+                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const claveVal = s.clave || (idx + 1);
+                    const excelRow = dataStartRow + idx + 1;
+                    const uData = (s.gradebookDetails && s.gradebookDetails[finalSubjectName] && s.gradebookDetails[finalSubjectName][bNum])
+                        ? s.gradebookDetails[finalSubjectName][bNum]
+                        : null;
+                    const acts = (!isVacio && uData) ? (uData.activities || []) : [];
+
+                    const row = [
+                        idx + 1,
+                        claveVal,
+                        { t: 's', v: s.personalCode || s.carne || '' },
+                        fullNameDisplay
+                    ];
+
+                    activitiesList.forEach((_, aIdx) => {
+                        const score = (!isVacio && acts[aIdx] !== undefined && acts[aIdx] !== null && acts[aIdx] !== '') ? parseFloat(acts[aIdx]) : '';
+                        row.push(score);
+                    });
+
+                    row.push({ f: `SUM(${actStartLetter}${excelRow}:${actEndLetter}${excelRow})` });
+                    row.push({ f: `IF(${totalZonaLetter}${excelRow}>=30,"ALTO",IF(${totalZonaLetter}${excelRow}>=20,"MEDIO","BAJO"))` });
+                    row.push('');
+                    aoa.push(row);
+                });
+
+            } else {
+                // FORMATO 1: CUADRO OFICIAL DE CONTROL DE ZONA Y EVALUACIONES
+                headers = ['No.', 'CLAVE', 'CÓDIGO PERSONAL', 'APELLIDOS Y NOMBRES DEL ESTUDIANTE'];
+                activitiesList.forEach(a => headers.push(`${a.label} (${a.pts}p)`));
+                headers.push(`TOTAL ZONA (${cfgZonaMax}p)`, `EVALUACIÓN (${cfgExamMax}p)`, 'TOTAL (100 pts)', 'RESULTADO');
+
+                colWidths = [{ wch: 6 }, { wch: 8 }, { wch: 16 }, { wch: 38 }];
+                activitiesList.forEach(() => colWidths.push({ wch: 13 }));
+                colWidths.push({ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 });
+
+                aoa.push(headers);
+
+                const dataStartRow = aoa.length;
+                const actStartColIdx = 4; // Columna E (0-based)
+                const actEndColIdx = actStartColIdx + activitiesList.length - 1;
+                const actStartLetter = XLSX.utils.encode_col(actStartColIdx);
+                const actEndLetter = XLSX.utils.encode_col(actEndColIdx);
+                const totalZonaLetter = XLSX.utils.encode_col(actEndColIdx + 1);
+                const examLetter = XLSX.utils.encode_col(actEndColIdx + 2);
+                const totalLetter = XLSX.utils.encode_col(actEndColIdx + 3);
+
+                students.forEach((s, idx) => {
+                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const claveVal = s.clave || (idx + 1);
+                    const excelRow = dataStartRow + idx + 1;
+                    const uData = (s.gradebookDetails && s.gradebookDetails[finalSubjectName] && s.gradebookDetails[finalSubjectName][bNum])
+                        ? s.gradebookDetails[finalSubjectName][bNum]
+                        : null;
+                    const acts = (!isVacio && uData) ? (uData.activities || []) : [];
+                    const examVal = (!isVacio && uData && uData.exam !== undefined && uData.exam !== null && uData.exam !== '') ? parseFloat(uData.exam) : '';
+
+                    const row = [
+                        idx + 1,
+                        claveVal,
+                        { t: 's', v: s.personalCode || s.carne || '' },
+                        fullNameDisplay
+                    ];
+
+                    activitiesList.forEach((_, aIdx) => {
+                        const score = (!isVacio && acts[aIdx] !== undefined && acts[aIdx] !== null && acts[aIdx] !== '') ? parseFloat(acts[aIdx]) : '';
+                        row.push(score);
+                    });
+
+                    row.push({ f: `SUM(${actStartLetter}${excelRow}:${actEndLetter}${excelRow})` });
+                    row.push(examVal);
+                    row.push({ f: `${totalZonaLetter}${excelRow}+${examLetter}${excelRow}` });
+                    row.push({ f: `IF(${totalLetter}${excelRow}>=60,"APROBADO","REPROBADO")` });
+                    aoa.push(row);
+                });
+            }
+
+            const ws = XLSX.utils.aoa_to_sheet(aoa);
+            ws['!cols'] = colWidths;
+            // Configurar tamaño Oficio (Legal = 5) y orientación exacta
+            ws['!pageSetup'] = {
+                paperSize: 5,
+                orientation: isLandscape ? 'landscape' : 'portrait',
+                fitToWidth: 1,
+                fitToHeight: 0
+            };
+            ws['!views'] = [{ showGridLines: true }];
+
+            XLSX.utils.book_append_sheet(wb, ws, "OFICIAL ENCCO");
+            XLSX.writeFile(wb, fileBaseName);
+            showToast(`Archivo oficial '${fileBaseName}' descargado con éxito.`, "success");
+            return;
+        } catch (err) {
+            console.error("Error al generar Excel binario con SheetJS:", err);
+        }
+    }
+
+    // Respaldo de descarga mediante tabla HTML enriquecida
+    generateOfficialPrintList({ ...opts, previewModal: true });
+    setTimeout(() => {
+        const previewContent = document.getElementById('printDocumentContent');
+        if (previewContent) {
+            downloadFormattedExcelWorkbook(previewContent.innerHTML, fileBaseName);
+            showToast(`Documento Excel '${fileBaseName}' descargado correctamente.`, "success");
+        }
+    }, 400);
+}
 
 function downloadStudentTemplate() {
     const activeBim = STATE.config?.activeBimestre || '1';
@@ -30426,76 +30842,6 @@ function exportStudentsOfficialExcel() {
     }
 }
 
-function downloadTeacherTemplate() {
-    const cycle = STATE.activeCycle || '2026';
-    const headers = [
-        "No.",
-        "Nombre Completo del Catedrático",
-        "Renglón",
-        "Género",
-        "Correo Institucional",
-        "Contraseña Sugerida",
-        "Especialidad / Título",
-        "Cátedras Asignadas"
-    ];
-
-    const sampleRows = [
-        [1, "PEM. Nehemias Yalil Salguero", "011", "Masculino", "nehemias@comercio.edu.gt", "C@rolina1", "PEM en Computación", "Computacion III (6to D)"],
-        [2, "Lic.MA. Carlos Augusto Juarez Alvarez", "011", "Masculino", "carlos.augusto@comercio.edu.gt", "Carlos1", "Licenciado en Contaduría", "Contabilidad de Costos (5to A)"],
-        [3, "PEM. Aleida Maribel Escobar de Palma", "011", "Femenino", "aleida@comercio.edu.gt", "Aleida1", "PEM en Lenguaje", "Ortografía y Redacción (4to A)"],
-        [4, "Lic. Roberto Alex Tobar Cermeño", "011", "Masculino", "roberto@comercio.edu.gt", "Roberto1", "Licenciado en Administración", "Administración Pública (6to A)"]
-    ];
-
-    const colWidths = [6, 35, 10, 12, 30, 18, 28, 35];
-    exportDataToExcelFile(`plantilla_docentes_encc_${cycle}.xlsx`, "PLANTILLA OFICIAL DE CARGA MASIVA DE DOCENTES", "FORMATO REQUERIDO PARA IMPORTACIÓN", headers, sampleRows, colWidths);
-}
-
-function downloadStudentTemplate() {
-    const cycle = STATE.activeCycle || '2026';
-    const headers = [
-        "No.",
-        "Carné",
-        "Código Personal",
-        "CUI",
-        "Apellidos",
-        "Nombres",
-        "Fecha de Nacimiento (AAAA-MM-DD)",
-        "Género",
-        "Grado y Sección",
-        "Padre o Encargado",
-        "Teléfono"
-    ];
-
-    const sampleRows = [
-        [1, "ENCCO-2026-001", "A123BCD", "3001245670101", "GARCÍA LÓPEZ", "ANA LUCÍA", "2008-05-14", "Femenino", "4to Perito Contador A", "MARÍA LÓPEZ", "5555-1234"],
-        [2, "ENCCO-2026-002", "B456CDE", "3002345670101", "MARTÍNEZ PÉREZ", "JUAN CARLOS", "2008-08-22", "Masculino", "4to Perito Contador A", "CARLOS MARTÍNEZ", "5555-5678"],
-        [3, "ENCCO-2026-003", "C789DEF", "3003456780101", "HERNÁNDEZ VALDEZ", "SOFÍA ISABEL", "2007-02-10", "Femenino", "5to Perito Contador B", "ROBERTO HERNÁNDEZ", "5555-9012"]
-    ];
-
-    const colWidths = [6, 18, 18, 18, 25, 25, 20, 12, 22, 25, 15];
-    exportDataToExcelFile(`plantilla_estudiantes_encc_${cycle}.xlsx`, "PLANTILLA OFICIAL DE CARGA MASIVA DE ESTUDIANTES", "FORMATO REQUERIDO PARA IMPORTACIÓN", headers, sampleRows, colWidths);
-}
-
-function downloadAdminStaffTemplate() {
-    const cycle = STATE.activeCycle || '2026';
-    const headers = [
-        "No.",
-        "Nombre Completo",
-        "Correo Institucional",
-        "Contraseña Sugerida",
-        "Rol (admin / director / secretaria)",
-        "Cargo Oficial"
-    ];
-
-    const sampleRows = [
-        [1, "Licda. Director ENCCO", "director@comercio.edu.gt", "admin", "director", "Director del Plantel"],
-        [2, "Secretaría Académica", "secretaria@comercio.edu.gt", "admin", "secretaria", "Secretaría General"]
-    ];
-
-    const colWidths = [6, 35, 30, 18, 25, 25];
-    exportDataToExcelFile(`plantilla_personal_administrativo_encc_${cycle}.xlsx`, "PLANTILLA OFICIAL DE PERSONAL ADMINISTRATIVO", "FORMATO REQUERIDO PARA IMPORTACIÓN", headers, sampleRows, colWidths);
-}
-
 
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -30523,6 +30869,7 @@ function renderAndShowPrintDocument(title, htmlContent, orientation = 'portrait'
 
     if (titleEl) titleEl.textContent = title;
     contentEl.innerHTML = htmlContent;
+    window._currentPrintModalOrientation = orientation;
 
     if (paperEl) {
         if (orientation === 'landscape') {
@@ -30553,6 +30900,9 @@ function executeNativeDocumentPrint() {
         document.body.appendChild(iframe);
     }
 
+    const printOrientation = window._currentPrintModalOrientation || 'portrait';
+    const pageSizeRule = (printOrientation === 'landscape') ? '8.5in 13in landscape' : '8.5in 13in portrait';
+
     const doc = iframe.contentWindow.document;
     doc.open();
     doc.write(`
@@ -30563,7 +30913,7 @@ function executeNativeDocumentPrint() {
             <title>Impresión Oficial - ENCCO</title>
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                @page { size: 8.5in 13in portrait; margin: 6mm; }
+                @page { size: ${pageSizeRule}; margin: 5mm; }
                 body { font-family: 'Segoe UI', Arial, sans-serif; color: #000; margin: 0; padding: 0; background: #fff; font-size: 11px; }
                 table { width: 100%; border-collapse: collapse; margin-top: 6px; }
                 th, td { border: 1px solid #334155; padding: 5px 6px; }
