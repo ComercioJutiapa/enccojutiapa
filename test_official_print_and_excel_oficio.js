@@ -23,15 +23,15 @@ console.log("  ✅ Test 1 Superado: Controles de vista, estado y descarga en Exc
 // TEST 2: Exactas 9 columnas de Nómina Oficial de Matrícula
 console.log("\n▶ [TEST 2] Verificando las 9 columnas exactas de la Nómina Oficial de Matrícula...");
 const expectedHeaders = [
-    '<th style="width:28px;">CLAVE</th>',
-    '<th style="width:72px;">CÓD. PERSONAL</th>',
-    '<th style="width:88px;">CUI</th>',
-    '<th>ALUMNO</th>',
-    '<th style="width:26px;">SEXO</th>',
-    '<th style="width:135px;">NOMBRE ENCARGADO</th>',
-    '<th style="width:82px;">DPI DEL ENCARGADO</th>',
-    '<th style="width:52px;">ESTADO</th>',
-    '<th style="width:90px;">FIRMA</th>'
+    '>CLAVE</th>',
+    '>CÓD. PERSONAL</th>',
+    '>CUI</th>',
+    '>ALUMNO</th>',
+    '>SEXO</th>',
+    '>NOMBRE ENCARGADO</th>',
+    '>DPI DEL ENCARGADO</th>',
+    '>ESTADO</th>',
+    '>FIRMA</th>'
 ];
 expectedHeaders.forEach(th => {
     assert(appCode.includes(th), `Falta la cabecera en NOMINA_OFICIAL: ${th}`);
@@ -65,6 +65,18 @@ assert(appCode.includes("{ t: 's', v: s.personalCode"), "Falta formato de texto 
 assert(appCode.includes("{ t: 's', v: s.cui"), "Falta formato de texto explícito para CUI");
 console.log("  ✅ Test 5 Superado: Exportación a Excel con fórmulas automáticas, tipos string y metadatos oficiales.");
 
+// TEST 6: Encabezados institucionales idénticos al Listado de 10 Casillas
+console.log("\n▶ [TEST 6] Verificando encabezado institucional idéntico al listado de 10 casillas...");
+assert(appCode.includes("linear-gradient(135deg, #064e3b 0%, #15803d 60%, #16a34a 100%)"), "Falta el gradiente esmeralda en el encabezado");
+assert(appCode.includes('JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR'), "Falta subtítulo institucional con ciclo escolar");
+assert(appCode.includes('HOJA OFICIO (8.5" × 13")'), "Falta el distintivo de Hoja Oficio");
+assert(appCode.includes('Maestro(a) Guía:'), "Falta el campo Maestro(a) Guía en el encabezado");
+assert(appCode.includes('Varones:'), "Falta el conteo de Varones en el pie de encabezado");
+assert(appCode.includes('Mujeres:'), "Falta el conteo de Mujeres en el pie de encabezado");
+assert(appCode.includes('background:#15803d; color:#ffffff; font-weight:800;'), "Falta el estilo verde institucional en los encabezados de tabla");
+console.log("  ✅ Test 6 Superado: Encabezados de impresión y Excel unificados con el diseño institucional de 10 casillas.");
+
 console.log("\n================================================================================");
 console.log("🎉 TODAS LAS PRUEBAS DE LISTAS Y FORMATOS OFICIALES PASARON EXITOSAMENTE (100%)");
 console.log("================================================================================");
+

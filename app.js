@@ -13405,6 +13405,43 @@ function generateOfficialPrintList(opts = null) {
             docTitle = `Cuadro Oficial de Calificaciones - ${gradeTitle} - ${finalSubjectName}`;
         }
 
+        const countMale = students.filter(s => {
+            const g = (s.gender || s.genero || '').toLowerCase();
+            return g.startsWith('m') || g === 'varón' || g === 'hombre';
+        }).length;
+        const countFemale = students.filter(s => {
+            const g = (s.gender || s.genero || '').toLowerCase();
+            return g.startsWith('f') || g === 'mujer';
+        }).length;
+
+        const guideTeacher = gradeObj ? (typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(gradeObj).name : (gradeObj.guideTeacher || 'Por Asignar')) : 'Por Asignar';
+        const cycle = STATE.activeCycle || '2026';
+        const dateStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const capDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+        const bimCheck = (b) => (b === bNum ? '[ <b>X</b> ]' : '[ &nbsp; ]');
+
+        let badgeDocTitle = '';
+        let instructivoText = '';
+        if (modelType === 'NOMINA_OFICIAL') {
+            badgeDocTitle = 'NÓMINA OFICIAL DE MATRÍCULA';
+            instructivoText = isVacio 
+                ? 'Formato oficial en blanco para toma de datos, registro de encargados y firmas en aula (Hoja Oficio 8.5" × 13").' 
+                : 'Registro oficial de matrícula y asignación por clave — ENCCO Jutiapa (Hoja Oficio 8.5" × 13").';
+        } else if (modelType === 'ASISTENCIA_MENSUAL') {
+            badgeDocTitle = 'CONTROL DE ASISTENCIA DIARIA';
+            instructivoText = 'Registro de puntualidad: P = Presente, A = Ausente, J = Justificado. Sábados y Domingos sombreados.';
+        } else if (modelType === 'LISTA_COTEJO') {
+            badgeDocTitle = `LISTA DE COTEJO (${cfgZonaMax} PTS)`;
+            instructivoText = isVacio 
+                ? 'Formato oficial en blanco para calificar actividades formativas y tareas en aula.' 
+                : 'Control de actividades formativas, tareas acumuladas y niveles de logro alcanzados.';
+        } else {
+            badgeDocTitle = 'CUADRO OFICIAL DE CALIFICACIONES';
+            instructivoText = isVacio 
+                ? 'Cuadro oficial en blanco: Ponderación CNB (40 pts Zona / 60 pts Evaluación).' 
+                : 'Cuadro oficial de notas asentadas: Ponderación CNB (40 pts Zona / 60 pts Evaluación).';
+        }
+
         const renderPageTable = (pageStudents, pageIdx, totalPages) => {
             const startNo = pageIdx * STUDENTS_PER_PAGE;
             const isLastPage = (pageIdx === totalPages - 1);
@@ -13437,16 +13474,16 @@ function generateOfficialPrintList(opts = null) {
                 tableHtml = `
                 <table class="data-table">
                     <thead>
-                        <tr>
-                            <th style="width:28px;">CLAVE</th>
-                            <th style="width:72px;">CÓD. PERSONAL</th>
-                            <th style="width:88px;">CUI</th>
-                            <th>ALUMNO</th>
-                            <th style="width:26px;">SEXO</th>
-                            <th style="width:135px;">NOMBRE ENCARGADO</th>
-                            <th style="width:82px;">DPI DEL ENCARGADO</th>
-                            <th style="width:52px;">ESTADO</th>
-                            <th style="width:90px;">FIRMA</th>
+                        <tr style="background:#15803d; color:#ffffff; font-weight:800; text-transform:uppercase;">
+                            <th style="width:28px; border:1px solid #064e3b;">CLAVE</th>
+                            <th style="width:72px; border:1px solid #064e3b;">CÓD. PERSONAL</th>
+                            <th style="width:88px; border:1px solid #064e3b;">CUI</th>
+                            <th style="border:1px solid #064e3b;">ALUMNO</th>
+                            <th style="width:26px; border:1px solid #064e3b;">SEXO</th>
+                            <th style="width:135px; border:1px solid #064e3b;">NOMBRE ENCARGADO</th>
+                            <th style="width:82px; border:1px solid #064e3b;">DPI DEL ENCARGADO</th>
+                            <th style="width:52px; border:1px solid #064e3b;">ESTADO</th>
+                            <th style="width:90px; border:1px solid #064e3b;">FIRMA</th>
                         </tr>
                     </thead>
                     <tbody>${rowsHtml}</tbody>
@@ -13464,7 +13501,7 @@ function generateOfficialPrintList(opts = null) {
                 });
 
                 const daysHeaders = daysInfo.map(d => `
-                    <th style="width:16px; padding:1px 0; font-size:6px; ${d.isWeekend ? 'background:#cbd5e1; color:#475569;' : ''}" title="${d.isWeekend ? (d.letter === 'S' ? 'Sábado' : 'Domingo') : ''}">
+                    <th style="width:16px; padding:1px 0; font-size:6px; border:1px solid #064e3b; ${d.isWeekend ? 'background:#cbd5e1 !important; color:#334155 !important;' : ''}" title="${d.isWeekend ? (d.letter === 'S' ? 'Sábado' : 'Domingo') : ''}">
                         ${d.dayNum}<br><span style="font-size:5.5px; font-weight:normal;">${d.letter}</span>
                     </th>
                 `).join('');
@@ -13492,19 +13529,19 @@ function generateOfficialPrintList(opts = null) {
                 tableHtml = `
                 <table class="data-table">
                     <thead>
-                        <tr>
-                            <th rowspan="2" style="width:24px;">No.</th>
-                            <th rowspan="2" style="width:70px;">CÓDIGO PERSONAL</th>
-                            <th rowspan="2" style="width:180px;">APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
-                            <th colspan="31">REGISTRO DIARIO DE ASISTENCIA (DÍAS 1 AL 31)</th>
-                            <th colspan="4">RESUMEN</th>
+                        <tr style="background:#15803d; color:#ffffff; font-weight:800; text-transform:uppercase;">
+                            <th rowspan="2" style="width:24px; border:1px solid #064e3b;">No.</th>
+                            <th rowspan="2" style="width:70px; border:1px solid #064e3b;">CÓDIGO PERSONAL</th>
+                            <th rowspan="2" style="width:180px; border:1px solid #064e3b;">APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
+                            <th colspan="31" style="background:#166534; border:1px solid #064e3b;">REGISTRO DIARIO DE ASISTENCIA (DÍAS 1 AL 31)</th>
+                            <th colspan="4" style="background:#14532d; border:1px solid #064e3b;">RESUMEN</th>
                         </tr>
-                        <tr>
+                        <tr style="background:#16a34a; color:#ffffff; font-weight:700;">
                             ${daysHeaders}
-                            <th style="width:22px;" title="Asistencias">P</th>
-                            <th style="width:22px;" title="Ausencias Injustificadas">A</th>
-                            <th style="width:22px;" title="Ausencias Justificadas">J</th>
-                            <th style="width:30px;" title="% Asistencia">%</th>
+                            <th style="width:22px; border:1px solid #064e3b;" title="Asistencias">P</th>
+                            <th style="width:22px; border:1px solid #064e3b;" title="Ausencias Injustificadas">A</th>
+                            <th style="width:22px; border:1px solid #064e3b;" title="Ausencias Justificadas">J</th>
+                            <th style="width:30px; border:1px solid #064e3b; background:#14532d;" title="% Asistencia">%</th>
                         </tr>
                     </thead>
                     <tbody>${rowsHtml}</tbody>
@@ -13559,17 +13596,17 @@ function generateOfficialPrintList(opts = null) {
                 tableHtml = `
                 <table class="data-table">
                     <thead>
-                        <tr>
-                            <th rowspan="2" style="width:24px;">No.</th>
-                            <th rowspan="2" style="width:75px;">CÓDIGO PERSONAL</th>
-                            <th rowspan="2" style="width:190px;">APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
-                            <th colspan="${numActivities}">ACTIVIDADES DE ZONA (${cfgZonaMax} PTS)</th>
-                            <th rowspan="2" style="width:40px;">TOTAL<br>ZONA (${cfgZonaMax}p)</th>
-                            <th rowspan="2" style="width:65px;">NIVEL DE LOGRO</th>
-                            <th rowspan="2">OBSERVACIONES / RECOMENDACIONES</th>
+                        <tr style="background:#15803d; color:#ffffff; font-weight:800; text-transform:uppercase;">
+                            <th rowspan="2" style="width:24px; border:1px solid #064e3b;">No.</th>
+                            <th rowspan="2" style="width:75px; border:1px solid #064e3b;">CÓDIGO PERSONAL</th>
+                            <th rowspan="2" style="width:190px; border:1px solid #064e3b;">APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
+                            <th colspan="${numActivities}" style="background:#166534; border:1px solid #064e3b;">ACTIVIDADES DE ZONA (${cfgZonaMax} PTS)</th>
+                            <th rowspan="2" style="width:40px; border:1px solid #064e3b; background:#14532d;">TOTAL<br>ZONA (${cfgZonaMax}p)</th>
+                            <th rowspan="2" style="width:65px; border:1px solid #064e3b;">NIVEL DE LOGRO</th>
+                            <th rowspan="2" style="border:1px solid #064e3b;">OBSERVACIONES / RECOMENDACIONES</th>
                         </tr>
-                        <tr>
-                            ${activitiesList.map(a => `<th style="width:${colWidth}px;" title="${a.label}${a.pts > 0 ? ` (${a.pts} pts)` : ''}">${a.shortLabel}${a.pts > 0 ? `<br><span style="font-size:6.5px; font-weight:normal;">${a.pts}pts</span>` : ''}</th>`).join('')}
+                        <tr style="background:#16a34a; color:#ffffff; font-weight:700;">
+                            ${activitiesList.map(a => `<th style="width:${colWidth}px; border:1px solid #064e3b;" title="${a.label}${a.pts > 0 ? ` (${a.pts} pts)` : ''}">${a.shortLabel}${a.pts > 0 ? `<br><span style="font-size:6.5px; font-weight:normal;">${a.pts}pts</span>` : ''}</th>`).join('')}
                         </tr>
                     </thead>
                     <tbody>${rowsHtml}</tbody>
@@ -13669,18 +13706,18 @@ function generateOfficialPrintList(opts = null) {
                 tableHtml = `
                 <table class="data-table">
                     <thead>
-                        <tr>
-                            <th rowspan="2" style="width:24px;">No.</th>
-                            <th rowspan="2" style="width:75px;">CÓDIGO PERSONAL</th>
-                            <th rowspan="2" style="width:210px;">APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
-                            <th colspan="${numActivities}">ACTIVIDADES DE ZONA (${cfgZonaMax} PTS)</th>
-                            <th colspan="2">EVALUACIONES</th>
-                            <th rowspan="2" style="width:40px;">TOTAL<br>100 pts</th>
+                        <tr style="background:#15803d; color:#ffffff; font-weight:800; text-transform:uppercase;">
+                            <th rowspan="2" style="width:24px; border:1px solid #064e3b;">No.</th>
+                            <th rowspan="2" style="width:75px; border:1px solid #064e3b;">CÓDIGO PERSONAL</th>
+                            <th rowspan="2" style="width:210px; border:1px solid #064e3b;">APELLIDOS Y NOMBRES DEL ESTUDIANTE</th>
+                            <th colspan="${numActivities}" style="background:#166534; border:1px solid #064e3b;">ACTIVIDADES DE ZONA (${cfgZonaMax} PTS)</th>
+                            <th colspan="2" style="background:#15803d; border:1px solid #064e3b;">EVALUACIONES</th>
+                            <th rowspan="2" style="width:40px; border:1px solid #064e3b; background:#14532d;">TOTAL<br>100 pts</th>
                         </tr>
-                        <tr>
-                            ${activitiesList.map(a => `<th style="width:${colWidth}px;" title="${a.label}${a.pts > 0 ? ` (${a.pts} pts)` : ''}">${a.shortLabel}${a.pts > 0 ? `<br><span style="font-size:6.5px; font-weight:normal;">${a.pts}pts</span>` : ''}</th>`).join('')}
-                            <th style="width:32px;">Zona<br><span style="font-size:6.5px; font-weight:normal;">${cfgZonaMax}p</span></th>
-                            <th style="width:32px;">Examen<br><span style="font-size:6.5px; font-weight:normal;">${cfgExamMax}p</span></th>
+                        <tr style="background:#16a34a; color:#ffffff; font-weight:700;">
+                            ${activitiesList.map(a => `<th style="width:${colWidth}px; border:1px solid #064e3b;" title="${a.label}${a.pts > 0 ? ` (${a.pts} pts)` : ''}">${a.shortLabel}${a.pts > 0 ? `<br><span style="font-size:6.5px; font-weight:normal;">${a.pts}pts</span>` : ''}</th>`).join('')}
+                            <th style="width:32px; border:1px solid #064e3b;">Zona<br><span style="font-size:6.5px; font-weight:normal;">${cfgZonaMax}p</span></th>
+                            <th style="width:32px; border:1px solid #064e3b;">Examen<br><span style="font-size:6.5px; font-weight:normal;">${cfgExamMax}p</span></th>
                         </tr>
                     </thead>
                     <tbody>${rowsHtml}</tbody>
@@ -13720,36 +13757,68 @@ function generateOfficialPrintList(opts = null) {
 
             return `
             <div class="print-page-wrapper"${totalPages > 1 && pageIdx > 0 ? ' style="page-break-before:always;"' : ''}>
-                <table class="header-table">
-                    <tr>
-                        <td style="width:50px; text-align:center;">
-                            <img src="${h.schoolLogoUrl || 'logo.png'}" style="height:38px; max-width:50px;" onerror="this.style.display='none'">
-                        </td>
-                        <td>
-                            <div class="school-title">${h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES'}</div>
-                            <div class="school-sub">Jornada Matutina • Jutiapa • Ciclo Escolar 2026</div>
-                            <div class="eval-title">${headerDocTitle}</div>
-                        </td>
-                        <td style="width:50px; text-align:center;">
-                            <img src="${h.mineducLogoUrl || 'logo.png'}" style="height:38px; max-width:50px;" onerror="this.style.display='none'">
-                        </td>
-                    </tr>
-                </table>
+                <!-- ENCABEZADO INSTITUCIONAL ESTILO LISTADO DE 10 CASILLAS -->
+                <div style="border:2px solid #15803d; border-radius:6px; overflow:hidden; margin-bottom:5px;">
+                    <!-- ENCABEZADO INSTITUCIONAL CON GRADIENTE ESMERALDA -->
+                    <div style="background:linear-gradient(135deg, #064e3b 0%, #15803d 60%, #16a34a 100%); color:#ffffff; padding:5px 10px; display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <img src="logo.png" alt="Logo" onerror="this.src='portada-comercio-principal.webp'" style="height:36px; width:auto; object-fit:contain;">
+                            <div>
+                                <h2 style="margin:0; font-size:0.92rem; font-weight:900; letter-spacing:0.5px; text-transform:uppercase; color:#ffffff; line-height:1.1;">
+                                    ${escapeHtml(h.schoolName || h.name || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES')}
+                                </h2>
+                                <div style="font-size:0.7rem; font-weight:600; color:#bbf7d0; line-height:1.1;">
+                                    JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="background:#166534; color:#fff; font-size:0.68rem; font-weight:800; padding:2px 8px; border-radius:6px; border:1px solid #86efac; text-transform:uppercase;">
+                                ${badgeDocTitle}
+                            </div>
+                            <div style="font-size:0.62rem; color:#dcfce7; margin-top:1px;">HOJA OFICIO (8.5" × 13")</div>
+                        </div>
+                    </div>
+                    
+                    <!-- DATOS DEL GRADO, MAESTRO GUÍA Y CAMPOS DEL CATEDRÁTICO -->
+                    <div style="background:#f0fdf4; border-top:2px solid #16a34a; padding:5px 8px; font-size:7.5pt; color:#0f172a;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                            <div>
+                                <div style="font-size:9pt; font-weight:900; color:#15803d; text-transform:uppercase; line-height:1.1;">
+                                    ${headerDocTitle} — ${escapeHtml(gradeTitle)}
+                                </div>
+                                <div style="color:#1e293b; font-size:7.5pt; margin-top:1px;">
+                                    <strong>Carrera:</strong> ${escapeHtml(career || 'Perito Contador')} &nbsp;|&nbsp; 👨‍🏫 <strong>Maestro(a) Guía:</strong> <span style="color:#166534; font-weight:bold;">${escapeHtml(guideTeacher)}</span>
+                                </div>
+                            </div>
+                            <div style="text-align:right; font-size:7pt; color:#475569;">
+                                <strong>Emisión:</strong> ${capDate} &nbsp;|&nbsp; <strong>Ciclo:</strong> ${cycle}
+                            </div>
+                        </div>
 
-                <table class="meta-grid">
-                    <tr>
-                        <td class="meta-label">CARRERA:</td>
-                        <td class="meta-val">${career || 'Perito Contador'}</td>
-                        <td class="meta-label">GRADO Y SECCIÓN:</td>
-                        <td class="meta-val"><strong>${gradeTitle}</strong></td>
-                    </tr>
-                    <tr>
-                        <td class="meta-label">CÁTEDRA / MATERIA:</td>
-                        <td class="meta-val"><strong style="color:#047857;">${finalSubjectName}</strong></td>
-                        <td class="meta-label">CATEDRÁTICO(A):</td>
-                        <td class="meta-val"><strong>${effectiveTeacher}</strong></td>
-                    </tr>
-                </table>
+                        <!-- CAMPOS: ASIGNATURA, CATEDRÁTICO Y BIMESTRE -->
+                        <div style="display:grid; grid-template-columns: 1.4fr 1.3fr 1.3fr; gap:6px; margin-top:2px; padding-top:2px; border-top:1px solid #bbf7d0; font-size:7.5pt; align-items:center;">
+                            <div>
+                                <strong>Asignatura / Materia:</strong> 
+                                <span style="font-weight:800; color:#15803d; text-transform:uppercase;">${escapeHtml(finalSubjectName || 'Nómina General')}</span>
+                            </div>
+                            <div>
+                                <strong>Catedrático(a):</strong> 
+                                <span style="font-weight:800; color:#0f172a;">${escapeHtml(effectiveTeacher)}</span>
+                            </div>
+                            <div style="text-align:right;">
+                                <strong>Bimestre:</strong> 
+                                ${bimCheck(1)} 1º &nbsp; ${bimCheck(2)} 2º &nbsp; ${bimCheck(3)} 3º &nbsp; ${bimCheck(4)} 4º
+                                <span style="background:#15803d; color:#fff; font-size:6.5pt; font-weight:800; padding:1px 4px; border-radius:3px; margin-left:2px;">${bNum}º Activo</span>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px; padding-top:2px; border-top:1px dashed #cbd5e1; font-size:7pt; color:#475569;">
+                            <span>Total Alumnos: <strong style="color:#15803d;">${totalStudents}</strong> (Varones: <strong style="color:#0284c7;">${countMale}</strong> | Mujeres: <strong style="color:#db2777;">${countFemale}</strong>)</span>
+                            <span>${instructivoText}</span>
+                        </div>
+                    </div>
+                </div>
 
                 ${tableHtml}
                 ${signatureHtml}
@@ -13757,6 +13826,92 @@ function generateOfficialPrintList(opts = null) {
             </div>`;
         };
 
+        const pageSizeCss = isLandscape ? '8.5in 13in landscape' : '8.5in 13in portrait';
+        const pageWidthCss = isLandscape ? '13in' : '8.5in';
+
+        const printStyles = `
+        <style>
+        @page {
+            size: ${pageSizeCss};
+            margin: 5mm;
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #0f172a;
+        }
+        .print-page-wrapper {
+            width: 100%;
+            margin: 0 0 10px 0;
+            padding: 0;
+            page-break-inside: avoid;
+            break-inside: avoid;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: #0f172a;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        .data-table th {
+            background: #15803d !important;
+            color: #ffffff !important;
+            border: 1px solid #064e3b !important;
+            padding: 3px 2px;
+            font-size: 7.2px;
+            font-weight: 800;
+            text-align: center;
+            line-height: 1.1;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .data-table th.sub-th {
+            background: #16a34a !important;
+            color: #ffffff !important;
+            font-weight: 700;
+            border: 1px solid #064e3b !important;
+        }
+        .data-table th.total-th {
+            background: #14532d !important;
+            color: #ffffff !important;
+            font-weight: 800;
+            border: 1px solid #064e3b !important;
+        }
+        .data-table td {
+            border: 1px solid #334155;
+            line-height: ${rowLineHeight};
+        }
+        @media print {
+            html, body {
+                width: ${pageWidthCss} !important;
+                height: auto;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .print-page-wrapper {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+        }
+        </style>
+        `;
+
+        const allPagesHtml = printStyles + pages.map((pageStudents, idx) => renderPageTable(pageStudents, idx, pages.length)).join('');
         const pageOrientation = isLandscape ? 'landscape' : 'portrait';
         window._currentPrintModalOrientation = pageOrientation;
         window._currentPrintModalParams = {
@@ -13783,125 +13938,12 @@ function generateOfficialPrintList(opts = null) {
             return;
         }
 
-        const pageSizeCss = isLandscape ? '8.5in 13in landscape' : '8.5in 13in portrait';
-        const pageWidthCss = isLandscape ? '13in' : '8.5in';
-
         const htmlContent = `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <title>${docTitle}</title>
-<style>
-@page {
-    size: ${pageSizeCss};
-    margin: 5mm 5mm 5mm 5mm;
-}
-* {
-    box-sizing: border-box;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-}
-html, body {
-    margin: 0 !important;
-    padding: 0 !important;
-    background: #ffffff !important;
-    font-family: 'Segoe UI', Calibri, Arial, sans-serif;
-    color: #000;
-}
-.print-page-wrapper {
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    page-break-inside: avoid;
-    break-inside: avoid;
-}
-.header-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 0 0 2px 0;
-}
-.header-table td { vertical-align: middle; padding: 0; }
-.school-title {
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-    color: #1e3a8a;
-    text-align: center;
-    line-height: 1.1;
-}
-.school-sub {
-    font-size: 8px;
-    font-weight: 600;
-    text-align: center;
-    color: #334155;
-    line-height: 1.1;
-}
-.eval-title {
-    text-align: center;
-    font-weight: 800;
-    font-size: 9px;
-    margin-top: 1px;
-    color: #047857;
-    text-transform: uppercase;
-    line-height: 1.1;
-}
-.meta-grid {
-    width: 100%;
-    border: 1.2px solid #1e3a8a;
-    border-collapse: collapse;
-    margin: 0 0 3px 0;
-}
-.meta-grid td {
-    padding: 1.5px 4px;
-    border: 1px solid #94a3b8;
-    font-size: 8px;
-    line-height: 1.1;
-}
-.meta-label {
-    font-weight: 700;
-    color: #1e3a8a;
-    background: #f0fdf4;
-    width: 15%;
-}
-.meta-val {
-    font-weight: 600;
-    color: #0f172a;
-    width: 35%;
-}
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    border: 1.2px solid #000;
-    margin: 0;
-}
-.data-table th {
-    background: #e2e8f0;
-    border: 1px solid #000;
-    padding: 2px 1px;
-    font-size: 7.5px;
-    font-weight: 700;
-    text-align: center;
-    line-height: 1.05;
-}
-.data-table td {
-    border: 1px solid #64748b;
-    line-height: ${rowLineHeight};
-}
-@media print {
-    html, body {
-        width: ${pageWidthCss};
-        height: auto;
-    }
-    .print-page-wrapper {
-        page-break-inside: avoid;
-        break-inside: avoid;
-    }
-    tr {
-        page-break-inside: avoid;
-        break-inside: avoid;
-    }
-}
-</style>
+${printStyles}
 <script>
 window.onload = function() {
     setTimeout(function() { window.print(); }, 250);
@@ -14082,30 +14124,65 @@ function generateOfficialExcelList(opts = null) {
         docHeaderTitle = `CUADRO DE CONTROL DE ZONA Y EVALUACIONES (BIMESTRE ${bNum}) - CICLO 2026`;
     }
 
+    const countMale = students.filter(s => {
+        const g = (s.gender || s.genero || '').toLowerCase();
+        return g.startsWith('m') || g === 'varón' || g === 'hombre';
+    }).length;
+    const countFemale = students.filter(s => {
+        const g = (s.gender || s.genero || '').toLowerCase();
+        return g.startsWith('f') || g === 'mujer';
+    }).length;
+
+    const guideTeacher = gradeObj ? (typeof getGradeGuideTeacher === 'function' ? getGradeGuideTeacher(gradeObj).name : (gradeObj.guideTeacher || 'Por Asignar')) : 'Por Asignar';
+    const cycle = STATE.activeCycle || '2026';
+    const dateStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const capDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+
+    let badgeDocTitle = '';
+    if (modelType === 'NOMINA_OFICIAL') {
+        badgeDocTitle = 'NÓMINA OFICIAL DE MATRÍCULA';
+    } else if (modelType === 'ASISTENCIA_MENSUAL') {
+        badgeDocTitle = 'CONTROL MENSUAL DE ASISTENCIA Y PUNTUALIDAD';
+    } else if (modelType === 'LISTA_COTEJO') {
+        badgeDocTitle = `LISTA DE COTEJO DE ACTIVIDADES (${cfgZonaMax} PTS)`;
+    } else {
+        badgeDocTitle = 'CUADRO OFICIAL DE CONTROL DE ZONA Y EVALUACIONES';
+    }
+
     if (window.XLSX) {
         try {
             const wb = XLSX.utils.book_new();
             const aoa = [];
 
-            // Fila 1: Título Institucional
-            aoa.push([h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES - ENCCO JUTIAPA']);
-            // Fila 2: Subtítulo
-            aoa.push(['Jornada Matutina • Ciclo Escolar 2026 • Documento Oficial']);
-            // Fila 3: Título del Formato
-            aoa.push([docHeaderTitle + (isVacio ? ' [FORMATO EN BLANCO PARA AULA]' : ' [CUADRO CON DATOS ASENTADOS]')]);
-            // Fila 4: Metadatos
+            // Fila 1: Título Institucional (Estilo Listado de 10 Casillas)
+            aoa.push([h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES']);
+            // Fila 2: Subtítulo Institucional
+            aoa.push([`JUTIAPA — JORNADA MATUTINA | CICLO ESCOLAR ${cycle}`]);
+            // Fila 3: Título del Formato Oficial
+            aoa.push([`${badgeDocTitle} — ${gradeTitle} ${isVacio ? '[FORMATO EN BLANCO PARA AULA]' : '[CUADRO CON DATOS ASENTADOS]'}`]);
+            // Fila 4: Metadatos Grado, Carrera, Maestro Guía y Emisión
             aoa.push([
                 `CARRERA: ${career || 'Perito Contador'}`,
                 '',
                 `GRADO Y SECCIÓN: ${gradeTitle}`,
                 '',
-                `CÁTEDRA: ${finalSubjectName}`,
+                `MAESTRO(A) GUÍA: ${guideTeacher}`,
                 '',
-                `CATEDRÁTICO: ${effectiveTeacher}`,
+                `EMISIÓN: ${capDate}`,
                 '',
-                `BIMESTRE: ${bNum}`
+                `CICLO: ${cycle}`
             ]);
-            // Fila 5: Espacio en blanco
+            // Fila 5: Metadatos Asignatura, Catedrático, Bimestre y Total Alumnos
+            aoa.push([
+                `ASIGNATURA / MATERIA: ${finalSubjectName || 'Nómina General'}`,
+                '',
+                `CATEDRÁTICO(A): ${effectiveTeacher}`,
+                '',
+                `BIMESTRE: ${bNum}º Bimestre`,
+                '',
+                `TOTAL ALUMNOS: ${students.length} (Varones: ${countMale} | Mujeres: ${countFemale})`
+            ]);
+            // Fila 6: Espacio en blanco
             aoa.push([]);
 
             let headers = [];
