@@ -4060,3 +4060,172 @@ body.theme-dark .empty-state-card h4 {
 body.theme-dark .empty-state-card p {
     color: #94a3b8;
 }
+
+
+/* ==========================================================================
+   📂 BARRA LATERAL ERGONÓMICA: MODO MINI (64px), ACORDEONES Y BUSCADOR
+   ========================================================================== */
+
+/* Botón de colapsar / expandir sidebar */
+.sidebar-collapse-toggle-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #e2e8f0;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: var(--transition);
+    margin-left: auto;
+}
+.sidebar-collapse-toggle-btn:hover {
+    background: var(--brand-blue);
+    color: #ffffff;
+    border-color: var(--brand-blue-light);
+}
+
+/* Buscador de módulos en el sidebar */
+.sidebar-search-box {
+    position: relative;
+    margin: 4px 6px 8px 6px;
+}
+.sidebar-search-box i.fa-magnifying-glass {
+    position: absolute;
+    left: 9px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.75rem;
+    pointer-events: none;
+}
+.sidebar-search-box input {
+    width: 100% !important;
+    background: rgba(0, 0, 0, 0.28) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #f8fafc !important;
+    padding: 6px 26px 6px 28px !important;
+    border-radius: 6px !important;
+    font-size: 0.78rem !important;
+    transition: all 0.2s ease !important;
+}
+.sidebar-search-box input:focus {
+    background: rgba(0, 0, 0, 0.45) !important;
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2) !important;
+}
+.sidebar-search-box input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+.sidebar-search-clear {
+    position: absolute;
+    right: 7px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: none;
+    padding: 2px;
+}
+.sidebar-search-clear:hover {
+    color: #ffffff;
+}
+
+/* Secciones Acordeón Plegables */
+.nav-section-label.collapsible {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    cursor: pointer !important;
+    user-select: none !important;
+    border-radius: 4px !important;
+    transition: background 0.15s ease !important;
+}
+.nav-section-label.collapsible:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+.nav-section-label .section-chevron {
+    font-size: 0.62rem !important;
+    transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    opacity: 0.7 !important;
+}
+.nav-section-label.collapsed .section-chevron {
+    transform: rotate(-90deg) !important;
+}
+.nav-section-group {
+    transition: all 0.25s ease !important;
+}
+.nav-section-group.collapsed {
+    display: none !important;
+}
+
+/* Modo Mini-Sidebar Colapsado (64px) en Pantallas Grandes */
+@media (min-width: 993px) {
+    .app-layout.sidebar-collapsed .sidebar {
+        width: 64px !important;
+        padding: 10px 4px !important;
+    }
+    .app-layout.sidebar-collapsed .school-brand .school-info,
+    .app-layout.sidebar-collapsed .user-profile-card .user-details,
+    .app-layout.sidebar-collapsed .cycle-selector-box,
+    .app-layout.sidebar-collapsed .sidebar-search-box,
+    .app-layout.sidebar-collapsed .nav-section-label,
+    .app-layout.sidebar-collapsed .nav-item span,
+    .app-layout.sidebar-collapsed .nav-item .badge,
+    .app-layout.sidebar-collapsed .sidebar-footer .sidebar-copyright-box,
+    .app-layout.sidebar-collapsed .sidebar-footer button span {
+        display: none !important;
+    }
+    .app-layout.sidebar-collapsed .school-brand {
+        justify-content: center !important;
+        padding-bottom: 6px !important;
+    }
+    .app-layout.sidebar-collapsed .user-profile-card {
+        justify-content: center !important;
+        padding: 4px !important;
+    }
+    .app-layout.sidebar-collapsed .nav-item {
+        justify-content: center !important;
+        padding: 10px 0 !important;
+        margin: 3px 2px !important;
+        position: relative !important;
+    }
+    .app-layout.sidebar-collapsed .nav-item i {
+        font-size: 1.15rem !important;
+        margin: 0 !important;
+    }
+    .app-layout.sidebar-collapsed .sidebar-footer {
+        padding: 6px 0 !important;
+    }
+    .app-layout.sidebar-collapsed .sidebar-footer button {
+        padding: 8px 0 !important;
+        justify-content: center !important;
+    }
+    .app-layout.sidebar-collapsed .sidebar-footer button i {
+        margin: 0 !important;
+    }
+    .app-layout.sidebar-collapsed .sidebar-collapse-toggle-btn {
+        margin: 0 auto 6px auto !important;
+    }
+}
+
+/* Micro-animación de Pulso para Badges con Alertas Pendientes */
+.badge-pulse {
+    animation: navBadgePulse 2s infinite !important;
+}
+@keyframes navBadgePulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.15);
+        box-shadow: 0 0 6px rgba(220, 38, 38, 0.7);
+    }
+}
