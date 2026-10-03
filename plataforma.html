@@ -546,136 +546,116 @@
                 </a>
 
                 <!-- SECCIÓN ADMINISTRACIÓN Y ROLES -->
-                <div class="nav-section-label collapsible" id="navLabel-admin" data-target-group="navGroup-admin" data-perm="roles,users" onclick="toggleNavSection('admin')">
-                    <span>ADMINISTRACIÓN Y DIRECCIÓN</span>
-                    <i class="fa-solid fa-chevron-down section-chevron"></i>
-                </div>
-                <div class="nav-section-group" id="navGroup-admin">
-                    <a href="#" class="nav-item" data-view="roles" data-perm="roles" onclick="navigateTo('roles', event)">
-                        <i class="fa-solid fa-user-shield"></i>
-                        <span>Roles y Permisos</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="users" data-perm="users" onclick="navigateTo('users', event)">
-                        <i class="fa-solid fa-users-gear"></i>
-                        <span>Usuarios y Maestros</span>
-                    </a>
-                </div>
+                <div class="nav-section-label" data-perm="roles,users">ADMINISTRACIÓN Y DIRECCIÓN</div>
+                <a href="#" class="nav-item" data-view="roles" data-perm="roles" onclick="navigateTo('roles', event)">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <span>Roles y Permisos</span>
+                </a>
+                <a href="#" class="nav-item" data-view="users" data-perm="users" onclick="navigateTo('users', event)">
+                    <i class="fa-solid fa-users-gear"></i>
+                    <span>Usuarios y Maestros</span>
+                </a>
 
                 <!-- SECCIÓN CONTROL ACADÉMICO Y SECRETARÍA -->
-                <div class="nav-section-label collapsible" id="navLabel-academic" data-target-group="navGroup-academic" data-perm="grades,guide-teachers,pensum,class-assignments,enrollment,students,carnets,datos-sire,excel-import,grade-lock,cycles" onclick="toggleNavSection('academic')">
-                    <span>CONTROL ACADÉMICO Y SECRETARÍA</span>
-                    <i class="fa-solid fa-chevron-down section-chevron"></i>
-                </div>
-                <div class="nav-section-group" id="navGroup-academic">
-                    <a href="#" class="nav-item" data-view="grades" data-perm="grades" onclick="navigateTo('grades', event)">
-                        <i class="fa-solid fa-graduation-cap"></i>
-                        <span>Editor de Grados y Secciones</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="guide-teachers" data-perm="guide-teachers" onclick="navigateTo('guide-teachers', event)">
-                        <i class="fa-solid fa-person-chalkboard"></i>
-                        <span>Directorio de Maestros Guías</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="pensum" data-perm="pensum" onclick="navigateTo('pensum', event)">
-                        <i class="fa-solid fa-book-open-reader"></i>
-                        <span>Editor de Pensum (Materias)</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="class-assignments" data-perm="class-assignments" onclick="navigateTo('class-assignments', event)">
-                        <i class="fa-solid fa-chalkboard-user"></i>
-                        <span>Asignación de Clases a Docentes</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="enrollment" data-perm="enrollment" onclick="navigateTo('enrollment', event)">
-                        <i class="fa-solid fa-user-plus"></i>
-                        <span>Inscripción y Matrícula</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="students" data-perm="students" onclick="navigateTo('students', event)">
-                        <i class="fa-solid fa-address-book"></i>
-                        <span>Nómina y Expedientes de Alumnos</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="carnets" data-perm="carnets" data-allowed="director,secretaria,admin" onclick="navigateTo('carnets', event)">
-                        <i class="fa-solid fa-id-card"></i>
-                        <span>Carnés Estudiantiles</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="excel-import" data-perm="excel-import" onclick="navigateTo('excel-import', event)">
-                        <i class="fa-solid fa-file-excel"></i>
-                        <span>Plantillas y Listas Excel</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="grade-lock" data-perm="grade-lock" onclick="navigateTo('grade-lock', event)">
-                        <i class="fa-solid fa-lock"></i>
-                        <span>Bloqueo de Bimestres</span>
-                        <span id="pendingGradeRequestsBadge" class="badge badge-danger nav-badge-counter" style="display:none; margin-left:auto; font-size:0.7rem; padding:2px 6px; border-radius:10px;">0</span>
-                    </a>
-                    <a href="#" class="nav-item" data-perm="cycles" onclick="openCycleModal(event)">
-                        <i class="fa-solid fa-calendar-days"></i>
-                        <span>Ciclos Escolares y Periodos</span>
-                    </a>
-                    <a href="#" class="nav-item" data-perm="cycles" onclick="openCyclePromotionModal(event)">
-                        <i class="fa-solid fa-graduation-cap"></i>
-                        <span>Promoción y Nuevo Ciclo</span>
-                    </a>
-                </div>
+                <div class="nav-section-label" data-perm="grades,guide-teachers,pensum,class-assignments,enrollment,students,carnets,datos-sire,excel-import,grade-lock,cycles">CONTROL ACADÉMICO Y SECRETARÍA</div>
+                <a href="#" class="nav-item" data-view="grades" data-perm="grades" onclick="navigateTo('grades', event)">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span>Editor de Grados y Secciones</span>
+                </a>
+                <a href="#" class="nav-item" data-view="guide-teachers" data-perm="guide-teachers" onclick="navigateTo('guide-teachers', event)">
+                    <i class="fa-solid fa-person-chalkboard"></i>
+                    <span>Directorio de Maestros Guías</span>
+                </a>
+                <a href="#" class="nav-item" data-view="pensum" data-perm="pensum" onclick="navigateTo('pensum', event)">
+                    <i class="fa-solid fa-book-open-reader"></i>
+                    <span>Editor de Pensum (Materias)</span>
+                </a>
+                <a href="#" class="nav-item" data-view="class-assignments" data-perm="class-assignments" onclick="navigateTo('class-assignments', event)">
+                    <i class="fa-solid fa-chalkboard-user"></i>
+                    <span>Asignación de Clases a Docentes</span>
+                </a>
+                <a href="#" class="nav-item" data-view="enrollment" data-perm="enrollment" onclick="navigateTo('enrollment', event)">
+                    <i class="fa-solid fa-user-plus"></i>
+                    <span>Inscripción y Matrícula</span>
+                </a>
+                <a href="#" class="nav-item" data-view="students" data-perm="students" onclick="navigateTo('students', event)">
+                    <i class="fa-solid fa-address-book"></i>
+                    <span>Nómina y Expedientes de Alumnos</span>
+                </a>
+                <a href="#" class="nav-item" data-view="carnets" data-perm="carnets" data-allowed="director,secretaria,admin" onclick="navigateTo('carnets', event)">
+                    <i class="fa-solid fa-id-card"></i>
+                    <span>Carnés Estudiantiles</span>
+                </a>
+                <a href="#" class="nav-item" data-view="excel-import" data-perm="excel-import" onclick="navigateTo('excel-import', event)">
+                    <i class="fa-solid fa-file-excel"></i>
+                    <span>Plantillas y Listas Excel</span>
+                </a>
+                <a href="#" class="nav-item" data-view="grade-lock" data-perm="grade-lock" onclick="navigateTo('grade-lock', event)">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>Bloqueo de Bimestres</span>
+                    <span id="pendingGradeRequestsBadge" class="badge badge-danger" style="display:none; margin-left:auto; font-size:0.7rem; padding:2px 6px; border-radius:10px;">0</span>
+                </a>
+                <a href="#" class="nav-item" data-perm="cycles" onclick="openCycleModal(event)">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>Ciclos Escolares y Periodos</span>
+                </a>
+                <a href="#" class="nav-item" data-perm="cycles" onclick="openCyclePromotionModal(event)">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span>Promoción y Nuevo Ciclo</span>
+                </a>
 
                 <!-- SECCIÓN DOCENTES Y CALIFICACIONES -->
-                <div class="nav-section-label collapsible" id="navLabel-teachers" data-target-group="navGroup-teachers" data-perm="gradebook,attendance,discipline" onclick="toggleNavSection('teachers')">
-                    <span>DOCENTES Y CALIFICACIONES</span>
-                    <i class="fa-solid fa-chevron-down section-chevron"></i>
-                </div>
-                <div class="nav-section-group" id="navGroup-teachers">
-                    <a href="#" class="nav-item" data-view="gradebook" data-perm="gradebook" onclick="navigateTo('gradebook', event)">
-                        <i class="fa-solid fa-book-bookmark"></i>
-                        <span>Libro de Calificaciones (Notas)</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="attendance" data-perm="attendance" onclick="navigateTo('attendance', event)">
-                        <i class="fa-solid fa-calendar-check"></i>
-                        <span>Control de Asistencia Diaria</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="discipline" data-perm="discipline" onclick="navigateTo('discipline', event)">
-                        <i class="fa-solid fa-triangle-exclamation"></i>
-                        <span>Gestión de Disciplina y Actas</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="auxiliatura-center" data-perm="auxiliatura-center" data-allowed="director,secretaria,profesor_auxiliar,admin" onclick="navigateTo('auxiliatura-center', event)">
-                        <i class="fa-solid fa-gauge-high"></i>
-                        <span>Centro de Control</span>
-                        <span id="auxiliaturaCenterPendingBadge" class="badge nav-badge-counter" style="margin-left:auto; font-size:0.68rem; padding:2px 6px; background:#0284c7; color:#fff; border-radius:999px; font-weight:800; display:none;">0</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="auxiliatura-log" data-perm="auxiliatura-log" data-allowed="director,secretaria,profesor_auxiliar,admin" onclick="navigateTo('auxiliatura-log', event)">
-                        <i class="fa-solid fa-clipboard-user"></i>
-                        <span>Bitácora de Auxiliatura</span>
-                        <span id="auxiliaturaAlertsBadge" class="badge nav-badge-counter" style="margin-left:auto; font-size:0.68rem; padding:2px 6px; background:#dc2626; color:#fff; border-radius:999px; font-weight:800; display:none;">0</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="exoneraciones-log" data-perm="exoneraciones-log" data-allowed="*" onclick="navigateTo('exoneraciones-log', event)">
-                        <i class="fa-solid fa-file-shield"></i>
-                        <span>Registro de Exoneraciones</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="permissions-history" data-perm="permissions-history" data-allowed="*" onclick="navigateTo('permissions-history', event)">
-                        <i class="fa-solid fa-clipboard-list"></i>
-                        <span>Permisos de Ausencia</span>
-                    </a>
-                </div>
+                <div class="nav-section-label" data-perm="gradebook,attendance,discipline">DOCENTES Y CALIFICACIONES</div>
+                <a href="#" class="nav-item" data-view="gradebook" data-perm="gradebook" onclick="navigateTo('gradebook', event)">
+                    <i class="fa-solid fa-book-bookmark"></i>
+                    <span>Libro de Calificaciones (Notas)</span>
+                </a>
+                <a href="#" class="nav-item" data-view="attendance" data-perm="attendance" onclick="navigateTo('attendance', event)">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    <span>Control de Asistencia Diaria</span>
+                </a>
+                <a href="#" class="nav-item" data-view="discipline" data-perm="discipline" onclick="navigateTo('discipline', event)">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Gestión de Disciplina y Actas</span>
+                </a>
+                <a href="#" class="nav-item" data-view="auxiliatura-center" data-perm="auxiliatura-center" data-allowed="director,secretaria,profesor_auxiliar,admin" onclick="navigateTo('auxiliatura-center', event)">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>Centro de Control</span>
+                    <span id="auxiliaturaCenterPendingBadge" class="badge" style="margin-left:auto; font-size:0.68rem; padding:2px 6px; background:#0284c7; color:#fff; border-radius:999px; font-weight:800; display:none;">0</span>
+                </a>
+                <a href="#" class="nav-item" data-view="auxiliatura-log" data-perm="auxiliatura-log" data-allowed="director,secretaria,profesor_auxiliar,admin" onclick="navigateTo('auxiliatura-log', event)">
+                    <i class="fa-solid fa-clipboard-user"></i>
+                    <span>Bitácora de Auxiliatura</span>
+                    <span id="auxiliaturaAlertsBadge" class="badge" style="margin-left:auto; font-size:0.68rem; padding:2px 6px; background:#dc2626; color:#fff; border-radius:999px; font-weight:800; display:none;">0</span>
+                </a>
+                <a href="#" class="nav-item" data-view="exoneraciones-log" data-perm="exoneraciones-log" data-allowed="*" onclick="navigateTo('exoneraciones-log', event)">
+                    <i class="fa-solid fa-file-shield"></i>
+                    <span>Registro de Exoneraciones</span>
+                </a>
+                <a href="#" class="nav-item" data-view="permissions-history" data-perm="permissions-history" data-allowed="*" onclick="navigateTo('permissions-history', event)">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                    <span>Permisos de Ausencia</span>
+                </a>
 
                 <!-- SECCIÓN REPORTES Y CUADRO DE HONOR -->
-                <div class="nav-section-label collapsible" id="navLabel-reports" data-target-group="navGroup-reports" data-perm="honor-roll,reports,grade-stats,predictive-analytics" onclick="toggleNavSection('reports')">
-                    <span>REPORTES Y CUADRO DE HONOR</span>
-                    <i class="fa-solid fa-chevron-down section-chevron"></i>
-                </div>
-                <div class="nav-section-group" id="navGroup-reports">
-                    <a href="#" class="nav-item" data-view="honor-roll" data-perm="honor-roll" data-allowed="director,secretaria,admin,profesor_auxiliar" onclick="navigateTo('honor-roll', event)">
-                        <i class="fa-solid fa-award"></i>
-                        <span>Cuadros de Honor</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="reports" data-perm="reports" data-allowed="director,secretaria,admin,profesor_auxiliar" onclick="navigateTo('reports', event)">
-                        <i class="fa-solid fa-print"></i>
-                        <span>Boletín de Calificaciones</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="grade-stats" data-perm="grade-stats" data-allowed="director,secretaria,admin,profesor_auxiliar" onclick="navigateTo('grade-stats', event)">
-                        <i class="fa-solid fa-chart-bar"></i>
-                        <span>Promedios y Estadísticas</span>
-                    </a>
-                    <a href="#" class="nav-item" data-view="predictive-analytics" data-perm="predictive-analytics" data-allowed="director,secretaria,admin" onclick="navigateTo('predictive-analytics', event)">
-                        <i class="fa-solid fa-chart-line"></i>
-                        <span>Analítica y Riesgo Escolar</span>
-                        <span class="badge" style="margin-left:auto; font-size:0.65rem; padding:2px 6px; background:#e11d48; color:#fff; border-radius:4px; font-weight:700;">IA/Riesgo</span>
-                    </a>
-                </div>
+                <div class="nav-section-label" data-perm="honor-roll,reports,grade-stats,predictive-analytics">REPORTES Y CUADRO DE HONOR</div>
+                <a href="#" class="nav-item" data-view="honor-roll" data-perm="honor-roll" data-allowed="director,secretaria,admin,profesor_auxiliar" onclick="navigateTo('honor-roll', event)">
+                    <i class="fa-solid fa-award"></i>
+                    <span>Cuadros de Honor</span>
+                </a>
+                <a href="#" class="nav-item" data-view="reports" data-perm="reports" data-allowed="director,secretaria,admin,profesor_auxiliar" onclick="navigateTo('reports', event)">
+                    <i class="fa-solid fa-print"></i>
+                    <span>Boletín de Calificaciones</span>
+                </a>
+                <a href="#" class="nav-item" data-view="grade-stats" data-perm="grade-stats" data-allowed="director,secretaria,admin,profesor_auxiliar" onclick="navigateTo('grade-stats', event)">
+                    <i class="fa-solid fa-chart-bar"></i>
+                    <span>Promedios y Estadísticas</span>
+                </a>
+                <a href="#" class="nav-item" data-view="predictive-analytics" data-perm="predictive-analytics" data-allowed="director,secretaria,admin" onclick="navigateTo('predictive-analytics', event)">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Analítica y Riesgo Escolar</span>
+                    <span class="badge" style="margin-left:auto; font-size:0.65rem; padding:2px 6px; background:#e11d48; color:#fff; border-radius:4px; font-weight:700;">IA/Riesgo</span>
+                </a>
             </nav>
 
             <div class="sidebar-footer">
@@ -5367,7 +5347,6 @@
     <script src="auxiliatura_center.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="db_repository.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="modal_manager.js?v=20261003_v1" charset="UTF-8"></script>
-    <script src="sidebar_manager.js?v=20261003_v1" charset="UTF-8"></script>
 
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre

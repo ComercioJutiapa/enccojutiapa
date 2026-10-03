@@ -24,8 +24,7 @@ const CRITICAL_SUITES = [
     'test_retired_students_rules.js',
     'test_exoneration_and_student_lists_resilience.js',
     'test_independent_bimestres.js',
-    'test_sire_assisted_enrollment_simulation.js',
-    'test_sidebar_enhancements.js'
+    'test_sire_assisted_enrollment_simulation.js'
 ];
 
 console.log('================================================================================');
