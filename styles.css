@@ -3783,3 +3783,280 @@ input[type="text"]:focus, input[type="search"]:focus, input[type="number"]:focus
 
 
 
+
+
+/* ==========================================================================
+   🎨 SISTEMA DE ELEVACIÓN ESTÉTICA Y ERGONOMÍA VISUAL ENCCO 1970 (DESIGN SYSTEM 2.0)
+   Aprobado tras auditoría UI/UX integral:
+   1. Tablas y Densidad de Datos (Hover, Sticky Column en Listas, Badges)
+   2. Barra Lateral y Navegación (Ergonomía de ítems, Active Pill Indicator, Separadores)
+   3. Tarjetas KPI y Métricas (Elevación sutil, números tabulares 'Outfit', iconos suaves)
+   4. Modales y Drawers con Backdrop Blur y Cabecera/Pie Fijo
+   5. Formularios, Entradas y Selectores (Focus Rings institucionales, bordes suaves)
+   6. Armonía Total en Modo Oscuro (Evita destellos blancos en modales y tablas)
+   7. Scrollbars Delgadas y Estados Vacíos Elegantes
+   ========================================================================== */
+
+/* 1. Scrollbars Globales Finas y Elegantes */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.45);
+    border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.7);
+}
+body.theme-dark ::-webkit-scrollbar-thumb {
+    background: rgba(30, 58, 43, 0.8);
+}
+body.theme-dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(16, 185, 129, 0.6);
+}
+
+/* 2. Barra Lateral (Sidebar) - Ergonomía y Jerarquía */
+.sidebar {
+    transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sidebar-nav {
+    padding: 8px 6px !important;
+}
+.nav-item {
+    padding: 8px 12px !important;
+    margin: 2px 6px !important;
+    border-radius: 8px !important;
+    font-size: 0.84rem !important;
+    font-weight: 500 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+    transform: translateX(3px) !important;
+}
+.nav-item.active {
+    background: linear-gradient(90deg, rgba(2, 132, 199, 0.28) 0%, rgba(2, 132, 199, 0.08) 100%) !important;
+    color: #38bdf8 !important;
+    font-weight: 700 !important;
+    border-left: 3px solid #38bdf8 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+}
+.nav-section-label {
+    padding: 12px 14px 4px 14px !important;
+    font-size: 0.64rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.07em !important;
+    color: rgba(255, 255, 255, 0.45) !important;
+    text-transform: uppercase !important;
+}
+
+/* 3. Tarjetas KPI y Métricas de Alto Impacto */
+.kpi-card, .dash-kpi-card, .aux-kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color) !important;
+    border-radius: 12px !important;
+    padding: 16px 18px !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02) !important;
+    transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.kpi-card:hover, .dash-kpi-card:hover, .aux-kpi-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 18px -4px rgba(15, 23, 42, 0.08), 0 3px 6px -2px rgba(15, 23, 42, 0.04) !important;
+}
+.kpi-card h3, .dash-kpi-card h3, .aux-kpi-card h3 {
+    font-family: 'Outfit', var(--font-sans) !important;
+    font-variant-numeric: tabular-nums !important;
+    letter-spacing: -0.02em !important;
+}
+.aux-kpi-icon {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 10px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.15rem !important;
+    flex-shrink: 0 !important;
+}
+
+/* 4. Tablas de Datos (Estilo Hoja de Cálculo & Fila Activa) */
+.custom-table {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+}
+.custom-table thead th {
+    background: #f1f5f9 !important;
+    color: #1e293b !important;
+    font-weight: 700 !important;
+    font-size: 0.78rem !important;
+    letter-spacing: 0.02em !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+    padding: 10px 12px !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 5 !important;
+}
+.custom-table tbody tr {
+    transition: background-color 0.15s ease !important;
+}
+.custom-table tbody tr:hover {
+    background-color: rgba(2, 132, 199, 0.04) !important;
+}
+.custom-table tbody td {
+    padding: 10px 12px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    vertical-align: middle !important;
+}
+
+/* Insignias de Estado y Badges Estandarizadas */
+.badge, .pill-badge, .aux-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: 3px 9px !important;
+    border-radius: 9999px !important;
+    font-weight: 700 !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.01em !important;
+    line-height: 1.2 !important;
+}
+
+/* 5. Modales con Efecto Cristal (Backdrop Filter) y Ergonomía */
+.modal-backdrop, .modal-overlay {
+    backdrop-filter: blur(5px) saturate(160%) !important;
+    -webkit-backdrop-filter: blur(5px) saturate(160%) !important;
+    background-color: rgba(15, 23, 42, 0.55) !important;
+}
+.modal-dialog, .modal-content, .custom-modal-box {
+    border-radius: 16px !important;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35) !important;
+}
+.modal-header {
+    border-bottom: 1px solid var(--border-color) !important;
+    padding: 14px 20px !important;
+}
+.modal-footer {
+    border-top: 1px solid var(--border-color) !important;
+    padding: 12px 20px !important;
+    background: #f8fafc;
+    border-radius: 0 0 16px 16px;
+}
+
+/* 6. Formularios y Entradas Refinadas */
+input[type="text"], input[type="search"], input[type="number"], input[type="date"], select, textarea {
+    border-radius: 8px !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 8px 12px !important;
+    font-size: 0.88rem !important;
+    transition: all 0.2s ease !important;
+}
+input[type="text"]:focus, input[type="search"]:focus, input[type="number"]:focus, input[type="date"]:focus, select:focus, textarea:focus {
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.2) !important;
+    outline: none !important;
+}
+
+/* 7. Armonización Integral del Modo Oscuro (Dark Theme) */
+body.theme-dark .kpi-card,
+body.theme-dark .dash-kpi-card,
+body.theme-dark .aux-kpi-card,
+body.theme-dark .dash-card,
+body.theme-dark .table-card {
+    background: #091a10 !important;
+    border-color: #173824 !important;
+    color: #f1f5f9 !important;
+}
+body.theme-dark .custom-table thead th {
+    background: #061c10 !important;
+    color: #6ee7b7 !important;
+    border-bottom-color: #173824 !important;
+}
+body.theme-dark .custom-table tbody td {
+    border-bottom-color: #122b1b !important;
+    color: #e2e8f0 !important;
+}
+body.theme-dark .custom-table tbody tr:hover {
+    background-color: rgba(16, 185, 129, 0.08) !important;
+}
+body.theme-dark .modal-content,
+body.theme-dark .modal-dialog,
+body.theme-dark .custom-modal-box {
+    background: #06150c !important;
+    border-color: #173824 !important;
+    color: #f1f5f9 !important;
+}
+body.theme-dark .modal-header {
+    border-bottom-color: #173824 !important;
+}
+body.theme-dark .modal-footer {
+    background: #041009 !important;
+    border-top-color: #173824 !important;
+}
+body.theme-dark input[type="text"],
+body.theme-dark input[type="search"],
+body.theme-dark input[type="number"],
+body.theme-dark input[type="date"],
+body.theme-dark select,
+body.theme-dark textarea {
+    background: #030e06 !important;
+    border-color: #173824 !important;
+    color: #f1f5f9 !important;
+}
+body.theme-dark .nav-item:hover {
+    background: rgba(16, 185, 129, 0.15) !important;
+    color: #6ee7b7 !important;
+}
+body.theme-dark .nav-item.active {
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.28) 0%, rgba(16, 185, 129, 0.08) 100%) !important;
+    color: #6ee7b7 !important;
+    border-left-color: #10b981 !important;
+}
+
+/* 8. Tarjeta de Estado Vacío (Empty State) */
+.empty-state-card {
+    text-align: center;
+    padding: 36px 20px;
+    background: #ffffff;
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px;
+    margin: 14px 0;
+}
+body.theme-dark .empty-state-card {
+    background: #091a10;
+    border-color: #173824;
+}
+.empty-state-card i {
+    font-size: 2.2rem;
+    color: #94a3b8;
+    margin-bottom: 10px;
+    display: inline-block;
+}
+.empty-state-card h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 4px 0;
+}
+body.theme-dark .empty-state-card h4 {
+    color: #f1f5f9;
+}
+.empty-state-card p {
+    font-size: 0.82rem;
+    color: #64748b;
+    margin: 0;
+}
+body.theme-dark .empty-state-card p {
+    color: #94a3b8;
+}
