@@ -4066,28 +4066,6 @@ body.theme-dark .empty-state-card p {
    📂 BARRA LATERAL ERGONÓMICA: MODO MINI (64px), ACORDEONES Y BUSCADOR
    ========================================================================== */
 
-/* Botón de colapsar / expandir sidebar */
-.sidebar-collapse-toggle-btn {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #e2e8f0;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-size: 0.78rem;
-    transition: var(--transition);
-    margin-left: auto;
-}
-.sidebar-collapse-toggle-btn:hover {
-    background: var(--brand-blue);
-    color: #ffffff;
-    border-color: var(--brand-blue-light);
-}
-
 /* Secciones Acordeón Plegables */
 .nav-section-label.collapsible {
     display: flex !important;
@@ -4115,55 +4093,6 @@ body.theme-dark .empty-state-card p {
 }
 .nav-section-group.collapsed {
     display: none !important;
-}
-
-/* Modo Mini-Sidebar Colapsado (64px) en Pantallas Grandes */
-@media (min-width: 993px) {
-    .app-layout.sidebar-collapsed .sidebar {
-        width: 64px !important;
-        padding: 10px 4px !important;
-    }
-    .app-layout.sidebar-collapsed .school-brand .school-info,
-    .app-layout.sidebar-collapsed .user-profile-card .user-details,
-    .app-layout.sidebar-collapsed .cycle-selector-box,
-    .app-layout.sidebar-collapsed .nav-section-label,
-    .app-layout.sidebar-collapsed .nav-item span,
-    .app-layout.sidebar-collapsed .nav-item .badge,
-    .app-layout.sidebar-collapsed .sidebar-footer .sidebar-copyright-box,
-    .app-layout.sidebar-collapsed .sidebar-footer button span {
-        display: none !important;
-    }
-    .app-layout.sidebar-collapsed .school-brand {
-        justify-content: center !important;
-        padding-bottom: 6px !important;
-    }
-    .app-layout.sidebar-collapsed .user-profile-card {
-        justify-content: center !important;
-        padding: 4px !important;
-    }
-    .app-layout.sidebar-collapsed .nav-item {
-        justify-content: center !important;
-        padding: 10px 0 !important;
-        margin: 3px 2px !important;
-        position: relative !important;
-    }
-    .app-layout.sidebar-collapsed .nav-item i {
-        font-size: 1.15rem !important;
-        margin: 0 !important;
-    }
-    .app-layout.sidebar-collapsed .sidebar-footer {
-        padding: 6px 0 !important;
-    }
-    .app-layout.sidebar-collapsed .sidebar-footer button {
-        padding: 8px 0 !important;
-        justify-content: center !important;
-    }
-    .app-layout.sidebar-collapsed .sidebar-footer button i {
-        margin: 0 !important;
-    }
-    .app-layout.sidebar-collapsed .sidebar-collapse-toggle-btn {
-        margin: 0 auto 6px auto !important;
-    }
 }
 
 /* Micro-animación de Pulso para Badges con Alertas Pendientes */
