@@ -38035,37 +38035,112 @@ function deleteStudentAnnotation(annotationId) {
 }
 window.deleteStudentAnnotation = deleteStudentAnnotation;
 
+// Helper: Encontrar grado correspondiente para un estudiante
+function findGradeForStudent(student) {
+    if (!student) return null;
+    const grades = STATE.gradesList || [];
+    // 1. Coincidencia directa por código o ID
+    let found = grades.find(g => g && (g.code === student.gradeCode || g.id === student.gradeCode));
+    if (found) return found;
+
+    // 2. Coincidencia por palabra clave del grado ('4to', '5to', '6to') y letra de sección
+    const sGrade = (student.grade || student.gradeCode || '').toLowerCase();
+    const sSec = (student.section || '').toLowerCase().replace('sección', '').trim();
+
+    found = grades.find(g => {
+        if (!g) return false;
+        const gName = (g.name || '').toLowerCase();
+        const gSec = (g.section || '').toLowerCase().replace('sección', '').trim();
+        const gradeMatch = (sGrade.includes('4to') && gName.includes('4to')) ||
+                           (sGrade.includes('5to') && gName.includes('5to')) ||
+                           (sGrade.includes('6to') && gName.includes('6to'));
+        const secMatch = sSec ? (sSec === gSec) : (gSec ? sGrade.endsWith(gSec) : true);
+        return gradeMatch && secMatch;
+    });
+
+    return found || null;
+}
+window.findGradeForStudent = findGradeForStudent;
+
+// Helper: Determinar si un estudiante pertenece a una sección específica
+function isStudentInGrade(student, gradeVal) {
+    if (!student) return false;
+    if (!gradeVal || gradeVal === 'ALL') return true;
+    const targetGrade = (STATE.gradesList || []).find(g => g && (g.code === gradeVal || g.id === gradeVal));
+    if (!targetGrade) return student.gradeCode === gradeVal || student.grade === gradeVal;
+
+    if (student.gradeCode === targetGrade.code || student.gradeCode === targetGrade.id) return true;
+    if (student.grade === targetGrade.code || student.grade === targetGrade.id) return true;
+
+    const sGrade = (student.grade || student.gradeCode || '').toLowerCase();
+    const sSec = (student.section || '').toLowerCase().replace('sección', '').trim();
+    const gName = (targetGrade.name || '').toLowerCase();
+    const gSec = (targetGrade.section || '').toLowerCase().replace('sección', '').trim();
+
+    const gradeMatch = (sGrade.includes('4to') && gName.includes('4to')) ||
+                       (sGrade.includes('5to') && gName.includes('5to')) ||
+                       (sGrade.includes('6to') && gName.includes('6to'));
+
+    const secMatch = sSec ? (sSec === gSec) : (gSec ? sGrade.endsWith(gSec) : true);
+    return gradeMatch && secMatch;
+}
+window.isStudentInGrade = isStudentInGrade;
+
 // Selector dinámico de estudiante para anotaciones
-function populateAnnotationStudentDropdown(selectedStudentId = null) {
+function populateAnnotationStudentDropdown(selectedStudentId = null, forcedGradeCode = null) {
     const select = document.getElementById('annotStudentSelect');
     const gradeSelect = document.getElementById('annotStudentGradeFilter');
     const countLabel = document.getElementById('annotStudentsCountLabel');
     if (!select) return;
 
-    const students = (STATE.students || []).filter(s => s && s.status !== 'Retirado');
-    if (countLabel) countLabel.textContent = `${students.length} estudiantes activos`;
+    if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
 
-    // Llenar combo de grados si solo tiene la opción por defecto
-    if (gradeSelect && gradeSelect.options.length <= 1) {
-        let gradesHtml = '<option value="ALL">-- Todas las Secciones --</option>';
-        (STATE.gradesList || []).forEach(g => {
-            gradesHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} (${escapeHtml(g.section || '')})</option>`;
-        });
-        gradeSelect.innerHTML = gradesHtml;
+    const students = (STATE.students || []).filter(s => s && s.status !== 'Retirado');
+
+    // Llenar combo de grados si solo tiene la opción por defecto o está vacío
+    if (gradeSelect) {
+        if (gradeSelect.options.length <= 1) {
+            let gradesHtml = '<option value="ALL">-- Todas las Secciones --</option>';
+            (STATE.gradesList || []).forEach(g => {
+                gradesHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} (Sección ${escapeHtml(g.section || '')})</option>`;
+            });
+            gradeSelect.innerHTML = gradesHtml;
+        }
+
+        // Si se especificó una sección activa forzada o no se ha seleccionado ninguna
+        if (forcedGradeCode) {
+            gradeSelect.value = forcedGradeCode;
+        } else if (!gradeSelect.value || gradeSelect.value === 'ALL') {
+            const targetStudent = students.find(s => s.id === selectedStudentId);
+            const foundG = findGradeForStudent(targetStudent);
+            if (foundG) {
+                gradeSelect.value = foundG.code || foundG.id;
+            }
+        }
     }
 
     const searchVal = (document.getElementById('annotStudentSearchFilter')?.value || '').toLowerCase().trim();
     const gradeVal = gradeSelect ? gradeSelect.value : 'ALL';
 
-    let filtered = students;
-    if (gradeVal !== 'ALL') {
-        filtered = filtered.filter(s => s.gradeCode === gradeVal || s.grade === gradeVal);
-    }
+    // Filtrar con la lógica canónica de sección
+    let filtered = students.filter(s => isStudentInGrade(s, gradeVal));
+
     if (searchVal) {
         filtered = filtered.filter(s => {
             const fullName = `${s.name || ''} ${s.firstName || ''} ${s.lastName || ''} ${s.carne || ''} ${s.personalCode || ''}`.toLowerCase();
             return fullName.includes(searchVal);
         });
+    }
+
+    // Actualizar etiqueta de conteo con el nombre de la sección activa
+    if (countLabel) {
+        if (gradeVal && gradeVal !== 'ALL') {
+            const currentG = (STATE.gradesList || []).find(g => g && (g.code === gradeVal || g.id === gradeVal));
+            const secName = currentG ? `${currentG.name} (Sección ${currentG.section || ''})` : gradeVal;
+            countLabel.textContent = `${filtered.length} estudiantes en ${secName}`;
+        } else {
+            countLabel.textContent = `${filtered.length} de ${students.length} estudiantes activos`;
+        }
     }
 
     // Ordenar alfabéticamente por apellido
@@ -38076,7 +38151,7 @@ function populateAnnotationStudentDropdown(selectedStudentId = null) {
     });
 
     if (filtered.length === 0) {
-        select.innerHTML = '<option value="">No hay estudiantes que coincidan con la búsqueda</option>';
+        select.innerHTML = '<option value="">No hay estudiantes en esta sección o búsqueda</option>';
         return;
     }
 
@@ -38089,17 +38164,21 @@ function populateAnnotationStudentDropdown(selectedStudentId = null) {
         return `<option value="${escapeHtml(s.id)}" ${isSelected}>${escapeHtml(dName)} (Carné: ${escapeHtml(cCode)}) — ${escapeHtml(gLabel)} ${escapeHtml(sLabel)}</option>`;
     }).join('');
 
-    if (selectedStudentId) {
+    // Si el estudiante seleccionado está en la lista filtrada, seleccionarlo; si no, seleccionar el primero
+    if (selectedStudentId && filtered.some(s => s.id === selectedStudentId)) {
         select.value = selectedStudentId;
+    } else if (filtered.length > 0) {
+        select.value = filtered[0].id;
     }
 }
 window.populateAnnotationStudentDropdown = populateAnnotationStudentDropdown;
 
 function filterAnnotationStudentDropdown() {
-    const currentId = document.getElementById('annotStudentId')?.value;
-    populateAnnotationStudentDropdown(currentId);
+    const gradeSelect = document.getElementById('annotStudentGradeFilter');
+    const chosenGrade = gradeSelect ? gradeSelect.value : null;
+    populateAnnotationStudentDropdown(null, chosenGrade);
     const select = document.getElementById('annotStudentSelect');
-    if (select && select.value && select.value !== currentId) {
+    if (select && select.value) {
         onStudentAnnotationSelectChange(select.value);
     }
 }
@@ -38155,8 +38234,18 @@ function openStudentAnnotationModal(studentId = null, defaultDate = null, alertI
     document.getElementById('annotStudentName').textContent = studentDisplayName;
     document.getElementById('annotStudentMeta').textContent = `Carné: ${student.carne || student.personalCode || 'S/C'} | Grado: ${student.grade || ''} ${student.section ? `(${student.section})` : ''} | Carrera: ${student.career || 'Perito Contador'}`;
 
-    // Inicializar y sincronizar el selector de estudiante
-    populateAnnotationStudentDropdown(student.id);
+    // Determinar la sección activa para pre-seleccionar en el filtro
+    let activeGradeCode = null;
+    const studentGrade = findGradeForStudent(student);
+    if (studentGrade) {
+        activeGradeCode = studentGrade.code || studentGrade.id;
+    } else if (STATE.currentGrade) {
+        const cg = (STATE.gradesList || []).find(g => g && (g.code === STATE.currentGrade || g.id === STATE.currentGrade));
+        if (cg) activeGradeCode = cg.code || cg.id;
+    }
+
+    // Inicializar y sincronizar el selector con la sección activa y sus estudiantes
+    populateAnnotationStudentDropdown(student.id, activeGradeCode);
 
     const dateInput = document.getElementById('annotDate');
     const todayStr = new Date().toISOString().split('T')[0];

@@ -126,8 +126,57 @@ test('TEST 8: Matriz de Privacidad y Visibilidad (Auxiliatura, Dirección, Secre
     assert(canView(testAnn, { id: 'STU_1', role: 'estudiante' }, 'estudiante') === false, 'Estudiante NO debe poder ver anotaciones');
 });
 
+test('TEST 9: Filtrado y resolución precisa de sección activa (isStudentInGrade y findGradeForStudent)', () => {
+    assert(jsSrc.includes('function isStudentInGrade('), 'Falta función isStudentInGrade en app.js');
+    assert(jsSrc.includes('function findGradeForStudent('), 'Falta función findGradeForStudent en app.js');
+
+    const vm = require('vm');
+    const sandbox = {
+        window: {},
+        STATE: {
+            gradesList: [
+                { id: 'grd-4a', code: 'grd-4a', name: '4to Perito Contador', section: 'A' },
+                { id: 'grd-4b', code: 'grd-4b', name: '4to Perito Contador', section: 'B' },
+                { id: 'grd-5a', code: 'grd-5a', name: '5to Perito Contador', section: 'A' },
+                { id: 'grd-6c', code: 'grd-6c', name: '6to Perito Contador', section: 'C' }
+            ]
+        }
+    };
+    sandbox.window.STATE = sandbox.STATE;
+    vm.createContext(sandbox);
+
+    const isMatch = jsSrc.match(/function isStudentInGrade[\s\S]*?window\.isStudentInGrade\s*=\s*isStudentInGrade;/);
+    const findMatch = jsSrc.match(/function findGradeForStudent[\s\S]*?window\.findGradeForStudent\s*=\s*findGradeForStudent;/);
+    assert(isMatch, 'No se pudo extraer isStudentInGrade');
+    assert(findMatch, 'No se pudo extraer findGradeForStudent');
+
+    vm.runInContext(findMatch[0], sandbox);
+    vm.runInContext(isMatch[0], sandbox);
+
+    const student4B = { id: 'STU_4B', name: 'Carlos Gomez', grade: '4to Perito Contador B', gradeCode: '4to PC B', section: 'B' };
+    const student4A = { id: 'STU_4A', name: 'Ana Lopez', grade: '4to Perito Contador A', gradeCode: '4to PC A', section: 'A' };
+    const student5A = { id: 'STU_5A', name: 'Mario Diaz', grade: '5to Perito Contador', gradeCode: 'grd-5a', section: 'A' };
+
+    // Verificación de resolución de grado
+    const gradeRes4B = sandbox.findGradeForStudent(student4B);
+    assert(gradeRes4B && gradeRes4B.code === 'grd-4b', 'findGradeForStudent debe resolver grd-4b para student4B');
+
+    // Verificación de pertenencia a sección
+    assert(sandbox.isStudentInGrade(student4B, 'grd-4b') === true, 'student4B debe pertenecer a grd-4b');
+    assert(sandbox.isStudentInGrade(student4B, 'grd-4a') === false, 'student4B NO debe pertenecer a grd-4a');
+    assert(sandbox.isStudentInGrade(student4A, 'grd-4a') === true, 'student4A debe pertenecer a grd-4a');
+    assert(sandbox.isStudentInGrade(student5A, 'grd-5a') === true, 'student5A debe pertenecer a grd-5a');
+    assert(sandbox.isStudentInGrade(student4B, 'ALL') === true, 'Cualquier estudiante pertenece a ALL');
+});
+
+test('TEST 10: Preselección de sección activa y filtro en modal de anotaciones', () => {
+    assert(jsSrc.includes('populateAnnotationStudentDropdown(student.id, activeGradeCode)'), 'openStudentAnnotationModal debe enviar la sección activa');
+    assert(jsSrc.includes('countLabel.textContent = `${filtered.length} estudiantes en ${secName}`'), 'Debe mostrar el conteo y nombre de la sección activa');
+});
+
 console.log('\n================================================================================');
 console.log(`🎉 RESULTADOS: ${passed} pasaron, ${failed} fallaron.`);
 console.log('================================================================================');
 
 if (failed > 0) process.exit(1);
+
