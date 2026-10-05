@@ -38659,11 +38659,123 @@ function renderPermissionsHistoryViewDebounced() {
 }
 window.renderPermissionsHistoryViewDebounced = renderPermissionsHistoryViewDebounced;
 
-function renderPermissionsHistoryView() {
+function setPermissionsDateRange(mode) {
+    const fromInput = document.getElementById('permissionsLogDateFrom');
+    const toInput = document.getElementById('permissionsLogDateTo');
+    const btnAll = document.getElementById('btnQuickPermAll');
+    const btnToday = document.getElementById('btnQuickPermToday');
+    const btnWeek = document.getElementById('btnQuickPermWeek');
+    const btnMonth = document.getElementById('btnQuickPermMonth');
+
+    const buttons = [
+        { id: 'all', btn: btnAll },
+        { id: 'today', btn: btnToday },
+        { id: 'week', btn: btnWeek },
+        { id: 'month', btn: btnMonth }
+    ];
+
+    buttons.forEach(b => {
+        if (!b.btn) return;
+        if (b.id === mode) {
+            b.btn.className = 'btn btn-xs btn-warning';
+            b.btn.style.color = '#ffffff';
+            b.btn.style.borderColor = '#d97706';
+            b.btn.style.background = '#f59e0b';
+        } else {
+            b.btn.className = 'btn btn-xs btn-outline-warning';
+            b.btn.style.color = '#b45309';
+            b.btn.style.borderColor = '#f59e0b';
+            b.btn.style.background = 'transparent';
+        }
+    });
+
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const formatYMD = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    if (mode === 'all') {
+        if (fromInput) fromInput.value = '';
+        if (toInput) toInput.value = '';
+    } else if (mode === 'today') {
+        const todayStr = formatYMD(now);
+        if (fromInput) fromInput.value = todayStr;
+        if (toInput) toInput.value = todayStr;
+    } else if (mode === 'week') {
+        // Lunes a Viernes de la semana actual
+        const dayOfWeek = now.getDay(); // 0 Dom, 1 Lun, ... 6 Sab
+        const diffToMonday = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
+        const monday = new Date(now);
+        monday.setDate(now.getDate() + diffToMonday);
+        const friday = new Date(monday);
+        friday.setDate(monday.getDate() + 4);
+        if (fromInput) fromInput.value = formatYMD(monday);
+        if (toInput) toInput.value = formatYMD(friday);
+    } else if (mode === 'month') {
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        if (fromInput) fromInput.value = formatYMD(firstDay);
+        if (toInput) toInput.value = formatYMD(lastDay);
+    }
+
+    renderPermissionsHistoryView();
+}
+window.setPermissionsDateRange = setPermissionsDateRange;
+
+function onPermissionsDateInputChange() {
+    const fromInput = document.getElementById('permissionsLogDateFrom');
+    const toInput = document.getElementById('permissionsLogDateTo');
+    const btnAll = document.getElementById('btnQuickPermAll');
+    const btnToday = document.getElementById('btnQuickPermToday');
+    const btnWeek = document.getElementById('btnQuickPermWeek');
+    const btnMonth = document.getElementById('btnQuickPermMonth');
+
+    const fromVal = fromInput ? fromInput.value : '';
+    const toVal = toInput ? toInput.value : '';
+
+    [btnAll, btnToday, btnWeek, btnMonth].forEach(btn => {
+        if (btn) {
+            btn.className = 'btn btn-xs btn-outline-warning';
+            btn.style.color = '#b45309';
+            btn.style.borderColor = '#f59e0b';
+            btn.style.background = 'transparent';
+        }
+    });
+
+    if (!fromVal && !toVal && btnAll) {
+        btnAll.className = 'btn btn-xs btn-warning';
+        btnAll.style.color = '#ffffff';
+        btnAll.style.borderColor = '#d97706';
+        btnAll.style.background = '#f59e0b';
+    }
+
+    renderPermissionsHistoryView();
+}
+window.onPermissionsDateInputChange = onPermissionsDateInputChange;
+
+function clearPermissionsFilters() {
     const gradeSelect = document.getElementById('permissionsLogGradeFilter');
     const catSelect = document.getElementById('permissionsLogCategoryFilter');
     const searchInput = document.getElementById('permissionsLogSearchInput');
+
+    if (gradeSelect) gradeSelect.value = 'ALL';
+    if (catSelect) catSelect.value = 'ALL';
+    if (searchInput) searchInput.value = '';
+
+    setPermissionsDateRange('all');
+    if (typeof showToast === 'function') {
+        showToast("Filtros restablecidos. Mostrando listado completo.", "info");
+    }
+}
+window.clearPermissionsFilters = clearPermissionsFilters;
+
+function renderPermissionsHistoryView() {
+    const gradeSelect = document.getElementById('permissionsLogGradeFilter');
+    const catSelect = document.getElementById('permissionsLogCategoryFilter');
+    const fromInput = document.getElementById('permissionsLogDateFrom');
+    const toInput = document.getElementById('permissionsLogDateTo');
+    const searchInput = document.getElementById('permissionsLogSearchInput');
     const tbody = document.getElementById('permissionsLogTableBody');
+    const counterBadge = document.getElementById('permissionsLogCounterBadge');
 
     if (!tbody) return;
 
@@ -38686,9 +38798,29 @@ function renderPermissionsHistoryView() {
 
     const selGrade = gradeSelect ? gradeSelect.value : 'ALL';
     const selCat = catSelect ? catSelect.value : 'ALL';
+    const dateFrom = fromInput ? (fromInput.value || '').trim() : '';
+    const dateTo = toInput ? (toInput.value || '').trim() : '';
     const searchQuery = (searchInput ? searchInput.value : '').toLowerCase().trim();
 
     let perms = Array.isArray(STATE.studentPermissions) ? [...STATE.studentPermissions] : [];
+    const totalCount = perms.length;
+
+    // Filtro por rango de fechas dinámico (intersección de intervalos de fechas)
+    if (dateFrom || dateTo) {
+        perms = perms.filter(p => {
+            const pStart = p.startDate || p.date || '';
+            const pEnd = p.endDate || pStart;
+            if (!pStart && !pEnd) return true;
+            if (dateFrom && dateTo) {
+                return (pStart <= dateTo && pEnd >= dateFrom);
+            } else if (dateFrom) {
+                return pEnd >= dateFrom;
+            } else if (dateTo) {
+                return pStart <= dateTo;
+            }
+            return true;
+        });
+    }
 
     // Filtro por grado
     if (selGrade !== 'ALL') {
@@ -38715,6 +38847,30 @@ function renderPermissionsHistoryView() {
     // Ordenar de más reciente a más antiguo
     perms.sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
 
+    // Actualizar badge contador dinámico en tiempo real
+    if (counterBadge) {
+        const isFiltered = (dateFrom || dateTo || selGrade !== 'ALL' || selCat !== 'ALL' || searchQuery);
+        if (isFiltered) {
+            let labelFilter = '';
+            if (dateFrom && dateTo) {
+                labelFilter = dateFrom === dateTo ? ` (${dateFrom})` : ` (${dateFrom} al ${dateTo})`;
+            } else if (dateFrom) {
+                labelFilter = ` (desde ${dateFrom})`;
+            } else if (dateTo) {
+                labelFilter = ` (hasta ${dateTo})`;
+            }
+            counterBadge.innerHTML = `<i class="fa-solid fa-filter"></i> Mostrando <strong>${perms.length}</strong> de <strong>${totalCount}</strong> permisos${escapeHtml(labelFilter)}`;
+            counterBadge.style.background = '#fef3c7';
+            counterBadge.style.color = '#92400e';
+            counterBadge.style.borderColor = '#fde68a';
+        } else {
+            counterBadge.innerHTML = `<i class="fa-solid fa-list-check"></i> Mostrando listado completo: <strong>${perms.length}</strong> permisos`;
+            counterBadge.style.background = '#ecfdf5';
+            counterBadge.style.color = '#065f46';
+            counterBadge.style.borderColor = '#a7f3d0';
+        }
+    }
+
     if (perms.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -38722,6 +38878,9 @@ function renderPermissionsHistoryView() {
                     <i class="fa-solid fa-clipboard-check" style="font-size:2.2rem; color:#fde68a; display:block; margin-bottom:8px;"></i>
                     <strong style="color:#0f172a; font-size:1rem;">Sin registros de permisos de ausencia</strong>
                     <div style="font-size:0.84rem; margin-top:4px;">No se encontraron registros de estudiantes con permisos autorizados bajo los filtros seleccionados.</div>
+                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="clearPermissionsFilters()" style="margin-top:12px; font-weight:700;">
+                        <i class="fa-solid fa-rotate-left"></i> Restablecer filtros y ver listado completo
+                    </button>
                 </td>
             </tr>
         `;
@@ -38787,11 +38946,32 @@ window.renderPermissionsHistoryView = renderPermissionsHistoryView;
 function printPermissionsLog() {
     const gradeSelect = document.getElementById('permissionsLogGradeFilter');
     const catSelect = document.getElementById('permissionsLogCategoryFilter');
+    const fromInput = document.getElementById('permissionsLogDateFrom');
+    const toInput = document.getElementById('permissionsLogDateTo');
     const targetGrade = gradeSelect ? gradeSelect.value : 'ALL';
     const targetCat = catSelect ? catSelect.value : 'ALL';
+    const dateFrom = fromInput ? (fromInput.value || '').trim() : '';
+    const dateTo = toInput ? (toInput.value || '').trim() : '';
     const cycle = STATE.activeCycle || '2026';
 
     let perms = Array.isArray(STATE.studentPermissions) ? [...STATE.studentPermissions] : [];
+
+    // Filtro por fecha en impresión
+    if (dateFrom || dateTo) {
+        perms = perms.filter(p => {
+            const pStart = p.startDate || p.date || '';
+            const pEnd = p.endDate || pStart;
+            if (!pStart && !pEnd) return true;
+            if (dateFrom && dateTo) {
+                return (pStart <= dateTo && pEnd >= dateFrom);
+            } else if (dateFrom) {
+                return pEnd >= dateFrom;
+            } else if (dateTo) {
+                return pStart <= dateTo;
+            }
+            return true;
+        });
+    }
 
     if (targetGrade !== 'ALL') {
         perms = perms.filter(p => {
@@ -38806,6 +38986,16 @@ function printPermissionsLog() {
     }
 
     perms.sort((a, b) => new Date(b.createdAt || b.startDate) - new Date(a.createdAt || a.startDate));
+
+    // Período para encabezado oficial
+    let periodText = `Historial Oficial General - Ciclo Escolar ${cycle}`;
+    if (dateFrom && dateTo) {
+        periodText = dateFrom === dateTo ? `Fecha Oficial: ${dateFrom}` : `Período: Del ${dateFrom} al ${dateTo}`;
+    } else if (dateFrom) {
+        periodText = `Período: Desde ${dateFrom}`;
+    } else if (dateTo) {
+        periodText = `Período: Hasta ${dateTo}`;
+    }
 
     let rowsHtml = '';
     if (perms.length === 0) {
@@ -38874,7 +39064,7 @@ function printPermissionsLog() {
         <div class="header-center">
             <h1>Escuela Nacional de Ciencias Comerciales</h1>
             <h2>Libro de Registro Oficial de Permisos de Ausencia</h2>
-            <p>Jutiapa, Guatemala &bull; Ciclo Escolar Oficial ${escapeHtml(cycle)} &bull; Archivo Institucional de Auxiliatura y Dirección</p>
+            <p>Jutiapa, Guatemala &bull; Ciclo Escolar Oficial ${escapeHtml(cycle)} &bull; <strong>${escapeHtml(periodText)}</strong> &bull; Emisión: ${new Date().toLocaleDateString('es-GT')}</p>
         </div>
         <div style="width:65px; text-align:right; font-size:8pt; color:#64748b;">
             Control de<br>Asistencia
