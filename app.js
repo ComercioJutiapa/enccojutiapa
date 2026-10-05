@@ -37959,6 +37959,8 @@ function addStudentAnnotation(data) {
         studentId: data.studentId,
         studentName: data.studentName || 'Estudiante',
         gradeCode: data.gradeCode || '',
+        courseId: data.courseId || null,
+        courseName: data.courseName || null,
         category: data.category || 'general',
         date: data.date || new Date().toISOString().split('T')[0],
         time: new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' }),
@@ -38062,11 +38064,38 @@ function findGradeForStudent(student) {
 }
 window.findGradeForStudent = findGradeForStudent;
 
-// Helper: Determinar si un estudiante pertenece a una sección específica
+// Helper: Determinar si un estudiante pertenece a una sección o clase específica
 function isStudentInGrade(student, gradeVal) {
     if (!student) return false;
     if (!gradeVal || gradeVal === 'ALL') return true;
-    const targetGrade = (STATE.gradesList || []).find(g => g && (g.code === gradeVal || g.id === gradeVal));
+
+    // Caso 1: Todas las clases asignadas al docente
+    if (gradeVal === 'ALL_DOCENTE') {
+        const currentUser = STATE.currentUser || (STATE.users || [])[0];
+        const myClasses = (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(p, currentUser) : false);
+        if (myClasses.length === 0) return true;
+        return myClasses.some(c => isStudentInGrade(student, c.id));
+    }
+
+    // Caso 2: Filtrado por cátedra / clase específica de pensum
+    const cleanCourseId = String(gradeVal).startsWith('cls:') ? String(gradeVal).slice(4) : String(gradeVal);
+    const targetCourse = (STATE.pensum || []).find(c => c && (c.id === cleanCourseId || c.id === gradeVal));
+    if (targetCourse) {
+        const cGrade = (targetCourse.grade || targetCourse.gradeCode || '').toLowerCase();
+        const cSec = (targetCourse.section || '').toLowerCase().replace('sección', '').trim();
+        const sGrade = (student.grade || student.gradeCode || '').toLowerCase();
+        const sSec = (student.section || '').toLowerCase().replace('sección', '').trim();
+
+        const gradeMatch = (sGrade.includes('4to') && cGrade.includes('4to')) ||
+                           (sGrade.includes('5to') && cGrade.includes('5to')) ||
+                           (sGrade.includes('6to') && cGrade.includes('6to'));
+        const secMatch = sSec ? (sSec === cSec) : (cSec ? sGrade.endsWith(cSec) : true);
+        return gradeMatch && secMatch;
+    }
+
+    // Caso 3: Filtrado canónico por Grado / Sección
+    const cleanSecId = String(gradeVal).startsWith('sec:') ? String(gradeVal).slice(4) : String(gradeVal);
+    const targetGrade = (STATE.gradesList || []).find(g => g && (g.code === cleanSecId || g.id === cleanSecId || g.code === gradeVal || g.id === gradeVal));
     if (!targetGrade) return student.gradeCode === gradeVal || student.grade === gradeVal;
 
     if (student.gradeCode === targetGrade.code || student.gradeCode === targetGrade.id) return true;
@@ -38094,35 +38123,107 @@ function populateAnnotationStudentDropdown(selectedStudentId = null, forcedGrade
     if (!select) return;
 
     if (typeof ensureOfficialGradesList === 'function') ensureOfficialGradesList();
+    if (typeof ensureOfficialPensumAssignments === 'function' && (!Array.isArray(STATE.pensum) || STATE.pensum.length < 28)) {
+        ensureOfficialPensumAssignments();
+    }
+
+    const currentUser = STATE.currentUser || (STATE.users || [])[0];
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || 'docente';
+    const isAuthorityRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
+    const isDocente = (currentRole === 'docente') && !isAuthorityRole;
 
     const students = (STATE.students || []).filter(s => s && s.status !== 'Retirado');
 
-    // Llenar combo de grados si solo tiene la opción por defecto o está vacío
+    // Llenar combo de clases/grados según el rol del usuario autenticado
     if (gradeSelect) {
-        if (gradeSelect.options.length <= 1) {
-            let gradesHtml = '<option value="ALL">-- Todas las Secciones --</option>';
-            (STATE.gradesList || []).forEach(g => {
-                gradesHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} (Sección ${escapeHtml(g.section || '')})</option>`;
-            });
+        const myClasses = (isDocente && currentUser && Array.isArray(STATE.pensum))
+            ? STATE.pensum.filter(p => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(p, currentUser) : false)
+            : [];
+
+        const hasDocenteOptions = gradeSelect.querySelector('optgroup[data-role="docente"]');
+        const hasAuthorityOptions = gradeSelect.querySelector('optgroup[data-role="authority"]');
+        const needsRebuild = (isDocente && myClasses.length > 0 && !hasDocenteOptions) ||
+                             (!isDocente && !hasAuthorityOptions) ||
+                             (gradeSelect.options.length <= 1);
+
+        if (needsRebuild) {
+            let gradesHtml = '';
+            if (isDocente && myClasses.length > 0) {
+                gradesHtml += `<option value="ALL_DOCENTE">-- Todas mis Clases Asignadas (${myClasses.length}) --</option>`;
+                gradesHtml += `<optgroup label="📚 Mis Clases Asignadas (${escapeHtml(currentUser.name || 'Docente')})" data-role="docente">`;
+                myClasses.forEach(c => {
+                    const secLabel = c.section ? `Sección ${c.section}` : '';
+                    gradesHtml += `<option value="${escapeHtml(c.id)}">📘 ${escapeHtml(c.subject || 'Clase')} — ${escapeHtml(c.grade || '')} (${escapeHtml(secLabel)})</option>`;
+                });
+                gradesHtml += `</optgroup>`;
+
+                // Secciones únicas asignadas para mayor comodidad de selección
+                const uniqueGrades = new Map();
+                myClasses.forEach(c => {
+                    const gMatch = (STATE.gradesList || []).find(g => {
+                        if (g.code === c.gradeCode || g.id === c.gradeCode) return true;
+                        const sSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(c.section || c.gradeCode) : (c.section || '');
+                        const gSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(g.section || g.code) : (g.section || '');
+                        const gName = (g.name || '').toLowerCase();
+                        const cGrade = (c.grade || '').toLowerCase();
+                        const gradeMatch = (cGrade.includes('4') && gName.includes('4')) ||
+                                           (cGrade.includes('5') && gName.includes('5')) ||
+                                           (cGrade.includes('6') && gName.includes('6'));
+                        return gradeMatch && (!sSec || gSec === sSec);
+                    });
+                    const key = gMatch ? gMatch.code : (c.gradeCode || c.grade);
+                    const label = gMatch ? `${gMatch.name} (Sección ${gMatch.section})` : `${c.grade} (${c.section || 'A'})`;
+                    if (!uniqueGrades.has(key)) {
+                        uniqueGrades.set(key, { code: key, label });
+                    }
+                });
+                if (uniqueGrades.size > 1) {
+                    gradesHtml += `<optgroup label="📋 Por Sección Asignada">`;
+                    uniqueGrades.forEach(ug => {
+                        gradesHtml += `<option value="${escapeHtml(ug.code)}">${escapeHtml(ug.label)}</option>`;
+                    });
+                    gradesHtml += `</optgroup>`;
+                }
+            } else {
+                gradesHtml += '<option value="ALL">-- Todas las Secciones --</option>';
+                gradesHtml += `<optgroup label="⭐ Secciones Oficiales (Supervisión General)" data-role="authority">`;
+                (STATE.gradesList || []).forEach(g => {
+                    gradesHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} (Sección ${escapeHtml(g.section || '')})</option>`;
+                });
+                gradesHtml += `</optgroup>`;
+            }
             gradeSelect.innerHTML = gradesHtml;
         }
 
-        // Si se especificó una sección activa forzada o no se ha seleccionado ninguna
+        // Si se especificó una clase o sección forzada
         if (forcedGradeCode) {
             gradeSelect.value = forcedGradeCode;
-        } else if (!gradeSelect.value || gradeSelect.value === 'ALL') {
+        } else if (!gradeSelect.value || gradeSelect.value === 'ALL' || gradeSelect.value === 'ALL_DOCENTE') {
             const targetStudent = students.find(s => s.id === selectedStudentId);
-            const foundG = findGradeForStudent(targetStudent);
-            if (foundG) {
-                gradeSelect.value = foundG.code || foundG.id;
+            if (isDocente && myClasses.length > 0) {
+                if (targetStudent) {
+                    const matchingClass = myClasses.find(c => isStudentInGrade(targetStudent, c.id));
+                    if (matchingClass) {
+                        gradeSelect.value = matchingClass.id;
+                    } else {
+                        gradeSelect.value = myClasses[0].id;
+                    }
+                } else if (gradeSelect.value !== 'ALL_DOCENTE') {
+                    gradeSelect.value = myClasses[0].id;
+                }
+            } else if (targetStudent) {
+                const foundG = findGradeForStudent(targetStudent);
+                if (foundG) {
+                    gradeSelect.value = foundG.code || foundG.id;
+                }
             }
         }
     }
 
     const searchVal = (document.getElementById('annotStudentSearchFilter')?.value || '').toLowerCase().trim();
-    const gradeVal = gradeSelect ? gradeSelect.value : 'ALL';
+    const gradeVal = gradeSelect ? gradeSelect.value : (isDocente ? 'ALL_DOCENTE' : 'ALL');
 
-    // Filtrar con la lógica canónica de sección
+    // Filtrar con la lógica canónica de clase o sección
     let filtered = students.filter(s => isStudentInGrade(s, gradeVal));
 
     if (searchVal) {
@@ -38132,14 +38233,22 @@ function populateAnnotationStudentDropdown(selectedStudentId = null, forcedGrade
         });
     }
 
-    // Actualizar etiqueta de conteo con el nombre de la sección activa
+    // Actualizar etiqueta de conteo con el nombre de la clase o sección activa
     if (countLabel) {
-        if (gradeVal && gradeVal !== 'ALL') {
-            const currentG = (STATE.gradesList || []).find(g => g && (g.code === gradeVal || g.id === gradeVal));
-            const secName = currentG ? `${currentG.name} (Sección ${currentG.section || ''})` : gradeVal;
-            countLabel.textContent = `${filtered.length} estudiantes en ${secName}`;
-        } else {
+        if (!gradeVal || gradeVal === 'ALL') {
             countLabel.textContent = `${filtered.length} de ${students.length} estudiantes activos`;
+        } else if (gradeVal === 'ALL_DOCENTE') {
+            countLabel.textContent = `${filtered.length} estudiantes en sus clases asignadas`;
+        } else {
+            const targetCourse = (STATE.pensum || []).find(c => c && (c.id === gradeVal || ('cls:' + c.id) === gradeVal));
+            if (targetCourse) {
+                const secLabel = targetCourse.section ? `Sección ${targetCourse.section}` : '';
+                countLabel.textContent = `${filtered.length} estudiantes en ${targetCourse.subject} (${targetCourse.grade} ${secLabel})`;
+            } else {
+                const currentG = (STATE.gradesList || []).find(g => g && (g.code === gradeVal || g.id === gradeVal));
+                const secName = currentG ? `${currentG.name} (Sección ${currentG.section || ''})` : gradeVal;
+                countLabel.textContent = `${filtered.length} estudiantes en ${secName}`;
+            }
         }
     }
 
@@ -38151,7 +38260,7 @@ function populateAnnotationStudentDropdown(selectedStudentId = null, forcedGrade
     });
 
     if (filtered.length === 0) {
-        select.innerHTML = '<option value="">No hay estudiantes en esta sección o búsqueda</option>';
+        select.innerHTML = '<option value="">No hay estudiantes en esta clase/sección o búsqueda</option>';
         return;
     }
 
@@ -38234,17 +38343,37 @@ function openStudentAnnotationModal(studentId = null, defaultDate = null, alertI
     document.getElementById('annotStudentName').textContent = studentDisplayName;
     document.getElementById('annotStudentMeta').textContent = `Carné: ${student.carne || student.personalCode || 'S/C'} | Grado: ${student.grade || ''} ${student.section ? `(${student.section})` : ''} | Carrera: ${student.career || 'Perito Contador'}`;
 
-    // Determinar la sección activa para pre-seleccionar en el filtro
+    // Determinar la clase o sección activa para pre-seleccionar en el filtro
     let activeGradeCode = null;
-    const studentGrade = findGradeForStudent(student);
-    if (studentGrade) {
-        activeGradeCode = studentGrade.code || studentGrade.id;
-    } else if (STATE.currentGrade) {
-        const cg = (STATE.gradesList || []).find(g => g && (g.code === STATE.currentGrade || g.id === STATE.currentGrade));
-        if (cg) activeGradeCode = cg.code || cg.id;
+    const currentUser = STATE.currentUser || (STATE.users || [])[0];
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || 'docente';
+    const isAuthorityRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
+    const isDocente = (currentRole === 'docente') && !isAuthorityRole;
+
+    if (isDocente) {
+        if (typeof ensureOfficialPensumAssignments === 'function' && (!Array.isArray(STATE.pensum) || STATE.pensum.length < 28)) {
+            ensureOfficialPensumAssignments();
+        }
+        const myClasses = (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(p, currentUser) : false);
+        const matchingClass = myClasses.find(c => isStudentInGrade(student, c.id));
+        if (matchingClass) {
+            activeGradeCode = matchingClass.id;
+        } else if (myClasses.length > 0) {
+            activeGradeCode = myClasses[0].id;
+        }
     }
 
-    // Inicializar y sincronizar el selector con la sección activa y sus estudiantes
+    if (!activeGradeCode) {
+        const studentGrade = findGradeForStudent(student);
+        if (studentGrade) {
+            activeGradeCode = studentGrade.code || studentGrade.id;
+        } else if (STATE.currentGrade) {
+            const cg = (STATE.gradesList || []).find(g => g && (g.code === STATE.currentGrade || g.id === STATE.currentGrade));
+            if (cg) activeGradeCode = cg.code || cg.id;
+        }
+    }
+
+    // Inicializar y sincronizar el selector con la clase/sección activa y sus estudiantes
     populateAnnotationStudentDropdown(student.id, activeGradeCode);
 
     const dateInput = document.getElementById('annotDate');
@@ -38306,10 +38435,32 @@ function saveQuickAnnotation() {
     const student = (STATE.students || []).find(s => s.id === studentId);
     const studentName = student ? ((typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(student, 'lastFirst') : student.name) : 'Estudiante';
 
+    // Detectar si hay una cátedra seleccionada en el filtro o asignada al docente
+    const gradeSelect = document.getElementById('annotStudentGradeFilter');
+    const chosenVal = gradeSelect ? gradeSelect.value : null;
+    let selectedCourse = null;
+    if (chosenVal && chosenVal !== 'ALL' && chosenVal !== 'ALL_DOCENTE') {
+        const cleanCourseId = String(chosenVal).startsWith('cls:') ? String(chosenVal).slice(4) : String(chosenVal);
+        selectedCourse = (STATE.pensum || []).find(c => c && (c.id === cleanCourseId || c.id === chosenVal));
+    }
+    if (!selectedCourse) {
+        const currentUser = STATE.currentUser || (STATE.users || [])[0];
+        const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
+        const isDocente = (currentRole === 'docente');
+        if (isDocente) {
+            const myClasses = (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(p, currentUser) : false);
+            if (myClasses.length > 0 && student) {
+                selectedCourse = myClasses.find(c => isStudentInGrade(student, c.id));
+            }
+        }
+    }
+
     addStudentAnnotation({
         studentId,
         studentName,
         gradeCode,
+        courseId: selectedCourse ? selectedCourse.id : null,
+        courseName: selectedCourse ? selectedCourse.subject : null,
         category,
         date,
         text,
@@ -38407,7 +38558,7 @@ function renderStudentAnnotationsList(studentId) {
                     ${escapeHtml(a.text)}
                 </div>
                 <div style="font-size:0.75rem; color:#0369a1; border-top:1px dashed #f1f5f9; padding-top:4px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-                    <span><i class="fa-solid fa-user-pen" style="color:#94a3b8; margin-right:3px;"></i> <strong>Autor:</strong> ${escapeHtml(a.authorName || 'Auxiliatura')} <small style="color:#64748b;">(${escapeHtml(a.authorRoleLabel || a.authorRole || 'Personal')})</small></span>
+                    <span><i class="fa-solid fa-user-pen" style="color:#94a3b8; margin-right:3px;"></i> <strong>Autor:</strong> ${escapeHtml(a.authorName || 'Auxiliatura')} <small style="color:#64748b;">(${escapeHtml(a.authorRoleLabel || a.authorRole || 'Personal')})</small>${a.courseName ? ` <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.72rem; padding:2px 7px; border-radius:4px;"><i class="fa-solid fa-book-open"></i> ${escapeHtml(a.courseName)}</span>` : ''}</span>
                     <span style="color:#0284c7; font-size:0.70rem; font-weight:600;"><i class="fa-solid fa-lock" style="font-size:0.68rem;"></i> Visible: Auxiliatura, Dirección, Secretaría y Autor</span>
                 </div>
             </div>
@@ -38476,9 +38627,9 @@ function renderStudentProfileAnnotations(studentId) {
                 <div style="font-size:0.88rem; color:#1e293b; line-height:1.45; margin:6px 0;">
                     ${escapeHtml(a.text)}
                 </div>
-                <div style="font-size:0.75rem; color:#0369a1; border-top:1px dashed #f1f5f9; padding-top:4px; display:flex; justify-content:space-between; align-items:center;">
-                    <span><i class="fa-solid fa-user-pen" style="color:#94a3b8; margin-right:3px;"></i> <strong>Autor:</strong> ${escapeHtml(a.authorName || 'Auxiliatura')} <small style="color:#64748b;">(${escapeHtml(a.authorRoleLabel || a.authorRole || 'Personal')})</small></span>
-                    <span style="color:#10b981; font-weight:600;"><i class="fa-solid fa-eye"></i> Visible a todo el personal</span>
+                <div style="font-size:0.75rem; color:#0369a1; border-top:1px dashed #f1f5f9; padding-top:4px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                    <span><i class="fa-solid fa-user-pen" style="color:#94a3b8; margin-right:3px;"></i> <strong>Autor:</strong> ${escapeHtml(a.authorName || 'Auxiliatura')} <small style="color:#64748b;">(${escapeHtml(a.authorRoleLabel || a.authorRole || 'Personal')})</small>${a.courseName ? ` <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.72rem; padding:2px 7px; border-radius:4px;"><i class="fa-solid fa-book-open"></i> ${escapeHtml(a.courseName)}</span>` : ''}</span>
+                    <span style="color:#0284c7; font-weight:600;"><i class="fa-solid fa-lock"></i> Visible: Auxiliatura, Dirección, Secretaría y Autor</span>
                 </div>
             </div>
         `;

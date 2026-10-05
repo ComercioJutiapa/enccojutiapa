@@ -169,9 +169,56 @@ test('TEST 9: Filtrado y resolución precisa de sección activa (isStudentInGrad
     assert(sandbox.isStudentInGrade(student4B, 'ALL') === true, 'Cualquier estudiante pertenece a ALL');
 });
 
-test('TEST 10: Preselección de sección activa y filtro en modal de anotaciones', () => {
-    assert(jsSrc.includes('populateAnnotationStudentDropdown(student.id, activeGradeCode)'), 'openStudentAnnotationModal debe enviar la sección activa');
+test('TEST 10: Preselección de clase/sección activa y filtro en modal de anotaciones', () => {
+    assert(jsSrc.includes('populateAnnotationStudentDropdown(student.id, activeGradeCode)'), 'openStudentAnnotationModal debe enviar la sección/clase activa');
     assert(jsSrc.includes('countLabel.textContent = `${filtered.length} estudiantes en ${secName}`'), 'Debe mostrar el conteo y nombre de la sección activa');
+});
+
+test('TEST 11: Filtrado dinámico por clases asignadas al docente (isStudentInGrade con cátedras)', () => {
+    const vm = require('vm');
+    const sandbox = {
+        window: {},
+        STATE: {
+            gradesList: [
+                { id: 'grd-4a', code: 'grd-4a', name: '4to Perito Contador', section: 'A' },
+                { id: 'grd-5b', code: 'grd-5b', name: '5to Perito Contador', section: 'B' }
+            ],
+            pensum: [
+                { id: 'cls-costos-5b', subject: 'Contabilidad de Costos', grade: '5to Perito Contador', section: 'B', gradeCode: 'grd-5b', teacher: 'Byron Orellana' },
+                { id: 'cls-mate-4a', subject: 'Matemática Comercial', grade: '4to Perito Contador', section: 'A', gradeCode: 'grd-4a', teacher: 'Byron Orellana' }
+            ],
+            currentUser: { id: 'doc_byron', name: 'Byron Orellana', role: 'docente' }
+        },
+        isCourseAssignedToTeacher: function(p, u) {
+            return p.teacher === u.name;
+        }
+    };
+    sandbox.window.STATE = sandbox.STATE;
+    vm.createContext(sandbox);
+
+    const isMatch = jsSrc.match(/function isStudentInGrade[\s\S]*?window\.isStudentInGrade\s*=\s*isStudentInGrade;/);
+    assert(isMatch, 'No se pudo extraer isStudentInGrade');
+    vm.runInContext(isMatch[0], sandbox);
+
+    const student5B = { id: 'STU_5B', name: 'Juan Perez', grade: '5to Perito Contador B', section: 'B' };
+    const student4A = { id: 'STU_4A', name: 'Elena Gomez', grade: '4to Perito Contador A', section: 'A' };
+    const student6C = { id: 'STU_6C', name: 'Carlos Ruíz', grade: '6to Perito Contador C', section: 'C' };
+
+    // Verificación por ID de clase
+    assert(sandbox.isStudentInGrade(student5B, 'cls-costos-5b') === true, 'student5B debe pertenecer a Contabilidad de Costos 5to B');
+    assert(sandbox.isStudentInGrade(student4A, 'cls-costos-5b') === false, 'student4A NO debe pertenecer a 5to B');
+    assert(sandbox.isStudentInGrade(student4A, 'cls-mate-4a') === true, 'student4A debe pertenecer a Matemática Comercial 4to A');
+
+    // Verificación por ALL_DOCENTE (todas las clases del docente)
+    assert(sandbox.isStudentInGrade(student5B, 'ALL_DOCENTE') === true, 'student5B debe estar en ALL_DOCENTE');
+    assert(sandbox.isStudentInGrade(student4A, 'ALL_DOCENTE') === true, 'student4A debe estar en ALL_DOCENTE');
+    assert(sandbox.isStudentInGrade(student6C, 'ALL_DOCENTE') === false, 'student6C NO pertenece a ninguna clase de Byron');
+});
+
+test('TEST 12: Registro y resguardo de clase/cátedra en la bitácora institucional', () => {
+    assert(jsSrc.includes('courseId: data.courseId || null'), 'addStudentAnnotation debe almacenar courseId');
+    assert(jsSrc.includes('courseName: data.courseName || null'), 'addStudentAnnotation debe almacenar courseName');
+    assert(jsSrc.includes('fa-book-open'), 'renderStudentAnnotationsList debe mostrar icono de cátedra cuando exista');
 });
 
 console.log('\n================================================================================');
