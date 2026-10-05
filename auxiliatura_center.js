@@ -154,6 +154,139 @@
         document.head.appendChild(style);
     }
 
+    // Helper: Consolidar y listar ausencias al aula del día actual
+    function getTodayAbsencesList() {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayMonth = new Date().getMonth() + 1;
+        const todayDay = new Date().getDate();
+
+        const results = [];
+        const seenStudentSubjectKeys = new Set();
+
+        // 1. Alertas en tiempo real enviadas desde el aula ('attendanceAlerts')
+        const allAlerts = (window.STATE && window.STATE.attendanceAlerts) || [];
+        allAlerts.forEach(alert => {
+            if (!alert) return;
+            const aDate = alert.date || (alert.timestamp ? new Date(alert.timestamp).toISOString().split('T')[0] : '');
+            const aDay = alert.day || (alert.timestamp ? new Date(alert.timestamp).getDate() : null);
+            const aMonth = alert.month || (alert.timestamp ? (new Date(alert.timestamp).getMonth() + 1) : null);
+
+            const isToday = (aDate === todayStr) || (aDay === todayDay && aMonth === todayMonth);
+            if (isToday && alert.status !== 'corregida') {
+                const key = `${alert.studentId || alert.studentName}_${alert.courseId || alert.courseName || 'GEN'}`;
+                seenStudentSubjectKeys.add(key);
+                results.push({
+                    source: 'alert',
+                    id: alert.id,
+                    alertId: alert.id,
+                    studentId: alert.studentId,
+                    studentName: alert.studentName || 'Estudiante',
+                    carne: alert.carne || '---',
+                    gradeCode: alert.gradeCode || '',
+                    gradeLabel: alert.gradeLabel || 'Sección',
+                    courseId: alert.courseId || '',
+                    courseName: alert.courseName || 'Cátedra',
+                    teacherName: alert.teacherName || 'Catedrático',
+                    time: alert.time || (alert.timestamp ? new Date(alert.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'),
+                    timestamp: alert.timestamp || Date.now(),
+                    date: alert.date || todayStr,
+                    status: alert.status || 'pendiente',
+                    guardianName: alert.guardianName || 'No registrado',
+                    guardianPhone: alert.guardianPhone || '',
+                    notes: alert.notes || ''
+                });
+            }
+        });
+
+        // 2. Ausencias asentadas en planilla escolar ('attendanceRecords')
+        if (window.STATE && window.STATE.attendanceRecords) {
+            const students = window.STATE.students || [];
+            const courses = window.STATE.courses || [];
+            const grades = window.STATE.gradesList || [];
+
+            Object.entries(window.STATE.attendanceRecords).forEach(([recordKey, gradeMap]) => {
+                if (!gradeMap || typeof gradeMap !== 'object') return;
+                const parts = recordKey.split('_');
+                const recGrade = parts[0] || '';
+                const recMonth = parseInt(parts[1]) || todayMonth;
+                const recCourse = parts[2] || '';
+
+                if (parts.length >= 2 && !isNaN(recMonth) && recMonth !== todayMonth) return;
+
+                Object.entries(gradeMap).forEach(([studentId, daysObj]) => {
+                    if (daysObj && (daysObj[todayDay] === 'A' || daysObj[String(todayDay)] === 'A')) {
+                        const key = `${studentId}_${recCourse || 'GEN'}`;
+                        if (!seenStudentSubjectKeys.has(key)) {
+                            seenStudentSubjectKeys.add(key);
+                            const student = students.find(s => s.id === studentId || s.id === String(studentId) || s.personalCode === studentId);
+                            const course = courses.find(c => c.id === recCourse || c.code === recCourse);
+                            const gradeObj = grades.find(g => g.code === recGrade);
+
+                            const gLabel = gradeObj ? `${gradeObj.name} ${gradeObj.section ? ('- ' + gradeObj.section) : ''}` : (student ? (student.grade || student.section || recGrade) : recGrade);
+                            const cName = course ? course.name : (recCourse ? recCourse : 'Asistencia en Aula');
+                            const tName = course ? (course.teacherName || course.teacher || 'Catedrático') : 'Docente Titular';
+                            const tutor = student ? (student.tutorName || student.tutor || 'No registrado') : 'No registrado';
+                            const phone = student ? (student.tutorPhone || student.phone || '') : '';
+                            const studentName = student ? (student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim()) : 'Estudiante';
+                            const carne = student ? (student.carne || student.personalCode || '---') : '---';
+
+                            const synthAlertId = 'rec_alert_' + todayDay + '_' + todayMonth + '_' + studentId + '_' + (recCourse || 'GEN');
+                            let existingAlert = (window.STATE.attendanceAlerts || []).find(a => a.id === synthAlertId);
+                            if (!existingAlert) {
+                                existingAlert = {
+                                    id: synthAlertId,
+                                    studentId: studentId,
+                                    studentName: studentName,
+                                    carne: carne,
+                                    gradeCode: recGrade,
+                                    gradeLabel: gLabel,
+                                    courseId: recCourse,
+                                    courseName: cName,
+                                    teacherName: tName,
+                                    day: todayDay,
+                                    month: todayMonth,
+                                    date: todayStr,
+                                    time: 'Planilla Diaria',
+                                    timestamp: Date.now(),
+                                    status: 'pendiente',
+                                    guardianName: tutor,
+                                    guardianPhone: phone,
+                                    notes: ''
+                                };
+                                if (!window.STATE.attendanceAlerts) window.STATE.attendanceAlerts = [];
+                                window.STATE.attendanceAlerts.push(existingAlert);
+                            }
+
+                            results.push({
+                                source: 'record',
+                                id: synthAlertId,
+                                alertId: synthAlertId,
+                                studentId: studentId,
+                                studentName: studentName,
+                                carne: carne,
+                                gradeCode: recGrade,
+                                gradeLabel: gLabel,
+                                courseId: recCourse,
+                                courseName: cName,
+                                teacherName: tName,
+                                time: 'Planilla Diaria',
+                                timestamp: Date.now(),
+                                date: todayStr,
+                                status: existingAlert.status || 'pendiente',
+                                guardianName: tutor,
+                                guardianPhone: phone,
+                                notes: existingAlert.notes || ''
+                            });
+                        }
+                    }
+                });
+            });
+        }
+
+        return results;
+    }
+    window.getTodayAbsencesList = getTodayAbsencesList;
+
     // 2. Renderizado de la Vista Principal del Centro de Control
     function renderAuxiliaturaCenterView() {
         injectAuxiliaturaStyles();
@@ -173,21 +306,9 @@
             return (!start || start <= nowIsoDate) && (!end || end >= nowIsoDate);
         });
 
-        // Ausencias detectadas en la fecha actual (del registro de asistencia)
-        const todayMonth = new Date().getMonth() + 1;
-        const todayDay = new Date().getDate();
-        let todayAbsencesCount = 0;
-        if (window.STATE && window.STATE.attendanceRecords) {
-            Object.values(window.STATE.attendanceRecords).forEach(gradeMap => {
-                if (gradeMap && typeof gradeMap === 'object') {
-                    Object.values(gradeMap).forEach(daysObj => {
-                        if (daysObj && daysObj[todayDay] === 'A') {
-                            todayAbsencesCount++;
-                        }
-                    });
-                }
-            });
-        }
+        // Ausencias detectadas en la fecha actual (alertas en vivo + registros de planilla)
+        const todayAbsencesList = getTodayAbsencesList();
+        const todayAbsencesCount = todayAbsencesList.length;
 
         // Usuario actual y rol
         const user = window.STATE ? window.STATE.currentUser : null;
@@ -225,7 +346,7 @@
 
                 <!-- KPI CARDS EN TIEMPO REAL -->
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px; margin-bottom:20px;">
-                    <div class="aux-kpi-card" onclick="filterAuxStudentQuickList('absent')" style="cursor:pointer;" title="Clic para ver ausencias registradas hoy">
+                    <div class="aux-kpi-card" onclick="filterAuxStudentQuickList('absent')" style="cursor:pointer;" title="Clic para ver lista completa de ausencias reportadas hoy">
                         <div class="aux-kpi-icon aux-kpi-red"><i class="fa-solid fa-user-xmark"></i></div>
                         <div>
                             <span style="font-size:0.75rem; color:#64748b; font-weight:700;">Ausencias Reportadas Hoy</span>
@@ -246,7 +367,7 @@
                             <h3 style="margin:2px 0 0 0; font-size:1.45rem; font-weight:800; color:#0284c7;">${activePermissions.length}</h3>
                         </div>
                     </div>
-                    <div class="aux-kpi-card" onclick="filterAuxStudentQuickList('all')" style="cursor:pointer;" title="Clic para ver la nómina completa">
+                    <div class="aux-kpi-card" onclick="filterAuxStudentQuickList('all')" style="cursor:pointer;" title="Clic para ver la nómina completa por secciones">
                         <div class="aux-kpi-icon aux-kpi-green"><i class="fa-solid fa-users"></i></div>
                         <div>
                             <span style="font-size:0.75rem; color:#64748b; font-weight:700;">Población Estudiantil Activa</span>
@@ -275,6 +396,9 @@
                 <!-- NAVEGACIÓN POR PESTAÑAS DEL CENTRO DE CONTROL -->
                 <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
                     <div style="display:flex; border-bottom:1px solid #e2e8f0; background:#f8fafc; overflow-x:auto;">
+                        <button type="button" class="aux-tab-btn" id="auxTabBtn-absences" onclick="switchAuxCenterTab('absences')">
+                            <i class="fa-solid fa-user-xmark" style="margin-right:5px; color:#dc2626;"></i> Ausencias al Aula (${todayAbsencesCount})
+                        </button>
                         <button type="button" class="aux-tab-btn active" id="auxTabBtn-pending" onclick="switchAuxCenterTab('pending')">
                             <i class="fa-solid fa-inbox" style="margin-right:5px;"></i> Bandeja de Pendientes (${pendingDiscipline.length})
                         </button>
@@ -297,8 +421,12 @@
             </div>
         `;
 
-        // Renderizar pestaña por defecto: Bandeja de Pendientes
-        switchAuxCenterTab('pending');
+        // Renderizar pestaña por defecto: Ausencias si hay ausencias hoy y no hay pendientes de disciplina, sino Pendientes
+        if (todayAbsencesCount > 0 && pendingDiscipline.length === 0) {
+            switchAuxCenterTab('absences');
+        } else {
+            switchAuxCenterTab('pending');
+        }
     }
     window.renderAuxiliaturaCenterView = renderAuxiliaturaCenterView;
 
@@ -311,7 +439,9 @@
         const content = document.getElementById('auxCenterTabContent');
         if (!content) return;
 
-        if (tabKey === 'pending') {
+        if (tabKey === 'absences') {
+            renderAuxAbsencesTab(content);
+        } else if (tabKey === 'pending') {
             renderAuxPendingTab(content);
         } else if (tabKey === 'sections') {
             renderAuxSectionsTab(content);
@@ -322,6 +452,199 @@
         }
     }
     window.switchAuxCenterTab = switchAuxCenterTab;
+
+    // Enrutador rápido desde KPI Cards
+    function filterAuxStudentQuickList(type) {
+        if (type === 'absent') {
+            switchAuxCenterTab('absences');
+        } else if (type === 'discipline') {
+            switchAuxCenterTab('discipline');
+        } else if (type === 'permissions') {
+            switchAuxCenterTab('permissions');
+        } else if (type === 'all') {
+            switchAuxCenterTab('sections');
+        } else {
+            switchAuxCenterTab('pending');
+        }
+    }
+    window.filterAuxStudentQuickList = filterAuxStudentQuickList;
+
+    // Pestaña: Ausencias al Aula del Día
+    function renderAuxAbsencesTab(container) {
+        const absences = getTodayAbsencesList();
+        const todayStr = new Date().toISOString().split('T')[0];
+        const grades = window.STATE ? (window.STATE.gradesList || []) : [];
+
+        container.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                <div>
+                    <strong style="color:#0f172a; font-size:1.02rem; display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-user-xmark" style="color:#dc2626;"></i> 
+                        Ausencias Reportadas al Aula Hoy (<span id="auxAbsencesCountBadge">${absences.length}</span>)
+                    </strong>
+                    <span style="font-size:0.8rem; color:#64748b;">
+                        Reportes de inasistencias en tiempo real desde el aula y registros de la planilla escolar (${todayStr}).
+                    </span>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <input type="text" id="auxAbsenceFilterInput" placeholder="Buscar por estudiante, carné o docente..." 
+                        oninput="filterAuxAbsencesTable()"
+                        style="padding:6px 12px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.82rem; min-width:230px;">
+                    <select id="auxAbsenceGradeFilter" onchange="filterAuxAbsencesTable()"
+                        style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.82rem;">
+                        <option value="ALL">-- Todas las Secciones --</option>
+                        ${grades.map(g => `<option value="${(g.code || '')}">${(g.name || '')} - Sección ${(g.section || '')}</option>`).join('')}
+                    </select>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="if(typeof navigateToView === 'function') navigateToView('auxiliatura-log'); else if(typeof showView === 'function') showView('auxiliatura-log');" style="font-size:0.8rem; font-weight:700;">
+                        <i class="fa-solid fa-book-bookmark"></i> Bitácora Oficial
+                    </button>
+                </div>
+            </div>
+
+            ${absences.length === 0 ? `
+                <div style="text-align:center; padding:40px 20px; color:#64748b; background:#f8fafc; border-radius:10px; border:1px dashed #cbd5e1;">
+                    <i class="fa-solid fa-circle-check" style="font-size:2.5rem; color:#16a34a; margin-bottom:10px; display:block;"></i>
+                    <strong style="color:#0f172a; font-size:1.05rem;">¡Sin ausencias registradas hoy!</strong>
+                    <p style="margin:4px 0 0 0; font-size:0.85rem;">Todos los estudiantes reportados se encuentran presentes o con justificación autorizada.</p>
+                </div>
+            ` : `
+                <div class="table-responsive" style="border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+                    <table class="custom-table" id="auxAbsencesMainTable" style="font-size:0.85rem; width:100%; margin:0;">
+                        <thead style="background:#f1f5f9; color:#334155;">
+                            <tr>
+                                <th style="padding:10px 12px;">Estudiante</th>
+                                <th style="padding:10px 12px;">Grado / Sección</th>
+                                <th style="padding:10px 12px;">Cátedra y Docente</th>
+                                <th style="padding:10px 12px;">Contacto Encargado</th>
+                                <th style="padding:10px 12px; text-align:center;">Estado</th>
+                                <th style="padding:10px 12px; text-align:center;">Acciones Inmediatas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auxAbsencesTableBody">
+                            ${renderAuxAbsenceRowsHtml(absences)}
+                        </tbody>
+                    </table>
+                </div>
+            `}
+        `;
+    }
+    window.renderAuxAbsencesTab = renderAuxAbsencesTab;
+
+    function renderAuxAbsenceRowsHtml(absences) {
+        if (!absences || absences.length === 0) {
+            return `<tr><td colspan="6" style="text-align:center; padding:22px; color:#64748b;">No hay registros de inasistencias que coincidan con la búsqueda.</td></tr>`;
+        }
+
+        return absences.map(item => {
+            const studentId = item.studentId;
+            const studentName = item.studentName || 'Estudiante';
+            const carne = item.carne || '---';
+            const gradeLabel = item.gradeLabel || item.gradeCode || 'Sección';
+            const courseName = item.courseName || 'Cátedra';
+            const teacherName = item.teacherName || 'Docente';
+            const time = item.time || '--:--';
+            const guardianName = item.guardianName || 'No registrado';
+            const guardianPhone = item.guardianPhone || '';
+            const cleanPhone = (guardianPhone || '').replace(/\D/g, '');
+            const status = item.status || 'pendiente';
+            const alertId = item.alertId || item.id;
+
+            let statusBadge = '<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-weight:700; padding:4px 8px;"><i class="fa-solid fa-clock" style="margin-right:3px;"></i> Pendiente</span>';
+            if (status === 'justificada') {
+                statusBadge = '<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; font-weight:700; padding:4px 8px;"><i class="fa-solid fa-check" style="margin-right:3px;"></i> Justificada</span>';
+            } else if (status === 'citacion') {
+                statusBadge = '<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; font-weight:700; padding:4px 8px;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:3px;"></i> Citación</span>';
+            } else if (status === 'verificada') {
+                statusBadge = '<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:700; padding:4px 8px;"><i class="fa-solid fa-eye" style="margin-right:3px;"></i> Verificada</span>';
+            }
+
+            const monthAbsences = (typeof getStudentMonthAbsenceDays === 'function') 
+                ? getStudentMonthAbsenceDays(studentId, new Date().getMonth() + 1) 
+                : 1;
+
+            const safeNameJs = String(studentName).replace(/'/g, "\\'");
+            const safeGradeJs = String(gradeLabel).replace(/'/g, "\\'");
+
+            return `
+            <tr class="aux-absence-row" data-grade="${item.gradeCode || ''}" data-text="${(studentName + ' ' + carne + ' ' + teacherName + ' ' + courseName).toLowerCase()}">
+                <td style="padding:10px 12px; vertical-align:middle;">
+                    <div style="display:flex; align-items:center; gap:9px;">
+                        <div style="width:34px; height:34px; border-radius:50%; background:#fee2e2; color:#dc2626; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem; flex-shrink:0;">
+                            ${studentName.substring(0, 1).toUpperCase()}
+                        </div>
+                        <div>
+                            <strong style="color:#0f172a; cursor:pointer;" onclick="openStudent360Drawer('${studentId}')" title="Abrir Ficha 360°">
+                                ${studentName} <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:0.7rem; color:#0284c7; margin-left:2px;"></i>
+                            </strong>
+                            <div style="font-size:0.75rem; color:#64748b;">Carné: <strong>${carne}</strong></div>
+                        </div>
+                    </div>
+                </td>
+                <td style="padding:10px 12px; vertical-align:middle;">
+                    <span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700; border:1px solid #cbd5e1;">${gradeLabel}</span>
+                    ${monthAbsences > 1 ? `<div style="font-size:0.72rem; color:#dc2626; font-weight:700; margin-top:2px;"><i class="fa-solid fa-triangle-exclamation"></i> ${monthAbsences} faltas este mes</div>` : ''}
+                </td>
+                <td style="padding:10px 12px; vertical-align:middle;">
+                    <div style="font-weight:700; color:#1e293b;">${courseName}</div>
+                    <div style="font-size:0.75rem; color:#64748b;">
+                        <i class="fa-solid fa-chalkboard-user"></i> ${teacherName} &bull; 
+                        <i class="fa-regular fa-clock"></i> ${time}
+                    </div>
+                </td>
+                <td style="padding:10px 12px; vertical-align:middle;">
+                    <div style="font-size:0.82rem; color:#1e293b; font-weight:600;">${guardianName}</div>
+                    ${cleanPhone ? `
+                        <div style="display:flex; gap:6px; align-items:center; margin-top:4px;">
+                            <a href="tel:${cleanPhone}" class="btn btn-xs btn-outline-secondary" style="font-size:0.75rem; padding:2px 6px; text-decoration:none;" title="Llamar a Encargado">
+                                <i class="fa-solid fa-phone" style="color:#0284c7;"></i> ${cleanPhone}
+                            </a>
+                            <button type="button" class="btn btn-xs btn-outline-success" onclick="if(typeof openWhatsAppPrompt==='function') openWhatsAppPrompt('${safeNameJs}', '${cleanPhone}', '${safeGradeJs}', ${monthAbsences}); else window.open('https://wa.me/502${cleanPhone}', '_blank');" style="font-size:0.75rem; padding:2px 6px; color:#16a34a; border-color:#86efac; font-weight:600;" title="Enviar WhatsApp a Encargado">
+                                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                            </button>
+                        </div>
+                    ` : `<span style="font-size:0.75rem; color:#94a3b8; font-style:italic;">Sin teléfono registrado</span>`}
+                </td>
+                <td style="padding:10px 12px; text-align:center; vertical-align:middle;">
+                    ${statusBadge}
+                    ${item.notes ? `<div style="font-size:0.72rem; color:#64748b; margin-top:3px; max-width:140px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${item.notes}">${item.notes}</div>` : ''}
+                </td>
+                <td style="padding:10px 12px; text-align:center; vertical-align:middle; white-space:nowrap;">
+                    <div style="display:inline-flex; gap:4px; align-items:center;">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="if(typeof openAuxiliaturaJustifyModal==='function') openAuxiliaturaJustifyModal('${alertId}'); else openCreatePermissionModal('${studentId}');" style="font-size:0.78rem; font-weight:700; padding:4px 8px; background:#0284c7; border-color:#0284c7;" title="Justificar o Dictaminar Ausencia">
+                            <i class="fa-solid fa-shield-check"></i> Atender
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="if(typeof openStudentAnnotationModalForAlert==='function') openStudentAnnotationModalForAlert('${alertId}'); else if(typeof openStudentAnnotationModal==='function') openStudentAnnotationModal('${studentId}');" style="font-size:0.78rem; padding:4px 8px;" title="Registrar Anotación en Bitácora">
+                            <i class="fa-solid fa-pen-clip"></i> Anotar
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-info" onclick="openStudent360Drawer('${studentId}')" style="font-size:0.78rem; padding:4px 8px;" title="Ver Ficha 360°">
+                            <i class="fa-solid fa-folder-open"></i> Ficha
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            `;
+        }).join('');
+    }
+    window.renderAuxAbsenceRowsHtml = renderAuxAbsenceRowsHtml;
+
+    function filterAuxAbsencesTable() {
+        const q = (document.getElementById('auxAbsenceFilterInput')?.value || '').toLowerCase().trim();
+        const g = document.getElementById('auxAbsenceGradeFilter')?.value || 'ALL';
+        const rows = document.querySelectorAll('.aux-absence-row');
+
+        rows.forEach(r => {
+            const text = r.getAttribute('data-text') || '';
+            const grade = r.getAttribute('data-grade') || '';
+            const matchText = !q || text.includes(q);
+            const matchGrade = (g === 'ALL') || (grade === g);
+            if (matchText && matchGrade) {
+                r.style.display = '';
+            } else {
+                r.style.display = 'none';
+            }
+        });
+    }
+    window.filterAuxAbsencesTable = filterAuxAbsencesTable;
 
     // Pestaña: Bandeja de Casos y Pendientes
     function renderAuxPendingTab(container) {

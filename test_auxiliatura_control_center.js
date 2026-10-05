@@ -65,6 +65,10 @@ assert(auxCenterContent.includes('function openStudent360Drawer'), 'Ficha 360 de
 assert(auxCenterContent.includes('function handleAuxStudentSearch'), 'Buscador predictivo 360 definido');
 assert(auxCenterContent.includes('function printOfficialParentCitation'), 'Generador de citación oficial a padres definido');
 assert(auxCenterContent.includes('function showJustificationDetailModal'), 'showJustificationDetailModal disponible para docentes y personal');
+assert(auxCenterContent.includes('function renderAuxAbsencesTab'), 'renderAuxAbsencesTab para la lista de ausencias al aula definida');
+assert(auxCenterContent.includes('function getTodayAbsencesList'), 'getTodayAbsencesList para consolidación de inasistencias definida');
+assert(auxCenterContent.includes('id="auxTabBtn-absences"'), 'Pestaña Ausencias al Aula presente en el Centro de Control');
+assert(auxCenterContent.includes('function filterAuxStudentQuickList'), 'Enrutador filterAuxStudentQuickList definido');
 
 // 6. Prueba funcional de lógica de KPIs y Justificaciones
 console.log('\n▶ [TEST 6] Simulando lógica de justificaciones y permisos...');

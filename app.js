@@ -37364,6 +37364,7 @@ function openWhatsAppPrompt(studentName, guardianPhone, gradeLabel, accumulatedA
     const url = `https://wa.me/502${cleanPhone}?text=${encodeURIComponent(textToSend)}`;
     window.open(url, '_blank');
 }
+window.openWhatsAppPrompt = openWhatsAppPrompt;
 
 let _auxiliaturaLogDebounceTimer = null;
 function renderAuxiliaturaLogViewDebounced() {
@@ -37642,6 +37643,13 @@ async function submitAuxiliaturaJustification() {
     closeAuxiliaturaJustifyModal();
     updateAuxiliaturaBadge();
     renderAuxiliaturaLogView();
+    if (typeof renderAuxAbsencesTab === 'function') {
+        const absContent = document.getElementById('auxCenterTabContent');
+        const absBtn = document.getElementById('auxTabBtn-absences');
+        if (absContent && absBtn && absBtn.classList.contains('active')) {
+            renderAuxAbsencesTab(absContent);
+        }
+    }
     if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
     if (typeof renderCurrentDashboardAlerts === 'function') renderCurrentDashboardAlerts();
     if (typeof renderDashboardView === 'function') renderDashboardView();
@@ -37675,6 +37683,13 @@ function markAuxiliaturaAlertStatus(alertId, newStatus) {
 
     updateAuxiliaturaBadge();
     renderAuxiliaturaLogView();
+    if (typeof renderAuxAbsencesTab === 'function') {
+        const absContent = document.getElementById('auxCenterTabContent');
+        const absBtn = document.getElementById('auxTabBtn-absences');
+        if (absContent && absBtn && absBtn.classList.contains('active')) {
+            renderAuxAbsencesTab(absContent);
+        }
+    }
     if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
     if (typeof renderCurrentDashboardAlerts === 'function') renderCurrentDashboardAlerts();
     const profModalAux = document.getElementById('studentProfileModal');
