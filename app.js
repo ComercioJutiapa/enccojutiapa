@@ -874,7 +874,11 @@ const EnccoAuthStore = {
                 hasAccess = true;
             } else if (el.dataset.allowed) {
                 const allowedList = el.dataset.allowed.split(',').map(r => r.trim().toLowerCase());
-                hasAccess = allowedList.includes(role.toLowerCase()) && (permKey ? hasRolePermission(permKey, role) : true);
+                const roleLower = role.toLowerCase();
+                const isMatch = allowedList.includes(roleLower) ||
+                    (allowedList.includes('director') && roleLower === 'direccion') ||
+                    (allowedList.includes('profesor_auxiliar') && (roleLower === 'auxiliar' || roleLower === 'auxiliatura'));
+                hasAccess = isMatch && (permKey ? hasRolePermission(permKey, role) : true);
             } else if (permKey) {
                 hasAccess = hasRolePermission(permKey, role);
             } else if (targetView) {
@@ -1168,6 +1172,12 @@ function enforceViewReadOnlyMode(viewName) {
     // El módulo de disciplina administra sus propios niveles de seguridad y permisos granulares (Docentes reportan, Auxiliar resuelve, Dirección autoriza)
     if (viewName === 'discipline') return;
 
+    // 🛡️ ACCESO TOTAL A BITÁCORA Y CENTRO DE CONTROL: Dirección, Auxiliatura y Secretaría
+    if (viewName === 'auxiliatura-log' || viewName === 'auxiliatura-center') {
+        const allowedFull = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+        if (allowedFull.includes(STATE.currentRole)) return;
+    }
+
     const canModify = canRoleModify(viewName, STATE.currentRole);
 
     if (!canModify) {
@@ -1216,6 +1226,8 @@ function normalizePermKey(key) {
     if (k === 'exoneraciones' || k === 'exoneraciones_log' || k === 'exoneraciones-log' || k === 'exoneracion') return 'exoneraciones-log';
     if (k === 'permisos' || k === 'permissions' || k === 'permissions-history' || k === 'permissions_history' || k === 'permisos-history' || k === 'permisos_history') return 'permissions-history';
     if (k === 'disciplina' || k === 'discipline' || k === 'conducta' || k === 'discipline-report' || k === 'discipline_report' || k === 'reportes-conducta' || k === 'reportes_conducta' || k === 'discipline_view') return 'discipline';
+    if (k === 'auxiliatura_log' || k === 'auxiliatura-log' || k === 'bitacora' || k === 'bitacora_auxiliatura' || k === 'bitacora-auxiliatura' || k === 'bitacora-diaria' || k === 'bitacora_diaria') return 'auxiliatura-log';
+    if (k === 'auxiliatura_center' || k === 'auxiliatura-center' || k === 'centro_control' || k === 'centro-control') return 'auxiliatura-center';
     return k;
 }
 
@@ -1225,6 +1237,13 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
     if (!roleKey || roleKey === 'guest') return 'none';
 
     const key = normalizePermKey(moduleKey);
+
+    // 🛡️ ACCESO TOTAL A BITÁCORA Y CENTRO DE CONTROL: Dirección, Auxiliatura y Secretaría
+    if (key === 'auxiliatura-log' || key === 'auxiliatura-center') {
+        const allowedFull = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+        if (allowedFull.includes(roleKey)) return 'edit';
+        return 'none';
+    }
 
     // 🛡️ ACCESO UNIVERSAL CON RESTRICCIÓN DE MODIFICACIÓN: "Registro Oficial de Exoneraciones"
     if (key === 'exoneraciones-log') {
@@ -1333,7 +1352,7 @@ function hasRolePermission(permKey, role = null) {
 
     // 🛡️ BLINDAJE RBAC: "Bitácora de Auxiliatura" y "Centro de Control" (Auxiliares, Secretaría, Dirección, Admin)
     if (testKey === 'auxiliatura-log' || testKey === 'auxiliatura-center') {
-        const allowedAux = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+        const allowedAux = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
         return allowedAux.includes(targetRole);
     }
 
@@ -2636,7 +2655,8 @@ var SYSTEM_MODULES_LIST = [
     { key: 'carnets', name: 'Carnés Estudiantiles CR80', icon: 'fa-id-card', category: 'Secretaría y Alumnos', desc: 'Generador de credenciales con código de barras Code 39 e impresión masiva en hoja Carta.' },
     { key: 'exoneraciones-log', name: 'Libro de Exoneraciones', icon: 'fa-file-shield', category: 'Secretaría y Alumnos', desc: 'Libro de registro oficial de exoneraciones y consideraciones académicas especiales.' },
     { key: 'permissions-history', name: 'Historial de Permisos', icon: 'fa-clipboard-list', category: 'Estudiantil', desc: 'Historial oficial de permisos de ausencia autorizados por Auxiliatura.' },
-    { key: 'auxiliatura-center', name: 'Centro de Control Estudiantil', icon: 'fa-gauge-high', category: 'Estudiantil', desc: 'Panel unificado de monitoreo, ficha 360°, disciplina y permisos para Auxiliatura y Secretaría.' }
+    { key: 'auxiliatura-center', name: 'Centro de Control Estudiantil', icon: 'fa-gauge-high', category: 'Estudiantil', desc: 'Panel unificado de monitoreo, ficha 360°, disciplina y permisos para Auxiliatura y Secretaría.' },
+    { key: 'auxiliatura-log', name: 'Bitácora Diaria de Ausencias y Alertas', icon: 'fa-clipboard-user', category: 'Estudiantil', desc: 'Monitoreo en tiempo real de inasistencias en aula, avisos a padres y verificación de auxiliatura.' }
 ];
 window.SYSTEM_MODULES_LIST = SYSTEM_MODULES_LIST;
 
@@ -2764,6 +2784,14 @@ function normalizeRolesConfig() {
             roleObj.permissionLevels['honor-roll'] = 'none';
             roleObj.permissionLevels['reports'] = 'none';
             roleObj.permissionLevels['grade-stats'] = 'none';
+        }
+
+        // 🛡️ ACCESO TOTAL A BITÁCORA Y CENTRO DE CONTROL: Dirección, Auxiliatura y Secretaría
+        if (['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(roleObj.key)) {
+            roleObj.permissionLevels['auxiliatura-log'] = 'edit';
+            roleObj.permissionLevels['auxiliatura-center'] = 'edit';
+            if (!roleObj.permissions.includes('auxiliatura-log')) roleObj.permissions.push('auxiliatura-log');
+            if (!roleObj.permissions.includes('auxiliatura-center')) roleObj.permissions.push('auxiliatura-center');
         }
 
         SYSTEM_MODULES_LIST.forEach(m => {

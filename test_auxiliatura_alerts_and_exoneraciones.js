@@ -163,7 +163,16 @@ assert.strictEqual(sandbox.canRoleModify('exoneraciones-log', 'secretaria'), tru
 assert.strictEqual(sandbox.canRoleModify('permissions-history', 'profesor_auxiliar'), true, "Profesor auxiliar SÍ debe poder modificar permisos");
 assert.strictEqual(sandbox.canRoleModify('permissions-history', 'director'), true, "Director SÍ debe poder modificar permisos");
 
-console.log("  ✅ Test 9 Superado: Acceso universal de consulta activo para todos los roles con privilegios de modificación estrictamente blindados.");
+// Probar acceso total a Bitácora y Centro de Control para Dirección, Auxiliatura y Secretaría
+assert.strictEqual(sandbox.canRoleModify('auxiliatura-log', 'director'), true, "Director SÍ debe tener acceso total a Bitácora");
+assert.strictEqual(sandbox.canRoleModify('auxiliatura-log', 'secretaria'), true, "Secretaría SÍ debe tener acceso total a Bitácora");
+assert.strictEqual(sandbox.canRoleModify('auxiliatura-log', 'profesor_auxiliar'), true, "Profesor auxiliar SÍ debe tener acceso total a Bitácora");
+assert.strictEqual(sandbox.canRoleModify('auxiliatura-center', 'director'), true, "Director SÍ debe tener acceso total a Centro de Control");
+assert.strictEqual(sandbox.canRoleModify('auxiliatura-center', 'secretaria'), true, "Secretaría SÍ debe tener acceso total a Centro de Control");
+assert.strictEqual(sandbox.canRoleModify('auxiliatura-center', 'profesor_auxiliar'), true, "Profesor auxiliar SÍ debe tener acceso total a Centro de Control");
+assert.strictEqual(sandbox.canRoleModify('auxiliatura-log', 'docente'), false, "Docente NO debe tener permisos de modificación en Bitácora");
+
+console.log("  ✅ Test 9 Superado: Acceso universal de consulta activo para todos los roles con privilegios de modificación estrictamente blindados y Bitácora 100% accesible para Dirección, Auxiliatura y Secretaría.");
 
 console.log("\n================================================================================");
 console.log("🎉 TODAS LAS 9 PRUEBAS AUTOMATIZADAS PASARON EXITOSAMENTE (100%)");
