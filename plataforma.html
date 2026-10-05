@@ -4774,13 +4774,42 @@
                 <input type="hidden" id="annotGradeCode">
                 <input type="hidden" id="annotAlertId">
                 
+                <!-- SELECTOR RÁPIDO DE ESTUDIANTE PARA LA ANOTACIÓN DEL DÍA -->
+                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:4px;">
+                        <label for="annotStudentSelect" style="font-weight:700; font-size:0.82rem; color:#1e293b; margin:0; display:flex; align-items:center; gap:6px;">
+                            <i class="fa-solid fa-user-graduate" style="color:#0284c7;"></i> Seleccionar Estudiante para la Anotación:
+                        </label>
+                        <span style="font-size:0.74rem; color:#64748b;" id="annotStudentsCountLabel">Cargando nómina...</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns:minmax(140px, 1.2fr) minmax(130px, 1fr); gap:8px; margin-bottom:6px;">
+                        <div style="position:relative;">
+                            <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:9px; top:50%; transform:translateY(-50%); font-size:0.75rem; color:#94a3b8;"></i>
+                            <input type="text" id="annotStudentSearchFilter" class="form-control" placeholder="Filtrar por nombre o carné..." 
+                                oninput="filterAnnotationStudentDropdown(this.value)" 
+                                style="height:32px; font-size:0.80rem; padding-left:26px;">
+                        </div>
+                        <div>
+                            <select id="annotStudentGradeFilter" class="form-control" onchange="filterAnnotationStudentDropdown()" style="height:32px; font-size:0.80rem;">
+                                <option value="ALL">-- Todas las Secciones --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <select id="annotStudentSelect" class="form-control" onchange="onStudentAnnotationSelectChange(this.value)" 
+                            style="height:35px; font-size:0.84rem; font-weight:700; color:#0369a1; border:1.5px solid #0284c7; background:#ffffff;">
+                            <!-- Opciones dinámicas de estudiantes -->
+                        </select>
+                    </div>
+                </div>
+
                 <div style="background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:8px; padding:12px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                     <div>
                         <strong style="color:#0369a1; font-size:1.02rem; display:block;" id="annotStudentName">ALUMNO</strong>
                         <div style="font-size:0.82rem; color:#475569;" id="annotStudentMeta">Grado | Sección</div>
                     </div>
-                    <span class="badge badge-info" style="font-size:0.75rem; padding:4px 8px;">
-                        <i class="fa-solid fa-eye"></i> Lectura Abierta Docentes y Dirección
+                    <span class="badge" id="annotVisibilityBadge" style="background:#0284c7; color:#ffffff; font-size:0.74rem; padding:4px 8px; font-weight:700;" title="Privacidad: Solo visible para Auxiliatura, Dirección, Secretaría y el catedrático autor">
+                        <i class="fa-solid fa-lock"></i> Visible: Auxiliatura, Dirección, Secretaría y Docente autor
                     </span>
                 </div>
 

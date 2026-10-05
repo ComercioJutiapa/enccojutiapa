@@ -74,6 +74,58 @@ test('TEST 6: Modelo obligatorio de calificaciones preservado (40% zona / 60% ex
     assert(!jsSrc.includes('70% de zona y 30%'), 'No debe existir referencia a 70/30');
 });
 
+test('TEST 7: Selector dinámico de estudiantes en el modal de anotaciones', () => {
+    assert(htmlSrc.includes('id="annotStudentSelect"'), 'Falta annotStudentSelect en HTML');
+    assert(htmlSrc.includes('id="annotStudentSearchFilter"'), 'Falta annotStudentSearchFilter en HTML');
+    assert(htmlSrc.includes('id="annotStudentGradeFilter"'), 'Falta annotStudentGradeFilter en HTML');
+    assert(jsSrc.includes('function populateAnnotationStudentDropdown('), 'Falta populateAnnotationStudentDropdown en app.js');
+    assert(jsSrc.includes('function filterAnnotationStudentDropdown('), 'Falta filterAnnotationStudentDropdown en app.js');
+    assert(jsSrc.includes('function onStudentAnnotationSelectChange('), 'Falta onStudentAnnotationSelectChange en app.js');
+});
+
+test('TEST 8: Matriz de Privacidad y Visibilidad (Auxiliatura, Dirección, Secretaría y Docente autor)', () => {
+    assert(jsSrc.includes('function canUserViewAnnotation('), 'Falta función canUserViewAnnotation en app.js');
+
+    // Extraer y evaluar canUserViewAnnotation en contexto simulado
+    const vm = require('vm');
+    const sandbox = {
+        window: { STATE: {} },
+        STATE: {}
+    };
+    vm.createContext(sandbox);
+
+    // Ejecutar definición de canUserViewAnnotation
+    const canUserViewMatch = jsSrc.match(/function canUserViewAnnotation[\s\S]*?window\.canUserViewAnnotation\s*=\s*canUserViewAnnotation;/);
+    assert(canUserViewMatch, 'No se pudo extraer canUserViewAnnotation');
+    vm.runInContext(canUserViewMatch[0], sandbox);
+
+    const canView = sandbox.canUserViewAnnotation;
+    const testAnn = {
+        id: 'ANN_001',
+        studentId: 'STU_1',
+        text: 'Anotación pedagógica',
+        authorId: 'doc_byron',
+        authorUsername: 'borellana',
+        authorName: 'Byron Orellana',
+        authorRole: 'docente'
+    };
+
+    // 1. Director puede ver
+    assert(canView(testAnn, { id: 'dir1', name: 'Director', role: 'director' }, 'director') === true, 'Director DEBE poder ver la anotación');
+    // 2. Auxiliar puede ver
+    assert(canView(testAnn, { id: 'aux1', name: 'Auxiliar', role: 'profesor_auxiliar' }, 'profesor_auxiliar') === true, 'Auxiliatura DEBE poder ver la anotación');
+    // 3. Secretaría puede ver
+    assert(canView(testAnn, { id: 'sec1', name: 'Secretaria', role: 'secretaria' }, 'secretaria') === true, 'Secretaría DEBE poder ver la anotación');
+    // 4. Admin puede ver
+    assert(canView(testAnn, { id: 'adm1', name: 'Admin', role: 'admin' }, 'admin') === true, 'Admin DEBE poder ver la anotación');
+    // 5. El maestro que la colocó puede verla
+    assert(canView(testAnn, { id: 'doc_byron', username: 'borellana', name: 'Byron Orellana', role: 'docente' }, 'docente') === true, 'El docente autor DEBE poder verla');
+    // 6. OTRO maestro NO puede verla
+    assert(canView(testAnn, { id: 'doc_other', username: 'jperez', name: 'Juan Pérez', role: 'docente' }, 'docente') === false, 'Otro docente NO debe poder ver la anotación de Byron');
+    // 7. Estudiante NO puede verla
+    assert(canView(testAnn, { id: 'STU_1', role: 'estudiante' }, 'estudiante') === false, 'Estudiante NO debe poder ver anotaciones');
+});
+
 console.log('\n================================================================================');
 console.log(`🎉 RESULTADOS: ${passed} pasaron, ${failed} fallaron.`);
 console.log('================================================================================');

@@ -37883,18 +37883,60 @@ function printAuxiliaturaLog() {
 // 📌 SISTEMA UNIVERSAL DE ANOTACIONES, OBSERVACIONES Y BITÁCORA ESCOLAR
 // ==========================================================================
 
+function canUserViewAnnotation(annotation, currentUser, currentRole) {
+    if (!annotation) return false;
+    const user = currentUser || (window.STATE && window.STATE.currentUser);
+    const role = currentRole || (window.STATE && window.STATE.currentRole) || user?.role || '';
+
+    // Si no hay usuario definido (entorno de test unitario sin login), permitir acceso
+    if (!user && !role) return true;
+
+    // Auxiliatura, Dirección y Secretaría: Acceso total a la bitácora
+    const fullAccessRoles = ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'auxiliar'];
+    if (fullAccessRoles.includes(role)) {
+        return true;
+    }
+
+    // Docente / Catedrático: Solo puede ver las anotaciones que él/ella mismo colocó
+    if (role === 'docente' || role === 'profesor') {
+        const userName = user?.name ? user.name.trim().toLowerCase() : '';
+        const userUsername = user?.username ? user.username.trim().toLowerCase() : '';
+        const userId = user?.id ? String(user.id).trim().toLowerCase() : '';
+
+        const authorName = annotation.authorName ? annotation.authorName.trim().toLowerCase() : '';
+        const authorUsername = annotation.authorUsername ? annotation.authorUsername.trim().toLowerCase() : '';
+        const authorId = annotation.authorId ? String(annotation.authorId).trim().toLowerCase() : '';
+
+        if (userId && authorId && userId === authorId) return true;
+        if (userUsername && authorUsername && userUsername === authorUsername) return true;
+        if (userName && authorName && userName === authorName) return true;
+
+        return false;
+    }
+
+    // Por defecto, cualquier otro rol (ej. estudiante) no tiene acceso
+    return false;
+}
+window.canUserViewAnnotation = canUserViewAnnotation;
+
 function getStudentAnnotations(studentId) {
     if (!STATE.studentAnnotations) STATE.studentAnnotations = [];
-    if (!studentId) return [...STATE.studentAnnotations].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
-    return STATE.studentAnnotations
-        .filter(a => a && a.studentId === studentId)
+    const all = !studentId 
+        ? STATE.studentAnnotations 
+        : STATE.studentAnnotations.filter(a => a && a.studentId === studentId);
+
+    const currentUser = STATE.currentUser;
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role);
+
+    return all
+        .filter(a => canUserViewAnnotation(a, currentUser, currentRole))
         .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
 }
 window.getStudentAnnotations = getStudentAnnotations;
 
 function getStudentAnnotationsForDate(studentId, dateStr) {
     if (!STATE.studentAnnotations) STATE.studentAnnotations = [];
-    return STATE.studentAnnotations.filter(a => a && a.studentId === studentId && a.date === dateStr);
+    return getStudentAnnotations(studentId).filter(a => a && a.date === dateStr);
 }
 window.getStudentAnnotationsForDate = getStudentAnnotationsForDate;
 
@@ -37921,6 +37963,8 @@ function addStudentAnnotation(data) {
         date: data.date || new Date().toISOString().split('T')[0],
         time: new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' }),
         text: (data.text || '').trim(),
+        authorId: (currentUser && currentUser.id) ? String(currentUser.id) : (currentUser?.username || ''),
+        authorUsername: (currentUser && currentUser.username) ? currentUser.username : '',
         authorName: (currentUser && currentUser.name) ? currentUser.name : (roleLabels[currentRole] || 'Personal Docente'),
         authorRole: currentRole,
         authorRoleLabel: roleLabels[currentRole] || currentRole,
@@ -37949,10 +37993,14 @@ function deleteStudentAnnotation(annotationId) {
     const currentUser = STATE.currentUser || (STATE.users || [])[0];
     const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
     const isAuthority = ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
-    const isAuthor = (currentUser && currentUser.name === ann.authorName);
+    const isAuthor = (currentUser && (
+        (currentUser.id && String(currentUser.id) === String(ann.authorId)) ||
+        (currentUser.username && currentUser.username === ann.authorUsername) ||
+        (currentUser.name && currentUser.name === ann.authorName)
+    ));
 
     if (!isAuthority && !isAuthor) {
-        showToast("Solo el autor de la anotación o el personal de Auxiliatura/Dirección puede eliminarla.", "warning");
+        showToast("Solo el autor de la anotación o el personal de Auxiliatura/Dirección/Secretaría puede eliminarla.", "warning");
         return false;
     }
 
@@ -37976,9 +38024,106 @@ function deleteStudentAnnotation(annotationId) {
     if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
         renderAuxiliaturaLogView();
     }
+    if (STATE.activeView === 'auxiliatura-center' && typeof renderAuxAbsencesTab === 'function') {
+        const absContent = document.getElementById('auxCenterTabContent');
+        const absBtn = document.getElementById('auxTabBtn-absences');
+        if (absContent && absBtn && absBtn.classList.contains('active')) {
+            renderAuxAbsencesTab(absContent);
+        }
+    }
     return true;
 }
 window.deleteStudentAnnotation = deleteStudentAnnotation;
+
+// Selector dinámico de estudiante para anotaciones
+function populateAnnotationStudentDropdown(selectedStudentId = null) {
+    const select = document.getElementById('annotStudentSelect');
+    const gradeSelect = document.getElementById('annotStudentGradeFilter');
+    const countLabel = document.getElementById('annotStudentsCountLabel');
+    if (!select) return;
+
+    const students = (STATE.students || []).filter(s => s && s.status !== 'Retirado');
+    if (countLabel) countLabel.textContent = `${students.length} estudiantes activos`;
+
+    // Llenar combo de grados si solo tiene la opción por defecto
+    if (gradeSelect && gradeSelect.options.length <= 1) {
+        let gradesHtml = '<option value="ALL">-- Todas las Secciones --</option>';
+        (STATE.gradesList || []).forEach(g => {
+            gradesHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} (${escapeHtml(g.section || '')})</option>`;
+        });
+        gradeSelect.innerHTML = gradesHtml;
+    }
+
+    const searchVal = (document.getElementById('annotStudentSearchFilter')?.value || '').toLowerCase().trim();
+    const gradeVal = gradeSelect ? gradeSelect.value : 'ALL';
+
+    let filtered = students;
+    if (gradeVal !== 'ALL') {
+        filtered = filtered.filter(s => s.gradeCode === gradeVal || s.grade === gradeVal);
+    }
+    if (searchVal) {
+        filtered = filtered.filter(s => {
+            const fullName = `${s.name || ''} ${s.firstName || ''} ${s.lastName || ''} ${s.carne || ''} ${s.personalCode || ''}`.toLowerCase();
+            return fullName.includes(searchVal);
+        });
+    }
+
+    // Ordenar alfabéticamente por apellido
+    filtered.sort((a, b) => {
+        const nameA = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(a, 'lastFirst') : (a.name || '');
+        const nameB = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(b, 'lastFirst') : (b.name || '');
+        return nameA.localeCompare(nameB);
+    });
+
+    if (filtered.length === 0) {
+        select.innerHTML = '<option value="">No hay estudiantes que coincidan con la búsqueda</option>';
+        return;
+    }
+
+    select.innerHTML = filtered.map(s => {
+        const dName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(s, 'lastFirst') : (s.name || 'Estudiante');
+        const cCode = s.carne || s.personalCode || 'S/C';
+        const gLabel = s.grade || s.gradeCode || '';
+        const sLabel = s.section ? `(${s.section})` : '';
+        const isSelected = (s.id === selectedStudentId) ? 'selected' : '';
+        return `<option value="${escapeHtml(s.id)}" ${isSelected}>${escapeHtml(dName)} (Carné: ${escapeHtml(cCode)}) — ${escapeHtml(gLabel)} ${escapeHtml(sLabel)}</option>`;
+    }).join('');
+
+    if (selectedStudentId) {
+        select.value = selectedStudentId;
+    }
+}
+window.populateAnnotationStudentDropdown = populateAnnotationStudentDropdown;
+
+function filterAnnotationStudentDropdown() {
+    const currentId = document.getElementById('annotStudentId')?.value;
+    populateAnnotationStudentDropdown(currentId);
+    const select = document.getElementById('annotStudentSelect');
+    if (select && select.value && select.value !== currentId) {
+        onStudentAnnotationSelectChange(select.value);
+    }
+}
+window.filterAnnotationStudentDropdown = filterAnnotationStudentDropdown;
+
+function onStudentAnnotationSelectChange(newStudentId) {
+    if (!newStudentId) return;
+    const student = (STATE.students || []).find(s => s.id === newStudentId);
+    if (!student) return;
+
+    STATE.selectedStudentId = newStudentId;
+    document.getElementById('annotStudentId').value = student.id;
+    document.getElementById('annotGradeCode').value = student.gradeCode || student.grade || '';
+    document.getElementById('annotAlertId').value = '';
+
+    const studentDisplayName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(student, 'lastFirst') : (student.name || 'Estudiante');
+    const nameEl = document.getElementById('annotStudentName');
+    const metaEl = document.getElementById('annotStudentMeta');
+    if (nameEl) nameEl.textContent = studentDisplayName;
+    if (metaEl) metaEl.textContent = `Carné: ${student.carne || student.personalCode || 'S/C'} | Grado: ${student.grade || ''} ${student.section ? `(${student.section})` : ''} | Carrera: ${student.career || 'Perito Contador'}`;
+
+    renderStudentAnnotationsList(student.id);
+}
+window.onStudentAnnotationSelectChange = onStudentAnnotationSelectChange;
 
 function openStudentAnnotationModal(studentId = null, defaultDate = null, alertId = null) {
     if (!studentId) {
@@ -38009,6 +38154,9 @@ function openStudentAnnotationModal(studentId = null, defaultDate = null, alertI
     const studentDisplayName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(student, 'lastFirst') : (student.name || 'Estudiante');
     document.getElementById('annotStudentName').textContent = studentDisplayName;
     document.getElementById('annotStudentMeta').textContent = `Carné: ${student.carne || student.personalCode || 'S/C'} | Grado: ${student.grade || ''} ${student.section ? `(${student.section})` : ''} | Carrera: ${student.career || 'Perito Contador'}`;
+
+    // Inicializar y sincronizar el selector de estudiante
+    populateAnnotationStudentDropdown(student.id);
 
     const dateInput = document.getElementById('annotDate');
     const todayStr = new Date().toISOString().split('T')[0];
@@ -38058,7 +38206,7 @@ function saveQuickAnnotation() {
     const text = (document.getElementById('annotText')?.value || '').trim();
 
     if (!studentId) {
-        showToast("Debe especificar un estudiante.", "warning");
+        showToast("Debe seleccionar un estudiante para registrar la anotación.", "warning");
         return;
     }
     if (!text) {
@@ -38079,7 +38227,7 @@ function saveQuickAnnotation() {
         alertId
     });
 
-    // Limpiar texto
+    // Limpiar texto para la siguiente nota, manteniendo la fecha y el estudiante seleccionado
     const textArea = document.getElementById('annotText');
     if (textArea) textArea.value = '';
 
@@ -38094,8 +38242,16 @@ function saveQuickAnnotation() {
     if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
         renderAuxiliaturaLogView();
     }
+    // Refrescar centro de control si está activo
+    if (STATE.activeView === 'auxiliatura-center' && typeof renderAuxAbsencesTab === 'function') {
+        const absContent = document.getElementById('auxCenterTabContent');
+        const absBtn = document.getElementById('auxTabBtn-absences');
+        if (absContent && absBtn && absBtn.classList.contains('active')) {
+            renderAuxAbsencesTab(absContent);
+        }
+    }
 
-    showToast("Anotación registrada y compartida con éxito.", "success");
+    showToast("Anotación registrada correctamente y resguardada para Auxiliatura, Dirección, Secretaría y Docente.", "success");
 }
 window.saveQuickAnnotation = saveQuickAnnotation;
 
@@ -38111,8 +38267,8 @@ function renderStudentAnnotationsList(studentId) {
         container.innerHTML = `
             <div style="text-align:center; padding:25px 15px; color:#64748b; background:#ffffff; border:1px dashed #cbd5e1; border-radius:6px;">
                 <i class="fa-solid fa-clipboard-check" style="font-size:1.8rem; color:#94a3b8; display:block; margin-bottom:6px;"></i>
-                <span style="font-weight:600; font-size:0.86rem; color:#334155;">Sin anotaciones previas</span>
-                <div style="font-size:0.78rem; color:#64748b; margin-top:2px;">Utilice el formulario superior para registrar la primera nota o acuerdo de convivencia.</div>
+                <span style="font-weight:600; font-size:0.86rem; color:#334155;">Sin anotaciones visibles</span>
+                <div style="font-size:0.78rem; color:#64748b; margin-top:2px;">No hay notas registradas para este estudiante o no corresponden a su cátedra.</div>
             </div>
         `;
         return;
@@ -38129,11 +38285,17 @@ function renderStudentAnnotationsList(studentId) {
 
     const currentUser = STATE.currentUser || (STATE.users || [])[0];
     const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
-    const canDelete = ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+    const isAuthority = ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
 
     container.innerHTML = list.map(a => {
         const cat = categoryBadges[a.category] || categoryBadges.general;
-        const deleteBtn = canDelete ? `
+        const isAuthor = (currentUser && (
+            (currentUser.id && String(currentUser.id) === String(a.authorId)) ||
+            (currentUser.username && currentUser.username === a.authorUsername) ||
+            (currentUser.name && currentUser.name === a.authorName)
+        ));
+        const canDeleteThis = isAuthority || isAuthor;
+        const deleteBtn = canDeleteThis ? `
             <button type="button" class="btn btn-xs btn-outline-danger" onclick="deleteStudentAnnotation('${a.id}')" title="Eliminar anotación" style="padding:1px 6px; font-size:0.70rem;">
                 <i class="fa-solid fa-trash"></i>
             </button>
@@ -38155,9 +38317,9 @@ function renderStudentAnnotationsList(studentId) {
                 <div style="font-size:0.86rem; color:#1e293b; line-height:1.45; margin:6px 0;">
                     ${escapeHtml(a.text)}
                 </div>
-                <div style="font-size:0.75rem; color:#0369a1; border-top:1px dashed #f1f5f9; padding-top:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-size:0.75rem; color:#0369a1; border-top:1px dashed #f1f5f9; padding-top:4px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
                     <span><i class="fa-solid fa-user-pen" style="color:#94a3b8; margin-right:3px;"></i> <strong>Autor:</strong> ${escapeHtml(a.authorName || 'Auxiliatura')} <small style="color:#64748b;">(${escapeHtml(a.authorRoleLabel || a.authorRole || 'Personal')})</small></span>
-                    <span style="color:#10b981; font-weight:600;"><i class="fa-solid fa-check"></i> Registrado</span>
+                    <span style="color:#0284c7; font-size:0.70rem; font-weight:600;"><i class="fa-solid fa-lock" style="font-size:0.68rem;"></i> Visible: Auxiliatura, Dirección, Secretaría y Autor</span>
                 </div>
             </div>
         `;
