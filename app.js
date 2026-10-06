@@ -24726,9 +24726,9 @@ function loadAttendanceList() {
 
     head.innerHTML = `
         <tr>
-            <th class="col-num" rowspan="2">No.</th>
-            <th class="col-carne" rowspan="2">Código Personal</th>
-            <th class="col-name" rowspan="2">Apellidos y Nombres</th>
+            <th class="col-num" rowspan="2" style="width:28px; max-width:32px; padding:5px 2px;">No.</th>
+            <th class="col-carne" rowspan="2" title="Código Personal MINEDUC" style="width:68px; max-width:74px; padding:4px 2px; font-size:0.68rem; line-height:1.15;">CÓDIGO<br>PERSONAL</th>
+            <th class="col-name" rowspan="2" style="min-width:310px; max-width:440px; padding-left:8px; text-align:left;">Apellidos y Nombres</th>
             <th colspan="${daysInMonth}" class="col-month-header" style="background:#15803d; color:#fff; text-align:center; font-weight:800; font-size:0.85rem; padding:4px;">
                 <i class="fa-regular fa-calendar-days"></i> DÍAS DEL MES DE ${((document.getElementById('attendanceMonthSelect')?.options[document.getElementById('attendanceMonthSelect')?.selectedIndex]?.text) || 'Agosto').toUpperCase()} (CICLO ${year})
             </th>

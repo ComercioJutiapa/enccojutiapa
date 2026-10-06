@@ -1618,10 +1618,14 @@ body.theme-dark .attendance-excel-table thead tr.day-header-row th.weekend-heade
 
 /* Columnas fijas a la izquierda estilo Excel (Optimizadas para Celular y Tablet) */
 .attendance-excel-table .col-num {
-    width: 36px;
-    min-width: 36px;
+    width: 28px;
+    min-width: 26px;
+    max-width: 32px;
+    padding: 4px 2px !important;
+    text-align: center;
     background: #f8fafc;
     font-weight: 700;
+    font-size: 0.80rem;
     position: sticky;
     left: 0;
     z-index: 6;
@@ -1629,19 +1633,33 @@ body.theme-dark .attendance-excel-table thead tr.day-header-row th.weekend-heade
 }
 
 .attendance-excel-table .col-carne {
-    width: 95px;
-    min-width: 95px;
+    width: 68px;
+    min-width: 64px;
+    max-width: 74px;
+    padding: 4px 2px !important;
     font-family: monospace;
-    font-size: 0.8rem;
+    font-size: 0.74rem;
+    text-align: center;
+    letter-spacing: -0.2px;
     background: #f8fafc;
+    border-right: 1px solid #cbd5e1;
+}
+
+.attendance-excel-table td.col-carne code {
+    font-size: 0.73rem !important;
+    font-weight: 600;
+    letter-spacing: -0.3px;
 }
 
 .attendance-excel-table .col-name {
-    min-width: 200px;
-    max-width: 260px;
+    width: auto;
+    min-width: 310px;
+    max-width: 440px;
     text-align: left;
-    padding-left: 10px;
+    padding-left: 8px;
+    padding-right: 8px;
     font-weight: 700;
+    font-size: 0.82rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1659,6 +1677,23 @@ body.theme-dark .attendance-excel-table thead tr.day-header-row th.weekend-heade
     top: 0 !important;
     z-index: 25 !important;
     background: #f1f5f9 !important;
+    width: 28px !important;
+    min-width: 26px !important;
+    max-width: 32px !important;
+    padding: 5px 2px !important;
+    text-align: center !important;
+    font-size: 0.76rem !important;
+}
+
+.attendance-excel-table thead th.col-carne {
+    width: 68px !important;
+    min-width: 64px !important;
+    max-width: 74px !important;
+    padding: 4px 2px !important;
+    font-size: 0.68rem !important;
+    line-height: 1.15 !important;
+    text-align: center !important;
+    letter-spacing: -0.2px !important;
 }
 
 .attendance-excel-table thead th.col-name {
@@ -1669,10 +1704,19 @@ body.theme-dark .attendance-excel-table thead tr.day-header-row th.weekend-heade
     background: #f1f5f9 !important;
     box-shadow: 3px 0 6px rgba(0, 0, 0, 0.08);
     border-right: 2px solid #94a3b8;
+    min-width: 310px !important;
+    max-width: 440px !important;
+    text-align: left !important;
+    padding-left: 8px !important;
+    font-size: 0.78rem !important;
 }
 
 body.theme-dark .attendance-excel-table .col-num {
     background: #091a35 !important;
+}
+body.theme-dark .attendance-excel-table .col-carne {
+    background: #091a35 !important;
+    color: #93c5fd !important;
 }
 body.theme-dark .attendance-excel-table .col-name {
     background: #0d274c !important;
