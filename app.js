@@ -38134,7 +38134,7 @@ function populateAnnotationStudentDropdown(selectedStudentId = null, forcedGrade
 
     const students = (STATE.students || []).filter(s => s && s.status !== 'Retirado');
 
-    // Llenar combo de clases/grados según el rol del usuario autenticado
+    // Llenar combo de grados según el rol del usuario autenticado (solo grados asignados para docentes, sin duplicación)
     if (gradeSelect) {
         const myClasses = (isDocente && currentUser && Array.isArray(STATE.pensum))
             ? STATE.pensum.filter(p => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(p, currentUser) : false)
@@ -38149,73 +38149,73 @@ function populateAnnotationStudentDropdown(selectedStudentId = null, forcedGrade
         if (needsRebuild) {
             let gradesHtml = '';
             if (isDocente && myClasses.length > 0) {
-                gradesHtml += `<option value="ALL_DOCENTE">-- Todas mis Clases Asignadas (${myClasses.length}) --</option>`;
-                gradesHtml += `<optgroup label="📚 Mis Clases Asignadas (${escapeHtml(currentUser.name || 'Docente')})" data-role="docente">`;
-                myClasses.forEach(c => {
-                    const secLabel = c.section ? `Sección ${c.section}` : '';
-                    gradesHtml += `<option value="${escapeHtml(c.id)}">📘 ${escapeHtml(c.subject || 'Clase')} — ${escapeHtml(c.grade || '')} (${escapeHtml(secLabel)})</option>`;
-                });
-                gradesHtml += `</optgroup>`;
-
-                // Secciones únicas asignadas para mayor comodidad de selección
+                // Deduplicar exclusivamente los grados asignados del docente (sin duplicar ni repetir "Sección")
                 const uniqueGrades = new Map();
                 myClasses.forEach(c => {
+                    const sSec = (typeof getCleanSectionLetter === 'function') 
+                        ? getCleanSectionLetter(c.section || c.gradeCode) 
+                        : (c.section || '').replace(/secci[oó]n/gi, '').trim();
+                    const cGrade = (c.grade || '').toLowerCase();
                     const gMatch = (STATE.gradesList || []).find(g => {
                         if (g.code === c.gradeCode || g.id === c.gradeCode) return true;
-                        const sSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(c.section || c.gradeCode) : (c.section || '');
-                        const gSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(g.section || g.code) : (g.section || '');
+                        const gSec = (typeof getCleanSectionLetter === 'function') 
+                            ? getCleanSectionLetter(g.section || g.code) 
+                            : (g.section || '').replace(/secci[oó]n/gi, '').trim();
                         const gName = (g.name || '').toLowerCase();
-                        const cGrade = (c.grade || '').toLowerCase();
                         const gradeMatch = (cGrade.includes('4') && gName.includes('4')) ||
                                            (cGrade.includes('5') && gName.includes('5')) ||
                                            (cGrade.includes('6') && gName.includes('6'));
                         return gradeMatch && (!sSec || gSec === sSec);
                     });
+
                     const key = gMatch ? gMatch.code : (c.gradeCode || c.grade);
-                    const label = gMatch ? `${gMatch.name} (Sección ${gMatch.section})` : `${c.grade} (${c.section || 'A'})`;
+                    const secLetter = sSec || (gMatch ? getCleanSectionLetter(gMatch.section) : 'A');
+                    const gradeTitle = gMatch ? gMatch.name : (c.grade || 'Perito Contador');
+                    const label = `${gradeTitle}${secLetter ? ` (Sección ${secLetter})` : ''}`;
                     if (!uniqueGrades.has(key)) {
-                        uniqueGrades.set(key, { code: key, label });
+                        uniqueGrades.set(key, { code: key, label: label, name: gradeTitle, section: secLetter });
                     }
                 });
-                if (uniqueGrades.size > 1) {
-                    gradesHtml += `<optgroup label="📋 Por Sección Asignada">`;
-                    uniqueGrades.forEach(ug => {
-                        gradesHtml += `<option value="${escapeHtml(ug.code)}">${escapeHtml(ug.label)}</option>`;
-                    });
-                    gradesHtml += `</optgroup>`;
-                }
+
+                const sortedGrades = (typeof sortGrades === 'function')
+                    ? sortGrades(Array.from(uniqueGrades.values()))
+                    : Array.from(uniqueGrades.values());
+
+                gradesHtml += `<option value="ALL_DOCENTE">-- Todos mis Grados Asignados (${sortedGrades.length}) --</option>`;
+                gradesHtml += `<optgroup label="📋 Mis Grados Asignados (${escapeHtml(currentUser.name || 'Docente')})" data-role="docente">`;
+                sortedGrades.forEach(ug => {
+                    gradesHtml += `<option value="${escapeHtml(ug.code)}">${escapeHtml(ug.label)}</option>`;
+                });
+                gradesHtml += `</optgroup>`;
             } else {
                 gradesHtml += '<option value="ALL">-- Todas las Secciones --</option>';
                 gradesHtml += `<optgroup label="⭐ Secciones Oficiales (Supervisión General)" data-role="authority">`;
                 (STATE.gradesList || []).forEach(g => {
-                    gradesHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} (Sección ${escapeHtml(g.section || '')})</option>`;
+                    const secLetter = (typeof getCleanSectionLetter === 'function') 
+                        ? getCleanSectionLetter(g.section || g.code) 
+                        : (g.section || '').replace(/secci[oó]n/gi, '').trim();
+                    const secLabel = secLetter ? ` (Sección ${secLetter})` : '';
+                    gradesHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)}${escapeHtml(secLabel)}</option>`;
                 });
                 gradesHtml += `</optgroup>`;
             }
             gradeSelect.innerHTML = gradesHtml;
         }
 
-        // Si se especificó una clase o sección forzada
+        // Si se especificó un grado/sección forzada
         if (forcedGradeCode) {
             gradeSelect.value = forcedGradeCode;
         } else if (!gradeSelect.value || gradeSelect.value === 'ALL' || gradeSelect.value === 'ALL_DOCENTE') {
             const targetStudent = students.find(s => s.id === selectedStudentId);
-            if (isDocente && myClasses.length > 0) {
-                if (targetStudent) {
-                    const matchingClass = myClasses.find(c => isStudentInGrade(targetStudent, c.id));
-                    if (matchingClass) {
-                        gradeSelect.value = matchingClass.id;
-                    } else {
-                        gradeSelect.value = myClasses[0].id;
-                    }
-                } else if (gradeSelect.value !== 'ALL_DOCENTE') {
-                    gradeSelect.value = myClasses[0].id;
-                }
-            } else if (targetStudent) {
+            if (targetStudent) {
                 const foundG = findGradeForStudent(targetStudent);
-                if (foundG) {
+                if (foundG && Array.from(gradeSelect.options).some(o => o.value === foundG.code || o.value === foundG.id)) {
                     gradeSelect.value = foundG.code || foundG.id;
+                } else if (isDocente && gradeSelect.options.length > 1) {
+                    gradeSelect.value = gradeSelect.options[1].value;
                 }
+            } else if (isDocente && gradeSelect.options.length > 1 && gradeSelect.value !== 'ALL_DOCENTE') {
+                gradeSelect.value = gradeSelect.options[1].value;
             }
         }
     }
@@ -38223,7 +38223,7 @@ function populateAnnotationStudentDropdown(selectedStudentId = null, forcedGrade
     const searchVal = (document.getElementById('annotStudentSearchFilter')?.value || '').toLowerCase().trim();
     const gradeVal = gradeSelect ? gradeSelect.value : (isDocente ? 'ALL_DOCENTE' : 'ALL');
 
-    // Filtrar con la lógica canónica de clase o sección
+    // Filtrar con la lógica canónica de grado o sección
     let filtered = students.filter(s => isStudentInGrade(s, gradeVal));
 
     if (searchVal) {
@@ -38233,21 +38233,22 @@ function populateAnnotationStudentDropdown(selectedStudentId = null, forcedGrade
         });
     }
 
-    // Actualizar etiqueta de conteo con el nombre de la clase o sección activa
+    // Actualizar etiqueta de conteo con el nombre del grado o sección activa (sin duplicar "Sección")
     if (countLabel) {
         if (!gradeVal || gradeVal === 'ALL') {
             countLabel.textContent = `${filtered.length} de ${students.length} estudiantes activos`;
         } else if (gradeVal === 'ALL_DOCENTE') {
-            countLabel.textContent = `${filtered.length} estudiantes en sus clases asignadas`;
+            countLabel.textContent = `${filtered.length} estudiantes en sus grados asignados`;
         } else {
-            const targetCourse = (STATE.pensum || []).find(c => c && (c.id === gradeVal || ('cls:' + c.id) === gradeVal));
-            if (targetCourse) {
-                const secLabel = targetCourse.section ? `Sección ${targetCourse.section}` : '';
-                countLabel.textContent = `${filtered.length} estudiantes en ${targetCourse.subject} (${targetCourse.grade} ${secLabel})`;
-            } else {
-                const currentG = (STATE.gradesList || []).find(g => g && (g.code === gradeVal || g.id === gradeVal));
-                const secName = currentG ? `${currentG.name} (Sección ${currentG.section || ''})` : gradeVal;
+            const currentG = (STATE.gradesList || []).find(g => g && (g.code === gradeVal || g.id === gradeVal));
+            if (currentG) {
+                const secLetter = (typeof getCleanSectionLetter === 'function') 
+                    ? getCleanSectionLetter(currentG.section || currentG.code) 
+                    : (currentG.section || '').replace(/secci[oó]n/gi, '').trim();
+                const secName = `${currentG.name}${secLetter ? ` (Sección ${secLetter})` : ''}`;
                 countLabel.textContent = `${filtered.length} estudiantes en ${secName}`;
+            } else {
+                countLabel.textContent = `${filtered.length} estudiantes en ${gradeVal}`;
             }
         }
     }
@@ -38343,34 +38344,14 @@ function openStudentAnnotationModal(studentId = null, defaultDate = null, alertI
     document.getElementById('annotStudentName').textContent = studentDisplayName;
     document.getElementById('annotStudentMeta').textContent = `Carné: ${student.carne || student.personalCode || 'S/C'} | Grado: ${student.grade || ''} ${student.section ? `(${student.section})` : ''} | Carrera: ${student.career || 'Perito Contador'}`;
 
-    // Determinar la clase o sección activa para pre-seleccionar en el filtro
+    // Determinar el grado/sección activa para pre-seleccionar en el filtro
     let activeGradeCode = null;
-    const currentUser = STATE.currentUser || (STATE.users || [])[0];
-    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || 'docente';
-    const isAuthorityRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
-    const isDocente = (currentRole === 'docente') && !isAuthorityRole;
-
-    if (isDocente) {
-        if (typeof ensureOfficialPensumAssignments === 'function' && (!Array.isArray(STATE.pensum) || STATE.pensum.length < 28)) {
-            ensureOfficialPensumAssignments();
-        }
-        const myClasses = (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(p, currentUser) : false);
-        const matchingClass = myClasses.find(c => isStudentInGrade(student, c.id));
-        if (matchingClass) {
-            activeGradeCode = matchingClass.id;
-        } else if (myClasses.length > 0) {
-            activeGradeCode = myClasses[0].id;
-        }
-    }
-
-    if (!activeGradeCode) {
-        const studentGrade = findGradeForStudent(student);
-        if (studentGrade) {
-            activeGradeCode = studentGrade.code || studentGrade.id;
-        } else if (STATE.currentGrade) {
-            const cg = (STATE.gradesList || []).find(g => g && (g.code === STATE.currentGrade || g.id === STATE.currentGrade));
-            if (cg) activeGradeCode = cg.code || cg.id;
-        }
+    const studentGrade = findGradeForStudent(student);
+    if (studentGrade) {
+        activeGradeCode = studentGrade.code || studentGrade.id;
+    } else if (STATE.currentGrade) {
+        const cg = (STATE.gradesList || []).find(g => g && (g.code === STATE.currentGrade || g.id === STATE.currentGrade));
+        if (cg) activeGradeCode = cg.code || cg.id;
     }
 
     // Inicializar y sincronizar el selector con la clase/sección activa y sus estudiantes
