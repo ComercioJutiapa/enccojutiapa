@@ -24315,18 +24315,20 @@ function updateAttendanceCoursesList() {
         coursesHtml = `<option value="">-- Sin clases asignadas en este grado --</option>`;
     }
 
+    const prevSelectedCourse = courseSelect.value || STATE.attendanceSelectedCourse || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ENCCO_SELECTED_ATTENDANCE_COURSE') : null);
+
     courseSelect.innerHTML = coursesHtml;
 
     if (matchingPensum.length > 0) {
-        if (isDocente && !isAuthorityRole) {
-            if (!courseSelect.value || courseSelect.value === 'GENERAL' || !matchingPensum.some(p => p.id === courseSelect.value)) {
-                courseSelect.value = matchingPensum[0].id;
-            }
+        if (prevSelectedCourse && matchingPensum.some(p => p.id === prevSelectedCourse)) {
+            courseSelect.value = prevSelectedCourse;
+        } else if (prevSelectedCourse === 'GENERAL' && isAuthorityRole) {
+            courseSelect.value = 'GENERAL';
+        } else if (isDocente && !isAuthorityRole) {
+            courseSelect.value = matchingPensum[0].id;
         } else if (isAuthorityRole && activeTeacherObj) {
             // Cuando una autoridad o Auxiliatura filtra por docente específico, enfocar de inmediato su cátedra asignada
-            if (!courseSelect.value || courseSelect.value === 'GENERAL' || !matchingPensum.some(p => p.id === courseSelect.value)) {
-                courseSelect.value = matchingPensum[0].id;
-            }
+            courseSelect.value = matchingPensum[0].id;
         }
     }
 }
@@ -24401,34 +24403,28 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
         });
 
         // =========================================================================
-        // REGLA 2: "SOLO SI DIRECCIÓN, SECRETARÍA O AUXILIATURA JUSTIFICA, ES PARA TODOS"
-        // Si hay una justificación oficial de una autoridad, aplica para todos los docentes (sobrescribe con 'J')
+        // REGLA 2: "SOLO SI DIRECCIÓN, SECRETARÍA O AUXILIATURA EMITE PERMISO OFICIAL, ES INSTITUCIONAL"
+        // Si hay una justificación/permiso oficial formal de una autoridad institucional, aplica
         // =========================================================================
-        const genKey = getAttendanceRecordKey(gradeCode, month, 'GENERAL');
-        const genSrc = (STATE.attendanceRecords && STATE.attendanceRecords[genKey]) || {};
         const year = parseInt(cycleKey) || 2026;
 
         (STATE.students || []).forEach(s => {
             const sId = s.id;
             for (let day = 1; day <= 31; day++) {
-                // a) ¿Permiso oficial registrado en studentPermissions?
+                // a) ¿Permiso oficial registrado en studentPermissions por Auxiliatura / Dirección?
                 const perm = typeof getStudentPermissionForDay === 'function' ? getStudentPermissionForDay(sId, year, month, day) : null;
                 const permOrigin = perm ? (perm.origin_role || perm.originRole || '').toLowerCase() : '';
-                const permIsAdmin = perm && (perm.is_locked_by_admin || authorityRoles.includes(permOrigin) || permOrigin !== 'docente');
+                const permIsAdmin = !!perm && (perm.is_locked_by_admin === true || authorityRoles.includes(permOrigin)) && permOrigin !== 'docente';
 
-                // b) ¿Justificación en attendancePermissionsMeta autorizada por autoridad?
+                // b) ¿Justificación en attendancePermissionsMeta autorizada por autoridad institucional?
                 const metaKey = `${sId}_${month}_${day}`;
                 const meta = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]) || null;
                 const metaOrigin = meta ? (meta.origin_role || '').toLowerCase() : '';
-                const metaIsAdmin = meta && (meta.is_locked_by_admin === true || authorityRoles.includes(metaOrigin));
+                const metaIsAdmin = !!meta && (meta.is_locked_by_admin === true || authorityRoles.includes(metaOrigin)) && metaOrigin !== 'docente';
 
-                // c) ¿Justificación 'J' en GENERAL registrada por una autoridad?
-                const genVal = genSrc[sId] ? genSrc[sId][day] : null;
-                const genIsAdminJ = (genVal === 'J') && (permIsAdmin || metaIsAdmin || (metaOrigin !== 'docente' && (!meta || authorityRoles.includes(metaOrigin))));
-
-                if (permIsAdmin || metaIsAdmin || genIsAdminJ) {
+                if (permIsAdmin || metaIsAdmin) {
                     if (!monthData[sId]) monthData[sId] = {};
-                    monthData[sId][day] = 'J'; // Oficial para todas las materias
+                    monthData[sId][day] = 'J'; // Permiso oficial de autoridad
                 }
             }
         });
@@ -24700,6 +24696,13 @@ function loadAttendanceList() {
         currentCourseObj = (STATE.pensum || []).find(p => p.id === courseId);
     }
 
+    STATE.attendanceSelectedCourse = courseId;
+    try {
+        if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem('ENCCO_SELECTED_ATTENDANCE_COURSE', courseId);
+        }
+    } catch(e) {}
+
     if (currentTeacherBadge) {
         if (currentCourseObj && currentCourseObj.teacher) {
             currentTeacherBadge.innerHTML = `<i class="fa-solid fa-chalkboard-user"></i> Catedrático: <strong>${currentCourseObj.teacher}</strong>`;
@@ -24823,11 +24826,11 @@ function loadAttendanceList() {
                 let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : '';
 
                 // 🛡️ 1. Verificar si existe permiso oficial autorizado por Auxiliatura / Dirección / Secretaría
-                const permMeta = getStudentPermissionForDay(s.id, year, month, day);
+                const permMeta = (typeof getStudentPermissionForDay === 'function') ? getStudentPermissionForDay(s.id, year, month, day) : null;
 
-                // 🛡️ 2. Verificar si está justificado en Control General (GENERAL) por Auxiliatura / Secretaría / Dirección
+                // 🛡️ 2. Verificar si está justificado en Control General (GENERAL) ÚNICAMENTE cuando la vista activa ES GENERAL
                 const genKey = getAttendanceRecordKey(gradeCode, month, 'GENERAL');
-                const genDayVal = (courseId !== 'GENERAL' && STATE.attendanceRecords && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][s.id])
+                const genDayVal = (courseId === 'GENERAL' && STATE.attendanceRecords && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][s.id])
                     ? STATE.attendanceRecords[genKey][s.id][day]
                     : '';
 
@@ -24837,7 +24840,7 @@ function loadAttendanceList() {
                 const permIsLockedByAdmin = permMeta ? (permMeta.is_locked_by_admin === true || (permMeta.is_locked_by_admin !== false && permOriginRole !== 'docente')) : false;
 
                 // ¿Es justificación oficial de Auxiliatura, Secretaría o Dirección?
-                const isOfficialJustified = (genDayVal === 'J' && permOriginRole !== 'docente') || (!!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente');
+                const isOfficialJustified = (courseId === 'GENERAL' && genDayVal === 'J') || (!!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente');
 
                 // Si tiene permiso o está justificado oficialmente por las autoridades, el indicador obligatorio es 'J'
                 if (isOfficialJustified) {
@@ -25279,7 +25282,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         : ((STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[`${studentId}_${month}_${day}`]) || null);
 
     const genKey = getAttendanceRecordKey(gradeCode, month, 'GENERAL');
-    const genVal = (courseId !== 'GENERAL' && STATE.attendanceRecords && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][studentId])
+    const genVal = (courseId === 'GENERAL' && STATE.attendanceRecords && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][studentId])
         ? STATE.attendanceRecords[genKey][studentId][day]
         : '';
 
@@ -25289,7 +25292,8 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     const permIsLockedByAdmin = permMeta ? (permMeta.is_locked_by_admin === true || (permMeta.is_locked_by_admin !== false && permOriginRole !== 'docente')) : false;
 
     // ¿Es justificación oficial de Auxiliatura, Secretaría o Dirección?
-    const isOfficialJustified = (genVal === 'J' && permOriginRole !== 'docente') || (!!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente');
+    const isOfficialJustified = (courseId === 'GENERAL' && genVal === 'J' && permOriginRole !== 'docente') || 
+                                (!!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente');
 
     if (isOfficialJustified) {
         const studentObj = (STATE.students || []).find(s => s.id === studentId);
@@ -25332,10 +25336,8 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
 
     if (next === 'J') {
-        if (isAuditRole) {
-            // =========================================================================
-            // REGLA: "SOLO SI DIRECCIÓN, SECRETARÍA O AUXILIATURA JUSTIFICA, ES PARA TODOS"
-            // =========================================================================
+        if (isAuditRole && courseId === 'GENERAL') {
+            // Justificación en Control General por una autoridad institucional
             STATE.attendancePermissionsMeta[metaKey] = {
                 reasonCategory: 'Permiso / Justificación Oficial',
                 reasonDetail: 'Justificación autorizada por ' + currentRole.toUpperCase(),
@@ -25344,22 +25346,6 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
                 is_locked_by_admin: true,
                 timestamp: Date.now()
             };
-
-            // 1. Guardar en GENERAL para control central
-            if (genKey) {
-                if (!STATE.attendanceRecords[genKey]) STATE.attendanceRecords[genKey] = {};
-                if (!STATE.attendanceRecords[genKey][studentId]) STATE.attendanceRecords[genKey][studentId] = {};
-                STATE.attendanceRecords[genKey][studentId][day] = 'J';
-            }
-
-            // 2. Propagar 'J' a todas las cátedras del grado para este alumno
-            const cycleKey = STATE.activeCycle || '2026';
-            Object.keys(STATE.attendanceRecords).forEach(k => {
-                if (k.startsWith(`${cycleKey}_M${month}_${gradeCode}_`)) {
-                    if (!STATE.attendanceRecords[k][studentId]) STATE.attendanceRecords[k][studentId] = {};
-                    STATE.attendanceRecords[k][studentId][day] = 'J';
-                }
-            });
         } else {
             // Justificación en aula por el docente: INDIVIDUAL de su propia cátedra
             STATE.attendancePermissionsMeta[metaKey] = {
@@ -25370,7 +25356,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
                 is_locked_by_admin: false,
                 timestamp: Date.now()
             };
-            // No se propaga a GENERAL ni a otras materias
+            // Cero interferencia con otras clases
         }
     } else if (cur === 'J') {
         // Se revirtió la 'J'
@@ -25381,7 +25367,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
                 delete STATE.attendancePermissionsMeta[metaKey];
             }
         }
-        if (isAuditRole && genKey && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][studentId]) {
+        if (isAuditRole && courseId === 'GENERAL' && genKey && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][studentId]) {
             delete STATE.attendanceRecords[genKey][studentId][day];
         }
     }
@@ -25426,7 +25412,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         td.title = cellTitle;
     }
 
-    saveAttendanceRecords(false);
+    saveAttendanceRecords(false, null, recordKey);
     updateAttendanceLiveStats(studentId);
 }
 
@@ -25832,11 +25818,8 @@ function markAllPresentToday() {
             ? !!getStudentPermissionForDay(s.id, today.getFullYear(), todayMonth, todayDay)
             : false;
         const currentVal = STATE.attendanceRecords[recordKey][s.id][todayDay];
-        const genVal = (genRecordKey && STATE.attendanceRecords[genRecordKey] && STATE.attendanceRecords[genRecordKey][s.id])
-            ? STATE.attendanceRecords[genRecordKey][s.id][todayDay]
-            : null;
 
-        if (currentVal === 'J' || genVal === 'J' || hasPermit) {
+        if (currentVal === 'J' || hasPermit) {
             STATE.attendanceRecords[recordKey][s.id][todayDay] = 'J';
             preservedJustifiedCount++;
             return;
@@ -25846,7 +25829,7 @@ function markAllPresentToday() {
         markedCount++;
     });
 
-    saveAttendanceRecords(false);
+    saveAttendanceRecords(false, null, recordKey);
     loadAttendanceList();
 
     if (preservedJustifiedCount > 0) {
@@ -25867,17 +25850,37 @@ function saveAttendanceRecords(showToastMsg = true, e = null, recordKey = null) 
         if (e.stopPropagation) e.stopPropagation();
     }
 
+    if (!recordKey) {
+        try {
+            const gradeSelect = (typeof document !== 'undefined') ? document.getElementById('attendanceGradeSelect') : null;
+            const monthSelect = (typeof document !== 'undefined') ? document.getElementById('attendanceMonthSelect') : null;
+            const courseSelect = (typeof document !== 'undefined') ? document.getElementById('attendanceCourseSelect') : null;
+            if (gradeSelect && monthSelect) {
+                const gradeCode = gradeSelect.value;
+                const month = parseInt(monthSelect.value) || 8;
+                const courseId = courseSelect ? courseSelect.value : 'GENERAL';
+                recordKey = (typeof getAttendanceRecordKey === 'function') 
+                    ? getAttendanceRecordKey(gradeCode, month, courseId) 
+                    : `${gradeCode}_${month}_${courseId}`;
+            }
+        } catch(e) {}
+    }
+
     // Si es un cambio rápido de celda (showToastMsg = false), aplicar debounce de 350ms para persistir en disco y sincronizar en segundo plano sin congelar la UI
     if (!showToastMsg) {
         if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
         _attendanceSaveTimeout = setTimeout(() => {
             saveStateToLocalStorage();
-            _syncAttendanceToFirebaseBackground(recordKey);
+            if (typeof _syncAttendanceToFirebaseBackground === 'function') {
+                _syncAttendanceToFirebaseBackground(recordKey);
+            }
         }, 350);
     } else {
         if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
         saveStateToLocalStorage();
-        _syncAttendanceToFirebaseBackground(recordKey);
+        if (typeof _syncAttendanceToFirebaseBackground === 'function') {
+            _syncAttendanceToFirebaseBackground(recordKey);
+        }
         if (typeof showToast === 'function') {
             showToast('Planilla de asistencia guardada y sincronizada exitosamente.', 'success');
         }
@@ -25889,12 +25892,20 @@ async function _syncAttendanceToFirebaseBackground(targetRecordKey = null) {
     try {
         const modular = window.FirebaseModular;
         if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
-            modular.setDoc(modular.doc(modular.db, 'config', 'asistencia'), {
-                records: STATE.attendanceRecords || {},
+            const docRef = modular.doc(modular.db, 'config', 'asistencia');
+            const dataToSet = {
                 permissionsMeta: STATE.attendancePermissionsMeta || {},
                 attendancePermissionsMeta: STATE.attendancePermissionsMeta || {},
                 lastModified: Date.now()
-            }, { merge: true }).catch(fsErr => {
+            };
+            if (targetRecordKey && STATE.attendanceRecords && STATE.attendanceRecords[targetRecordKey]) {
+                dataToSet.records = {
+                    [targetRecordKey]: STATE.attendanceRecords[targetRecordKey]
+                };
+            } else {
+                dataToSet.records = STATE.attendanceRecords || {};
+            }
+            modular.setDoc(docRef, dataToSet, { merge: true }).catch(fsErr => {
                 console.warn("Aviso en Firestore al guardar asistencia en segundo plano:", fsErr);
             });
         }
@@ -26220,18 +26231,15 @@ function registerAttendanceByCode(rawCode) {
         ? ((typeof getAttendanceRecordKey === 'function') ? getAttendanceRecordKey(activeGradeCode, activeMonth, 'GENERAL') : `${activeGradeCode}_${activeMonth}_GENERAL`)
         : null;
     const curVal = STATE.attendanceRecords[recordKey][student.id][targetDay];
-    const genVal = (genRecKey && STATE.attendanceRecords[genRecKey] && STATE.attendanceRecords[genRecKey][student.id])
-        ? STATE.attendanceRecords[genRecKey][student.id][targetDay]
-        : null;
     const hasPermit = (typeof getStudentPermissionForDay === 'function')
         ? !!getStudentPermissionForDay(student.id, today.getFullYear(), activeMonth, targetDay)
         : false;
 
     const sFullName = formatStudentDisplayName(student, 'lastFirst') || 'Estudiante';
 
-    if (curVal === 'J' || genVal === 'J' || hasPermit) {
+    if (curVal === 'J' || hasPermit) {
         STATE.attendanceRecords[recordKey][student.id][targetDay] = 'J';
-        if (typeof saveAttendanceRecords === 'function') saveAttendanceRecords(false);
+        if (typeof saveAttendanceRecords === 'function') saveAttendanceRecords(false, null, recordKey);
         playAttendanceBeep(true);
         if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([70, 40, 70]);
         updateLastScannedBanner(student, 'warning', `🔒 Permiso Justificado Protegido (Día ${targetDay})`);
@@ -26244,7 +26252,7 @@ function registerAttendanceByCode(rawCode) {
 
         // Guardado optimista instantáneo
         if (typeof saveAttendanceRecords === 'function') {
-            saveAttendanceRecords(false);
+            saveAttendanceRecords(false, null, recordKey);
         }
 
         // Notificaciones sensoriales
