@@ -3497,6 +3497,79 @@ tr.row-student-retired td.att-cell:hover,
     filter: none !important;
 }
 
+/* 📘 Fila y distintivo de alumnos exonerados en la cuadrícula de asistencia (Línea Azul con asistencia interactiva P, J, T) */
+tr.row-student-exonerado {
+    background-color: #eff6ff !important;
+    border-left: 4px solid #0284c7 !important;
+}
+
+tr.row-student-exonerado td.col-num {
+    background-color: #e0f2fe !important;
+    color: #0369a1 !important;
+    border-left: 4px solid #0284c7 !important;
+    font-weight: 800 !important;
+}
+
+tr.row-student-exonerado td.col-carne {
+    background-color: #f0f9ff !important;
+    color: #0369a1 !important;
+}
+
+tr.row-student-exonerado td.col-name {
+    background-color: #f0f9ff !important;
+    color: #0c4a6e !important;
+    border-right: 2px solid #38bdf8 !important;
+}
+
+tr.row-student-exonerado td.col-name strong {
+    color: #0369a1 !important;
+}
+
+tr.row-student-exonerado td.att-cell {
+    background-color: #ffffff;
+    border-color: #cbd5e1;
+}
+
+tr.row-student-exonerado td.att-cell.att-val-empty {
+    background-color: #f0f9ff;
+}
+
+tr.row-student-exonerado td.att-cell:hover:not(.att-cell-locked) {
+    background-color: #bae6fd !important;
+    cursor: pointer;
+}
+
+/* Modo oscuro para alumnos exonerados */
+body.theme-dark tr.row-student-exonerado {
+    background-color: #082f49 !important;
+    border-left: 4px solid #38bdf8 !important;
+}
+
+body.theme-dark tr.row-student-exonerado td.col-num {
+    background-color: #0c4a6e !important;
+    color: #38bdf8 !important;
+    border-left: 4px solid #38bdf8 !important;
+}
+
+body.theme-dark tr.row-student-exonerado td.col-carne {
+    background-color: #082f49 !important;
+    color: #7dd3fc !important;
+}
+
+body.theme-dark tr.row-student-exonerado td.col-name {
+    background-color: #082f49 !important;
+    color: #e0f2fe !important;
+    border-right: 2px solid #0284c7 !important;
+}
+
+body.theme-dark tr.row-student-exonerado td.col-name strong {
+    color: #38bdf8 !important;
+}
+
+body.theme-dark tr.row-student-exonerado td.att-cell.att-val-empty {
+    background-color: #0c4a6e;
+}
+
 /* ==========================================================================
    PANEL INSTITUCIONAL DE CONTROL, FILTROS Y ACCIONES DE NÓMINA (#view-students)
    ========================================================================== */

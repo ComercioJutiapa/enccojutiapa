@@ -11724,6 +11724,20 @@ function isSubjectBimestreExonerated(student, subjectName, bimestreNum) {
 }
 window.isSubjectBimestreExonerated = isSubjectBimestreExonerated;
 
+function isStudentExonerated(student) {
+    if (!student) return false;
+    if (student.status === 'Exonerado' || student.isExonerated === true || student.exonerado === true) {
+        return true;
+    }
+    const exons = (typeof getStudentExonerationsList === 'function')
+        ? getStudentExonerationsList(student)
+        : (student.academicExceptions || student.exoneraciones || []);
+    if (Array.isArray(exons) && exons.length > 0) {
+        return exons.some(ex => !ex || ex.active !== false);
+    }
+    return false;
+}
+window.isStudentExonerated = isStudentExonerated;
 
 function getStudentAcademicInfo(student) {
     if (!student) {
@@ -24780,6 +24794,7 @@ function loadAttendanceList() {
         const studentFullName = formatStudentDisplayName(s, 'lastFirst');
         const isAbsentStatus = (s.status === 'Ausente');
         const isRetired = (s.status === 'Retirado' || s.status === 'Inactivo');
+        const isExonerated = !isRetired && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s) : false);
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dObj = new Date(year, month - 1, day);
@@ -24953,6 +24968,8 @@ function loadAttendanceList() {
         let statusTag = '';
         if (isRetired) {
             statusTag = `<span class="badge badge-danger" style="font-size:0.68rem; margin-left:5px; background:#fee2e2; color:#b91c1c; border:1px solid #f87171; font-weight:700;"><i class="fa-solid fa-user-slash"></i> Retirado</span>`;
+        } else if (isExonerated) {
+            statusTag = `<span class="badge badge-exonerado" style="font-size:0.68rem; margin-left:5px; background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd; font-weight:700;"><i class="fa-solid fa-file-circle-check"></i> Exonerado</span>`;
         } else if (isAbsentStatus) {
             statusTag = `<span class="badge" style="font-size:0.68rem; margin-left:5px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d;">Ausente</span>`;
         }
@@ -24976,12 +24993,17 @@ function loadAttendanceList() {
             </td>
         `;
 
+        const rowClass = isRetired ? 'row-student-retired' : (isExonerated ? 'row-student-exonerado' : '');
+        const rowStyle = isRetired 
+            ? 'background:#fee2e2 !important; color:#991b1b;' 
+            : (isExonerated ? 'background:#eff6ff !important; color:#1e40af; border-left:4px solid #0284c7;' : '');
+
         tbodyHtml += `
-            <tr data-student-id="${s.id}" class="${isRetired ? 'row-student-retired' : ''}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">
-                <td class="col-num" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b; font-weight:bold;' : ''}">${idx + 1}</td>
-                <td class="col-carne" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}"><code>${s.personalCode || s.cui || s.carne || 'S/C'}</code></td>
-                <td class="col-name" title="${studentFullName}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">
-                    <strong style="${isRetired ? 'color:#991b1b;' : ''}">${studentFullName}</strong>${statusTag}
+            <tr data-student-id="${s.id}" class="${rowClass}" style="${rowStyle}">
+                <td class="col-num" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b; font-weight:bold;' : (isExonerated ? 'background:#e0f2fe !important; color:#0369a1; font-weight:bold; border-left:4px solid #0284c7;' : '')}">${idx + 1}</td>
+                <td class="col-carne" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : (isExonerated ? 'background:#f0f9ff !important; color:#0369a1;' : '')}"><code>${s.personalCode || s.cui || s.carne || 'S/C'}</code></td>
+                <td class="col-name" title="${studentFullName}${isExonerated ? ' (Estudiante Exonerado)' : ''}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : (isExonerated ? 'background:#f0f9ff !important; color:#0369a1; border-right:2px solid #38bdf8;' : '')}">
+                    <strong style="${isRetired ? 'color:#991b1b;' : (isExonerated ? 'color:#0369a1;' : '')}">${studentFullName}</strong>${statusTag}
                 </td>
                 ${cellsHtml}
                 <td class="col-stat col-stat-p" id="statP_${s.id}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isRetired ? '—' : pCount}</td>
@@ -26514,13 +26536,17 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
 
         const totalLogged = isRet ? 0 : (pCount + aCount + jCount + tCount);
         const pct = (!isRet && totalLogged > 0) ? Math.round(((pCount + jCount + (tCount * 0.5)) / totalLogged) * 100) : 100;
+        const isExon = !isRet && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s) : false);
         const retTag = isRet ? ' <span style="color:#b91c1c; font-weight:900; font-size:7.5pt;">[RETIRADO]</span>' : '';
+        const exonTag = isExon ? ' <span style="color:#0284c7; font-weight:900; font-size:7.5pt;">[EXONERADO]</span>' : '';
+
+        const printRowBg = isRet ? 'background-color:#fef2f2; color:#64748b;' : (isExon ? 'background-color:#eff6ff; color:#0369a1;' : (idx % 2 === 1 ? 'background-color:#f8fafc;' : ''));
 
         tbodyRows += `
-            <tr style="${isRet ? 'background-color:#fef2f2; color:#64748b;' : (idx % 2 === 1 ? 'background-color:#f8fafc;' : '')}">
+            <tr style="${printRowBg}">
                 <td style="text-align:center; font-weight:bold; border:1px solid #64748b; padding:4px 2px;">${idx + 1}</td>
                 <td style="font-family:monospace; font-weight:bold; border:1px solid #64748b; padding:4px 4px; font-size:7.8pt;">${s.personalCode || s.cui || s.carne || 'S/C'}</td>
-                <td style="font-weight:bold; border:1px solid #64748b; padding:4px 6px; white-space:nowrap; font-size:8.2pt;">${studentFullName}${retTag}</td>
+                <td style="font-weight:bold; border:1px solid #64748b; padding:4px 6px; white-space:nowrap; font-size:8.2pt;">${studentFullName}${retTag}${exonTag}</td>
                 ${dayCells}
                 <td style="text-align:center; font-weight:bold; color:#15803d; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : pCount}</td>
                 <td style="text-align:center; font-weight:bold; color:#b91c1c; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : aCount}</td>
