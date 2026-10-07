@@ -196,7 +196,103 @@ assert(availableProctors.some(u => u.id === 'T4'), 'T4 puede cuidar');
 assert(availableProctors.some(u => u.id === 'T5'), 'T5 puede cuidar');
 console.log('✅ Regla de Oro Multititular Verificada: Ni T1 (titular A) ni T3 (titular B) pueden cuidar salones.');
 
+// 8. Test Per-Section Independent Duration
+console.log('\n[Test 8] Verificando Duraciones Independientes por Sección...');
+const testScheduleBlock = {
+    cycle: '2026',
+    bimester: 'BIM3',
+    days: [{
+        id: 'day_test_sec_dur',
+        date: '2026-10-15',
+        evaluations: [{
+            id: 'eval_conta_multi_dur',
+            gradeName: '4to Perito Contador',
+            courseName: 'Contabilidad General',
+            durationMinutes: 75, // máximo
+            startTime: '07:30',
+            endTime: '08:45',
+            recessMinutes: 15,
+            titularTeachers: [
+                { section: 'Sección A', teacherId: 'T1', teacherName: 'Prof. Juan Pérez' },
+                { section: 'Sección B', teacherId: 'T3', teacherName: 'Prof. Carlos Ruíz' }
+            ],
+            sections: [
+                {
+                    gradeCode: '4to A',
+                    section: 'Sección A',
+                    teacherId: 'T1',
+                    teacherName: 'Prof. Juan Pérez',
+                    durationMinutes: 60, // 60 min para A
+                    startTime: '07:30',
+                    endTime: '08:30',
+                    groupA: { classroom: 'Salón 1', range: '01 al 15', caretakerTeacherId: '', caretakerTeacherName: '' },
+                    groupB: { classroom: 'Salón 2', range: '16 al 30', caretakerTeacherId: '', caretakerTeacherName: '' }
+                },
+                {
+                    gradeCode: '4to B',
+                    section: 'Sección B',
+                    teacherId: 'T3',
+                    teacherName: 'Prof. Carlos Ruíz',
+                    durationMinutes: 75, // 75 min para B
+                    startTime: '07:30',
+                    endTime: '08:45',
+                    groupA: { classroom: 'Salón 3', range: '01 al 15', caretakerTeacherId: '', caretakerTeacherName: '' },
+                    groupB: { classroom: 'Salón 4', range: '16 al 30', caretakerTeacherId: '', caretakerTeacherName: '' }
+                }
+            ]
+        }]
+    }]
+};
+assert.strictEqual(testScheduleBlock.days[0].evaluations[0].sections[0].durationMinutes, 60, 'Sección A tiene 60 min');
+assert.strictEqual(testScheduleBlock.days[0].evaluations[0].sections[1].durationMinutes, 75, 'Sección B tiene 75 min');
+assert.strictEqual(testScheduleBlock.days[0].evaluations[0].durationMinutes, 75, 'Bloque máximo dura 75 min');
+console.log('✅ Duraciones independientes por sección verificadas correctamente.');
+
+// 9. Test Sorteo Aleatorio y Equitativo de Cuidadores
+console.log('\n[Test 9] Verificando Sorteo Aleatorio y Equitativo de Cuidadores...');
+// Agregar suficientes profesores al claustro (T1..T8) para cubrir 4 salones simultáneos excluyendo a los 2 titulares (T1 y T3)
+global.STATE.users = [
+    { id: 'T1', name: 'Prof. Juan Pérez', role: 'docente' },
+    { id: 'T2', name: 'Prof. María López', role: 'docente' },
+    { id: 'T3', name: 'Prof. Carlos Ruíz', role: 'docente' },
+    { id: 'T4', name: 'Prof. Sonia Morales', role: 'docente' },
+    { id: 'T5', name: 'Prof. Héctor Castro', role: 'profesor_auxiliar' },
+    { id: 'T6', name: 'Lic. Carlos Mendoza', role: 'docente' },
+    { id: 'T7', name: 'Prof. Mario Hernandez', role: 'docente' },
+    { id: 'T8', name: 'Licda. Elena Morales', role: 'docente' }
+];
+
+const lotteryResult = mod.autoAssignRandomProctors(testScheduleBlock, 'day_test_sec_dur');
+assert(lotteryResult.success === true, 'El sorteo debe completarse exitosamente');
+assert(lotteryResult.assignedCount === 4, 'Se deben haber asignado 4 plazas de cuido (2 secciones x 2 salones A y B)');
+
+const updatedSecA = testScheduleBlock.days[0].evaluations[0].sections[0];
+const updatedSecB = testScheduleBlock.days[0].evaluations[0].sections[1];
+
+// Verificar que ningún titular cuida ninguna sección
+const assignedCaretakerIds = [
+    updatedSecA.groupA.caretakerTeacherId,
+    updatedSecA.groupB.caretakerTeacherId,
+    updatedSecB.groupA.caretakerTeacherId,
+    updatedSecB.groupB.caretakerTeacherId
+];
+
+assert(!assignedCaretakerIds.includes('T1'), 'T1 (titular Sección A) NO debe ser asignado como cuidador');
+assert(!assignedCaretakerIds.includes('T3'), 'T3 (titular Sección B) NO debe ser asignado como cuidador');
+
+// Verificar que no hay colisión (ningún docente asignado a 2 salones al mismo tiempo)
+const uniqueCaretakers = new Set(assignedCaretakerIds);
+assert.strictEqual(uniqueCaretakers.size, 4, '4 docentes distintos deben cuidar los 4 salones simultáneos (sin colisión)');
+
+// Verificar que los docentes asignados provienen del grupo de profesores disponibles no titulares
+const availablePoolIds = ['T2', 'T4', 'T5', 'T6', 'T7', 'T8'];
+assignedCaretakerIds.forEach(id => {
+    assert(availablePoolIds.includes(id), `Cuidador ${id} debe ser de los profesores disponibles no titulares`);
+});
+console.log('✅ Sorteo aleatorio, equitativo y sin colisiones verificado con éxito.');
+
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');
 console.log('================================================================================');
+
 

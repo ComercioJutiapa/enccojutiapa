@@ -155,7 +155,7 @@
         if (!window.STATE) window.STATE = {};
         if (!STATE.examSchedules || typeof STATE.examSchedules !== 'object') {
             try {
-                const stored = localStorage.getItem(STORAGE_KEY);
+                const stored = (typeof localStorage !== 'undefined' && localStorage.getItem) ? localStorage.getItem(STORAGE_KEY) : null;
                 STATE.examSchedules = stored ? JSON.parse(stored) : {};
             } catch (e) {
                 STATE.examSchedules = {};
@@ -168,7 +168,9 @@
     function saveExamSchedulesData(showNotification = true) {
         try {
             const data = getExamSchedulesData();
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            if (typeof localStorage !== 'undefined' && localStorage.setItem) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            }
 
             // Sincronización en segundo plano con Firebase si está disponible
             if (window.FirebaseModular && window.FirebaseModular.db) {
@@ -309,10 +311,11 @@
                     // Regular o Computación dividida
                     if (Array.isArray(ev.sections) && ev.sections.length > 0) {
                         ev.sections.forEach(sec => {
+                            const secDur = parseInt(sec.durationMinutes, 10) || dur;
                             ['groupA', 'groupB'].forEach(grpKey => {
                                 const grp = sec[grpKey];
                                 if (grp && grp.caretakerTeacherId && workload[grp.caretakerTeacherId]) {
-                                    workload[grp.caretakerTeacherId].minutes += dur;
+                                    workload[grp.caretakerTeacherId].minutes += secDur;
                                     workload[grp.caretakerTeacherId].salonesCount += 1;
                                 }
                             });
@@ -524,6 +527,9 @@
                             <option value="BIM3" ${bimesterSelectVal === 'BIM3' ? 'selected' : ''}>III Bimestre</option>
                             <option value="BIM4" ${bimesterSelectVal === 'BIM4' ? 'selected' : ''}>IV Bimestre</option>
                         </select>
+                        <button type="button" class="btn btn-warning" onclick="window.randomizeProctorsForBimester()" style="background:#f59e0b; border-color:#d97706; color:#0f172a; font-weight:800;" title="Asignar equitativa y aleatoriamente cuidadores para todo el bimestre">
+                            <i class="fa-solid fa-dice"></i> Sorteo Aleatorio Bimestre
+                        </button>
                         <button type="button" class="btn btn-primary" onclick="window.addNewExamDayModal()" style="background:#15803d; border-color:#166534; font-weight:700;">
                             <i class="fa-solid fa-plus"></i> Agregar Día de Examen
                         </button>
@@ -592,6 +598,9 @@
                     </h3>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-sm btn-warning" onclick="window.randomizeProctorsForDay('${dayObj.id}')" style="font-weight:800; color:#0f172a;" title="Sortear cuidadores aleatoriamente para este día">
+                        <i class="fa-solid fa-dice"></i> Sortear Cuidadores
+                    </button>
                     <button type="button" class="btn btn-sm btn-light" onclick="window.printDailyScheduleOficio('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir Horario en Hoja Oficio (3 Columnas)">
                         <i class="fa-solid fa-print"></i> Horario Hoja Oficio (3 Col.)
                     </button>
@@ -743,17 +752,27 @@
             ev.sections.forEach(sec => {
                 html += `
                     <div class="exam-group-card" style="border-left:4px solid #15803d;">
-                        <strong style="color:#166534; display:block; margin-bottom:4px;">
-                            🏫 ${sec.section} ─ Salón ${sec.groupA.classroom || '1'} (Grupo A: ${sec.groupA.range || '1 a N/2'})
-                        </strong>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <strong style="color:#166534;">
+                                🏫 ${sec.section} ─ Salón ${sec.groupA.classroom || '1'} (Grupo A: ${sec.groupA.range || '1 a N/2'})
+                            </strong>
+                            <span style="font-size:0.75rem; font-weight:800; background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px;">
+                                ⏱️ ${sec.durationMinutes || ev.durationMinutes} min
+                            </span>
+                        </div>
                         <div style="font-size:0.82rem; color:#334155;">
                             • <strong>Docente Cuidador:</strong> ${sec.groupA.caretakerTeacherName || 'Sin asignar'}
                         </div>
                     </div>
                     <div class="exam-group-card" style="border-left:4px solid #15803d;">
-                        <strong style="color:#166534; display:block; margin-bottom:4px;">
-                            🏫 ${sec.section} ─ Salón ${sec.groupB.classroom || '2'} (Grupo B: ${sec.groupB.range || 'N/2+1 a N'})
-                        </strong>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <strong style="color:#166534;">
+                                🏫 ${sec.section} ─ Salón ${sec.groupB.classroom || '2'} (Grupo B: ${sec.groupB.range || 'N/2+1 a N'})
+                            </strong>
+                            <span style="font-size:0.75rem; font-weight:800; background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px;">
+                                ⏱️ ${sec.durationMinutes || ev.durationMinutes} min
+                            </span>
+                        </div>
                         <div style="font-size:0.82rem; color:#334155;">
                             • <strong>Docente Cuidador:</strong> ${sec.groupB.caretakerTeacherName || 'Sin asignar'}
                         </div>
@@ -1138,11 +1157,16 @@
             if (specialSec) specialSec.innerHTML = '';
         }
 
-        // Construir tarjetas de salones para CADA sección (Grupo A y Grupo B)
+        // Construir tarjetas de salones para CADA sección (Grupo A y Grupo B) con selector de tiempo independiente
         let salonsHtml = `
-            <h6 style="font-weight:800; color:#15803d; border-bottom:1px solid #cbd5e1; padding-bottom:6px; display:flex; align-items:center; gap:8px;">
-                <i class="fa-solid fa-school"></i> Salones y Docentes Cuidadores (Todas las Secciones del Grado)
-            </h6>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #cbd5e1; padding-bottom:6px; margin-bottom:10px;">
+                <h6 style="font-weight:800; color:#15803d; margin:0; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-school"></i> Salones, Cuidadores y Tiempos por Sección
+                </h6>
+                <div style="font-size:0.8rem; color:#64748b; font-weight:700;">
+                    Cada docente titular puede fijar una duración distinta según su prueba
+                </div>
+            </div>
         `;
 
         let defaultSalonCounter = 1;
@@ -1155,11 +1179,13 @@
             // Valores previos si estamos editando
             let curA = { classroom: `Salón ${defaultSalonCounter++}`, caretaker: '', turn2: '' };
             let curB = { classroom: `Salón ${defaultSalonCounter++}`, caretaker: '', turn2: '' };
+            let secDuration = isPrac ? 300 : 60;
 
             if (editPayload) {
                 if (Array.isArray(editPayload.sections)) {
                     const foundSec = editPayload.sections.find(sc => sc.gradeCode === secCode || sc.section === secName);
                     if (foundSec) {
+                        secDuration = foundSec.durationMinutes || editPayload.durationMinutes || secDuration;
                         if (foundSec.groupA) {
                             curA.classroom = foundSec.groupA.classroom || curA.classroom;
                             curA.caretaker = foundSec.groupA.caretakerTeacherId || '';
@@ -1172,7 +1198,7 @@
                         }
                     }
                 } else if (sIdx === 0) {
-                    // Compatibilidad con objeto singular anterior
+                    secDuration = editPayload.durationMinutes || secDuration;
                     if (editPayload.groupA) {
                         curA.classroom = editPayload.groupA.classroom || curA.classroom;
                         curA.caretaker = editPayload.groupA.caretakerTeacherId || '';
@@ -1188,13 +1214,32 @@
 
             salonsHtml += `
                 <div class="p-3 mb-3 rounded" style="background:#ffffff; border:1.5px solid #cbd5e1; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:6px; margin-bottom:10px;">
-                        <strong style="color:#0f172a; font-size:0.95rem;">
-                            📌 ${sInfo.gradeName} ─ <span style="color:#15803d; font-weight:800;">${secName}</span>
-                        </strong>
-                        <span style="font-size:0.8rem; background:#f1f5f9; padding:2px 8px; border-radius:4px; font-weight:700;">
-                            Titular: ${sInfo.teacherName}
-                        </span>
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-bottom:10px;">
+                        <div>
+                            <strong style="color:#0f172a; font-size:0.95rem;">
+                                📌 ${sInfo.gradeName} ─ <span style="color:#15803d; font-weight:800;">${secName}</span>
+                            </strong>
+                            <div style="font-size:0.8rem; color:#475569; font-weight:700;">
+                                Catedrático Titular: <strong>${sInfo.teacherName}</strong>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <label style="font-size:0.82rem; font-weight:800; color:#b45309; margin:0;">
+                                ⏱️ Tiempo Fijado para ${secName}:
+                            </label>
+                            <select id="evalSectionDuration_${sIdx}" class="form-control form-control-sm" style="width:145px; font-weight:800;" onchange="window.recalcEvalTimes()">
+                                <option value="45" ${secDuration === 45 ? 'selected' : ''}>45 minutos</option>
+                                <option value="50" ${secDuration === 50 ? 'selected' : ''}>50 minutos</option>
+                                <option value="60" ${secDuration === 60 ? 'selected' : ''}>60 minutos (1h)</option>
+                                <option value="75" ${secDuration === 75 ? 'selected' : ''}>75 minutos (1h 15m)</option>
+                                <option value="90" ${secDuration === 90 ? 'selected' : ''}>90 minutos (1h 30m)</option>
+                                <option value="120" ${secDuration === 120 ? 'selected' : ''}>120 minutos (2h)</option>
+                                <option value="300" ${secDuration === 300 ? 'selected' : ''}>300 min (Práctica)</option>
+                            </select>
+                            <span id="evalSectionTimeBadge_${sIdx}" style="font-size:0.8rem; font-weight:800; background:#f1f5f9; color:#0f172a; padding:4px 8px; border-radius:4px; border:1px solid #cbd5e1;">
+                                --:-- a --:--
+                            </span>
+                        </div>
                     </div>
 
                     <div class="row g-3">
@@ -1259,19 +1304,38 @@
         }
     };
 
-    // Recalcular horas de inicio y fin automáticamente
+    // Recalcular horas de inicio y fin automáticamente considerando las duraciones de cada sección
     window.recalcEvalTimes = function () {
         const startTimeInput = document.getElementById('evalStartTime');
-        const durationSelect = document.getElementById('evalDurationSelect');
         const endTimeInput = document.getElementById('evalEndTime');
         const warnDiv = document.getElementById('evalTimeLimitWarning');
+        const gradeSelect = document.getElementById('evalGradeSelect');
+        const courseSelect = document.getElementById('evalCourseSelect');
 
-        if (!startTimeInput || !durationSelect || !endTimeInput) return;
+        if (!startTimeInput || !endTimeInput) return;
 
         const startMin = timeStringToMinutes(startTimeInput.value);
-        const dur = parseInt(durationSelect.value, 10) || 60;
-        const endMin = startMin + dur;
+        let maxDuration = 60;
 
+        // Inspeccionar duraciones individuales por sección
+        const academicGradeName = gradeSelect ? gradeSelect.value : '';
+        const courseName = courseSelect ? courseSelect.value : '';
+        if (academicGradeName && courseName) {
+            const sectionsInfo = getSectionsAndTitularsForCourse(academicGradeName, courseName);
+            sectionsInfo.forEach((sInfo, sIdx) => {
+                const secDurSelect = document.getElementById(`evalSectionDuration_${sIdx}`);
+                const secDur = secDurSelect ? (parseInt(secDurSelect.value, 10) || 60) : 60;
+                if (secDur > maxDuration) maxDuration = secDur;
+
+                const secBadge = document.getElementById(`evalSectionTimeBadge_${sIdx}`);
+                if (secBadge) {
+                    const secEndMin = startMin + secDur;
+                    secBadge.textContent = `${minutesToTimeString(startMin)} a ${minutesToTimeString(secEndMin)} hrs (${secDur} min)`;
+                }
+            });
+        }
+
+        const endMin = startMin + maxDuration;
         endTimeInput.value = minutesToTimeString(endMin);
 
         // Validar límite de las 12:30 PM (750 minutos)
@@ -1288,7 +1352,6 @@
         const courseSelect = document.getElementById('evalCourseSelect');
         const academicGradeName = gradeSelect ? gradeSelect.value : '';
         const courseName = courseSelect ? courseSelect.value : '';
-        const duration = parseInt(document.getElementById('evalDurationSelect').value, 10) || 60;
         const startTime = document.getElementById('evalStartTime').value;
         const endTime = document.getElementById('evalEndTime').value;
         const recess = parseInt(document.getElementById('evalRecessMinutes').value, 10) || 15;
@@ -1319,9 +1382,19 @@
         const compRadio = document.querySelector('input[name="compMode"]:checked');
         if (compRadio) compMode = compRadio.value;
 
-        // Construir la matriz de secciones configuradas
+        let maxDurationFound = 60;
+
+        // Construir la matriz de secciones configuradas con su propia duración
         const sectionsPayload = sectionsInfo.map((sInfo, sIdx) => {
             const splitData = splitStudentsInTwoGroups(sInfo.gradeCode);
+
+            const secDurSelect = document.getElementById(`evalSectionDuration_${sIdx}`);
+            const secDuration = secDurSelect ? (parseInt(secDurSelect.value, 10) || 60) : 60;
+            if (secDuration > maxDurationFound) maxDurationFound = secDuration;
+
+            const startMin = timeStringToMinutes(startTime);
+            const secEndMin = startMin + secDuration;
+            const secEndTime = minutesToTimeString(secEndMin);
 
             const classroomA = (document.getElementById(`evalClassroomA_${sIdx}`) && document.getElementById(`evalClassroomA_${sIdx}`).value) || `Salón ${(sIdx * 2) + 1}`;
             const caretakerA = (document.getElementById(`evalCaretakerA_${sIdx}`) && document.getElementById(`evalCaretakerA_${sIdx}`).value) || '';
@@ -1343,6 +1416,9 @@
                 sectionLetter: sInfo.sectionLetter,
                 teacherId: sInfo.teacherId,
                 teacherName: sInfo.teacherName,
+                durationMinutes: secDuration,
+                startTime: startTime,
+                endTime: secEndTime,
                 groupA: {
                     classroom: classroomA,
                     range: splitData.rangeA,
@@ -1384,7 +1460,7 @@
             courseTeacherName: titularNames.join(', ') || 'Catedráticos Titulares',
             titularTeachers: titularTeachers,
             sections: sectionsPayload,
-            durationMinutes: duration,
+            durationMinutes: maxDurationFound,
             startTime: startTime,
             endTime: endTime,
             recessMinutes: recess,
@@ -1436,6 +1512,291 @@
     };
 
     // =========================================================================
+    // SORTEO EQUITATIVO Y ALEATORIO DE CUIDADORES POR BIMESTRE O DÍA
+    // =========================================================================
+    /**
+     * Sorteo equitativo y aleatorio de cuidadores de exámenes.
+     * Reglas aplicadas:
+     * 1. Excluye a todos los catedráticos titulares de la materia asignada.
+     * 2. Evita colisiones de horario: ningún docente cuida dos salones al mismo tiempo.
+     * 3. Equilibrio de carga (antifatiga): prioriza a los docentes con menor tiempo acumulado en el día.
+     * 4. En caso de empates en carga, selecciona de manera 100% aleatoria (Fisher-Yates shuffle).
+     * 5. Guarda la configuración en Firebase/LocalStorage para poder ser editada manualmente en cualquier momento.
+     */
+    function autoAssignRandomProctors(scheduleBlock, targetDayId = null) {
+        // Pool de docentes candidatos
+        const allCandidates = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'profesor_auxiliar');
+        if (allCandidates.length === 0) {
+            return { success: false, message: "No se encontraron usuarios con rol de docente o profesor auxiliar para realizar el sorteo." };
+        }
+
+        const daysToProcess = targetDayId
+            ? (scheduleBlock.days || []).filter(d => d.id === targetDayId)
+            : (scheduleBlock.days || []);
+
+        if (daysToProcess.length === 0) {
+            return { success: false, message: "No hay jornadas o fechas configuradas para realizar el sorteo." };
+        }
+
+        let assignedCount = 0;
+
+        daysToProcess.forEach(dayObj => {
+            if (!Array.isArray(dayObj.evaluations) || dayObj.evaluations.length === 0) return;
+
+            // Rastreador de carga en minutos para este día: { teacherId: totalMinutes }
+            const dayWorkload = {};
+            allCandidates.forEach(u => { dayWorkload[u.id] = 0; });
+
+            // Rastreador de intervalos ocupados por cada docente: { teacherId: [ [startMin, endMin], ... ] }
+            const busyIntervals = {};
+            allCandidates.forEach(u => { busyIntervals[u.id] = []; });
+
+            // Procesar cada evaluación del día cronológicamente
+            dayObj.evaluations.forEach(ev => {
+                const isPractica = ev.isPractica === true;
+                const isComputacionSingle = ev.isComputacion && ev.computacionMode === 'single';
+
+                // Si es computación en salón único, los titulares son quienes cuidan y evalúan
+                if (isComputacionSingle) {
+                    const compStartMin = timeStringToMinutes(ev.startTime);
+                    const compEndMin = timeStringToMinutes(ev.endTime);
+                    const compDur = compEndMin - compStartMin;
+                    (ev.titularTeachers || []).forEach(tit => {
+                        if (tit.teacherId) {
+                            dayWorkload[tit.teacherId] = (dayWorkload[tit.teacherId] || 0) + compDur;
+                            if (!busyIntervals[tit.teacherId]) busyIntervals[tit.teacherId] = [];
+                            busyIntervals[tit.teacherId].push([compStartMin, compEndMin]);
+                        }
+                    });
+                    return; // No requiere cuidadores ajenos
+                }
+
+                // Identificar conjunto de titulares a excluir
+                const titularExclusionSet = new Set();
+                if (Array.isArray(ev.titularTeachers)) {
+                    ev.titularTeachers.forEach(t => { if (t.teacherId) titularExclusionSet.add(t.teacherId); });
+                }
+                if (ev.courseTeacherId) titularExclusionSet.add(ev.courseTeacherId);
+                if (Array.isArray(ev.sections)) {
+                    ev.sections.forEach(s => { if (s.teacherId) titularExclusionSet.add(s.teacherId); });
+                }
+
+                const evStartMin = timeStringToMinutes(ev.startTime);
+
+                // Función auxiliar para seleccionar un cuidador idóneo aleatorio y balanceado
+                function pickBestCaretaker(slotStartMin, slotEndMin, currentlyAssignedInThisSlotSet = new Set()) {
+                    const slotDuration = slotEndMin - slotStartMin;
+
+                    // Candidatos que no sean titulares, no tengan colisión de horario y no estén ya en este mismo bloque
+                    const eligible = allCandidates.filter(c => {
+                        if (titularExclusionSet.has(c.id)) return false;
+                        if (currentlyAssignedInThisSlotSet.has(c.id)) return false;
+
+                        // Verificar colisión de horario
+                        const intervals = busyIntervals[c.id] || [];
+                        const hasCollision = intervals.some(([bStart, bEnd]) => {
+                            // Dos intervalos se solapan si max(start) < min(end)
+                            return Math.max(slotStartMin, bStart) < Math.min(slotEndMin, bEnd);
+                        });
+                        return !hasCollision;
+                    });
+
+                    if (eligible.length === 0) {
+                        // Fallback de emergencia si no hay candidatos sin colisión: elegir cualquiera que no sea titular
+                        const fallbackEligible = allCandidates.filter(c => !titularExclusionSet.has(c.id) && !currentlyAssignedInThisSlotSet.has(c.id));
+                        if (fallbackEligible.length === 0) return null;
+                        // Mezclar aleatoriamente
+                        for (let i = fallbackEligible.length - 1; i > 0; i--) {
+                            const j = Math.floor(Math.random() * (i + 1));
+                            [fallbackEligible[i], fallbackEligible[j]] = [fallbackEligible[j], fallbackEligible[i]];
+                        }
+                        const fallbackSelected = fallbackEligible[0];
+                        if (!busyIntervals[fallbackSelected.id]) busyIntervals[fallbackSelected.id] = [];
+                        busyIntervals[fallbackSelected.id].push([slotStartMin, slotEndMin]);
+                        dayWorkload[fallbackSelected.id] = (dayWorkload[fallbackSelected.id] || 0) + slotDuration;
+                        currentlyAssignedInThisSlotSet.add(fallbackSelected.id);
+                        assignedCount++;
+                        return fallbackSelected;
+                    }
+
+                    // Encontrar el mínimo de minutos trabajados hoy entre los candidatos
+                    let minMinutes = Infinity;
+                    eligible.forEach(c => {
+                        const m = dayWorkload[c.id] || 0;
+                        if (m < minMinutes) minMinutes = m;
+                    });
+
+                    // Filtrar los que tengan la menor carga actual
+                    const lowestLoadGroup = eligible.filter(c => (dayWorkload[c.id] || 0) <= minMinutes + 15);
+
+                    // Sorteo aleatorio uniforme (Fisher-Yates shuffle sobre el grupo empatado)
+                    for (let i = lowestLoadGroup.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [lowestLoadGroup[i], lowestLoadGroup[j]] = [lowestLoadGroup[j], lowestLoadGroup[i]];
+                    }
+
+                    const selected = lowestLoadGroup[0];
+                    // Registrar el horario ocupado y la carga
+                    if (!busyIntervals[selected.id]) busyIntervals[selected.id] = [];
+                    busyIntervals[selected.id].push([slotStartMin, slotEndMin]);
+                    dayWorkload[selected.id] = (dayWorkload[selected.id] || 0) + slotDuration;
+                    currentlyAssignedInThisSlotSet.add(selected.id);
+                    assignedCount++;
+
+                    return selected;
+                }
+
+                // Asignar cuidadores por sección o por evaluación directa
+                if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                    const assignedInThisSlot = new Set();
+                    const assignedInT1 = new Set();
+                    const assignedInT2 = new Set();
+
+                    ev.sections.forEach(sec => {
+                        const secDur = parseInt(sec.durationMinutes, 10) || parseInt(ev.durationMinutes, 10) || 60;
+                        const secStartMin = timeStringToMinutes(sec.startTime || ev.startTime);
+                        const secEndMin = secStartMin + secDur;
+
+                        if (isPractica) {
+                            // Práctica supervisada: 2 turnos con relevo a mitad de tiempo
+                            const halfMin = Math.round(secDur / 2);
+                            const t1Start = secStartMin;
+                            const t1End = secStartMin + halfMin;
+                            const t2Start = t1End;
+                            const t2End = secEndMin;
+
+                            const cA1 = pickBestCaretaker(t1Start, t1End, assignedInT1);
+                            if (cA1) {
+                                sec.groupA.caretakerTeacherId = cA1.id;
+                                sec.groupA.caretakerTeacherName = cA1.name;
+                            }
+                            const cB1 = pickBestCaretaker(t1Start, t1End, assignedInT1);
+                            if (cB1) {
+                                sec.groupB.caretakerTeacherId = cB1.id;
+                                sec.groupB.caretakerTeacherName = cB1.name;
+                            }
+
+                            const cA2 = pickBestCaretaker(t2Start, t2End, assignedInT2);
+                            if (cA2) {
+                                sec.groupA.caretakerTurn2Id = cA2.id;
+                                sec.groupA.caretakerTurn2Name = cA2.name;
+                            }
+                            const cB2 = pickBestCaretaker(t2Start, t2End, assignedInT2);
+                            if (cB2) {
+                                sec.groupB.caretakerTurn2Id = cB2.id;
+                                sec.groupB.caretakerTurn2Name = cB2.name;
+                            }
+                        } else {
+                            // Examen regular: 1 cuidador para Grupo A y 1 cuidador para Grupo B
+                            const cA = pickBestCaretaker(secStartMin, secEndMin, assignedInThisSlot);
+                            if (cA) {
+                                sec.groupA.caretakerTeacherId = cA.id;
+                                sec.groupA.caretakerTeacherName = cA.name;
+                            }
+                            const cB = pickBestCaretaker(secStartMin, secEndMin, assignedInThisSlot);
+                            if (cB) {
+                                sec.groupB.caretakerTeacherId = cB.id;
+                                sec.groupB.caretakerTeacherName = cB.name;
+                            }
+                        }
+                    });
+
+                    // Actualizar retrocompatibilidad con primer grupo
+                    if (ev.sections[0]) {
+                        ev.groupA = ev.sections[0].groupA;
+                        ev.groupB = ev.sections[0].groupB;
+                    }
+                } else {
+                    // Fallback para evaluaciones con formato individual
+                    const evDur = parseInt(ev.durationMinutes, 10) || 60;
+                    const evEndMin = evStartMin + evDur;
+                    const assignedInThisSlot = new Set();
+
+                    const cA = pickBestCaretaker(evStartMin, evEndMin, assignedInThisSlot);
+                    if (cA) {
+                        ev.groupA.caretakerTeacherId = cA.id;
+                        ev.groupA.caretakerTeacherName = cA.name;
+                    }
+                    const cB = pickBestCaretaker(evStartMin, evEndMin, assignedInThisSlot);
+                    if (cB) {
+                        ev.groupB.caretakerTeacherId = cB.id;
+                        ev.groupB.caretakerTeacherName = cB.name;
+                    }
+                }
+            });
+        });
+
+        // Persistir la configuración generada para que sea editable en cualquier momento futuro
+        saveExamSchedulesData(false);
+
+        return {
+            success: true,
+            assignedCount: assignedCount,
+            message: `Sorteo aleatorio y equitativo completado con éxito. Se asignaron ${assignedCount} plazas de cuido sin colisiones ni titulares asignados a sus propias cátedras.`
+        };
+    }
+
+    // Disparador del sorteo para todo el bimestre
+    window.randomizeProctorsForBimester = function () {
+        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
+        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
+
+        if (!scheduleBlock.days || scheduleBlock.days.length === 0) {
+            alert("No hay días de evaluación configurados en este bimestre para realizar el sorteo.");
+            return;
+        }
+
+        const totalEvals = scheduleBlock.days.reduce((acc, d) => acc + (d.evaluations ? d.evaluations.length : 0), 0);
+        if (totalEvals === 0) {
+            alert("Debe agregar al menos una asignatura en las jornadas de este bimestre antes de sortear cuidadores.");
+            return;
+        }
+
+        const confirmMsg = `🎲 ¿Desea ejecutar el SORTEO ALEATORIO Y EQUITATIVO DE CUIDADORES para todo el ${bimesterSelectVal}?\n\n` +
+            `• Los catedráticos titulares de cada asignatura quedarán automáticamente excluidos de cuidar su propia materia.\n` +
+            `• Las cargas de minutos se balancearán equitativamente entre los docentes sin solapamiento de horarios.\n` +
+            `• Toda la configuración quedará guardada y podrá modificar o afinar cualquier salón manualmente en cualquier momento.`;
+
+        if (!confirm(confirmMsg)) return;
+
+        const res = autoAssignRandomProctors(scheduleBlock, null);
+        if (res.success) {
+            saveExamSchedulesData(true);
+            renderExamSchedulesView();
+            alert(`🎉 ¡Sorteo Exitoso!\n\n${res.message}`);
+        } else {
+            alert(`⚠️ Aviso: ${res.message}`);
+        }
+    };
+
+    // Disparador del sorteo exclusivo para un día específico
+    window.randomizeProctorsForDay = function (dayId) {
+        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
+        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
+        const dayObj = scheduleBlock.days.find(d => d.id === dayId);
+
+        if (!dayObj || !dayObj.evaluations || dayObj.evaluations.length === 0) {
+            alert("No hay asignaturas configuradas en esta fecha para sortear cuidadores.");
+            return;
+        }
+
+        const confirmMsg = `🎲 ¿Desea sortear aleatoriamente los cuidadores para esta fecha (${dayObj.date})?\n\n` +
+            `• Se respetará la regla de no asignar titulares a sus propias asignaturas ni colisiones de horario.\n` +
+            `• Podrá editar cualquier salón manualmente después del sorteo.`;
+
+        if (!confirm(confirmMsg)) return;
+
+        const res = autoAssignRandomProctors(scheduleBlock, dayId);
+        if (res.success) {
+            saveExamSchedulesData(true);
+            renderExamSchedulesView();
+            alert(`🎉 ¡Sorteo de fecha completado!\n\n${res.message}`);
+        } else {
+            alert(`⚠️ Aviso: ${res.message}`);
+        }
+    };
     // IMPRESIÓN 1: HORARIO DIARIO EN HOJA OFICIO (LEGAL - 3 COLUMNAS)
     // =========================================================================
     window.printDailyScheduleOficio = function (dayId) {
@@ -1506,9 +1867,21 @@
                 `;
             }
 
-            // Sección 2: Titulares
+            // Sección 2: Titulares y Tiempos por Sección
             let col2TitularesHtml = '';
-            if (Array.isArray(ev.titularTeachers) && ev.titularTeachers.length > 0) {
+            if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                col2TitularesHtml = ev.sections.map(sec => {
+                    const secDur = sec.durationMinutes || ev.durationMinutes;
+                    const secStart = sec.startTime || ev.startTime;
+                    const secEnd = sec.endTime || ev.endTime;
+                    return `
+                        <div style="margin-bottom:5px; border-bottom:1px dashed #e2e8f0; padding-bottom:3px;">
+                            • <strong>${sec.section}:</strong> ${sec.teacherName}<br>
+                            <span style="font-size:0.78rem; color:#b45309; font-weight:700;">⏱️ ${secDur} min (${secStart} a ${secEnd} hrs)</span>
+                        </div>
+                    `;
+                }).join('');
+            } else if (Array.isArray(ev.titularTeachers) && ev.titularTeachers.length > 0) {
                 col2TitularesHtml = ev.titularTeachers.map(tit => `
                     <div style="margin-bottom:2px;">• <strong>${tit.section}:</strong> ${tit.teacherName}</div>
                 `).join('');
@@ -1530,7 +1903,7 @@
                             ${col2TitularesHtml}
                         </div>
                         <div style="font-weight:800; font-size:0.86rem; color:#b45309; margin-top:8px;">
-                            ⏱️ Tiempo Oficial Asignado: <strong>${ev.durationMinutes} minutos</strong>
+                            ⏱️ Bloque Máximo: <strong>${ev.durationMinutes} minutos</strong>
                         </div>
                     </td>
                     <td style="padding:10px 12px; border:1px solid #cbd5e1; vertical-align:top; width:34%; font-size:0.84rem; color:#0f172a;">
@@ -2105,6 +2478,9 @@
     window.renderExamSchedulesView = renderExamSchedulesView;
     window.getExamSchedulesData = getExamSchedulesData;
     window.saveExamSchedulesData = saveExamSchedulesData;
+    window.autoAssignRandomProctors = autoAssignRandomProctors;
+    window.randomizeProctorsForBimester = randomizeProctorsForBimester;
+    window.randomizeProctorsForDay = randomizeProctorsForDay;
     window.printDailyScheduleOficio = printDailyScheduleOficio;
     window.printMediasListasModal = printMediasListasModal;
     window.printAllMediasListasOfDay = printAllMediasListasOfDay;
@@ -2122,6 +2498,9 @@
         getDistinctAcademicGrades,
         getCoursesForAcademicGrade,
         getSectionsAndTitularsForCourse,
+        autoAssignRandomProctors,
+        randomizeProctorsForBimester,
+        randomizeProctorsForDay,
         printDailyScheduleOficio,
         printMediasListasModal,
         printAllMediasListasOfDay,
