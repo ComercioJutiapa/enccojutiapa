@@ -291,6 +291,48 @@ assignedCaretakerIds.forEach(id => {
 });
 console.log('✅ Sorteo aleatorio, equitativo y sin colisiones verificado con éxito.');
 
+// 10. Test Auto-asignación Inmediata de Cuidadores en Selección de Materia (100% Editable)
+console.log('\n[Test 10] Verificando Auto-asignación Automática y Editable de Cuidadores...');
+const sectionsTestInfo = [
+    { gradeCode: '4PC_A', section: 'Sección A', teacherId: 'T1', teacherName: 'Prof. Juan Pérez' },
+    { gradeCode: '4PC_B', section: 'Sección B', teacherId: 'T3', teacherName: 'Prof. Carlos Ruíz' }
+];
+const titularTestIds = ['T1', 'T3'];
+
+const autoModalAssignments = mod.autoPickProctorsForModal(
+    sectionsTestInfo,
+    titularTestIds,
+    false, // regular
+    '07:30',
+    'day_test_sec_dur'
+);
+
+assert(autoModalAssignments['4PC_A'], 'Debe tener asignación para 4PC_A');
+assert(autoModalAssignments['4PC_B'], 'Debe tener asignación para 4PC_B');
+
+const modalAssignedIds = [
+    autoModalAssignments['4PC_A'].caretakerA,
+    autoModalAssignments['4PC_A'].caretakerB,
+    autoModalAssignments['4PC_B'].caretakerA,
+    autoModalAssignments['4PC_B'].caretakerB
+];
+
+// Ningún titular asignado automáticamente
+assert(!modalAssignedIds.includes('T1'), 'T1 titular no debe estar asignado');
+assert(!modalAssignedIds.includes('T3'), 'T3 titular no debe estar asignado');
+
+// Todos los salones deben tener docentes asignados
+modalAssignedIds.forEach(id => {
+    assert(id && id.length > 0, 'Todos los salones deben tener un cuidador asignado automáticamente');
+    assert(availablePoolIds.includes(id), `Cuidador ${id} debe ser parte del claustro elegible`);
+});
+
+// Sin colisión interna en el mismo horario
+const modalUniqueSet = new Set(modalAssignedIds);
+assert.strictEqual(modalUniqueSet.size, 4, 'Los 4 salones deben tener docentes distintos asignados sin colisión');
+
+console.log('✅ Auto-asignación automática de cuidadores verificada con éxito (Exclusión de titulares y no colisión confirmadas).');
+
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');
 console.log('================================================================================');

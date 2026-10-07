@@ -905,6 +905,140 @@
         renderExamSchedulesView();
     };
 
+    /**
+     * Seleccionar automáticamente y de manera equitativa/aleatoria cuidadores para un curso en el modal.
+     * Excluye a todos los titulares de la asignatura en todas las secciones.
+     * Evita colisiones de horario en la misma jornada y balancea la carga según los minutos trabajados hoy.
+     */
+    function autoPickProctorsForModal(sectionsInfo, titularIds, isPrac, startTimeStr, dayId, editEvalId = '') {
+        const allCandidates = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'profesor_auxiliar');
+        if (allCandidates.length === 0) return {};
+
+        const titularExclusionSet = new Set(Array.isArray(titularIds) ? titularIds : []);
+
+        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
+        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
+        const dayObj = (scheduleBlock.days || []).find(d => d.id === dayId);
+
+        // Carga actual del día (antifatiga)
+        const dayWorkload = {};
+        allCandidates.forEach(u => {
+            const wl = (window._currentDayWorkload && window._currentDayWorkload[u.id]);
+            dayWorkload[u.id] = wl ? (wl.minutes || 0) : 0;
+        });
+
+        // Intervalos ocupados en otras evaluaciones del mismo día
+        const busyIntervals = {};
+        allCandidates.forEach(u => { busyIntervals[u.id] = []; });
+
+        if (dayObj && Array.isArray(dayObj.evaluations)) {
+            dayObj.evaluations.forEach(ev => {
+                if (editEvalId && ev.id === editEvalId) return; // ignorar la misma si se edita
+                const evStart = timeStringToMinutes(ev.startTime);
+
+                if (Array.isArray(ev.sections)) {
+                    ev.sections.forEach(sc => {
+                        const sDur = sc.durationMinutes || ev.durationMinutes || 60;
+                        const sEnd = evStart + sDur;
+                        ['groupA', 'groupB'].forEach(grpKey => {
+                            const grp = sc[grpKey];
+                            if (grp) {
+                                if (grp.caretakerTeacherId && busyIntervals[grp.caretakerTeacherId]) {
+                                    busyIntervals[grp.caretakerTeacherId].push([evStart, sEnd]);
+                                }
+                                if (grp.caretakerTurn2Id && busyIntervals[grp.caretakerTurn2Id]) {
+                                    busyIntervals[grp.caretakerTurn2Id].push([evStart + Math.round(sDur / 2), sEnd]);
+                                }
+                            }
+                        });
+                    });
+                } else {
+                    const evDur = ev.durationMinutes || 60;
+                    const evEnd = evStart + evDur;
+                    ['groupA', 'groupB'].forEach(grpKey => {
+                        const grp = ev[grpKey];
+                        if (grp && grp.caretakerTeacherId && busyIntervals[grp.caretakerTeacherId]) {
+                            busyIntervals[grp.caretakerTeacherId].push([evStart, evEnd]);
+                        }
+                    });
+                }
+            });
+        }
+
+        const startMin = timeStringToMinutes(startTimeStr || '07:30');
+        const assignedInSlot = new Set();
+        const assignedInTurn2 = new Set();
+        const assignments = {};
+
+        function pickCaretaker(slotStart, slotEnd, assignedSet) {
+            const slotDur = slotEnd - slotStart;
+            const eligible = allCandidates.filter(c => {
+                if (titularExclusionSet.has(c.id)) return false;
+                if (assignedSet.has(c.id)) return false;
+                const intervals = busyIntervals[c.id] || [];
+                return !intervals.some(([bStart, bEnd]) => Math.max(slotStart, bStart) < Math.min(slotEnd, bEnd));
+            });
+
+            const candidatePool = (eligible.length > 0)
+                ? eligible
+                : allCandidates.filter(c => !titularExclusionSet.has(c.id) && !assignedSet.has(c.id));
+
+            if (candidatePool.length === 0) return null;
+
+            let minMin = Infinity;
+            candidatePool.forEach(c => {
+                const m = dayWorkload[c.id] || 0;
+                if (m < minMin) minMin = m;
+            });
+
+            const lowestGroup = candidatePool.filter(c => (dayWorkload[c.id] || 0) <= minMin + 15);
+            // Sorteo aleatorio uniforme (Fisher-Yates)
+            for (let i = lowestGroup.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [lowestGroup[i], lowestGroup[j]] = [lowestGroup[j], lowestGroup[i]];
+            }
+
+            const chosen = lowestGroup[0];
+            assignedSet.add(chosen.id);
+            dayWorkload[chosen.id] = (dayWorkload[chosen.id] || 0) + slotDur;
+            if (!busyIntervals[chosen.id]) busyIntervals[chosen.id] = [];
+            busyIntervals[chosen.id].push([slotStart, slotEnd]);
+            return chosen.id;
+        }
+
+        sectionsInfo.forEach(sInfo => {
+            const secCode = sInfo.gradeCode;
+            const secDur = 60;
+            const secEnd = startMin + secDur;
+
+            if (isPrac) {
+                const half = Math.round(300 / 2);
+                const t1A = pickCaretaker(startMin, startMin + half, assignedInSlot);
+                const t1B = pickCaretaker(startMin, startMin + half, assignedInSlot);
+                const t2A = pickCaretaker(startMin + half, startMin + 300, assignedInTurn2);
+                const t2B = pickCaretaker(startMin + half, startMin + 300, assignedInTurn2);
+                assignments[secCode] = {
+                    caretakerA: t1A || '',
+                    caretakerB: t1B || '',
+                    turn2A: t2A || '',
+                    turn2B: t2B || ''
+                };
+            } else {
+                const cA = pickCaretaker(startMin, secEnd, assignedInSlot);
+                const cB = pickCaretaker(startMin, secEnd, assignedInSlot);
+                assignments[secCode] = {
+                    caretakerA: cA || '',
+                    caretakerB: cB || '',
+                    turn2A: '',
+                    turn2B: ''
+                };
+            }
+        });
+
+        return assignments;
+    }
+
     // Modal para asignar una clase a un día (A nivel de Grado Académico completo con todas sus secciones)
     window.addEvaluationToDay = function (dayId, evalToEdit = null) {
         const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
@@ -920,8 +1054,37 @@
         const academicGrades = getDistinctAcademicGrades();
         const workload = calculateTeacherWorkloadForDate(scheduleBlock, dayObj.date);
 
-        // Guardar workload en window para generar opciones dinámicamente al cambiar de materia
+        // Guardar contexto en window para interactividad dinámica en el modal
         window._currentDayWorkload = workload;
+        window._currentEditingDayId = dayId;
+        window._currentEditingEvalId = evalToEdit ? evalToEdit.id : '';
+
+        // Manejador del cambio de duración global / de cátedra
+        window.onMasterDurationChanged = function (newDurVal) {
+            const dVal = parseInt(newDurVal, 10) || 60;
+            const gradeSelect = document.getElementById('evalGradeSelect');
+            const courseSelect = document.getElementById('evalCourseSelect');
+            const academicGradeName = gradeSelect ? gradeSelect.value : '';
+            const courseName = courseSelect ? courseSelect.value : '';
+            if (academicGradeName && courseName) {
+                const sectionsInfo = getSectionsAndTitularsForCourse(academicGradeName, courseName);
+                sectionsInfo.forEach((sInfo, sIdx) => {
+                    const secDurSelect = document.getElementById(`evalSectionDuration_${sIdx}`);
+                    if (secDurSelect) {
+                        secDurSelect.value = String(dVal);
+                    }
+                });
+            }
+            window.recalcEvalTimes();
+        };
+
+        // Botón rápido para re-sortear y autoasignar cuidadores en caliente dentro del modal
+        window.reAutoAssignProctorsModal = function () {
+            const courseSelect = document.getElementById('evalCourseSelect');
+            if (courseSelect && courseSelect.value) {
+                window.onEvalCourseChanged(courseSelect.value, null);
+            }
+        };
 
         // Calcular hora de inicio automática según evaluaciones previas
         let autoStartMinutes = 450; // 07:30 AM
@@ -987,7 +1150,7 @@
                             <div class="row g-3 mt-1">
                                 <div class="col-md-6">
                                     <label class="form-label" style="font-weight:700;">⏱️ Tiempo Fijado por la Cátedra (Minutos):</label>
-                                    <select id="evalDurationSelect" class="form-control" onchange="window.recalcEvalTimes()" style="font-weight:700;">
+                                    <select id="evalDurationSelect" class="form-control" onchange="window.onMasterDurationChanged(this.value)" style="font-weight:700;">
                                         <option value="45">45 minutos</option>
                                         <option value="50">50 minutos</option>
                                         <option value="60" selected>60 minutos (1 hora estándar)</option>
@@ -1157,14 +1320,31 @@
             if (specialSec) specialSec.innerHTML = '';
         }
 
+        // Autoasignación automática y equitativa de cuidadores para todas las secciones (100% editable)
+        const autoAssignments = (!editPayload) ? autoPickProctorsForModal(
+            sectionsInfo,
+            titularIds,
+            isPrac,
+            document.getElementById('evalStartTime') ? document.getElementById('evalStartTime').value : '07:30',
+            window._currentEditingDayId,
+            window._currentEditingEvalId
+        ) : {};
+
         // Construir tarjetas de salones para CADA sección (Grupo A y Grupo B) con selector de tiempo independiente
         let salonsHtml = `
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #cbd5e1; padding-bottom:6px; margin-bottom:10px;">
-                <h6 style="font-weight:800; color:#15803d; margin:0; display:flex; align-items:center; gap:8px;">
-                    <i class="fa-solid fa-school"></i> Salones, Cuidadores y Tiempos por Sección
-                </h6>
-                <div style="font-size:0.8rem; color:#64748b; font-weight:700;">
-                    Cada docente titular puede fijar una duración distinta según su prueba
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #cbd5e1; padding-bottom:6px; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                <div>
+                    <h6 style="font-weight:800; color:#15803d; margin:0; display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-school"></i> Salones, Cuidadores y Tiempos por Sección
+                    </h6>
+                    <div style="font-size:0.8rem; color:#64748b; font-weight:700;">
+                        Los cuidadores se asignan automáticamente de forma equitativa y pueden modificarse en cualquier momento.
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button type="button" class="btn btn-sm btn-outline-success" onclick="window.reAutoAssignProctorsModal()" style="font-weight:700; font-size:0.8rem; background:#f0fdf4; border-color:#86efac; color:#166534;" title="Re-sortear y autoasignar otros cuidadores disponibles">
+                        <i class="fa-solid fa-dice"></i> Re-sortear Cuidadores
+                    </button>
                 </div>
             </div>
         `;
@@ -1179,7 +1359,8 @@
             // Valores previos si estamos editando
             let curA = { classroom: `Salón ${defaultSalonCounter++}`, caretaker: '', turn2: '' };
             let curB = { classroom: `Salón ${defaultSalonCounter++}`, caretaker: '', turn2: '' };
-            let secDuration = isPrac ? 300 : 60;
+            const masterDur = durationSelect ? (parseInt(durationSelect.value, 10) || 60) : 60;
+            let secDuration = isPrac ? 300 : masterDur;
 
             if (editPayload) {
                 if (Array.isArray(editPayload.sections)) {
@@ -1209,6 +1390,15 @@
                         curB.caretaker = editPayload.groupB.caretakerTeacherId || '';
                         curB.turn2 = editPayload.groupB.caretakerTurn2Id || '';
                     }
+                }
+            } else {
+                // Autoasignación automática: Docentes asignados de inmediato, pero 100% editables en el selector
+                const autoForSec = autoAssignments[secCode] || autoAssignments[secName];
+                if (autoForSec) {
+                    curA.caretaker = autoForSec.caretakerA || '';
+                    curB.caretaker = autoForSec.caretakerB || '';
+                    curA.turn2 = autoForSec.turn2A || '';
+                    curB.turn2 = autoForSec.turn2B || '';
                 }
             }
 
@@ -1253,13 +1443,19 @@
                                 <input type="text" id="evalClassroomA_${sIdx}" class="form-control form-control-sm" value="${curA.classroom}">
                             </div>
                             <div class="mb-2">
-                                <label class="form-label" style="font-size:0.8rem; font-weight:700;">Docente Cuidador Grupo A:</label>
+                                <label class="form-label" style="font-size:0.8rem; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
+                                    <span>Docente Cuidador Grupo A:</span>
+                                    <span class="badge" style="background:#dcfce7; color:#15803d; font-size:0.7rem; font-weight:700; border:1px solid #86efac;">Autoasignado (Editable)</span>
+                                </label>
                                 <select id="evalCaretakerA_${sIdx}" class="form-control form-control-sm" required>
                                     ${window._generateTeacherSelectOptions(curA.caretaker, titularIds)}
                                 </select>
                             </div>
                             <div id="evalTurn2AContainer_${sIdx}" style="display:${isPrac ? 'block' : 'none'};" class="mb-2">
-                                <label class="form-label" style="font-size:0.8rem; font-weight:700; color:#1d4ed8;">Docente 2do Turno (Relevo):</label>
+                                <label class="form-label" style="font-size:0.8rem; font-weight:700; color:#1d4ed8; display:flex; justify-content:space-between; align-items:center;">
+                                    <span>Docente 2do Turno (Relevo):</span>
+                                    <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:0.7rem; font-weight:700; border:1px solid #93c5fd;">Autoasignado (Editable)</span>
+                                </label>
                                 <select id="evalCaretakerTurn2A_${sIdx}" class="form-control form-control-sm">
                                     ${window._generateTeacherSelectOptions(curA.turn2, titularIds)}
                                 </select>
@@ -1276,13 +1472,19 @@
                                 <input type="text" id="evalClassroomB_${sIdx}" class="form-control form-control-sm" value="${curB.classroom}">
                             </div>
                             <div class="mb-2">
-                                <label class="form-label" style="font-size:0.8rem; font-weight:700;">Docente Cuidador Grupo B:</label>
+                                <label class="form-label" style="font-size:0.8rem; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
+                                    <span>Docente Cuidador Grupo B:</span>
+                                    <span class="badge" style="background:#dcfce7; color:#15803d; font-size:0.7rem; font-weight:700; border:1px solid #86efac;">Autoasignado (Editable)</span>
+                                </label>
                                 <select id="evalCaretakerB_${sIdx}" class="form-control form-control-sm" required>
                                     ${window._generateTeacherSelectOptions(curB.caretaker, titularIds)}
                                 </select>
                             </div>
                             <div id="evalTurn2BContainer_${sIdx}" style="display:${isPrac ? 'block' : 'none'};" class="mb-2">
-                                <label class="form-label" style="font-size:0.8rem; font-weight:700; color:#1d4ed8;">Docente 2do Turno (Relevo):</label>
+                                <label class="form-label" style="font-size:0.8rem; font-weight:700; color:#1d4ed8; display:flex; justify-content:space-between; align-items:center;">
+                                    <span>Docente 2do Turno (Relevo):</span>
+                                    <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:0.7rem; font-weight:700; border:1px solid #93c5fd;">Autoasignado (Editable)</span>
+                                </label>
                                 <select id="evalCaretakerTurn2B_${sIdx}" class="form-control form-control-sm">
                                     ${window._generateTeacherSelectOptions(curB.turn2, titularIds)}
                                 </select>
@@ -2499,6 +2701,7 @@
         getCoursesForAcademicGrade,
         getSectionsAndTitularsForCourse,
         autoAssignRandomProctors,
+        autoPickProctorsForModal,
         randomizeProctorsForBimester,
         randomizeProctorsForDay,
         printDailyScheduleOficio,
