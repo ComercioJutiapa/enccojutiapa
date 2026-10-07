@@ -108,6 +108,44 @@
             .chip-yellow { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
             .chip-orange { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
             .chip-red { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+            /* MODALES CENTRADOS PERFECTAMENTE EN VIEWPORT */
+            .exam-modal-overlay {
+                position: fixed !important;
+                inset: 0 !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                background: rgba(15, 23, 42, 0.72) !important;
+                backdrop-filter: blur(4px) !important;
+                -webkit-backdrop-filter: blur(4px) !important;
+                z-index: 99999 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                padding: 16px !important;
+                box-sizing: border-box !important;
+                overflow-y: auto !important;
+            }
+            .exam-modal-box {
+                background: #ffffff !important;
+                border-radius: 14px !important;
+                box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.45) !important;
+                border: 1px solid #cbd5e1 !important;
+                width: 100% !important;
+                max-width: 580px !important;
+                margin: auto !important;
+                overflow: hidden !important;
+                animation: examModalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+            }
+            .exam-modal-box.modal-lg-box {
+                max-width: 820px !important;
+            }
+            @keyframes examModalPop {
+                from { opacity: 0; transform: scale(0.96) translateY(-10px); }
+                to { opacity: 1; transform: scale(1) translateY(0); }
+            }
         `;
         document.head.appendChild(style);
     }
@@ -596,34 +634,34 @@
         if (existingModal) existingModal.remove();
 
         const modalHtml = `
-            <div class="modal fade show" id="${modalId}" tabindex="-1" style="display:block; background:rgba(0,0,0,0.5); z-index:9999;">
-                <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content" style="border-radius:12px;">
-                        <div class="modal-header" style="background:#15803d; color:white; border-radius:12px 12px 0 0;">
-                            <h5 class="modal-title"><i class="fa-solid fa-calendar-plus"></i> Programar Nuevo Día de Examen</h5>
-                            <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('${modalId}').remove()"></button>
+            <div class="exam-modal-overlay" id="${modalId}" onclick="if(event.target===this) document.getElementById('${modalId}').remove()">
+                <div class="exam-modal-box">
+                    <div style="background:#15803d; color:white; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; border-radius:14px 14px 0 0;">
+                        <h4 style="margin:0; font-size:1.1rem; font-weight:800; display:flex; align-items:center; gap:8px; color:#ffffff;">
+                            <i class="fa-solid fa-calendar-plus"></i> Programar Nuevo Día de Examen
+                        </h4>
+                        <button type="button" onclick="document.getElementById('${modalId}').remove()" style="background:none; border:none; color:#ffffff; font-size:1.4rem; cursor:pointer; line-height:1; padding:0 4px;">&times;</button>
+                    </div>
+                    <div style="padding:22px;">
+                        <div class="form-group mb-3">
+                            <label class="form-label" style="font-weight:700; color:#1e293b; display:block; margin-bottom:6px;">Fecha de Evaluación:</label>
+                            <input type="date" id="newExamDayDate" class="form-control" value="${today}" required style="height:42px; font-weight:700; font-size:0.95rem;">
                         </div>
-                        <div class="modal-body">
-                            <div class="form-group mb-3">
-                                <label class="form-label" style="font-weight:700;">Fecha de Evaluación:</label>
-                                <input type="date" id="newExamDayDate" class="form-control" value="${today}" required>
-                            </div>
-                            <div class="form-check mb-3">
-                                <input class="form-check-input" type="checkbox" id="newExamDayIsPractica">
-                                <label class="form-check-label" for="newExamDayIsPractica" style="font-weight:700; color:#1d4ed8;">
-                                    ⭐ Es Jornada Exclusiva de Práctica Supervisada (Graduandos)
-                                </label>
-                                <small class="text-muted d-block">
-                                    En este día solo se evaluará Práctica Supervisada en horario continuo de 07:30 a 12:30 con relevo a mitad de tiempo.
-                                </small>
-                            </div>
+                        <div class="form-check p-3 rounded" style="background:#eff6ff; border:1px solid #bfdbfe; margin-bottom:10px;">
+                            <input class="form-check-input" type="checkbox" id="newExamDayIsPractica" style="margin-top:4px;">
+                            <label class="form-check-label ms-2" for="newExamDayIsPractica" style="font-weight:700; color:#1d4ed8; cursor:pointer;">
+                                ⭐ Es Jornada Exclusiva de Práctica Supervisada (Graduandos)
+                            </label>
+                            <small class="text-muted d-block ms-4 mt-1" style="font-size:0.8rem; line-height:1.4;">
+                                En este día solo se evaluará Práctica Supervisada en horario continuo de 07:30 a 12:30 con relevo de catedráticos a mitad de jornada (10:00 AM).
+                            </small>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('${modalId}').remove()">Cancelar</button>
-                            <button type="button" class="btn btn-primary" onclick="window.confirmAddNewExamDay()" style="background:#15803d; border-color:#166534; font-weight:700;">
-                                Crear Día
-                            </button>
-                        </div>
+                    </div>
+                    <div style="padding:14px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:10px; border-radius:0 0 14px 14px;">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('${modalId}').remove()" style="font-weight:700;">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="window.confirmAddNewExamDay()" style="background:#15803d; border-color:#166534; font-weight:700; padding:8px 18px;">
+                            <i class="fa-solid fa-check"></i> Crear Día
+                        </button>
                     </div>
                 </div>
             </div>
@@ -716,133 +754,131 @@
         }
 
         const modalHtml = `
-            <div class="modal fade show" id="${modalId}" tabindex="-1" style="display:block; background:rgba(0,0,0,0.5); z-index:9999;">
-                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-                    <div class="modal-content" style="border-radius:12px;">
-                        <div class="modal-header" style="background:#0f172a; color:white; border-radius:12px 12px 0 0;">
-                            <h5 class="modal-title">
-                                <i class="fa-solid fa-file-pen"></i> ${evalToEdit ? 'Editar Evaluación' : 'Asignar Asignatura y Cuidadores'}
-                            </h5>
-                            <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('${modalId}').remove()"></button>
-                        </div>
-                        <div class="modal-body" style="padding:20px;">
-                            <form id="formAddEval">
-                                <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label" style="font-weight:700;">Grado y Sección:</label>
-                                        <select id="evalGradeSelect" class="form-control" onchange="window.onEvalGradeChanged(this.value)" required>
-                                            <option value="">-- Seleccione Grado --</option>
-                                            ${grades.map(g => `<option value="${g.code || g.id}">${g.name} ${g.section}</option>`).join('')}
-                                        </select>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label" style="font-weight:700;">Asignatura a Evaluar:</label>
-                                        <select id="evalCourseSelect" class="form-control" onchange="window.onEvalCourseChanged(this.value)" required>
-                                            <option value="">-- Seleccione primero un grado --</option>
-                                        </select>
-                                    </div>
+            <div class="exam-modal-overlay" id="${modalId}" onclick="if(event.target===this) document.getElementById('${modalId}').remove()">
+                <div class="exam-modal-box modal-lg-box" style="max-height:92vh; display:flex; flex-direction:column;">
+                    <div style="background:#0f172a; color:white; padding:16px 22px; display:flex; align-items:center; justify-content:space-between; border-radius:14px 14px 0 0; flex-shrink:0;">
+                        <h4 style="margin:0; font-size:1.15rem; font-weight:800; display:flex; align-items:center; gap:8px; color:#ffffff;">
+                            <i class="fa-solid fa-file-pen" style="color:#22c55e;"></i> ${evalToEdit ? 'Editar Evaluación' : 'Asignar Asignatura y Cuidadores'}
+                        </h4>
+                        <button type="button" onclick="document.getElementById('${modalId}').remove()" style="background:none; border:none; color:#ffffff; font-size:1.4rem; cursor:pointer; line-height:1; padding:0 4px;">&times;</button>
+                    </div>
+                    <div style="padding:22px; overflow-y:auto; flex:1;">
+                        <form id="formAddEval">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" style="font-weight:700;">Grado y Sección:</label>
+                                    <select id="evalGradeSelect" class="form-control" onchange="window.onEvalGradeChanged(this.value)" required>
+                                        <option value="">-- Seleccione Grado --</option>
+                                        ${grades.map(g => `<option value="${g.code || g.id}">${g.name} ${g.section}</option>`).join('')}
+                                    </select>
                                 </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" style="font-weight:700;">Asignatura a Evaluar:</label>
+                                    <select id="evalCourseSelect" class="form-control" onchange="window.onEvalCourseChanged(this.value)" required>
+                                        <option value="">-- Seleccione primero un grado --</option>
+                                    </select>
+                                </div>
+                            </div>
 
+                            <div class="row g-3 mt-1">
+                                <div class="col-md-6">
+                                    <label class="form-label" style="font-weight:700;">Catedrático Titular de la Cátedra:</label>
+                                    <input type="text" id="evalTeacherName" class="form-control" readonly style="background:#f1f5f9; font-weight:700;">
+                                    <input type="hidden" id="evalTeacherId">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" style="font-weight:700;">⏱️ Tiempo Fijado por el Titular (Minutos):</label>
+                                    <select id="evalDurationSelect" class="form-control" onchange="window.recalcEvalTimes()" style="font-weight:700;">
+                                        <option value="45">45 minutos</option>
+                                        <option value="50">50 minutos</option>
+                                        <option value="60" selected>60 minutos (1 hora estándar)</option>
+                                        <option value="75">75 minutos (1 hora 15 min)</option>
+                                        <option value="90">90 minutos (1 hora y media)</option>
+                                        <option value="120">120 minutos (2 horas)</option>
+                                        <option value="300">300 minutos (5 horas - Práctica Supervisada)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-1 p-2 rounded" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                                <div class="col-md-4">
+                                    <label class="form-label" style="font-weight:700;">Hora Inicio:</label>
+                                    <input type="time" id="evalStartTime" class="form-control" value="${autoStartTime}" onchange="window.recalcEvalTimes()" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" style="font-weight:700;">Hora Fin (Calculada):</label>
+                                    <input type="time" id="evalEndTime" class="form-control" readonly style="background:#e2e8f0; font-weight:800;">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" style="font-weight:700;">Receso Posterior:</label>
+                                    <select id="evalRecessMinutes" class="form-control">
+                                        <option value="0">Sin receso</option>
+                                        <option value="10">10 minutos</option>
+                                        <option value="15" selected>15 minutos</option>
+                                        <option value="20">20 minutos</option>
+                                    </select>
+                                </div>
+                                <div id="evalTimeLimitWarning" class="col-12 text-danger font-weight-bold" style="display:none; font-size:0.85rem;">
+                                    ⚠️ Advertencia: El horario calculado sobrepasa las 12:30 PM. Ajuste la hora de inicio o la duración.
+                                </div>
+                            </div>
+
+                            <!-- SECCIÓN MODALIDAD ESPECIAL (COMPUTACIÓN O PRÁCTICA) -->
+                            <div id="specialModeSection" class="mt-3"></div>
+
+                            <!-- SECCIÓN CUIDADORES GRUPO A Y B -->
+                            <div id="careTakersSection" class="mt-3">
+                                <h6 style="font-weight:800; color:#15803d; border-bottom:1px solid #cbd5e1; padding-bottom:4px;">
+                                    👥 Salones y Docentes Cuidadores (División en 2 Grupos)
+                                </h6>
                                 <div class="row g-3 mt-1">
-                                    <div class="col-md-6">
-                                        <label class="form-label" style="font-weight:700;">Catedrático Titular de la Cátedra:</label>
-                                        <input type="text" id="evalTeacherName" class="form-control" readonly style="background:#f1f5f9; font-weight:700;">
-                                        <input type="hidden" id="evalTeacherId">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label" style="font-weight:700;">⏱️ Tiempo Fijado por el Titular (Minutos):</label>
-                                        <select id="evalDurationSelect" class="form-control" onchange="window.recalcEvalTimes()" style="font-weight:700;">
-                                            <option value="45">45 minutos</option>
-                                            <option value="50">50 minutos</option>
-                                            <option value="60" selected>60 minutos (1 hora estándar)</option>
-                                            <option value="75">75 minutos (1 hora 15 min)</option>
-                                            <option value="90">90 minutos (1 hora y media)</option>
-                                            <option value="120">120 minutos (2 horas)</option>
-                                            <option value="300">300 minutos (5 horas - Práctica Supervisada)</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="row g-3 mt-1 p-2 rounded" style="background:#f8fafc; border:1px solid #e2e8f0;">
-                                    <div class="col-md-4">
-                                        <label class="form-label" style="font-weight:700;">Hora Inicio:</label>
-                                        <input type="time" id="evalStartTime" class="form-control" value="${autoStartTime}" onchange="window.recalcEvalTimes()" required>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label" style="font-weight:700;">Hora Fin (Calculada):</label>
-                                        <input type="time" id="evalEndTime" class="form-control" readonly style="background:#e2e8f0; font-weight:800;">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label" style="font-weight:700;">Receso Posterior:</label>
-                                        <select id="evalRecessMinutes" class="form-control">
-                                            <option value="0">Sin receso</option>
-                                            <option value="10">10 minutos</option>
-                                            <option value="15" selected>15 minutos</option>
-                                            <option value="20">20 minutos</option>
-                                        </select>
-                                    </div>
-                                    <div id="evalTimeLimitWarning" class="col-12 text-danger font-weight-bold" style="display:none; font-size:0.85rem;">
-                                        ⚠️ Advertencia: El horario calculado sobrepasa las 12:30 PM. Ajuste la hora de inicio o la duración.
-                                    </div>
-                                </div>
-
-                                <!-- SECCIÓN MODALIDAD ESPECIAL (COMPUTACIÓN O PRÁCTICA) -->
-                                <div id="specialModeSection" class="mt-3"></div>
-
-                                <!-- SECCIÓN CUIDADORES GRUPO A Y B -->
-                                <div id="careTakersSection" class="mt-3">
-                                    <h6 style="font-weight:800; color:#15803d; border-bottom:1px solid #cbd5e1; padding-bottom:4px;">
-                                        👥 Salones y Docentes Cuidadores (División en 2 Grupos)
-                                    </h6>
-                                    <div class="row g-3 mt-1">
-                                        <div class="col-md-6 p-2 rounded" style="background:#ffffff; border:1px solid #cbd5e1;">
-                                            <strong style="color:#166534; font-size:0.9rem;">🏫 Salón Grupo A (1 a N/2)</strong>
-                                            <div class="mt-2">
-                                                <label class="form-label" style="font-size:0.82rem; font-weight:700;">No. de Salón:</label>
-                                                <input type="text" id="evalClassroomA" class="form-control form-control-sm" value="Salón 1" placeholder="Ej. Salón 1">
-                                            </div>
-                                            <div class="mt-2">
-                                                <label class="form-label" style="font-size:0.82rem; font-weight:700;">Docente Cuidador Grupo A:</label>
-                                                <select id="evalCaretakerA" class="form-control form-control-sm" required>
-                                                    ${generateTeacherSelectOptions()}
-                                                </select>
-                                            </div>
-                                            <div id="evalTurn2AContainer" style="display:none;" class="mt-2">
-                                                <label class="form-label" style="font-size:0.82rem; font-weight:700; color:#1d4ed8;">Docente 2do Turno Grupo A (Relevo):</label>
-                                                <select id="evalCaretakerTurn2A" class="form-control form-control-sm">
-                                                    ${generateTeacherSelectOptions()}
-                                                </select>
-                                            </div>
+                                    <div class="col-md-6 p-2 rounded" style="background:#ffffff; border:1px solid #cbd5e1;">
+                                        <strong style="color:#166534; font-size:0.9rem;">🏫 Salón Grupo A (1 a N/2)</strong>
+                                        <div class="mt-2">
+                                            <label class="form-label" style="font-size:0.82rem; font-weight:700;">No. de Salón:</label>
+                                            <input type="text" id="evalClassroomA" class="form-control form-control-sm" value="Salón 1" placeholder="Ej. Salón 1">
                                         </div>
-                                        <div class="col-md-6 p-2 rounded" style="background:#ffffff; border:1px solid #cbd5e1;">
-                                            <strong style="color:#166534; font-size:0.9rem;">🏫 Salón Grupo B (N/2+1 a N)</strong>
-                                            <div class="mt-2">
-                                                <label class="form-label" style="font-size:0.82rem; font-weight:700;">No. de Salón:</label>
-                                                <input type="text" id="evalClassroomB" class="form-control form-control-sm" value="Salón 2" placeholder="Ej. Salón 2">
-                                            </div>
-                                            <div class="mt-2">
-                                                <label class="form-label" style="font-size:0.82rem; font-weight:700;">Docente Cuidador Grupo B:</label>
-                                                <select id="evalCaretakerB" class="form-control form-control-sm" required>
-                                                    ${generateTeacherSelectOptions()}
-                                                </select>
-                                            </div>
-                                            <div id="evalTurn2BContainer" style="display:none;" class="mt-2">
-                                                <label class="form-label" style="font-size:0.82rem; font-weight:700; color:#1d4ed8;">Docente 2do Turno Grupo B (Relevo):</label>
-                                                <select id="evalCaretakerTurn2B" class="form-control form-control-sm">
-                                                    ${generateTeacherSelectOptions()}
-                                                </select>
-                                            </div>
+                                        <div class="mt-2">
+                                            <label class="form-label" style="font-size:0.82rem; font-weight:700;">Docente Cuidador Grupo A:</label>
+                                            <select id="evalCaretakerA" class="form-control form-control-sm" required>
+                                                ${generateTeacherSelectOptions()}
+                                            </select>
+                                        </div>
+                                        <div id="evalTurn2AContainer" style="display:none;" class="mt-2">
+                                            <label class="form-label" style="font-size:0.82rem; font-weight:700; color:#1d4ed8;">Docente 2do Turno Grupo A (Relevo):</label>
+                                            <select id="evalCaretakerTurn2A" class="form-control form-control-sm">
+                                                ${generateTeacherSelectOptions()}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 p-2 rounded" style="background:#ffffff; border:1px solid #cbd5e1;">
+                                        <strong style="color:#166534; font-size:0.9rem;">🏫 Salón Grupo B (N/2+1 a N)</strong>
+                                        <div class="mt-2">
+                                            <label class="form-label" style="font-size:0.82rem; font-weight:700;">No. de Salón:</label>
+                                            <input type="text" id="evalClassroomB" class="form-control form-control-sm" value="Salón 2" placeholder="Ej. Salón 2">
+                                        </div>
+                                        <div class="mt-2">
+                                            <label class="form-label" style="font-size:0.82rem; font-weight:700;">Docente Cuidador Grupo B:</label>
+                                            <select id="evalCaretakerB" class="form-control form-control-sm" required>
+                                                ${generateTeacherSelectOptions()}
+                                            </select>
+                                        </div>
+                                        <div id="evalTurn2BContainer" style="display:none;" class="mt-2">
+                                            <label class="form-label" style="font-size:0.82rem; font-weight:700; color:#1d4ed8;">Docente 2do Turno Grupo B (Relevo):</label>
+                                            <select id="evalCaretakerTurn2B" class="form-control form-control-sm">
+                                                ${generateTeacherSelectOptions()}
+                                            </select>
                                         </div>
                                     </div>
                                 </div>
-                            </form>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('${modalId}').remove()">Cancelar</button>
-                            <button type="button" class="btn btn-primary" onclick="window.confirmSaveEvaluation('${dayId}', '${evalToEdit ? evalToEdit.id : ''}')" style="background:#15803d; border-color:#166534; font-weight:700;">
-                                Guardar Asignación
-                            </button>
-                        </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div style="padding:14px 22px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:10px; border-radius:0 0 14px 14px; flex-shrink:0;">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('${modalId}').remove()" style="font-weight:700;">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="window.confirmSaveEvaluation('${dayId}', '${evalToEdit ? evalToEdit.id : ''}')" style="background:#15803d; border-color:#166534; font-weight:700; padding:8px 18px;">
+                            <i class="fa-solid fa-check"></i> Guardar Asignación
+                        </button>
                     </div>
                 </div>
             </div>
