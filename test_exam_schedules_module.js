@@ -128,6 +128,39 @@ assert.strictEqual(split.groupB[0].lastName, 'DUARTE', 'Primero de B');
 assert.strictEqual(split.groupB[1].lastName, 'ESCOBAR', 'Segundo de B');
 console.log(`✅ División Correcta: Grupo A (${split.groupA.length} alumnos, ${split.rangeA}), Grupo B (${split.groupB.length} alumnos, ${split.rangeB}).`);
 
+// 3.1 Verificación de que cada sección toma solo la mitad de SU sección y NO de todo el grado
+console.log('\n[Test 3.1] Verificando que cada grupo es la mitad de SU SECCIÓN (no de todo el grado)...');
+const previousStudents = global.STATE.students;
+global.STATE.students = [
+    // 4to Sección A (4 alumnos)
+    { id: '4A_1', firstName: 'ALEX', lastName: 'ALVARADO', grade: '4to Perito Contador', gradeCode: '4to PC A', section: 'Sección A', status: 'Activo' },
+    { id: '4A_2', firstName: 'BERTHA', lastName: 'BARRIOS', grade: '4to Perito Contador', gradeCode: '4to PC A', section: 'Sección A', status: 'Activo' },
+    { id: '4A_3', firstName: 'CESAR', lastName: 'CAMPOS', grade: '4to Perito Contador', gradeCode: '4to PC A', section: 'Sección A', status: 'Activo' },
+    { id: '4A_4', firstName: 'DIANA', lastName: 'DEL CID', grade: '4to Perito Contador', gradeCode: '4to PC A', section: 'Sección A', status: 'Activo' },
+    // 4to Sección B (4 alumnos)
+    { id: '4B_1', firstName: 'EDGAR', lastName: 'ESTRADA', grade: '4to Perito Contador', gradeCode: '4to PC B', section: 'Sección B', status: 'Activo' },
+    { id: '4B_2', firstName: 'FABIOLA', lastName: 'FUENTES', grade: '4to Perito Contador', gradeCode: '4to PC B', section: 'Sección B', status: 'Activo' },
+    { id: '4B_3', firstName: 'GABRIEL', lastName: 'GOMEZ', grade: '4to Perito Contador', gradeCode: '4to PC B', section: 'Sección B', status: 'Activo' },
+    { id: '4B_4', firstName: 'HECTOR', lastName: 'HERRERA', grade: '4to Perito Contador', gradeCode: '4to PC B', section: 'Sección B', status: 'Activo' }
+];
+
+const splitSecA = mod.splitStudentsInTwoGroups('4to A', 'Sección A', '4to Perito Contador');
+assert.strictEqual(splitSecA.total, 4, 'Sección A debe tener 4 alumnos en total (no los 8 del grado)');
+assert.strictEqual(splitSecA.groupA.length, 2, 'Grupo A de Sección A tiene la mitad (2 alumnos)');
+assert.strictEqual(splitSecA.groupB.length, 2, 'Grupo B de Sección A tiene la mitad (2 alumnos)');
+assert.strictEqual(splitSecA.groupA[0].lastName, 'ALVARADO');
+assert.strictEqual(splitSecA.groupB[1].lastName, 'DEL CID');
+
+const splitSecB = mod.splitStudentsInTwoGroups('4to B', 'Sección B', '4to Perito Contador');
+assert.strictEqual(splitSecB.total, 4, 'Sección B debe tener 4 alumnos en total (no los 8 del grado)');
+assert.strictEqual(splitSecB.groupA.length, 2, 'Grupo A de Sección B tiene la mitad (2 alumnos)');
+assert.strictEqual(splitSecB.groupB.length, 2, 'Grupo B de Sección B tiene la mitad (2 alumnos)');
+assert.strictEqual(splitSecB.groupA[0].lastName, 'ESTRADA');
+assert.strictEqual(splitSecB.groupB[1].lastName, 'HERRERA');
+
+global.STATE.students = previousStudents;
+console.log('✅ Verificación Exitosa: Las nóminas de cada grupo corresponden estrictamente al 50% de su sección y nunca al total del grado.');
+
 // 4. Test Calculation of Schedule & 12:30 Max Cap
 console.log('\n[Test 4] Verificando Cálculo de Horarios y Límite Infranqueable 12:30 PM (750 min)...');
 const startMin1 = mod.timeStringToMinutes('07:30');

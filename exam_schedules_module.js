@@ -344,37 +344,78 @@
         return workload;
     }
 
-    // Dividir la nómina de estudiantes en Grupo A y Grupo B automáticamente
+    // Dividir la nómina de estudiantes en Grupo A y Grupo B automáticamente (Estrictamente por Sección)
     function splitStudentsInTwoGroups(gradeCode, targetSection = null, targetGradeName = null) {
         const rawCode = (gradeCode || '').trim();
-        const secFilter = (targetSection || '').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase();
-
+        let targetSec = (targetSection || '').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase();
+        let targetGrade = (targetGradeName || '').trim().toUpperCase();
         const codeUpper = rawCode.toUpperCase();
-        let gradeNum = '';
-        if (codeUpper.includes('4')) gradeNum = '4';
-        else if (codeUpper.includes('5')) gradeNum = '5';
-        else if (codeUpper.includes('6')) gradeNum = '6';
 
-        let secLetter = secFilter;
-        if (!secLetter) {
-            const letterMatch = codeUpper.match(/\b([A-D])\b/) || codeUpper.match(/SECCI[OÓ]N\s*([A-D])/);
-            if (letterMatch) secLetter = letterMatch[1];
+        // 1. Resolver sección y grado mediante gradesList si existen
+        const gradesList = (STATE && STATE.gradesList) || [];
+        const foundG = gradesList.find(g => 
+            (g.id && g.id.toUpperCase() === codeUpper) || 
+            (g.code && g.code.toUpperCase() === codeUpper) ||
+            ((g.name && g.name.toUpperCase() === codeUpper) && (!targetSec || (g.section && g.section.toUpperCase().includes(targetSec))))
+        );
+
+        if (foundG) {
+            if (!targetSec && foundG.section) {
+                targetSec = (foundG.section || '').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase();
+            }
+            if (!targetGrade && foundG.name) {
+                targetGrade = (foundG.name || '').trim().toUpperCase();
+            }
         }
+
+        // 2. Extraer letra de sección (A, B, C, D) del código si aún no se tiene
+        if (!targetSec) {
+            const letterMatch = codeUpper.match(/\b([A-D])\b/) || codeUpper.match(/SECCI[OÓ]N\s*([A-D])/);
+            if (letterMatch) targetSec = letterMatch[1];
+        }
+
+        // 3. Extraer número de grado (4, 5, 6)
+        let targetNum = '';
+        if (targetGrade.includes('4') || codeUpper.includes('4')) targetNum = '4';
+        else if (targetGrade.includes('5') || codeUpper.includes('5')) targetNum = '5';
+        else if (targetGrade.includes('6') || codeUpper.includes('6')) targetNum = '6';
 
         const students = (STATE.students || []).filter(s => {
             const isRetired = s.status === 'Retirado' || s.status === 'retirado';
             if (isRetired) return false;
 
-            // 1. Coincidencia exacta directa de código o grado
+            // Extraer y normalizar los datos del estudiante
+            const stuSec = (s.section || '').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase();
+            const stuCodeUpper = (s.gradeCode || '').trim().toUpperCase();
+            const stuGradeUpper = (s.grade || '').trim().toUpperCase();
+
+            // Identificar letra de sección del estudiante
+            let stuSecLetter = stuSec;
+            if (!stuSecLetter) {
+                const sMatch = stuCodeUpper.match(/\b([A-D])\b/) || stuCodeUpper.match(/SECCI[OÓ]N\s*([A-D])/);
+                if (sMatch) stuSecLetter = sMatch[1];
+            }
+
+            // Identificar número de grado del estudiante
+            let stuNum = '';
+            const fullStuGradeStr = stuGradeUpper + ' ' + stuCodeUpper;
+            if (fullStuGradeStr.includes('4')) stuNum = '4';
+            else if (fullStuGradeStr.includes('5')) stuNum = '5';
+            else if (fullStuGradeStr.includes('6')) stuNum = '6';
+
+            // Coincidencia exacta por ID de grado (ej. '4PC' cuando los estudiantes tienen s.gradeCode === '4PC')
             if (s.gradeCode === rawCode || s.grade === rawCode) return true;
 
-            // 2. Coincidencia por grado y sección
-            if (gradeNum && secLetter) {
-                const sGradeStr = ((s.grade || '') + ' ' + (s.gradeCode || '')).toUpperCase();
-                const sSecStr = ((s.section || '') + ' ' + (s.gradeCode || '')).toUpperCase();
-                const hasGrade = sGradeStr.includes(gradeNum);
-                const hasSec = sSecStr.includes(secLetter) || (s.section && s.section.toUpperCase().includes(secLetter));
-                if (hasGrade && hasSec) return true;
+            // REGLA FUNDAMENTAL: Si se conoce la sección objetivo, el estudiante DEBE pertenecer a esa sección
+            if (targetSec && targetNum) {
+                const secMatches = (stuSecLetter === targetSec);
+                const gradeMatches = (stuNum === targetNum);
+                return secMatches && gradeMatches;
+            }
+
+            // Si se conoce la sección pero no el grado
+            if (targetSec) {
+                return (stuSecLetter === targetSec);
             }
 
             return false;
@@ -1442,19 +1483,12 @@
 
         // Construir tarjetas de salones para CADA sección (Grupo A y Grupo B) con selector de tiempo independiente
         let salonsHtml = `
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #cbd5e1; padding-bottom:6px; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
-                <div>
-                    <h6 style="font-weight:800; color:#15803d; margin:0; display:flex; align-items:center; gap:8px;">
-                        <i class="fa-solid fa-school"></i> Salones, Cuidadores y Tiempos por Sección
-                    </h6>
-                    <div style="font-size:0.8rem; color:#64748b; font-weight:700;">
-                        Los cuidadores se asignan automáticamente de forma equitativa y pueden modificarse en cualquier momento.
-                    </div>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <button type="button" class="btn btn-sm btn-outline-success" onclick="window.reAutoAssignProctorsModal()" style="font-weight:700; font-size:0.8rem; background:#f0fdf4; border-color:#86efac; color:#166534;" title="Re-sortear y autoasignar otros cuidadores disponibles">
-                        <i class="fa-solid fa-dice"></i> Re-sortear Cuidadores
-                    </button>
+            <div style="border-bottom:1px solid #cbd5e1; padding-bottom:6px; margin-bottom:10px;">
+                <h6 style="font-weight:800; color:#15803d; margin:0; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-school"></i> Salones, Cuidadores y Tiempos por Sección
+                </h6>
+                <div style="font-size:0.8rem; color:#64748b; font-weight:700;">
+                    Cada grupo (A y B) contiene exactamente la mitad de los estudiantes de su respectiva sección. Los cuidadores se asignan automáticamente de forma equitativa y pueden modificarse en cualquier momento.
                 </div>
             </div>
         `;
@@ -1477,7 +1511,7 @@
         sectionsInfo.forEach((sInfo, sIdx) => {
             const secCode = sInfo.gradeCode;
             const secName = sInfo.section;
-            const splitData = splitStudentsInTwoGroups(secCode);
+            const splitData = splitStudentsInTwoGroups(secCode, secName, sInfo.gradeName);
 
             // Valores de salón por defecto según secuencia oficial
             const defaultSalonA = officialSalons[salonCursor % officialSalons.length] || `Salón ${(sIdx * 2) + 1}`;
@@ -1722,7 +1756,7 @@
 
         // Construir la matriz de secciones configuradas con su propia duración
         const sectionsPayload = sectionsInfo.map((sInfo, sIdx) => {
-            const splitData = splitStudentsInTwoGroups(sInfo.gradeCode);
+            const splitData = splitStudentsInTwoGroups(sInfo.gradeCode, sInfo.section, sInfo.gradeName);
 
             const secDurSelect = document.getElementById(`evalSectionDuration_${sIdx}`);
             const secDuration = secDurSelect ? (parseInt(secDurSelect.value, 10) || 60) : 60;
@@ -2499,10 +2533,12 @@
         const secObj = targetSection || (Array.isArray(ev.sections) && ev.sections[0]) || null;
         const grp = secObj ? (isGroupA ? secObj.groupA : secObj.groupB) : (isGroupA ? ev.groupA : ev.groupB);
         const gradeCodeToUse = secObj ? secObj.gradeCode : ev.gradeCode;
+        const secNameToUse = secObj ? secObj.section : '';
+        const gradeNameToUse = secObj ? secObj.gradeName : ev.gradeName;
         const sectionNameToUse = secObj ? `${secObj.gradeName} (${secObj.section})` : ev.gradeName;
         const titularNameToUse = secObj ? secObj.teacherName : ev.courseTeacherName;
 
-        const splitData = splitStudentsInTwoGroups(gradeCodeToUse);
+        const splitData = splitStudentsInTwoGroups(gradeCodeToUse, secNameToUse, gradeNameToUse);
         const studentList = isGroupA ? splitData.groupA : splitData.groupB;
         const isPractica = ev.isPractica === true;
 
