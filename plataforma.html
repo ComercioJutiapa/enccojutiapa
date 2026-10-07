@@ -628,6 +628,10 @@
                     <span>Bitácora de Auxiliatura</span>
                     <span id="auxiliaturaAlertsBadge" class="badge nav-badge-counter badge-alerts" style="display:none;">0</span>
                 </a>
+                <a href="#" class="nav-item" data-view="exam-schedules" data-perm="exam-schedules" data-allowed="director,secretaria,profesor_auxiliar,admin" onclick="navigateTo('exam-schedules', event)">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>Roles de Exámenes y Cuido</span>
+                </a>
                 <a href="#" class="nav-item" data-view="exoneraciones-log" data-perm="exoneraciones-log" data-allowed="*" onclick="navigateTo('exoneraciones-log', event)">
                     <i class="fa-solid fa-file-shield"></i>
                     <span>Registro de Exoneraciones</span>
@@ -2462,6 +2466,9 @@
 
                 <!-- 7.0. CENTRO DE CONTROL INTEGRAL DE AUXILIATURA Y SECRETARÍA -->
                 <section class="app-view" id="view-auxiliatura-center"></section>
+
+                <!-- 7.0.1. ROLES DE EXÁMENES Y CUIDO DE EVALUACIONES (AUXILIATURA, DIRECCIÓN Y SECRETARÍA) -->
+                <section class="app-view" id="view-exam-schedules"></section>
 
                 <!-- 7.1. BITÁCORA DIARIA DE AUSENCIAS Y ALERTAS (AUXILIATURA, SECRETARÍA Y DIRECCIÓN) -->
                 <section class="app-view" id="view-auxiliatura-log">
@@ -5422,6 +5429,7 @@
     <script src="auxiliatura_center.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="db_repository.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="modal_manager.js?v=20261003_v1" charset="UTF-8"></script>
+    <script src="exam_schedules_module.js?v=20261006_v1" charset="UTF-8"></script>
 
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre

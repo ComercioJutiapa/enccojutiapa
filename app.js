@@ -1350,6 +1350,12 @@ function hasRolePermission(permKey, role = null) {
         return allowedCarnets.includes(targetRole);
     }
 
+    // 🛡️ BLINDAJE RBAC ESTRICTO: "Roles de Exámenes y Cuido" (Auxiliares, Secretaría, Dirección, Admin - DENEGADO A DOCENTES)
+    if (testKey === 'exam-schedules' || testKey === 'view-exam-schedules') {
+        const allowedExams = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+        return allowedExams.includes(targetRole);
+    }
+
     // 🛡️ BLINDAJE RBAC: "Bitácora de Auxiliatura" y "Centro de Control" (Auxiliares, Secretaría, Dirección, Admin)
     if (testKey === 'auxiliatura-log' || testKey === 'auxiliatura-center') {
         const allowedAux = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
@@ -2656,7 +2662,8 @@ var SYSTEM_MODULES_LIST = [
     { key: 'exoneraciones-log', name: 'Libro de Exoneraciones', icon: 'fa-file-shield', category: 'Secretaría y Alumnos', desc: 'Libro de registro oficial de exoneraciones y consideraciones académicas especiales.' },
     { key: 'permissions-history', name: 'Historial de Permisos', icon: 'fa-clipboard-list', category: 'Estudiantil', desc: 'Historial oficial de permisos de ausencia autorizados por Auxiliatura.' },
     { key: 'auxiliatura-center', name: 'Centro de Control Estudiantil', icon: 'fa-gauge-high', category: 'Estudiantil', desc: 'Panel unificado de monitoreo, ficha 360°, disciplina y permisos para Auxiliatura y Secretaría.' },
-    { key: 'auxiliatura-log', name: 'Bitácora Diaria de Ausencias y Alertas', icon: 'fa-clipboard-user', category: 'Estudiantil', desc: 'Monitoreo en tiempo real de inasistencias en aula, avisos a padres y verificación de auxiliatura.' }
+    { key: 'auxiliatura-log', name: 'Bitácora Diaria de Ausencias y Alertas', icon: 'fa-clipboard-user', category: 'Estudiantil', desc: 'Monitoreo en tiempo real de inasistencias en aula, avisos a padres y verificación de auxiliatura.' },
+    { key: 'exam-schedules', name: 'Roles de Exámenes y Cuido', icon: 'fa-calendar-days', category: 'Auxiliatura', desc: 'Planificador de fechas de evaluación, división en grupos A y B, asignación de cuidadores y horarios de exámenes en hoja oficio.' }
 ];
 window.SYSTEM_MODULES_LIST = SYSTEM_MODULES_LIST;
 
@@ -9526,6 +9533,7 @@ function navigateTo(viewName, event = null) {
         'exoneraciones-log': { title: 'Libro de Registro Oficial de Exoneraciones Académicas', sub: 'Archivo central de alumnos con consideraciones especiales, dispensas y resoluciones ministeriales' },
         'permissions-history': { title: 'Libro de Registro Oficial de Permisos de Ausencia', sub: 'Archivo central de justificaciones de inasistencia, pases de salida y licencias emitidas por Auxiliatura' },
         'auxiliatura-center': { title: 'Centro de Control Estudiantil y Disciplinario', sub: 'Ficha 360°, monitoreo activo de inasistencias, emisión de permisos y resolución de incidencias' },
+        'exam-schedules': { title: 'Roles de Exámenes y Cuido de Evaluaciones', sub: 'Planificación de fechas, división en medias listas A y B, horarios en hoja oficio y balance de cuidadores' },
     };
     const t = titles[viewName];
     if (t) {
@@ -9566,6 +9574,7 @@ function renderCurrentView() {
         case 'auxiliatura-log': if (typeof renderAuxiliaturaLogView === 'function') renderAuxiliaturaLogView(); break;
         case 'exoneraciones-log': if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView(); break;
         case 'permissions-history': if (typeof renderPermissionsHistoryView === 'function') renderPermissionsHistoryView(); break;
+        case 'exam-schedules': if (typeof renderExamSchedulesView === 'function') renderExamSchedulesView(); break;
     }
 }
 
