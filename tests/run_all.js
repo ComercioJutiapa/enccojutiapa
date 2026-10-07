@@ -25,7 +25,8 @@ const CRITICAL_SUITES = [
     'test_exoneration_and_student_lists_resilience.js',
     'test_independent_bimestres.js',
     'test_sire_assisted_enrollment_simulation.js',
-    'test_exam_schedules_module.js'
+    'test_exam_schedules_module.js',
+    'test_attendance_course_isolation.js'
 ];
 
 console.log('================================================================================');
