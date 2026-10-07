@@ -1213,8 +1213,8 @@
                 <title>Horario de Evaluaciones - ${dayFormatted}</title>
                 <style>
                     @page {
-                        size: legal portrait; /* HOJA OFICIO VERTICAL */
-                        margin: 12mm 15mm;
+                        size: 8.5in 13in portrait; /* HOJA OFICIO GUATEMALTECO 8.5in x 13in VERTICAL */
+                        margin: 10mm 12mm;
                     }
                     body {
                         font-family: Arial, Helvetica, sans-serif;
@@ -1566,8 +1566,8 @@
                 <title>${title}</title>
                 <style>
                     @page {
-                        size: letter portrait; /* HOJA CARTA O LEGAL VERTICAL */
-                        margin: 10mm 12mm;
+                        size: 8.5in 13in portrait; /* HOJA OFICIO GUATEMALTECO 8.5in x 13in VERTICAL */
+                        margin: 8mm 12mm;
                     }
                     body {
                         font-family: Arial, Helvetica, sans-serif;
