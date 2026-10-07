@@ -109,6 +109,55 @@
             .chip-orange { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
             .chip-red { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
+            /* ESTILOS DE TABLA COMPACTA Y MODERNA PARA SALONES Y EVALUACIONES */
+            .exam-compact-table {
+                width: 100%;
+                border-collapse: separate;
+                border-spacing: 0;
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                overflow: hidden;
+                font-size: 0.84rem;
+            }
+            .exam-compact-table th {
+                background: #f8fafc;
+                color: #334155;
+                font-weight: 800;
+                padding: 8px 12px;
+                border-bottom: 1px solid #e2e8f0;
+                text-align: left;
+                font-size: 0.78rem;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+            }
+            .exam-compact-table td {
+                padding: 8px 12px;
+                border-bottom: 1px solid #f1f5f9;
+                vertical-align: middle;
+            }
+            .exam-compact-table tr:last-child td {
+                border-bottom: none;
+            }
+            .exam-compact-table tr:hover td {
+                background: #f8fafc;
+            }
+
+            /* BARRA DE ACCIÓN RÁPIDA SUPERIOR */
+            .exam-quick-actions-bar {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                padding: 10px 16px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-bottom: 16px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            }
+
             /* MODALES CENTRADOS PERFECTAMENTE EN VIEWPORT */
             .exam-modal-overlay {
                 position: fixed !important;
@@ -140,7 +189,7 @@
                 animation: examModalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
             }
             .exam-modal-box.modal-lg-box {
-                max-width: 820px !important;
+                max-width: 860px !important;
             }
             @keyframes examModalPop {
                 from { opacity: 0; transform: scale(0.96) translateY(-10px); }
@@ -663,40 +712,47 @@
 
         let html = `
             <div class="exam-sched-card">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
-                    <div>
-                        <h2 style="margin:0; font-size:1.35rem; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:10px;">
-                            <i class="fa-solid fa-calendar-days" style="color:#15803d;"></i>
-                            Roles de Evaluaciones y Cuido de Exámenes
-                        </h2>
-                        <p style="margin:4px 0 0 0; color:#64748b; font-size:0.88rem;">
-                            Auxiliatura General ─ Planificación por fechas, salones, grupos A/B y asignación equitativa de cuidadores.
-                        </p>
+                <!-- BARRA SUPERIOR: TÍTULO Y CENTRO DE IMPRESIÓN Y ACCIÓN RÁPIDA -->
+                <div class="exam-quick-actions-bar">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="background:#f0fdf4; color:#15803d; width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; border:1px solid #bbf7d0;">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                        <div>
+                            <h2 style="margin:0; font-size:1.25rem; font-weight:800; color:#0f172a;">
+                                Roles de Evaluaciones y Salones
+                            </h2>
+                            <p style="margin:2px 0 0 0; color:#64748b; font-size:0.82rem;">
+                                Auxiliatura General ─ Cuido equitativo, salones automáticos y medias listas oficiales.
+                            </p>
+                        </div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                        <label style="font-weight:700; font-size:0.88rem; color:#334155; margin:0;">Bimestre:</label>
-                        <select id="examBimesterSelect" class="form-control" style="width:160px; font-weight:700;" onchange="window.changeExamBimester(this.value)">
-                            <option value="BIM1" ${bimesterSelectVal === 'BIM1' ? 'selected' : ''}>I Bimestre</option>
-                            <option value="BIM2" ${bimesterSelectVal === 'BIM2' ? 'selected' : ''}>II Bimestre</option>
-                            <option value="BIM3" ${bimesterSelectVal === 'BIM3' ? 'selected' : ''}>III Bimestre</option>
-                            <option value="BIM4" ${bimesterSelectVal === 'BIM4' ? 'selected' : ''}>IV Bimestre</option>
-                        </select>
-                        <button type="button" class="btn btn-primary" onclick="window.addNewExamDayModal()" style="background:#15803d; border-color:#166534; font-weight:700;">
-                            <i class="fa-solid fa-plus"></i> Agregar Día de Examen
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" onclick="window.printAllNominasOfBimester()" style="font-weight:700; border-color:#2563eb; color:#1d4ed8; background:#eff6ff;" title="Imprimir de una sola vez todas las nóminas (medias listas) de evaluaciones de este bimestre">
-                            <i class="fa-solid fa-print"></i> Imprimir Todas las Nóminas
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="window.printConsolidatedCalendarPdf()" style="font-weight:700;">
-                            <i class="fa-solid fa-file-pdf"></i> Calendario General (PDF)
-                        </button>
-                    </div>
-                </div>
 
-                <!-- AVISO INSTITUCIONAL DE LÍMITE HORARIO -->
-                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px; font-size:0.85rem; color:#166534; display:flex; align-items:center; gap:10px; margin-bottom:18px;">
-                    <i class="fa-solid fa-circle-info" style="font-size:1.1rem; color:#15803d;"></i>
-                    <span><strong>Regla Oficial de Jornada:</strong> Las evaluaciones inician a las <strong>07:30 AM</strong> y no pueden sobrepasar las <strong>12:30 PM</strong>. La duración de cada prueba la estipula el docente titular y la distribución de salones (Salón 6A, 6B... hasta los 20 salones) y cuidadores se asigna automáticamente de forma equitativa.</span>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <div style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:4px 8px;">
+                            <label style="font-weight:700; font-size:0.82rem; color:#475569; margin:0;">Bimestre:</label>
+                            <select id="examBimesterSelect" class="form-control form-control-sm" style="width:130px; font-weight:800; border:none; background:transparent; padding:2px 4px;" onchange="window.changeExamBimester(this.value)">
+                                <option value="BIM1" ${bimesterSelectVal === 'BIM1' ? 'selected' : ''}>I Bimestre</option>
+                                <option value="BIM2" ${bimesterSelectVal === 'BIM2' ? 'selected' : ''}>II Bimestre</option>
+                                <option value="BIM3" ${bimesterSelectVal === 'BIM3' ? 'selected' : ''}>III Bimestre</option>
+                                <option value="BIM4" ${bimesterSelectVal === 'BIM4' ? 'selected' : ''}>IV Bimestre</option>
+                            </select>
+                        </div>
+
+                        <!-- CENTRO DE IMPRESIÓN CONSOLIDADO -->
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-primary" onclick="window.printAllNominasOfBimester()" style="background:#1d4ed8; border-color:#1e40af; font-weight:700; font-size:0.86rem; padding:7px 14px;" title="Imprimir de una sola vez todas las nóminas (medias listas) de evaluaciones de este bimestre">
+                                <i class="fa-solid fa-print"></i> Imprimir Todas las Nóminas
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" onclick="window.printConsolidatedCalendarPdf()" style="font-weight:700; font-size:0.86rem; background:#eff6ff;" title="Descargar o imprimir calendario completo en PDF">
+                                <i class="fa-solid fa-file-pdf"></i> Calendario General
+                            </button>
+                        </div>
+
+                        <button type="button" class="btn btn-success" onclick="window.addNewExamDayModal()" style="background:#15803d; border-color:#166534; font-weight:700; font-size:0.86rem; padding:7px 14px;">
+                            <i class="fa-solid fa-plus"></i> Nuevo Día
+                        </button>
+                    </div>
                 </div>
 
                 <!-- CONTENEDOR DE DÍAS CONFIGURADOS -->
@@ -860,95 +916,138 @@
                     </div>
                 </div>
 
-                <!-- DETALLE DE DISTRIBUCIÓN DE SALONES Y CUIDADORES -->
-                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-top:12px;">
+                <!-- DETALLE DE DISTRIBUCIÓN DE SALONES Y CUIDADORES EN FORMATO COMPACTO -->
+                <div style="margin-top:12px; overflow-x:auto;">
         `;
 
         if (isPractica) {
             // Práctica Supervisada: Relevo en ambos salones
             const relevoTime = minutesToTimeString(timeStringToMinutes(ev.startTime) + Math.round(ev.durationMinutes / 2));
             html += `
-                <div class="exam-group-card" style="border-left:4px solid #2563eb;">
-                    <strong style="color:#1e40af; display:block; margin-bottom:4px;">
-                        🏫 Salón ${ev.groupA.classroom || '1'} ─ GRUPO A (Alumnos ${ev.groupA.range || '1 a N/2'})
-                    </strong>
-                    <div style="font-size:0.82rem; color:#334155; line-height:1.4;">
-                        <div>• <strong>1er Turno (${ev.startTime} a ${relevoTime}):</strong> ${ev.groupA.caretakerTeacherName || 'Sin asignar'}</div>
-                        <div>• <strong>2do Turno (${relevoTime} a ${ev.endTime}):</strong> ${ev.groupA.caretakerTurn2Name || 'Sin asignar'}</div>
-                    </div>
-                </div>
-                <div class="exam-group-card" style="border-left:4px solid #2563eb;">
-                    <strong style="color:#1e40af; display:block; margin-bottom:4px;">
-                        🏫 Salón ${ev.groupB.classroom || '2'} ─ GRUPO B (Alumnos ${ev.groupB.range || 'N/2+1 a N'})
-                    </strong>
-                    <div style="font-size:0.82rem; color:#334155; line-height:1.4;">
-                        <div>• <strong>1er Turno (${ev.startTime} a ${relevoTime}):</strong> ${ev.groupB.caretakerTeacherName || 'Sin asignar'}</div>
-                        <div>• <strong>2do Turno (${relevoTime} a ${ev.endTime}):</strong> ${ev.groupB.caretakerTurn2Name || 'Sin asignar'}</div>
-                    </div>
-                </div>
+                <table class="exam-compact-table">
+                    <thead>
+                        <tr>
+                            <th style="width:18%;">Distribución</th>
+                            <th style="width:22%;">Horario y Relevo</th>
+                            <th style="width:30%;">Salón y Cuidador Turno 1 (${ev.startTime} a ${relevoTime})</th>
+                            <th style="width:30%;">Salón y Cuidador Turno 2 (${relevoTime} a ${ev.endTime})</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong style="color:#1d4ed8;">Salón Grupo A</strong><br><span style="font-size:0.75rem; color:#64748b;">${ev.groupA.range || '1 a N/2'}</span></td>
+                            <td><span class="badge" style="background:#dbeafe; color:#1e40af; font-weight:800;">${ev.startTime} - ${ev.endTime}</span> (${ev.durationMinutes} min)</td>
+                            <td><strong>🏫 ${ev.groupA.classroom || 'Salón 1'}</strong><br><span style="color:#334155;">👤 ${ev.groupA.caretakerTeacherName || 'Sin asignar'}</span></td>
+                            <td><strong>🏫 ${ev.groupA.classroom || 'Salón 1'}</strong><br><span style="color:#334155;">👤 ${ev.groupA.caretakerTurn2Name || 'Sin asignar'}</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong style="color:#1d4ed8;">Salón Grupo B</strong><br><span style="font-size:0.75rem; color:#64748b;">${ev.groupB.range || 'N/2+1 a N'}</span></td>
+                            <td><span class="badge" style="background:#dbeafe; color:#1e40af; font-weight:800;">${ev.startTime} - ${ev.endTime}</span> (${ev.durationMinutes} min)</td>
+                            <td><strong>🏫 ${ev.groupB.classroom || 'Salón 2'}</strong><br><span style="color:#334155;">👤 ${ev.groupB.caretakerTeacherName || 'Sin asignar'}</span></td>
+                            <td><strong>🏫 ${ev.groupB.classroom || 'Salón 2'}</strong><br><span style="color:#334155;">👤 ${ev.groupB.caretakerTurn2Name || 'Sin asignar'}</span></td>
+                        </tr>
+                    </tbody>
+                </table>
             `;
         } else if (ev.isComputacion && ev.computacionMode === 'single') {
             html += `
-                <div class="exam-group-card" style="border-left:4px solid #0284c7; grid-column:1 / -1;">
-                    <strong style="color:#0369a1; display:block; margin-bottom:4px;">
-                        💻 Laboratorio de Computación ─ GRUPO ÚNICO (Todas las Secciones)
-                    </strong>
-                    <div style="font-size:0.82rem; color:#334155;">
-                        • <strong>Catedráticos Evaluadores y Cuidadores:</strong> ${ev.courseTeacherName} (Docentes Titulares Autorizados)
+                <div class="p-3 rounded" style="background:#f0f9ff; border:1.5px solid #bae6fd; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <strong style="color:#0369a1; font-size:0.95rem; display:flex; align-items:center; gap:6px;">
+                            <i class="fa-solid fa-laptop-code"></i> Laboratorio de Computación ─ Grupo Único (Todas las Secciones)
+                        </strong>
+                        <div style="font-size:0.83rem; color:#334155; margin-top:2px;">
+                            Catedráticos evaluadores y cuidadores: <strong>${ev.courseTeacherName}</strong> (Docentes Titulares Autorizados)
+                        </div>
                     </div>
+                    <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.82rem; font-weight:800; padding:6px 12px; border:1px solid #7dd3fc;">
+                        ⏱️ ${ev.startTime} a ${ev.endTime} (${ev.durationMinutes} min)
+                    </span>
                 </div>
             `;
         } else if (Array.isArray(ev.sections) && ev.sections.length > 0) {
-            // Renderizar salones para todas las secciones configuradas
+            // Renderizar tabla unificada y compacta para todas las secciones
+            html += `
+                <table class="exam-compact-table">
+                    <thead>
+                        <tr>
+                            <th style="width:12%;">Sección</th>
+                            <th style="width:18%;">Horario / Tiempo</th>
+                            <th style="width:35%;">Salón Grupo A (1 a Mitad)</th>
+                            <th style="width:35%;">Salón Grupo B (Mitad a Fin)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
             ev.sections.forEach(sec => {
+                const secDur = sec.durationMinutes || ev.durationMinutes;
+                const secStart = ev.startTime;
+                const secEnd = minutesToTimeString(timeStringToMinutes(secStart) + secDur);
                 html += `
-                    <div class="exam-group-card" style="border-left:4px solid #15803d;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                            <strong style="color:#166534;">
-                                🏫 ${sec.section} ─ Salón ${sec.groupA.classroom || '1'} (Grupo A: ${sec.groupA.range || '1 a N/2'})
-                            </strong>
-                            <span style="font-size:0.75rem; font-weight:800; background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px;">
-                                ⏱️ ${sec.durationMinutes || ev.durationMinutes} min
-                            </span>
-                        </div>
-                        <div style="font-size:0.82rem; color:#334155;">
-                            • <strong>Docente Cuidador:</strong> ${sec.groupA.caretakerTeacherName || 'Sin asignar'}
-                        </div>
-                    </div>
-                    <div class="exam-group-card" style="border-left:4px solid #15803d;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                            <strong style="color:#166534;">
-                                🏫 ${sec.section} ─ Salón ${sec.groupB.classroom || '2'} (Grupo B: ${sec.groupB.range || 'N/2+1 a N'})
-                            </strong>
-                            <span style="font-size:0.75rem; font-weight:800; background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:4px;">
-                                ⏱️ ${sec.durationMinutes || ev.durationMinutes} min
-                            </span>
-                        </div>
-                        <div style="font-size:0.82rem; color:#334155;">
-                            • <strong>Docente Cuidador:</strong> ${sec.groupB.caretakerTeacherName || 'Sin asignar'}
-                        </div>
-                    </div>
+                        <tr>
+                            <td>
+                                <strong style="color:#15803d; font-size:0.95rem;">${sec.section}</strong>
+                            </td>
+                            <td>
+                                <span style="font-weight:800; color:#0f172a;">${secStart} - ${secEnd}</span>
+                                <div style="font-size:0.75rem; color:#64748b; font-weight:700;">⏱️ ${secDur} min</div>
+                            </td>
+                            <td>
+                                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                                    <span class="badge" style="background:#f1f5f9; color:#0f172a; font-size:0.8rem; font-weight:800; border:1px solid #cbd5e1;">
+                                        🏫 ${sec.groupA.classroom || 'Salón 1'}
+                                    </span>
+                                    <span style="font-size:0.73rem; color:#64748b; font-weight:700;">${sec.groupA.range || 'Mitad A'}</span>
+                                </div>
+                                <div style="margin-top:4px; font-size:0.82rem; color:#334155;">
+                                    👤 <strong>Cuida:</strong> ${sec.groupA.caretakerTeacherName || 'Sin asignar'}
+                                </div>
+                            </td>
+                            <td>
+                                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                                    <span class="badge" style="background:#f1f5f9; color:#0f172a; font-size:0.8rem; font-weight:800; border:1px solid #cbd5e1;">
+                                        🏫 ${sec.groupB.classroom || 'Salón 2'}
+                                    </span>
+                                    <span style="font-size:0.73rem; color:#64748b; font-weight:700;">${sec.groupB.range || 'Mitad B'}</span>
+                                </div>
+                                <div style="margin-top:4px; font-size:0.82rem; color:#334155;">
+                                    👤 <strong>Cuida:</strong> ${sec.groupB.caretakerTeacherName || 'Sin asignar'}
+                                </div>
+                            </td>
+                        </tr>
                 `;
             });
+            html += `
+                    </tbody>
+                </table>
+            `;
         } else {
             // Fallback de retrocompatibilidad
             html += `
-                <div class="exam-group-card" style="border-left:4px solid #15803d;">
-                    <strong style="color:#166534; display:block; margin-bottom:4px;">
-                        🏫 Salón ${ev.groupA.classroom || '1'} ─ GRUPO A (Alumnos ${ev.groupA.range || '1 a N/2'})
-                    </strong>
-                    <div style="font-size:0.82rem; color:#334155;">
-                        • <strong>Docente Cuidador:</strong> ${ev.groupA.caretakerTeacherName || 'Sin asignar'}
-                    </div>
-                </div>
-                <div class="exam-group-card" style="border-left:4px solid #15803d;">
-                    <strong style="color:#166534; display:block; margin-bottom:4px;">
-                        🏫 Salón ${ev.groupB.classroom || '2'} ─ GRUPO B (Alumnos ${ev.groupB.range || 'N/2+1 a N'})
-                    </strong>
-                    <div style="font-size:0.82rem; color:#334155;">
-                        • <strong>Docente Cuidador:</strong> ${ev.groupB.caretakerTeacherName || 'Sin asignar'}
-                    </div>
-                </div>
+                <table class="exam-compact-table">
+                    <thead>
+                        <tr>
+                            <th style="width:20%;">Grupo</th>
+                            <th style="width:20%;">Horario</th>
+                            <th style="width:30%;">Salón Asignado</th>
+                            <th style="width:30%;">Docente Cuidador</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Grupo A</strong> (${ev.groupA.range || '1 a N/2'})</td>
+                            <td><span style="font-weight:800;">${ev.startTime} - ${ev.endTime}</span></td>
+                            <td><strong>🏫 ${ev.groupA.classroom || 'Salón 1'}</strong></td>
+                            <td>👤 ${ev.groupA.caretakerTeacherName || 'Sin asignar'}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Grupo B</strong> (${ev.groupB.range || 'N/2+1 a N'})</td>
+                            <td><span style="font-weight:800;">${ev.startTime} - ${ev.endTime}</span></td>
+                            <td><strong>🏫 ${ev.groupB.classroom || 'Salón 2'}</strong></td>
+                            <td>👤 ${ev.groupB.caretakerTeacherName || 'Sin asignar'}</td>
+                        </tr>
+                    </tbody>
+                </table>
             `;
         }
 
@@ -1566,93 +1665,83 @@
             }
 
             salonsHtml += `
-                <div class="p-3 mb-3 rounded" style="background:#ffffff; border:1.5px solid #cbd5e1; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-bottom:10px;">
+                <div class="p-2 mb-2 rounded" style="background:#ffffff; border:1px solid #cbd5e1;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; background:#f8fafc; padding:6px 10px; border-radius:6px; margin-bottom:8px; border:1px solid #e2e8f0;">
                         <div>
-                            <strong style="color:#0f172a; font-size:0.95rem;">
+                            <strong style="color:#0f172a; font-size:0.9rem;">
                                 📌 ${sInfo.gradeName} ─ <span style="color:#15803d; font-weight:800;">${secName}</span>
                             </strong>
-                            <div style="font-size:0.8rem; color:#475569; font-weight:700;">
-                                Catedrático Titular: <strong>${sInfo.teacherName}</strong>
-                            </div>
+                            <span style="font-size:0.78rem; color:#64748b; margin-left:8px;">
+                                Titular: <strong>${sInfo.teacherName}</strong>
+                            </span>
                         </div>
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <label style="font-size:0.82rem; font-weight:800; color:#b45309; margin:0;">
-                                ⏱️ Tiempo Fijado para ${secName}:
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <label style="font-size:0.78rem; font-weight:700; color:#475569; margin:0;">
+                                ⏱️ Tiempo:
                             </label>
-                            <select id="evalSectionDuration_${sIdx}" class="form-control form-control-sm" style="width:145px; font-weight:800;" onchange="window.recalcEvalTimes()">
+                            <select id="evalSectionDuration_${sIdx}" class="form-control form-control-sm" style="width:130px; font-weight:700; font-size:0.8rem; padding:2px 6px; height:28px;" onchange="window.recalcEvalTimes()">
                                 <option value="45" ${secDuration === 45 ? 'selected' : ''}>45 minutos</option>
                                 <option value="50" ${secDuration === 50 ? 'selected' : ''}>50 minutos</option>
                                 <option value="60" ${secDuration === 60 ? 'selected' : ''}>60 minutos (1h)</option>
-                                <option value="75" ${secDuration === 75 ? 'selected' : ''}>75 minutos (1h 15m)</option>
-                                <option value="90" ${secDuration === 90 ? 'selected' : ''}>90 minutos (1h 30m)</option>
+                                <option value="75" ${secDuration === 75 ? 'selected' : ''}>75 min (1h 15m)</option>
+                                <option value="90" ${secDuration === 90 ? 'selected' : ''}>90 min (1h 30m)</option>
                                 <option value="120" ${secDuration === 120 ? 'selected' : ''}>120 minutos (2h)</option>
                                 <option value="300" ${secDuration === 300 ? 'selected' : ''}>300 min (Práctica)</option>
-                                ${![45, 50, 60, 75, 90, 120, 300].includes(secDuration) ? `<option value="${secDuration}" selected>${secDuration} minutos (Personalizado)</option>` : ''}
+                                ${![45, 50, 60, 75, 90, 120, 300].includes(secDuration) ? `<option value="${secDuration}" selected>${secDuration} min (Personalizado)</option>` : ''}
                             </select>
-                            <input type="number" id="evalSectionDurationCustom_${sIdx}" class="form-control form-control-sm" style="width:70px; font-weight:800; text-align:center;" min="15" max="300" placeholder="Min" title="Editar minutos manualmente" value="${secDuration}" oninput="const sel = document.getElementById('evalSectionDuration_${sIdx}'); if(sel && this.value){ sel.value = this.value; } window.recalcEvalTimes();">
-                            <span id="evalSectionTimeBadge_${sIdx}" style="font-size:0.8rem; font-weight:800; background:#f1f5f9; color:#0f172a; padding:4px 8px; border-radius:4px; border:1px solid #cbd5e1;">
+                            <input type="number" id="evalSectionDurationCustom_${sIdx}" class="form-control form-control-sm" style="width:58px; font-weight:700; text-align:center; font-size:0.8rem; padding:2px 4px; height:28px;" min="15" max="300" placeholder="Min" title="Editar minutos manualmente" value="${secDuration}" oninput="const sel = document.getElementById('evalSectionDuration_${sIdx}'); if(sel && this.value){ sel.value = this.value; } window.recalcEvalTimes();">
+                            <span id="evalSectionTimeBadge_${sIdx}" style="font-size:0.75rem; font-weight:800; background:#ffffff; color:#0f172a; padding:2px 6px; border-radius:4px; border:1px solid #cbd5e1;">
                                 --:-- a --:--
                             </span>
                         </div>
                     </div>
 
-                    <div class="row g-3">
+                    <div class="row g-2">
                         <!-- GRUPO A -->
-                        <div class="col-md-6 p-2 rounded" style="background:#f8fafc; border:1px solid #e2e8f0;">
-                            <strong style="color:#166534; font-size:0.86rem; display:block; margin-bottom:6px;">
-                                🏫 Salón Grupo A (${splitData.rangeA} ─ ${splitData.groupA.length} alumnos)
-                            </strong>
-                            <div class="mb-2">
-                                <label class="form-label" style="font-size:0.8rem; font-weight:700;">No. de Salón (Catálogo de 20 salones):</label>
-                                <input type="text" id="evalClassroomA_${sIdx}" list="institutionalSalonsList" class="form-control form-control-sm" value="${curA.classroom}" placeholder="Ej. Salón 6A">
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label" style="font-size:0.8rem; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
-                                    <span>Docente Cuidador Grupo A:</span>
-                                    <span class="badge" style="background:#dcfce7; color:#15803d; font-size:0.7rem; font-weight:700; border:1px solid #86efac;">Asignado (Editable)</span>
-                                </label>
-                                <select id="evalCaretakerA_${sIdx}" class="form-control form-control-sm" required>
-                                    ${window._generateTeacherSelectOptions(curA.caretaker, titularIds)}
-                                </select>
-                            </div>
-                            <div id="evalTurn2AContainer_${sIdx}" style="display:${isPrac ? 'block' : 'none'};" class="mb-2">
-                                <label class="form-label" style="font-size:0.8rem; font-weight:700; color:#1d4ed8; display:flex; justify-content:space-between; align-items:center;">
-                                    <span>Docente 2do Turno (Relevo):</span>
-                                    <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:0.7rem; font-weight:700; border:1px solid #93c5fd;">Asignado (Editable)</span>
-                                </label>
-                                <select id="evalCaretakerTurn2A_${sIdx}" class="form-control form-control-sm">
-                                    ${window._generateTeacherSelectOptions(curA.turn2, titularIds)}
-                                </select>
+                        <div class="col-md-6">
+                            <div style="background:#fcfcfd; border:1px solid #e2e8f0; border-radius:6px; padding:8px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <strong style="color:#15803d; font-size:0.82rem;">
+                                        Salón Grupo A (${splitData.rangeA} ─ ${splitData.groupA.length} alum.)
+                                    </strong>
+                                    <span class="badge" style="background:#dcfce7; color:#15803d; font-size:0.68rem; font-weight:700;">Editable</span>
+                                </div>
+                                <div style="display:grid; grid-template-columns: 100px 1fr; gap:6px; align-items:center; margin-bottom:4px;">
+                                    <input type="text" id="evalClassroomA_${sIdx}" list="institutionalSalonsList" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" value="${curA.classroom}" placeholder="Salón 6A">
+                                    <select id="evalCaretakerA_${sIdx}" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" required>
+                                        ${window._generateTeacherSelectOptions(curA.caretaker, titularIds)}
+                                    </select>
+                                </div>
+                                <div id="evalTurn2AContainer_${sIdx}" style="display:${isPrac ? 'block' : 'none'}; margin-top:4px;">
+                                    <div style="font-size:0.72rem; color:#1d4ed8; font-weight:700; margin-bottom:2px;">Relevo 2do Turno:</div>
+                                    <select id="evalCaretakerTurn2A_${sIdx}" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;">
+                                        ${window._generateTeacherSelectOptions(curA.turn2, titularIds)}
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
                         <!-- GRUPO B -->
-                        <div class="col-md-6 p-2 rounded" style="background:#f8fafc; border:1px solid #e2e8f0;">
-                            <strong style="color:#166534; font-size:0.86rem; display:block; margin-bottom:6px;">
-                                🏫 Salón Grupo B (${splitData.rangeB} ─ ${splitData.groupB.length} alumnos)
-                            </strong>
-                            <div class="mb-2">
-                                <label class="form-label" style="font-size:0.8rem; font-weight:700;">No. de Salón (Catálogo de 20 salones):</label>
-                                <input type="text" id="evalClassroomB_${sIdx}" list="institutionalSalonsList" class="form-control form-control-sm" value="${curB.classroom}" placeholder="Ej. Salón 6B">
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label" style="font-size:0.8rem; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
-                                    <span>Docente Cuidador Grupo B:</span>
-                                    <span class="badge" style="background:#dcfce7; color:#15803d; font-size:0.7rem; font-weight:700; border:1px solid #86efac;">Asignado (Editable)</span>
-                                </label>
-                                <select id="evalCaretakerB_${sIdx}" class="form-control form-control-sm" required>
-                                    ${window._generateTeacherSelectOptions(curB.caretaker, titularIds)}
-                                </select>
-                            </div>
-                            <div id="evalTurn2BContainer_${sIdx}" style="display:${isPrac ? 'block' : 'none'};" class="mb-2">
-                                <label class="form-label" style="font-size:0.8rem; font-weight:700; color:#1d4ed8; display:flex; justify-content:space-between; align-items:center;">
-                                    <span>Docente 2do Turno (Relevo):</span>
-                                    <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:0.7rem; font-weight:700; border:1px solid #93c5fd;">Asignado (Editable)</span>
-                                </label>
-                                <select id="evalCaretakerTurn2B_${sIdx}" class="form-control form-control-sm">
-                                    ${window._generateTeacherSelectOptions(curB.turn2, titularIds)}
-                                </select>
+                        <div class="col-md-6">
+                            <div style="background:#fcfcfd; border:1px solid #e2e8f0; border-radius:6px; padding:8px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                    <strong style="color:#15803d; font-size:0.82rem;">
+                                        Salón Grupo B (${splitData.rangeB} ─ ${splitData.groupB.length} alum.)
+                                    </strong>
+                                    <span class="badge" style="background:#dcfce7; color:#15803d; font-size:0.68rem; font-weight:700;">Editable</span>
+                                </div>
+                                <div style="display:grid; grid-template-columns: 100px 1fr; gap:6px; align-items:center; margin-bottom:4px;">
+                                    <input type="text" id="evalClassroomB_${sIdx}" list="institutionalSalonsList" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" value="${curB.classroom}" placeholder="Salón 6B">
+                                    <select id="evalCaretakerB_${sIdx}" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" required>
+                                        ${window._generateTeacherSelectOptions(curB.caretaker, titularIds)}
+                                    </select>
+                                </div>
+                                <div id="evalTurn2BContainer_${sIdx}" style="display:${isPrac ? 'block' : 'none'}; margin-top:4px;">
+                                    <div style="font-size:0.72rem; color:#1d4ed8; font-weight:700; margin-bottom:2px;">Relevo 2do Turno:</div>
+                                    <select id="evalCaretakerTurn2B_${sIdx}" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;">
+                                        ${window._generateTeacherSelectOptions(curB.turn2, titularIds)}
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
