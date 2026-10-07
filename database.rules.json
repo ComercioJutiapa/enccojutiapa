@@ -1,7 +1,5 @@
 {
   "rules": {
-    ".read": true,
-    ".write": "auth != null || (newData.exists() && !data.exists())",
     "encc_school_state": {
       ".read": true,
       ".write": "auth != null || (newData.exists() && data.exists())",
@@ -27,7 +25,7 @@
       },
       "students": {
         ".read": true,
-        ".write": "auth != null || (newData.exists() && (newData.isObject() || newData.isArray()))",
+        ".write": "auth != null || newData.exists()",
         ".indexOn": [
           "code",
           "cui",
@@ -54,6 +52,59 @@
         ".write": true
       }
     },
+    "students": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()",
+      ".indexOn": [
+        "code",
+        "cui",
+        "gradeCode",
+        "section",
+        "status",
+        "carne",
+        "personalCode"
+      ]
+    },
+    "pensum": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()"
+    },
+    "pensumCatalog": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()"
+    },
+    "gradesList": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()"
+    },
+    "roles": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()"
+    },
+    "rolesConfig": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()"
+    },
+    "users": {
+      ".read": true,
+      ".write": "auth != null || (newData.exists() && newData.hasChildren(['username', 'role']))"
+    },
+    "secciones": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()"
+    },
+    "config": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()"
+    },
+    "cycles": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()"
+    },
+    "gradingConfigs": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()"
+    },
     "attendance": {
       ".read": true,
       ".write": "auth != null || newData.exists()",
@@ -62,6 +113,33 @@
         "gradeCode",
         "section",
         "month"
+      ]
+    },
+    "attendanceRecords": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()"
+    },
+    "attendancePermissionsMeta": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()"
+    },
+    "attendanceAlerts": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()",
+      ".indexOn": [
+        "timestamp",
+        "status",
+        "studentId",
+        "date"
+      ]
+    },
+    "studentAnnotations": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()",
+      ".indexOn": [
+        "studentId",
+        "date",
+        "timestamp"
       ]
     },
     "exoneraciones": {
@@ -90,6 +168,14 @@
         "status",
         "studentId"
       ]
+    },
+    "userAlertsDismissed": {
+      ".read": true,
+      ".write": "auth != null || newData.exists()"
+    },
+    "lockoutRecords": {
+      ".read": true,
+      ".write": true
     },
     "historico": {
       ".read": true,
