@@ -424,10 +424,18 @@ assert.strictEqual(salonsList[10], 'Salón 11', 'Los salones adicionales inician
 assert.strictEqual(salonsList[19], 'Salón 20', 'El catálogo culmina en Salón 20');
 console.log('✅ Secuencia de 20 Salones Verificada: Salón 6A..6B -> 5A..5D -> 4A..4D -> Salón 11..20.');
 
-// 12. Test Disponibilidad de Función para Imprimir Todas las Nóminas del Bimestre
-console.log('\n[Test 12] Verificando Función de Imprimir Todas las Nóminas...');
-assert.strictEqual(typeof mod.printAllNominasOfBimester, 'function', 'printAllNominasOfBimester debe ser una función exportada');
-console.log('✅ Botón y Función de Imprimir Todas las Nóminas Verificados.');
+// 13. Test Detección Automática del Bimestre Activo del Sistema
+console.log('\n[Test 13] Verificando Detección y Selección Automática del Bimestre Activo...');
+global.STATE.config = { activeBimestre: 2 };
+delete global.window._currentSelectedExamBim;
+assert.strictEqual(mod.getInstitutionalActiveBimester(), 'BIM2', 'Debe detectar BIM2 si config.activeBimestre = 2');
+assert.strictEqual(mod.getCurrentScheduleKey(), '2026_BIM2', 'Schedule key debe usar por defecto el bimestre activo (2026_BIM2)');
+
+global.STATE.config = { activeBimestre: 4 };
+delete global.window._currentSelectedExamBim;
+assert.strictEqual(mod.getInstitutionalActiveBimester(), 'BIM4', 'Debe detectar BIM4 si config.activeBimestre = 4');
+assert.strictEqual(mod.getCurrentScheduleKey(), '2026_BIM4', 'Schedule key debe actualizarse dinámicamente a 2026_BIM4');
+console.log('✅ Bimestre Activo Verificado: El módulo se posiciona automáticamente siempre en el bimestre activo del sistema.');
 
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');

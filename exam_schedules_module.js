@@ -277,10 +277,30 @@
         return (h * 60) + (m || 0);
     }
 
+    // Obtener dinámicamente el bimestre activo del sistema (ej. "BIM1", "BIM2", "BIM3", "BIM4")
+    function getInstitutionalActiveBimester() {
+        const stateConfig = (window.STATE && window.STATE.config) || {};
+        const rawBim = stateConfig.bimestreActivoOficial || stateConfig.activeBimestre || (window.STATE && window.STATE.activeBimester);
+        if (rawBim) {
+            const num = parseInt(rawBim, 10);
+            if (!isNaN(num) && num >= 1 && num <= 4) return `BIM${num}`;
+            if (typeof rawBim === 'string' && rawBim.startsWith('BIM')) return rawBim;
+        }
+        // Fallback a localStorage si existe
+        try {
+            const savedBim = localStorage.getItem('activeBimestre') || localStorage.getItem('encco_active_bimestre');
+            if (savedBim) {
+                const n = parseInt(savedBim, 10);
+                if (!isNaN(n) && n >= 1 && n <= 4) return `BIM${n}`;
+            }
+        } catch (e) {}
+        return 'BIM3'; // Default seguro
+    }
+
     // Obtener la clave actual del bloque (ej. "2026_BIM3")
     function getCurrentScheduleKey(bim = null) {
-        const cycle = (STATE && STATE.activeCycle) || '2026';
-        const bimester = bim || (STATE && STATE.activeBimester) || 'BIM3';
+        const cycle = (window.STATE && window.STATE.activeCycle) || '2026';
+        const bimester = bim || window._currentSelectedExamBim || getInstitutionalActiveBimester();
         return `${cycle}_${bimester}`;
     }
 
@@ -699,7 +719,11 @@
             return;
         }
 
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const officialActiveBim = getInstitutionalActiveBimester();
+        // Si el usuario no ha seleccionado explícitamente otro bimestre en esta sesión, usar siempre el bimestre activo oficial
+        const bimesterSelectVal = window._currentSelectedExamBim || officialActiveBim;
+        window._currentSelectedExamBim = bimesterSelectVal;
+
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
 
@@ -731,12 +755,15 @@
                     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                         <div style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:4px 8px;">
                             <label style="font-weight:700; font-size:0.82rem; color:#475569; margin:0;">Bimestre:</label>
-                            <select id="examBimesterSelect" class="form-control form-control-sm" style="width:130px; font-weight:800; border:none; background:transparent; padding:2px 4px;" onchange="window.changeExamBimester(this.value)">
-                                <option value="BIM1" ${bimesterSelectVal === 'BIM1' ? 'selected' : ''}>I Bimestre</option>
-                                <option value="BIM2" ${bimesterSelectVal === 'BIM2' ? 'selected' : ''}>II Bimestre</option>
-                                <option value="BIM3" ${bimesterSelectVal === 'BIM3' ? 'selected' : ''}>III Bimestre</option>
-                                <option value="BIM4" ${bimesterSelectVal === 'BIM4' ? 'selected' : ''}>IV Bimestre</option>
+                            <select id="examBimesterSelect" class="form-control form-control-sm" style="width:175px; font-weight:800; border:none; background:transparent; padding:2px 4px;" onchange="window.changeExamBimester(this.value)">
+                                <option value="BIM1" ${bimesterSelectVal === 'BIM1' ? 'selected' : ''}>I Bimestre ${officialActiveBim === 'BIM1' ? '⭐ (Activo)' : ''}</option>
+                                <option value="BIM2" ${bimesterSelectVal === 'BIM2' ? 'selected' : ''}>II Bimestre ${officialActiveBim === 'BIM2' ? '⭐ (Activo)' : ''}</option>
+                                <option value="BIM3" ${bimesterSelectVal === 'BIM3' ? 'selected' : ''}>III Bimestre ${officialActiveBim === 'BIM3' ? '⭐ (Activo)' : ''}</option>
+                                <option value="BIM4" ${bimesterSelectVal === 'BIM4' ? 'selected' : ''}>IV Bimestre ${officialActiveBim === 'BIM4' ? '⭐ (Activo)' : ''}</option>
                             </select>
+                            <span class="badge" style="background:#15803d; color:#ffffff; font-size:0.7rem; font-weight:800; padding:3px 6px;" title="Bimestre fijado activamente en la plataforma">
+                                Activo: ${bimesterLabels[officialActiveBim] || officialActiveBim}
+                            </span>
                         </div>
 
                         <!-- CENTRO DE IMPRESIÓN CONSOLIDADO -->
@@ -1118,7 +1145,7 @@
         }
 
         const dateVal = dateInput.value;
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
 
@@ -1146,7 +1173,7 @@
 
     window.deleteExamDay = function (dayId) {
         if (!confirm("¿Está seguro de eliminar esta fecha completa de evaluaciones y todas sus asignaciones?")) return;
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
 
@@ -1166,7 +1193,7 @@
 
         const titularExclusionSet = new Set(Array.isArray(titularIds) ? titularIds : []);
 
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
         const dayObj = (scheduleBlock.days || []).find(d => d.id === dayId);
@@ -1291,7 +1318,7 @@
 
     // Modal para asignar una clase a un día (A nivel de Grado Académico completo con todas sus secciones)
     window.addEvaluationToDay = function (dayId, evalToEdit = null) {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
         const dayObj = scheduleBlock.days.find(d => d.id === dayId);
@@ -1826,7 +1853,7 @@
             return;
         }
 
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
         const dayObj = scheduleBlock.days.find(d => d.id === dayId);
@@ -1947,7 +1974,7 @@
     };
 
     window.editEvaluationModal = function (dayId, evalId) {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
         const dayObj = scheduleBlock.days.find(d => d.id === dayId);
@@ -1959,7 +1986,7 @@
 
     window.deleteEvaluation = function (dayId, evalId) {
         if (!confirm("¿Desea quitar esta evaluación de la programación de este día?")) return;
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
         const dayObj = scheduleBlock.days.find(d => d.id === dayId);
@@ -2197,7 +2224,7 @@
 
     // Disparador del sorteo para todo el bimestre
     window.randomizeProctorsForBimester = function () {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
 
@@ -2231,7 +2258,7 @@
 
     // Disparador del sorteo exclusivo para un día específico
     window.randomizeProctorsForDay = function (dayId) {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
         const dayObj = scheduleBlock.days.find(d => d.id === dayId);
@@ -2259,7 +2286,7 @@
     // IMPRESIÓN 1: HORARIO DIARIO EN HOJA OFICIO (LEGAL - 3 COLUMNAS)
     // =========================================================================
     window.printDailyScheduleOficio = function (dayId) {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
         const dayObj = scheduleBlock.days.find(d => d.id === dayId);
@@ -2498,7 +2525,7 @@
     // IMPRESIÓN 2: MEDIAS LISTAS OFICIALES (TODAS LAS SECCIONES, GRUPO A Y B)
     // =========================================================================
     window.printMediasListasModal = function (dayId, evalId) {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
         const dayObj = scheduleBlock.days.find(d => d.id === dayId);
@@ -2510,7 +2537,7 @@
     };
 
     window.printAllMediasListasOfDay = function (dayId) {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
         const dayObj = scheduleBlock.days.find(d => d.id === dayId);
@@ -2544,7 +2571,7 @@
     };
 
     window.printAllNominasOfBimester = function () {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
 
@@ -2848,7 +2875,7 @@
     // IMPRESIÓN 3: CALENDARIO GENERAL CONSOLIDADO EN PDF
     // =========================================================================
     window.printConsolidatedCalendarPdf = function () {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
 
@@ -3010,7 +3037,9 @@
         printMediasListasModal,
         printAllMediasListasOfDay,
         printAllNominasOfBimester,
-        printConsolidatedCalendarPdf
+        printConsolidatedCalendarPdf,
+        getInstitutionalActiveBimester,
+        getCurrentScheduleKey
     };
 
     if (typeof module !== 'undefined' && module.exports) {
