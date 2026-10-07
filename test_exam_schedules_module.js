@@ -43,7 +43,10 @@ global.STATE = {
         { id: 'T2', name: 'Prof. María López', role: 'docente' },
         { id: 'T3', name: 'Prof. Carlos Ruíz', role: 'docente' },
         { id: 'T4', name: 'Prof. Sonia Morales', role: 'docente' },
-        { id: 'T5', name: 'Prof. Héctor Castro', role: 'profesor_auxiliar' }
+        { id: 'T5', name: 'Prof. Héctor Castro', role: 'docente' },
+        { id: 'AUX1', name: 'Auxiliar Mario', role: 'profesor_auxiliar' },
+        { id: 'DIR1', name: 'Directora Laura', role: 'director' },
+        { id: 'SEC1', name: 'Secretaria Carla', role: 'secretaria' }
     ],
     pensum: [
         { id: 'MAT4', subject: 'Matemática Comercial', teacher: 'Prof. Juan Pérez', teacherId: 'T1', gradeCode: '4PC' },
@@ -84,6 +87,34 @@ const mod = require(path.join(__dirname, 'exam_schedules_module.js'));
 
 assert(typeof mod === 'object', 'EXAM_SCHEDULES_MODULE debe estar exportado');
 console.log('✅ exam_schedules_module.js cargado exitosamente.');
+
+// 2.1 Verificación de Exclusión Estricta de Auxiliar, Director y Secretaría en asignación de cuidadores
+console.log('\n[Test 2.1] Verificando que Auxiliar, Director y Secretaría NO cuidan salones...');
+const nonProctors = [
+    { id: 'AUX1', name: 'Auxiliar Mario', role: 'profesor_auxiliar' },
+    { id: 'AUX2', name: 'Auxiliar Pedro', role: 'auxiliar' },
+    { id: 'DIR1', name: 'Directora Laura', role: 'director' },
+    { id: 'DIR2', name: 'Dirección General', role: 'direccion' },
+    { id: 'SEC1', name: 'Secretaria Carla', role: 'secretaria' },
+    { id: 'ADM1', name: 'Admin Root', role: 'admin' },
+    { id: 'SUP1', name: 'Super Usuario', role: 'super_usuario' }
+];
+const teachersOnly = [
+    { id: 'T1', name: 'Prof. Juan', role: 'docente' },
+    { id: 'T2', name: 'Prof. Maria', role: 'profesor' }
+];
+
+nonProctors.forEach(u => {
+    // Si isTeacherEligibleForProctoring está disponible o a través de autoPick
+    const workloadAux = mod.calculateTeacherWorkloadForDate({ days: [] }, '2026-10-15');
+    assert(!workloadAux[u.id], `Usuario con rol ${u.role} (${u.name}) NO debe estar en la bolsa de cuidadores`);
+});
+teachersOnly.forEach(u => {
+    global.STATE.users.push(u);
+    const workloadDoc = mod.calculateTeacherWorkloadForDate({ days: [] }, '2026-10-15');
+    assert(workloadDoc[u.id], `Docente con rol ${u.role} (${u.name}) SÍ debe estar en la bolsa de cuidadores`);
+});
+console.log('✅ Regla de Exclusión de Roles Verificada: Auxiliares, directores y secretaría están 100% blindados de cuidar salones.');
 
 // 3. Test Student Split (Grupo A / Grupo B)
 console.log('\n[Test 3] Verificando División en Medias Listas (Grupo A y Grupo B)...');
@@ -332,6 +363,38 @@ const modalUniqueSet = new Set(modalAssignedIds);
 assert.strictEqual(modalUniqueSet.size, 4, 'Los 4 salones deben tener docentes distintos asignados sin colisión');
 
 console.log('✅ Auto-asignación automática de cuidadores verificada con éxito (Exclusión de titulares y no colisión confirmadas).');
+
+// 11. Test 20 Salones Institucionales (Secuencia 6to -> 5to -> 4to -> Salones adicionales)
+console.log('\n[Test 11] Verificando Catálogo Oficial de 20 Salones (Secuencia 6to -> 5to -> 4to -> Salón 20)...');
+global.STATE.gradesList = [
+    { id: '6A', code: '6A', name: '6to Perito Contador', section: 'A' },
+    { id: '6B', code: '6B', name: '6to Perito Contador', section: 'B' },
+    { id: '5A', code: '5A', name: '5to Perito Contador', section: 'A' },
+    { id: '5B', code: '5B', name: '5to Perito Contador', section: 'B' },
+    { id: '5C', code: '5C', name: '5to Perito Contador', section: 'C' },
+    { id: '5D', code: '5D', name: '5to Perito Contador', section: 'D' },
+    { id: '4A', code: '4A', name: '4to Perito Contador', section: 'A' },
+    { id: '4B', code: '4B', name: '4to Perito Contador', section: 'B' },
+    { id: '4C', code: '4C', name: '4to Perito Contador', section: 'C' },
+    { id: '4D', code: '4D', name: '4to Perito Contador', section: 'D' }
+];
+
+const salonsList = mod.getInstitutionalSalonsList();
+assert.strictEqual(salonsList.length, 20, 'El establecimiento debe contar con un catálogo de exactamente 20 salones');
+assert.strictEqual(salonsList[0], 'Salón 6A', 'El primer salón debe ser 6A');
+assert.strictEqual(salonsList[1], 'Salón 6B', 'El segundo salón debe ser 6B');
+assert.strictEqual(salonsList[2], 'Salón 5A', 'Luego inician los de 5to (Salón 5A)');
+assert.strictEqual(salonsList[5], 'Salón 5D', 'Hasta Salón 5D');
+assert.strictEqual(salonsList[6], 'Salón 4A', 'Luego inician los de 4to (Salón 4A)');
+assert.strictEqual(salonsList[9], 'Salón 4D', 'Hasta Salón 4D');
+assert.strictEqual(salonsList[10], 'Salón 11', 'Los salones adicionales inician en Salón 11');
+assert.strictEqual(salonsList[19], 'Salón 20', 'El catálogo culmina en Salón 20');
+console.log('✅ Secuencia de 20 Salones Verificada: Salón 6A..6B -> 5A..5D -> 4A..4D -> Salón 11..20.');
+
+// 12. Test Disponibilidad de Función para Imprimir Todas las Nóminas del Bimestre
+console.log('\n[Test 12] Verificando Función de Imprimir Todas las Nóminas...');
+assert.strictEqual(typeof mod.printAllNominasOfBimester, 'function', 'printAllNominasOfBimester debe ser una función exportada');
+console.log('✅ Botón y Función de Imprimir Todas las Nóminas Verificados.');
 
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');

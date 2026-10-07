@@ -204,6 +204,15 @@
         return allowed.includes(role);
     }
 
+    // Comprobar si un usuario es un docente elegible para cuidar (Auxiliar, Director y Secretaría NO se incluyen)
+    function isTeacherEligibleForProctoring(u) {
+        if (!u) return false;
+        const role = (u.role || '').toLowerCase().trim();
+        const forbiddenRoles = ['auxiliar', 'profesor_auxiliar', 'auxiliatura', 'director', 'direccion', 'secretaria', 'admin', 'super_usuario'];
+        if (forbiddenRoles.includes(role)) return false;
+        return role === 'docente' || role === 'profesor';
+    }
+
     // Formatear minutos a formato HH:MM
     function minutesToTimeString(minutes) {
         const hrs = Math.floor(minutes / 60);
@@ -243,9 +252,9 @@
     function calculateTeacherWorkloadForDate(scheduleBlock, targetDate) {
         const workload = {}; // { teacherId: { teacherName, minutes, salonesCount } }
 
-        // Inicializar con todos los usuarios registrados
+        // Inicializar únicamente con docentes frente a grupo (auxiliares, directores y secretaría excluidos)
         (STATE.users || []).forEach(u => {
-            if (u.role === 'docente' || u.role === 'profesor_auxiliar') {
+            if (isTeacherEligibleForProctoring(u)) {
                 workload[u.id] = {
                     id: u.id,
                     name: u.name,
@@ -335,18 +344,46 @@
         return workload;
     }
 
-    // Dividir la nómina de estudiantes en Grupo A y Grupo B
-    function splitStudentsInTwoGroups(gradeCode) {
+    // Dividir la nómina de estudiantes en Grupo A y Grupo B automáticamente
+    function splitStudentsInTwoGroups(gradeCode, targetSection = null, targetGradeName = null) {
+        const rawCode = (gradeCode || '').trim();
+        const secFilter = (targetSection || '').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase();
+
+        const codeUpper = rawCode.toUpperCase();
+        let gradeNum = '';
+        if (codeUpper.includes('4')) gradeNum = '4';
+        else if (codeUpper.includes('5')) gradeNum = '5';
+        else if (codeUpper.includes('6')) gradeNum = '6';
+
+        let secLetter = secFilter;
+        if (!secLetter) {
+            const letterMatch = codeUpper.match(/\b([A-D])\b/) || codeUpper.match(/SECCI[OÓ]N\s*([A-D])/);
+            if (letterMatch) secLetter = letterMatch[1];
+        }
+
         const students = (STATE.students || []).filter(s => {
-            const matchesGrade = s.gradeCode === gradeCode || s.grade === gradeCode;
-            const isActive = s.status === 'Activo' || s.status === 'activo' || !s.status;
-            return matchesGrade && isActive;
+            const isRetired = s.status === 'Retirado' || s.status === 'retirado';
+            if (isRetired) return false;
+
+            // 1. Coincidencia exacta directa de código o grado
+            if (s.gradeCode === rawCode || s.grade === rawCode) return true;
+
+            // 2. Coincidencia por grado y sección
+            if (gradeNum && secLetter) {
+                const sGradeStr = ((s.grade || '') + ' ' + (s.gradeCode || '')).toUpperCase();
+                const sSecStr = ((s.section || '') + ' ' + (s.gradeCode || '')).toUpperCase();
+                const hasGrade = sGradeStr.includes(gradeNum);
+                const hasSec = sSecStr.includes(secLetter) || (s.section && s.section.toUpperCase().includes(secLetter));
+                if (hasGrade && hasSec) return true;
+            }
+
+            return false;
         });
 
-        // Ordenar alfabéticamente por apellido
+        // Ordenar alfabéticamente por apellido y nombres completos
         students.sort((a, b) => {
-            const nameA = ((a.lastName || '') + ' ' + (a.firstName || '')).trim().toLowerCase();
-            const nameB = ((b.lastName || '') + ' ' + (b.firstName || '')).trim().toLowerCase();
+            const nameA = ((a.lastName || '') + ' ' + (a.firstName || '') + ' ' + (a.name || '')).trim().toLowerCase();
+            const nameB = ((b.lastName || '') + ' ' + (b.firstName || '') + ' ' + (b.name || '')).trim().toLowerCase();
             return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
         });
 
@@ -362,6 +399,82 @@
             rangeA: total > 0 ? `01 al ${String(mid).padStart(2, '0')}` : 'Sin alumnos',
             rangeB: total > mid ? `${String(mid + 1).padStart(2, '0')} al ${String(total).padStart(2, '0')}` : 'Sin alumnos'
         };
+    }
+
+    /**
+     * Catálogo oficial de los 20 salones disponibles en el establecimiento:
+     * Secuencia institucional por antigüedad académica:
+     * 1. Salones de 6to Perito (Salón 6A, Salón 6B...)
+     * 2. Salones de 5to Perito (Salón 5A, Salón 5B, Salón 5C, Salón 5D...)
+     * 3. Salones de 4to Perito (Salón 4A, Salón 4B, Salón 4C, Salón 4D...)
+     * 4. Salones adicionales disponibles hasta completar los 20 salones físicos.
+     */
+    function getInstitutionalSalonsList() {
+        const salons = [];
+        const seen = new Set();
+
+        function addSalon(name) {
+            const clean = name.trim();
+            if (!seen.has(clean) && salons.length < 20) {
+                seen.add(clean);
+                salons.push(clean);
+            }
+        }
+
+        // 1. Salones de 6to
+        const grades6 = (STATE.gradesList || []).filter(g => (g.name || g.code || '').toUpperCase().includes('6'));
+        grades6.sort((a, b) => (a.section || '').localeCompare(b.section || '', 'es'));
+        if (grades6.length > 0) {
+            grades6.forEach(g => {
+                const sec = (g.section || 'A').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase() || 'A';
+                addSalon(`Salón 6${sec}`);
+            });
+        } else {
+            addSalon('Salón 6A');
+            addSalon('Salón 6B');
+        }
+
+        // 2. Salones de 5to
+        const grades5 = (STATE.gradesList || []).filter(g => (g.name || g.code || '').toUpperCase().includes('5'));
+        grades5.sort((a, b) => (a.section || '').localeCompare(b.section || '', 'es'));
+        if (grades5.length > 0) {
+            grades5.forEach(g => {
+                const sec = (g.section || 'A').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase() || 'A';
+                addSalon(`Salón 5${sec}`);
+            });
+        } else {
+            addSalon('Salón 5A');
+            addSalon('Salón 5B');
+            addSalon('Salón 5C');
+            addSalon('Salón 5D');
+        }
+
+        // 3. Salones de 4to
+        const grades4 = (STATE.gradesList || []).filter(g => (g.name || g.code || '').toUpperCase().includes('4'));
+        grades4.sort((a, b) => (a.section || '').localeCompare(b.section || '', 'es'));
+        if (grades4.length > 0) {
+            grades4.forEach(g => {
+                const sec = (g.section || 'A').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase() || 'A';
+                addSalon(`Salón 4${sec}`);
+            });
+        } else {
+            addSalon('Salón 4A');
+            addSalon('Salón 4B');
+            addSalon('Salón 4C');
+            addSalon('Salón 4D');
+        }
+
+        // 4. Salones adicionales hasta totalizar 20 salones
+        let extraNum = 11;
+        while (salons.length < 20) {
+            const extraName = `Salón ${extraNum}`;
+            if (!seen.has(extraName)) {
+                addSalon(extraName);
+            }
+            extraNum++;
+        }
+
+        return salons;
     }
 
     // Obtener los Grados Académicos Consolidados (sin separar por sección)
@@ -527,11 +640,11 @@
                             <option value="BIM3" ${bimesterSelectVal === 'BIM3' ? 'selected' : ''}>III Bimestre</option>
                             <option value="BIM4" ${bimesterSelectVal === 'BIM4' ? 'selected' : ''}>IV Bimestre</option>
                         </select>
-                        <button type="button" class="btn btn-warning" onclick="window.randomizeProctorsForBimester()" style="background:#f59e0b; border-color:#d97706; color:#0f172a; font-weight:800;" title="Asignar equitativa y aleatoriamente cuidadores para todo el bimestre">
-                            <i class="fa-solid fa-dice"></i> Sorteo Aleatorio Bimestre
-                        </button>
                         <button type="button" class="btn btn-primary" onclick="window.addNewExamDayModal()" style="background:#15803d; border-color:#166534; font-weight:700;">
                             <i class="fa-solid fa-plus"></i> Agregar Día de Examen
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="window.printAllNominasOfBimester()" style="font-weight:700; border-color:#2563eb; color:#1d4ed8; background:#eff6ff;" title="Imprimir de una sola vez todas las nóminas (medias listas) de evaluaciones de este bimestre">
+                            <i class="fa-solid fa-print"></i> Imprimir Todas las Nóminas
                         </button>
                         <button type="button" class="btn btn-secondary" onclick="window.printConsolidatedCalendarPdf()" style="font-weight:700;">
                             <i class="fa-solid fa-file-pdf"></i> Calendario General (PDF)
@@ -542,7 +655,7 @@
                 <!-- AVISO INSTITUCIONAL DE LÍMITE HORARIO -->
                 <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px; font-size:0.85rem; color:#166534; display:flex; align-items:center; gap:10px; margin-bottom:18px;">
                     <i class="fa-solid fa-circle-info" style="font-size:1.1rem; color:#15803d;"></i>
-                    <span><strong>Regla Oficial de Jornada:</strong> Las evaluaciones inician a las <strong>07:30 AM</strong> y <strong>bajo ninguna circunstancia pueden sobrepasar las 12:30 PM</strong>. La duración de cada prueba la estipula el docente titular y ningún docente cuida su propia clase (salvo Computación).</span>
+                    <span><strong>Regla Oficial de Jornada:</strong> Las evaluaciones inician a las <strong>07:30 AM</strong> y no pueden sobrepasar las <strong>12:30 PM</strong>. La duración de cada prueba la estipula el docente titular y la distribución de salones (Salón 6A, 6B... hasta los 20 salones) y cuidadores se asigna automáticamente de forma equitativa.</span>
                 </div>
 
                 <!-- CONTENEDOR DE DÍAS CONFIGURADOS -->
@@ -598,14 +711,11 @@
                     </h3>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-sm btn-warning" onclick="window.randomizeProctorsForDay('${dayObj.id}')" style="font-weight:800; color:#0f172a;" title="Sortear cuidadores aleatoriamente para este día">
-                        <i class="fa-solid fa-dice"></i> Sortear Cuidadores
-                    </button>
-                    <button type="button" class="btn btn-sm btn-light" onclick="window.printDailyScheduleOficio('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir Horario en Hoja Oficio (3 Columnas)">
+                    <button type="button" class="btn btn-sm btn-light" onclick="window.printDailyScheduleOficio('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir Horario Oficial en Hoja Oficio (3 Columnas)">
                         <i class="fa-solid fa-print"></i> Horario Hoja Oficio (3 Col.)
                     </button>
-                    <button type="button" class="btn btn-sm btn-light" onclick="window.printAllMediasListasOfDay('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir todas las medias listas de este día">
-                        <i class="fa-solid fa-users-rectangle"></i> Medias Listas (A y B)
+                    <button type="button" class="btn btn-sm btn-light" onclick="window.printAllMediasListasOfDay('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir todas las nóminas (medias listas) de esta jornada">
+                        <i class="fa-solid fa-file-signature"></i> Imprimir Nóminas del Día
                     </button>
                     <button type="button" class="btn btn-sm btn-light" onclick="window.addEvaluationToDay('${dayObj.id}')" style="font-weight:700; color:#15803d;" title="Agregar otra evaluación a este día">
                         <i class="fa-solid fa-plus"></i> Asignar Clase
@@ -911,7 +1021,7 @@
      * Evita colisiones de horario en la misma jornada y balancea la carga según los minutos trabajados hoy.
      */
     function autoPickProctorsForModal(sectionsInfo, titularIds, isPrac, startTimeStr, dayId, editEvalId = '') {
-        const allCandidates = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'profesor_auxiliar');
+        const allCandidates = (STATE.users || []).filter(isTeacherEligibleForProctoring);
         if (allCandidates.length === 0) return {};
 
         const titularExclusionSet = new Set(Array.isArray(titularIds) ? titularIds : []);
@@ -1100,7 +1210,7 @@
             let opts = `<option value="">-- Seleccionar Cuidador --</option>`;
             const excludeSet = new Set(Array.isArray(excludeTeacherIds) ? excludeTeacherIds : [excludeTeacherIds].filter(Boolean));
             (STATE.users || []).forEach(u => {
-                if (u.role === 'docente' || u.role === 'profesor_auxiliar') {
+                if (isTeacherEligibleForProctoring(u)) {
                     if (excludeSet.has(u.id)) return; // Regla de Oro: Titular(es) excluidos
                     const wl = (window._currentDayWorkload && window._currentDayWorkload[u.id]) || { minutes: 0, salonesCount: 0 };
                     const isSel = u.id === selectedId ? 'selected' : '';
@@ -1349,16 +1459,35 @@
             </div>
         `;
 
-        let defaultSalonCounter = 1;
+        const officialSalons = getInstitutionalSalonsList();
+        const salonOptionsDatalist = officialSalons.map(s => `<option value="${s}">`).join('');
+
+        // Determinar índice inicial en los 20 salones según el grado a evaluar
+        const gradeText = (academicGradeName || '').toUpperCase();
+        let startSalonIdx = 0;
+        if (gradeText.includes('6')) {
+            startSalonIdx = officialSalons.findIndex(s => s.includes('6')) !== -1 ? officialSalons.findIndex(s => s.includes('6')) : 0;
+        } else if (gradeText.includes('5')) {
+            startSalonIdx = officialSalons.findIndex(s => s.includes('5')) !== -1 ? officialSalons.findIndex(s => s.includes('5')) : 2;
+        } else if (gradeText.includes('4')) {
+            startSalonIdx = officialSalons.findIndex(s => s.includes('4')) !== -1 ? officialSalons.findIndex(s => s.includes('4')) : 6;
+        }
+        let salonCursor = startSalonIdx;
 
         sectionsInfo.forEach((sInfo, sIdx) => {
             const secCode = sInfo.gradeCode;
             const secName = sInfo.section;
             const splitData = splitStudentsInTwoGroups(secCode);
 
+            // Valores de salón por defecto según secuencia oficial
+            const defaultSalonA = officialSalons[salonCursor % officialSalons.length] || `Salón ${(sIdx * 2) + 1}`;
+            salonCursor++;
+            const defaultSalonB = officialSalons[salonCursor % officialSalons.length] || `Salón ${(sIdx * 2) + 2}`;
+            salonCursor++;
+
             // Valores previos si estamos editando
-            let curA = { classroom: `Salón ${defaultSalonCounter++}`, caretaker: '', turn2: '' };
-            let curB = { classroom: `Salón ${defaultSalonCounter++}`, caretaker: '', turn2: '' };
+            let curA = { classroom: defaultSalonA, caretaker: '', turn2: '' };
+            let curB = { classroom: defaultSalonB, caretaker: '', turn2: '' };
             const masterDur = durationSelect ? (parseInt(durationSelect.value, 10) || 60) : 60;
             let secDuration = isPrac ? 300 : masterDur;
 
@@ -1425,7 +1554,9 @@
                                 <option value="90" ${secDuration === 90 ? 'selected' : ''}>90 minutos (1h 30m)</option>
                                 <option value="120" ${secDuration === 120 ? 'selected' : ''}>120 minutos (2h)</option>
                                 <option value="300" ${secDuration === 300 ? 'selected' : ''}>300 min (Práctica)</option>
+                                ${![45, 50, 60, 75, 90, 120, 300].includes(secDuration) ? `<option value="${secDuration}" selected>${secDuration} minutos (Personalizado)</option>` : ''}
                             </select>
+                            <input type="number" id="evalSectionDurationCustom_${sIdx}" class="form-control form-control-sm" style="width:70px; font-weight:800; text-align:center;" min="15" max="300" placeholder="Min" title="Editar minutos manualmente" value="${secDuration}" oninput="const sel = document.getElementById('evalSectionDuration_${sIdx}'); if(sel && this.value){ sel.value = this.value; } window.recalcEvalTimes();">
                             <span id="evalSectionTimeBadge_${sIdx}" style="font-size:0.8rem; font-weight:800; background:#f1f5f9; color:#0f172a; padding:4px 8px; border-radius:4px; border:1px solid #cbd5e1;">
                                 --:-- a --:--
                             </span>
@@ -1439,13 +1570,13 @@
                                 🏫 Salón Grupo A (${splitData.rangeA} ─ ${splitData.groupA.length} alumnos)
                             </strong>
                             <div class="mb-2">
-                                <label class="form-label" style="font-size:0.8rem; font-weight:700;">No. de Salón:</label>
-                                <input type="text" id="evalClassroomA_${sIdx}" class="form-control form-control-sm" value="${curA.classroom}">
+                                <label class="form-label" style="font-size:0.8rem; font-weight:700;">No. de Salón (Catálogo de 20 salones):</label>
+                                <input type="text" id="evalClassroomA_${sIdx}" list="institutionalSalonsList" class="form-control form-control-sm" value="${curA.classroom}" placeholder="Ej. Salón 6A">
                             </div>
                             <div class="mb-2">
                                 <label class="form-label" style="font-size:0.8rem; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
                                     <span>Docente Cuidador Grupo A:</span>
-                                    <span class="badge" style="background:#dcfce7; color:#15803d; font-size:0.7rem; font-weight:700; border:1px solid #86efac;">Autoasignado (Editable)</span>
+                                    <span class="badge" style="background:#dcfce7; color:#15803d; font-size:0.7rem; font-weight:700; border:1px solid #86efac;">Asignado (Editable)</span>
                                 </label>
                                 <select id="evalCaretakerA_${sIdx}" class="form-control form-control-sm" required>
                                     ${window._generateTeacherSelectOptions(curA.caretaker, titularIds)}
@@ -1454,7 +1585,7 @@
                             <div id="evalTurn2AContainer_${sIdx}" style="display:${isPrac ? 'block' : 'none'};" class="mb-2">
                                 <label class="form-label" style="font-size:0.8rem; font-weight:700; color:#1d4ed8; display:flex; justify-content:space-between; align-items:center;">
                                     <span>Docente 2do Turno (Relevo):</span>
-                                    <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:0.7rem; font-weight:700; border:1px solid #93c5fd;">Autoasignado (Editable)</span>
+                                    <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:0.7rem; font-weight:700; border:1px solid #93c5fd;">Asignado (Editable)</span>
                                 </label>
                                 <select id="evalCaretakerTurn2A_${sIdx}" class="form-control form-control-sm">
                                     ${window._generateTeacherSelectOptions(curA.turn2, titularIds)}
@@ -1468,13 +1599,13 @@
                                 🏫 Salón Grupo B (${splitData.rangeB} ─ ${splitData.groupB.length} alumnos)
                             </strong>
                             <div class="mb-2">
-                                <label class="form-label" style="font-size:0.8rem; font-weight:700;">No. de Salón:</label>
-                                <input type="text" id="evalClassroomB_${sIdx}" class="form-control form-control-sm" value="${curB.classroom}">
+                                <label class="form-label" style="font-size:0.8rem; font-weight:700;">No. de Salón (Catálogo de 20 salones):</label>
+                                <input type="text" id="evalClassroomB_${sIdx}" list="institutionalSalonsList" class="form-control form-control-sm" value="${curB.classroom}" placeholder="Ej. Salón 6B">
                             </div>
                             <div class="mb-2">
                                 <label class="form-label" style="font-size:0.8rem; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
                                     <span>Docente Cuidador Grupo B:</span>
-                                    <span class="badge" style="background:#dcfce7; color:#15803d; font-size:0.7rem; font-weight:700; border:1px solid #86efac;">Autoasignado (Editable)</span>
+                                    <span class="badge" style="background:#dcfce7; color:#15803d; font-size:0.7rem; font-weight:700; border:1px solid #86efac;">Asignado (Editable)</span>
                                 </label>
                                 <select id="evalCaretakerB_${sIdx}" class="form-control form-control-sm" required>
                                     ${window._generateTeacherSelectOptions(curB.caretaker, titularIds)}
@@ -1483,7 +1614,7 @@
                             <div id="evalTurn2BContainer_${sIdx}" style="display:${isPrac ? 'block' : 'none'};" class="mb-2">
                                 <label class="form-label" style="font-size:0.8rem; font-weight:700; color:#1d4ed8; display:flex; justify-content:space-between; align-items:center;">
                                     <span>Docente 2do Turno (Relevo):</span>
-                                    <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:0.7rem; font-weight:700; border:1px solid #93c5fd;">Autoasignado (Editable)</span>
+                                    <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:0.7rem; font-weight:700; border:1px solid #93c5fd;">Asignado (Editable)</span>
                                 </label>
                                 <select id="evalCaretakerTurn2B_${sIdx}" class="form-control form-control-sm">
                                     ${window._generateTeacherSelectOptions(curB.turn2, titularIds)}
@@ -1494,6 +1625,9 @@
                 </div>
             `;
         });
+
+        // Incluir datalist institucional de los 20 salones
+        salonsHtml += `<datalist id="institutionalSalonsList">${salonOptionsDatalist}</datalist>`;
 
         if (salonsContainer) salonsContainer.innerHTML = salonsHtml;
         window.recalcEvalTimes();
@@ -1726,10 +1860,10 @@
      * 5. Guarda la configuración en Firebase/LocalStorage para poder ser editada manualmente en cualquier momento.
      */
     function autoAssignRandomProctors(scheduleBlock, targetDayId = null) {
-        // Pool de docentes candidatos
-        const allCandidates = (STATE.users || []).filter(u => u.role === 'docente' || u.role === 'profesor_auxiliar');
+        // Pool de docentes candidatos (Auxiliares, Director y Secretaría estrictamente excluidos)
+        const allCandidates = (STATE.users || []).filter(isTeacherEligibleForProctoring);
         if (allCandidates.length === 0) {
-            return { success: false, message: "No se encontraron usuarios con rol de docente o profesor auxiliar para realizar el sorteo." };
+            return { success: false, message: "No se encontraron usuarios con rol de docente para realizar la asignación de salones." };
         }
 
         const daysToProcess = targetDayId
@@ -2286,6 +2420,46 @@
         wrapAndPrintSheets(combinedHtml, `Medias_Listas_${dayObj.date}`);
     };
 
+    window.printAllNominasOfBimester = function () {
+        const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
+        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
+        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
+
+        if (!scheduleBlock || !scheduleBlock.days || scheduleBlock.days.length === 0) {
+            alert("No hay días de evaluación configurados para este bimestre.");
+            return;
+        }
+
+        let totalEvalsCount = 0;
+        let combinedHtml = '';
+
+        scheduleBlock.days.forEach(dayObj => {
+            (dayObj.evaluations || []).forEach(ev => {
+                totalEvalsCount++;
+                if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                    ev.sections.forEach(sec => {
+                        if (combinedHtml) combinedHtml += '<div style="page-break-after:always;"></div>';
+                        combinedHtml += generateSingleGroupHtml(dayObj, ev, 'A', sec);
+                        combinedHtml += '<div style="page-break-after:always;"></div>';
+                        combinedHtml += generateSingleGroupHtml(dayObj, ev, 'B', sec);
+                    });
+                } else {
+                    if (combinedHtml) combinedHtml += '<div style="page-break-after:always;"></div>';
+                    combinedHtml += generateSingleGroupHtml(dayObj, ev, 'A');
+                    combinedHtml += '<div style="page-break-after:always;"></div>';
+                    combinedHtml += generateSingleGroupHtml(dayObj, ev, 'B');
+                }
+            });
+        });
+
+        if (totalEvalsCount === 0 || !combinedHtml) {
+            alert("No se encontraron evaluaciones registradas en este bimestre para imprimir.");
+            return;
+        }
+
+        wrapAndPrintSheets(combinedHtml, `Todas_Las_Nominas_${bimesterSelectVal}`);
+    };
+
     function printEvaluationSheets(dayObj, ev, mode = 'BOTH') {
         let contentHtml = '';
 
@@ -2447,7 +2621,7 @@
                     </tr>
                     <tr>
                         <td style="font-weight:700; padding:2px 6px;">Catedrático:</td>
-                        <td>${titularNameToUse} (Titular - No cuida)</td>
+                        <td><strong>${titularNameToUse}</strong> <span style="font-size:0.78rem; color:#475569;">(Docente Titular)</span></td>
                         <td style="font-weight:700; padding:2px 6px;">Salón Asignado:</td>
                         <td style="font-weight:800; color:#15803d;">${grp.classroom || 'Salón'}</td>
                     </tr>
@@ -2686,7 +2860,9 @@
     window.printDailyScheduleOficio = printDailyScheduleOficio;
     window.printMediasListasModal = printMediasListasModal;
     window.printAllMediasListasOfDay = printAllMediasListasOfDay;
+    window.printAllNominasOfBimester = printAllNominasOfBimester;
     window.printConsolidatedCalendarPdf = printConsolidatedCalendarPdf;
+    window.getInstitutionalSalonsList = getInstitutionalSalonsList;
 
     window.EXAM_SCHEDULES_MODULE = {
         renderExamSchedulesView,
@@ -2700,6 +2876,7 @@
         getDistinctAcademicGrades,
         getCoursesForAcademicGrade,
         getSectionsAndTitularsForCourse,
+        getInstitutionalSalonsList,
         autoAssignRandomProctors,
         autoPickProctorsForModal,
         randomizeProctorsForBimester,
@@ -2707,6 +2884,7 @@
         printDailyScheduleOficio,
         printMediasListasModal,
         printAllMediasListasOfDay,
+        printAllNominasOfBimester,
         printConsolidatedCalendarPdf
     };
 
