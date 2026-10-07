@@ -437,6 +437,67 @@ assert.strictEqual(mod.getInstitutionalActiveBimester(), 'BIM4', 'Debe detectar 
 assert.strictEqual(mod.getCurrentScheduleKey(), '2026_BIM4', 'Schedule key debe actualizarse dinámicamente a 2026_BIM4');
 console.log('✅ Bimestre Activo Verificado: El módulo se posiciona automáticamente siempre en el bimestre activo del sistema.');
 
+// 14. Test Mecanografía: Catedrático Titular Evalúa Directamente
+console.log('\n[Test 14] Verificando Modo Especial Mecanografía (Docente Titular Evalúa)...');
+global.STATE.gradesList = [
+    { id: '4A', code: '4to A', name: '4to Perito Contador', section: 'Sección A' },
+    { id: '4B', code: '4to B', name: '4to Perito Contador', section: 'Sección B' }
+];
+global.STATE.pensum = [
+    {
+        id: 'p_meca_4a',
+        grade: '4to Perito Contador',
+        gradeCode: '4to A',
+        section: 'Sección A',
+        subject: 'Mecanografía',
+        teacher: 'Prof. Ana López',
+        teacherId: 'T_ANA'
+    },
+    {
+        id: 'p_meca_4b',
+        grade: '4to Perito Contador',
+        gradeCode: '4to B',
+        section: 'Sección B',
+        subject: 'Mecanografía',
+        teacher: 'Prof. Ana López',
+        teacherId: 'T_ANA'
+    }
+];
+global.STATE.users.push({
+    id: 'T_ANA',
+    name: 'Prof. Ana López',
+    role: 'docente'
+});
+const mecaSecs = mod.getSectionsAndTitularsForCourse('4to Perito Contador', 'Mecanografía');
+assert.strictEqual(mecaSecs.length, 2, 'Mecanografía debe detectar 2 secciones');
+assert.strictEqual(mecaSecs[0].teacherName, 'Prof. Ana López', 'Sección A debe tener a Prof. Ana López');
+assert.strictEqual(mecaSecs[1].teacherName, 'Prof. Ana López', 'Sección B debe tener a Prof. Ana López');
+
+// Simular evaluación de Mecanografía en jornada
+const dummyBlockMeca = {
+    days: [{
+        id: 'day_meca',
+        date: '2026-10-20',
+        evaluations: [{
+            id: 'ev_meca',
+            courseName: 'Mecanografía',
+            isMecanografia: true,
+            computacionMode: 'single',
+            durationMinutes: 60,
+            startTime: '08:00',
+            endTime: '09:00',
+            courseTeacherName: 'Prof. Ana López',
+            titularTeachers: [{ teacherId: 'T_ANA', teacherName: 'Prof. Ana López' }]
+        }]
+    }]
+};
+const autoRes = mod.autoAssignRandomProctors(dummyBlockMeca, 'day_meca');
+assert.strictEqual(autoRes.success, true, 'Sorteo debe ser exitoso');
+// No debe haber asignado cuidadores ajenos para meca en single mode
+const workloadMeca = mod.calculateTeacherWorkloadForDate(dummyBlockMeca, '2026-10-20');
+assert.strictEqual(workloadMeca['T_ANA'].minutes, 60, 'Prof. Ana López titular de Mecanografía debe tener acreditados sus 60 min de evaluación');
+console.log('✅ Modo Mecanografía Verificado: La cátedra es evaluada directamente por sus docentes titulares.');
+
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');
 console.log('================================================================================');

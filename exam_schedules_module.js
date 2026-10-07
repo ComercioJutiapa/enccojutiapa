@@ -372,8 +372,8 @@
                             }
                         });
                     }
-                } else if (ev.isComputacion && ev.computacionMode === 'single') {
-                    // Computación salón único: los titulares cuidan
+                } else if ((ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single') {
+                    // Computación o Mecanografía salón/taller único: los titulares evalúan y cuidan
                     if (Array.isArray(ev.titularTeachers) && ev.titularTeachers.length > 0) {
                         ev.titularTeachers.forEach(tit => {
                             if (tit.teacherId && workload[tit.teacherId]) {
@@ -678,12 +678,32 @@
 
         matchingGrades.forEach(g => {
             const secLetter = (g.section || '').replace(/Secci[oó]n\s*/i, '').trim() || 'A';
+            const normSub = (str) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+            const subNorm = normSub(subjectName);
+
             const pMatch = (STATE.pensum || []).find(p => {
                 const rawP = ((p.grade || '') + ' ' + (p.gradeCode || '') + ' ' + (p.section || '')).toUpperCase();
-                const subMatch = (p.subject || '').trim().toUpperCase() === subTerm;
-                const secMatch = rawP.includes(secLetter) || (p.gradeCode === g.code);
+                const pSubNorm = normSub(p.subject);
+                const subMatch = (pSubNorm === subNorm) || 
+                                 (pSubNorm.includes(subNorm) && subNorm.length > 5) || 
+                                 (subNorm.includes(pSubNorm) && pSubNorm.length > 5);
+                const secMatch = rawP.includes(`SECCION ${secLetter}`) || 
+                                 rawP.includes(`SECCIÓN ${secLetter}`) || 
+                                 rawP.endsWith(` ${secLetter}`) || 
+                                 (p.gradeCode === g.code);
                 return subMatch && secMatch;
             });
+
+            // Si se encontró profesor pero no ID, o viceversa, buscar en STATE.users
+            let teacherId = pMatch ? (pMatch.teacherId || '') : '';
+            let teacherName = pMatch ? (pMatch.teacher || pMatch.teacherName || '') : '';
+            if (teacherId && !teacherName && Array.isArray(STATE.users)) {
+                const u = STATE.users.find(x => x.id === teacherId);
+                if (u) teacherName = u.name;
+            } else if (!teacherId && teacherName && Array.isArray(STATE.users)) {
+                const u = STATE.users.find(x => (x.name || '').trim().toLowerCase() === teacherName.trim().toLowerCase());
+                if (u) teacherId = u.id;
+            }
 
             sectionsInfo.push({
                 gradeCode: g.code || g.id,
@@ -691,8 +711,8 @@
                 section: g.section || ('Sección ' + secLetter),
                 sectionLetter: secLetter,
                 courseId: pMatch ? pMatch.id : '',
-                teacherId: pMatch ? pMatch.teacherId : '',
-                teacherName: pMatch ? pMatch.teacher : 'Sin docente asignado'
+                teacherId: teacherId,
+                teacherName: teacherName || 'Sin docente asignado'
             });
         });
 
@@ -928,6 +948,7 @@
                             👤 <strong>Catedrático Titular:</strong> ${ev.courseTeacherName || 'Sin asignar'}
                             ${isPractica ? '<span style="color:#1d4ed8; font-weight:800; margin-left:8px;">(⭐ Práctica Supervisada - Relevo a los ' + Math.round(ev.durationMinutes / 2) + ' min)</span>' : ''}
                             ${ev.isComputacion ? '<span style="color:#0284c7; font-weight:800; margin-left:8px;">(💻 Laboratorio de Computación)</span>' : ''}
+                            ${ev.isMecanografia ? '<span style="color:#b45309; font-weight:800; margin-left:8px;">(⌨️ Taller de Mecanografía ─ Titulares Evalúan)</span>' : ''}
                         </div>
                     </div>
                     <div style="display:flex; gap:6px; flex-wrap:wrap;">
@@ -976,18 +997,19 @@
                     </tbody>
                 </table>
             `;
-        } else if (ev.isComputacion && ev.computacionMode === 'single') {
+        } else if ((ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single') {
+            const isMeca = ev.isMecanografia;
             html += `
-                <div class="p-3 rounded" style="background:#f0f9ff; border:1.5px solid #bae6fd; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <div class="p-3 rounded" style="background:${isMeca ? '#fffbeb' : '#f0f9ff'}; border:1.5px solid ${isMeca ? '#fde68a' : '#bae6fd'}; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
                     <div>
-                        <strong style="color:#0369a1; font-size:0.95rem; display:flex; align-items:center; gap:6px;">
-                            <i class="fa-solid fa-laptop-code"></i> Laboratorio de Computación ─ Grupo Único (Todas las Secciones)
+                        <strong style="color:${isMeca ? '#92400e' : '#0369a1'}; font-size:0.95rem; display:flex; align-items:center; gap:6px;">
+                            <i class="fa-solid ${isMeca ? 'fa-keyboard' : 'fa-laptop-code'}"></i> ${isMeca ? 'Taller de Mecanografía ─ Evaluación Directa por Catedráticos Titulares' : 'Laboratorio de Computación ─ Grupo Único (Todas las Secciones)'}
                         </strong>
                         <div style="font-size:0.83rem; color:#334155; margin-top:2px;">
-                            Catedráticos evaluadores y cuidadores: <strong>${ev.courseTeacherName}</strong> (Docentes Titulares Autorizados)
+                            Catedráticos evaluadores y responsables: <strong>${ev.courseTeacherName}</strong> (Docentes Titulares Autorizados)
                         </div>
                     </div>
-                    <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.82rem; font-weight:800; padding:6px 12px; border:1px solid #7dd3fc;">
+                    <span class="badge" style="background:${isMeca ? '#fef3c7' : '#e0f2fe'}; color:${isMeca ? '#92400e' : '#0369a1'}; font-size:0.82rem; font-weight:800; padding:6px 12px; border:1px solid ${isMeca ? '#fcd34d' : '#7dd3fc'};">
                         ⏱️ ${ev.startTime} a ${ev.endTime} (${ev.durationMinutes} min)
                     </span>
                 </div>
@@ -1567,8 +1589,12 @@
         }
 
         const sUpper = (courseName || '').toUpperCase();
-        const isComp = sUpper.includes('COMPUT') || sUpper.includes('INFORM') || sUpper.includes('LABORAT') || sUpper.includes('TIC');
-        const isPrac = sUpper.includes('PRÁCTICA SUPERVISADA') || sUpper.includes('PRACTICA SUPERVISADA');
+        const normSub = (str) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+        const sNorm = normSub(courseName);
+
+        const isComp = sNorm.includes('COMPUT') || sNorm.includes('INFORM') || sNorm.includes('LABORAT') || sNorm.includes('TIC');
+        const isMeca = sNorm.includes('MECANOGRAF') || sNorm.includes('MECA');
+        const isPrac = sNorm.includes('PRACTICA SUPERVISADA');
 
         if (isPrac) {
             if (durationSelect && (!editPayload)) durationSelect.value = '300'; // 5 horas
@@ -1576,7 +1602,7 @@
                 specialSec.innerHTML = `
                     <div class="alert alert-primary p-2" style="font-size:0.85rem;">
                         <i class="fa-solid fa-star"></i> <strong>Modo Práctica Supervisada Detectado:</strong>
-                        Se asignarán 2 docentes por salón con relevo exacto a mitad de tiempo para todas las secciones. Los docentes titulares quedan excluidos.
+                        Se asignarán 2 docentes por salón con relevo exacto a mitad de tiempo para todas las secciones. Los docentes titulares quedan excluidos del cuido.
                     </div>
                 `;
             }
@@ -1589,6 +1615,19 @@
                         <div class="mt-1">
                             <label><input type="radio" name="compMode" value="single" checked onchange="window.toggleCompMode(this.value)"> Grupo Único en Laboratorio</label>
                             <label class="ms-3"><input type="radio" name="compMode" value="two_turns" onchange="window.toggleCompMode(this.value)"> 2 Turnos de Lab (Grupo A y B)</label>
+                        </div>
+                    </div>
+                `;
+            }
+        } else if (isMeca) {
+            if (specialSec) {
+                specialSec.innerHTML = `
+                    <div class="alert alert-warning p-2" style="font-size:0.85rem; background:#fffbeb; border-color:#fde68a; color:#92400e;">
+                        <i class="fa-solid fa-keyboard"></i> <strong>Modo Taller de Mecanografía:</strong>
+                        La prueba es aplicada y evaluada directamente por su Catedrático Titular en el taller/salón asignado.
+                        <div class="mt-1">
+                            <label><input type="radio" name="compMode" value="single" checked onchange="window.toggleCompMode(this.value)"> Salón/Taller de Mecanografía (Evalúa Catedrático Titular)</label>
+                            <label class="ms-3"><input type="radio" name="compMode" value="two_turns" onchange="window.toggleCompMode(this.value)"> 2 Turnos por Secciones (Grupo A y B)</label>
                         </div>
                     </div>
                 `;
@@ -1861,8 +1900,12 @@
 
         const sectionsInfo = getSectionsAndTitularsForCourse(academicGradeName, courseName);
         const sUpper = courseName.toUpperCase();
-        const isPrac = sUpper.includes('PRÁCTICA SUPERVISADA') || sUpper.includes('PRACTICA SUPERVISADA');
-        const isComp = sUpper.includes('COMPUT') || sUpper.includes('INFORM') || sUpper.includes('LABORAT') || sUpper.includes('TIC');
+        const normSub = (str) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+        const sNorm = normSub(courseName);
+
+        const isPrac = sNorm.includes('PRACTICA SUPERVISADA');
+        const isComp = sNorm.includes('COMPUT') || sNorm.includes('INFORM') || sNorm.includes('LABORAT') || sNorm.includes('TIC');
+        const isMeca = sNorm.includes('MECANOGRAF') || sNorm.includes('MECA');
 
         let compMode = 'single';
         const compRadio = document.querySelector('input[name="compMode"]:checked');
@@ -1952,6 +1995,7 @@
             recessMinutes: recess,
             isPractica: isPrac,
             isComputacion: isComp,
+            isMecanografia: isMeca,
             computacionMode: compMode,
             // Fallback de retrocompatibilidad
             groupA: firstSec.groupA || { classroom: 'Salón 1', range: '', caretakerTeacherId: '', caretakerTeacherName: '' },
@@ -2040,10 +2084,10 @@
             // Procesar cada evaluación del día cronológicamente
             dayObj.evaluations.forEach(ev => {
                 const isPractica = ev.isPractica === true;
-                const isComputacionSingle = ev.isComputacion && ev.computacionMode === 'single';
+                const isSingleTitularEvaluation = (ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single';
 
-                // Si es computación en salón único, los titulares son quienes cuidan y evalúan
-                if (isComputacionSingle) {
+                // Si es computación o mecanografía en salón único/taller, los titulares son quienes cuidan y evalúan
+                if (isSingleTitularEvaluation) {
                     const compStartMin = timeStringToMinutes(ev.startTime);
                     const compEndMin = timeStringToMinutes(ev.endTime);
                     const compDur = compEndMin - compStartMin;
@@ -2327,11 +2371,12 @@
                         </div>
                     `;
                 }
-            } else if (ev.isComputacion && ev.computacionMode === 'single') {
+            } else if ((ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single') {
+                const isMeca = ev.isMecanografia;
                 col3SalonesHtml = `
                     <div>
-                        <strong>💻 Laboratorio de Computación (Todas las Secciones):</strong><br>
-                        • Catedráticos Evaluadores y Cuidadores: ${ev.courseTeacherName} (Docentes Titulares)
+                        <strong>${isMeca ? '⌨️ Taller de Mecanografía' : '💻 Laboratorio de Computación'} (Todas las Secciones):</strong><br>
+                        • Catedráticos Evaluadores y Cuidadores: ${ev.courseTeacherName} (Docentes Titulares Autorizados)
                     </div>
                 `;
             } else if (Array.isArray(ev.sections) && ev.sections.length > 0) {
@@ -2898,8 +2943,8 @@
                 let cuidadoresStr = '';
                 if (ev.isPractica) {
                     cuidadoresStr = `Salón ${ev.groupA.classroom} (A): ${ev.groupA.caretakerTeacherName} / ${ev.groupA.caretakerTurn2Name}<br>Salón ${ev.groupB.classroom} (B): ${ev.groupB.caretakerTeacherName} / ${ev.groupB.caretakerTurn2Name}`;
-                } else if (ev.isComputacion && ev.computacionMode === 'single') {
-                    cuidadoresStr = `Laboratorio: ${ev.courseTeacherName} (Titular)`;
+                } else if ((ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single') {
+                    cuidadoresStr = `${ev.isMecanografia ? '⌨️ Taller Meca' : '💻 Lab. Computación'}: ${ev.courseTeacherName} (Titular)`;
                 } else {
                     cuidadoresStr = `Salón ${ev.groupA.classroom} (A): ${ev.groupA.caretakerTeacherName || 'N/A'}<br>Salón ${ev.groupB.classroom} (B): ${ev.groupB.caretakerTeacherName || 'N/A'}`;
                 }
