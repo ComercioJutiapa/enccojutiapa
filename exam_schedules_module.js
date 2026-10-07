@@ -261,34 +261,71 @@
                 if (ev.isPractica) {
                     // Práctica Supervisada: Relevo a mitad de tiempo (dur / 2 para cada turno)
                     const halfDur = Math.round(dur / 2);
-                    ['groupA', 'groupB'].forEach(grpKey => {
-                        const grp = ev[grpKey];
-                        if (grp) {
-                            if (grp.caretakerTeacherId && workload[grp.caretakerTeacherId]) {
-                                workload[grp.caretakerTeacherId].minutes += halfDur;
-                                workload[grp.caretakerTeacherId].salonesCount += 1;
+                    if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                        ev.sections.forEach(sec => {
+                            ['groupA', 'groupB'].forEach(grpKey => {
+                                const grp = sec[grpKey];
+                                if (grp) {
+                                    if (grp.caretakerTeacherId && workload[grp.caretakerTeacherId]) {
+                                        workload[grp.caretakerTeacherId].minutes += halfDur;
+                                        workload[grp.caretakerTeacherId].salonesCount += 1;
+                                    }
+                                    if (grp.caretakerTurn2Id && workload[grp.caretakerTurn2Id]) {
+                                        workload[grp.caretakerTurn2Id].minutes += halfDur;
+                                        workload[grp.caretakerTurn2Id].salonesCount += 1;
+                                    }
+                                }
+                            });
+                        });
+                    } else {
+                        ['groupA', 'groupB'].forEach(grpKey => {
+                            const grp = ev[grpKey];
+                            if (grp) {
+                                if (grp.caretakerTeacherId && workload[grp.caretakerTeacherId]) {
+                                    workload[grp.caretakerTeacherId].minutes += halfDur;
+                                    workload[grp.caretakerTeacherId].salonesCount += 1;
+                                }
+                                if (grp.caretakerTurn2Id && workload[grp.caretakerTurn2Id]) {
+                                    workload[grp.caretakerTurn2Id].minutes += halfDur;
+                                    workload[grp.caretakerTurn2Id].salonesCount += 1;
+                                }
                             }
-                            if (grp.caretakerTurn2Id && workload[grp.caretakerTurn2Id]) {
-                                workload[grp.caretakerTurn2Id].minutes += halfDur;
-                                workload[grp.caretakerTurn2Id].salonesCount += 1;
-                            }
-                        }
-                    });
+                        });
+                    }
                 } else if (ev.isComputacion && ev.computacionMode === 'single') {
-                    // Computación salón único
-                    if (ev.courseTeacherId && workload[ev.courseTeacherId]) {
+                    // Computación salón único: los titulares cuidan
+                    if (Array.isArray(ev.titularTeachers) && ev.titularTeachers.length > 0) {
+                        ev.titularTeachers.forEach(tit => {
+                            if (tit.teacherId && workload[tit.teacherId]) {
+                                workload[tit.teacherId].minutes += dur;
+                                workload[tit.teacherId].salonesCount += 1;
+                            }
+                        });
+                    } else if (ev.courseTeacherId && workload[ev.courseTeacherId]) {
                         workload[ev.courseTeacherId].minutes += dur;
                         workload[ev.courseTeacherId].salonesCount += 1;
                     }
                 } else {
                     // Regular o Computación dividida
-                    ['groupA', 'groupB'].forEach(grpKey => {
-                        const grp = ev[grpKey];
-                        if (grp && grp.caretakerTeacherId && workload[grp.caretakerTeacherId]) {
-                            workload[grp.caretakerTeacherId].minutes += dur;
-                            workload[grp.caretakerTeacherId].salonesCount += 1;
-                        }
-                    });
+                    if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                        ev.sections.forEach(sec => {
+                            ['groupA', 'groupB'].forEach(grpKey => {
+                                const grp = sec[grpKey];
+                                if (grp && grp.caretakerTeacherId && workload[grp.caretakerTeacherId]) {
+                                    workload[grp.caretakerTeacherId].minutes += dur;
+                                    workload[grp.caretakerTeacherId].salonesCount += 1;
+                                }
+                            });
+                        });
+                    } else {
+                        ['groupA', 'groupB'].forEach(grpKey => {
+                            const grp = ev[grpKey];
+                            if (grp && grp.caretakerTeacherId && workload[grp.caretakerTeacherId]) {
+                                workload[grp.caretakerTeacherId].minutes += dur;
+                                workload[grp.caretakerTeacherId].salonesCount += 1;
+                            }
+                        });
+                    }
                 }
             });
         }
@@ -322,6 +359,118 @@
             rangeA: total > 0 ? `01 al ${String(mid).padStart(2, '0')}` : 'Sin alumnos',
             rangeB: total > mid ? `${String(mid + 1).padStart(2, '0')} al ${String(total).padStart(2, '0')}` : 'Sin alumnos'
         };
+    }
+
+    // Obtener los Grados Académicos Consolidados (sin separar por sección)
+    function getDistinctAcademicGrades() {
+        const map = new Map();
+        (STATE.gradesList || []).forEach(g => {
+            let baseName = (g.name || g.code || '').trim();
+            baseName = baseName.replace(/\s+Secci[oó]n\s+[A-D]/i, '').replace(/\s+[A-D]$/i, '').trim();
+            if (baseName && !map.has(baseName)) {
+                map.set(baseName, {
+                    baseName: baseName,
+                    career: g.career || 'Ciclo Diversificado'
+                });
+            }
+        });
+
+        // Respaldo desde pensum si gradesList estuviera vacío
+        if (map.size === 0) {
+            (STATE.pensum || []).forEach(p => {
+                let baseName = (p.grade || '').trim();
+                baseName = baseName.replace(/\s+Secci[oó]n\s+[A-D]/i, '').replace(/\s+[A-D]$/i, '').trim();
+                if (baseName && !map.has(baseName)) {
+                    map.set(baseName, {
+                        baseName: baseName,
+                        career: 'Ciclo Diversificado'
+                    });
+                }
+            });
+        }
+
+        return Array.from(map.values());
+    }
+
+    // Obtener las materias únicas para un Grado Académico consolidado
+    function getCoursesForAcademicGrade(academicGradeName) {
+        if (!academicGradeName) return [];
+        const term = academicGradeName.toUpperCase().trim();
+        const seen = new Set();
+        const courses = [];
+
+        (STATE.pensum || []).forEach(p => {
+            const rawP = ((p.grade || '') + ' ' + (p.gradeCode || '')).toUpperCase();
+            if (rawP.includes(term) || (p.grade && p.grade.toUpperCase().trim() === term)) {
+                const sub = (p.subject || '').trim();
+                if (sub && !seen.has(sub.toUpperCase())) {
+                    seen.add(sub.toUpperCase());
+                    courses.push(sub);
+                }
+            }
+        });
+
+        courses.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        return courses;
+    }
+
+    // Obtener todas las secciones y sus catedráticos titulares para una materia y grado
+    function getSectionsAndTitularsForCourse(academicGradeName, subjectName) {
+        if (!academicGradeName || !subjectName) return [];
+        const term = academicGradeName.toUpperCase().trim();
+        const subTerm = subjectName.trim().toUpperCase();
+
+        // 1. Identificar grados/secciones coincidentes en gradesList
+        let matchingGrades = (STATE.gradesList || []).filter(g => {
+            let base = (g.name || g.code || '').replace(/\s+Secci[oó]n\s+[A-D]/i, '').replace(/\s+[A-D]$/i, '').trim().toUpperCase();
+            return base === term || ((g.name || '').toUpperCase().includes(term));
+        });
+
+        // Si no hay en gradesList, deducir secciones desde pensum
+        if (matchingGrades.length === 0) {
+            const seenSecs = new Set();
+            (STATE.pensum || []).forEach(p => {
+                const rawP = ((p.grade || '') + ' ' + (p.gradeCode || '')).toUpperCase();
+                if (rawP.includes(term)) {
+                    const sec = (p.section || 'Sección A').trim();
+                    if (!seenSecs.has(sec)) {
+                        seenSecs.add(sec);
+                        matchingGrades.push({
+                            code: p.gradeCode || `${academicGradeName} ${sec}`,
+                            name: academicGradeName,
+                            section: sec
+                        });
+                    }
+                }
+            });
+        }
+
+        // Ordenar secciones alfabéticamente (Sección A, Sección B...)
+        matchingGrades.sort((a, b) => (a.section || '').localeCompare(b.section || '', 'es'));
+
+        const sectionsInfo = [];
+
+        matchingGrades.forEach(g => {
+            const secLetter = (g.section || '').replace(/Secci[oó]n\s*/i, '').trim() || 'A';
+            const pMatch = (STATE.pensum || []).find(p => {
+                const rawP = ((p.grade || '') + ' ' + (p.gradeCode || '') + ' ' + (p.section || '')).toUpperCase();
+                const subMatch = (p.subject || '').trim().toUpperCase() === subTerm;
+                const secMatch = rawP.includes(secLetter) || (p.gradeCode === g.code);
+                return subMatch && secMatch;
+            });
+
+            sectionsInfo.push({
+                gradeCode: g.code || g.id,
+                gradeName: g.name || academicGradeName,
+                section: g.section || ('Sección ' + secLetter),
+                sectionLetter: secLetter,
+                courseId: pMatch ? pMatch.id : '',
+                teacherId: pMatch ? pMatch.teacherId : '',
+                teacherName: pMatch ? pMatch.teacher : 'Sin docente asignado'
+            });
+        });
+
+        return sectionsInfo;
     }
 
     // =========================================================================
@@ -582,15 +731,37 @@
             html += `
                 <div class="exam-group-card" style="border-left:4px solid #0284c7; grid-column:1 / -1;">
                     <strong style="color:#0369a1; display:block; margin-bottom:4px;">
-                        💻 Laboratorio de Computación ─ GRUPO ÚNICO (Nómina Completa)
+                        💻 Laboratorio de Computación ─ GRUPO ÚNICO (Todas las Secciones)
                     </strong>
                     <div style="font-size:0.82rem; color:#334155;">
-                        • <strong>Catedrático Evaluador y Cuidador:</strong> ${ev.courseTeacherName} (Docente Titular Autorizado)
+                        • <strong>Catedráticos Evaluadores y Cuidadores:</strong> ${ev.courseTeacherName} (Docentes Titulares Autorizados)
                     </div>
                 </div>
             `;
+        } else if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+            // Renderizar salones para todas las secciones configuradas
+            ev.sections.forEach(sec => {
+                html += `
+                    <div class="exam-group-card" style="border-left:4px solid #15803d;">
+                        <strong style="color:#166534; display:block; margin-bottom:4px;">
+                            🏫 ${sec.section} ─ Salón ${sec.groupA.classroom || '1'} (Grupo A: ${sec.groupA.range || '1 a N/2'})
+                        </strong>
+                        <div style="font-size:0.82rem; color:#334155;">
+                            • <strong>Docente Cuidador:</strong> ${sec.groupA.caretakerTeacherName || 'Sin asignar'}
+                        </div>
+                    </div>
+                    <div class="exam-group-card" style="border-left:4px solid #15803d;">
+                        <strong style="color:#166534; display:block; margin-bottom:4px;">
+                            🏫 ${sec.section} ─ Salón ${sec.groupB.classroom || '2'} (Grupo B: ${sec.groupB.range || 'N/2+1 a N'})
+                        </strong>
+                        <div style="font-size:0.82rem; color:#334155;">
+                            • <strong>Docente Cuidador:</strong> ${sec.groupB.caretakerTeacherName || 'Sin asignar'}
+                        </div>
+                    </div>
+                `;
+            });
         } else {
-            // Regular: Grupo A y Grupo B
+            // Fallback de retrocompatibilidad
             html += `
                 <div class="exam-group-card" style="border-left:4px solid #15803d;">
                     <strong style="color:#166534; display:block; margin-bottom:4px;">
@@ -715,7 +886,7 @@
         renderExamSchedulesView();
     };
 
-    // Modal para asignar una clase a un día
+    // Modal para asignar una clase a un día (A nivel de Grado Académico completo con todas sus secciones)
     window.addEvaluationToDay = function (dayId, evalToEdit = null) {
         const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
@@ -727,8 +898,11 @@
         let existingModal = document.getElementById(modalId);
         if (existingModal) existingModal.remove();
 
-        const grades = STATE.gradesList || [];
+        const academicGrades = getDistinctAcademicGrades();
         const workload = calculateTeacherWorkloadForDate(scheduleBlock, dayObj.date);
+
+        // Guardar workload en window para generar opciones dinámicamente al cambiar de materia
+        window._currentDayWorkload = workload;
 
         // Calcular hora de inicio automática según evaluaciones previas
         let autoStartMinutes = 450; // 07:30 AM
@@ -739,26 +913,27 @@
         }
         const autoStartTime = minutesToTimeString(autoStartMinutes);
 
-        // Opciones de profesores cuidadores excluyendo colisiones
-        function generateTeacherSelectOptions(selectedId = '', excludeTeacherId = '') {
+        // Opciones de profesores cuidadores excluyendo a TODOS los titulares de la cátedra
+        window._generateTeacherSelectOptions = function (selectedId = '', excludeTeacherIds = []) {
             let opts = `<option value="">-- Seleccionar Cuidador --</option>`;
+            const excludeSet = new Set(Array.isArray(excludeTeacherIds) ? excludeTeacherIds : [excludeTeacherIds].filter(Boolean));
             (STATE.users || []).forEach(u => {
                 if (u.role === 'docente' || u.role === 'profesor_auxiliar') {
-                    if (u.id === excludeTeacherId) return; // Regla de Oro: Titular excluido
-                    const wl = workload[u.id] || { minutes: 0, salonesCount: 0 };
+                    if (excludeSet.has(u.id)) return; // Regla de Oro: Titular(es) excluidos
+                    const wl = (window._currentDayWorkload && window._currentDayWorkload[u.id]) || { minutes: 0, salonesCount: 0 };
                     const isSel = u.id === selectedId ? 'selected' : '';
                     opts += `<option value="${u.id}" ${isSel}>${u.name} (Hoy: ${wl.minutes} min | ${wl.salonesCount} sal.)</option>`;
                 }
             });
             return opts;
-        }
+        };
 
         const modalHtml = `
             <div class="exam-modal-overlay" id="${modalId}" onclick="if(event.target===this) document.getElementById('${modalId}').remove()">
                 <div class="exam-modal-box modal-lg-box" style="max-height:92vh; display:flex; flex-direction:column;">
                     <div style="background:#0f172a; color:white; padding:16px 22px; display:flex; align-items:center; justify-content:space-between; border-radius:14px 14px 0 0; flex-shrink:0;">
                         <h4 style="margin:0; font-size:1.15rem; font-weight:800; display:flex; align-items:center; gap:8px; color:#ffffff;">
-                            <i class="fa-solid fa-file-pen" style="color:#22c55e;"></i> ${evalToEdit ? 'Editar Evaluación' : 'Asignar Asignatura y Cuidadores'}
+                            <i class="fa-solid fa-file-pen" style="color:#22c55e;"></i> ${evalToEdit ? 'Editar Evaluación a Nivel de Grado' : 'Asignar Asignatura y Cuidadores (Todas las Secciones)'}
                         </h4>
                         <button type="button" onclick="document.getElementById('${modalId}').remove()" style="background:none; border:none; color:#ffffff; font-size:1.4rem; cursor:pointer; line-height:1; padding:0 4px;">&times;</button>
                     </div>
@@ -766,10 +941,10 @@
                         <form id="formAddEval">
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label" style="font-weight:700;">Grado y Sección:</label>
+                                    <label class="form-label" style="font-weight:700;">Grado Académico (Aplica a todas las secciones):</label>
                                     <select id="evalGradeSelect" class="form-control" onchange="window.onEvalGradeChanged(this.value)" required>
                                         <option value="">-- Seleccione Grado --</option>
-                                        ${grades.map(g => `<option value="${g.code || g.id}">${g.name} ${g.section}</option>`).join('')}
+                                        ${academicGrades.map(g => `<option value="${g.baseName}">${g.baseName}</option>`).join('')}
                                     </select>
                                 </div>
                                 <div class="col-md-6">
@@ -781,13 +956,18 @@
                             </div>
 
                             <div class="row g-3 mt-1">
-                                <div class="col-md-6">
-                                    <label class="form-label" style="font-weight:700;">Catedrático Titular de la Cátedra:</label>
-                                    <input type="text" id="evalTeacherName" class="form-control" readonly style="background:#f1f5f9; font-weight:700;">
-                                    <input type="hidden" id="evalTeacherId">
+                                <div class="col-12">
+                                    <label class="form-label" style="font-weight:700;">Catedráticos Titulares de la Cátedra (Identificados por Sección):</label>
+                                    <div id="evalTitularsContainer" style="background:#f1f5f9; padding:8px 12px; border-radius:6px; border:1px solid #cbd5e1; font-weight:700; color:#334155; font-size:0.9rem;">
+                                        Seleccione una materia para listar los catedráticos titulares.
+                                    </div>
+                                    <input type="hidden" id="evalTitularIdsHidden" value="">
                                 </div>
+                            </div>
+
+                            <div class="row g-3 mt-1">
                                 <div class="col-md-6">
-                                    <label class="form-label" style="font-weight:700;">⏱️ Tiempo Fijado por el Titular (Minutos):</label>
+                                    <label class="form-label" style="font-weight:700;">⏱️ Tiempo Fijado por la Cátedra (Minutos):</label>
                                     <select id="evalDurationSelect" class="form-control" onchange="window.recalcEvalTimes()" style="font-weight:700;">
                                         <option value="45">45 minutos</option>
                                         <option value="50">50 minutos</option>
@@ -798,18 +978,7 @@
                                         <option value="300">300 minutos (5 horas - Práctica Supervisada)</option>
                                     </select>
                                 </div>
-                            </div>
-
-                            <div class="row g-3 mt-1 p-2 rounded" style="background:#f8fafc; border:1px solid #e2e8f0;">
-                                <div class="col-md-4">
-                                    <label class="form-label" style="font-weight:700;">Hora Inicio:</label>
-                                    <input type="time" id="evalStartTime" class="form-control" value="${autoStartTime}" onchange="window.recalcEvalTimes()" required>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label" style="font-weight:700;">Hora Fin (Calculada):</label>
-                                    <input type="time" id="evalEndTime" class="form-control" readonly style="background:#e2e8f0; font-weight:800;">
-                                </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label class="form-label" style="font-weight:700;">Receso Posterior:</label>
                                     <select id="evalRecessMinutes" class="form-control">
                                         <option value="0">Sin receso</option>
@@ -817,6 +986,17 @@
                                         <option value="15" selected>15 minutos</option>
                                         <option value="20">20 minutos</option>
                                     </select>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mt-1 p-2 rounded" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                                <div class="col-md-6">
+                                    <label class="form-label" style="font-weight:700;">Hora Inicio:</label>
+                                    <input type="time" id="evalStartTime" class="form-control" value="${autoStartTime}" onchange="window.recalcEvalTimes()" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" style="font-weight:700;">Hora Fin (Calculada):</label>
+                                    <input type="time" id="evalEndTime" class="form-control" readonly style="background:#e2e8f0; font-weight:800;">
                                 </div>
                                 <div id="evalTimeLimitWarning" class="col-12 text-danger font-weight-bold" style="display:none; font-size:0.85rem;">
                                     ⚠️ Advertencia: El horario calculado sobrepasa las 12:30 PM. Ajuste la hora de inicio o la duración.
@@ -826,50 +1006,10 @@
                             <!-- SECCIÓN MODALIDAD ESPECIAL (COMPUTACIÓN O PRÁCTICA) -->
                             <div id="specialModeSection" class="mt-3"></div>
 
-                            <!-- SECCIÓN CUIDADORES GRUPO A Y B -->
-                            <div id="careTakersSection" class="mt-3">
-                                <h6 style="font-weight:800; color:#15803d; border-bottom:1px solid #cbd5e1; padding-bottom:4px;">
-                                    👥 Salones y Docentes Cuidadores (División en 2 Grupos)
-                                </h6>
-                                <div class="row g-3 mt-1">
-                                    <div class="col-md-6 p-2 rounded" style="background:#ffffff; border:1px solid #cbd5e1;">
-                                        <strong style="color:#166534; font-size:0.9rem;">🏫 Salón Grupo A (1 a N/2)</strong>
-                                        <div class="mt-2">
-                                            <label class="form-label" style="font-size:0.82rem; font-weight:700;">No. de Salón:</label>
-                                            <input type="text" id="evalClassroomA" class="form-control form-control-sm" value="Salón 1" placeholder="Ej. Salón 1">
-                                        </div>
-                                        <div class="mt-2">
-                                            <label class="form-label" style="font-size:0.82rem; font-weight:700;">Docente Cuidador Grupo A:</label>
-                                            <select id="evalCaretakerA" class="form-control form-control-sm" required>
-                                                ${generateTeacherSelectOptions()}
-                                            </select>
-                                        </div>
-                                        <div id="evalTurn2AContainer" style="display:none;" class="mt-2">
-                                            <label class="form-label" style="font-size:0.82rem; font-weight:700; color:#1d4ed8;">Docente 2do Turno Grupo A (Relevo):</label>
-                                            <select id="evalCaretakerTurn2A" class="form-control form-control-sm">
-                                                ${generateTeacherSelectOptions()}
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6 p-2 rounded" style="background:#ffffff; border:1px solid #cbd5e1;">
-                                        <strong style="color:#166534; font-size:0.9rem;">🏫 Salón Grupo B (N/2+1 a N)</strong>
-                                        <div class="mt-2">
-                                            <label class="form-label" style="font-size:0.82rem; font-weight:700;">No. de Salón:</label>
-                                            <input type="text" id="evalClassroomB" class="form-control form-control-sm" value="Salón 2" placeholder="Ej. Salón 2">
-                                        </div>
-                                        <div class="mt-2">
-                                            <label class="form-label" style="font-size:0.82rem; font-weight:700;">Docente Cuidador Grupo B:</label>
-                                            <select id="evalCaretakerB" class="form-control form-control-sm" required>
-                                                ${generateTeacherSelectOptions()}
-                                            </select>
-                                        </div>
-                                        <div id="evalTurn2BContainer" style="display:none;" class="mt-2">
-                                            <label class="form-label" style="font-size:0.82rem; font-weight:700; color:#1d4ed8;">Docente 2do Turno Grupo B (Relevo):</label>
-                                            <select id="evalCaretakerTurn2B" class="form-control form-control-sm">
-                                                ${generateTeacherSelectOptions()}
-                                            </select>
-                                        </div>
-                                    </div>
+                            <!-- CONTENEDOR DINÁMICO DE SALONES POR CADA SECCIÓN -->
+                            <div id="sectionsSalonsContainer" class="mt-3">
+                                <div class="alert alert-secondary p-3 text-center" style="font-size:0.88rem; color:#475569;">
+                                    <i class="fa-solid fa-chalkboard-user"></i> Seleccione un grado y una asignatura para configurar los salones y cuidadores de todas las secciones.
                                 </div>
                             </div>
                         </form>
@@ -890,94 +1030,103 @@
 
         // Si se está editando, cargar valores previos
         if (evalToEdit) {
-            document.getElementById('evalGradeSelect').value = evalToEdit.gradeCode;
-            window.onEvalGradeChanged(evalToEdit.gradeCode, evalToEdit.courseId);
+            const gradeName = evalToEdit.academicGradeName || evalToEdit.gradeName || evalToEdit.gradeCode;
+            document.getElementById('evalGradeSelect').value = gradeName;
+            window.onEvalGradeChanged(gradeName, evalToEdit.courseName, evalToEdit);
             document.getElementById('evalDurationSelect').value = evalToEdit.durationMinutes;
             document.getElementById('evalStartTime').value = evalToEdit.startTime;
             document.getElementById('evalRecessMinutes').value = evalToEdit.recessMinutes || 15;
             window.recalcEvalTimes();
-            if (evalToEdit.groupA) {
-                document.getElementById('evalClassroomA').value = evalToEdit.groupA.classroom || 'Salón 1';
-                document.getElementById('evalCaretakerA').value = evalToEdit.groupA.caretakerTeacherId || '';
-                if (document.getElementById('evalCaretakerTurn2A')) {
-                    document.getElementById('evalCaretakerTurn2A').value = evalToEdit.groupA.caretakerTurn2Id || '';
-                }
-            }
-            if (evalToEdit.groupB) {
-                document.getElementById('evalClassroomB').value = evalToEdit.groupB.classroom || 'Salón 2';
-                document.getElementById('evalCaretakerB').value = evalToEdit.groupB.caretakerTeacherId || '';
-                if (document.getElementById('evalCaretakerTurn2B')) {
-                    document.getElementById('evalCaretakerTurn2B').value = evalToEdit.groupB.caretakerTurn2Id || '';
-                }
-            }
         }
     };
 
-    // Al cambiar de grado, llenar las materias asignadas
-    window.onEvalGradeChanged = function (gradeCode, preselectedCourseId = '') {
+    // Al cambiar de grado, llenar las materias únicas de ese grado académico
+    window.onEvalGradeChanged = function (academicGradeName, preselectedCourseName = '', editPayload = null) {
         const courseSelect = document.getElementById('evalCourseSelect');
+        const titularsDiv = document.getElementById('evalTitularsContainer');
+        const salonsContainer = document.getElementById('sectionsSalonsContainer');
         if (!courseSelect) return;
 
-        const pensum = (STATE.pensum || []).filter(p => {
-            const raw = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
-            return p.gradeCode === gradeCode || p.grade === gradeCode || raw.includes(gradeCode.toUpperCase());
-        });
-
-        let opts = `<option value="">-- Seleccionar Asignatura --</option>`;
-        pensum.forEach(p => {
-            const isSel = p.id === preselectedCourseId ? 'selected' : '';
-            opts += `<option value="${p.id}" ${isSel}>${p.subject} (Titular: ${p.teacher || 'Sin docente'})</option>`;
-        });
-        courseSelect.innerHTML = opts;
-
-        if (preselectedCourseId) {
-            window.onEvalCourseChanged(preselectedCourseId);
-        }
-    };
-
-    // Al cambiar de materia, determinar docente titular y si es computación o práctica
-    window.onEvalCourseChanged = function (courseId) {
-        const course = (STATE.pensum || []).find(p => p.id === courseId);
-        const teacherNameInput = document.getElementById('evalTeacherName');
-        const teacherIdInput = document.getElementById('evalTeacherId');
-        const durationSelect = document.getElementById('evalDurationSelect');
-        const specialSec = document.getElementById('specialModeSection');
-        const turn2A = document.getElementById('evalTurn2AContainer');
-        const turn2B = document.getElementById('evalTurn2BContainer');
-
-        if (!course) {
-            if (teacherNameInput) teacherNameInput.value = '';
-            if (teacherIdInput) teacherIdInput.value = '';
+        if (!academicGradeName) {
+            courseSelect.innerHTML = `<option value="">-- Seleccione primero un grado --</option>`;
+            if (titularsDiv) titularsDiv.innerHTML = 'Seleccione una materia para listar los catedráticos titulares.';
+            if (salonsContainer) salonsContainer.innerHTML = '';
             return;
         }
 
-        const tName = course.teacher || 'Docente Titular';
-        const tId = course.teacherId || '';
-        if (teacherNameInput) teacherNameInput.value = tName;
-        if (teacherIdInput) teacherIdInput.value = tId;
+        const courses = getCoursesForAcademicGrade(academicGradeName);
+        let opts = `<option value="">-- Seleccionar Asignatura --</option>`;
+        courses.forEach(cName => {
+            const isSel = cName === preselectedCourseName ? 'selected' : '';
+            opts += `<option value="${cName}" ${isSel}>${cName}</option>`;
+        });
+        courseSelect.innerHTML = opts;
 
-        const sUpper = (course.subject || '').toUpperCase();
+        if (preselectedCourseName) {
+            window.onEvalCourseChanged(preselectedCourseName, editPayload);
+        } else {
+            if (titularsDiv) titularsDiv.innerHTML = 'Seleccione una materia para listar los catedráticos titulares de todas las secciones.';
+            if (salonsContainer) salonsContainer.innerHTML = '';
+        }
+    };
+
+    // Al cambiar de materia, identificar titulares de todas las secciones y generar salones
+    window.onEvalCourseChanged = function (courseName, editPayload = null) {
+        const gradeSelect = document.getElementById('evalGradeSelect');
+        const academicGradeName = gradeSelect ? gradeSelect.value : '';
+        const titularsDiv = document.getElementById('evalTitularsContainer');
+        const hiddenTitularIds = document.getElementById('evalTitularIdsHidden');
+        const salonsContainer = document.getElementById('sectionsSalonsContainer');
+        const durationSelect = document.getElementById('evalDurationSelect');
+        const specialSec = document.getElementById('specialModeSection');
+
+        if (!academicGradeName || !courseName) {
+            if (titularsDiv) titularsDiv.innerHTML = 'Seleccione una materia para listar los catedráticos titulares.';
+            if (hiddenTitularIds) hiddenTitularIds.value = '';
+            if (salonsContainer) salonsContainer.innerHTML = '';
+            return;
+        }
+
+        const sectionsInfo = getSectionsAndTitularsForCourse(academicGradeName, courseName);
+        const titularIds = sectionsInfo.map(s => s.teacherId).filter(Boolean);
+        if (hiddenTitularIds) hiddenTitularIds.value = JSON.stringify(titularIds);
+
+        // Mostrar titulares detectados por sección
+        if (titularsDiv) {
+            if (sectionsInfo.length === 0) {
+                titularsDiv.innerHTML = `<span style="color:#b91c1c;">⚠️ No se encontraron secciones asignadas para esta materia.</span>`;
+            } else {
+                titularsDiv.innerHTML = sectionsInfo.map(s => `
+                    <div style="display:inline-block; margin-right:16px; margin-bottom:4px;">
+                        <span class="badge" style="background:#0f172a; color:#fff; font-size:0.8rem; margin-right:4px;">${s.section}</span>
+                        <strong>${s.teacherName}</strong>
+                    </div>
+                `).join('') + `<div style="font-size:0.78rem; color:#dc2626; margin-top:4px;">
+                    🔒 Regla de Oro: Ninguno de estos catedráticos titulares podrá ser asignado como cuidador en este horario.
+                </div>`;
+            }
+        }
+
+        const sUpper = (courseName || '').toUpperCase();
         const isComp = sUpper.includes('COMPUT') || sUpper.includes('INFORM') || sUpper.includes('LABORAT') || sUpper.includes('TIC');
         const isPrac = sUpper.includes('PRÁCTICA SUPERVISADA') || sUpper.includes('PRACTICA SUPERVISADA');
 
         if (isPrac) {
-            if (durationSelect) durationSelect.value = '300'; // 5 horas
+            if (durationSelect && (!editPayload)) durationSelect.value = '300'; // 5 horas
             if (specialSec) {
                 specialSec.innerHTML = `
                     <div class="alert alert-primary p-2" style="font-size:0.85rem;">
                         <i class="fa-solid fa-star"></i> <strong>Modo Práctica Supervisada Detectado:</strong>
-                        Se asignarán 2 docentes por salón con relevo exacto a mitad de tiempo. El docente titular no cuida.
+                        Se asignarán 2 docentes por salón con relevo exacto a mitad de tiempo para todas las secciones. Los docentes titulares quedan excluidos.
                     </div>
                 `;
             }
-            if (turn2A) turn2A.style.display = 'block';
-            if (turn2B) turn2B.style.display = 'block';
         } else if (isComp) {
             if (specialSec) {
                 specialSec.innerHTML = `
                     <div class="alert alert-info p-2" style="font-size:0.85rem;">
                         <i class="fa-solid fa-laptop-code"></i> <strong>Modo Laboratorio de Computación:</strong>
-                        El catedrático titular <strong>(${tName})</strong> evalúa y cuida su propia prueba.
+                        Los catedráticos titulares evalúan y cuidan sus respectivas pruebas en el laboratorio.
                         <div class="mt-1">
                             <label><input type="radio" name="compMode" value="single" checked onchange="window.toggleCompMode(this.value)"> Grupo Único en Laboratorio</label>
                             <label class="ms-3"><input type="radio" name="compMode" value="two_turns" onchange="window.toggleCompMode(this.value)"> 2 Turnos de Lab (Grupo A y B)</label>
@@ -985,21 +1134,128 @@
                     </div>
                 `;
             }
-            if (turn2A) turn2A.style.display = 'none';
-            if (turn2B) turn2B.style.display = 'none';
         } else {
             if (specialSec) specialSec.innerHTML = '';
-            if (turn2A) turn2A.style.display = 'none';
-            if (turn2B) turn2B.style.display = 'none';
         }
 
+        // Construir tarjetas de salones para CADA sección (Grupo A y Grupo B)
+        let salonsHtml = `
+            <h6 style="font-weight:800; color:#15803d; border-bottom:1px solid #cbd5e1; padding-bottom:6px; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-school"></i> Salones y Docentes Cuidadores (Todas las Secciones del Grado)
+            </h6>
+        `;
+
+        let defaultSalonCounter = 1;
+
+        sectionsInfo.forEach((sInfo, sIdx) => {
+            const secCode = sInfo.gradeCode;
+            const secName = sInfo.section;
+            const splitData = splitStudentsInTwoGroups(secCode);
+
+            // Valores previos si estamos editando
+            let curA = { classroom: `Salón ${defaultSalonCounter++}`, caretaker: '', turn2: '' };
+            let curB = { classroom: `Salón ${defaultSalonCounter++}`, caretaker: '', turn2: '' };
+
+            if (editPayload) {
+                if (Array.isArray(editPayload.sections)) {
+                    const foundSec = editPayload.sections.find(sc => sc.gradeCode === secCode || sc.section === secName);
+                    if (foundSec) {
+                        if (foundSec.groupA) {
+                            curA.classroom = foundSec.groupA.classroom || curA.classroom;
+                            curA.caretaker = foundSec.groupA.caretakerTeacherId || '';
+                            curA.turn2 = foundSec.groupA.caretakerTurn2Id || '';
+                        }
+                        if (foundSec.groupB) {
+                            curB.classroom = foundSec.groupB.classroom || curB.classroom;
+                            curB.caretaker = foundSec.groupB.caretakerTeacherId || '';
+                            curB.turn2 = foundSec.groupB.caretakerTurn2Id || '';
+                        }
+                    }
+                } else if (sIdx === 0) {
+                    // Compatibilidad con objeto singular anterior
+                    if (editPayload.groupA) {
+                        curA.classroom = editPayload.groupA.classroom || curA.classroom;
+                        curA.caretaker = editPayload.groupA.caretakerTeacherId || '';
+                        curA.turn2 = editPayload.groupA.caretakerTurn2Id || '';
+                    }
+                    if (editPayload.groupB) {
+                        curB.classroom = editPayload.groupB.classroom || curB.classroom;
+                        curB.caretaker = editPayload.groupB.caretakerTeacherId || '';
+                        curB.turn2 = editPayload.groupB.caretakerTurn2Id || '';
+                    }
+                }
+            }
+
+            salonsHtml += `
+                <div class="p-3 mb-3 rounded" style="background:#ffffff; border:1.5px solid #cbd5e1; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:6px; margin-bottom:10px;">
+                        <strong style="color:#0f172a; font-size:0.95rem;">
+                            📌 ${sInfo.gradeName} ─ <span style="color:#15803d; font-weight:800;">${secName}</span>
+                        </strong>
+                        <span style="font-size:0.8rem; background:#f1f5f9; padding:2px 8px; border-radius:4px; font-weight:700;">
+                            Titular: ${sInfo.teacherName}
+                        </span>
+                    </div>
+
+                    <div class="row g-3">
+                        <!-- GRUPO A -->
+                        <div class="col-md-6 p-2 rounded" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                            <strong style="color:#166534; font-size:0.86rem; display:block; margin-bottom:6px;">
+                                🏫 Salón Grupo A (${splitData.rangeA} ─ ${splitData.groupA.length} alumnos)
+                            </strong>
+                            <div class="mb-2">
+                                <label class="form-label" style="font-size:0.8rem; font-weight:700;">No. de Salón:</label>
+                                <input type="text" id="evalClassroomA_${sIdx}" class="form-control form-control-sm" value="${curA.classroom}">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label" style="font-size:0.8rem; font-weight:700;">Docente Cuidador Grupo A:</label>
+                                <select id="evalCaretakerA_${sIdx}" class="form-control form-control-sm" required>
+                                    ${window._generateTeacherSelectOptions(curA.caretaker, titularIds)}
+                                </select>
+                            </div>
+                            <div id="evalTurn2AContainer_${sIdx}" style="display:${isPrac ? 'block' : 'none'};" class="mb-2">
+                                <label class="form-label" style="font-size:0.8rem; font-weight:700; color:#1d4ed8;">Docente 2do Turno (Relevo):</label>
+                                <select id="evalCaretakerTurn2A_${sIdx}" class="form-control form-control-sm">
+                                    ${window._generateTeacherSelectOptions(curA.turn2, titularIds)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- GRUPO B -->
+                        <div class="col-md-6 p-2 rounded" style="background:#f8fafc; border:1px solid #e2e8f0;">
+                            <strong style="color:#166534; font-size:0.86rem; display:block; margin-bottom:6px;">
+                                🏫 Salón Grupo B (${splitData.rangeB} ─ ${splitData.groupB.length} alumnos)
+                            </strong>
+                            <div class="mb-2">
+                                <label class="form-label" style="font-size:0.8rem; font-weight:700;">No. de Salón:</label>
+                                <input type="text" id="evalClassroomB_${sIdx}" class="form-control form-control-sm" value="${curB.classroom}">
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label" style="font-size:0.8rem; font-weight:700;">Docente Cuidador Grupo B:</label>
+                                <select id="evalCaretakerB_${sIdx}" class="form-control form-control-sm" required>
+                                    ${window._generateTeacherSelectOptions(curB.caretaker, titularIds)}
+                                </select>
+                            </div>
+                            <div id="evalTurn2BContainer_${sIdx}" style="display:${isPrac ? 'block' : 'none'};" class="mb-2">
+                                <label class="form-label" style="font-size:0.8rem; font-weight:700; color:#1d4ed8;">Docente 2do Turno (Relevo):</label>
+                                <select id="evalCaretakerTurn2B_${sIdx}" class="form-control form-control-sm">
+                                    ${window._generateTeacherSelectOptions(curB.turn2, titularIds)}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        if (salonsContainer) salonsContainer.innerHTML = salonsHtml;
         window.recalcEvalTimes();
     };
 
     window.toggleCompMode = function (val) {
-        const careSec = document.getElementById('careTakersSection');
-        if (careSec) {
-            careSec.style.display = (val === 'single') ? 'none' : 'block';
+        const salonsSec = document.getElementById('sectionsSalonsContainer');
+        if (salonsSec) {
+            salonsSec.style.display = (val === 'single') ? 'none' : 'block';
         }
     };
 
@@ -1026,18 +1282,18 @@
         }
     };
 
-    // Guardar evaluación confirmada
+    // Guardar evaluación confirmada a nivel de grado consolidado con todas sus secciones
     window.confirmSaveEvaluation = function (dayId, evalIdToUpdate = '') {
         const gradeSelect = document.getElementById('evalGradeSelect');
         const courseSelect = document.getElementById('evalCourseSelect');
-        const teacherName = document.getElementById('evalTeacherName').value;
-        const teacherId = document.getElementById('evalTeacherId').value;
+        const academicGradeName = gradeSelect ? gradeSelect.value : '';
+        const courseName = courseSelect ? courseSelect.value : '';
         const duration = parseInt(document.getElementById('evalDurationSelect').value, 10) || 60;
         const startTime = document.getElementById('evalStartTime').value;
         const endTime = document.getElementById('evalEndTime').value;
         const recess = parseInt(document.getElementById('evalRecessMinutes').value, 10) || 15;
 
-        if (!gradeSelect.value || !courseSelect.value) {
+        if (!academicGradeName || !courseName) {
             alert("Por favor seleccione grado y asignatura.");
             return;
         }
@@ -1054,41 +1310,80 @@
         const dayObj = scheduleBlock.days.find(d => d.id === dayId);
         if (!dayObj) return;
 
-        const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeSelect.value || g.id === gradeSelect.value);
-        const courseObj = (STATE.pensum || []).find(p => p.id === courseSelect.value);
-        const sUpper = (courseObj ? courseObj.subject : '').toUpperCase();
+        const sectionsInfo = getSectionsAndTitularsForCourse(academicGradeName, courseName);
+        const sUpper = courseName.toUpperCase();
         const isPrac = sUpper.includes('PRÁCTICA SUPERVISADA') || sUpper.includes('PRACTICA SUPERVISADA');
         const isComp = sUpper.includes('COMPUT') || sUpper.includes('INFORM') || sUpper.includes('LABORAT') || sUpper.includes('TIC');
-
-        const splitData = splitStudentsInTwoGroups(gradeSelect.value);
-
-        // Cuidadores
-        const caretakerA = document.getElementById('evalCaretakerA') ? document.getElementById('evalCaretakerA').value : '';
-        const caretakerB = document.getElementById('evalCaretakerB') ? document.getElementById('evalCaretakerB').value : '';
-        const classroomA = document.getElementById('evalClassroomA') ? document.getElementById('evalClassroomA').value : 'Salón 1';
-        const classroomB = document.getElementById('evalClassroomB') ? document.getElementById('evalClassroomB').value : 'Salón 2';
-
-        const uA = (STATE.users || []).find(u => u.id === caretakerA);
-        const uB = (STATE.users || []).find(u => u.id === caretakerB);
-
-        // Turno 2 (en práctica supervisada)
-        const turn2AId = document.getElementById('evalCaretakerTurn2A') ? document.getElementById('evalCaretakerTurn2A').value : '';
-        const turn2BId = document.getElementById('evalCaretakerTurn2B') ? document.getElementById('evalCaretakerTurn2B').value : '';
-        const uTurn2A = (STATE.users || []).find(u => u.id === turn2AId);
-        const uTurn2B = (STATE.users || []).find(u => u.id === turn2BId);
 
         let compMode = 'single';
         const compRadio = document.querySelector('input[name="compMode"]:checked');
         if (compRadio) compMode = compRadio.value;
 
+        // Construir la matriz de secciones configuradas
+        const sectionsPayload = sectionsInfo.map((sInfo, sIdx) => {
+            const splitData = splitStudentsInTwoGroups(sInfo.gradeCode);
+
+            const classroomA = (document.getElementById(`evalClassroomA_${sIdx}`) && document.getElementById(`evalClassroomA_${sIdx}`).value) || `Salón ${(sIdx * 2) + 1}`;
+            const caretakerA = (document.getElementById(`evalCaretakerA_${sIdx}`) && document.getElementById(`evalCaretakerA_${sIdx}`).value) || '';
+            const turn2AId = (document.getElementById(`evalCaretakerTurn2A_${sIdx}`) && document.getElementById(`evalCaretakerTurn2A_${sIdx}`).value) || '';
+
+            const classroomB = (document.getElementById(`evalClassroomB_${sIdx}`) && document.getElementById(`evalClassroomB_${sIdx}`).value) || `Salón ${(sIdx * 2) + 2}`;
+            const caretakerB = (document.getElementById(`evalCaretakerB_${sIdx}`) && document.getElementById(`evalCaretakerB_${sIdx}`).value) || '';
+            const turn2BId = (document.getElementById(`evalCaretakerTurn2B_${sIdx}`) && document.getElementById(`evalCaretakerTurn2B_${sIdx}`).value) || '';
+
+            const uA = (STATE.users || []).find(u => u.id === caretakerA);
+            const uB = (STATE.users || []).find(u => u.id === caretakerB);
+            const uTurn2A = (STATE.users || []).find(u => u.id === turn2AId);
+            const uTurn2B = (STATE.users || []).find(u => u.id === turn2BId);
+
+            return {
+                gradeCode: sInfo.gradeCode,
+                gradeName: sInfo.gradeName,
+                section: sInfo.section,
+                sectionLetter: sInfo.sectionLetter,
+                teacherId: sInfo.teacherId,
+                teacherName: sInfo.teacherName,
+                groupA: {
+                    classroom: classroomA,
+                    range: splitData.rangeA,
+                    caretakerTeacherId: caretakerA,
+                    caretakerTeacherName: uA ? uA.name : '',
+                    caretakerTurn2Id: turn2AId,
+                    caretakerTurn2Name: uTurn2A ? uTurn2A.name : ''
+                },
+                groupB: {
+                    classroom: classroomB,
+                    range: splitData.rangeB,
+                    caretakerTeacherId: caretakerB,
+                    caretakerTeacherName: uB ? uB.name : '',
+                    caretakerTurn2Id: turn2BId,
+                    caretakerTurn2Name: uTurn2B ? uTurn2B.name : ''
+                }
+            };
+        });
+
+        // Titulares consolidados para exhibición
+        const titularNames = Array.from(new Set(sectionsInfo.map(s => s.teacherName).filter(Boolean)));
+        const titularTeachers = sectionsInfo.map(s => ({
+            section: s.section,
+            teacherId: s.teacherId,
+            teacherName: s.teacherName
+        }));
+
+        // Para retrocompatibilidad con vista legacy de 1 grado
+        const firstSec = sectionsPayload[0] || {};
+
         const evalPayload = {
             id: evalIdToUpdate || ('eval_' + Date.now()),
-            gradeCode: gradeSelect.value,
-            gradeName: gradeObj ? `${gradeObj.name} ${gradeObj.section}` : gradeSelect.value,
-            courseId: courseSelect.value,
-            courseName: courseObj ? courseObj.subject : 'Asignatura',
-            courseTeacherId: teacherId,
-            courseTeacherName: teacherName,
+            academicGradeName: academicGradeName,
+            gradeCode: firstSec.gradeCode || academicGradeName,
+            gradeName: academicGradeName,
+            courseId: sectionsInfo[0] ? sectionsInfo[0].courseId : '',
+            courseName: courseName,
+            courseTeacherId: sectionsInfo[0] ? sectionsInfo[0].teacherId : '',
+            courseTeacherName: titularNames.join(', ') || 'Catedráticos Titulares',
+            titularTeachers: titularTeachers,
+            sections: sectionsPayload,
             durationMinutes: duration,
             startTime: startTime,
             endTime: endTime,
@@ -1096,22 +1391,9 @@
             isPractica: isPrac,
             isComputacion: isComp,
             computacionMode: compMode,
-            groupA: {
-                classroom: classroomA,
-                range: splitData.rangeA,
-                caretakerTeacherId: caretakerA,
-                caretakerTeacherName: uA ? uA.name : '',
-                caretakerTurn2Id: turn2AId,
-                caretakerTurn2Name: uTurn2A ? uTurn2A.name : ''
-            },
-            groupB: {
-                classroom: classroomB,
-                range: splitData.rangeB,
-                caretakerTeacherId: caretakerB,
-                caretakerTeacherName: uB ? uB.name : '',
-                caretakerTurn2Id: turn2BId,
-                caretakerTurn2Name: uTurn2B ? uTurn2B.name : ''
-            }
+            // Fallback de retrocompatibilidad
+            groupA: firstSec.groupA || { classroom: 'Salón 1', range: '', caretakerTeacherId: '', caretakerTeacherName: '' },
+            groupB: firstSec.groupB || { classroom: 'Salón 2', range: '', caretakerTeacherId: '', caretakerTeacherName: '' }
         };
 
         if (evalIdToUpdate) {
@@ -1176,25 +1458,43 @@
 
             if (ev.isPractica) {
                 const relevoTime = minutesToTimeString(timeStringToMinutes(ev.startTime) + Math.round(ev.durationMinutes / 2));
-                col3SalonesHtml = `
-                    <div style="margin-bottom:6px;">
-                        <strong>🏫 Salón ${ev.groupA.classroom} (Grupo A):</strong><br>
-                        • 1er Turno (${ev.startTime}-${relevoTime}): ${ev.groupA.caretakerTeacherName || 'Sin asignar'}<br>
-                        • 2do Turno (${relevoTime}-${ev.endTime}): ${ev.groupA.caretakerTurn2Name || 'Sin asignar'}
-                    </div>
-                    <div>
-                        <strong>🏫 Salón ${ev.groupB.classroom} (Grupo B):</strong><br>
-                        • 1er Turno (${ev.startTime}-${relevoTime}): ${ev.groupB.caretakerTeacherName || 'Sin asignar'}<br>
-                        • 2do Turno (${relevoTime}-${ev.endTime}): ${ev.groupB.caretakerTurn2Name || 'Sin asignar'}
-                    </div>
-                `;
+                if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                    col3SalonesHtml = ev.sections.map(sec => `
+                        <div style="margin-bottom:6px; border-bottom:1px dashed #e2e8f0; padding-bottom:4px;">
+                            <strong style="color:#1e40af;">${sec.section}:</strong><br>
+                            • Salón ${sec.groupA.classroom} (A): ${sec.groupA.caretakerTeacherName || 'Sin asignar'} (${ev.startTime}-${relevoTime}) / Relevo: ${sec.groupA.caretakerTurn2Name || 'Sin asignar'}<br>
+                            • Salón ${sec.groupB.classroom} (B): ${sec.groupB.caretakerTeacherName || 'Sin asignar'} (${ev.startTime}-${relevoTime}) / Relevo: ${sec.groupB.caretakerTurn2Name || 'Sin asignar'}
+                        </div>
+                    `).join('');
+                } else {
+                    col3SalonesHtml = `
+                        <div style="margin-bottom:6px;">
+                            <strong>🏫 Salón ${ev.groupA.classroom} (Grupo A):</strong><br>
+                            • 1er Turno (${ev.startTime}-${relevoTime}): ${ev.groupA.caretakerTeacherName || 'Sin asignar'}<br>
+                            • 2do Turno (${relevoTime}-${ev.endTime}): ${ev.groupA.caretakerTurn2Name || 'Sin asignar'}
+                        </div>
+                        <div>
+                            <strong>🏫 Salón ${ev.groupB.classroom} (Grupo B):</strong><br>
+                            • 1er Turno (${ev.startTime}-${relevoTime}): ${ev.groupB.caretakerTeacherName || 'Sin asignar'}<br>
+                            • 2do Turno (${relevoTime}-${ev.endTime}): ${ev.groupB.caretakerTurn2Name || 'Sin asignar'}
+                        </div>
+                    `;
+                }
             } else if (ev.isComputacion && ev.computacionMode === 'single') {
                 col3SalonesHtml = `
                     <div>
-                        <strong>💻 Laboratorio de Computación (Grupo Único):</strong><br>
-                        • Docente Evaluador y Cuidador: ${ev.courseTeacherName} (Titular)
+                        <strong>💻 Laboratorio de Computación (Todas las Secciones):</strong><br>
+                        • Catedráticos Evaluadores y Cuidadores: ${ev.courseTeacherName} (Docentes Titulares)
                     </div>
                 `;
+            } else if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                col3SalonesHtml = ev.sections.map(sec => `
+                    <div style="margin-bottom:6px; border-bottom:1px dashed #e2e8f0; padding-bottom:4px;">
+                        <strong style="color:#15803d; font-size:0.86rem;">📌 ${sec.section}:</strong><br>
+                        • <strong>Salón ${sec.groupA.classroom} (Grupo A):</strong> ${sec.groupA.caretakerTeacherName || 'Sin asignar'}<br>
+                        • <strong>Salón ${sec.groupB.classroom} (Grupo B):</strong> ${sec.groupB.caretakerTeacherName || 'Sin asignar'}
+                    </div>
+                `).join('');
             } else {
                 col3SalonesHtml = `
                     <div style="margin-bottom:4px;">
@@ -1206,22 +1506,34 @@
                 `;
             }
 
+            // Sección 2: Titulares
+            let col2TitularesHtml = '';
+            if (Array.isArray(ev.titularTeachers) && ev.titularTeachers.length > 0) {
+                col2TitularesHtml = ev.titularTeachers.map(tit => `
+                    <div style="margin-bottom:2px;">• <strong>${tit.section}:</strong> ${tit.teacherName}</div>
+                `).join('');
+            } else {
+                col2TitularesHtml = `<div>• <strong>Titular:</strong> ${ev.courseTeacherName}</div>`;
+            }
+
             rowsHtml += `
                 <tr>
                     <td style="padding:10px 12px; border:1px solid #cbd5e1; vertical-align:top; width:33%;">
                         <div style="font-weight:900; font-size:1.02rem; color:#0f172a;">⏰ ${ev.startTime} a ${ev.endTime} hrs</div>
-                        <div style="font-weight:800; font-size:0.95rem; color:#15803d; margin-top:2px;">${ev.gradeName}</div>
+                        <div style="font-weight:800; font-size:0.95rem; color:#15803d; margin-top:2px;">${ev.academicGradeName || ev.gradeName}</div>
                         <div style="font-weight:700; font-size:0.92rem; color:#1e293b;">📘 ${ev.courseName}</div>
                         ${ev.isPractica ? '<span style="font-size:0.75rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:3px; font-weight:800; display:inline-block; margin-top:4px;">GRADUANDOS - PRÁCTICA SUPERVISADA</span>' : ''}
                     </td>
                     <td style="padding:10px 12px; border:1px solid #cbd5e1; vertical-align:top; width:33%;">
-                        <div style="font-weight:800; font-size:0.95rem; color:#0f172a;">👤 ${ev.courseTeacherName}</div>
-                        <div style="font-size:0.85rem; color:#475569; margin-top:2px;">Catedrático Titular de la Cátedra</div>
-                        <div style="font-weight:800; font-size:0.88rem; color:#b45309; margin-top:6px;">
+                        <div style="font-weight:800; font-size:0.86rem; color:#0f172a; margin-bottom:4px;">👤 Catedráticos Titulares:</div>
+                        <div style="font-size:0.82rem; color:#334155; line-height:1.3;">
+                            ${col2TitularesHtml}
+                        </div>
+                        <div style="font-weight:800; font-size:0.86rem; color:#b45309; margin-top:8px;">
                             ⏱️ Tiempo Oficial Asignado: <strong>${ev.durationMinutes} minutos</strong>
                         </div>
                     </td>
-                    <td style="padding:10px 12px; border:1px solid #cbd5e1; vertical-align:top; width:34%; font-size:0.88rem; color:#0f172a;">
+                    <td style="padding:10px 12px; border:1px solid #cbd5e1; vertical-align:top; width:34%; font-size:0.84rem; color:#0f172a;">
                         ${col3SalonesHtml}
                     </td>
                 </tr>
@@ -1351,7 +1663,7 @@
     };
 
     // =========================================================================
-    // IMPRESIÓN 2: MEDIAS LISTAS OFICIALES (GRUPO A Y GRUPO B CON LOGO Y 3 LÍNEAS)
+    // IMPRESIÓN 2: MEDIAS LISTAS OFICIALES (TODAS LAS SECCIONES, GRUPO A Y B)
     // =========================================================================
     window.printMediasListasModal = function (dayId, evalId) {
         const bimesterSelectVal = (window._currentSelectedExamBim) || 'BIM3';
@@ -1362,7 +1674,6 @@
         const ev = dayObj.evaluations.find(e => e.id === evalId);
         if (!ev) return;
 
-        // Imprimir ambas listas consecutivas (Grupo A y Grupo B)
         printEvaluationSheets(dayObj, ev, 'BOTH');
     };
 
@@ -1378,11 +1689,22 @@
 
         let combinedHtml = '';
         dayObj.evaluations.forEach((ev, idx) => {
-            combinedHtml += generateSingleGroupHtml(dayObj, ev, 'A');
-            combinedHtml += '<div style="page-break-after:always;"></div>';
-            combinedHtml += generateSingleGroupHtml(dayObj, ev, 'B');
-            if (idx < dayObj.evaluations.length - 1) {
+            if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                ev.sections.forEach((sec, sIdx) => {
+                    combinedHtml += generateSingleGroupHtml(dayObj, ev, 'A', sec);
+                    combinedHtml += '<div style="page-break-after:always;"></div>';
+                    combinedHtml += generateSingleGroupHtml(dayObj, ev, 'B', sec);
+                    if (sIdx < ev.sections.length - 1 || idx < dayObj.evaluations.length - 1) {
+                        combinedHtml += '<div style="page-break-after:always;"></div>';
+                    }
+                });
+            } else {
+                combinedHtml += generateSingleGroupHtml(dayObj, ev, 'A');
                 combinedHtml += '<div style="page-break-after:always;"></div>';
+                combinedHtml += generateSingleGroupHtml(dayObj, ev, 'B');
+                if (idx < dayObj.evaluations.length - 1) {
+                    combinedHtml += '<div style="page-break-after:always;"></div>';
+                }
             }
         });
 
@@ -1391,24 +1713,47 @@
 
     function printEvaluationSheets(dayObj, ev, mode = 'BOTH') {
         let contentHtml = '';
-        if (mode === 'A' || mode === 'BOTH') {
-            contentHtml += generateSingleGroupHtml(dayObj, ev, 'A');
-        }
-        if (mode === 'BOTH') {
-            contentHtml += '<div style="page-break-after:always;"></div>';
-        }
-        if (mode === 'B' || mode === 'BOTH') {
-            contentHtml += generateSingleGroupHtml(dayObj, ev, 'B');
+
+        if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+            ev.sections.forEach((sec, sIdx) => {
+                if (mode === 'A' || mode === 'BOTH') {
+                    contentHtml += generateSingleGroupHtml(dayObj, ev, 'A', sec);
+                }
+                if (mode === 'BOTH') {
+                    contentHtml += '<div style="page-break-after:always;"></div>';
+                }
+                if (mode === 'B' || mode === 'BOTH') {
+                    contentHtml += generateSingleGroupHtml(dayObj, ev, 'B', sec);
+                }
+                if (sIdx < ev.sections.length - 1) {
+                    contentHtml += '<div style="page-break-after:always;"></div>';
+                }
+            });
+        } else {
+            if (mode === 'A' || mode === 'BOTH') {
+                contentHtml += generateSingleGroupHtml(dayObj, ev, 'A');
+            }
+            if (mode === 'BOTH') {
+                contentHtml += '<div style="page-break-after:always;"></div>';
+            }
+            if (mode === 'B' || mode === 'BOTH') {
+                contentHtml += generateSingleGroupHtml(dayObj, ev, 'B');
+            }
         }
 
         wrapAndPrintSheets(contentHtml, `Evaluacion_${ev.courseName}_${ev.gradeName}`);
     }
 
-    // Generar el HTML de una hoja de salón individual (Grupo A o Grupo B)
-    function generateSingleGroupHtml(dayObj, ev, groupLetter) {
+    // Generar el HTML de una hoja de salón individual (Grupo A o Grupo B de una sección específica)
+    function generateSingleGroupHtml(dayObj, ev, groupLetter, targetSection = null) {
         const isGroupA = groupLetter === 'A';
-        const grp = isGroupA ? ev.groupA : ev.groupB;
-        const splitData = splitStudentsInTwoGroups(ev.gradeCode);
+        const secObj = targetSection || (Array.isArray(ev.sections) && ev.sections[0]) || null;
+        const grp = secObj ? (isGroupA ? secObj.groupA : secObj.groupB) : (isGroupA ? ev.groupA : ev.groupB);
+        const gradeCodeToUse = secObj ? secObj.gradeCode : ev.gradeCode;
+        const sectionNameToUse = secObj ? `${secObj.gradeName} (${secObj.section})` : ev.gradeName;
+        const titularNameToUse = secObj ? secObj.teacherName : ev.courseTeacherName;
+
+        const splitData = splitStudentsInTwoGroups(gradeCodeToUse);
         const studentList = isGroupA ? splitData.groupA : splitData.groupB;
         const isPractica = ev.isPractica === true;
 
@@ -1515,7 +1860,7 @@
                 <table style="width:100%; border-collapse:collapse; font-size:0.84rem; margin-bottom:8px; background:#f8fafc; border:1px solid #cbd5e1; padding:6px;">
                     <tr>
                         <td style="width:18%; font-weight:700; padding:2px 6px;">Grado y Sección:</td>
-                        <td style="width:34%; font-weight:800; color:#0f172a;">${ev.gradeName}</td>
+                        <td style="width:34%; font-weight:800; color:#0f172a;">${sectionNameToUse}</td>
                         <td style="width:18%; font-weight:700; padding:2px 6px;">Fecha:</td>
                         <td style="width:30%; text-transform:capitalize;">${dayFormatted}</td>
                     </tr>
@@ -1527,7 +1872,7 @@
                     </tr>
                     <tr>
                         <td style="font-weight:700; padding:2px 6px;">Catedrático:</td>
-                        <td>${ev.courseTeacherName} (Titular - No cuida)</td>
+                        <td>${titularNameToUse} (Titular - No cuida)</td>
                         <td style="font-weight:700; padding:2px 6px;">Salón Asignado:</td>
                         <td style="font-weight:800; color:#15803d;">${grp.classroom || 'Salón'}</td>
                     </tr>
@@ -1774,6 +2119,9 @@
         hasExamScheduleAccess,
         minutesToTimeString,
         timeStringToMinutes,
+        getDistinctAcademicGrades,
+        getCoursesForAcademicGrade,
+        getSectionsAndTitularsForCourse,
         printDailyScheduleOficio,
         printMediasListasModal,
         printAllMediasListasOfDay,

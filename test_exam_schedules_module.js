@@ -150,6 +150,53 @@ assert.strictEqual(workload['T3'].minutes, 210, 'T3 cuidó 60 + 150 = 210 min');
 assert.strictEqual(workload['T4'].minutes, 240, 'T4 cuidó 90 + 150 = 240 min');
 console.log('✅ Matriz Antifatiga y Relevos calculada con precisión.');
 
+// 6. Test Academic Grade & Multi-Section Course Aggregation
+console.log('\n[Test 6] Verificando Consolidación de Grados y Detección de Todas las Secciones y Titulares...');
+global.STATE.gradesList = [
+    { id: '4PC_A', code: '4to A', name: '4to Perito Contador', section: 'Sección A' },
+    { id: '4PC_B', code: '4to B', name: '4to Perito Contador', section: 'Sección B' },
+    { id: '5PC_A', code: '5to A', name: '5to Perito Contador', section: 'Sección A' }
+];
+global.STATE.pensum = [
+    { id: 'p1', grade: '4to Perito Contador', gradeCode: '4to A', section: 'Sección A', subject: 'Contabilidad General', teacher: 'Prof. Juan Pérez', teacherId: 'T1' },
+    { id: 'p2', grade: '4to Perito Contador', gradeCode: '4to B', section: 'Sección B', subject: 'Contabilidad General', teacher: 'Prof. Carlos Ruíz', teacherId: 'T3' },
+    { id: 'p3', grade: '4to Perito Contador', gradeCode: '4to A', section: 'Sección A', subject: 'Inglés Comercial I', teacher: 'Prof. Sonia Morales', teacherId: 'T4' },
+    { id: 'p4', grade: '4to Perito Contador', gradeCode: '4to B', section: 'Sección B', subject: 'Inglés Comercial I', teacher: 'Prof. Sonia Morales', teacherId: 'T4' }
+];
+
+const acadGrades = mod.getDistinctAcademicGrades();
+assert(acadGrades.some(g => g.baseName === '4to Perito Contador'), 'Debe incluir 4to Perito Contador');
+assert(acadGrades.some(g => g.baseName === '5to Perito Contador'), 'Debe incluir 5to Perito Contador');
+assert.strictEqual(acadGrades.length, 2, 'Debe haber exactamente 2 grados base únicos (sin duplicar secciones)');
+
+const courses4to = mod.getCoursesForAcademicGrade('4to Perito Contador');
+assert(courses4to.includes('Contabilidad General'), 'Debe listar Contabilidad General');
+assert(courses4to.includes('Inglés Comercial I'), 'Debe listar Inglés Comercial I');
+assert.strictEqual(courses4to.length, 2, 'Debe haber 2 cursos únicos');
+
+const secTitularsConta = mod.getSectionsAndTitularsForCourse('4to Perito Contador', 'Contabilidad General');
+assert.strictEqual(secTitularsConta.length, 2, 'Debe encontrar 2 secciones (A y B)');
+assert.strictEqual(secTitularsConta[0].section, 'Sección A', 'Primera es sección A');
+assert.strictEqual(secTitularsConta[0].teacherId, 'T1', 'Prof. Juan Pérez es titular de A');
+assert.strictEqual(secTitularsConta[1].section, 'Sección B', 'Segunda es sección B');
+assert.strictEqual(secTitularsConta[1].teacherId, 'T3', 'Prof. Carlos Ruíz es titular de B');
+
+// 7. Test Multi-Titular Exclusion Rule
+console.log('\n[Test 7] Verificando Regla de Exclusión Multititular (Todos los titulares de todas las secciones excluidos)...');
+const titularIds = secTitularsConta.map(s => s.teacherId);
+assert(titularIds.includes('T1') && titularIds.includes('T3'), 'Titulares T1 y T3 detectados');
+
+// Simular el generador de opciones con ambos excluidos
+const excludeSet = new Set(titularIds);
+const availableProctors = (global.STATE.users || []).filter(u => !excludeSet.has(u.id));
+assert(!availableProctors.some(u => u.id === 'T1'), 'T1 NO puede cuidar');
+assert(!availableProctors.some(u => u.id === 'T3'), 'T3 NO puede cuidar');
+assert(availableProctors.some(u => u.id === 'T2'), 'T2 puede cuidar');
+assert(availableProctors.some(u => u.id === 'T4'), 'T4 puede cuidar');
+assert(availableProctors.some(u => u.id === 'T5'), 'T5 puede cuidar');
+console.log('✅ Regla de Oro Multititular Verificada: Ni T1 (titular A) ni T3 (titular B) pueden cuidar salones.');
+
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');
 console.log('================================================================================');
+
