@@ -26,7 +26,8 @@ const CRITICAL_SUITES = [
     'test_independent_bimestres.js',
     'test_sire_assisted_enrollment_simulation.js',
     'test_exam_schedules_module.js',
-    'test_attendance_course_isolation.js'
+    'test_attendance_course_isolation.js',
+    'test_excel_bimester_consistency.js'
 ];
 
 console.log('================================================================================');

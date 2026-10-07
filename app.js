@@ -8663,6 +8663,11 @@ function applyBimestreAndLockConfig(configData, isBroadcaster = false) {
     const sel2 = document.getElementById('selectBimestreActivo');
     if (sel2 && parseInt(sel2.value) !== curBim) sel2.value = String(curBim);
 
+    const pBimSel = document.getElementById('printModelBimestreSelect');
+    if (pBimSel && (bimChanged || !pBimSel.value)) pBimSel.value = String(curBim);
+    const cpBimSel = document.getElementById('coursePrintBimestreSelect');
+    if (cpBimSel && (bimChanged || !cpBimSel.value)) cpBimSel.value = String(curBim);
+
     [1, 2, 3, 4].forEach(u => {
         const chk = document.getElementById('checkActiveUnit' + u);
         if (chk) chk.checked = curUnits.includes(u);
@@ -10023,7 +10028,11 @@ function openCoursePrintModal(courseId, grade = '', section = '', subject = '') 
     if (subEl) subEl.textContent = subName;
     if (metaEl) metaEl.innerHTML = `<i class="fa-solid fa-graduation-cap"></i> ${gName} — ${secClean} &nbsp;|&nbsp; <i class="fa-solid fa-chalkboard-user"></i> Catedrático: <strong>${tName}</strong>`;
     if (countEl) countEl.innerHTML = `<i class="fa-solid fa-users"></i> ${stCount} Estudiantes`;
-    if (bimSelect) bimSelect.value = (STATE.config?.activeBimestre || 2).toString();
+    if (bimSelect) {
+        const activeGradebookBim = document.getElementById('gradebookBimestreSelect')?.value;
+        const defaultBim = activeGradebookBim || (STATE.config?.activeBimestre ? String(STATE.config.activeBimestre) : '1');
+        bimSelect.value = defaultBim.toString();
+    }
 
     showModalById('coursePrintModal');
 }
@@ -10046,7 +10055,7 @@ function triggerCoursePrintGradebook() {
         return;
     }
     const bimSelect = document.getElementById('coursePrintBimestreSelect');
-    const bNum = bimSelect ? bimSelect.value : (STATE.config?.activeBimestre || '2');
+    const bNum = bimSelect ? bimSelect.value : (document.getElementById('gradebookBimestreSelect')?.value || STATE.config?.activeBimestre || '1');
 
     generateOfficialPrintList({
         targetPensum: targetCourse,
@@ -10418,7 +10427,7 @@ function openPrintForCourse(grade, section, subject, courseId = null) {
         gradeCode: gradeCode,
         subjectName: subject,
         teacherName: currentUser ? currentUser.name : 'Catedrático Titular',
-        bimestreNum: (STATE.config?.activeBimestre || 2).toString(),
+        bimestreNum: (document.getElementById('gradebookBimestreSelect')?.value || STATE.config?.activeBimestre || 1).toString(),
         modelType: 'CUADRO_CALIFICACIONES_EXCEL'
     });
 }
@@ -13354,6 +13363,12 @@ function updatePrintModelSelects() {
         if (gradeSelect) gradeSelect.innerHTML = '<option value="">-- Primero elija carrera --</option>';
         if (subjectSelect) subjectSelect.innerHTML = '<option value="">-- Primero elija grado --</option>';
     }
+
+    const printBimSelect = document.getElementById('printModelBimestreSelect');
+    if (printBimSelect) {
+        const activeB = parseInt(STATE.config?.activeBimestre) || 1;
+        printBimSelect.value = String(activeB);
+    }
 }
 
 function selectPrintModelCard(modelKey) {
@@ -14840,10 +14855,10 @@ function generateOfficialExcelList(opts = null) {
     }, 400);
 }
 
-function downloadStudentTemplate() {
-    const activeBim = STATE.config?.activeBimestre || '1';
+function downloadStudentTemplate(targetBim = null) {
+    const activeBim = targetBim || document.getElementById('printModelBimestreSelect')?.value || document.getElementById('gradebookBimestreSelect')?.value || (STATE.config?.activeBimestre ? String(STATE.config.activeBimestre) : '1');
     const cycle = STATE.activeCycle || '2026';
-    const h = STATE.schoolHeader || getInitialData().schoolHeader;
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : (STATE.schoolHeader || {}));
     
     const sampleStudents = [
         { clave: 1, name: 'CHACÓN LÉMUS, ASTRID YAMILETH', personalCode: 'A123BCD', cui: '2340 56789 2201', carne: 'ENCCO-2026-101', phone: '5555-1111', tutor: 'María Lemus', acts: [10, 10, 10, 10, 0, 0, 0, 0, 0, 0], zona: 40, exam: 45, total: 85 },
@@ -14931,9 +14946,9 @@ function downloadStudentTemplate() {
             ${rowsHtml}
         </table>
     `;
-
-    downloadFormattedExcelWorkbook(htmlContent, "plantilla_oficial_estudiantes_encc.xlsx");
-    showToast("Plantilla oficial de Estudiantes descargada en Microsoft Excel (.xlsx).", "info");
+    const fileBaseName = (activeBim && String(activeBim) !== '1') ? `plantilla_oficial_estudiantes_encc_B${activeBim}.xlsx` : "plantilla_oficial_estudiantes_encc.xlsx";
+    downloadFormattedExcelWorkbook(htmlContent, fileBaseName);
+    showToast(`Plantilla oficial de Estudiantes (${activeBim}º Bimestre) descargada en Microsoft Excel (.xlsx).`, "info");
 }
 
 function downloadTeacherTemplate() {
@@ -16942,6 +16957,11 @@ async function loadLockStatus() {
         const chk = document.getElementById('checkActiveUnit' + u);
         if (chk) chk.checked = activeUnits.includes(u);
     });
+
+    const pBim = document.getElementById('printModelBimestreSelect');
+    if (pBim) pBim.value = String(activeBim);
+    const cpBim = document.getElementById('coursePrintBimestreSelect');
+    if (cpBim) cpBim.value = String(activeBim);
 
     if (globalLockBadge) {
         globalLockBadge.className = STATE.config?.globalLocked ? 'badge badge-danger' : 'badge badge-success';
