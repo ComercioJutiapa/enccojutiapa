@@ -34825,7 +34825,33 @@ function renderAssignmentsByGradeMatrix(list) {
     // Ordenar secciones: 4to, 5to, 6to
     const sortedKeys = Object.keys(groups).sort((x, y) => x.localeCompare(y, 'es', { numeric: true }));
 
-    container.innerHTML = sortedKeys.map(key => {
+    const unassignedInView = list.filter(c => isAssignmentUnassigned(c));
+    let topUnassignedBanner = '';
+    if (unassignedInView.length > 0) {
+        topUnassignedBanner = `
+        <div style="grid-column:1/-1; background:#fff7ed; border-radius:12px; border:1.5px solid #fdba74; padding:12px 16px; margin-bottom:4px; box-shadow:0 2px 6px rgba(234,88,12,0.08);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+                <strong style="color:#c2410c; font-size:0.92rem; display:flex; align-items:center; gap:6px;">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size:1.05rem;"></i> Cátedras Pendientes de Asignar Docente (${unassignedInView.length} materias)
+                </strong>
+                <span class="badge badge-warning" style="font-weight:800; font-size:0.75rem;">Atención Requerida</span>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                ${unassignedInView.map(c => `
+                    <div style="background:#ffffff; border:1px solid #fed7aa; padding:4px 8px; border-radius:6px; font-size:0.78rem; display:flex; align-items:center; gap:6px;">
+                        <span style="font-weight:800; color:#ea580c;">${c.grade || c.gradeCode} (${c.section || 'A'}):</span>
+                        <span style="font-weight:700; color:#1e293b;">${c.subject || c.name}</span>
+                        <button type="button" class="btn btn-sm btn-primary" onclick="openEditClassAssignmentModal('${c.id}')" title="Asignar catedrático ahora" style="padding:1px 6px; font-size:0.70rem; font-weight:800; background:#ea580c; border-color:#c2410c;">
+                            <i class="fa-solid fa-user-plus"></i> Asignar
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        `;
+    }
+
+    container.innerHTML = topUnassignedBanner + sortedKeys.map(key => {
         const grp = groups[key];
         const totalSec = grp.items.length;
         const assignedSec = grp.items.filter(c => !isAssignmentUnassigned(c)).length;
@@ -34852,7 +34878,7 @@ function renderAssignmentsByGradeMatrix(list) {
                     const unassigned = isAssignmentUnassigned(c);
                     const tName = (typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(c) : (c.teacher || 'Sin asignar');
                     return `
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:7px 10px; background:#fcfcfd; border:1px solid #f1f5f9; border-radius:8px; font-size:0.83rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:7px 10px; background:${unassigned ? '#fff7ed' : '#fcfcfd'}; border:1px solid ${unassigned ? '#fed7aa' : '#f1f5f9'}; border-radius:8px; font-size:0.83rem;">
                         <div style="flex:1; min-width:0; padding-right:8px;">
                             <div style="display:flex; align-items:center; gap:5px; margin-bottom:2px;">
                                 <span class="badge" style="background:${cnbArea.bg}; color:${cnbArea.color}; border:1px solid ${cnbArea.border}; font-size:0.68rem; padding:2px 5px; font-weight:700;">
@@ -34863,16 +34889,22 @@ function renderAssignmentsByGradeMatrix(list) {
                             </div>
                             <div style="font-size:0.78rem; display:flex; align-items:center; gap:6px;">
                                 ${unassigned ? `
-                                    <span style="color:#dc2626; font-weight:700;"><i class="fa-solid fa-triangle-exclamation"></i> Sin asignar</span>
+                                    <span style="color:#dc2626; font-weight:800; background:#fee2e2; border:1px solid #fecaca; border-radius:4px; padding:1px 6px;"><i class="fa-solid fa-triangle-exclamation"></i> Sin asignar</span>
                                 ` : `
-                                    <span style="color:#059669; font-weight:600;"><i class="fa-solid fa-user-tie"></i> ${tName}</span>
+                                    <span style="color:#059669; font-weight:700;"><i class="fa-solid fa-user-tie"></i> ${tName}</span>
                                 `}
                                 <span style="color:#64748b;">• ${c.periodsPerWeek || c.hours || c.periods || 4}p/sem</span>
                             </div>
                         </div>
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${c.id}')" title="Modificar asignación" style="padding:2px 7px; font-size:0.75rem;">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </button>
+                        ${unassigned ? `
+                            <button type="button" class="btn btn-sm btn-primary" onclick="openEditClassAssignmentModal('${c.id}')" title="Asignar catedrático ahora" style="padding:3px 9px; font-size:0.74rem; font-weight:800; background:#ea580c; border-color:#c2410c;">
+                                <i class="fa-solid fa-user-plus"></i> Asignar
+                            </button>
+                        ` : `
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${c.id}')" title="Modificar asignación" style="padding:2px 7px; font-size:0.75rem;">
+                                <i class="fa-solid fa-pen-to-square"></i>
+                            </button>
+                        `}
                     </div>
                     `;
                 }).join('')}
@@ -35214,7 +35246,13 @@ function updateClassAssignmentSelects() {
 
     if (modalTeacherSelect) {
         const curT = modalTeacherSelect.value;
-        modalTeacherSelect.innerHTML = '<option value="">-- Seleccione Catedrático Titular --</option>' + teachers.map(t => `<option value="${t.id}">${t.name} (${t.title || 'Docente'})</option>`).join('');
+        const pensumList = STATE.pensum || [];
+        modalTeacherSelect.innerHTML = '<option value="">-- Seleccione Catedrático Titular --</option>' + teachers.map(t => {
+            const tCourses = pensumList.filter(p => !isAssignmentUnassigned(p) && (p.teacherId === t.id || p.teacher === t.name));
+            const tPeriods = tCourses.reduce((sum, p) => sum + (parseInt(p.periodsPerWeek || p.hours || p.periods) || 4), 0);
+            const workloadLabel = tCourses.length > 0 ? ` [${tCourses.length} clases | ${tPeriods} períodos/sem]` : ' [Disponible / 0 clases]';
+            return `<option value="${t.id}">${t.name}${workloadLabel}</option>`;
+        }).join('');
         if (curT && Array.from(modalTeacherSelect.options).some(o => o.value === curT)) modalTeacherSelect.value = curT;
     }
 }
