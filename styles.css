@@ -4475,3 +4475,101 @@ body.theme-dark .empty-state-card p {
     }
 }
 
+/* ==========================================================================
+   10. MEJORAS VISUALES MODERNAS INSTITUCIONALES (UI/UX POLISH - 0% RIESGO)
+   ========================================================================== */
+
+/* A. Tipografía y Alineación Numérica Tabular de Alta Precisión */
+.grade-box-input,
+.grade-box-input-exam,
+.att-cell,
+.att-day-cell,
+.td-score,
+.td-num,
+.custom-table td:first-child {
+    font-variant-numeric: tabular-nums lining-nums !important;
+    letter-spacing: -0.01em;
+}
+
+/* B. Foco con Anillo Moderno ("Focus Ring") en Casillas de Notas */
+.grade-box-input:focus,
+.grade-box-input-exam:focus {
+    outline: none !important;
+    border-color: #0284c7 !important;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.25), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    background-color: #f0f9ff !important;
+    transform: scale(1.04);
+    transition: all 0.15s ease-out;
+    z-index: 5;
+}
+
+body.theme-dark .grade-box-input:focus,
+body.theme-dark .grade-box-input-exam:focus {
+    background-color: #0c2d48 !important;
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.3) !important;
+}
+
+/* C. Efecto de Fila y Resaltado Suave en Tablas Académicas */
+.clean-excel-table tbody tr,
+.custom-table tbody tr,
+.attendance-excel-table tbody tr {
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.clean-excel-table tbody tr:hover,
+.custom-table tbody tr:hover {
+    background-color: rgba(2, 132, 199, 0.04) !important;
+}
+
+body.theme-dark .clean-excel-table tbody tr:hover,
+body.theme-dark .custom-table tbody tr:hover {
+    background-color: rgba(56, 189, 248, 0.08) !important;
+}
+
+/* D. Tarjetas KPI con Elevación y Micro-Sombra Suave */
+.kpi-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    border-radius: 12px !important;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.10) !important;
+}
+
+/* E. Fondo Desenfocado ("Glassmorphism") en Modales */
+.modal-overlay {
+    backdrop-filter: blur(5px) !important;
+    -webkit-backdrop-filter: blur(5px) !important;
+    background-color: rgba(15, 23, 42, 0.65) !important;
+    transition: backdrop-filter 0.2s ease, background-color 0.2s ease;
+}
+
+.modal-container,
+.modal-container.medium,
+.modal-container.large {
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+}
+
+/* F. Notificaciones Toast Flotantes Estilizadas */
+.toast {
+    box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.18), 0 4px 8px -2px rgba(15, 23, 42, 0.08) !important;
+    border-radius: 10px !important;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease !important;
+}
+
+.toast:hover {
+    transform: translateY(-2px);
+}
+
+/* G. Botones con Respuesta Visual de Micro-Elevación */
+.btn {
+    transition: all 0.16s ease !important;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+
