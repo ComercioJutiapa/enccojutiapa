@@ -4572,4 +4572,181 @@ body.theme-dark .custom-table tbody tr:hover {
     transform: scale(0.98);
 }
 
+/* ==========================================================================
+   11. FASE 1: DENSIDAD COMPACTA EN TABLAS Y LIBRO DE CALIFICACIONES (MAX ESPACIO)
+   ========================================================================== */
+
+/* A. Reducción armónica de padding vertical en tablas (Aumento de 50%+ en filas visibles) */
+.custom-table td,
+.clean-excel-table td,
+.attendance-excel-table td {
+    padding: 6px 10px !important;
+    vertical-align: middle !important;
+    font-size: 0.84rem !important;
+}
+
+.custom-table th,
+.clean-excel-table th,
+.attendance-excel-table th {
+    padding: 8px 10px !important;
+    font-size: 0.78rem !important;
+    white-space: nowrap !important;
+}
+
+/* B. Casillas de Notas Compactas de Máxima Claridad y Precisión */
+.grade-box-input {
+    height: 30px !important;
+    min-height: 30px !important;
+    font-size: 0.88rem !important;
+    font-weight: 700 !important;
+    padding: 2px 4px !important;
+    border-radius: 5px !important;
+    line-height: 1 !important;
+}
+
+.grade-box-input-exam {
+    height: 32px !important;
+    min-height: 32px !important;
+    font-size: 0.90rem !important;
+    font-weight: 800 !important;
+    padding: 2px 6px !important;
+    border-radius: 6px !important;
+    line-height: 1 !important;
+}
+
+/* C. Celdas de Asistencia y Matriz Diaria Compactadas */
+.att-cell,
+.att-day-cell {
+    min-width: 30px !important;
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 0.82rem !important;
+    font-weight: 800 !important;
+    border-radius: 4px !important;
+    margin: 1px auto !important;
+}
+
+/* D. Avatar de Estudiantes en Lista Compacto y Nítido */
+.student-table-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 50% !important;
+}
+
+/* E. Tarjeta de Contenedor de Tabla sin Espacio Muerto */
+.table-card {
+    border-radius: 10px !important;
+    margin-bottom: 14px !important;
+}
+
+/* ==========================================================================
+   12. FASE 2: DENSIDAD COMPACTA EN MODALES, KPIS Y FORMULARIOS
+   ========================================================================== */
+
+/* A. Tarjetas KPI / Métricas Compactas y Eficientes */
+.kpi-grid {
+    gap: 10px !important;
+    margin-bottom: 14px !important;
+}
+
+.kpi-card {
+    padding: 10px 14px !important;
+    gap: 12px !important;
+    border-radius: 10px !important;
+}
+
+.kpi-icon {
+    width: 38px !important;
+    height: 38px !important;
+    font-size: 1.15rem !important;
+    border-radius: 8px !important;
+}
+
+.kpi-info h4 {
+    font-size: 0.74rem !important;
+    margin-bottom: 2px !important;
+    color: var(--text-muted) !important;
+}
+
+.kpi-info h2 {
+    font-size: 1.25rem !important;
+    font-weight: 800 !important;
+    margin-bottom: 1px !important;
+    line-height: 1.1 !important;
+}
+
+.kpi-info p {
+    font-size: 0.70rem !important;
+    margin: 0 !important;
+}
+
+/* B. Modales Compactos y Ergonómicos con Sticky Footer */
+.modal-header {
+    padding: 10px 16px !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.modal-header h3 {
+    font-size: 1rem !important;
+}
+
+.modal-body {
+    padding: 12px 16px !important;
+    max-height: calc(88vh - 100px) !important;
+}
+
+.modal-footer {
+    padding: 8px 16px !important;
+    min-height: 46px !important;
+    border-top: 1px solid var(--border-color) !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    background: inherit !important;
+    z-index: 10 !important;
+}
+
+.modal-footer .btn {
+    padding: 6px 14px !important;
+    font-size: 0.84rem !important;
+    min-height: 34px !important;
+}
+
+/* C. Agrupación Compacta de Formularios e Inputs */
+.form-group,
+.compact-group {
+    margin-bottom: 8px !important;
+}
+
+.form-group label,
+.compact-group label {
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    margin-bottom: 3px !important;
+    display: block !important;
+}
+
+.form-control {
+    padding: 6px 10px !important;
+    font-size: 0.85rem !important;
+    min-height: 34px !important;
+    border-radius: 6px !important;
+}
+
+/* D. Barras de Herramientas y Filtros sin Desperdicio de Espacio */
+.section-toolbar {
+    padding: 6px 12px !important;
+    margin-bottom: 12px !important;
+    gap: 8px !important;
+}
+
+.card-header {
+    padding: 10px 14px !important;
+}
+
+.card-body {
+    padding: 12px 14px !important;
+}
+
+
+
 
