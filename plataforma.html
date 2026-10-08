@@ -1837,7 +1837,7 @@
                             <button type="button" class="asg-quick-grade-pill" onclick="setAssignmentQuickFilter('6to', this)" style="padding:3px 9px; border-radius:6px; font-size:0.74rem; font-weight:700; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; cursor:pointer;">6to</button>
                             <button type="button" class="asg-quick-grade-pill" onclick="setAssignmentQuickFilter('UNASSIGNED', this)" style="padding:3px 9px; border-radius:6px; font-size:0.74rem; font-weight:700; border:1px solid #f97316; background:#fff7ed; color:#c2410c; cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i> Sin Asignar</button>
                             
-                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="printClassAssignmentsReport()" style="font-size:0.78rem; font-weight:700; padding:5px 12px; margin-left:6px;" title="Imprimir distribución oficial de cátedras">
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="openPrintClassAssignmentsModal()" data-print-fn="printClassAssignmentsReport" style="font-size:0.78rem; font-weight:700; padding:5px 12px; margin-left:6px;" title="Imprimir distribución oficial de cátedras">
                                 <i class="fa-solid fa-print"></i> Imprimir Distribución
                             </button>
                         </div>
@@ -4073,6 +4073,38 @@
                     <button type="submit" class="btn btn-primary" id="classAssignmentSubmitBtn"><i class="fa-solid fa-check"></i> Guardar Asignación</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE OPCIONES DE IMPRESIÓN DE DISTRIBUCIÓN DE CÁTEDRAS -->
+    <div class="modal-overlay" id="printClassAssignmentsModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closePrintClassAssignmentsModal()">
+        <div class="modal-container" style="max-width:480px;">
+            <div class="modal-header" style="background:#0f2b5c; color:#ffffff;">
+                <h3 style="color:#ffffff;"><i class="fa-solid fa-print"></i> Imprimir Distribución de Cátedras</h3>
+                <button type="button" class="modal-close" onclick="closePrintClassAssignmentsModal()" style="color:#ffffff;">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:16px 20px;">
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label style="font-weight:700; color:#0f172a;"><i class="fa-solid fa-filter"></i> Formato de Organización:</label>
+                    <select id="printAsgGroupBySelect" class="form-control" onchange="onPrintAsgGroupChange(this.value)" style="font-weight:700;">
+                        <option value="BY_GRADE">🎓 Organizado por Grado y Sección (Cuadro de Malla Curricular)</option>
+                        <option value="BY_TEACHER">👨‍🏫 Organizado por Docente Titular (Cuadro de Carga y Horarios)</option>
+                        <option value="ALL_TABLE">📋 Lista General Completa Numerada (Todas las Cátedras)</option>
+                    </select>
+                </div>
+                <div class="form-group" id="printAsgFilterGroupContainer" style="margin-bottom:12px;">
+                    <label style="font-weight:700; color:#0f172a;" id="printAsgFilterLabel"><i class="fa-solid fa-graduation-cap"></i> Filtrar Grado Específico:</label>
+                    <select id="printAsgTargetFilterSelect" class="form-control" style="font-weight:700;">
+                        <option value="ALL">-- Imprimir Todos los Grados --</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer" style="background:#f8fafc; display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closePrintClassAssignmentsModal()">Cancelar</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="executeClassAssignmentsPrint()" style="background:#059669; border-color:#047857; font-weight:700;">
+                    <i class="fa-solid fa-print"></i> Generar Impresión Oficial
+                </button>
+            </div>
         </div>
     </div>
 

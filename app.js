@@ -35042,7 +35042,70 @@ function renderAssignmentsByTeacherWorkload(list) {
     container.innerHTML = html;
 }
 
-function printClassAssignmentsReport() {
+function openPrintClassAssignmentsModal() {
+    const modal = document.getElementById('printClassAssignmentsModal');
+    if (!modal) {
+        printClassAssignmentsReport('BY_GRADE', 'ALL');
+        return;
+    }
+    const select = document.getElementById('printAsgTargetFilterSelect');
+    if (select) {
+        const groupBy = document.getElementById('printAsgGroupBySelect')?.value || 'BY_GRADE';
+        populatePrintAsgTargetFilterSelect(groupBy);
+    }
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+}
+window.openPrintClassAssignmentsModal = openPrintClassAssignmentsModal;
+
+function closePrintClassAssignmentsModal() {
+    const modal = document.getElementById('printClassAssignmentsModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+    }
+}
+window.closePrintClassAssignmentsModal = closePrintClassAssignmentsModal;
+
+function onPrintAsgGroupChange(groupBy) {
+    populatePrintAsgTargetFilterSelect(groupBy);
+}
+window.onPrintAsgGroupChange = onPrintAsgGroupChange;
+
+function populatePrintAsgTargetFilterSelect(groupBy) {
+    const select = document.getElementById('printAsgTargetFilterSelect');
+    const label = document.getElementById('printAsgFilterLabel');
+    if (!select) return;
+
+    if (groupBy === 'BY_TEACHER') {
+        if (label) label.innerHTML = '<i class="fa-solid fa-user-tie"></i> Filtrar Docente Específico:';
+        const teachers = (STATE.users || []).filter(u => 
+            u.role === 'docente' || u.role === 'catedratico' || u.role === 'profesor' || 
+            (u.id && u.id.startsWith('usr-doc')) ||
+            (u.title && u.title.toLowerCase().includes('docente')) ||
+            (u.title && u.title.toLowerCase().includes('catedr'))
+        );
+        select.innerHTML = '<option value="ALL">-- Imprimir Todos los Docentes --</option>' + teachers.map(t => `<option value="${t.id || t.name}">${t.name}</option>`).join('');
+    } else if (groupBy === 'BY_GRADE') {
+        if (label) label.innerHTML = '<i class="fa-solid fa-graduation-cap"></i> Filtrar Grado / Sección:';
+        const grades = STATE.gradesList || [];
+        select.innerHTML = '<option value="ALL">-- Imprimir Todas las Secciones --</option>' + grades.map(g => `<option value="${g.code || g.name}">${g.name} (${g.section})</option>`).join('');
+    } else {
+        if (label) label.innerHTML = '<i class="fa-solid fa-filter"></i> Filtrar Registros:';
+        select.innerHTML = '<option value="ALL">-- Toda la Escuela Completa --</option>';
+    }
+}
+window.populatePrintAsgTargetFilterSelect = populatePrintAsgTargetFilterSelect;
+
+function executeClassAssignmentsPrint() {
+    const groupBy = document.getElementById('printAsgGroupBySelect')?.value || 'BY_GRADE';
+    const filterTarget = document.getElementById('printAsgTargetFilterSelect')?.value || 'ALL';
+    closePrintClassAssignmentsModal();
+    printClassAssignmentsReport(groupBy, filterTarget);
+}
+window.executeClassAssignmentsPrint = executeClassAssignmentsPrint;
+
+function printClassAssignmentsReport(groupByMode = 'BY_GRADE', targetFilter = 'ALL') {
     let list = Array.isArray(STATE.pensum) && STATE.pensum.length > 0
         ? [...STATE.pensum]
         : (typeof getInitialData === 'function' && Array.isArray(getInitialData().pensum) ? [...getInitialData().pensum] : []);
@@ -35052,17 +35115,33 @@ function printClassAssignmentsReport() {
         return;
     }
 
-    // Ordenar por Grado, Sección y Materia
-    list.sort((a, b) => {
-        const ga = `${a.grade || ''} ${a.section || ''}`.toLowerCase();
-        const gb = `${b.grade || ''} ${b.section || ''}`.toLowerCase();
-        if (ga !== gb) return ga.localeCompare(gb, 'es', { numeric: true });
-        return (a.subject || a.name || '').localeCompare(b.subject || b.name || '', 'es');
-    });
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {}) || {};
+    const schoolName = h.schoolName || 'Escuela Nacional de Ciencias Comerciales';
+    const location = h.location || 'Jutiapa, Guatemala';
+    const cycle = STATE.activeCycle || '2026';
 
+    const now = new Date();
+    const fechaEmision = now.toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    // Filtrar si el usuario eligió un docente o grado específico
+    if (targetFilter && targetFilter !== 'ALL') {
+        if (groupByMode === 'BY_TEACHER') {
+            list = list.filter(a => a.teacherId === targetFilter || a.teacher === targetFilter);
+        } else if (groupByMode === 'BY_GRADE') {
+            list = list.filter(a => a.gradeCode === targetFilter || a.grade === targetFilter || `${a.grade} (${a.section})` === targetFilter);
+        }
+    }
+
+    if (list.length === 0) {
+        showToast('No hay cátedras que coincidan con el filtro seleccionado.', 'warning');
+        return;
+    }
+
+    let reportBodyHtml = '';
     const totalCatedras = list.length;
     let totalPeriodos = 0;
     const docentesSet = new Set();
+
     list.forEach(a => {
         totalPeriodos += (parseInt(a.periodsPerWeek || a.hours || a.periods) || 4);
         if (!isAssignmentUnassigned(a)) {
@@ -35070,8 +35149,159 @@ function printClassAssignmentsReport() {
         }
     });
 
-    const now = new Date();
-    const fechaEmision = now.toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    if (groupByMode === 'BY_TEACHER') {
+        // Agrupar por Docente
+        const teacherMap = {};
+        list.forEach(c => {
+            const tName = isAssignmentUnassigned(c) ? '⚠️ Cátedras Sin Docente Asignado' : ((typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(c) : (c.teacher || 'Catedrático'));
+            if (!teacherMap[tName]) teacherMap[tName] = [];
+            teacherMap[tName].push(c);
+        });
+
+        const sortedTeachers = Object.keys(teacherMap).sort((a, b) => {
+            if (a.includes('Sin Docente')) return 1;
+            if (b.includes('Sin Docente')) return -1;
+            return a.localeCompare(b, 'es');
+        });
+
+        reportBodyHtml = sortedTeachers.map(tName => {
+            const items = teacherMap[tName];
+            const sumPeriods = items.reduce((acc, x) => acc + (parseInt(x.periodsPerWeek || x.hours || x.periods) || 4), 0);
+            return `
+            <div style="margin-bottom:18px; page-break-inside:avoid;">
+                <div style="background:#0f2b5c; color:#ffffff; padding:6px 12px; border-radius:4px 4px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="font-size:9.5pt; text-transform:uppercase; letter-spacing:0.3px;">👨‍🏫 ${tName}</strong>
+                    <span style="font-size:8.5pt; background:#1e3a8a; padding:2px 8px; border-radius:12px; font-weight:700;">${items.length} Cátedra(s) &bull; ${sumPeriods} Períodos/sem</span>
+                </div>
+                <table style="width:100%; border-collapse:collapse; margin-bottom:0; font-size:8.5pt; border:1px solid #cbd5e1; border-top:none;">
+                    <thead>
+                        <tr style="background:#f1f5f9; color:#0f2b5c; font-weight:700;">
+                            <th style="width:5%; text-align:center; padding:5px; border-bottom:1px solid #cbd5e1;">No.</th>
+                            <th style="width:28%; padding:5px; border-bottom:1px solid #cbd5e1;">Grado y Sección</th>
+                            <th style="width:15%; padding:5px; border-bottom:1px solid #cbd5e1;">Área CNB</th>
+                            <th style="width:10%; text-align:center; padding:5px; border-bottom:1px solid #cbd5e1;">Código</th>
+                            <th style="width:34%; padding:5px; border-bottom:1px solid #cbd5e1;">Asignatura Oficial</th>
+                            <th style="width:8%; text-align:center; padding:5px; border-bottom:1px solid #cbd5e1;">Per.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.map((c, i) => {
+                            const rawG = `${c.grade || ''} ${c.gradeCode || ''}`.toUpperCase();
+                            let gNum = rawG.includes('6') ? 6 : (rawG.includes('5') ? 5 : 4);
+                            const subName = getFullOfficialSubjectName(c.subject || c.name || 'Asignatura', gNum);
+                            const cnbArea = getCnbAreaInfo(subName);
+                            return `
+                            <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                                <td style="text-align:center; font-weight:700; color:#64748b; padding:4px 6px; border-bottom:1px solid #e2e8f0;">${i + 1}</td>
+                                <td style="padding:4px 6px; border-bottom:1px solid #e2e8f0; font-weight:700; color:#0f2b5c;">${c.grade || c.gradeCode} (${c.section || 'A'})</td>
+                                <td style="padding:4px 6px; border-bottom:1px solid #e2e8f0; color:${cnbArea.color}; font-weight:700;">${cnbArea.shortName}</td>
+                                <td style="text-align:center; font-family:'Courier New',Courier,monospace; font-weight:700; padding:4px 6px; border-bottom:1px solid #e2e8f0;">${c.code || '—'}</td>
+                                <td style="padding:4px 6px; border-bottom:1px solid #e2e8f0; font-weight:600;">${subName}</td>
+                                <td style="text-align:center; font-weight:800; color:#059669; padding:4px 6px; border-bottom:1px solid #e2e8f0;">${c.periodsPerWeek || c.hours || c.periods || 4}</td>
+                            </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+            `;
+        }).join('');
+    } else if (groupByMode === 'BY_GRADE') {
+        // Agrupar por Grado y Sección
+        const gradeMap = {};
+        list.forEach(c => {
+            const gKey = `${c.grade || c.gradeCode || 'Grado'} - Sección ${c.section || 'A'}`;
+            if (!gradeMap[gKey]) gradeMap[gKey] = [];
+            gradeMap[gKey].push(c);
+        });
+
+        const sortedGrades = Object.keys(gradeMap).sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+
+        reportBodyHtml = sortedGrades.map(gKey => {
+            const items = gradeMap[gKey];
+            items.sort((a, b) => (a.subject || a.name || '').localeCompare(b.subject || b.name || '', 'es'));
+            const sumPeriods = items.reduce((acc, x) => acc + (parseInt(x.periodsPerWeek || x.hours || x.periods) || 4), 0);
+            return `
+            <div style="margin-bottom:18px; page-break-inside:avoid;">
+                <div style="background:#065f46; color:#ffffff; padding:6px 12px; border-radius:4px 4px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="font-size:9.5pt; text-transform:uppercase; letter-spacing:0.3px;">🎓 ${gKey}</strong>
+                    <span style="font-size:8.5pt; background:#047857; padding:2px 8px; border-radius:12px; font-weight:700;">${items.length} Materias &bull; ${sumPeriods} Períodos/sem</span>
+                </div>
+                <table style="width:100%; border-collapse:collapse; margin-bottom:0; font-size:8.5pt; border:1px solid #cbd5e1; border-top:none;">
+                    <thead>
+                        <tr style="background:#f1f5f9; color:#065f46; font-weight:700;">
+                            <th style="width:5%; text-align:center; padding:5px; border-bottom:1px solid #cbd5e1;">No.</th>
+                            <th style="width:10%; text-align:center; padding:5px; border-bottom:1px solid #cbd5e1;">Código</th>
+                            <th style="width:35%; padding:5px; border-bottom:1px solid #cbd5e1;">Asignatura Oficial</th>
+                            <th style="width:15%; padding:5px; border-bottom:1px solid #cbd5e1;">Área CNB</th>
+                            <th style="width:28%; padding:5px; border-bottom:1px solid #cbd5e1;">Catedrático Titular</th>
+                            <th style="width:7%; text-align:center; padding:5px; border-bottom:1px solid #cbd5e1;">Per.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.map((c, i) => {
+                            const rawG = `${c.grade || ''} ${c.gradeCode || ''}`.toUpperCase();
+                            let gNum = rawG.includes('6') ? 6 : (rawG.includes('5') ? 5 : 4);
+                            const subName = getFullOfficialSubjectName(c.subject || c.name || 'Asignatura', gNum);
+                            const cnbArea = getCnbAreaInfo(subName);
+                            const unassigned = isAssignmentUnassigned(c);
+                            const tName = unassigned ? '⚠️ Sin Asignar' : ((typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(c) : (c.teacher || 'Catedrático'));
+                            return `
+                            <tr style="background:${i % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                                <td style="text-align:center; font-weight:700; color:#64748b; padding:4px 6px; border-bottom:1px solid #e2e8f0;">${i + 1}</td>
+                                <td style="text-align:center; font-family:'Courier New',Courier,monospace; font-weight:700; padding:4px 6px; border-bottom:1px solid #e2e8f0;">${c.code || '—'}</td>
+                                <td style="padding:4px 6px; border-bottom:1px solid #e2e8f0; font-weight:700; color:#0f172a;">${subName}</td>
+                                <td style="padding:4px 6px; border-bottom:1px solid #e2e8f0; color:${cnbArea.color}; font-weight:700;">${cnbArea.shortName}</td>
+                                <td style="padding:4px 6px; border-bottom:1px solid #e2e8f0; ${unassigned ? 'color:#dc2626; font-weight:700;' : 'font-weight:600;'}">${tName}</td>
+                                <td style="text-align:center; font-weight:800; color:#059669; padding:4px 6px; border-bottom:1px solid #e2e8f0;">${c.periodsPerWeek || c.hours || c.periods || 4}</td>
+                            </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+            `;
+        }).join('');
+    } else {
+        // Tabla General Completa Numerada
+        reportBodyHtml = `
+        <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:8.5pt;">
+            <thead>
+                <tr style="background:#0f2b5c; color:#ffffff;">
+                    <th style="width:4%; text-align:center; padding:6px 8px;">No.</th>
+                    <th style="width:20%; padding:6px 8px;">Grado y Sección</th>
+                    <th style="width:12%; padding:6px 8px;">Área CNB</th>
+                    <th style="width:10%; text-align:center; padding:6px 8px;">Código</th>
+                    <th style="width:28%; padding:6px 8px;">Asignatura Oficial</th>
+                    <th style="width:20%; padding:6px 8px;">Catedrático Titular</th>
+                    <th style="width:6%; text-align:center; padding:6px 8px;">Per.</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${list.map((c, idx) => {
+                    const rawG = `${c.grade || ''} ${c.gradeCode || ''}`.toUpperCase();
+                    let gGradeNum = rawG.includes('6') ? 6 : (rawG.includes('5') ? 5 : 4);
+                    const subName = getFullOfficialSubjectName(c.subject || c.name || 'Asignatura', gGradeNum);
+                    const cnbArea = getCnbAreaInfo(subName);
+                    const unassigned = isAssignmentUnassigned(c);
+                    const tName = unassigned ? '⚠️ Sin Asignar' : ((typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(c) : (c.teacher || 'Catedrático'));
+
+                    return `
+                    <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                        <td style="text-align:center; font-weight:700; color:#64748b; padding:5px 8px; border-bottom:1px solid #e2e8f0;">${idx + 1}</td>
+                        <td style="padding:5px 8px; border-bottom:1px solid #e2e8f0;"><strong>${c.grade || c.gradeCode} (${c.section || 'A'})</strong></td>
+                        <td style="padding:5px 8px; border-bottom:1px solid #e2e8f0;"><span style="color:${cnbArea.color}; font-weight:700;">${cnbArea.shortName}</span></td>
+                        <td style="text-align:center; font-family:'Courier New',Courier,monospace; font-weight:700; padding:5px 8px; border-bottom:1px solid #e2e8f0;">${c.code || '—'}</td>
+                        <td style="padding:5px 8px; border-bottom:1px solid #e2e8f0;"><strong>${subName}</strong></td>
+                        <td style="padding:5px 8px; border-bottom:1px solid #e2e8f0; ${unassigned ? 'color:#dc2626; font-weight:700;' : 'font-weight:600;'}">${tName}</td>
+                        <td style="text-align:center; font-weight:700; padding:5px 8px; border-bottom:1px solid #e2e8f0;">${c.periodsPerWeek || c.hours || c.periods || 4}</td>
+                    </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+        `;
+    }
 
     const printHtml = `
     <!DOCTYPE html>
@@ -35080,76 +35310,44 @@ function printClassAssignmentsReport() {
         <meta charset="UTF-8">
         <title>Distribución Oficial de Cátedras - ENCCO Jutiapa</title>
         <style>
-            @page { size: letter portrait; margin: 15mm 12mm 15mm 12mm; }
-            body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10pt; color: #1e293b; margin: 0; padding: 10px; }
-            .header { text-align: center; border-bottom: 2px solid #0f2b5c; padding-bottom: 10px; margin-bottom: 12px; }
-            .header h1 { font-size: 14pt; margin: 0; color: #0f2b5c; text-transform: uppercase; letter-spacing: 0.5px; }
-            .header h2 { font-size: 11pt; margin: 3px 0; color: #059669; font-weight: 700; }
-            .header h3 { font-size: 9.5pt; margin: 2px 0; color: #475569; font-weight: 600; text-transform: uppercase; }
-            .stats-bar { display: flex; justify-content: space-around; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; margin-bottom: 14px; font-size: 9pt; }
-            .stats-bar span { font-weight: 700; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 8.5pt; }
-            th { background: #0f2b5c; color: #ffffff; padding: 6px 8px; text-align: left; font-size: 8.5pt; font-weight: 700; }
-            td { padding: 5px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; }
-            tr:nth-child(even) { background-color: #f8fafc; }
-            .signatures { margin-top: 40px; display: flex; justify-content: space-between; page-break-inside: avoid; text-align: center; }
-            .sig-box { width: 30%; border-top: 1px solid #334155; padding-top: 6px; font-size: 8pt; font-weight: 700; color: #334155; }
+            @page { size: letter portrait; margin: 12mm 12mm 14mm 12mm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5pt; color: #1e293b; margin: 0; padding: 10px; }
+            .header-banner { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0f2b5c; padding-bottom: 12px; margin-bottom: 14px; }
+            .header-logo { width: 62px; height: 62px; object-fit: contain; }
+            .header-text { text-align: center; flex: 1; padding: 0 14px; }
+            .header-text h1 { font-size: 14.5pt; margin: 0; color: #0f2b5c; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; }
+            .header-text h2 { font-size: 10.5pt; margin: 3px 0 1px 0; color: #059669; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+            .header-text h3 { font-size: 9pt; margin: 2px 0 0 0; color: #475569; font-weight: 600; }
+            .header-side-badge { text-align: right; font-size: 8pt; color: #64748b; font-weight: 600; min-width: 80px; }
+            .stats-bar { display: flex; justify-content: space-between; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 7px 14px; margin-bottom: 14px; font-size: 8.5pt; }
+            .stats-bar span { font-weight: 800; color: #0f2b5c; }
+            .signatures { margin-top: 36px; display: flex; justify-content: space-between; page-break-inside: avoid; text-align: center; }
+            .sig-box { width: 30%; border-top: 1.5px solid #334155; padding-top: 6px; font-size: 8pt; font-weight: 700; color: #334155; }
         </style>
     </head>
     <body>
-        <div class="header">
-            <h1>Escuela Nacional de Ciencias Comerciales</h1>
-            <h2>Jornada Diurna — Jutiapa, Guatemala</h2>
-            <h3>Distribución Oficial de Cátedras y Carga Docente — Ciclo Escolar 2026</h3>
-            <div style="font-size:8pt; color:#64748b; margin-top:4px;">Emisión: ${fechaEmision}</div>
+        <div class="header-banner">
+            <img src="logo.png" alt="Logo ENCCO" class="header-logo" onerror="this.style.display='none'">
+            <div class="header-text">
+                <h1>${schoolName.toUpperCase()}</h1>
+                <h2>${location.toUpperCase()}</h2>
+                <h3>DISTRIBUCIÓN OFICIAL DE CÁTEDRAS Y CARGA DOCENTE &mdash; CICLO ESCOLAR ${cycle}</h3>
+                <div style="font-size:7.8pt; color:#64748b; margin-top:2px;">Modalidad: ${groupByMode === 'BY_TEACHER' ? 'Organizado por Catedrático Titular' : (groupByMode === 'BY_GRADE' ? 'Organizado por Grado y Sección' : 'Nómina General')} &bull; Emisión: ${fechaEmision}</div>
+            </div>
+            <div class="header-side-badge">
+                <div style="font-weight:800; color:#0f2b5c; font-size:8.5pt;">ENCCO 1970</div>
+                <div>Perito Contador</div>
+            </div>
         </div>
 
         <div class="stats-bar">
             <div>Total Cátedras: <span>${totalCatedras}</span></div>
             <div>Docentes Titulares: <span>${docentesSet.size}</span></div>
             <div>Períodos Semanales Activos: <span>${totalPeriodos} períodos</span></div>
-            <div>Carrera: <span>Perito Contador</span></div>
+            <div>Plan de Estudios: <span>Oficial MINEDUC</span></div>
         </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:4%; text-align:center;">No.</th>
-                    <th style="width:20%;">Grado y Sección</th>
-                    <th style="width:12%;">Área CNB</th>
-                    <th style="width:10%;">Código</th>
-                    <th style="width:28%;">Asignatura Oficial</th>
-                    <th style="width:20%;">Catedrático Titular</th>
-                    <th style="width:6%; text-align:center;">Per.</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${list.map((c, idx) => {
-                    const rawG = `${c.grade || ''} ${c.gradeCode || ''}`.toUpperCase();
-                    let gGradeNum = 0;
-                    if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
-                    else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
-                    else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
-
-                    const subName = getFullOfficialSubjectName(c.subject || c.name || 'Asignatura', gGradeNum);
-                    const cnbArea = getCnbAreaInfo(subName);
-                    const unassigned = isAssignmentUnassigned(c);
-                    const tName = unassigned ? '⚠️ Sin Asignar' : ((typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(c) : (c.teacher || 'Catedrático'));
-
-                    return `
-                    <tr>
-                        <td style="text-align:center; font-weight:700; color:#64748b;">${idx + 1}</td>
-                        <td><strong>${c.grade || c.gradeCode} (${c.section || 'A'})</strong></td>
-                        <td><span style="color:${cnbArea.color}; font-weight:700;">${cnbArea.shortName}</span></td>
-                        <td style="font-family:'Courier New',Courier,monospace; font-weight:700;">${c.code || '—'}</td>
-                        <td><strong>${subName}</strong></td>
-                        <td style="${unassigned ? 'color:#dc2626; font-weight:700;' : 'font-weight:600;'}">${tName}</td>
-                        <td style="text-align:center; font-weight:700;">${c.periodsPerWeek || c.hours || c.periods || 4}</td>
-                    </tr>
-                    `;
-                }).join('')}
-            </tbody>
-        </table>
+        ${reportBodyHtml}
 
         <div class="signatures">
             <div class="sig-box">
