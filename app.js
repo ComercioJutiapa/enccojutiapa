@@ -7642,7 +7642,11 @@ async function initApp() {
     }
     const _overlay = document.getElementById('appHydrationOverlay');
     if (_overlay) {
+        if (typeof document !== 'undefined' && document.body) {
+            document.body.style.setProperty('background-color', '', '');
+        }
         _overlay.style.opacity = '0';
+        _overlay.style.pointerEvents = 'none';
         setTimeout(() => { _overlay.style.display = 'none'; }, 250);
     }
 

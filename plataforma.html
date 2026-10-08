@@ -85,6 +85,29 @@
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="apple-touch-icon" href="logo.png">
     
+    <!-- ⚡ ESTILOS CRÍTICOS INMEDIATOS: PINTADO EN 0ms (Previene flash blanco y pantalla vacía) -->
+    <style id="criticalSplashStyle">
+        html, body {
+            background-color: #0f172a !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        #appHydrationOverlay {
+            position: fixed;
+            inset: 0;
+            background: #0f172a;
+            z-index: 9999999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: opacity;
+        }
+    </style>
+    
     <!-- Fuentes Google Fonts & Iconos -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -427,18 +450,25 @@
         </div>
     </div>
     <script>
-        // Temporizador de guardia infalible para el overlay de hidratación (máx 2.5s)
+        // Transición de salida suave y fluida del overlay de hidratación
         (function() {
             function dismissOverlaySafely() {
                 var overlay = document.getElementById('appHydrationOverlay');
                 if (overlay && overlay.style.display !== 'none') {
+                    // Restaurar el color base del tema una vez montada la interfaz
+                    document.body.style.setProperty('background-color', '', '');
                     overlay.style.opacity = '0';
+                    overlay.style.pointerEvents = 'none';
                     setTimeout(function() {
                         if (overlay) overlay.style.display = 'none';
-                    }, 300);
+                    }, 250);
                 }
             }
-            setTimeout(dismissOverlaySafely, 600);
+            // Si la app ya hidrató o tras 450ms, desvanecer fluidamente
+            setTimeout(dismissOverlaySafely, 450);
+            window.addEventListener('FirebaseModularReady', function() {
+                setTimeout(dismissOverlaySafely, 150);
+            });
         })();
     </script>
 <header class="top-role-bar" id="topRoleBar" style="display:block;">
