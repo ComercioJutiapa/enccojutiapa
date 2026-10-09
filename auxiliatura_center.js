@@ -562,6 +562,17 @@
                 ? getStudentMonthAbsenceDays(studentId, new Date().getMonth() + 1) 
                 : 1;
 
+            // Semáforo preventivo de ausencias de 3 niveles:
+            // 1 falta = Verde (caso aislado), 2 faltas = Ámbar (preventivo), 3+ faltas = Rojo (alerta temprana / citación recomendada)
+            let absenceTrafficLightBadge = '';
+            if (monthAbsences >= 3) {
+                absenceTrafficLightBadge = `<div style="font-size:0.72rem; color:#b91c1c; font-weight:800; margin-top:3px; background:#fee2e2; border:1px solid #fecaca; border-radius:4px; padding:2px 6px; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-circle-exclamation"></i> ${monthAbsences} faltas este mes (Alerta)</div>`;
+            } else if (monthAbsences === 2) {
+                absenceTrafficLightBadge = `<div style="font-size:0.72rem; color:#b45309; font-weight:800; margin-top:3px; background:#fef3c7; border:1px solid #fde68a; border-radius:4px; padding:2px 6px; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-triangle-exclamation"></i> 2 faltas este mes (Preventivo)</div>`;
+            } else {
+                absenceTrafficLightBadge = `<div style="font-size:0.72rem; color:#15803d; font-weight:700; margin-top:3px; background:#dcfce7; border:1px solid #bbf7d0; border-radius:4px; padding:2px 6px; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-check"></i> 1 falta este mes (Normal)</div>`;
+            }
+
             const safeNameJs = String(studentName).replace(/'/g, "\\'");
             const safeGradeJs = String(gradeLabel).replace(/'/g, "\\'");
 
@@ -582,7 +593,7 @@
                 </td>
                 <td style="padding:10px 12px; vertical-align:middle;">
                     <span class="badge" style="background:#f1f5f9; color:#334155; font-weight:700; border:1px solid #cbd5e1;">${gradeLabel}</span>
-                    ${monthAbsences > 1 ? `<div style="font-size:0.72rem; color:#dc2626; font-weight:700; margin-top:2px;"><i class="fa-solid fa-triangle-exclamation"></i> ${monthAbsences} faltas este mes</div>` : ''}
+                    ${absenceTrafficLightBadge}
                 </td>
                 <td style="padding:10px 12px; vertical-align:middle;">
                     <div style="font-weight:700; color:#1e293b;">${courseName}</div>
@@ -936,6 +947,21 @@
         const cleanPhone = String(tutorPhone).replace(/\D/g, '');
         const waLink = cleanPhone ? `https://wa.me/502${cleanPhone}?text=Estimado(a)%20padre/madre%20de%20familia%20de%20${encodeURIComponent(student.name)}:%20Le%20saludamos%20de%20Auxiliatura/Secretar%C3%ADa%20ENCCO%20Jutiapa.` : '';
 
+        const monthAbsences = (typeof getStudentMonthAbsenceDays === 'function') 
+            ? getStudentMonthAbsenceDays(student.id, new Date().getMonth() + 1) 
+            : 0;
+
+        let stu360AbsenceBadge = '';
+        if (monthAbsences >= 3) {
+            stu360AbsenceBadge = `<span style="font-size:0.75rem; background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; border-radius:4px; padding:2px 7px; font-weight:800; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-circle-exclamation"></i> ${monthAbsences} faltas (Alerta Temprana)</span>`;
+        } else if (monthAbsences === 2) {
+            stu360AbsenceBadge = `<span style="font-size:0.75rem; background:#fef3c7; color:#b45309; border:1px solid #fde68a; border-radius:4px; padding:2px 7px; font-weight:800; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-triangle-exclamation"></i> 2 faltas (Preventivo)</span>`;
+        } else if (monthAbsences === 1) {
+            stu360AbsenceBadge = `<span style="font-size:0.75rem; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; border-radius:4px; padding:2px 7px; font-weight:700; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-check"></i> 1 falta este mes</span>`;
+        } else {
+            stu360AbsenceBadge = `<span style="font-size:0.75rem; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; border-radius:4px; padding:2px 7px; font-weight:700; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-circle-check"></i> Asistencia Perfecta</span>`;
+        }
+
         const drawer = document.createElement('div');
         drawer.id = 'auxStudent360Drawer';
         drawer.className = 'aux-drawer-overlay';
@@ -953,10 +979,11 @@
                         </div>
                         <div>
                             <h3 style="margin:0; font-size:1.15rem; font-weight:800; color:#f8fafc;">${student.name}</h3>
-                            <div style="font-size:0.8rem; color:#94a3b8; margin-top:2px;">
+                            <div style="font-size:0.8rem; color:#94a3b8; margin-top:2px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                                 <span>Carné: <strong style="color:#38bdf8;">${student.carne || '—'}</strong></span> &bull; 
                                 <span>Código: <strong>${student.personalCode || '—'}</strong></span> &bull; 
                                 <span>${student.grade || student.gradeCode} (${student.section || 'A'})</span>
+                                ${stu360AbsenceBadge}
                             </div>
                         </div>
                     </div>

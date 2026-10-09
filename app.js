@@ -19610,6 +19610,24 @@ function getFilteredReportStudents() {
         students = students.filter(s => s.section === sectionVal || (s.gradeLabel && s.gradeLabel.includes(sectionVal)));
     }
 
+    // Filtro adicional: Solo estudiantes con materias pendientes (< 60 pts)
+    const onlyFailingToggle = document.getElementById('reportOnlyFailingToggle');
+    if (onlyFailingToggle && onlyFailingToggle.checked) {
+        students = students.filter(s => {
+            const subjects = (typeof getReportCardSubjects === 'function') ? getReportCardSubjects(s) : [];
+            return subjects.some(sub => {
+                const grades = (typeof getReportCardSubjectGrades === 'function') ? getReportCardSubjectGrades(s, sub) : { avg: 0, isFullyExon: false };
+                if (grades.isFullyExon) return false;
+                // Si ya tiene notas en algún bimestre o promedio y éste es menor a 60
+                return (grades.b1 > 0 && grades.b1 < 60) ||
+                       (grades.b2 > 0 && grades.b2 < 60) ||
+                       (grades.b3 > 0 && grades.b3 < 60) ||
+                       (grades.b4 > 0 && grades.b4 < 60) ||
+                       (grades.avg > 0 && grades.avg < 60);
+            });
+        });
+    }
+
     return students.sort((a, b) => {
         const nameA = formatStudentDisplayName(a, 'lastFirst');
         const nameB = formatStudentDisplayName(b, 'lastFirst');
@@ -19620,7 +19638,18 @@ window.getFilteredReportStudents = getFilteredReportStudents;
 
 function filterAndPopulateReportStudents() {
     const select = document.getElementById('reportStudentSelect');
-    const students = getFilteredReportStudents();
+    const searchInput = document.getElementById('reportStudentSearchInput');
+    const searchVal = (searchInput?.value || '').trim().toLowerCase();
+    let students = getFilteredReportStudents();
+
+    if (searchVal) {
+        students = students.filter(s => {
+            const fullName = formatStudentDisplayName(s, 'lastFirst').toLowerCase();
+            const naturalName = (s.name || '').toLowerCase();
+            const code = (s.personalCode || s.carne || '').toLowerCase();
+            return fullName.includes(searchVal) || naturalName.includes(searchVal) || code.includes(searchVal);
+        });
+    }
 
     if (!select) return;
 
@@ -19628,7 +19657,7 @@ function filterAndPopulateReportStudents() {
         select.innerHTML = '<option value="">-- No hay estudiantes para este filtro --</option>';
         const area = document.getElementById('reportCardPrintArea');
         if (area) {
-            area.innerHTML = '<div style="text-align:center; padding:40px 20px; color:#64748b;"><i class="fa-solid fa-circle-exclamation" style="font-size:2.2rem; margin-bottom:12px; color:#94a3b8; display:block;"></i>No se encontraron estudiantes para el grado y sección seleccionados.</div>';
+            area.innerHTML = '<div style="text-align:center; padding:40px 20px; color:#64748b;"><i class="fa-solid fa-circle-exclamation" style="font-size:2.2rem; margin-bottom:12px; color:#94a3b8; display:block;"></i>No se encontraron estudiantes para el criterio seleccionado.</div>';
         }
         return;
     }
@@ -19640,6 +19669,16 @@ function filterAndPopulateReportStudents() {
     previewStudentReportCard(students[0].id);
 }
 window.filterAndPopulateReportStudents = filterAndPopulateReportStudents;
+
+function filterReportStudentsPredictive() {
+    filterAndPopulateReportStudents();
+}
+window.filterReportStudentsPredictive = filterReportStudentsPredictive;
+
+function onReportOnlyFailingToggleChange() {
+    filterAndPopulateReportStudents();
+}
+window.onReportOnlyFailingToggleChange = onReportOnlyFailingToggleChange;
 
 const OFFICIAL_CNB_PENSUM_ORDER = {
     "4": [

@@ -3090,9 +3090,18 @@
                                     <option value="">-- Todas las Secciones --</option>
                                 </select>
                             </div>
-                            <div class="form-group" style="margin:0; flex:1; min-width:240px;">
+                            <div class="form-group" style="margin:0; min-width:200px; flex:1;">
                                 <label style="font-weight:700; font-size:0.82rem; color:#1e293b; margin-bottom:4px; display:block;">
-                                    <i class="fa-solid fa-user" style="color:#0284c7;"></i> Seleccionar Estudiante:
+                                    <i class="fa-solid fa-magnifying-glass" style="color:#0284c7;"></i> Buscar Estudiante:
+                                </label>
+                                <input type="text" id="reportStudentSearchInput" class="form-control" placeholder="Escriba nombre o código..." oninput="filterReportStudentsPredictive()" style="font-size:0.86rem;">
+                            </div>
+                            <div class="form-group" style="margin:0; flex:1.2; min-width:240px;">
+                                <label style="font-weight:700; font-size:0.82rem; color:#1e293b; margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
+                                    <span><i class="fa-solid fa-user" style="color:#0284c7;"></i> Seleccionar Estudiante:</span>
+                                    <label style="margin:0; font-weight:700; font-size:0.75rem; color:#b91c1c; cursor:pointer; display:inline-flex; align-items:center; gap:4px;" title="Filtrar únicamente estudiantes con materias pendientes de aprobar (< 60 pts)">
+                                        <input type="checkbox" id="reportOnlyFailingToggle" onchange="onReportOnlyFailingToggleChange()" style="cursor:pointer; accent-color:#dc2626;"> Solo con materias pendientes
+                                    </label>
                                 </label>
                                 <select id="reportStudentSelect" class="form-control" onchange="previewStudentReportCard(this.value)" style="font-size:0.86rem; font-weight:600;"></select>
                             </div>

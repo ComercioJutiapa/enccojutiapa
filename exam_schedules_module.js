@@ -1398,6 +1398,58 @@
         `;
     }
 
+    // Calcular estadísticas en tiempo real de cobertura de cuidadores en un día de examen
+    function getDayProctorCoverageStats(dayObj) {
+        if (!dayObj || !Array.isArray(dayObj.evaluations)) return { totalSlots: 0, coveredSlots: 0, missingSlots: 0 };
+        let totalSlots = 0;
+        let coveredSlots = 0;
+
+        dayObj.evaluations.forEach(ev => {
+            if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') return;
+            const isFull = ev.evaluationMode === 'SECCION_COMPLETA';
+            const isPractica = !!(ev.isPractica || ev.isPracticaDay || dayObj.isPracticaDay);
+            const secs = (Array.isArray(ev.sections) && ev.sections.length > 0) ? ev.sections : [ev];
+
+            secs.forEach(sec => {
+                if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') return;
+                const secIsFull = isFull || sec.evaluationMode === 'SECCION_COMPLETA';
+
+                if (secIsFull) {
+                    const room = sec.singleRoom || sec.groupA || ev.singleRoom || ev.groupA || {};
+                    if (isPractica) {
+                        totalSlots += 2;
+                        if (room.caretakerTeacherName) coveredSlots++;
+                        if (room.caretakerTurn2Name) coveredSlots++;
+                    } else {
+                        totalSlots += 1;
+                        if (room.caretakerTeacherName) coveredSlots++;
+                    }
+                } else {
+                    const grpA = sec.groupA || ev.groupA || {};
+                    const grpB = sec.groupB || ev.groupB || {};
+                    if (isPractica) {
+                        totalSlots += 4;
+                        if (grpA.caretakerTeacherName) coveredSlots++;
+                        if (grpA.caretakerTurn2Name) coveredSlots++;
+                        if (grpB.caretakerTeacherName) coveredSlots++;
+                        if (grpB.caretakerTurn2Name) coveredSlots++;
+                    } else {
+                        totalSlots += 2;
+                        if (grpA.caretakerTeacherName) coveredSlots++;
+                        if (grpB.caretakerTeacherName) coveredSlots++;
+                    }
+                }
+            });
+        });
+
+        return {
+            totalSlots,
+            coveredSlots,
+            missingSlots: Math.max(0, totalSlots - coveredSlots)
+        };
+    }
+    window.getDayProctorCoverageStats = getDayProctorCoverageStats;
+
     // Renderizar tarjeta individual de un día
     function renderSingleDayCardHtml(scheduleBlock, dayObj, dayIdx) {
         const workload = calculateTeacherWorkloadForDate(scheduleBlock, dayObj.date);
@@ -1419,6 +1471,14 @@
 
         const activeGradeCols = getActiveGradeColumnsForDay(dayObj);
         const colCount = activeGradeCols.length >= 3 ? 3 : (activeGradeCols.length === 2 ? 2 : 1);
+
+        // Indicador en vivo de cobertura de cuidadores en salones
+        const coverageStats = getDayProctorCoverageStats(dayObj);
+        const coverageBadgeHtml = coverageStats.totalSlots === 0 ? '' : (
+            coverageStats.missingSlots === 0
+                ? `<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-size:0.72rem; font-weight:800; padding:2px 7px;" title="Todos los salones y turnos cuentan con cuidadores asignados"><i class="fa-solid fa-circle-check"></i> Salones: 100% cubiertos</span>`
+                : `<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fcd34d; font-size:0.72rem; font-weight:800; padding:2px 7px;" title="Existen salones o turnos pendientes de cuidador"><i class="fa-solid fa-triangle-exclamation"></i> ${coverageStats.missingSlots} puesto(s) sin asignar</span>`
+        );
 
         window._examDaysExpandedState = window._examDaysExpandedState || {};
         const isExpanded = (window._examDaysExpandedState[dayObj.id] !== false);
@@ -1443,6 +1503,7 @@
                             <span class="badge" style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; font-size:0.72rem; font-weight:800; padding:2px 7px;">
                                 ${activeTeachersToday.length} cuidadores
                             </span>
+                            ${coverageBadgeHtml}
                         </div>
                         <h3 style="margin:3px 0 0 0; font-size:1.08rem; font-weight:800; color:#0f172a; text-transform:capitalize;">
                             ${dayDateFormatted}
@@ -1458,6 +1519,9 @@
                     </button>
                     <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.printAllMediasListasOfDay('${dayObj.id}')" style="background:#f8fafc; color:#334155; font-weight:700; border:1px solid #cbd5e1; font-size:0.78rem; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Imprimir todas las nóminas (medias listas) de esta jornada">
                         <i class="fa-solid fa-file-signature"></i> Imprimir Nóminas del Día
+                    </button>
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.exportExamDayToExcel('${dayObj.id}')" style="background:#f0fdf4; color:#15803d; font-weight:700; border:1px solid #bbf7d0; font-size:0.78rem; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Descargar distribución de salones y cuidadores de este día en formato Excel (CSV)">
+                        <i class="fa-solid fa-file-excel"></i> Exportar a Excel
                     </button>
                     <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.addEvaluationToDay('${dayObj.id}')" style="background:#15803d; color:#ffffff; font-weight:700; border:1px solid #166534; font-size:0.78rem; padding:4px 10px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Agregar otra evaluación a este día">
                         <i class="fa-solid fa-plus"></i> Asignar Clase
@@ -1636,6 +1700,9 @@
                         </div>
                     </div>
                     <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-sm btn-outline-info" onclick="window.previewMediasListasModal('${dayObj.id}', '${ev.id}')" title="Previsualizar nóminas de examen en pantalla sin abrir diálogo de impresión" style="font-weight:700;">
+                            <i class="fa-solid fa-eye"></i> Vista Previa
+                        </button>
                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.printMediasListasModal('${dayObj.id}', '${ev.id}')" title="${(ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') ? 'Materia en proceso (sin examen en salón)' : 'Imprimir Medias Listas de este examen'}">
                             <i class="fa-solid fa-print"></i> Imprimir Medias Listas
                         </button>
@@ -4410,6 +4477,222 @@
         `;
         openPrintWindow(fullHtml, title, 'portrait', bodyHtml);
     }
+
+    // Modal de vista previa en pantalla de Medias Listas (sin forzar impresión del sistema)
+    window.previewMediasListasModal = function (dayId, evalId) {
+        const found = findDayAndScheduleBlock(dayId, window._currentSelectedExamBim);
+        const dayObj = found ? (found.dayObj || found.day) : null;
+        if (!found || !dayObj) {
+            alert('⚠️ No se encontró la jornada de examen solicitada.');
+            return;
+        }
+        const ev = (dayObj.evaluations || []).find(e => e.id === evalId);
+        if (!ev) {
+            alert('⚠️ No se encontró la evaluación seleccionada.');
+            return;
+        }
+        if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') {
+            alert("Esta asignatura evalúa en proceso (acumulativo continuo). No requiere listas de cuido de examen.");
+            return;
+        }
+
+        let contentHtml = '';
+        const isFull = ev.evaluationMode === 'SECCION_COMPLETA';
+
+        if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+            const printableSecs = ev.sections.filter(s => !s.isEnProceso && s.evaluationStatus !== 'EN_PROCESO');
+            if (printableSecs.length === 0) {
+                alert("Todas las secciones de esta asignatura evalúan en proceso.");
+                return;
+            }
+            printableSecs.forEach((sec, idx) => {
+                const secIsFull = isFull || sec.evaluationMode === 'SECCION_COMPLETA';
+                if (idx > 0) contentHtml += '<div style="margin:24px 0; border-top:2px dashed #94a3b8;"></div>';
+                if (secIsFull) {
+                    contentHtml += generateSingleGroupHtml(dayObj, ev, 'COMPLETA', sec);
+                } else {
+                    contentHtml += generateSingleGroupHtml(dayObj, ev, 'A', sec);
+                    contentHtml += '<div style="margin:24px 0; border-top:2px dashed #94a3b8;"></div>';
+                    contentHtml += generateSingleGroupHtml(dayObj, ev, 'B', sec);
+                }
+            });
+        } else {
+            if (isFull) {
+                contentHtml += generateSingleGroupHtml(dayObj, ev, 'COMPLETA');
+            } else {
+                contentHtml += generateSingleGroupHtml(dayObj, ev, 'A');
+                contentHtml += '<div style="margin:24px 0; border-top:2px dashed #94a3b8;"></div>';
+                contentHtml += generateSingleGroupHtml(dayObj, ev, 'B');
+            }
+        }
+
+        // Crear o actualizar modal flotante en la pantalla
+        let modalEl = document.getElementById('examMediasPreviewModal');
+        if (modalEl) modalEl.remove();
+
+        modalEl = document.createElement('div');
+        modalEl.id = 'examMediasPreviewModal';
+        modalEl.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15,23,42,0.75); z-index:99999; display:flex; align-items:center; justify-content:center; padding:15px; box-sizing:border-box; backdrop-filter:blur(3px);';
+        modalEl.onclick = function(e) { if (e.target === modalEl) modalEl.remove(); };
+
+        modalEl.innerHTML = `
+            <div style="background:#ffffff; width:100%; max-width:960px; max-height:92vh; border-radius:12px; display:flex; flex-direction:column; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3); overflow:hidden;" onclick="event.stopPropagation()">
+                <div style="background:#0f172a; color:#ffffff; padding:12px 18px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-eye" style="color:#38bdf8;"></i>
+                        <strong style="font-size:0.95rem;">Vista Previa de Nómina de Salón: ${ev.courseName} (${ev.gradeName || ev.gradeCode})</strong>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn btn-sm btn-primary" onclick="window.printMediasListasModal('${dayId}', '${evalId}'); document.getElementById('examMediasPreviewModal')?.remove();" style="font-weight:700; font-size:0.8rem; padding:4px 10px;">
+                            <i class="fa-solid fa-print"></i> Mandar a Imprimir
+                        </button>
+                        <button type="button" onclick="document.getElementById('examMediasPreviewModal')?.remove();" style="background:transparent; border:none; color:#cbd5e1; font-size:1.2rem; cursor:pointer;" title="Cerrar vista previa">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+                <div style="overflow-y:auto; padding:20px; background:#f8fafc; flex:1;">
+                    <div style="background:#ffffff; padding:20px; border-radius:8px; border:1px solid #cbd5e1; box-shadow:0 2px 4px rgba(0,0,0,0.04);">
+                        ${contentHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+    };
+
+    // Exportar la distribución oficial del día a Excel (CSV con BOM UTF-8)
+    window.exportExamDayToExcel = function (dayId) {
+        const found = findDayAndScheduleBlock(dayId, window._currentSelectedExamBim);
+        const dayObj = found ? (found.dayObj || found.day) : null;
+        if (!found || !dayObj) {
+            alert('⚠️ No se encontró la jornada de examen solicitada.');
+            return;
+        }
+
+        const evs = (dayObj.evaluations || []).slice();
+        if (evs.length === 0) {
+            alert('No hay evaluaciones asignadas en esta fecha para exportar.');
+            return;
+        }
+
+        const dayFormatted = new Date(dayObj.date + 'T12:00:00').toLocaleDateString('es-GT', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+
+        // Encabezados en formato CSV con punto y coma (estándar para Excel en español)
+        const headers = ['Fecha', 'Horario', 'Grado', 'Seccion', 'Asignatura', 'Catedratico Titular', 'Modalidad', 'Grupo/Salon', 'Salon Fisico', 'Cuidador Turno 1', 'Cuidador Turno 2 (Relevo)', 'Alumnos Estimados'];
+        const rows = [];
+
+        evs.forEach(ev => {
+            if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') {
+                rows.push([
+                    dayObj.date,
+                    `${ev.startTime || ''} - ${ev.endTime || ''}`,
+                    ev.academicGradeName || ev.gradeName || ev.gradeCode || '',
+                    'Todas',
+                    ev.courseName || '',
+                    ev.courseTeacherName || '',
+                    'EN PROCESO (ACUMULATIVO)',
+                    'N/A',
+                    'N/A',
+                    'N/A',
+                    'N/A',
+                    'N/A'
+                ]);
+                return;
+            }
+
+            const isPractica = !!(ev.isPractica || ev.isPracticaDay || dayObj.isPracticaDay);
+            const isFull = ev.evaluationMode === 'SECCION_COMPLETA';
+            const secs = (Array.isArray(ev.sections) && ev.sections.length > 0) ? ev.sections : [ev];
+
+            secs.forEach(sec => {
+                const secIsFull = isFull || sec.evaluationMode === 'SECCION_COMPLETA';
+                const secLabel = sec.sectionLetter || sec.section || 'A';
+                const gradeLabel = sec.gradeName || ev.gradeName || ev.gradeCode || '';
+                const titular = sec.teacherName || ev.courseTeacherName || '';
+
+                if (secIsFull) {
+                    const room = sec.singleRoom || sec.groupA || ev.singleRoom || ev.groupA || {};
+                    rows.push([
+                        dayObj.date,
+                        `${ev.startTime || ''} - ${ev.endTime || ''}`,
+                        gradeLabel,
+                        secLabel,
+                        ev.courseName || '',
+                        titular,
+                        'SECCIÓN COMPLETA',
+                        'Salón Único',
+                        room.classroom || 'Salón Único',
+                        room.caretakerTeacherName || 'Sin asignar',
+                        isPractica ? (room.caretakerTurn2Name || 'Sin asignar') : 'N/A',
+                        room.studentCount || ''
+                    ]);
+                } else {
+                    const grpA = sec.groupA || ev.groupA || {};
+                    const grpB = sec.groupB || ev.groupB || {};
+
+                    rows.push([
+                        dayObj.date,
+                        `${ev.startTime || ''} - ${ev.endTime || ''}`,
+                        gradeLabel,
+                        secLabel,
+                        ev.courseName || '',
+                        titular,
+                        'MEDIAS SECCIONES',
+                        'Grupo A',
+                        grpA.classroom || 'Salón A',
+                        grpA.caretakerTeacherName || 'Sin asignar',
+                        isPractica ? (grpA.caretakerTurn2Name || 'Sin asignar') : 'N/A',
+                        grpA.studentCount || ''
+                    ]);
+
+                    rows.push([
+                        dayObj.date,
+                        `${ev.startTime || ''} - ${ev.endTime || ''}`,
+                        gradeLabel,
+                        secLabel,
+                        ev.courseName || '',
+                        titular,
+                        'MEDIAS SECCIONES',
+                        'Grupo B',
+                        grpB.classroom || 'Salón B',
+                        grpB.caretakerTeacherName || 'Sin asignar',
+                        isPractica ? (grpB.caretakerTurn2Name || 'Sin asignar') : 'N/A',
+                        grpB.studentCount || ''
+                    ]);
+                }
+            });
+        });
+
+        // Construir contenido CSV con BOM UTF-8 (\uFEFF)
+        const escapeCsv = (val) => {
+            const str = String(val === undefined || val === null ? '' : val);
+            if (str.includes(';') || str.includes('"') || str.includes('\n')) {
+                return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+        };
+
+        let csvContent = '\uFEFF' + headers.map(escapeCsv).join(';') + '\r\n';
+        rows.forEach(r => {
+            csvContent += r.map(escapeCsv).join(';') + '\r\n';
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Distribucion_Examenes_${dayObj.date}_ENCCO.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
 
     // =========================================================================
     // IMPRESIÓN 3: CALENDARIO GENERAL CONSOLIDADO EN PDF
