@@ -671,7 +671,7 @@
                 </a>
                 <a href="#" class="nav-item" data-view="exam-schedules" data-perm="exam-schedules" data-allowed="director,secretaria,profesor_auxiliar,admin" onclick="navigateTo('exam-schedules', event)">
                     <i class="fa-solid fa-calendar-days"></i>
-                    <span>Roles de Exámenes y Cuido</span>
+                    <span>Auxiliaturas de Exámenes</span>
                 </a>
                 <a href="#" class="nav-item" data-view="exoneraciones-log" data-perm="exoneraciones-log" data-allowed="*" onclick="navigateTo('exoneraciones-log', event)">
                     <i class="fa-solid fa-file-shield"></i>
@@ -684,15 +684,15 @@
 
                 <!-- SECCIÓN REPORTES Y CUADRO DE HONOR -->
                 <div class="nav-section-label" data-perm="honor-roll,reports,grade-stats,predictive-analytics">REPORTES Y CUADRO DE HONOR</div>
-                <a href="#" class="nav-item" data-view="honor-roll" data-perm="honor-roll" data-allowed="director,secretaria,admin,profesor_auxiliar" onclick="navigateTo('honor-roll', event)">
+                <a href="#" class="nav-item" data-view="honor-roll" data-perm="honor-roll" data-allowed="director,secretaria,admin,profesor_auxiliar,docente" onclick="navigateTo('honor-roll', event)">
                     <i class="fa-solid fa-award"></i>
                     <span>Cuadros de Honor</span>
                 </a>
-                <a href="#" class="nav-item" data-view="reports" data-perm="reports" data-allowed="director,secretaria,admin,profesor_auxiliar" onclick="navigateTo('reports', event)">
+                <a href="#" class="nav-item" data-view="reports" data-perm="reports" data-allowed="director,secretaria,admin,profesor_auxiliar,docente" onclick="navigateTo('reports', event)">
                     <i class="fa-solid fa-print"></i>
                     <span>Boletín de Calificaciones</span>
                 </a>
-                <a href="#" class="nav-item" data-view="grade-stats" data-perm="grade-stats" data-allowed="director,secretaria,admin,profesor_auxiliar" onclick="navigateTo('grade-stats', event)">
+                <a href="#" class="nav-item" data-view="grade-stats" data-perm="grade-stats" data-allowed="director,secretaria,admin,profesor_auxiliar,docente" onclick="navigateTo('grade-stats', event)">
                     <i class="fa-solid fa-chart-bar"></i>
                     <span>Promedios y Estadísticas</span>
                 </a>
@@ -2505,7 +2505,7 @@
                 <!-- 7.0. CENTRO DE CONTROL INTEGRAL DE AUXILIATURA Y SECRETARÍA -->
                 <section class="app-view" id="view-auxiliatura-center"></section>
 
-                <!-- 7.0.1. ROLES DE EXÁMENES Y CUIDO DE EVALUACIONES (AUXILIATURA, DIRECCIÓN Y SECRETARÍA) -->
+                <!-- 7.0.1. AUXILIATURAS DE EXÁMENES (AUXILIATURA, DIRECCIÓN Y SECRETARÍA) -->
                 <section class="app-view" id="view-exam-schedules"></section>
 
                 <!-- 7.1. BITÁCORA DIARIA DE AUSENCIAS Y ALERTAS (AUXILIATURA, SECRETARÍA Y DIRECCIÓN) -->
@@ -5490,7 +5490,7 @@
     <script src="db.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="ui.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="sire.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
-    <script src="app.js?v=20261008_v236_signature_elevated" charset="UTF-8"></script>
+    <script src="app.js?v=20261009_v237_permissions_and_auxiliaturas" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20260925_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20260924_v234_modular_phase2" charset="UTF-8"></script>
     <script src="analytics.js?v=2026.09.21.v225_analytics_and_carnets" charset="UTF-8"></script>
@@ -5499,7 +5499,7 @@
     <script src="auxiliatura_center.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="db_repository.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="modal_manager.js?v=20261003_v1" charset="UTF-8"></script>
-    <script src="exam_schedules_module.js?v=20261009_v2" charset="UTF-8"></script>
+    <script src="exam_schedules_module.js?v=20261009_v3" charset="UTF-8"></script>
 
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre

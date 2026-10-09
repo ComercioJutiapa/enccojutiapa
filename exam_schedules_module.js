@@ -1,7 +1,7 @@
 /**
  * exam_schedules_module.js
  * ==============================================================================
- * MÓDULO OFICIAL: ROLES DE EVALUACIONES Y CUIDO DE EXÁMENES (AUXILIATURA GENERAL)
+ * MÓDULO OFICIAL: AUXILIATURAS DE EXÁMENES (AUXILIATURA GENERAL)
  * ENCCO - Escuela Nacional de Ciencias Comerciales, Jutiapa (1970)
  * ==============================================================================
  * Características Principales:
@@ -1056,7 +1056,7 @@
                 <div style="text-align:center; padding:50px 20px; color:#64748b;">
                     <i class="fa-solid fa-lock" style="font-size:3rem; color:#dc2626; margin-bottom:15px; display:block;"></i>
                     <h3 style="color:#0f172a; margin-bottom:8px;">Acceso Restringido</h3>
-                    <p>El Módulo de Roles de Exámenes y Cuido de Evaluaciones es exclusivo para Auxiliatura, Dirección y Secretaría.</p>
+                    <p>El Módulo de Auxiliaturas de Exámenes es exclusivo para Auxiliatura, Dirección y Secretaría.</p>
                 </div>
             `;
             return;
@@ -1087,7 +1087,7 @@
                         </div>
                         <div>
                             <h2 style="margin:0; font-size:1.25rem; font-weight:800; color:#0f172a;">
-                                Roles de Evaluaciones y Salones
+                                Auxiliaturas de Exámenes
                             </h2>
                             <p style="margin:2px 0 0 0; color:#64748b; font-size:0.82rem;">
                                 Auxiliatura General ─ Cuido equitativo, salones automáticos y medias listas oficiales.

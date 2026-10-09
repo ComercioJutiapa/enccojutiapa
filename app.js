@@ -1282,11 +1282,13 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
         return 'edit';
     }
 
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Cuadro de Honor", "Boletines" y "Promedios/Estadísticas" denegados a docentes
+    // 🛡️ ACCESO A BOLETINES/TARJETAS, CUADRO DE HONOR Y PROMEDIOS: Dirección, Secretaría, Auxiliatura y Docentes (Docente en modo consulta/impresión)
     if (key === 'grade-stats' || key === 'honor-roll' || key === 'reports') {
-        const allowedStats = ['director', 'direccion', 'secretaria', 'admin', 'super_usuario', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
-        if (!allowedStats.includes(roleKey)) return 'none';
-        return (roleKey === 'admin' || roleKey === 'super_usuario' || roleKey === 'director' || roleKey === 'secretaria') ? 'edit' : 'view';
+        const allowedFull = ['director', 'direccion', 'secretaria', 'admin', 'super_usuario'];
+        const allowedView = ['profesor_auxiliar', 'auxiliar', 'auxiliatura', 'docente', 'catedratico'];
+        if (allowedFull.includes(roleKey)) return 'edit';
+        if (allowedView.includes(roleKey)) return 'view';
+        return 'none';
     }
 
     // 🛡️ BLINDAJE RBAC ESTRICTO: "Analítica Predictiva y Riesgo Escolar" exclusivo para Dirección, Secretaría, Admin y Superusuario
@@ -1340,9 +1342,9 @@ function hasRolePermission(permKey, role = null) {
         return allowedSire.includes(targetRole);
     }
 
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Cuadro de Honor", "Boletines" y "Promedios/Estadísticas" denegados a docentes
+    // 🛡️ ACCESO A BOLETINES/TARJETAS, CUADRO DE HONOR Y PROMEDIOS: Visible para Dirección, Secretaría, Auxiliatura y Docentes
     if (testKey === 'grade-stats' || testKey === 'honor-roll' || testKey === 'reports') {
-        const allowedStats = ['director', 'direccion', 'secretaria', 'admin', 'super_usuario', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
+        const allowedStats = ['director', 'direccion', 'secretaria', 'admin', 'super_usuario', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'docente', 'catedratico'];
         return allowedStats.includes(targetRole);
     }
 
@@ -1358,7 +1360,7 @@ function hasRolePermission(permKey, role = null) {
         return allowedCarnets.includes(targetRole);
     }
 
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Roles de Exámenes y Cuido" (Auxiliares, Secretaría, Dirección, Admin - DENEGADO A DOCENTES)
+    // 🛡️ BLINDAJE RBAC ESTRICTO: "Auxiliaturas de Exámenes" (Auxiliares, Secretaría, Dirección, Admin - DENEGADO A DOCENTES)
     if (testKey === 'exam-schedules' || testKey === 'view-exam-schedules') {
         const allowedExams = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
         return allowedExams.includes(targetRole);
@@ -2671,7 +2673,7 @@ var SYSTEM_MODULES_LIST = [
     { key: 'permissions-history', name: 'Historial de Permisos', icon: 'fa-clipboard-list', category: 'Estudiantil', desc: 'Historial oficial de permisos de ausencia autorizados por Auxiliatura.' },
     { key: 'auxiliatura-center', name: 'Centro de Control Estudiantil', icon: 'fa-gauge-high', category: 'Estudiantil', desc: 'Panel unificado de monitoreo, ficha 360°, disciplina y permisos para Auxiliatura y Secretaría.' },
     { key: 'auxiliatura-log', name: 'Bitácora Diaria de Ausencias y Alertas', icon: 'fa-clipboard-user', category: 'Estudiantil', desc: 'Monitoreo en tiempo real de inasistencias en aula, avisos a padres y verificación de auxiliatura.' },
-    { key: 'exam-schedules', name: 'Roles de Exámenes y Cuido', icon: 'fa-calendar-days', category: 'Auxiliatura', desc: 'Planificador de fechas de evaluación, división en grupos A y B, asignación de cuidadores y horarios de exámenes en hoja oficio.' }
+    { key: 'exam-schedules', name: 'Auxiliaturas de Exámenes', icon: 'fa-calendar-days', category: 'Auxiliatura', desc: 'Planificador de fechas de evaluación, división en grupos A y B, asignación de cuidadores y horarios de exámenes en hoja oficio.' }
 ];
 window.SYSTEM_MODULES_LIST = SYSTEM_MODULES_LIST;
 
@@ -2713,7 +2715,7 @@ function initDefaultRolesConfig() {
             description: 'Coordinación disciplinaria escolar, control de asistencia y convivencia',
             color: '#d97706',
             isSystem: true,
-            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'auxiliatura-center', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history']
+            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'auxiliatura-center', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history', 'exam-schedules']
         },
         {
             key: 'docente',
@@ -2721,7 +2723,7 @@ function initDefaultRolesConfig() {
             description: 'Ingreso de calificaciones, control de asistencia y seguimiento pedagógico',
             color: '#0891b2',
             isSystem: true,
-            permissions: ['dashboard', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'exoneraciones-log', 'permissions-history']
+            permissions: ['dashboard', 'students', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'exoneraciones-log', 'permissions-history']
         },
         {
             key: 'estudiante',
@@ -2792,13 +2794,18 @@ function normalizeRolesConfig() {
             roleObj.permissionLevels = {};
         }
 
-        // Blindaje estricto: Docente nunca tiene acceso a honor-roll, reports ni grade-stats
+        // Asegurar que el docente tenga acceso a estudiantes, boletas/tarjetas, cuadro de honor y estadísticas en modo consulta
         if (roleObj.key === 'docente') {
-            const forbiddenDocente = ['honor-roll', 'reports', 'grade-stats', 'honor-roll_view', 'reports_view', 'grade-stats_view', 'honor-roll_edit', 'reports_edit', 'grade-stats_edit'];
-            roleObj.permissions = (roleObj.permissions || []).filter(p => !forbiddenDocente.includes(p));
-            roleObj.permissionLevels['honor-roll'] = 'none';
-            roleObj.permissionLevels['reports'] = 'none';
-            roleObj.permissionLevels['grade-stats'] = 'none';
+            const docenteEssential = ['dashboard', 'students', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'exoneraciones-log', 'permissions-history'];
+            docenteEssential.forEach(p => {
+                if (!roleObj.permissions.includes(p)) roleObj.permissions.push(p);
+            });
+            if (!roleObj.permissionLevels) roleObj.permissionLevels = {};
+            roleObj.permissionLevels['students'] = 'view';
+            roleObj.permissionLevels['reports'] = 'view';
+            roleObj.permissionLevels['honor-roll'] = 'view';
+            roleObj.permissionLevels['grade-stats'] = 'view';
+            roleObj.permissionLevels['guide-teachers'] = 'view';
         }
 
         // 🛡️ ACCESO TOTAL A BITÁCORA Y CENTRO DE CONTROL: Dirección, Auxiliatura y Secretaría
@@ -2807,6 +2814,9 @@ function normalizeRolesConfig() {
             roleObj.permissionLevels['auxiliatura-center'] = 'edit';
             if (!roleObj.permissions.includes('auxiliatura-log')) roleObj.permissions.push('auxiliatura-log');
             if (!roleObj.permissions.includes('auxiliatura-center')) roleObj.permissions.push('auxiliatura-center');
+            if (roleObj.key === 'profesor_auxiliar' && !roleObj.permissions.includes('exam-schedules')) {
+                roleObj.permissions.push('exam-schedules');
+            }
         }
 
         SYSTEM_MODULES_LIST.forEach(m => {
@@ -2815,8 +2825,6 @@ function normalizeRolesConfig() {
                 if (!roleObj.permissions.includes(m.key)) roleObj.permissions.push(m.key);
                 if (!roleObj.permissions.includes(m.key + '_edit')) roleObj.permissions.push(m.key + '_edit');
                 if (!roleObj.permissions.includes(m.key + '_view')) roleObj.permissions.push(m.key + '_view');
-            } else if (roleObj.key === 'docente' && (m.key === 'honor-roll' || m.key === 'reports' || m.key === 'grade-stats')) {
-                roleObj.permissionLevels[m.key] = 'none';
             } else if (typeof roleObj.permissionLevels[m.key] === 'undefined') {
                 // Si aún no se ha definido el nivel explícito para este módulo, derivarlo de permissions
                 if (roleObj.permissions.includes(m.key + '_edit')) {
@@ -2824,8 +2832,8 @@ function normalizeRolesConfig() {
                 } else if (roleObj.permissions.includes(m.key + '_view')) {
                     roleObj.permissionLevels[m.key] = 'view';
                 } else if (roleObj.permissions.includes(m.key)) {
-                    // Si el módulo base está incluido, si es docente en guide-teachers es view por defecto
-                    if (roleObj.key === 'docente' && m.key === 'guide-teachers') {
+                    // Si el módulo base está incluido, si es docente en módulos de solo lectura es view por defecto
+                    if (roleObj.key === 'docente' && (m.key === 'guide-teachers' || m.key === 'students' || m.key === 'reports' || m.key === 'honor-roll' || m.key === 'grade-stats')) {
                         roleObj.permissionLevels[m.key] = 'view';
                     } else if (roleObj.key === 'estudiante') {
                         roleObj.permissionLevels[m.key] = 'view';
@@ -9558,7 +9566,7 @@ function navigateTo(viewName, event = null) {
         'exoneraciones-log': { title: 'Libro de Registro Oficial de Exoneraciones Académicas', sub: 'Archivo central de alumnos con consideraciones especiales, dispensas y resoluciones ministeriales' },
         'permissions-history': { title: 'Libro de Registro Oficial de Permisos de Ausencia', sub: 'Archivo central de justificaciones de inasistencia, pases de salida y licencias emitidas por Auxiliatura' },
         'auxiliatura-center': { title: 'Centro de Control Estudiantil y Disciplinario', sub: 'Ficha 360°, monitoreo activo de inasistencias, emisión de permisos y resolución de incidencias' },
-        'exam-schedules': { title: 'Roles de Exámenes y Cuido de Evaluaciones', sub: 'Planificación de fechas, división en medias listas A y B, horarios en hoja oficio y balance de cuidadores' },
+        'exam-schedules': { title: 'Auxiliaturas de Exámenes', sub: 'Planificación de fechas, división en medias listas A y B, horarios en hoja oficio y balance de cuidadores' },
     };
     const t = titles[viewName];
     if (t) {
@@ -36944,7 +36952,7 @@ function initFirestoreModularLiveListeners() {
             if (typeof unsubAlerts === 'function') _firestoreModularUnsubscribers.push(unsubAlerts);
         } catch(e) {}
 
-        // 8. 📅 ESCUCHAR ROLES DE EXÁMENES Y CUIDO ('config/examSchedules')
+        // 8. 📅 ESCUCHAR AUXILIATURAS DE EXÁMENES ('config/examSchedules')
         try {
             const unsubExams = onSnapshot(doc(db, 'config', 'examSchedules'), (snap) => {
                 if (!snap || !snap.exists()) return;
