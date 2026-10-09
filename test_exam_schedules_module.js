@@ -558,6 +558,35 @@ assert(groupedByGrade['5to Perito Contador'].length === 1, '5to Perito Contador 
 assert(groupedByGrade['6to Perito Contador'].length === 1, '6to Perito Contador debe tener su tabla');
 console.log('✅ Separación por Grados en Calendario Verificada: Tablas separadas por grado garantizadas.');
 
+// 18. Test Presentación en 2 Columnas (4to y 5to) y 3 Columnas (con 6to) por Grado y Hora
+console.log('\n[Test 18] Verificando Columnas por Grado: 2 Columnas (4to y 5to) vs 3 Columnas (con 6to)...');
+// Caso A: Solo 4to y 5to
+const dayOnly4and5 = {
+    evaluations: [
+        { gradeCode: '4to Perito Contador', courseName: 'Contabilidad I', startTime: '07:30', endTime: '08:30' },
+        { gradeCode: '5to Perito Contador', courseName: 'Estadística', startTime: '07:30', endTime: '08:30' }
+    ]
+};
+const colsCaseA = mod.getActiveGradeColumnsForDay(dayOnly4and5);
+assert.strictEqual(colsCaseA.length, 2, 'Si solo es 4to y 5to, deben ser exactamente 2 columnas');
+assert.strictEqual(colsCaseA[0].key, '4to', 'Primera columna debe ser 4to Perito');
+assert.strictEqual(colsCaseA[1].key, '5to', 'Segunda columna debe ser 5to Perito');
+
+// Caso B: Si hay 6to
+const dayWith6to = {
+    evaluations: [
+        { gradeCode: '4to Perito Contador', courseName: 'Contabilidad I', startTime: '07:30', endTime: '08:30' },
+        { gradeCode: '5to Perito Contador', courseName: 'Estadística', startTime: '07:30', endTime: '08:30' },
+        { gradeCode: '6to Perito Contador', courseName: 'Auditoría', startTime: '07:30', endTime: '08:30' }
+    ]
+};
+const colsCaseB = mod.getActiveGradeColumnsForDay(dayWith6to);
+assert.strictEqual(colsCaseB.length, 3, 'Si hay 6to, deben ser exactamente 3 columnas');
+assert.strictEqual(colsCaseB[0].key, '4to', 'Primera columna debe ser 4to Perito');
+assert.strictEqual(colsCaseB[1].key, '5to', 'Segunda columna debe ser 5to Perito');
+assert.strictEqual(colsCaseB[2].key, '6to', 'Tercera columna debe ser 6to Perito');
+console.log('✅ Presentación en 2 y 3 Columnas por Grado y Hora Verificada: 2 columnas para 4to y 5to, 3 columnas con 6to.');
+
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');
 console.log('================================================================================');

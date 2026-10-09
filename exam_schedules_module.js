@@ -143,6 +143,48 @@
                 background: #f8fafc;
             }
 
+            /* GRILLA ADAPTATIVA DE EVALUACIONES POR GRADO Y HORA */
+            .exam-grades-grid {
+                display: grid;
+                gap: 16px;
+                align-items: start;
+                margin-bottom: 24px;
+            }
+            .exam-grades-grid.cols-2 {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            .exam-grades-grid.cols-3 {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+            .exam-grades-grid.cols-1 {
+                grid-template-columns: 1fr;
+            }
+            @media (max-width: 992px) {
+                .exam-grades-grid.cols-2,
+                .exam-grades-grid.cols-3 {
+                    grid-template-columns: 1fr !important;
+                }
+            }
+            .exam-grade-col-card {
+                background: #f8fafc;
+                border: 1.5px solid #cbd5e1;
+                border-radius: 10px;
+                padding: 12px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            .exam-grade-col-header {
+                background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+                color: #ffffff;
+                padding: 10px 14px;
+                border-radius: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.06);
+            }
+
             /* BARRA DE ACCIÓN RÁPIDA SUPERIOR */
             .exam-quick-actions-bar {
                 background: #ffffff;
@@ -921,6 +963,172 @@
         container.innerHTML = html;
     }
 
+    // Clasificar grado académico de una evaluación (4to, 5to, 6to u otro)
+    function classifyGradeForDay(ev) {
+        const s = (ev.academicGradeName || ev.gradeName || ev.gradeCode || '').toLowerCase();
+        if (s.includes('4') || /cuarto/i.test(s)) return { key: '4to', title: '4to Perito Contador', shortTitle: '4to Perito', order: 1 };
+        if (s.includes('5') || /quinto/i.test(s)) return { key: '5to', title: '5to Perito Contador', shortTitle: '5to Perito', order: 2 };
+        if (s.includes('6') || /sexto/i.test(s)) return { key: '6to', title: '6to Perito Contador', shortTitle: '6to Perito', order: 3 };
+        return { key: 'otro', title: ev.academicGradeName || ev.gradeName || 'Otros Grados', shortTitle: 'Otros', order: 4 };
+    }
+
+    // Obtener columnas de grados para una jornada (2 columnas para 4to y 5to; 3 columnas si hay 6to)
+    function getActiveGradeColumnsForDay(dayObj) {
+        const evs = dayObj.evaluations || [];
+        const has6to = evs.some(e => classifyGradeForDay(e).key === '6to');
+        const has5to = evs.some(e => classifyGradeForDay(e).key === '5to');
+        const has4to = evs.some(e => classifyGradeForDay(e).key === '4to');
+
+        const cols = [];
+        if (has4to || (!has6to && !has5to)) {
+            cols.push({ key: '4to', title: '4to Perito Contador', shortTitle: '4to Perito', order: 1 });
+        }
+        if (has5to || (!has6to && !has4to)) {
+            cols.push({ key: '5to', title: '5to Perito Contador', shortTitle: '5to Perito', order: 2 });
+        }
+        if (has6to) {
+            cols.push({ key: '6to', title: '6to Perito Contador', shortTitle: '6to Perito', order: 3 });
+        }
+        evs.forEach(e => {
+            const cg = classifyGradeForDay(e);
+            if (cg.key === 'otro' && !cols.find(c => c.key === 'otro')) {
+                cols.push(cg);
+            }
+        });
+        return cols;
+    }
+
+    // Tabla de distribución de cuidos por grado y hora de evaluación
+    function renderCuidoDistributionTableHtml(dayObj, activeGradeCols) {
+        const evs = dayObj.evaluations || [];
+        if (evs.length === 0) return '';
+
+        const timeIntervals = [];
+        evs.forEach(ev => {
+            const slot = `${ev.startTime} a ${ev.endTime}`;
+            if (!timeIntervals.includes(slot)) timeIntervals.push(slot);
+        });
+        timeIntervals.sort((a, b) => timeStringToMinutes(a.split(' a ')[0]) - timeStringToMinutes(b.split(' a ')[0]));
+
+        let rowsHtml = '';
+        timeIntervals.forEach(slot => {
+            const [slotStart, slotEnd] = slot.split(' a ');
+            rowsHtml += `
+                <tr>
+                    <td style="padding:8px 10px; border:1px solid #cbd5e1; background:#f8fafc; font-weight:800; font-size:0.84rem; white-space:nowrap; vertical-align:top;">
+                        ⏰ ${slot} hrs
+                    </td>
+            `;
+
+            activeGradeCols.forEach(col => {
+                const matchEvals = evs.filter(e => {
+                    const cg = classifyGradeForDay(e);
+                    return cg.key === col.key && e.startTime === slotStart && e.endTime === slotEnd;
+                });
+
+                if (matchEvals.length === 0) {
+                    rowsHtml += `
+                        <td style="padding:8px 10px; border:1px solid #cbd5e1; vertical-align:middle; text-align:center; color:#94a3b8; font-style:italic; font-size:0.8rem;">
+                            Sin examen
+                        </td>
+                    `;
+                } else {
+                    let cellContent = matchEvals.map(ev => {
+                        const isFull = ev.evaluationMode === 'SECCION_COMPLETA';
+                        let cuidadoresList = '';
+                        if (ev.isPractica) {
+                            const relevoTime = minutesToTimeString(timeStringToMinutes(ev.startTime) + Math.round(ev.durationMinutes / 2));
+                            cuidadoresList = `
+                                <div style="font-size:0.76rem; color:#1e40af; line-height:1.3; margin-top:3px;">
+                                    <strong>Salón ${ev.groupA.classroom} (A):</strong> ${ev.groupA.caretakerTeacherName || 'N/A'} / Relevo: ${ev.groupA.caretakerTurn2Name || 'N/A'}<br>
+                                    <strong>Salón ${ev.groupB.classroom} (B):</strong> ${ev.groupB.caretakerTeacherName || 'N/A'} / Relevo: ${ev.groupB.caretakerTurn2Name || 'N/A'}
+                                </div>
+                            `;
+                        } else if ((ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single') {
+                            cuidadoresList = `
+                                <div style="font-size:0.76rem; color:#92400e; margin-top:3px;">
+                                    <strong>${ev.isMecanografia ? '⌨️ Taller Meca' : '💻 Lab. Computación'}:</strong> ${ev.courseTeacherName} (Titulares)
+                                </div>
+                            `;
+                        } else if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                            cuidadoresList = ev.sections.map(sec => {
+                                const secIsFull = isFull || sec.evaluationMode === 'SECCION_COMPLETA';
+                                if (secIsFull) {
+                                    const sRoom = sec.singleRoom || sec.groupA || {};
+                                    return `<div style="font-size:0.76rem; color:#0f172a; line-height:1.3; margin-top:2px;">
+                                        <strong>${sec.section} (${sRoom.classroom || 'Salón'}):</strong> ${sRoom.caretakerTeacherName || 'Sin asignar'}
+                                    </div>`;
+                                } else {
+                                    return `<div style="font-size:0.76rem; color:#0f172a; line-height:1.3; margin-top:2px;">
+                                        <strong>${sec.section}:</strong> Salón ${sec.groupA.classroom} (A): ${sec.groupA.caretakerTeacherName || 'N/A'} | Salón ${sec.groupB.classroom} (B): ${sec.groupB.caretakerTeacherName || 'N/A'}
+                                    </div>`;
+                                }
+                            }).join('');
+                        } else {
+                            if (isFull) {
+                                const sRoom = ev.singleRoom || ev.groupA || {};
+                                cuidadoresList = `<div style="font-size:0.76rem; color:#0f172a; line-height:1.3; margin-top:2px;">
+                                    <strong>Salón ${sRoom.classroom || 'Salón'}:</strong> ${sRoom.caretakerTeacherName || 'N/A'}
+                                </div>`;
+                            } else {
+                                cuidadoresList = `<div style="font-size:0.76rem; color:#0f172a; line-height:1.3; margin-top:2px;">
+                                    Salón ${ev.groupA.classroom} (A): ${ev.groupA.caretakerTeacherName || 'N/A'} | Salón ${ev.groupB.classroom} (B): ${ev.groupB.caretakerTeacherName || 'N/A'}
+                                </div>`;
+                            }
+                        }
+
+                        return `
+                            <div style="margin-bottom:6px; border-bottom:1px dashed #e2e8f0; padding-bottom:4px;">
+                                <div style="font-weight:800; font-size:0.86rem; color:#0f172a;">📘 ${ev.courseName}</div>
+                                <div style="font-size:0.75rem; color:#475569;">Titular: <strong>${ev.courseTeacherName || 'Sin asignar'}</strong></div>
+                                ${cuidadoresList}
+                            </div>
+                        `;
+                    }).join('');
+
+                    rowsHtml += `
+                        <td style="padding:8px 10px; border:1px solid #cbd5e1; vertical-align:top;">
+                            ${cellContent}
+                        </td>
+                    `;
+                }
+            });
+
+            rowsHtml += `</tr>`;
+        });
+
+        return `
+            <div style="margin-top:12px; background:#ffffff; border-radius:8px; border:1px solid #cbd5e1; padding:12px; overflow-x:auto;">
+                <div style="font-weight:800; font-size:0.84rem; color:#1e293b; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                    <span style="display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-table-columns" style="color:#0284c7;"></i>
+                        <strong>Distribución de Cuido por Grado y Hora (${activeGradeCols.length} Columnas):</strong>
+                    </span>
+                    <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800; font-size:0.75rem;">
+                        ${activeGradeCols.map(c => c.shortTitle).join(' | ')}
+                    </span>
+                </div>
+                <table class="exam-compact-table" style="width:100%; border:1px solid #cbd5e1; border-collapse:collapse; margin:0;">
+                    <thead>
+                        <tr style="background:#0f172a; color:#ffffff;">
+                            <th style="width:18%; padding:8px 10px; border:1px solid #0f172a; text-align:left; font-size:0.8rem; font-weight:800;">
+                                ⏰ HORA
+                            </th>
+                            ${activeGradeCols.map(col => `
+                                <th style="padding:8px 10px; border:1px solid #0f172a; text-align:left; font-size:0.8rem; font-weight:800;">
+                                    🎓 ${col.title.toUpperCase()}
+                                </th>
+                            `).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
     // Renderizar tarjeta individual de un día
     function renderSingleDayCardHtml(scheduleBlock, dayObj, dayIdx) {
         const workload = calculateTeacherWorkloadForDate(scheduleBlock, dayObj.date);
@@ -930,6 +1138,12 @@
             month: 'long',
             year: 'numeric'
         });
+
+        const evs = (dayObj.evaluations || []).slice();
+        evs.sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
+
+        const activeGradeCols = getActiveGradeColumnsForDay(dayObj);
+        const colCount = activeGradeCols.length >= 3 ? 3 : (activeGradeCols.length === 2 ? 2 : 1);
 
         let html = `
             <div class="exam-day-banner" style="${dayObj.isPracticaDay ? 'background:linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);' : ''}">
@@ -942,8 +1156,8 @@
                     </h3>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-sm btn-light" onclick="window.printDailyScheduleOficio('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir Horario Oficial en Hoja Oficio (3 Columnas)">
-                        <i class="fa-solid fa-print"></i> Horario Hoja Oficio (3 Col.)
+                    <button type="button" class="btn btn-sm btn-light" onclick="window.printDailyScheduleOficio('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir Horario Oficial en Hoja Oficio (${colCount} Columnas)">
+                        <i class="fa-solid fa-print"></i> Horario Hoja Oficio (${colCount} Col.)
                     </button>
                     <button type="button" class="btn btn-sm btn-light" onclick="window.printAllMediasListasOfDay('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir todas las nóminas (medias listas) de esta jornada">
                         <i class="fa-solid fa-file-signature"></i> Imprimir Nóminas del Día
@@ -959,9 +1173,11 @@
 
             <!-- BARRA DE EQUIDAD DOCENTE (ANTIFATIGA) PARA ESTE DÍA -->
             <div style="background:#f1f5f9; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:0.82rem; border:1px solid #e2e8f0;">
-                <div style="font-weight:800; color:#334155; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                    <i class="fa-solid fa-scale-balanced" style="color:#0284c7;"></i>
-                    Matriz de Equidad y Cargas de Cuido (Docentes asignados hoy):
+                <div style="font-weight:800; color:#334155; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-scale-balanced" style="color:#0284c7;"></i>
+                        <strong>Matriz de Equidad y Cargas de Cuido (Docentes asignados hoy):</strong>
+                    </div>
                 </div>
                 <div style="display:flex; flex-wrap:wrap; gap:4px;">
         `;
@@ -986,9 +1202,11 @@
 
         html += `
                 </div>
+                <!-- DISTRIBUCIÓN ESTRUCTURADA DE CUIDO POR GRADO Y HORA -->
+                ${renderCuidoDistributionTableHtml(dayObj, activeGradeCols)}
             </div>
 
-            <!-- LISTADO DE EVALUACIONES PROGRAMADAS EN ESTE DÍA -->
+            <!-- LISTADO DE EVALUACIONES EN COLUMNAS POR GRADO Y HORA -->
             <div style="margin-bottom:24px;">
         `;
 
@@ -999,9 +1217,46 @@
                 </div>
             `;
         } else {
-            dayObj.evaluations.forEach((ev, evIdx) => {
-                html += renderEvaluationItemHtml(dayObj, ev, evIdx);
+            html += `
+                <div class="exam-grades-grid cols-${colCount}">
+            `;
+
+            activeGradeCols.forEach(col => {
+                const colEvals = evs.filter(e => classifyGradeForDay(e).key === col.key);
+                colEvals.sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
+
+                html += `
+                    <div class="exam-grade-col-card">
+                        <div class="exam-grade-col-header">
+                            <span style="font-weight:900; font-size:0.95rem; letter-spacing:0.3px; display:flex; align-items:center; gap:6px;">
+                                <i class="fa-solid fa-graduation-cap" style="color:#38bdf8;"></i> ${col.title}
+                            </span>
+                            <span class="badge" style="background:rgba(255,255,255,0.22); color:#ffffff; font-size:0.75rem; font-weight:800;">
+                                ${colEvals.length} ${colEvals.length === 1 ? 'materia' : 'materias'}
+                            </span>
+                        </div>
+                `;
+
+                if (colEvals.length === 0) {
+                    html += `
+                        <div style="padding:16px; text-align:center; color:#94a3b8; font-size:0.82rem; background:#ffffff; border-radius:8px; border:1px dashed #cbd5e1; font-style:italic;">
+                            Sin evaluaciones asignadas para este grado hoy.
+                        </div>
+                    `;
+                } else {
+                    colEvals.forEach((ev, evIdx) => {
+                        html += renderEvaluationItemHtml(dayObj, ev, evIdx);
+                    });
+                }
+
+                html += `
+                    </div>
+                `;
             });
+
+            html += `
+                </div>
+            `;
         }
 
         html += `
@@ -2578,141 +2833,133 @@
             year: 'numeric'
         }).toUpperCase();
 
+        const evs = (dayObj.evaluations || []).slice();
+        evs.sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
+
+        const activeCols = getActiveGradeColumnsForDay(dayObj);
+        const colCount = activeCols.length >= 3 ? 3 : (activeCols.length === 2 ? 2 : 1);
+
+        // Recolectar intervalos únicos de horarios de evaluación
+        const timeIntervals = [];
+        evs.forEach(ev => {
+            const slot = `${ev.startTime} a ${ev.endTime}`;
+            if (!timeIntervals.includes(slot)) timeIntervals.push(slot);
+        });
+        timeIntervals.sort((a, b) => timeStringToMinutes(a.split(' a ')[0]) - timeStringToMinutes(b.split(' a ')[0]));
+
         let rowsHtml = '';
-        dayObj.evaluations.forEach((ev, idx) => {
-            let col3SalonesHtml = '';
-
-            if (ev.isPractica) {
-                const relevoTime = minutesToTimeString(timeStringToMinutes(ev.startTime) + Math.round(ev.durationMinutes / 2));
-                if (Array.isArray(ev.sections) && ev.sections.length > 0) {
-                    col3SalonesHtml = ev.sections.map(sec => `
-                        <div style="margin-bottom:6px; border-bottom:1px dashed #e2e8f0; padding-bottom:4px;">
-                            <strong style="color:#1e40af;">${sec.section}:</strong><br>
-                            • Salón ${sec.groupA.classroom} (A): ${sec.groupA.caretakerTeacherName || 'Sin asignar'} (${ev.startTime}-${relevoTime}) / Relevo: ${sec.groupA.caretakerTurn2Name || 'Sin asignar'}<br>
-                            • Salón ${sec.groupB.classroom} (B): ${sec.groupB.caretakerTeacherName || 'Sin asignar'} (${ev.startTime}-${relevoTime}) / Relevo: ${sec.groupB.caretakerTurn2Name || 'Sin asignar'}
-                        </div>
-                    `).join('');
-                } else {
-                    col3SalonesHtml = `
-                        <div style="margin-bottom:6px;">
-                            <strong>🏫 Salón ${ev.groupA.classroom} (Grupo A):</strong><br>
-                            • 1er Turno (${ev.startTime}-${relevoTime}): ${ev.groupA.caretakerTeacherName || 'Sin asignar'}<br>
-                            • 2do Turno (${relevoTime}-${ev.endTime}): ${ev.groupA.caretakerTurn2Name || 'Sin asignar'}
-                        </div>
-                        <div>
-                            <strong>🏫 Salón ${ev.groupB.classroom} (Grupo B):</strong><br>
-                            • 1er Turno (${ev.startTime}-${relevoTime}): ${ev.groupB.caretakerTeacherName || 'Sin asignar'}<br>
-                            • 2do Turno (${relevoTime}-${ev.endTime}): ${ev.groupB.caretakerTurn2Name || 'Sin asignar'}
-                        </div>
-                    `;
-                }
-            } else if ((ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single') {
-                const isMeca = ev.isMecanografia;
-                col3SalonesHtml = `
-                    <div>
-                        <strong>${isMeca ? '⌨️ Taller de Mecanografía' : '💻 Laboratorio de Computación'} (Todas las Secciones):</strong><br>
-                        • Catedráticos Evaluadores y Cuidadores: ${ev.courseTeacherName} (Docentes Titulares Autorizados)
-                    </div>
-                `;
-            } else if (Array.isArray(ev.sections) && ev.sections.length > 0) {
-                const isFull = ev.evaluationMode === 'SECCION_COMPLETA';
-                col3SalonesHtml = ev.sections.map(sec => {
-                    const secIsFull = isFull || sec.evaluationMode === 'SECCION_COMPLETA';
-                    if (secIsFull) {
-                        const sRoom = sec.singleRoom || sec.groupA || {};
-                        return `
-                            <div style="margin-bottom:6px; border-bottom:1px dashed #e2e8f0; padding-bottom:4px;">
-                                <strong style="color:#15803d; font-size:0.86rem;">📌 ${sec.section}:</strong><br>
-                                • <strong>Salón ${sRoom.classroom || 'Salón'} (Sección Completa ─ ${sRoom.range || 'Nómina'}):</strong> ${sRoom.caretakerTeacherName || 'Sin asignar'}
-                            </div>
-                        `;
-                    } else {
-                        return `
-                            <div style="margin-bottom:6px; border-bottom:1px dashed #e2e8f0; padding-bottom:4px;">
-                                <strong style="color:#15803d; font-size:0.86rem;">📌 ${sec.section}:</strong><br>
-                                • <strong>Salón ${sec.groupA.classroom} (Grupo A):</strong> ${sec.groupA.caretakerTeacherName || 'Sin asignar'}<br>
-                                • <strong>Salón ${sec.groupB.classroom} (Grupo B):</strong> ${sec.groupB.caretakerTeacherName || 'Sin asignar'}
-                            </div>
-                        `;
-                    }
-                }).join('');
-            } else {
-                if (ev.evaluationMode === 'SECCION_COMPLETA') {
-                    const sRoom = ev.singleRoom || ev.groupA || {};
-                    col3SalonesHtml = `
-                        <div style="margin-bottom:4px;">
-                            <strong>🏫 Salón ${sRoom.classroom || 'Salón'} (Sección Completa):</strong> ${sRoom.caretakerTeacherName || 'Sin asignar'}
-                        </div>
-                    `;
-                } else {
-                    col3SalonesHtml = `
-                        <div style="margin-bottom:4px;">
-                            <strong>🏫 Salón ${ev.groupA.classroom} (Grupo A):</strong> ${ev.groupA.caretakerTeacherName || 'Sin asignar'}
-                        </div>
-                        <div>
-                            <strong>🏫 Salón ${ev.groupB.classroom} (Grupo B):</strong> ${ev.groupB.caretakerTeacherName || 'Sin asignar'}
-                        </div>
-                    `;
-                }
-            }
-
-            // Sección 2: Titulares y Tiempos por Sección
-            let col2TitularesHtml = '';
-            if (Array.isArray(ev.sections) && ev.sections.length > 0) {
-                col2TitularesHtml = ev.sections.map(sec => {
-                    const secDur = sec.durationMinutes || ev.durationMinutes;
-                    const secStart = sec.startTime || ev.startTime;
-                    const secEnd = sec.endTime || ev.endTime;
-                    return `
-                        <div style="margin-bottom:5px; border-bottom:1px dashed #e2e8f0; padding-bottom:3px;">
-                            • <strong>${sec.section}:</strong> ${sec.teacherName}<br>
-                            <span style="font-size:0.78rem; color:#b45309; font-weight:700;">⏱️ ${secDur} min (${secStart} a ${secEnd} hrs)</span>
-                        </div>
-                    `;
-                }).join('');
-            } else if (Array.isArray(ev.titularTeachers) && ev.titularTeachers.length > 0) {
-                col2TitularesHtml = ev.titularTeachers.map(tit => `
-                    <div style="margin-bottom:2px;">• <strong>${tit.section}:</strong> ${tit.teacherName}</div>
-                `).join('');
-            } else {
-                col2TitularesHtml = `<div>• <strong>Titular:</strong> ${ev.courseTeacherName}</div>`;
-            }
+        timeIntervals.forEach((slot, sIdx) => {
+            const [slotStart, slotEnd] = slot.split(' a ');
+            const timeColWidth = colCount === 3 ? '13%' : '15%';
+            const gradeColWidth = colCount === 3 ? '29%' : '42.5%';
 
             rowsHtml += `
                 <tr>
-                    <td style="padding:10px 12px; border:1px solid #cbd5e1; vertical-align:top; width:33%;">
-                        <div style="font-weight:900; font-size:1.02rem; color:#0f172a;">⏰ ${ev.startTime} a ${ev.endTime} hrs</div>
-                        <div style="font-weight:800; font-size:0.95rem; color:#15803d; margin-top:2px;">${ev.academicGradeName || ev.gradeName}</div>
-                        <div style="font-weight:700; font-size:0.92rem; color:#1e293b;">📘 ${ev.courseName}</div>
-                        ${ev.isPractica ? '<span style="font-size:0.75rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:3px; font-weight:800; display:inline-block; margin-top:4px;">GRADUANDOS - PRÁCTICA SUPERVISADA</span>' : ''}
+                    <td style="padding:10px 12px; border:1px solid #cbd5e1; vertical-align:top; background:#f8fafc; width:${timeColWidth};">
+                        <div style="font-weight:900; font-size:1rem; color:#0f172a;">⏰ ${slot} hrs</div>
+                        <div style="font-size:0.75rem; color:#64748b; font-weight:700; margin-top:3px;">BLOQUE DE EVALUACIÓN</div>
                     </td>
-                    <td style="padding:10px 12px; border:1px solid #cbd5e1; vertical-align:top; width:33%;">
-                        <div style="font-weight:800; font-size:0.86rem; color:#0f172a; margin-bottom:4px;">👤 Catedráticos Titulares:</div>
-                        <div style="font-size:0.82rem; color:#334155; line-height:1.3;">
-                            ${col2TitularesHtml}
-                        </div>
-                        <div style="font-weight:800; font-size:0.86rem; color:#b45309; margin-top:8px;">
-                            ⏱️ Bloque Máximo: <strong>${ev.durationMinutes} minutos</strong>
-                        </div>
-                    </td>
-                    <td style="padding:10px 12px; border:1px solid #cbd5e1; vertical-align:top; width:34%; font-size:0.84rem; color:#0f172a;">
-                        ${col3SalonesHtml}
-                    </td>
-                </tr>
             `;
 
-            // Si hay receso posterior y no es la última evaluación
-            if (ev.recessMinutes > 0 && idx < dayObj.evaluations.length - 1) {
-                const recStart = ev.endTime;
-                const recEnd = minutesToTimeString(timeStringToMinutes(ev.endTime) + ev.recessMinutes);
-                rowsHtml += `
-                    <tr style="background:#f1f5f9;">
-                        <td colspan="3" style="padding:6px 12px; border:1px solid #cbd5e1; text-align:center; font-weight:800; font-size:0.84rem; color:#475569;">
-                            ☕ RECESO INSTITUCIONAL Y CAMBIO DE SALONES: ${recStart} a ${recEnd} hrs (${ev.recessMinutes} MINUTOS)
+            activeCols.forEach(col => {
+                const matchEvals = evs.filter(e => {
+                    const cg = classifyGradeForDay(e);
+                    return cg.key === col.key && e.startTime === slotStart && e.endTime === slotEnd;
+                });
+
+                if (matchEvals.length === 0) {
+                    rowsHtml += `
+                        <td style="padding:10px 12px; border:1px solid #cbd5e1; vertical-align:middle; text-align:center; color:#94a3b8; font-style:italic; font-size:0.84rem; width:${gradeColWidth};">
+                            Sin evaluación a este horario
                         </td>
-                    </tr>
-                `;
-            }
+                    `;
+                } else {
+                    let cellHtml = matchEvals.map(ev => {
+                        const isFull = ev.evaluationMode === 'SECCION_COMPLETA';
+                        let salonesHtml = '';
+
+                        if (ev.isPractica) {
+                            const relevoTime = minutesToTimeString(timeStringToMinutes(ev.startTime) + Math.round(ev.durationMinutes / 2));
+                            salonesHtml = `
+                                <div style="margin-top:6px; font-size:0.82rem; background:#eff6ff; padding:6px; border-radius:4px; border:1px solid #bfdbfe;">
+                                    <strong>🏫 Salón ${ev.groupA.classroom} (A):</strong> ${ev.groupA.caretakerTeacherName || 'N/A'} / Relevo: ${ev.groupA.caretakerTurn2Name || 'N/A'}<br>
+                                    <strong>🏫 Salón ${ev.groupB.classroom} (B):</strong> ${ev.groupB.caretakerTeacherName || 'N/A'} / Relevo: ${ev.groupB.caretakerTurn2Name || 'N/A'}
+                                </div>
+                            `;
+                        } else if ((ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single') {
+                            const isMeca = ev.isMecanografia;
+                            salonesHtml = `
+                                <div style="margin-top:6px; font-size:0.82rem; background:${isMeca ? '#fffbeb' : '#f0f9ff'}; padding:6px; border-radius:4px; border:1px solid ${isMeca ? '#fde68a' : '#bae6fd'};">
+                                    <strong>${isMeca ? '⌨️ Taller de Mecanografía' : '💻 Lab. Computación'}:</strong><br>
+                                    • Evaluadores y Cuidadores: <strong>${ev.courseTeacherName}</strong> (Docentes Titulares)
+                                </div>
+                            `;
+                        } else if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                            salonesHtml = ev.sections.map(sec => {
+                                const secIsFull = isFull || sec.evaluationMode === 'SECCION_COMPLETA';
+                                if (secIsFull) {
+                                    const sRoom = sec.singleRoom || sec.groupA || {};
+                                    return `
+                                        <div style="margin-top:4px; font-size:0.82rem; border-bottom:1px dashed #e2e8f0; padding-bottom:3px;">
+                                            <strong style="color:#15803d;">📌 ${sec.section}:</strong> Salón ${sRoom.classroom || 'Salón'} (Sección Completa ─ ${sRoom.range || 'Nómina'})<br>
+                                            • Cuidador: <strong>${sRoom.caretakerTeacherName || 'Sin asignar'}</strong>
+                                        </div>
+                                    `;
+                                } else {
+                                    return `
+                                        <div style="margin-top:4px; font-size:0.82rem; border-bottom:1px dashed #e2e8f0; padding-bottom:3px;">
+                                            <strong style="color:#15803d;">📌 ${sec.section}:</strong><br>
+                                            • Salón ${sec.groupA.classroom} (A): <strong>${sec.groupA.caretakerTeacherName || 'Sin asignar'}</strong><br>
+                                            • Salón ${sec.groupB.classroom} (B): <strong>${sec.groupB.caretakerTeacherName || 'Sin asignar'}</strong>
+                                        </div>
+                                    `;
+                                }
+                            }).join('');
+                        } else {
+                            if (isFull) {
+                                const sRoom = ev.singleRoom || ev.groupA || {};
+                                salonesHtml = `
+                                    <div style="margin-top:4px; font-size:0.82rem;">
+                                        <strong>Salón ${sRoom.classroom || 'Salón'} (Sección Completa):</strong> <strong>${sRoom.caretakerTeacherName || 'Sin asignar'}</strong>
+                                    </div>
+                                `;
+                            } else {
+                                salonesHtml = `
+                                    <div style="margin-top:4px; font-size:0.82rem;">
+                                        • Salón ${ev.groupA.classroom} (A): <strong>${ev.groupA.caretakerTeacherName || 'Sin asignar'}</strong><br>
+                                        • Salón ${ev.groupB.classroom} (B): <strong>${ev.groupB.caretakerTeacherName || 'Sin asignar'}</strong>
+                                    </div>
+                                `;
+                            }
+                        }
+
+                        // Titulares
+                        let titularesHtml = '';
+                        if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                            titularesHtml = ev.sections.map(s => `${s.section}: ${s.teacherName}`).join(' | ');
+                        } else {
+                            titularesHtml = ev.courseTeacherName || 'Sin asignar';
+                        }
+
+                        return `
+                            <div style="margin-bottom:8px; border-bottom:1px solid #cbd5e1; padding-bottom:6px;">
+                                <div style="font-weight:900; font-size:0.95rem; color:#0f172a;">📘 ${ev.courseName}</div>
+                                <div style="font-size:0.8rem; color:#334155; margin-top:2px;">👤 <strong>Titular(es):</strong> ${titularesHtml}</div>
+                                <div style="font-size:0.78rem; color:#b45309; font-weight:700;">⏱️ Tiempo: ${ev.durationMinutes} min ${isFull ? '• [SECCIÓN COMPLETA]' : '• [MEDIAS SECCIONES A/B]'}</div>
+                                <div style="margin-top:4px;">${salonesHtml}</div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    rowsHtml += `
+                        <td style="padding:10px 12px; border:1px solid #cbd5e1; vertical-align:top; width:${gradeColWidth};">
+                            ${cellHtml}
+                        </td>
+                    `;
+                }
+            });
+
+            rowsHtml += `</tr>`;
         });
 
         const printContent = `
@@ -2784,7 +3031,7 @@
                                 Jornada Matutina — Ciclo Escolar ${(STATE && STATE.activeCycle) || '2026'} — Auxiliatura General
                             </div>
                             <div style="font-size:0.95rem; font-weight:900; color:#15803d; margin-top:3px;">
-                                📅 HORARIO OFICIAL DE EVALUACIONES: ${dayFormatted}
+                                📅 HORARIO OFICIAL DE EVALUACIONES (${colCount} COLUMNAS): ${dayFormatted}
                             </div>
                         </td>
                     </tr>
@@ -2793,9 +3040,10 @@
                 <table class="main-table">
                     <thead>
                         <tr>
-                            <th style="width:33%;">1. HORARIO Y ASIGNATURA</th>
-                            <th style="width:33%;">2. TITULAR Y TIEMPO ASIGNADO</th>
-                            <th style="width:34%;">3. SALONES Y DOCENTES CUIDADORES</th>
+                            <th style="width:${colCount === 3 ? '13%' : '15%'};">⏰ HORARIO</th>
+                            ${activeCols.map(col => `
+                                <th style="width:${colCount === 3 ? '29%' : '42.5%'};">🎓 ${col.title.toUpperCase()}</th>
+                            `).join('')}
                         </tr>
                     </thead>
                     <tbody>
@@ -3466,7 +3714,9 @@
         printAllNominasOfBimester,
         printConsolidatedCalendarPdf,
         getInstitutionalActiveBimester,
-        getCurrentScheduleKey
+        getCurrentScheduleKey,
+        getActiveGradeColumnsForDay,
+        classifyGradeForDay
     };
 
     if (typeof module !== 'undefined' && module.exports) {

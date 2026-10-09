@@ -5,19 +5,32 @@
 const https = require('https');
 const assert = require('assert');
 
-function fetchJson(url) {
+function fetchJson(url, retries = 3) {
     return new Promise((resolve, reject) => {
-        https.get(url, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                try {
-                    resolve(JSON.parse(data));
-                } catch (e) {
-                    reject(e);
-                }
+        const attempt = (n) => {
+            const req = https.get(url, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    try {
+                        resolve(JSON.parse(data));
+                    } catch (e) {
+                        if (n > 1) setTimeout(() => attempt(n - 1), 600);
+                        else reject(e);
+                    }
+                });
             });
-        }).on('error', reject);
+            req.on('error', (err) => {
+                if (n > 1) setTimeout(() => attempt(n - 1), 600);
+                else reject(err);
+            });
+            req.setTimeout(8000, () => {
+                req.destroy();
+                if (n > 1) setTimeout(() => attempt(n - 1), 600);
+                else reject(new Error('Timeout de conexión a Firebase RTDB'));
+            });
+        };
+        attempt(retries);
     });
 }
 
