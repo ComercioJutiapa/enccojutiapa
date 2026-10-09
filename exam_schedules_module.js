@@ -3485,11 +3485,11 @@
             const evs = d.evaluations || [];
             if (evs.length === 0) {
                 daysTablesHtml += `
-                    <div style="margin-bottom:18px; page-break-inside:avoid;">
-                        <div style="background:#0f172a; color:#ffffff; padding:7px 12px; font-size:0.9rem; font-weight:800; border-radius:4px 4px 0 0;">
+                    <div class="calendar-day-block">
+                        <div class="calendar-day-header">
                             📅 ${dFormatted} ${d.isPracticaDay ? '─ (JORNADA EXCLUSIVA DE PRÁCTICA SUPERVISADA)' : ''}
                         </div>
-                        <div style="border:1px solid #cbd5e1; padding:12px; text-align:center; color:#64748b; font-size:0.85rem;">
+                        <div style="border:1px solid #cbd5e1; padding:8px; text-align:center; color:#64748b; font-size:0.8rem;">
                             Sin evaluaciones programadas para este día.
                         </div>
                     </div>
@@ -3560,18 +3560,18 @@
 
                     evRows += `
                         <tr>
-                            <td style="border:1px solid #cbd5e1; padding:6px 8px; font-weight:800; font-size:0.82rem; vertical-align:top; white-space:nowrap;">
+                            <td style="border:1px solid #cbd5e1; padding:4px 6px; font-weight:800; font-size:0.8rem; vertical-align:top; white-space:nowrap;">
                                 ${ev.startTime} - ${ev.endTime}
                             </td>
-                            <td style="border:1px solid #cbd5e1; padding:6px 8px; font-size:0.82rem; vertical-align:top;">
+                            <td style="border:1px solid #cbd5e1; padding:4px 6px; font-size:0.8rem; vertical-align:top;">
                                 <strong style="color:#0f172a;">${ev.courseName}</strong><br>
                                 <small style="color:#475569; font-weight:700;">Titular(es): ${titularesStr}</small><br>
                                 ${modoBadge}
                             </td>
-                            <td style="border:1px solid #cbd5e1; padding:6px 8px; text-align:center; font-weight:700; font-size:0.82rem; vertical-align:top;">
+                            <td style="border:1px solid #cbd5e1; padding:4px 6px; text-align:center; font-weight:700; font-size:0.8rem; vertical-align:top;">
                                 ${ev.durationMinutes} min
                             </td>
-                            <td style="border:1px solid #cbd5e1; padding:6px 8px; font-size:0.8rem; line-height:1.35; vertical-align:top;">
+                            <td style="border:1px solid #cbd5e1; padding:4px 6px; font-size:0.78rem; line-height:1.3; vertical-align:top;">
                                 ${cuidadoresStr}
                             </td>
                         </tr>
@@ -3579,18 +3579,18 @@
                 });
 
                 dayGradesTablesHtml += `
-                    <div style="margin-top:10px; margin-bottom:12px; border:1px solid #cbd5e1; border-radius:4px; overflow:hidden;">
-                        <div style="background:#1e293b; color:#ffffff; padding:5px 10px; font-size:0.82rem; font-weight:800; display:flex; justify-content:space-between; align-items:center;">
+                    <div class="calendar-grade-box">
+                        <div class="calendar-grade-header">
                             <span>🎓 ${gradeName.toUpperCase()}</span>
                             <span style="font-size:0.75rem; color:#cbd5e1; font-weight:600;">(${gradeEvals.length} evaluación/es)</span>
                         </div>
-                        <table style="width:100%; border-collapse:collapse;">
+                        <table class="calendar-table">
                             <thead>
-                                <tr style="background:#f8fafc; font-size:0.76rem; font-weight:800; color:#334155;">
-                                    <th style="border:1px solid #cbd5e1; padding:5px; width:15%; text-align:left;">HORARIO</th>
-                                    <th style="border:1px solid #cbd5e1; padding:5px; width:45%; text-align:left;">ASIGNATURA Y CATEDRÁTICOS TITULARES</th>
-                                    <th style="border:1px solid #cbd5e1; padding:5px; width:10%; text-align:center;">DURACIÓN</th>
-                                    <th style="border:1px solid #cbd5e1; padding:5px; width:30%; text-align:left;">SALONES Y CUIDADORES ASIGNADOS</th>
+                                <tr style="background:#f8fafc; font-size:0.74rem; font-weight:800; color:#334155;">
+                                    <th style="width:14%; text-align:left;">HORARIO</th>
+                                    <th style="width:44%; text-align:left;">ASIGNATURA Y CATEDRÁTICOS TITULARES</th>
+                                    <th style="width:10%; text-align:center;">DURACIÓN</th>
+                                    <th style="width:32%; text-align:left;">SALONES Y CUIDADORES ASIGNADOS</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -3602,11 +3602,11 @@
             });
 
             daysTablesHtml += `
-                <div style="margin-bottom:20px; page-break-inside:avoid;">
-                    <div style="background:#0f172a; color:#ffffff; padding:7px 12px; font-size:0.9rem; font-weight:900; border-radius:4px 4px 0 0;">
+                <div class="calendar-day-block">
+                    <div class="calendar-day-header">
                         📅 ${dFormatted} ${d.isPracticaDay ? '─ (JORNADA EXCLUSIVA DE PRÁCTICA SUPERVISADA)' : ''}
                     </div>
-                    <div style="padding:2px 0;">
+                    <div style="padding:0;">
                         ${dayGradesTablesHtml}
                     </div>
                 </div>
@@ -3620,14 +3620,90 @@
                 <meta charset="UTF-8">
                 <title>Calendario General de Evaluaciones - Bimestre ${bimesterSelectVal}</title>
                 <style>
-                    @page { size: letter landscape; margin: 12mm 15mm; }
-                    body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; padding: 0; }
+                    @page {
+                        size: letter landscape;
+                        margin: 8mm 10mm;
+                    }
+                    * {
+                        box-sizing: border-box;
+                    }
+                    body {
+                        font-family: Arial, sans-serif;
+                        color: #0f172a;
+                        margin: 0;
+                        padding: 0;
+                        background: #ffffff;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .calendar-header-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-bottom: 8px;
+                        border-bottom: 2px solid #0f172a;
+                        padding-bottom: 4px;
+                        page-break-after: avoid;
+                        break-after: avoid;
+                    }
+                    .calendar-day-block {
+                        margin-bottom: 12px;
+                        page-break-inside: auto;
+                        break-inside: auto;
+                    }
+                    .calendar-day-header {
+                        background: #0f172a !important;
+                        color: #ffffff !important;
+                        padding: 5px 10px;
+                        font-size: 0.86rem;
+                        font-weight: 900;
+                        border-radius: 4px 4px 0 0;
+                        page-break-after: avoid;
+                        break-after: avoid;
+                    }
+                    .calendar-grade-box {
+                        margin-top: 5px;
+                        margin-bottom: 8px;
+                        border: 1px solid #cbd5e1;
+                        border-radius: 4px;
+                        page-break-inside: auto;
+                        break-inside: auto;
+                    }
+                    .calendar-grade-header {
+                        background: #1e293b !important;
+                        color: #ffffff !important;
+                        padding: 4px 8px;
+                        font-size: 0.78rem;
+                        font-weight: 800;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        page-break-after: avoid;
+                        break-after: avoid;
+                    }
+                    .calendar-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        page-break-inside: auto;
+                    }
+                    .calendar-table thead {
+                        display: table-header-group;
+                    }
+                    .calendar-table tr {
+                        page-break-inside: avoid;
+                        break-inside: avoid;
+                    }
+                    .calendar-table th, .calendar-table td {
+                        border: 1px solid #cbd5e1;
+                        padding: 4px 6px;
+                        font-size: 0.76rem;
+                        vertical-align: top;
+                    }
                 </style>
             </head>
             <body>
-                <table style="width:100%; border-collapse:collapse; margin-bottom:12px; border-bottom:2px solid #0f172a; padding-bottom:6px;">
+                <table class="calendar-header-table">
                     <tr>
-                        <td style="width:65px;"><img src="logo.png" onerror="this.src='portada-comercio-principal.webp'" style="height:55px;"></td>
+                        <td style="width:65px;"><img src="logo.png" onerror="this.src='portada-comercio-principal.webp'" style="height:50px;"></td>
                         <td style="padding-left:12px;">
                             <div style="font-size:1.15rem; font-weight:900;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES — JUTIAPA</div>
                             <div style="font-size:0.85rem; color:#475569; font-weight:700;">CALENDARIO GENERAL DE EVALUACIONES BIMESTRALES ─ CICLO LECTIVO ${(STATE && STATE.activeCycle) || '2026'}</div>
