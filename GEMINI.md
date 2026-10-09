@@ -20,3 +20,14 @@ El usuario ha establecido de forma permanente la política de **"Modo Silencioso
    - Limitar a un máximo estricto de 3 respaldos históricos para economizar almacenamiento (rotación automática).
    - Mantener actualizado el archivo ZIP raíz `plataforma_escuela_comercio_completa.zip`.
    - Realizar commit y sincronización obligatoria a GitHub (`git push origin main`).
+
+## Reglas de Oro de Ingeniería, Diseño y Experiencia de Usuario
+5. **Pensamiento Holístico Full-Stack y de Bases de Datos**:
+   - Actuar y diseñar siempre en simultáneo como:
+     * **Programador & Arquitecto Backend**: Código robusto, modular, libre de regresiones, con manejo seguro de errores, validaciones defensivas y alto rendimiento.
+     * **Diseñador Frontend & UI/UX**: Estética moderna, limpia, coherente con la identidad institucional, excelente jerarquía visual, contraste descansado y tipografía nítida.
+     * **Diseñador de Bases de Datos**: Integridad referencial absoluta, modelos de datos consistentes, aislamiento por ciclos y bimestres, previniendo redundancia destructiva o pérdida de datos históricos.
+
+6. **Funcionalidad Inquebrantable e Intuición Extrema para el Usuario Final**:
+   - Preservar siempre la funcionalidad, fórmulas institucionales y reglas de negocio sin excepciones.
+   - Diseñar pensando 100% en el usuario final (directores, secretaría, auxiliares y docentes): interfaces ultrasencillas, sin saturación visual ("cero ruido cognitivo"), flujos directos y elementos tan intuitivos y limpios que no requieran manuales ni provoquen dudas.

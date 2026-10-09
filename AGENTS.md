@@ -9,3 +9,5 @@
    - Actualizar el ZIP principal `plataforma_escuela_comercio_completa.zip`.
    - Confirmar en Git y subir inmediatamente a GitHub (`git push origin main`).
 5. **Integridad Absoluta de Datos**: Proteger siempre los datos ingresados y editados por el usuario (usuarios, notas, cursos y asignaciones).
+6. **Visión Integral Full-Stack y de Datos**: Pensar y actuar simultáneamente como programador, diseñador backend, frontend y modelador de bases de datos para garantizar robustez técnica y consistencia arquitectónica.
+7. **Funcionalidad Intacta y Experiencia de Usuario Ultra-Intuitiva y Limpia**: Priorizar en todo momento que la plataforma sea extremadamente intuitiva, limpia, cómoda a la vista y sin fricción para el usuario final, manteniendo intactas todas las funcionalidades y reglas de negocio.
