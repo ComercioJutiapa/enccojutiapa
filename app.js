@@ -19963,11 +19963,11 @@ function buildStudentReportCardInnerHtml(s) {
                     </tfoot>
                 </table>
 
-                <!-- BLOQUE DE FIRMA ÚNICA EXCLUSIVA DE LA DIRECCIÓN -->
-                <div style="display:flex; justify-content:center; align-items:flex-end; margin-top:2px; padding-bottom:1px;">
-                    <div style="width:260px; text-align:center; position:relative;">
-                        <img src="firma_director_sello.png" alt="Sello y Firma de Dirección" style="position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:90px; height:auto; pointer-events:none; opacity:0.96; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.12));">
-                        <div style="border-top:1.5px solid #000000; margin-top:16px; padding-top:2px;">
+                <!-- BLOQUE DE FIRMA ÚNICA EXCLUSIVA DE LA DIRECCIÓN ELEVADA -->
+                <div style="display:flex; justify-content:center; align-items:center; margin-top:${isDense ? '10px' : '16px'}; margin-bottom:${isDense ? '4px' : '8px'};">
+                    <div style="width:280px; text-align:center; position:relative;">
+                        <img src="firma_director_sello.png" alt="Sello y Firma de Dirección" style="position:absolute; bottom:38px; left:50%; transform:translateX(-50%); width:${isDense ? '92px' : '100px'}; height:auto; pointer-events:none; opacity:0.96; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.12));">
+                        <div style="border-top:1.5px solid #000000; margin-top:${isDense ? '36px' : '44px'}; padding-top:3px;">
                             <div style="font-size:11px; font-weight:900; color:#0f172a; line-height:1.2;">${dirName}</div>
                             <div style="font-size:9.5px; font-weight:700; color:#475569; line-height:1.15;">${dirTitle}</div>
                             <div style="font-size:8.5px; font-weight:600; color:#64748b; line-height:1.15;">Escuela Nacional de Ciencias Comerciales — Jutiapa</div>
