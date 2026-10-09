@@ -437,6 +437,13 @@
                 bimester: key.split('_')[1] || 'BIM3',
                 days: []
             };
+        } else {
+            // Sincronizar y reconciliar titulares en memoria con el pensum oficial
+            try {
+                reconcileScheduleBlockTitulars(all[key]);
+            } catch (e) {
+                console.warn("Aviso en reconcileScheduleBlockTitulars:", e);
+            }
         }
         return all[key];
     }
@@ -743,6 +750,45 @@
         return Array.from(map.values());
     }
 
+    // Comparación estricta y canónica de nombres de materias evitando colisiones de sufijos (I vs II vs III, 1 vs 2 vs 3)
+    function isSameSubject(nameA, nameB) {
+        if (!nameA || !nameB) return false;
+        const normSub = (str) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+        const normA = normSub(nameA);
+        const normB = normSub(nameB);
+        if (normA === normB) return true;
+
+        const getLevelSuffix = (str) => {
+            const m = str.match(/\b(I{1,3}|IV|V|VI|[1-6])\b\s*$/i);
+            if (!m) return null;
+            const val = m[1].toUpperCase();
+            if (val === '1') return 'I';
+            if (val === '2') return 'II';
+            if (val === '3') return 'III';
+            if (val === '4') return 'IV';
+            if (val === '5') return 'V';
+            if (val === '6') return 'VI';
+            return val;
+        };
+
+        const suffA = getLevelSuffix(normA);
+        const suffB = getLevelSuffix(normB);
+
+        // Si difieren en sufijo numérico/romano (ej. Inglés Comercial I vs II), NUNCA coinciden
+        if (suffA && suffB && suffA !== suffB) return false;
+        // Si uno tiene sufijo y el otro no (ej. Inglés Comercial vs Inglés Comercial II), no coinciden
+        if ((suffA && !suffB) || (!suffA && suffB)) return false;
+
+        // Si ambos tienen el mismo sufijo, comparar la raíz
+        if (suffA && suffB && suffA === suffB) {
+            const baseA = normA.replace(/\b(I{1,3}|IV|V|VI|[1-6])\b\s*$/i, '').trim();
+            const baseB = normB.replace(/\b(I{1,3}|IV|V|VI|[1-6])\b\s*$/i, '').trim();
+            return (baseA === baseB) || (baseA.includes(baseB) && baseB.length > 4) || (baseB.includes(baseA) && baseA.length > 4);
+        }
+
+        return (normA.includes(normB) && normB.length > 4) || (normB.includes(normA) && normA.length > 4);
+    }
+
     // Obtener las materias únicas para un Grado Académico consolidado
     function getCoursesForAcademicGrade(academicGradeName) {
         if (!academicGradeName) return [];
@@ -760,15 +806,20 @@
 
         (STATE.pensum || []).forEach(p => {
             const rawP = normSub((p.grade || '') + ' ' + (p.gradeCode || ''));
-            const matchesGrade = (targetGradeNum > 0 && rawP.includes(String(targetGradeNum))) || 
-                                 rawP.includes(termNorm) || 
-                                 (p.grade && normSub(p.grade) === termNorm);
-            if (matchesGrade) {
-                const sub = (p.subject || p.name || p.subjectName || '').trim();
-                if (sub && !seen.has(sub.toUpperCase())) {
-                    seen.add(sub.toUpperCase());
-                    courses.push(sub);
-                }
+            if (targetGradeNum > 0) {
+                if (targetGradeNum === 5 && (rawP.includes('4TO') || rawP.includes('CUARTO') || rawP.includes('6TO') || rawP.includes('SEXTO'))) return;
+                if (targetGradeNum === 4 && (rawP.includes('5TO') || rawP.includes('QUINTO') || rawP.includes('6TO') || rawP.includes('SEXTO'))) return;
+                if (targetGradeNum === 6 && (rawP.includes('4TO') || rawP.includes('CUARTO') || rawP.includes('5TO') || rawP.includes('QUINTO'))) return;
+                if (!rawP.includes(String(targetGradeNum))) return;
+            } else {
+                const matchesGrade = rawP.includes(termNorm) || (p.grade && normSub(p.grade) === termNorm);
+                if (!matchesGrade) return;
+            }
+
+            const sub = (p.subject || p.name || p.subjectName || '').trim();
+            if (sub && !seen.has(sub.toUpperCase())) {
+                seen.add(sub.toUpperCase());
+                courses.push(sub);
             }
         });
 
@@ -789,11 +840,21 @@
         else if (termNorm.includes('5') || termNorm.includes('QUINTO') || termNorm.includes('5TO')) targetGradeNum = 5;
         else if (termNorm.includes('4') || termNorm.includes('CUARTO') || termNorm.includes('4TO')) targetGradeNum = 4;
 
+        // Si targetGradeNum aún es 0, inferir del sufijo del curso si es un curso numerado
+        if (targetGradeNum === 0) {
+            if (subNorm.endsWith(' III') || subNorm.endsWith(' 3')) targetGradeNum = 6;
+            else if (subNorm.endsWith(' II') || subNorm.endsWith(' 2')) targetGradeNum = 5;
+            else if (subNorm.endsWith(' I') || subNorm.endsWith(' 1')) targetGradeNum = 4;
+        }
+
         // 1. Identificar grados/secciones coincidentes en gradesList
         let matchingGrades = (STATE.gradesList || []).filter(g => {
             let base = (g.name || g.code || '').replace(/\s+Secci[oó]n\s+[A-D]/i, '').replace(/\s+[A-D]$/i, '').trim().toUpperCase();
+            const gRaw = normSub((g.name || '') + ' ' + (g.code || ''));
             if (targetGradeNum > 0) {
-                const gRaw = normSub((g.name || '') + ' ' + (g.code || ''));
+                if (targetGradeNum === 5 && (gRaw.includes('4TO') || gRaw.includes('CUARTO') || gRaw.includes('6TO') || gRaw.includes('SEXTO'))) return false;
+                if (targetGradeNum === 4 && (gRaw.includes('5TO') || gRaw.includes('QUINTO') || gRaw.includes('6TO') || gRaw.includes('SEXTO'))) return false;
+                if (targetGradeNum === 6 && (gRaw.includes('4TO') || gRaw.includes('CUARTO') || gRaw.includes('5TO') || gRaw.includes('QUINTO'))) return false;
                 if (gRaw.includes(String(targetGradeNum))) return true;
             }
             return base === term || ((g.name || '').toUpperCase().includes(term));
@@ -804,18 +865,23 @@
             const seenSecs = new Set();
             (STATE.pensum || []).forEach(p => {
                 const rawP = normSub((p.grade || '') + ' ' + (p.gradeCode || ''));
-                const matchesGrade = (targetGradeNum > 0 && rawP.includes(String(targetGradeNum))) || rawP.includes(termNorm);
-                if (matchesGrade) {
-                    const sec = (p.section || 'Sección A').trim();
-                    const secNorm = normSub(sec);
-                    if (!seenSecs.has(secNorm)) {
-                        seenSecs.add(secNorm);
-                        matchingGrades.push({
-                            code: p.gradeCode || `${academicGradeName} ${sec}`,
-                            name: academicGradeName,
-                            section: sec
-                        });
-                    }
+                if (targetGradeNum > 0) {
+                    if (targetGradeNum === 5 && (rawP.includes('4TO') || rawP.includes('CUARTO') || rawP.includes('6TO') || rawP.includes('SEXTO'))) return;
+                    if (targetGradeNum === 4 && (rawP.includes('5TO') || rawP.includes('QUINTO') || rawP.includes('6TO') || rawP.includes('SEXTO'))) return;
+                    if (targetGradeNum === 6 && (rawP.includes('4TO') || rawP.includes('CUARTO') || rawP.includes('5TO') || rawP.includes('QUINTO'))) return;
+                    if (!rawP.includes(String(targetGradeNum))) return;
+                } else if (!rawP.includes(termNorm)) {
+                    return;
+                }
+                const sec = (p.section || 'Sección A').trim();
+                const secNorm = normSub(sec);
+                if (!seenSecs.has(secNorm)) {
+                    seenSecs.add(secNorm);
+                    matchingGrades.push({
+                        code: p.gradeCode || `${academicGradeName} ${sec}`,
+                        name: academicGradeName,
+                        section: sec
+                    });
                 }
             });
         }
@@ -831,17 +897,19 @@
             const pMatch = (STATE.pensum || []).find(p => {
                 // Verificar estrictamente el grado para evitar colisiones con cursos de otros grados
                 const rawP = normSub((p.grade || '') + ' ' + (p.gradeCode || ''));
-                const matchesGrade = (targetGradeNum > 0 && rawP.includes(String(targetGradeNum))) || 
-                                     rawP.includes(termNorm) || 
-                                     (p.grade && normSub(p.grade) === termNorm);
-                if (!matchesGrade) return false;
+                if (targetGradeNum > 0) {
+                    if (targetGradeNum === 5 && (rawP.includes('4TO') || rawP.includes('CUARTO') || rawP.includes('6TO') || rawP.includes('SEXTO'))) return false;
+                    if (targetGradeNum === 4 && (rawP.includes('5TO') || rawP.includes('QUINTO') || rawP.includes('6TO') || rawP.includes('SEXTO'))) return false;
+                    if (targetGradeNum === 6 && (rawP.includes('4TO') || rawP.includes('CUARTO') || rawP.includes('5TO') || rawP.includes('QUINTO'))) return false;
+                    if (!rawP.includes(String(targetGradeNum))) return false;
+                } else {
+                    const matchesGrade = rawP.includes(termNorm) || (p.grade && normSub(p.grade) === termNorm);
+                    if (!matchesGrade) return false;
+                }
 
-                // Verificar materia
-                const pSubNorm = normSub(p.subject || p.name || p.subjectName);
-                const subMatch = (pSubNorm === subNorm) || 
-                                 (pSubNorm.includes(subNorm) && subNorm.length > 4) || 
-                                 (subNorm.includes(pSubNorm) && pSubNorm.length > 4);
-                if (!subMatch) return false;
+                // Verificar materia con isSameSubject
+                const pSub = p.subject || p.name || p.subjectName;
+                if (!isSameSubject(pSub, subjectName)) return false;
 
                 // Verificar sección
                 const pSec = (p.section || '').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase();
@@ -888,6 +956,66 @@
         });
 
         return sectionsInfo;
+    }
+
+    // Reconciliar y asegurar que los titulares de cada evaluación en el bloque de exámenes
+    // coincidan estrictamente con la fuente oficial del pensum institucional
+    function reconcileScheduleBlockTitulars(scheduleBlock) {
+        if (!scheduleBlock || !Array.isArray(scheduleBlock.days)) return false;
+        let modified = false;
+
+        scheduleBlock.days.forEach(day => {
+            (day.evaluations || []).forEach(ev => {
+                const gradeName = ev.academicGradeName || ev.gradeName;
+                const courseName = ev.courseName;
+                if (!gradeName || !courseName) return;
+
+                const freshTitulars = getSectionsAndTitularsForCourse(gradeName, courseName);
+                if (!freshTitulars || freshTitulars.length === 0) return;
+
+                const freshConsolidated = Array.from(new Set(freshTitulars.map(t => t.teacherName).filter(Boolean))).join(', ');
+                if (freshConsolidated && ev.courseTeacherName !== freshConsolidated) {
+                    ev.courseTeacherName = freshConsolidated;
+                    modified = true;
+                }
+                if (freshTitulars[0] && freshTitulars[0].teacherId && ev.courseTeacherId !== freshTitulars[0].teacherId) {
+                    ev.courseTeacherId = freshTitulars[0].teacherId;
+                    modified = true;
+                }
+
+                // Sincronizar titularTeachers
+                const newTitularTeachers = freshTitulars.map(t => ({
+                    section: t.section,
+                    teacherId: t.teacherId,
+                    teacherName: t.teacherName
+                }));
+                ev.titularTeachers = newTitularTeachers;
+
+                // Sincronizar cada sección individual
+                if (Array.isArray(ev.sections)) {
+                    ev.sections.forEach(sec => {
+                        const secLetter = (sec.sectionLetter || (sec.section || '').replace(/Secci[oó]n\s*/i, '').trim()).toUpperCase();
+                        const matchingTitular = freshTitulars.find(t => t.sectionLetter.toUpperCase() === secLetter || t.section === sec.section);
+                        if (matchingTitular) {
+                            if (sec.teacherName !== matchingTitular.teacherName) {
+                                sec.teacherName = matchingTitular.teacherName;
+                                modified = true;
+                            }
+                            if (sec.teacherId !== matchingTitular.teacherId) {
+                                sec.teacherId = matchingTitular.teacherId;
+                                modified = true;
+                            }
+                            if (matchingTitular.courseId && sec.courseId !== matchingTitular.courseId) {
+                                sec.courseId = matchingTitular.courseId;
+                                modified = true;
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        return modified;
     }
 
     // =========================================================================
@@ -1309,6 +1437,20 @@
 
     // Renderizar una evaluación específica dentro de un día
     function renderEvaluationItemHtml(dayObj, ev, evIdx) {
+        // Sincronizar en caliente los titulares oficiales de la materia desde pensum institucional
+        const freshTitulars = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
+        if (freshTitulars && freshTitulars.length > 0) {
+            ev.courseTeacherName = Array.from(new Set(freshTitulars.map(t => t.teacherName).filter(Boolean))).join(', ');
+            (ev.sections || []).forEach(sec => {
+                const secLetter = (sec.sectionLetter || (sec.section || '').replace(/Secci[oó]n\s*/i, '').trim()).toUpperCase();
+                const matched = freshTitulars.find(t => t.sectionLetter.toUpperCase() === secLetter || t.section === sec.section);
+                if (matched) {
+                    sec.teacherName = matched.teacherName;
+                    sec.teacherId = matched.teacherId;
+                }
+            });
+        }
+
         const isLimitExceeded = timeStringToMinutes(ev.endTime) > 750; // > 12:30 PM (750 min)
         const isPractica = ev.isPractica === true;
 
@@ -3106,12 +3248,9 @@
                         let titularesHtml = '';
                         if (Array.isArray(ev.sections) && ev.sections.length > 0) {
                             titularesHtml = ev.sections.map(s => {
-                                let tName = s.teacherName;
-                                if (!tName || tName === 'Sin docente asignado' || tName === 'Sin asignar') {
-                                    const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
-                                    const foundSec = fresh.find(f => f.sectionLetter === s.sectionLetter || f.section === s.section);
-                                    if (foundSec && foundSec.teacherName) tName = foundSec.teacherName;
-                                }
+                                const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
+                                const foundSec = fresh.find(f => f.sectionLetter === (s.sectionLetter || (s.section || '').replace(/Secci[oó]n\s*/i, '').trim()) || f.section === s.section);
+                                const tName = (foundSec && foundSec.teacherName) ? foundSec.teacherName : s.teacherName;
                                 return `<span style="display:inline-block; margin-right:4px; background:#f1f5f9; padding:1px 5px; border-radius:4px; border:1px solid #e2e8f0; font-size:0.75rem;"><strong>${s.section.replace('Sección ', '')}:</strong> ${tName || 'Sin asignar'}</span>`;
                             }).join(' ');
                         } else {
@@ -3420,16 +3559,9 @@
         const gradeCodeToUse = secObj ? secObj.gradeCode : ev.gradeCode;
         const secNameToUse = secObj ? secObj.section : '';
         const gradeNameToUse = secObj ? secObj.gradeName : ev.gradeName;
-        let titularNameToUse = (secObj && secObj.teacherName && secObj.teacherName !== 'Sin docente asignado') ? secObj.teacherName : ev.courseTeacherName;
-        if (!titularNameToUse || titularNameToUse === 'Sin docente asignado' || titularNameToUse === 'Catedráticos Titulares') {
-            const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
-            const foundSec = fresh.find(f => (secObj && f.sectionLetter === secObj.sectionLetter) || (secObj && f.section === secObj.section));
-            if (foundSec && foundSec.teacherName) {
-                titularNameToUse = foundSec.teacherName;
-            } else if (fresh.length > 0) {
-                titularNameToUse = fresh.map(f => f.teacherName).join(', ');
-            }
-        }
+        const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
+        const foundSec = fresh.find(f => (secObj && (f.sectionLetter === (secObj.sectionLetter || (secObj.section || '').replace(/Secci[oó]n\s*/i, '').trim()) || f.section === secObj.section)));
+        let titularNameToUse = (foundSec && foundSec.teacherName) ? foundSec.teacherName : ((secObj && secObj.teacherName && secObj.teacherName !== 'Sin docente asignado') ? secObj.teacherName : ev.courseTeacherName);
 
         const splitData = splitStudentsInTwoGroups(gradeCodeToUse, secNameToUse, gradeNameToUse);
         const studentList = isFullGroup
@@ -3868,12 +4000,9 @@
                     let titularesStr = '';
                     if (Array.isArray(ev.sections) && ev.sections.length > 0) {
                         titularesStr = ev.sections.map(sec => {
-                            let tName = sec.teacherName;
-                            if (!tName || tName === 'Sin asignar' || tName === 'Sin docente asignado') {
-                                const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
-                                const foundSec = fresh.find(f => f.sectionLetter === sec.sectionLetter || f.section === sec.section);
-                                if (foundSec && foundSec.teacherName) tName = foundSec.teacherName;
-                            }
+                            const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
+                            const foundSec = fresh.find(f => f.sectionLetter === (sec.sectionLetter || (sec.section || '').replace(/Secci[oó]n\s*/i, '').trim()) || f.section === sec.section);
+                            const tName = (foundSec && foundSec.teacherName) ? foundSec.teacherName : sec.teacherName;
                             return `${sec.section}: ${tName || 'Sin asignar'}`;
                         }).join(' | ');
                     } else {
@@ -4114,6 +4243,8 @@
         getDistinctAcademicGrades,
         getCoursesForAcademicGrade,
         getSectionsAndTitularsForCourse,
+        reconcileScheduleBlockTitulars,
+        isSameSubject,
         getInstitutionalSalonsList,
         autoAssignRandomProctors,
         autoPickProctorsForModal,

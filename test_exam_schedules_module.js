@@ -705,6 +705,93 @@ assert.notStrictEqual(updatedSecMedias.groupB.caretakerTeacherId, 'u_doc_1', 'El
 
 console.log('✅ Permiso de Cuido al Maestro Titular en Sección Completa y Exclusión Estricta en Medias Secciones Verificados.');
 
+// 21. Verificación Estricta de Asignación Docente para Inglés Comercial II (5to Perito) vs Inglés Comercial I (4to Perito)
+console.log('\n[Test 21] Verificando Asignación Estricta de Inglés Comercial II (Milvia Jacobo) y Reconciliación Oficial...');
+
+// A. Prueba de discriminación de materias con sufijos numéricos y romanos
+assert.strictEqual(mod.isSameSubject('Inglés Comercial I', 'Inglés Comercial II'), false, 'Inglés Comercial I NO debe coincidir con Inglés Comercial II');
+assert.strictEqual(mod.isSameSubject('Inglés Comercial II', 'Inglés Comercial I'), false, 'Inglés Comercial II NO debe coincidir con Inglés Comercial I');
+assert.strictEqual(mod.isSameSubject('Inglés Comercial II', 'Inglés Comercial 2'), true, 'Inglés Comercial II debe coincidir con Inglés Comercial 2');
+assert.strictEqual(mod.isSameSubject('Inglés Comercial', 'Inglés Comercial II'), false, 'Inglés Comercial base no debe colisionar con nivel II');
+
+// B. Configurar estado institucional representativo con 4to y 5to
+global.STATE.pensum = [
+    { id: 'pen-4-a', subject: 'Inglés Comercial I', teacher: 'Gamaliel Uzias Medrano Mayén', teacherId: 'usr-doc-09', grade: '4to Perito Contador', gradeCode: '4to A', section: 'Sección A' },
+    { id: 'pen-4-b', subject: 'Inglés Comercial I', teacher: 'Gamaliel Uzias Medrano Mayén', teacherId: 'usr-doc-09', grade: '4to Perito Contador', gradeCode: '4to B', section: 'Sección B' },
+    { id: 'pen-4-c', subject: 'Inglés Comercial I', teacher: 'Gamaliel Uzias Medrano Mayén', teacherId: 'usr-doc-09', grade: '4to Perito Contador', gradeCode: '4to C', section: 'Sección C' },
+    { id: 'pen-4-d', subject: 'Inglés Comercial I', teacher: 'Elda Argentina López Monzón', teacherId: 'usr-doc-14', grade: '4to Perito Contador', gradeCode: '4to D', section: 'Sección D' },
+    { id: 'pen-5-a', subject: 'Inglés Comercial II', teacher: 'Milvia Aracely Jacobo Escobar', teacherId: 'usr-doc-18', grade: '5to Perito Contador', gradeCode: '5to A', section: 'Sección A' },
+    { id: 'pen-5-b', subject: 'Inglés Comercial II', teacher: 'Milvia Aracely Jacobo Escobar', teacherId: 'usr-doc-18', grade: '5to Perito Contador', gradeCode: '5to B', section: 'Sección B' },
+    { id: 'pen-5-c', subject: 'Inglés Comercial II', teacher: 'Elda Argentina López Monzón', teacherId: 'usr-doc-14', grade: '5to Perito Contador', gradeCode: '5to C', section: 'Sección C' },
+    { id: 'pen-5-d', subject: 'Inglés Comercial II', teacher: 'Milvia Aracely Jacobo Escobar', teacherId: 'usr-doc-18', grade: '5to Perito Contador', gradeCode: '5to D', section: 'Sección D' }
+];
+
+global.STATE.gradesList = [
+    { id: '4A', code: '4to A', name: '4to Perito Contador', section: 'Sección A' },
+    { id: '4B', code: '4to B', name: '4to Perito Contador', section: 'Sección B' },
+    { id: '4C', code: '4to C', name: '4to Perito Contador', section: 'Sección C' },
+    { id: '4D', code: '4to D', name: '4to Perito Contador', section: 'Sección D' },
+    { id: '5A', code: '5to A', name: '5to Perito Contador', section: 'Sección A' },
+    { id: '5B', code: '5to B', name: '5to Perito Contador', section: 'Sección B' },
+    { id: '5C', code: '5to C', name: '5to Perito Contador', section: 'Sección C' },
+    { id: '5D', code: '5to D', name: '5to Perito Contador', section: 'Sección D' }
+];
+
+global.STATE.users = [
+    { id: 'usr-doc-09', name: 'Gamaliel Uzias Medrano Mayén', role: 'docente' },
+    { id: 'usr-doc-14', name: 'Elda Argentina López Monzón', role: 'docente' },
+    { id: 'usr-doc-18', name: 'Milvia Aracely Jacobo Escobar', role: 'docente' }
+];
+
+const res5to = mod.getSectionsAndTitularsForCourse('5to Perito Contador', 'Inglés Comercial II');
+assert.strictEqual(res5to.length, 4, 'Deben encontrarse 4 secciones para 5to');
+assert.strictEqual(res5to[0].teacherName, 'Milvia Aracely Jacobo Escobar', 'Sección A de 5to debe ser Milvia Jacobo');
+assert.strictEqual(res5to[1].teacherName, 'Milvia Aracely Jacobo Escobar', 'Sección B de 5to debe ser Milvia Jacobo');
+assert.strictEqual(res5to[2].teacherName, 'Elda Argentina López Monzón', 'Sección C de 5to debe ser Elda López');
+assert.strictEqual(res5to[3].teacherName, 'Milvia Aracely Jacobo Escobar', 'Sección D de 5to debe ser Milvia Jacobo');
+
+// Verificar que Gamaliel NO aparece asignado en NINGUNA sección de Inglés Comercial II
+const hasGamalielIn5to = res5to.some(s => s.teacherName.includes('Gamaliel') || s.teacherId === 'usr-doc-09');
+assert.strictEqual(hasGamalielIn5to, false, 'El profesor Gamaliel NUNCA debe aparecer en Inglés Comercial II');
+
+// C. Verificar función de reconciliación automática de horarios corruptos o desactualizados
+const mockCorruptBlock = {
+    days: [
+        {
+            id: 'd_test_corrupt',
+            date: '2026-10-16',
+            evaluations: [
+                {
+                    id: 'ev_ingles_2_corrupt',
+                    academicGradeName: '5to Perito Contador',
+                    gradeName: '5to Perito Contador',
+                    courseName: 'Inglés Comercial II',
+                    courseTeacherName: 'Gamaliel Uzias Medrano Mayén, Elda Argentina López Monzón',
+                    courseTeacherId: 'usr-doc-09',
+                    sections: [
+                        { section: 'Sección A', sectionLetter: 'A', teacherName: 'Gamaliel Uzias Medrano Mayén', teacherId: 'usr-doc-09' },
+                        { section: 'Sección B', sectionLetter: 'B', teacherName: 'Gamaliel Uzias Medrano Mayén', teacherId: 'usr-doc-09' },
+                        { section: 'Sección C', sectionLetter: 'C', teacherName: 'Gamaliel Uzias Medrano Mayén', teacherId: 'usr-doc-09' },
+                        { section: 'Sección D', sectionLetter: 'D', teacherName: 'Elda Argentina López Monzón', teacherId: 'usr-doc-14' }
+                    ]
+                }
+            ]
+        }
+    ]
+};
+
+const wasFixed = mod.reconcileScheduleBlockTitulars(mockCorruptBlock);
+assert.strictEqual(wasFixed, true, 'El bloque corrupto debe ser reconciliado y reparado');
+const fixedEv = mockCorruptBlock.days[0].evaluations[0];
+assert.strictEqual(fixedEv.courseTeacherName, 'Milvia Aracely Jacobo Escobar, Elda Argentina López Monzón', 'El nombre consolidado debe reflejar a Milvia y Elda');
+assert.strictEqual(fixedEv.sections[0].teacherName, 'Milvia Aracely Jacobo Escobar', 'Sección A debe corregirse a Milvia Jacobo');
+assert.strictEqual(fixedEv.sections[1].teacherName, 'Milvia Aracely Jacobo Escobar', 'Sección B debe corregirse a Milvia Jacobo');
+assert.strictEqual(fixedEv.sections[2].teacherName, 'Elda Argentina López Monzón', 'Sección C debe corregirse a Elda López');
+assert.strictEqual(fixedEv.sections[3].teacherName, 'Milvia Aracely Jacobo Escobar', 'Sección D debe corregirse a Milvia Jacobo');
+assert(!fixedEv.courseTeacherName.includes('Gamaliel'), 'Gamaliel queda 100% purgado de Inglés Comercial II');
+
+console.log('✅ Asignación de Cátedra y Reconciliación Oficial de Inglés Comercial II Verificadas al 100%.');
+
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');
 console.log('================================================================================');
