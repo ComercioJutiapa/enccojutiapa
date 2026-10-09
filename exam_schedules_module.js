@@ -3930,17 +3930,17 @@
                 `;
             } else {
                 rowsHtml += `
-                    <tr style="height:27px;">
-                        <td style="text-align:center; font-weight:800; font-size:0.82rem; border:1px solid #94a3b8; padding:3px 4px;">
+                    <tr style="height:21px;">
+                        <td style="text-align:center; font-weight:800; font-size:0.78rem; border:1px solid #94a3b8; padding:2px 3px; line-height:1;">
                             ${String(num).padStart(2, '0')}
                         </td>
-                        <td style="text-align:center; font-size:0.78rem; font-weight:700; border:1px solid #94a3b8; padding:3px 4px; font-family:monospace;">
+                        <td style="text-align:center; font-size:0.75rem; font-weight:700; border:1px solid #94a3b8; padding:2px 3px; font-family:monospace; line-height:1;">
                             ${carne}
                         </td>
-                        <td style="font-size:0.85rem; font-weight:700; border:1px solid #94a3b8; padding:3px 6px;">
-                            ${fullName} ${isExonerado ? '<span style="color:#0284c7; font-size:0.7rem; font-weight:800;">[EXONERADO]</span>' : ''}
+                        <td style="font-size:0.8rem; font-weight:700; border:1px solid #94a3b8; padding:2px 5px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:280px;">
+                            ${fullName} ${isExonerado ? '<span style="color:#0284c7; font-size:0.68rem; font-weight:800;">[EXONERADO]</span>' : ''}
                         </td>
-                        <td style="border:1px solid #94a3b8; width:180px; text-align:center;">
+                        <td style="border:1px solid #94a3b8; width:160px; text-align:center; padding:0;">
                             <!-- Espacio de firma -->
                         </td>
                     </tr>
@@ -3948,14 +3948,14 @@
             }
         });
 
-        // Completar hasta al menos 20 filas para consistencia visual si la lista es corta (SOLO en medias secciones)
+        // Completar hasta un máximo de 18 filas solo si la lista es muy pequeña, asegurando que jamás desborde una página
         if (!isFullGroup) {
-            const minRows = 20;
+            const minRows = 16;
             if (studentList.length < minRows) {
                 for (let i = studentList.length + 1; i <= minRows; i++) {
                     rowsHtml += `
-                        <tr style="height:27px;">
-                            <td style="border:1px solid #cbd5e1; text-align:center; color:#cbd5e1; font-size:0.75rem;">${i}</td>
+                        <tr style="height:21px;">
+                            <td style="border:1px solid #cbd5e1; text-align:center; color:#cbd5e1; font-size:0.74rem; line-height:1;">${i}</td>
                             <td style="border:1px solid #cbd5e1;"></td>
                             <td style="border:1px solid #cbd5e1;"></td>
                             <td style="border:1px solid #cbd5e1;"></td>
@@ -4102,19 +4102,19 @@
         return `
             <div class="sheet-container" style="page-break-inside:avoid;">
                 <!-- ENCABEZADO CON LOGO Y MEMBRETE -->
-                <table style="width:100%; border-collapse:collapse; margin-bottom:8px; border-bottom:2px solid #0f172a; padding-bottom:6px;">
+                <table style="width:100%; border-collapse:collapse; margin-bottom:6px; border-bottom:1.5px solid #0f172a; padding-bottom:4px;">
                     <tr>
-                        <td style="width:65px; vertical-align:middle;">
-                            <img src="logo.png" onerror="this.src='portada-comercio-principal.webp'" style="height:55px; width:auto;">
+                        <td style="width:55px; vertical-align:middle;">
+                            <img src="logo.png" onerror="this.src='portada-comercio-principal.webp'" style="height:46px; width:auto;">
                         </td>
-                        <td style="vertical-align:middle; padding-left:10px;">
-                            <div style="font-size:1.05rem; font-weight:900; color:#0f172a; text-transform:uppercase;">
+                        <td style="vertical-align:middle; padding-left:8px;">
+                            <div style="font-size:0.98rem; font-weight:900; color:#0f172a; text-transform:uppercase; line-height:1.15;">
                                 ESCUELA NACIONAL DE CIENCIAS COMERCIALES
                             </div>
-                            <div style="font-size:0.8rem; color:#475569; font-weight:700;">
+                            <div style="font-size:0.75rem; color:#475569; font-weight:700; line-height:1.15;">
                                 Jornada Matutina — Jutiapa, Guatemala — Ciclo Escolar ${(STATE && STATE.activeCycle) || '2026'}
                             </div>
-                            <div style="font-size:0.86rem; font-weight:900; color:#15803d; margin-top:2px;">
+                            <div style="font-size:0.8rem; font-weight:900; color:#15803d; margin-top:1px; line-height:1.15;">
                                 CONTROL OFICIAL DE EVALUACIONES BIMESTRALES — AUXILIATURA GENERAL
                             </div>
                         </td>
@@ -4122,44 +4122,44 @@
                 </table>
 
                 <!-- TARJETA DE DATOS DEL EXAMEN -->
-                <table style="width:100%; border-collapse:collapse; font-size:0.84rem; margin-bottom:8px; background:#f8fafc; border:1px solid #cbd5e1; padding:6px;">
+                <table style="width:100%; border-collapse:collapse; font-size:0.78rem; margin-bottom:6px; background:#f8fafc; border:1px solid #cbd5e1; padding:4px;">
                     <tr>
-                        <td style="width:18%; font-weight:700; padding:2px 6px;">Grado y Sección:</td>
+                        <td style="width:18%; font-weight:700; padding:2px 4px;">Grado y Sección:</td>
                         <td style="width:34%; font-weight:800; color:#0f172a;">${sectionNameToUse}</td>
-                        <td style="width:18%; font-weight:700; padding:2px 6px;">Fecha:</td>
+                        <td style="width:18%; font-weight:700; padding:2px 4px;">Fecha:</td>
                         <td style="width:30%; text-transform:capitalize;">${dayFormatted}</td>
                     </tr>
                     <tr>
-                        <td style="font-weight:700; padding:2px 6px;">Asignatura:</td>
+                        <td style="font-weight:700; padding:2px 4px;">Asignatura:</td>
                         <td style="font-weight:800; color:#0f172a;">${ev.courseName}</td>
-                        <td style="font-weight:700; padding:2px 6px;">Horario Oficial:</td>
+                        <td style="font-weight:700; padding:2px 4px;">Horario Oficial:</td>
                         <td style="font-weight:800;">${ev.startTime} a ${ev.endTime} hrs (${ev.durationMinutes} min)</td>
                     </tr>
                     <tr>
-                        <td style="font-weight:700; padding:2px 6px;">Catedrático:</td>
-                        <td><strong>${titularNameToUse}</strong> <span style="font-size:0.78rem; color:#475569;">(Docente Titular)</span></td>
-                        <td style="font-weight:700; padding:2px 6px;">Salón Asignado:</td>
+                        <td style="font-weight:700; padding:2px 4px;">Catedrático:</td>
+                        <td><strong>${titularNameToUse}</strong> <span style="font-size:0.74rem; color:#475569;">(Docente Titular)</span></td>
+                        <td style="font-weight:700; padding:2px 4px;">Salón Asignado:</td>
                         <td style="font-weight:800; color:#15803d;">${grp.classroom || 'Salón'}</td>
                     </tr>
                     <tr>
-                        <td style="font-weight:700; padding:2px 6px;">Grupo Asignado:</td>
-                        <td style="font-weight:900; color:#15803d; font-size:0.92rem;">
+                        <td style="font-weight:700; padding:2px 4px;">Grupo Asignado:</td>
+                        <td style="font-weight:900; color:#15803d; font-size:0.86rem;">
                             GRUPO "${groupLetter}" (Nómina ${grp.range || (groupLetter === 'A' ? 'Grupo A' : (groupLetter === 'B' ? 'Grupo B' : 'Oficial'))})
                         </td>
-                        <td style="font-weight:700; padding:2px 6px;">Total Alumnos:</td>
+                        <td style="font-weight:700; padding:2px 4px;">Total Alumnos:</td>
                         <td><strong>${studentList.length} estudiantes</strong></td>
                     </tr>
                     ${caretakerHeaderHtml}
                 </table>
 
                 <!-- TABLA DE ALUMNOS CON FIRMA -->
-                <table style="width:100%; border-collapse:collapse; margin-top:4px;">
+                <table style="width:100%; border-collapse:collapse; margin-top:2px;">
                     <thead>
-                        <tr style="background:#0f172a; color:#ffffff; font-size:0.8rem; font-weight:800; height:24px;">
-                            <th style="width:35px; border:1px solid #0f172a; text-align:center;">No.</th>
-                            <th style="width:90px; border:1px solid #0f172a; text-align:center;">CÓDIGO</th>
-                            <th style="border:1px solid #0f172a; text-align:left; padding-left:8px;">APELLIDOS Y NOMBRES</th>
-                            <th style="width:180px; border:1px solid #0f172a; text-align:center;">FIRMA DEL ESTUDIANTE</th>
+                        <tr style="background:#0f172a; color:#ffffff; font-size:0.76rem; font-weight:800; height:22px;">
+                            <th style="width:34px; border:1px solid #0f172a; text-align:center;">No.</th>
+                            <th style="width:85px; border:1px solid #0f172a; text-align:center;">CÓDIGO</th>
+                            <th style="border:1px solid #0f172a; text-align:left; padding-left:6px;">APELLIDOS Y NOMBRES</th>
+                            <th style="width:160px; border:1px solid #0f172a; text-align:center;">FIRMA DEL ESTUDIANTE</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -4168,30 +4168,30 @@
                 </table>
 
                 <!-- OBSERVACIONES NUMERADAS A EXACTAMENTE 3 LÍNEAS -->
-                <div style="margin-top:8px; font-size:0.8rem; font-weight:700; color:#1e293b;">
+                <div style="margin-top:6px; font-size:0.74rem; font-weight:700; color:#1e293b;">
                     OBSERVACIONES:
-                    <div style="border-bottom:1px dotted #64748b; height:18px; margin-top:2px;">1. </div>
-                    <div style="border-bottom:1px dotted #64748b; height:18px;">2. </div>
-                    <div style="border-bottom:1px dotted #64748b; height:18px;">3. </div>
+                    <div style="border-bottom:1px dotted #64748b; height:15px; margin-top:1px;">1. </div>
+                    <div style="border-bottom:1px dotted #64748b; height:15px;">2. </div>
+                    <div style="border-bottom:1px dotted #64748b; height:15px;">3. </div>
                 </div>
 
                 ${actaRelevoHtml}
 
-                <div style="margin-top:6px; font-size:0.78rem; font-weight:700;">
+                <div style="margin-top:4px; font-size:0.74rem; font-weight:700;">
                     Total de pruebas entregadas a Auxiliatura: [ _______ ] de ${studentList.length} estudiantes evaluados.
                 </div>
 
                 <!-- FIRMAS INFERIORES -->
-                <table style="width:100%; border-collapse:collapse; margin-top:25px; page-break-inside:avoid;">
+                <table style="width:100%; border-collapse:collapse; margin-top:14px; page-break-inside:avoid;">
                     <tr>
                         <td style="width:50%; text-align:center; vertical-align:bottom;">
-                            <div style="width:230px; margin:0 auto; border-top:1.5px solid #0f172a; padding-top:4px; font-size:0.8rem;">
+                            <div style="width:210px; margin:0 auto; border-top:1.5px solid #0f172a; padding-top:2px; font-size:0.76rem;">
                                 <strong>${isPractica ? (grp.caretakerTurn2Name || 'Docente Cuidador Cierre') : (grp.caretakerTeacherName || 'Docente Cuidador')}</strong><br>
                                 Docente Cuidador Responsable
                             </div>
                         </td>
                         <td style="width:50%; text-align:center; vertical-align:bottom;">
-                            <div style="width:230px; margin:0 auto; border-top:1.5px solid #0f172a; padding-top:4px; font-size:0.8rem;">
+                            <div style="width:210px; margin:0 auto; border-top:1.5px solid #0f172a; padding-top:2px; font-size:0.76rem;">
                                 <strong>Auxiliatura General</strong><br>
                                 Sello y Recepción Oficial
                             </div>
@@ -4216,6 +4216,9 @@
                         size: 8.5in 13in portrait; /* HOJA OFICIO GUATEMALTECO 8.5in x 13in VERTICAL */
                         margin: 5mm 8mm;
                     }
+                    * {
+                        box-sizing: border-box;
+                    }
                     body {
                         font-family: Arial, Helvetica, sans-serif;
                         color: #0f172a;
@@ -4227,8 +4230,15 @@
                     }
                     .sheet-container {
                         width: 100%;
+                        max-height: 12.2in;
                         page-break-inside: avoid;
+                        break-inside: avoid;
                         box-sizing: border-box;
+                        overflow: hidden;
+                    }
+                    .page-break {
+                        page-break-after: always;
+                        break-after: page;
                     }
                     .no-print-bar {
                         position: sticky;
@@ -4454,7 +4464,7 @@
                 <title>Calendario General de Evaluaciones - Bimestre ${bimesterSelectVal}</title>
                 <style>
                     @page {
-                        size: letter landscape;
+                        size: 8.5in 13in portrait; /* HOJA OFICIO GUATEMALTECO 8.5in x 13in VERTICAL */
                         margin: 8mm 10mm;
                     }
                     * {
@@ -4578,7 +4588,7 @@
             </body>
             </html>
         `;
-        openPrintWindow(calendarHtml, 'Calendario_General', 'landscape');
+        openPrintWindow(calendarHtml, 'Calendario_General', 'portrait');
     };
 
     // Helper unificado para abrir ventana de impresión (protegido contra doble clic accidental y bloqueos de pop-up)
