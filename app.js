@@ -1937,7 +1937,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     }
 
     if (Array.isArray(STATE.pensumCatalog) && STATE.pensumCatalog.length > 0) cleanPayload.pensumCatalog = STATE.pensumCatalog;
-    if (Array.isArray(STATE.students) && STATE.students.length > 0) cleanPayload.students = STATE.students;
+    if (Array.isArray(STATE.students) && STATE.students.length >= 350) cleanPayload.students = STATE.students;
     if (Array.isArray(STATE.pensum) && STATE.pensum.length > 0) cleanPayload.pensum = STATE.pensum;
     if (Array.isArray(STATE.announcements)) cleanPayload.announcements = STATE.announcements;
     if (Array.isArray(STATE.disciplineReports)) cleanPayload.disciplineReports = STATE.disciplineReports;
@@ -5965,7 +5965,8 @@ function getAttendanceStudents(gradeCode, currentCourseObj = null) {
             if (!s || (s.active === false && s.status !== 'Retirado') || s.status === 'Inactivo') return false;
             const text = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''} ${s.section || ''}`.toUpperCase();
             const hasNum = text.includes(String(qGradeNum)) || (qGradeNum === 4 && (text.includes('CUARTO') || text.includes('4TO'))) || (qGradeNum === 5 && (text.includes('QUINTO') || text.includes('5TO'))) || (qGradeNum === 6 && (text.includes('SEXTO') || text.includes('6TO')));
-            const hasSec = !qSec || text.includes(qSec);
+            const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || text);
+            const hasSec = !qSec || sSec === qSec;
             return hasNum && hasSec;
         });
     }
@@ -7494,6 +7495,23 @@ async function initApp() {
         console.error("❌ [v189] Error al descargar de Firebase en arranque:", _fbPullErr);
     }
 
+    // 🛡️ Blindaje de Respaldo de Nómina Completa (412 Estudiantes)
+    if (!Array.isArray(STATE.students) || STATE.students.length < 350) {
+        try {
+            const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== "undefined" ? ENCCO_OFFICIAL_FIREBASE_URL : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com");
+            const _stRes = await fetch(_fbUrl + "/students.json?t=" + Date.now());
+            if (_stRes && _stRes.ok) {
+                const _stData = await _stRes.json();
+                if (Array.isArray(_stData) && _stData.length >= 350) {
+                    STATE.students = deduplicateStudentsCollection(_stData);
+                    console.log(`✅ [Nómina 412] ${_stData.length} estudiantes cargados exitosamente desde /students.json`);
+                }
+            }
+        } catch(_stErr) {
+            console.warn("⚠️ Aviso al descargar /students.json de respaldo:", _stErr);
+        }
+    }
+
     if (!hasLoadedExistingUsers && (!Array.isArray(STATE.users) || STATE.users.length === 0)) {
         loadDefaults(false);
     }
@@ -8900,7 +8918,9 @@ function applyIncomingCloudState(incomingState, force = false) {
         } else {
             const rawInc = incomingState.students;
             const incArr = Array.isArray(rawInc) ? rawInc : (rawInc && typeof rawInc === 'object' ? Object.values(rawInc) : []);
-            STATE.students = deduplicateStudentsCollection(incArr);
+            if (incArr.length >= 50) {
+                STATE.students = deduplicateStudentsCollection(incArr);
+            }
         }
     }
 
