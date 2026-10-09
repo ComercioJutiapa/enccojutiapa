@@ -377,10 +377,13 @@
     // Comprobar si un usuario es un docente elegible para cuidar (Auxiliar, Director y Secretaría NO se incluyen)
     function isTeacherEligibleForProctoring(u) {
         if (!u) return false;
+        if (u.active === false || u.status === 'Inactivo') return false;
         const role = (u.role || '').toLowerCase().trim();
-        const forbiddenRoles = ['auxiliar', 'profesor_auxiliar', 'auxiliatura', 'director', 'direccion', 'secretaria', 'admin', 'super_usuario'];
-        if (forbiddenRoles.includes(role)) return false;
-        return role === 'docente' || role === 'profesor';
+        const userRoles = Array.isArray(u.roles) ? u.roles.map(r => String(r).toLowerCase().trim()) : [];
+        const allRoles = [role, ...userRoles].filter(Boolean);
+        const forbiddenRoles = ['auxiliar', 'profesor_auxiliar', 'auxiliatura', 'director', 'direccion', 'secretaria', 'admin', 'administrador', 'super_usuario'];
+        if (allRoles.some(r => forbiddenRoles.includes(r))) return false;
+        return allRoles.some(r => r === 'docente' || r === 'profesor');
     }
 
     // Formatear minutos a formato HH:MM
@@ -744,13 +747,24 @@
     function getCoursesForAcademicGrade(academicGradeName) {
         if (!academicGradeName) return [];
         const term = academicGradeName.toUpperCase().trim();
+        const normSub = (str) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+        const termNorm = normSub(term);
+
+        let targetGradeNum = 0;
+        if (termNorm.includes('6') || termNorm.includes('SEXTO') || termNorm.includes('6TO')) targetGradeNum = 6;
+        else if (termNorm.includes('5') || termNorm.includes('QUINTO') || termNorm.includes('5TO')) targetGradeNum = 5;
+        else if (termNorm.includes('4') || termNorm.includes('CUARTO') || termNorm.includes('4TO')) targetGradeNum = 4;
+
         const seen = new Set();
         const courses = [];
 
         (STATE.pensum || []).forEach(p => {
-            const rawP = ((p.grade || '') + ' ' + (p.gradeCode || '')).toUpperCase();
-            if (rawP.includes(term) || (p.grade && p.grade.toUpperCase().trim() === term)) {
-                const sub = (p.subject || '').trim();
+            const rawP = normSub((p.grade || '') + ' ' + (p.gradeCode || ''));
+            const matchesGrade = (targetGradeNum > 0 && rawP.includes(String(targetGradeNum))) || 
+                                 rawP.includes(termNorm) || 
+                                 (p.grade && normSub(p.grade) === termNorm);
+            if (matchesGrade) {
+                const sub = (p.subject || p.name || p.subjectName || '').trim();
                 if (sub && !seen.has(sub.toUpperCase())) {
                     seen.add(sub.toUpperCase());
                     courses.push(sub);
@@ -766,11 +780,22 @@
     function getSectionsAndTitularsForCourse(academicGradeName, subjectName) {
         if (!academicGradeName || !subjectName) return [];
         const term = academicGradeName.toUpperCase().trim();
-        const subTerm = subjectName.trim().toUpperCase();
+        const normSub = (str) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+        const subNorm = normSub(subjectName);
+        const termNorm = normSub(term);
+
+        let targetGradeNum = 0;
+        if (termNorm.includes('6') || termNorm.includes('SEXTO') || termNorm.includes('6TO')) targetGradeNum = 6;
+        else if (termNorm.includes('5') || termNorm.includes('QUINTO') || termNorm.includes('5TO')) targetGradeNum = 5;
+        else if (termNorm.includes('4') || termNorm.includes('CUARTO') || termNorm.includes('4TO')) targetGradeNum = 4;
 
         // 1. Identificar grados/secciones coincidentes en gradesList
         let matchingGrades = (STATE.gradesList || []).filter(g => {
             let base = (g.name || g.code || '').replace(/\s+Secci[oó]n\s+[A-D]/i, '').replace(/\s+[A-D]$/i, '').trim().toUpperCase();
+            if (targetGradeNum > 0) {
+                const gRaw = normSub((g.name || '') + ' ' + (g.code || ''));
+                if (gRaw.includes(String(targetGradeNum))) return true;
+            }
             return base === term || ((g.name || '').toUpperCase().includes(term));
         });
 
@@ -778,11 +803,13 @@
         if (matchingGrades.length === 0) {
             const seenSecs = new Set();
             (STATE.pensum || []).forEach(p => {
-                const rawP = ((p.grade || '') + ' ' + (p.gradeCode || '')).toUpperCase();
-                if (rawP.includes(term)) {
+                const rawP = normSub((p.grade || '') + ' ' + (p.gradeCode || ''));
+                const matchesGrade = (targetGradeNum > 0 && rawP.includes(String(targetGradeNum))) || rawP.includes(termNorm);
+                if (matchesGrade) {
                     const sec = (p.section || 'Sección A').trim();
-                    if (!seenSecs.has(sec)) {
-                        seenSecs.add(sec);
+                    const secNorm = normSub(sec);
+                    if (!seenSecs.has(secNorm)) {
+                        seenSecs.add(secNorm);
                         matchingGrades.push({
                             code: p.gradeCode || `${academicGradeName} ${sec}`,
                             name: academicGradeName,
@@ -800,20 +827,26 @@
 
         matchingGrades.forEach(g => {
             const secLetter = (g.section || '').replace(/Secci[oó]n\s*/i, '').trim() || 'A';
-            const normSub = (str) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
-            const subNorm = normSub(subjectName);
 
             const pMatch = (STATE.pensum || []).find(p => {
-                const pSubNorm = normSub(p.subject || p.name);
+                // Verificar estrictamente el grado para evitar colisiones con cursos de otros grados
+                const rawP = normSub((p.grade || '') + ' ' + (p.gradeCode || ''));
+                const matchesGrade = (targetGradeNum > 0 && rawP.includes(String(targetGradeNum))) || 
+                                     rawP.includes(termNorm) || 
+                                     (p.grade && normSub(p.grade) === termNorm);
+                if (!matchesGrade) return false;
+
+                // Verificar materia
+                const pSubNorm = normSub(p.subject || p.name || p.subjectName);
                 const subMatch = (pSubNorm === subNorm) || 
                                  (pSubNorm.includes(subNorm) && subNorm.length > 4) || 
                                  (subNorm.includes(pSubNorm) && pSubNorm.length > 4);
                 if (!subMatch) return false;
 
+                // Verificar sección
                 const pSec = (p.section || '').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase();
                 if (pSec && pSec === secLetter.toUpperCase()) return true;
 
-                const rawP = ((p.grade || '') + ' ' + (p.gradeCode || '') + ' ' + (p.section || '')).toUpperCase();
                 const secMatch = rawP.includes(`SECCION ${secLetter}`) || 
                                  rawP.includes(`SECCIÓN ${secLetter}`) || 
                                  rawP.endsWith(` ${secLetter}`) || 
@@ -826,12 +859,21 @@
             // Si se encontró profesor pero no ID, o viceversa, buscar en STATE.users
             let teacherId = pMatch ? (pMatch.teacherId || '') : '';
             let teacherName = pMatch ? (pMatch.teacher || pMatch.teacherName || '') : '';
-            if (teacherId && !teacherName && Array.isArray(STATE.users)) {
+            
+            // Sincronización bidireccional y robusta con STATE.users
+            if (teacherId && Array.isArray(STATE.users)) {
                 const u = STATE.users.find(x => x.id === teacherId);
                 if (u) teacherName = u.name;
             } else if (!teacherId && teacherName && Array.isArray(STATE.users)) {
-                const u = STATE.users.find(x => (x.name || '').trim().toLowerCase() === teacherName.trim().toLowerCase());
-                if (u) teacherId = u.id;
+                const normTarget = normSub(teacherName);
+                const u = STATE.users.find(x => {
+                    const normU = normSub(x.name);
+                    return normU === normTarget || normU.includes(normTarget) || normTarget.includes(normU);
+                });
+                if (u) {
+                    teacherId = u.id;
+                    teacherName = u.name;
+                }
             }
 
             sectionsInfo.push({
@@ -1593,6 +1635,10 @@
         if (allCandidates.length === 0) return {};
 
         const titularExclusionSet = new Set(Array.isArray(titularIds) ? titularIds : []);
+        (sectionsInfo || []).forEach(s => {
+            if (s.teacherId) titularExclusionSet.add(s.teacherId);
+        });
+        const titularNamesSet = new Set((sectionsInfo || []).map(s => (s.teacherName || '').toLowerCase().trim()).filter(Boolean));
 
         const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
@@ -1619,7 +1665,7 @@
                     ev.sections.forEach(sc => {
                         const sDur = sc.durationMinutes || ev.durationMinutes || 60;
                         const sEnd = evStart + sDur;
-                        ['groupA', 'groupB'].forEach(grpKey => {
+                        ['singleRoom', 'groupA', 'groupB'].forEach(grpKey => {
                             const grp = sc[grpKey];
                             if (grp) {
                                 if (grp.caretakerTeacherId && busyIntervals[grp.caretakerTeacherId]) {
@@ -1634,7 +1680,7 @@
                 } else {
                     const evDur = ev.durationMinutes || 60;
                     const evEnd = evStart + evDur;
-                    ['groupA', 'groupB'].forEach(grpKey => {
+                    ['singleRoom', 'groupA', 'groupB'].forEach(grpKey => {
                         const grp = ev[grpKey];
                         if (grp && grp.caretakerTeacherId && busyIntervals[grp.caretakerTeacherId]) {
                             busyIntervals[grp.caretakerTeacherId].push([evStart, evEnd]);
@@ -1653,6 +1699,7 @@
             const slotDur = slotEnd - slotStart;
             const eligible = allCandidates.filter(c => {
                 if (titularExclusionSet.has(c.id)) return false;
+                if (titularNamesSet.has((c.name || '').toLowerCase().trim())) return false;
                 if (assignedSet.has(c.id)) return false;
                 const intervals = busyIntervals[c.id] || [];
                 return !intervals.some(([bStart, bEnd]) => Math.max(slotStart, bStart) < Math.min(slotEnd, bEnd));
@@ -1660,7 +1707,7 @@
 
             const candidatePool = (eligible.length > 0)
                 ? eligible
-                : allCandidates.filter(c => !titularExclusionSet.has(c.id) && !assignedSet.has(c.id));
+                : allCandidates.filter(c => !titularExclusionSet.has(c.id) && !titularNamesSet.has((c.name || '').toLowerCase().trim()) && !assignedSet.has(c.id));
 
             if (candidatePool.length === 0) return null;
 
@@ -1804,6 +1851,12 @@
                     opts += `<option value="${u.id}" ${isSel}>${u.name} (Hoy: ${wl.minutes} min | ${wl.salonesCount} sal.)</option>`;
                 }
             });
+            if (selectedId && !opts.includes(`value="${selectedId}"`)) {
+                const prevUser = (STATE.users || []).find(u => u.id === selectedId);
+                if (prevUser) {
+                    opts += `<option value="${prevUser.id}" selected>${prevUser.name} (Asignado)</option>`;
+                }
+            }
             return opts;
         };
 
@@ -2159,25 +2212,36 @@
                 }
             } else {
                 // Autoasignación automática: Docentes asignados de inmediato, pero 100% editables en el selector
-                const autoForSec = autoAssignments[secCode] || autoAssignments[secName];
-                if (autoForSec) {
-                    curSingle.caretaker = autoForSec.caretakerSingle || autoForSec.caretakerA || '';
-                    curA.caretaker = autoForSec.caretakerA || '';
-                    curB.caretaker = autoForSec.caretakerB || '';
-                    curA.turn2 = autoForSec.turn2A || '';
-                    curB.turn2 = autoForSec.turn2B || '';
+                const isSingleTitularMode = (isComp || isMeca) && compMode === 'single';
+                if (isSingleTitularMode) {
+                    curSingle.caretaker = sInfo.teacherId || '';
+                    curSingle.classroom = isComp ? 'Laboratorio de Computación' : 'Taller de Mecanografía';
+                    curA.caretaker = sInfo.teacherId || '';
+                    curB.caretaker = sInfo.teacherId || '';
+                } else {
+                    const autoForSec = autoAssignments[secCode] || autoAssignments[secName];
+                    if (autoForSec) {
+                        curSingle.caretaker = autoForSec.caretakerSingle || autoForSec.caretakerA || '';
+                        curA.caretaker = autoForSec.caretakerA || '';
+                        curB.caretaker = autoForSec.caretakerB || '';
+                        curA.turn2 = autoForSec.turn2A || '';
+                        curB.turn2 = autoForSec.turn2B || '';
+                    }
                 }
             }
+
+            const isSingleTitularMode = (isComp || isMeca) && compMode === 'single';
+            const excludeForSelect = isSingleTitularMode ? [] : titularIds;
 
             salonsHtml += `
                 <div class="p-2 mb-2 rounded" style="background:#ffffff; border:1px solid #cbd5e1;">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; background:#f8fafc; padding:6px 10px; border-radius:6px; margin-bottom:8px; border:1px solid #e2e8f0;">
-                        <div>
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                             <strong style="color:#0f172a; font-size:0.9rem;">
                                 📌 ${sInfo.gradeName} ─ <span style="color:#15803d; font-weight:800;">${secName}</span>
                             </strong>
-                            <span style="font-size:0.78rem; color:#475569; margin-left:8px;">
-                                Catedrático Titular: <strong style="color:#0f172a;">${sInfo.teacherName}</strong>
+                            <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.78rem; font-weight:800; padding:3px 7px;">
+                                <i class="fa-solid fa-chalkboard-user"></i> Titular: ${sInfo.teacherName}
                             </span>
                         </div>
                         <div style="display:flex; align-items:center; gap:6px;">
@@ -2214,7 +2278,7 @@
                                     <div style="display:grid; grid-template-columns: 140px 1fr; gap:8px; align-items:center;">
                                         <input type="text" id="evalClassroomSingle_${sIdx}" list="institutionalSalonsList" class="form-control form-control-sm" style="font-size:0.82rem; height:30px;" value="${curSingle.classroom}" placeholder="Salón 6A">
                                         <select id="evalCaretakerSingle_${sIdx}" class="form-control form-control-sm" style="font-size:0.82rem; height:30px;" required>
-                                            ${window._generateTeacherSelectOptions(curSingle.caretaker, titularIds)}
+                                            ${window._generateTeacherSelectOptions(curSingle.caretaker, excludeForSelect)}
                                         </select>
                                     </div>
                                     <input type="hidden" id="evalClassroomA_${sIdx}" value="${curSingle.classroom}">
@@ -2238,13 +2302,13 @@
                                     <div style="display:grid; grid-template-columns: 100px 1fr; gap:6px; align-items:center; margin-bottom:4px;">
                                         <input type="text" id="evalClassroomA_${sIdx}" list="institutionalSalonsList" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" value="${curA.classroom}" placeholder="Salón 6A">
                                         <select id="evalCaretakerA_${sIdx}" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" required>
-                                            ${window._generateTeacherSelectOptions(curA.caretaker, titularIds)}
+                                            ${window._generateTeacherSelectOptions(curA.caretaker, excludeForSelect)}
                                         </select>
                                     </div>
                                     <div id="evalTurn2AContainer_${sIdx}" style="display:${isPrac ? 'block' : 'none'}; margin-top:4px;">
                                         <div style="font-size:0.72rem; color:#1d4ed8; font-weight:700; margin-bottom:2px;">Relevo 2do Turno:</div>
                                         <select id="evalCaretakerTurn2A_${sIdx}" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;">
-                                            ${window._generateTeacherSelectOptions(curA.turn2, titularIds)}
+                                            ${window._generateTeacherSelectOptions(curA.turn2, excludeForSelect)}
                                         </select>
                                     </div>
                                 </div>
@@ -2262,13 +2326,13 @@
                                     <div style="display:grid; grid-template-columns: 100px 1fr; gap:6px; align-items:center; margin-bottom:4px;">
                                         <input type="text" id="evalClassroomB_${sIdx}" list="institutionalSalonsList" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" value="${curB.classroom}" placeholder="Salón 6B">
                                         <select id="evalCaretakerB_${sIdx}" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" required>
-                                            ${window._generateTeacherSelectOptions(curB.caretaker, titularIds)}
+                                            ${window._generateTeacherSelectOptions(curB.caretaker, excludeForSelect)}
                                         </select>
                                     </div>
                                     <div id="evalTurn2BContainer_${sIdx}" style="display:${isPrac ? 'block' : 'none'}; margin-top:4px;">
                                         <div style="font-size:0.72rem; color:#1d4ed8; font-weight:700; margin-bottom:2px;">Relevo 2do Turno:</div>
                                         <select id="evalCaretakerTurn2B_${sIdx}" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;">
-                                            ${window._generateTeacherSelectOptions(curB.turn2, titularIds)}
+                                            ${window._generateTeacherSelectOptions(curB.turn2, excludeForSelect)}
                                         </select>
                                     </div>
                                 </div>
@@ -2593,12 +2657,25 @@
 
                 // Identificar conjunto de titulares a excluir
                 const titularExclusionSet = new Set();
+                const titularNamesSet = new Set();
+                // Sincronizar dinámicamente desde pensum los titulares de todas las secciones
+                const liveTitulars = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
+                liveTitulars.forEach(t => {
+                    if (t.teacherId) titularExclusionSet.add(t.teacherId);
+                    if (t.teacherName) titularNamesSet.add(t.teacherName.toLowerCase().trim());
+                });
                 if (Array.isArray(ev.titularTeachers)) {
-                    ev.titularTeachers.forEach(t => { if (t.teacherId) titularExclusionSet.add(t.teacherId); });
+                    ev.titularTeachers.forEach(t => {
+                        if (t.teacherId) titularExclusionSet.add(t.teacherId);
+                        if (t.teacherName) titularNamesSet.add(t.teacherName.toLowerCase().trim());
+                    });
                 }
                 if (ev.courseTeacherId) titularExclusionSet.add(ev.courseTeacherId);
                 if (Array.isArray(ev.sections)) {
-                    ev.sections.forEach(s => { if (s.teacherId) titularExclusionSet.add(s.teacherId); });
+                    ev.sections.forEach(s => {
+                        if (s.teacherId) titularExclusionSet.add(s.teacherId);
+                        if (s.teacherName) titularNamesSet.add(s.teacherName.toLowerCase().trim());
+                    });
                 }
 
                 const evStartMin = timeStringToMinutes(ev.startTime);
@@ -2607,9 +2684,10 @@
                 function pickBestCaretaker(slotStartMin, slotEndMin, currentlyAssignedInThisSlotSet = new Set()) {
                     const slotDuration = slotEndMin - slotStartMin;
 
-                    // Candidatos que no sean titulares, no tengan colisión de horario y no estén ya en este mismo bloque
+                    // Candidatos que no sean titulares (por ID ni por nombre), no tengan colisión de horario y no estén ya en este mismo bloque
                     const eligible = allCandidates.filter(c => {
                         if (titularExclusionSet.has(c.id)) return false;
+                        if (titularNamesSet.has((c.name || '').toLowerCase().trim())) return false;
                         if (currentlyAssignedInThisSlotSet.has(c.id)) return false;
 
                         // Verificar colisión de horario
@@ -2623,7 +2701,7 @@
 
                     if (eligible.length === 0) {
                         // Fallback de emergencia si no hay candidatos sin colisión: elegir cualquiera que no sea titular
-                        const fallbackEligible = allCandidates.filter(c => !titularExclusionSet.has(c.id) && !currentlyAssignedInThisSlotSet.has(c.id));
+                        const fallbackEligible = allCandidates.filter(c => !titularExclusionSet.has(c.id) && !titularNamesSet.has((c.name || '').toLowerCase().trim()) && !currentlyAssignedInThisSlotSet.has(c.id));
                         if (fallbackEligible.length === 0) return null;
                         // Mezclar aleatoriamente
                         for (let i = fallbackEligible.length - 1; i > 0; i--) {
@@ -2933,12 +3011,25 @@
                             }
                         }
 
-                        // Titulares
+                        // Titulares con insignias legibles y sincronización dinámica desde pensum
                         let titularesHtml = '';
                         if (Array.isArray(ev.sections) && ev.sections.length > 0) {
-                            titularesHtml = ev.sections.map(s => `${s.section}: ${s.teacherName}`).join(' | ');
+                            titularesHtml = ev.sections.map(s => {
+                                let tName = s.teacherName;
+                                if (!tName || tName === 'Sin docente asignado' || tName === 'Sin asignar') {
+                                    const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
+                                    const foundSec = fresh.find(f => f.sectionLetter === s.sectionLetter || f.section === s.section);
+                                    if (foundSec && foundSec.teacherName) tName = foundSec.teacherName;
+                                }
+                                return `<span style="display:inline-block; margin-right:4px; background:#f1f5f9; padding:1px 5px; border-radius:4px; border:1px solid #e2e8f0; font-size:0.75rem;"><strong>${s.section.replace('Sección ', '')}:</strong> ${tName || 'Sin asignar'}</span>`;
+                            }).join(' ');
                         } else {
-                            titularesHtml = ev.courseTeacherName || 'Sin asignar';
+                            const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
+                            if (fresh.length > 0) {
+                                titularesHtml = fresh.map(f => `<span style="display:inline-block; margin-right:4px; background:#f1f5f9; padding:1px 5px; border-radius:4px; border:1px solid #e2e8f0; font-size:0.75rem;"><strong>${f.section.replace('Sección ', '')}:</strong> ${f.teacherName}</span>`).join(' ');
+                            } else {
+                                titularesHtml = ev.courseTeacherName || 'Sin asignar';
+                            }
                         }
 
                         return `
@@ -3238,8 +3329,16 @@
         const gradeCodeToUse = secObj ? secObj.gradeCode : ev.gradeCode;
         const secNameToUse = secObj ? secObj.section : '';
         const gradeNameToUse = secObj ? secObj.gradeName : ev.gradeName;
-        const sectionNameToUse = secObj ? `${secObj.gradeName} (${secObj.section})` : ev.gradeName;
-        const titularNameToUse = secObj ? secObj.teacherName : ev.courseTeacherName;
+        let titularNameToUse = (secObj && secObj.teacherName && secObj.teacherName !== 'Sin docente asignado') ? secObj.teacherName : ev.courseTeacherName;
+        if (!titularNameToUse || titularNameToUse === 'Sin docente asignado' || titularNameToUse === 'Catedráticos Titulares') {
+            const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
+            const foundSec = fresh.find(f => (secObj && f.sectionLetter === secObj.sectionLetter) || (secObj && f.section === secObj.section));
+            if (foundSec && foundSec.teacherName) {
+                titularNameToUse = foundSec.teacherName;
+            } else if (fresh.length > 0) {
+                titularNameToUse = fresh.map(f => f.teacherName).join(', ');
+            }
+        }
 
         const splitData = splitStudentsInTwoGroups(gradeCodeToUse, secNameToUse, gradeNameToUse);
         const studentList = isFullGroup
@@ -3546,12 +3645,25 @@
                         }
                     }
 
-                    // Detalle de titulares de cada sección
+                    // Detalle de titulares de cada sección con respaldo dinámico desde pensum
                     let titularesStr = '';
                     if (Array.isArray(ev.sections) && ev.sections.length > 0) {
-                        titularesStr = ev.sections.map(sec => `${sec.section}: ${sec.teacherName || 'Sin asignar'}`).join(' | ');
+                        titularesStr = ev.sections.map(sec => {
+                            let tName = sec.teacherName;
+                            if (!tName || tName === 'Sin asignar' || tName === 'Sin docente asignado') {
+                                const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
+                                const foundSec = fresh.find(f => f.sectionLetter === sec.sectionLetter || f.section === sec.section);
+                                if (foundSec && foundSec.teacherName) tName = foundSec.teacherName;
+                            }
+                            return `${sec.section}: ${tName || 'Sin asignar'}`;
+                        }).join(' | ');
                     } else {
-                        titularesStr = ev.courseTeacherName || 'Sin asignar';
+                        const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
+                        if (fresh.length > 0) {
+                            titularesStr = fresh.map(f => `${f.section}: ${f.teacherName}`).join(' | ');
+                        } else {
+                            titularesStr = ev.courseTeacherName || 'Sin asignar';
+                        }
                     }
 
                     const modoBadge = isFull

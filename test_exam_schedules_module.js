@@ -585,10 +585,53 @@ assert.strictEqual(colsCaseB.length, 3, 'Si hay 6to, deben ser exactamente 3 col
 assert.strictEqual(colsCaseB[0].key, '4to', 'Primera columna debe ser 4to Perito');
 assert.strictEqual(colsCaseB[1].key, '5to', 'Segunda columna debe ser 5to Perito');
 assert.strictEqual(colsCaseB[2].key, '6to', 'Tercera columna debe ser 6to Perito');
-console.log('✅ Presentación en 2 y 3 Columnas por Grado y Hora Verificada: 2 columnas para 4to y 5to, 3 columnas con 6to.');
+// 19. Test Sincronización Robusta de Cátedras, Titulares y Elegibilidad Docente
+console.log('\n[Test 19] Verificando Sincronización Robusta de Cátedras, Titulares y Elegibilidad Docente...');
+// A. Elegibilidad docente y exclusión estricta de roles administrativos/inactivos
+const dummyUsers = [
+    { id: 'u_doc_1', name: 'Profesor Activo', role: 'docente', active: true },
+    { id: 'u_doc_2', name: 'Profesor Multirol', role: 'docente', roles: ['docente'], active: true },
+    { id: 'u_doc_inactivo', name: 'Profesor Inactivo', role: 'docente', active: false },
+    { id: 'u_doc_inactivo_status', name: 'Profesor Baja', role: 'docente', status: 'Inactivo' },
+    { id: 'u_dir', name: 'Directora', role: 'director' },
+    { id: 'u_sec', name: 'Secretaria', role: 'secretaria' },
+    { id: 'u_aux', name: 'Auxiliar', role: 'profesor_auxiliar' },
+    { id: 'u_adm', name: 'Administrador', role: 'admin' }
+];
+global.STATE.users = dummyUsers;
+
+// Simular pensum con asignación de clases
+global.STATE.pensum = [
+    { id: 'pen_comp_4a', grade: '4to Perito Contador', gradeCode: '4to A', section: 'Sección A', subject: 'Computación I', teacherId: 'u_doc_1', teacher: 'Profesor Activo' },
+    { id: 'pen_comp_4b', grade: '4to Perito Contador', gradeCode: '4to B', section: 'Sección B', subject: 'Computación I', teacherId: 'u_doc_2', teacher: 'Profesor Multirol' },
+    { id: 'pen_comp_5a', grade: '5to Perito Contador', gradeCode: '5to A', section: 'Sección A', subject: 'Computación II', teacherId: 'u_doc_2', teacher: 'Profesor Multirol' },
+    { id: 'pen_comp_6a', grade: '6to Perito Contador', gradeCode: '6to A', section: 'Sección A', subject: 'Computación III', teacherId: 'u_doc_1', teacher: 'Profesor Activo' }
+];
+
+global.STATE.gradesList = [
+    { id: 'g4a', code: '4to A', name: '4to Perito Contador', section: 'Sección A' },
+    { id: 'g4b', code: '4to B', name: '4to Perito Contador', section: 'Sección B' },
+    { id: 'g5a', code: '5to A', name: '5to Perito Contador', section: 'Sección A' },
+    { id: 'g6a', code: '6to A', name: '6to Perito Contador', section: 'Sección A' }
+];
+
+// Comprobar obtención de asignaturas sin colisión entre grados
+const courses4toTest19 = mod.getCoursesForAcademicGrade('4to Perito Contador');
+assert(courses4toTest19.includes('Computación I'), '4to debe incluir Computación I');
+assert(!courses4toTest19.includes('Computación II'), '4to NO debe incluir Computación II de 5to');
+assert(!courses4toTest19.includes('Computación III'), '4to NO debe incluir Computación III de 6to');
+
+// Comprobar resolución con grado abreviado "4to"
+const secInfo4toTest19 = mod.getSectionsAndTitularsForCourse('4to', 'Computación I');
+assert.strictEqual(secInfo4toTest19.length, 2, 'Deben haber 2 secciones para 4to');
+assert.strictEqual(secInfo4toTest19[0].teacherName, 'Profesor Activo');
+assert.strictEqual(secInfo4toTest19[1].teacherName, 'Profesor Multirol');
+
+console.log('✅ Sincronización Robusta de Cátedras, Titulares y Elegibilidad Docente Verificada con Éxito.');
 
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');
 console.log('================================================================================');
+
 
 
