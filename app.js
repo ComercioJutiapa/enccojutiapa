@@ -9599,7 +9599,15 @@ function renderCurrentView() {
         case 'auxiliatura-log': if (typeof renderAuxiliaturaLogView === 'function') renderAuxiliaturaLogView(); break;
         case 'exoneraciones-log': if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView(); break;
         case 'permissions-history': if (typeof renderPermissionsHistoryView === 'function') renderPermissionsHistoryView(); break;
-        case 'exam-schedules': if (typeof renderExamSchedulesView === 'function') renderExamSchedulesView(); break;
+        case 'exam-schedules':
+            if (typeof syncExamSchedulesFromCloud === 'function') {
+                syncExamSchedulesFromCloud(false).catch(() => {}).finally(() => {
+                    if (typeof renderExamSchedulesView === 'function') renderExamSchedulesView();
+                });
+            } else if (typeof renderExamSchedulesView === 'function') {
+                renderExamSchedulesView();
+            }
+            break;
     }
 }
 
@@ -36934,6 +36942,23 @@ function initFirestoreModularLiveListeners() {
                 });
             }, err => console.warn('Aviso en onSnapshot attendanceAlerts:', err));
             if (typeof unsubAlerts === 'function') _firestoreModularUnsubscribers.push(unsubAlerts);
+        } catch(e) {}
+
+        // 8. 📅 ESCUCHAR ROLES DE EXÁMENES Y CUIDO ('config/examSchedules')
+        try {
+            const unsubExams = onSnapshot(doc(db, 'config', 'examSchedules'), (snap) => {
+                if (!snap || !snap.exists()) return;
+                const d = snap.data();
+                if (d && d.schedules && typeof d.schedules === 'object' && Object.keys(d.schedules).length > 0) {
+                    STATE.examSchedules = d.schedules;
+                    try { localStorage.setItem('encc_exam_schedules_state', JSON.stringify(d.schedules)); } catch(e) {}
+                    const v = document.getElementById('view-exam-schedules');
+                    if (v && v.style.display !== 'none' && typeof renderExamSchedulesView === 'function') {
+                        renderExamSchedulesView();
+                    }
+                }
+            }, err => console.warn('Aviso en onSnapshot config/examSchedules:', err));
+            if (typeof unsubExams === 'function') _firestoreModularUnsubscribers.push(unsubExams);
         } catch(e) {}
     } catch(err) {
         console.warn('Aviso al configurar Firestore onSnapshot:', err);

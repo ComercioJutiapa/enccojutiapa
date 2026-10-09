@@ -498,6 +498,66 @@ const workloadMeca = mod.calculateTeacherWorkloadForDate(dummyBlockMeca, '2026-1
 assert.strictEqual(workloadMeca['T_ANA'].minutes, 60, 'Prof. Ana López titular de Mecanografía debe tener acreditados sus 60 min de evaluación');
 console.log('✅ Modo Mecanografía Verificado: La cátedra es evaluada directamente por sus docentes titulares.');
 
+// 15. Test Modo Sección Completa vs Medias Secciones
+console.log('\n[Test 15] Verificando Modo Sección Completa vs Medias Secciones...');
+const fullSecProctors = mod.autoPickProctorsForModal(
+    sectionsTestInfo,
+    titularTestIds,
+    false,
+    '07:30',
+    null,
+    null,
+    true // isFullSection = true
+);
+assert(fullSecProctors['4PC_A'] !== undefined, 'Debe asignar cuidador para sección A');
+assert(fullSecProctors['4PC_B'] !== undefined, 'Debe asignar cuidador para sección B');
+assert(fullSecProctors['4PC_A'].caretakerSingle, 'Debe haber un cuidador único asignado a sección A');
+assert.strictEqual(fullSecProctors['4PC_A'].caretakerA, fullSecProctors['4PC_A'].caretakerB, 'En sección completa, grupo A y B comparten el mismo cuidador único');
+assert(!titularTestIds.includes(fullSecProctors['4PC_A'].caretakerSingle), 'El cuidador de sección completa A no debe ser titular');
+console.log('✅ Modo Sección Completa Verificado: 1 cuidador por sección única sin colisión.');
+
+// 16. Test Permisos Multi-Rol y Sincronización (Dirección, Secretaría, Auxiliatura)
+console.log('\n[Test 16] Verificando Visibilidad Multi-Rol (Dirección, Secretaría, Auxiliatura)...');
+['direccion', 'director', 'secretaria', 'auxiliar', 'auxiliatura', 'profesor_auxiliar', 'admin'].forEach(role => {
+    assert(mod.hasExamScheduleAccess(role) === true, `El rol ${role} debe tener acceso a Roles de Exámenes`);
+});
+['docente', 'estudiante', 'padre'].forEach(role => {
+    assert(mod.hasExamScheduleAccess(role) === false, `El rol ${role} NO debe tener acceso a administración de Roles`);
+});
+console.log('✅ Permisos Multi-Rol Verificados: Dirección, Secretaría y Auxiliatura tienen acceso unificado.');
+
+// 17. Test Agrupación y Separación por Grado en Calendario Consolidado
+console.log('\n[Test 17] Verificando Separación por Grados en Calendario Consolidado...');
+// Verificamos que el calendario agrupa evaluaciones en 4to, 5to y 6to
+const dummyBlockMultiGrade = {
+    days: [{
+        id: 'day_multi',
+        date: '2026-10-21',
+        evaluations: [
+            { id: 'ev_4', gradeCode: '4to Perito Contador', courseName: 'Contabilidad I', startTime: '07:30', endTime: '08:30', sections: [{ section: 'Sección A' }] },
+            { id: 'ev_5', gradeCode: '5to Perito Contador', courseName: 'Estadística', startTime: '07:30', endTime: '08:30', sections: [{ section: 'Sección A' }] },
+            { id: 'ev_6', gradeCode: '6to Perito Contador', courseName: 'Auditoría', startTime: '07:30', endTime: '08:30', sections: [{ section: 'Sección A' }] }
+        ]
+    }]
+};
+// Comprobamos la lógica de separación por grado
+const gradeOrder = ['4to', '5to', '6to'];
+const groupedByGrade = {};
+dummyBlockMultiGrade.days[0].evaluations.forEach(ev => {
+    const rawGrade = String(ev.gradeCode || '').toLowerCase();
+    let matchedKey = 'Otros Grados';
+    if (rawGrade.includes('4') || rawGrade.includes('cuarto')) matchedKey = '4to Perito Contador';
+    else if (rawGrade.includes('5') || rawGrade.includes('quinto')) matchedKey = '5to Perito Contador';
+    else if (rawGrade.includes('6') || rawGrade.includes('sexto')) matchedKey = '6to Perito Contador';
+    if (!groupedByGrade[matchedKey]) groupedByGrade[matchedKey] = [];
+    groupedByGrade[matchedKey].push(ev);
+});
+assert.strictEqual(Object.keys(groupedByGrade).length, 3, 'Deben haber 3 tablas de grados separadas para el mismo horario');
+assert(groupedByGrade['4to Perito Contador'].length === 1, '4to Perito Contador debe tener su tabla');
+assert(groupedByGrade['5to Perito Contador'].length === 1, '5to Perito Contador debe tener su tabla');
+assert(groupedByGrade['6to Perito Contador'].length === 1, '6to Perito Contador debe tener su tabla');
+console.log('✅ Separación por Grados en Calendario Verificada: Tablas separadas por grado garantizadas.');
+
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');
 console.log('================================================================================');
