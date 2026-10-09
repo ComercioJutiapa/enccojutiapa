@@ -51,6 +51,22 @@
                 flex-wrap: wrap;
                 gap: 10px;
                 margin-bottom: 16px;
+                cursor: pointer;
+                user-select: none;
+                transition: transform 0.15s ease, box-shadow 0.15s ease, margin-bottom 0.2s ease;
+            }
+            .exam-day-banner:hover {
+                box-shadow: 0 4px 14px rgba(21, 128, 61, 0.25);
+            }
+            .exam-day-banner.is-collapsed {
+                margin-bottom: 12px;
+                opacity: 0.95;
+            }
+            .exam-day-banner.is-collapsed:hover {
+                opacity: 1;
+            }
+            .exam-day-body {
+                transition: opacity 0.2s ease;
             }
             .exam-item-box {
                 background: #f8fafc;
@@ -1109,6 +1125,16 @@
                             </span>
                         </div>
 
+                        <!-- CONTROLES DE VISTA: EXPANDIR / CONTRAER TODOS -->
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary" onclick="window.toggleAllExamDays(true)" style="font-weight:700; font-size:0.84rem; background:#ffffff; color:#334155;" title="Desplegar el detalle de todos los días para edición">
+                                <i class="fa-solid fa-angles-down"></i> Desplegar Todos
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="window.toggleAllExamDays(false)" style="font-weight:700; font-size:0.84rem; background:#ffffff; color:#334155;" title="Contraer todos los días para vista panorámica limpia">
+                                <i class="fa-solid fa-angles-up"></i> Contraer Todos
+                            </button>
+                        </div>
+
                         <!-- CENTRO DE IMPRESIÓN CONSOLIDADO -->
                         <div class="btn-group" role="group">
                             <button type="button" class="btn btn-primary" onclick="window.printAllNominasOfBimester()" style="background:#1d4ed8; border-color:#1e40af; font-weight:700; font-size:0.86rem; padding:7px 14px;" title="Imprimir de una sola vez todas las nóminas (medias listas) de evaluaciones de este bimestre">
@@ -1333,6 +1359,7 @@
     // Renderizar tarjeta individual de un día
     function renderSingleDayCardHtml(scheduleBlock, dayObj, dayIdx) {
         const workload = calculateTeacherWorkloadForDate(scheduleBlock, dayObj.date);
+        const activeTeachersToday = Object.values(workload).filter(t => t.minutes > 0);
         const dayDateFormatted = new Date(dayObj.date + 'T12:00:00').toLocaleDateString('es-GT', {
             weekday: 'long',
             day: 'numeric',
@@ -1346,44 +1373,67 @@
         const activeGradeCols = getActiveGradeColumnsForDay(dayObj);
         const colCount = activeGradeCols.length >= 3 ? 3 : (activeGradeCols.length === 2 ? 2 : 1);
 
+        window._examDaysExpandedState = window._examDaysExpandedState || {};
+        const isExpanded = (window._examDaysExpandedState[dayObj.id] !== false);
+
         let html = `
-            <div class="exam-day-banner" style="${dayObj.isPracticaDay ? 'background:linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);' : ''}">
-                <div>
-                    <span style="text-transform:uppercase; font-size:0.75rem; letter-spacing:0.5px; opacity:0.9; font-weight:800;">
-                        ${dayObj.isPracticaDay ? '⭐ JORNADA EXCLUSIVA DE PRÁCTICA SUPERVISADA' : '🗓️ JORNADA DE EVALUACIONES'}
-                    </span>
-                    <h3 style="margin:2px 0 0 0; font-size:1.15rem; font-weight:800; color:#ffffff; text-transform:capitalize;">
-                        ${dayDateFormatted}
-                    </h3>
+            <div class="exam-day-banner ${isExpanded ? '' : 'is-collapsed'}" id="examDayBanner_${dayObj.id}" onclick="window.toggleExamDayCollapse('${dayObj.id}')" style="${dayObj.isPracticaDay ? 'background:linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);' : ''}" title="Haga clic para ${isExpanded ? 'contraer' : 'desplegar'} el detalle de este día">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:34px; height:34px; border-radius:8px; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:1rem; border:1px solid rgba(255,255,255,0.35); flex-shrink:0;">
+                        <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}" id="examDayChevron_${dayObj.id}"></i>
+                    </div>
+                    <div>
+                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                            <span style="text-transform:uppercase; font-size:0.73rem; letter-spacing:0.5px; opacity:0.92; font-weight:800;">
+                                ${dayObj.isPracticaDay ? '⭐ JORNADA EXCLUSIVA DE PRÁCTICA SUPERVISADA' : '🗓️ JORNADA DE EVALUACIONES'}
+                            </span>
+                            <span class="badge" style="background:rgba(255,255,255,0.22); color:#ffffff; font-size:0.72rem; font-weight:800; padding:2px 7px;">
+                                ${evs.length} ${evs.length === 1 ? 'materia' : 'materias'}
+                            </span>
+                            <span class="badge" style="background:rgba(255,255,255,0.22); color:#ffffff; font-size:0.72rem; font-weight:800; padding:2px 7px;">
+                                ${colCount} ${colCount === 1 ? 'grado' : 'grados'}
+                            </span>
+                            <span class="badge" style="background:rgba(255,255,255,0.22); color:#ffffff; font-size:0.72rem; font-weight:800; padding:2px 7px;">
+                                ${activeTeachersToday.length} cuidadores
+                            </span>
+                        </div>
+                        <h3 style="margin:2px 0 0 0; font-size:1.15rem; font-weight:800; color:#ffffff; text-transform:capitalize;">
+                            ${dayDateFormatted}
+                        </h3>
+                    </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-sm btn-light" onclick="window.printDailyScheduleOficio('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir Horario Oficial en Hoja Oficio (${colCount} Columnas)">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;" onclick="event.stopPropagation()">
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.toggleExamDayCollapse('${dayObj.id}')" style="background:rgba(255,255,255,0.2); color:#ffffff; font-weight:800; border:1px solid rgba(255,255,255,0.35); font-size:0.8rem; display:inline-flex; align-items:center; gap:5px;" title="Alternar vista desplegada / contraída">
+                        <span id="examDayToggleText_${dayObj.id}">${isExpanded ? 'Contraer' : 'Desplegar'}</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light" onclick="event.stopPropagation(); window.printDailyScheduleOficio('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir Horario Oficial en Hoja Oficio (${colCount} Columnas)">
                         <i class="fa-solid fa-print"></i> Horario Hoja Oficio (${colCount} Col.)
                     </button>
-                    <button type="button" class="btn btn-sm btn-light" onclick="window.printAllMediasListasOfDay('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir todas las nóminas (medias listas) de esta jornada">
+                    <button type="button" class="btn btn-sm btn-light" onclick="event.stopPropagation(); window.printAllMediasListasOfDay('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir todas las nóminas (medias listas) de esta jornada">
                         <i class="fa-solid fa-file-signature"></i> Imprimir Nóminas del Día
                     </button>
-                    <button type="button" class="btn btn-sm btn-light" onclick="window.addEvaluationToDay('${dayObj.id}')" style="font-weight:700; color:#15803d;" title="Agregar otra evaluación a este día">
+                    <button type="button" class="btn btn-sm btn-light" onclick="event.stopPropagation(); window.addEvaluationToDay('${dayObj.id}')" style="font-weight:700; color:#15803d;" title="Agregar otra evaluación a este día">
                         <i class="fa-solid fa-plus"></i> Asignar Clase
                     </button>
-                    <button type="button" class="btn btn-sm btn-danger" onclick="window.deleteExamDay('${dayObj.id}')" style="font-weight:700; padding:4px 8px;" title="Eliminar este día">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="event.stopPropagation(); window.deleteExamDay('${dayObj.id}')" style="font-weight:700; padding:4px 8px;" title="Eliminar este día">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- BARRA DE EQUIDAD DOCENTE (ANTIFATIGA) PARA ESTE DÍA -->
-            <div style="background:#f1f5f9; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:0.82rem; border:1px solid #e2e8f0;">
-                <div style="font-weight:800; color:#334155; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
-                    <div style="display:flex; align-items:center; gap:6px;">
-                        <i class="fa-solid fa-scale-balanced" style="color:#0284c7;"></i>
-                        <strong>Matriz de Equidad y Cargas de Cuido (Docentes asignados hoy):</strong>
+            <!-- CONTENEDOR DESPLEGABLE DEL CUERPO DEL DÍA -->
+            <div id="examDayBody_${dayObj.id}" class="exam-day-body" style="display:${isExpanded ? 'block' : 'none'}; margin-bottom:24px;">
+                <!-- BARRA DE EQUIDAD DOCENTE (ANTIFATIGA) PARA ESTE DÍA -->
+                <div style="background:#f1f5f9; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:0.82rem; border:1px solid #e2e8f0;">
+                    <div style="font-weight:800; color:#334155; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <i class="fa-solid fa-scale-balanced" style="color:#0284c7;"></i>
+                            <strong>Matriz de Equidad y Cargas de Cuido (Docentes asignados hoy):</strong>
+                        </div>
                     </div>
-                </div>
-                <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                    <div style="display:flex; flex-wrap:wrap; gap:4px;">
         `;
 
-        const activeTeachersToday = Object.values(workload).filter(t => t.minutes > 0);
         if (activeTeachersToday.length === 0) {
             html += `<span style="color:#64748b; font-style:italic;">Aún no hay cuidadores asignados para esta fecha.</span>`;
         } else {
@@ -1402,13 +1452,13 @@
         }
 
         html += `
+                    </div>
+                    <!-- DISTRIBUCIÓN ESTRUCTURADA DE CUIDO POR GRADO Y HORA -->
+                    ${renderCuidoDistributionTableHtml(dayObj, activeGradeCols)}
                 </div>
-                <!-- DISTRIBUCIÓN ESTRUCTURADA DE CUIDO POR GRADO Y HORA -->
-                ${renderCuidoDistributionTableHtml(dayObj, activeGradeCols)}
-            </div>
 
-            <!-- LISTADO DE EVALUACIONES EN COLUMNAS POR GRADO Y HORA -->
-            <div style="margin-bottom:24px;">
+                <!-- LISTADO DE EVALUACIONES EN COLUMNAS POR GRADO Y HORA -->
+                <div style="margin-bottom:16px;">
         `;
 
         if (!dayObj.evaluations || dayObj.evaluations.length === 0) {
@@ -1461,6 +1511,7 @@
         }
 
         html += `
+                </div>
             </div>
         `;
         return html;
@@ -1819,6 +1870,8 @@
         scheduleBlock.days.sort((a, b) => a.date.localeCompare(b.date));
 
         saveExamSchedulesData(true);
+        window._examDaysExpandedState = window._examDaysExpandedState || {};
+        window._examDaysExpandedState[dayId] = true;
         document.getElementById('modalAddNewExamDay').remove();
         renderExamSchedulesView();
     };
@@ -1831,6 +1884,43 @@
 
         scheduleBlock.days = scheduleBlock.days.filter(d => d.id !== dayId);
         saveExamSchedulesData(true);
+        renderExamSchedulesView();
+    };
+
+    window.toggleExamDayCollapse = function (dayId) {
+        window._examDaysExpandedState = window._examDaysExpandedState || {};
+        const cur = window._examDaysExpandedState[dayId] !== false;
+        const next = !cur;
+        window._examDaysExpandedState[dayId] = next;
+
+        const bodyEl = document.getElementById('examDayBody_' + dayId);
+        const iconEl = document.getElementById('examDayChevron_' + dayId);
+        const textEl = document.getElementById('examDayToggleText_' + dayId);
+        const bannerEl = document.getElementById('examDayBanner_' + dayId);
+
+        if (bodyEl) {
+            bodyEl.style.display = next ? 'block' : 'none';
+        }
+        if (iconEl) {
+            iconEl.className = 'fa-solid ' + (next ? 'fa-chevron-up' : 'fa-chevron-down');
+        }
+        if (textEl) {
+            textEl.textContent = next ? 'Contraer' : 'Desplegar';
+        }
+        if (bannerEl) {
+            if (next) bannerEl.classList.remove('is-collapsed');
+            else bannerEl.classList.add('is-collapsed');
+        }
+    };
+
+    window.toggleAllExamDays = function (expandAll) {
+        window._examDaysExpandedState = window._examDaysExpandedState || {};
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
+        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
+        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
+        (scheduleBlock.days || []).forEach(d => {
+            window._examDaysExpandedState[d.id] = expandAll;
+        });
         renderExamSchedulesView();
     };
 
@@ -3415,10 +3505,12 @@
                                     </div>
                                 `;
                             } else {
+                                const gA = ev.groupA || {};
+                                const gB = ev.groupB || {};
                                 salonesHtml = `
                                     <div style="margin-top:4px; font-size:0.82rem;">
-                                        • Salón ${ev.groupA.classroom} (A): <strong>${ev.groupA.caretakerTeacherName || 'Sin asignar'}</strong><br>
-                                        • Salón ${ev.groupB.classroom} (B): <strong>${ev.groupB.caretakerTeacherName || 'Sin asignar'}</strong>
+                                        • Salón ${gA.classroom || 'Salón'} (A): <strong>${gA.caretakerTeacherName || 'Sin asignar'}</strong><br>
+                                        • Salón ${gB.classroom || 'Salón'} (B): <strong>${gB.caretakerTeacherName || 'Sin asignar'}</strong>
                                     </div>
                                 `;
                             }
@@ -3468,6 +3560,7 @@
             <html lang="es">
             <head>
                 <meta charset="UTF-8">
+                <base href="${(typeof window !== 'undefined' && window.location) ? window.location.href : ''}">
                 <title>Horario de Evaluaciones - ${dayFormatted}</title>
                 <style>
                     @page {
@@ -3480,6 +3573,26 @@
                         margin: 0;
                         padding: 0;
                         background: #ffffff;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    .no-print-bar {
+                        position: sticky;
+                        top: 0;
+                        background: #0f172a;
+                        color: #ffffff;
+                        padding: 8px 16px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        z-index: 9999;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+                        font-family: system-ui, -apple-system, sans-serif;
+                    }
+                    @media print {
+                        .no-print-bar {
+                            display: none !important;
+                        }
                     }
                     .header-table {
                         width: 100%;
@@ -3519,6 +3632,19 @@
                 </style>
             </head>
             <body>
+                <div class="no-print-bar">
+                    <div style="font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px;">
+                        <span>📅 Vista de Impresión Oficial ─ Horario Hoja Oficio</span>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" onclick="window.print()" style="background:#2563eb; color:#ffffff; border:none; padding:6px 14px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
+                            🖨️ Imprimir Documento
+                        </button>
+                        <button type="button" onclick="window.close()" style="background:#475569; color:#ffffff; border:none; padding:6px 12px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
+                            ✕ Cerrar
+                        </button>
+                    </div>
+                </div>
                 <table class="header-table">
                     <tr>
                         <td style="width:75px; vertical-align:middle;">
@@ -3753,12 +3879,13 @@
         const isFullGroup = groupLetter === 'COMPLETA';
         const isGroupA = groupLetter === 'A';
         const secObj = targetSection || (Array.isArray(ev.sections) && ev.sections[0]) || null;
-        const grp = isFullGroup
+        const grp = (isFullGroup
             ? (secObj ? (secObj.singleRoom || secObj.groupA) : (ev.singleRoom || ev.groupA))
-            : (secObj ? (isGroupA ? secObj.groupA : secObj.groupB) : (isGroupA ? ev.groupA : ev.groupB));
+            : (secObj ? (isGroupA ? secObj.groupA : secObj.groupB) : (isGroupA ? ev.groupA : ev.groupB))) || {};
         const gradeCodeToUse = secObj ? secObj.gradeCode : ev.gradeCode;
         const secNameToUse = secObj ? secObj.section : '';
         const gradeNameToUse = secObj ? secObj.gradeName : ev.gradeName;
+        const sectionNameToUse = (secNameToUse ? `${gradeNameToUse} ─ ${secNameToUse}` : (gradeNameToUse || '')).trim();
         const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
         const foundSec = fresh.find(f => (secObj && (f.sectionLetter === (secObj.sectionLetter || (secObj.section || '').replace(/Secci[oó]n\s*/i, '').trim()) || f.section === secObj.section)));
         let titularNameToUse = (foundSec && foundSec.teacherName) ? foundSec.teacherName : ((secObj && secObj.teacherName && secObj.teacherName !== 'Sin docente asignado') ? secObj.teacherName : ev.courseTeacherName);
@@ -4017,7 +4144,7 @@
                     <tr>
                         <td style="font-weight:700; padding:2px 6px;">Grupo Asignado:</td>
                         <td style="font-weight:900; color:#15803d; font-size:0.92rem;">
-                            GRUPO "${groupLetter}" (Nómina ${grp.range})
+                            GRUPO "${groupLetter}" (Nómina ${grp.range || (groupLetter === 'A' ? 'Grupo A' : (groupLetter === 'B' ? 'Grupo B' : 'Oficial'))})
                         </td>
                         <td style="font-weight:700; padding:2px 6px;">Total Alumnos:</td>
                         <td><strong>${studentList.length} estudiantes</strong></td>
@@ -4082,6 +4209,7 @@
             <html lang="es">
             <head>
                 <meta charset="UTF-8">
+                <base href="${(typeof window !== 'undefined' && window.location) ? window.location.href : ''}">
                 <title>${title}</title>
                 <style>
                     @page {
@@ -4094,20 +4222,53 @@
                         margin: 0;
                         padding: 0;
                         background: #ffffff;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
                     .sheet-container {
                         width: 100%;
                         page-break-inside: avoid;
                         box-sizing: border-box;
                     }
+                    .no-print-bar {
+                        position: sticky;
+                        top: 0;
+                        background: #0f172a;
+                        color: #ffffff;
+                        padding: 8px 16px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        z-index: 9999;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+                        font-family: system-ui, -apple-system, sans-serif;
+                    }
+                    @media print {
+                        .no-print-bar {
+                            display: none !important;
+                        }
+                    }
                 </style>
             </head>
             <body>
+                <div class="no-print-bar">
+                    <div style="font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px;">
+                        <span>📄 Vista de Impresión Oficial ─ Medias Listas ENCCO</span>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" onclick="window.print()" style="background:#2563eb; color:#ffffff; border:none; padding:6px 14px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
+                            🖨️ Imprimir Documento
+                        </button>
+                        <button type="button" onclick="window.close()" style="background:#475569; color:#ffffff; border:none; padding:6px 12px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
+                            ✕ Cerrar
+                        </button>
+                    </div>
+                </div>
                 ${bodyHtml}
             </body>
             </html>
         `;
-        openPrintWindow(fullHtml);
+        openPrintWindow(fullHtml, title, 'portrait', bodyHtml);
     }
 
     // =========================================================================
@@ -4177,7 +4338,9 @@
                     const isFull = ev.evaluationMode === 'SECCION_COMPLETA';
 
                     if (ev.isPractica) {
-                        cuidadoresStr = `Salón ${ev.groupA.classroom} (A): ${ev.groupA.caretakerTeacherName} / ${ev.groupA.caretakerTurn2Name}<br>Salón ${ev.groupB.classroom} (B): ${ev.groupB.caretakerTeacherName} / ${ev.groupB.caretakerTurn2Name}`;
+                        const gA = ev.groupA || {};
+                        const gB = ev.groupB || {};
+                        cuidadoresStr = `Salón ${gA.classroom || 'Salón'} (A): ${gA.caretakerTeacherName || 'N/A'} / ${gA.caretakerTurn2Name || 'N/A'}<br>Salón ${gB.classroom || 'Salón'} (B): ${gB.caretakerTeacherName || 'N/A'} / ${gB.caretakerTurn2Name || 'N/A'}`;
                     } else if ((ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single') {
                         cuidadoresStr = `${ev.isMecanografia ? '⌨️ Taller Meca' : '💻 Lab. Computación'}: ${ev.courseTeacherName} (Titular)`;
                     } else if (Array.isArray(ev.sections) && ev.sections.length > 0) {
@@ -4189,14 +4352,19 @@
                                 const sRoom = sec.singleRoom || sec.groupA || {};
                                 return `<strong>${sec.section}:</strong> Salón ${sRoom.classroom || 'Salón'} ─ ${sRoom.caretakerTeacherName || 'Sin asignar'}`;
                             } else {
-                                return `<strong>${sec.section}:</strong> Salón ${sec.groupA.classroom} (A): ${sec.groupA.caretakerTeacherName || 'N/A'} | Salón ${sec.groupB.classroom} (B): ${sec.groupB.caretakerTeacherName || 'N/A'}`;
+                                const sgA = sec.groupA || {};
+                                const sgB = sec.groupB || {};
+                                return `<strong>${sec.section}:</strong> Salón ${sgA.classroom || 'Salón'} (A): ${sgA.caretakerTeacherName || 'N/A'} | Salón ${sgB.classroom || 'Salón'} (B): ${sgB.caretakerTeacherName || 'N/A'}`;
                             }
                         }).join('<br>');
                     } else {
                         if (isFull) {
-                            cuidadoresStr = `Salón ${ev.groupA.classroom} (Sección Completa): ${ev.groupA.caretakerTeacherName || 'N/A'}`;
+                            const sRoom = ev.singleRoom || ev.groupA || {};
+                            cuidadoresStr = `Salón ${sRoom.classroom || 'Salón'} (Sección Completa): ${sRoom.caretakerTeacherName || 'N/A'}`;
                         } else {
-                            cuidadoresStr = `Salón ${ev.groupA.classroom} (A): ${ev.groupA.caretakerTeacherName || 'N/A'}<br>Salón ${ev.groupB.classroom} (B): ${ev.groupB.caretakerTeacherName || 'N/A'}`;
+                            const gA = ev.groupA || {};
+                            const gB = ev.groupB || {};
+                            cuidadoresStr = `Salón ${gA.classroom || 'Salón'} (A): ${gA.caretakerTeacherName || 'N/A'}<br>Salón ${gB.classroom || 'Salón'} (B): ${gB.caretakerTeacherName || 'N/A'}`;
                         }
                     }
 
@@ -4282,6 +4450,7 @@
             <html lang="es">
             <head>
                 <meta charset="UTF-8">
+                <base href="${(typeof window !== 'undefined' && window.location) ? window.location.href : ''}">
                 <title>Calendario General de Evaluaciones - Bimestre ${bimesterSelectVal}</title>
                 <style>
                     @page {
@@ -4299,6 +4468,24 @@
                         background: #ffffff;
                         -webkit-print-color-adjust: exact;
                         print-color-adjust: exact;
+                    }
+                    .no-print-bar {
+                        position: sticky;
+                        top: 0;
+                        background: #0f172a;
+                        color: #ffffff;
+                        padding: 8px 16px;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        z-index: 9999;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+                        font-family: system-ui, -apple-system, sans-serif;
+                    }
+                    @media print {
+                        .no-print-bar {
+                            display: none !important;
+                        }
                     }
                     .calendar-header-table {
                         width: 100%;
@@ -4365,6 +4552,19 @@
                 </style>
             </head>
             <body>
+                <div class="no-print-bar">
+                    <div style="font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px;">
+                        <span>📅 Vista de Impresión Oficial ─ Calendario General</span>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" onclick="window.print()" style="background:#2563eb; color:#ffffff; border:none; padding:6px 14px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
+                            🖨️ Imprimir Documento
+                        </button>
+                        <button type="button" onclick="window.close()" style="background:#475569; color:#ffffff; border:none; padding:6px 12px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
+                            ✕ Cerrar
+                        </button>
+                    </div>
+                </div>
                 <table class="calendar-header-table">
                     <tr>
                         <td style="width:65px;"><img src="logo.png" onerror="this.src='portada-comercio-principal.webp'" style="height:50px;"></td>
@@ -4378,49 +4578,94 @@
             </body>
             </html>
         `;
-        openPrintWindow(calendarHtml);
+        openPrintWindow(calendarHtml, 'Calendario_General', 'landscape');
     };
 
-    // Helper unificado para abrir ventana de impresión (protegido contra doble clic accidental)
+    // Helper unificado para abrir ventana de impresión (protegido contra doble clic accidental y bloqueos de pop-up)
     let isPrintWindowOpening = false;
-    function openPrintWindow(htmlContent) {
+    function openPrintWindow(htmlContent, title = 'Impresion_Oficial', orientation = 'portrait') {
         if (isPrintWindowOpening) return;
         isPrintWindowOpening = true;
-        setTimeout(() => { isPrintWindowOpening = false; }, 1500);
+        setTimeout(() => { isPrintWindowOpening = false; }, 1200);
 
-        const printWin = window.open('', '_blank', 'width=980,height=720,menubar=no,toolbar=no,location=no,status=no');
+        // 1. Intentar abrir en pestaña/ventana nueva sin flags restrictivos que detonen bloqueos
+        let printWin = null;
+        try {
+            printWin = window.open('', '_blank');
+        } catch (e) {
+            printWin = null;
+        }
+
+        // 2. Si el navegador bloqueó la ventana emergente, fallback transparente con iframe oculto
         if (!printWin) {
-            alert("El navegador bloqueó la ventana de impresión. Por favor habilite las ventanas emergentes (pop-ups).");
+            printViaHiddenIframe(htmlContent);
             return;
         }
 
-        printWin.document.open();
-        printWin.document.write(htmlContent);
-        printWin.document.close();
+        try {
+            printWin.document.open();
+            printWin.document.write(htmlContent);
+            printWin.document.close();
 
-        let hasTriggered = false;
-        const trigger = () => {
-            if (hasTriggered) return;
-            hasTriggered = true;
-            try {
-                printWin.focus();
-                printWin.print();
-            } catch (e) {
-                console.error("Error al disparar impresión:", e);
-            }
-        };
+            let hasTriggered = false;
+            const trigger = () => {
+                if (hasTriggered) return;
+                hasTriggered = true;
+                try {
+                    printWin.focus();
+                    printWin.print();
+                } catch (e) {
+                    console.error("Error al disparar impresión:", e);
+                }
+            };
 
-        const img = printWin.document.querySelector('img');
-        if (img) {
-            if (img.complete) {
-                setTimeout(trigger, 250);
+            const img = printWin.document.querySelector('img');
+            if (img) {
+                if (img.complete) {
+                    setTimeout(trigger, 300);
+                } else {
+                    img.onload = () => setTimeout(trigger, 250);
+                    img.onerror = () => setTimeout(trigger, 250);
+                    setTimeout(trigger, 1200);
+                }
             } else {
-                img.onload = () => setTimeout(trigger, 200);
-                img.onerror = () => setTimeout(trigger, 200);
-                setTimeout(trigger, 1200);
+                setTimeout(trigger, 300);
             }
-        } else {
-            setTimeout(trigger, 250);
+        } catch (err) {
+            console.warn("Fallo al escribir en ventana emergente, recurriendo a iframe:", err);
+            printViaHiddenIframe(htmlContent);
+        }
+    }
+
+    // Mecanismo de respaldo que imprime directamente en segundo plano sin requerir pop-ups
+    function printViaHiddenIframe(htmlContent) {
+        let iframe = document.getElementById('examPrintIframe');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'examPrintIframe';
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            iframe.style.zIndex = '-9999';
+            document.body.appendChild(iframe);
+        }
+
+        try {
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(htmlContent);
+            doc.close();
+
+            setTimeout(() => {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            }, 450);
+        } catch (e) {
+            console.error("Error al imprimir via iframe:", e);
+            alert("No se pudo iniciar la impresión automática. Por favor verifique los permisos de su navegador.");
         }
     }
 
