@@ -891,6 +891,43 @@ assert.strictEqual(totalWorkloadMinutes, 240, 'Solo las materias que evalúan ex
 
 console.log('✅ Evaluaciones y Secciones "En Proceso" Verificadas: Excluidas del calendario, sin salones físicos ni cuidadores.');
 
+// D. Verificación de resolución de jornada para impresión (findDayAndScheduleBlock y printDailyScheduleOficio)
+console.log('\n[Test 10] Verificando resolución de jornada de examen para impresión...');
+const testScheduleKey = 'schedules_2026_BIM4';
+global.STATE.examSchedules = {
+    [testScheduleKey]: {
+        bimester: 'IV Bimestre',
+        days: [
+            {
+                id: 'day_test_print_1',
+                date: '2026-10-16',
+                evaluations: []
+            }
+        ]
+    }
+};
+global._currentSelectedExamBim = 'IV Bimestre';
+let printAlertTriggered = null;
+global.alert = (msg) => { printAlertTriggered = msg; };
+global.window.open = () => ({
+    document: {
+        open: () => {},
+        write: () => {},
+        close: () => {},
+        querySelector: () => null
+    },
+    focus: () => {},
+    print: () => {}
+});
+
+mod.printDailyScheduleOficio('day_test_print_1');
+assert.strictEqual(printAlertTriggered, null, 'No debe disparar alerta de error al encontrar la jornada para imprimir');
+
+mod.printAllMediasListasOfDay('day_test_print_1');
+// Alerta de que no hay evaluaciones asignadas, pero NO de "No se encontró la jornada"
+assert.strictEqual(printAlertTriggered, 'No hay evaluaciones asignadas en este día.');
+console.log('✅ Resolución de jornada e impresión verificado exitosamente (sin error de jornada no encontrada).');
+
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');
 console.log('================================================================================');

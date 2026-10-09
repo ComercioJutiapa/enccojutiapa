@@ -466,12 +466,12 @@
 
     // Helper universal para ubicar un día programado y su bloque correspondiente sin fallos por desalineación de bimestre
     function findDayAndScheduleBlock(dayId, preferredBim = null) {
-        if (!dayId) return { dayObj: null, scheduleBlock: null, scheduleKey: null };
+        if (!dayId) return { dayObj: null, day: null, scheduleBlock: null, scheduleKey: null };
         const bimesterSelectVal = preferredBim || (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         let scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
         let dayObj = (scheduleBlock.days || []).find(d => String(d.id) === String(dayId));
-        if (dayObj) return { dayObj, scheduleBlock, scheduleKey };
+        if (dayObj) return { dayObj, day: dayObj, scheduleBlock, scheduleKey };
 
         // Búsqueda exhaustiva en todos los bloques del sistema si no se encontró en el bimestre preferido
         const all = getExamSchedulesData();
@@ -480,11 +480,11 @@
             if (blk && Array.isArray(blk.days)) {
                 const foundDay = blk.days.find(d => String(d.id) === String(dayId));
                 if (foundDay) {
-                    return { dayObj: foundDay, scheduleBlock: blk, scheduleKey: key };
+                    return { dayObj: foundDay, day: foundDay, scheduleBlock: blk, scheduleKey: key };
                 }
             }
         }
-        return { dayObj: null, scheduleBlock: scheduleBlock, scheduleKey: scheduleKey };
+        return { dayObj: null, day: null, scheduleBlock: scheduleBlock, scheduleKey: scheduleKey };
     }
 
     // Calcular la matriz de carga de trabajo (minutos cuidados por cada profesor en una fecha)
@@ -3450,11 +3450,11 @@
     // =========================================================================
     window.printDailyScheduleOficio = function (dayId) {
         const found = findDayAndScheduleBlock(dayId, window._currentSelectedExamBim);
-        if (!found || !found.day) {
+        const dayObj = found ? (found.dayObj || found.day) : null;
+        if (!found || !dayObj) {
             alert('⚠️ No se encontró la jornada de examen solicitada para imprimir.');
             return;
         }
-        const dayObj = found.day;
 
         const dayFormatted = new Date(dayObj.date + 'T12:00:00').toLocaleDateString('es-GT', {
             weekday: 'long',
@@ -3760,11 +3760,11 @@
     // =========================================================================
     window.printMediasListasModal = function (dayId, evalId) {
         const found = findDayAndScheduleBlock(dayId, window._currentSelectedExamBim);
-        if (!found || !found.day) {
+        const dayObj = found ? (found.dayObj || found.day) : null;
+        if (!found || !dayObj) {
             alert('⚠️ No se encontró la jornada de examen solicitada.');
             return;
         }
-        const dayObj = found.day;
         const ev = (dayObj.evaluations || []).find(e => e.id === evalId);
         if (!ev) {
             alert('⚠️ No se encontró la evaluación seleccionada.');
@@ -3781,11 +3781,11 @@
 
     window.printAllMediasListasOfDay = function (dayId) {
         const found = findDayAndScheduleBlock(dayId, window._currentSelectedExamBim);
-        if (!found || !found.day) {
+        const dayObj = found ? (found.dayObj || found.day) : null;
+        if (!found || !dayObj) {
             alert('⚠️ No se encontró la jornada de examen solicitada.');
             return;
         }
-        const dayObj = found.day;
         if (!dayObj || !dayObj.evaluations || dayObj.evaluations.length === 0) {
             alert("No hay evaluaciones asignadas en este día.");
             return;
