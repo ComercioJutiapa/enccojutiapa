@@ -3552,7 +3552,7 @@
             rowsHtml += `
                 <tr>
                     <td style="padding:10px 12px; border:1px solid #cbd5e1; vertical-align:top; background:#f8fafc; width:${timeColWidth};">
-                        <div style="font-weight:900; font-size:1rem; color:#0f172a;">⏰ ${slot} hrs</div>
+                        <div style="font-weight:900; font-size:1rem; color:#0f172a;">${slot} hrs</div>
                         <div style="font-size:0.75rem; color:#64748b; font-weight:700; margin-top:3px;">BLOQUE DE EVALUACIÓN</div>
                     </td>
             `;
@@ -3578,15 +3578,15 @@
                             const relevoTime = minutesToTimeString(timeStringToMinutes(ev.startTime) + Math.round(ev.durationMinutes / 2));
                             salonesHtml = `
                                 <div style="margin-top:6px; font-size:0.82rem; background:#eff6ff; padding:6px; border-radius:4px; border:1px solid #bfdbfe;">
-                                    <strong>🏫 Salón ${ev.groupA.classroom} (A):</strong> ${ev.groupA.caretakerTeacherName || 'N/A'} / Relevo: ${ev.groupA.caretakerTurn2Name || 'N/A'}<br>
-                                    <strong>🏫 Salón ${ev.groupB.classroom} (B):</strong> ${ev.groupB.caretakerTeacherName || 'N/A'} / Relevo: ${ev.groupB.caretakerTurn2Name || 'N/A'}
+                                    <strong>Salón ${ev.groupA.classroom} (A):</strong> ${ev.groupA.caretakerTeacherName || 'N/A'} / Relevo: ${ev.groupA.caretakerTurn2Name || 'N/A'}<br>
+                                    <strong>Salón ${ev.groupB.classroom} (B):</strong> ${ev.groupB.caretakerTeacherName || 'N/A'} / Relevo: ${ev.groupB.caretakerTurn2Name || 'N/A'}
                                 </div>
                             `;
                         } else if ((ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single') {
                             const isMeca = ev.isMecanografia;
                             salonesHtml = `
                                 <div style="margin-top:6px; font-size:0.82rem; background:${isMeca ? '#fffbeb' : '#f0f9ff'}; padding:6px; border-radius:4px; border:1px solid ${isMeca ? '#fde68a' : '#bae6fd'};">
-                                    <strong>${isMeca ? '⌨️ Taller de Mecanografía' : '💻 Lab. Computación'}:</strong><br>
+                                    <strong>${isMeca ? 'Taller de Mecanografía' : 'Lab. Computación'}:</strong><br>
                                     • Evaluadores y Cuidadores: <strong>${ev.courseTeacherName}</strong> (Docentes Titulares)
                                 </div>
                             `;
@@ -3595,7 +3595,7 @@
                                 if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') {
                                     return `
                                         <div style="margin-top:4px; font-size:0.82rem; border-bottom:1px dashed #e2e8f0; padding-bottom:3px; color:#92400e;">
-                                            <strong style="color:#15803d;">📌 ${sec.section}:</strong> 📁 Evaluación en Proceso (acumulativo continuo)
+                                            <strong style="color:#15803d;">${sec.section}:</strong> Evaluación en Proceso (acumulativo continuo)
                                         </div>
                                     `;
                                 }
@@ -3604,14 +3604,14 @@
                                     const sRoom = sec.singleRoom || sec.groupA || {};
                                     return `
                                         <div style="margin-top:4px; font-size:0.82rem; border-bottom:1px dashed #e2e8f0; padding-bottom:3px;">
-                                            <strong style="color:#15803d;">📌 ${sec.section}:</strong> Salón ${sRoom.classroom || 'Salón'} (Sección Completa ─ ${sRoom.range || 'Nómina'})<br>
+                                            <strong style="color:#15803d;">${sec.section}:</strong> Salón ${sRoom.classroom || 'Salón'} (Sección Completa ─ ${sRoom.range || 'Nómina'})<br>
                                             • Cuidador: <strong>${sRoom.caretakerTeacherName || 'Sin asignar'}</strong>
                                         </div>
                                     `;
                                 } else {
                                     return `
                                         <div style="margin-top:4px; font-size:0.82rem; border-bottom:1px dashed #e2e8f0; padding-bottom:3px;">
-                                            <strong style="color:#15803d;">📌 ${sec.section}:</strong><br>
+                                            <strong style="color:#15803d;">${sec.section}:</strong><br>
                                             • Salón ${sec.groupA.classroom} (A): <strong>${sec.groupA.caretakerTeacherName || 'Sin asignar'}</strong><br>
                                             • Salón ${sec.groupB.classroom} (B): <strong>${sec.groupB.caretakerTeacherName || 'Sin asignar'}</strong>
                                         </div>
@@ -3658,9 +3658,9 @@
 
                         return `
                             <div style="margin-bottom:8px; border-bottom:1px solid #cbd5e1; padding-bottom:6px;">
-                                <div style="font-weight:900; font-size:0.95rem; color:#0f172a;">📘 ${ev.courseName}</div>
-                                <div style="font-size:0.8rem; color:#334155; margin-top:2px;">👤 <strong>Titular(es):</strong> ${titularesHtml}</div>
-                                <div style="font-size:0.78rem; color:#b45309; font-weight:700;">⏱️ Tiempo: ${ev.durationMinutes} min ${isFull ? '• [SECCIÓN COMPLETA]' : '• [MEDIAS SECCIONES A/B]'}</div>
+                                <div style="font-weight:900; font-size:0.95rem; color:#0f172a;">${ev.courseName}</div>
+                                <div style="font-size:0.8rem; color:#334155; margin-top:2px;"><strong>Titular(es):</strong> ${titularesHtml}</div>
+                                <div style="font-size:0.78rem; color:#b45309; font-weight:700;">Tiempo: ${ev.durationMinutes} min ${isFull ? '• [SECCIÓN COMPLETA]' : '• [MEDIAS SECCIONES A/B]'}</div>
                                 <div style="margin-top:4px;">${salonesHtml}</div>
                             </div>
                         `;
@@ -3756,11 +3756,11 @@
             <body>
                 <div class="no-print-bar">
                     <div style="font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px;">
-                        <span>📅 Vista de Impresión Oficial ─ Horario Hoja Oficio</span>
+                        <span>Vista de Impresión Oficial ─ Horario Hoja Oficio</span>
                     </div>
                     <div style="display:flex; gap:8px;">
                         <button type="button" onclick="window.print()" style="background:#2563eb; color:#ffffff; border:none; padding:6px 14px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
-                            🖨️ Imprimir Documento
+                            Imprimir Documento
                         </button>
                         <button type="button" onclick="window.close()" style="background:#475569; color:#ffffff; border:none; padding:6px 12px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
                             ✕ Cerrar
@@ -3780,7 +3780,7 @@
                                 Jornada Matutina — Ciclo Escolar ${(STATE && STATE.activeCycle) || '2026'} — Auxiliatura General
                             </div>
                             <div style="font-size:0.95rem; font-weight:900; color:#15803d; margin-top:3px;">
-                                📅 HORARIO OFICIAL DE EVALUACIONES (${colCount} COLUMNAS): ${dayFormatted}
+                                HORARIO OFICIAL DE EVALUACIONES (${colCount} COLUMNAS): ${dayFormatted}
                             </div>
                         </td>
                     </tr>
@@ -3789,9 +3789,9 @@
                 <table class="main-table">
                     <thead>
                         <tr>
-                            <th style="width:${colCount === 3 ? '13%' : '15%'};">⏰ HORARIO</th>
+                            <th style="width:${colCount === 3 ? '13%' : '15%'};">HORARIO</th>
                             ${activeCols.map(col => `
-                                <th style="width:${colCount === 3 ? '29%' : '42.5%'};">🎓 ${col.title.toUpperCase()}</th>
+                                <th style="width:${colCount === 3 ? '29%' : '42.5%'};">${col.title.toUpperCase()}</th>
                             `).join('')}
                         </tr>
                     </thead>
@@ -4103,15 +4103,15 @@
             caretakerHeaderHtml = `
                 <tr>
                     <td style="font-weight:700; color:#475569; padding:2.5px 5px; border-bottom:1px solid #f1f5f9;">1er Turno Cuido:</td>
-                    <td style="padding:2.5px 5px; border-bottom:1px solid #f1f5f9;"><strong style="color:#0f172a;">👤 ${grp.caretakerTeacherName || 'Sin asignar'}</strong> (${ev.startTime} a ${relevoTime} hrs)</td>
+                    <td style="padding:2.5px 5px; border-bottom:1px solid #f1f5f9;"><strong style="color:#0f172a;">${grp.caretakerTeacherName || 'Sin asignar'}</strong> (${ev.startTime} a ${relevoTime} hrs)</td>
                     <td style="font-weight:700; color:#475569; padding:2.5px 5px; border-bottom:1px solid #f1f5f9;">2do Turno Cuido:</td>
-                    <td style="padding:2.5px 5px; border-bottom:1px solid #f1f5f9;"><strong style="color:#0f172a;">👤 ${grp.caretakerTurn2Name || 'Sin asignar'}</strong> (${relevoTime} a ${ev.endTime} hrs)</td>
+                    <td style="padding:2.5px 5px; border-bottom:1px solid #f1f5f9;"><strong style="color:#0f172a;">${grp.caretakerTurn2Name || 'Sin asignar'}</strong> (${relevoTime} a ${ev.endTime} hrs)</td>
                 </tr>
             `;
 
             actaRelevoHtml = `
                 <div style="margin-top:6px; padding:5px 8px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:4px; font-size:0.74rem; line-height:1.3;">
-                    <strong>📋 ACTA DE RELEVO Y RECEPCIÓN:</strong><br>
+                    <strong>ACTA DE RELEVO Y RECEPCIÓN:</strong><br>
                     • Relevo (${relevoTime} hrs): _________________________ (1er Turno) entregó salón a _________________________ (2do Turno).<br>
                     • Total de pruebas recibidas al cierre (${ev.endTime} hrs): [ _____ ] de ${studentList.length} estudiantes.
                 </div>
@@ -4120,7 +4120,7 @@
             caretakerHeaderHtml = `
                 <tr>
                     <td style="font-weight:700; color:#475569; padding:2.5px 5px;">Docente Cuidador:</td>
-                    <td colspan="3" style="padding:2.5px 5px;"><strong style="font-size:0.86rem; color:#0f172a;">👤 ${grp.caretakerTeacherName || 'Sin asignar'}</strong></td>
+                    <td colspan="3" style="padding:2.5px 5px;"><strong style="font-size:0.86rem; color:#0f172a;">${grp.caretakerTeacherName || 'Sin asignar'}</strong></td>
                 </tr>
             `;
         }
@@ -4160,13 +4160,13 @@
                         <td style="font-weight:700; color:#475569; padding:2px 5px; border-bottom:1px solid #f1f5f9;">Asignatura:</td>
                         <td style="font-weight:800; color:#0f172a; padding:2px 5px; border-bottom:1px solid #f1f5f9;">${ev.courseName}</td>
                         <td style="font-weight:700; color:#475569; padding:2px 5px; border-bottom:1px solid #f1f5f9;">Horario Oficial:</td>
-                        <td style="font-weight:800; color:#0f172a; padding:2px 5px; border-bottom:1px solid #f1f5f9;">⏰ ${ev.startTime} a ${ev.endTime} hrs (${ev.durationMinutes} min)</td>
+                        <td style="font-weight:800; color:#0f172a; padding:2px 5px; border-bottom:1px solid #f1f5f9;">${ev.startTime} a ${ev.endTime} hrs (${ev.durationMinutes} min)</td>
                     </tr>
                     <tr>
                         <td style="font-weight:700; color:#475569; padding:2px 5px; border-bottom:1px solid #f1f5f9;">Catedrático Titular:</td>
                         <td style="padding:2px 5px; border-bottom:1px solid #f1f5f9;"><strong style="color:#0f172a;">${titularNameToUse}</strong></td>
                         <td style="font-weight:700; color:#475569; padding:2px 5px; border-bottom:1px solid #f1f5f9;">Salón Asignado:</td>
-                        <td style="font-weight:900; color:#15803d; padding:2px 5px; border-bottom:1px solid #f1f5f9;">🏫 ${grp.classroom || 'Salón Único'}</td>
+                        <td style="font-weight:900; color:#15803d; padding:2px 5px; border-bottom:1px solid #f1f5f9;">${grp.classroom || 'Salón Único'}</td>
                     </tr>
                     <tr>
                         <td style="font-weight:700; color:#475569; padding:2px 5px; border-bottom:1px solid #f1f5f9;">Modalidad / Salón:</td>
@@ -4178,7 +4178,7 @@
                     </tr>
                     <tr>
                         <td style="font-weight:700; color:#475569; padding:2px 5px;">Docente Cuidador:</td>
-                        <td colspan="3" style="padding:2px 5px;"><strong style="font-size:0.84rem; color:#0f172a;">👤 ${grp.caretakerTeacherName || 'Sin asignar'}</strong></td>
+                        <td colspan="3" style="padding:2px 5px;"><strong style="font-size:0.84rem; color:#0f172a;">${grp.caretakerTeacherName || 'Sin asignar'}</strong></td>
                     </tr>
                 </table>
 
@@ -4263,13 +4263,13 @@
                         <td style="font-weight:700; color:#475569; padding:2.5px 5px; border-bottom:1px solid #f1f5f9;">Asignatura:</td>
                         <td style="font-weight:800; color:#0f172a; padding:2.5px 5px; border-bottom:1px solid #f1f5f9;">${ev.courseName}</td>
                         <td style="font-weight:700; color:#475569; padding:2.5px 5px; border-bottom:1px solid #f1f5f9;">Horario Oficial:</td>
-                        <td style="font-weight:800; color:#0f172a; padding:2.5px 5px; border-bottom:1px solid #f1f5f9;">⏰ ${ev.startTime} a ${ev.endTime} hrs (${ev.durationMinutes} min)</td>
+                        <td style="font-weight:800; color:#0f172a; padding:2.5px 5px; border-bottom:1px solid #f1f5f9;">${ev.startTime} a ${ev.endTime} hrs (${ev.durationMinutes} min)</td>
                     </tr>
                     <tr>
                         <td style="font-weight:700; color:#475569; padding:2.5px 5px; border-bottom:1px solid #f1f5f9;">Catedrático Titular:</td>
                         <td style="padding:2.5px 5px; border-bottom:1px solid #f1f5f9;"><strong style="color:#0f172a;">${titularNameToUse}</strong></td>
                         <td style="font-weight:700; color:#475569; padding:2.5px 5px; border-bottom:1px solid #f1f5f9;">Salón Asignado:</td>
-                        <td style="font-weight:900; color:#15803d; padding:2.5px 5px; border-bottom:1px solid #f1f5f9;">🏫 ${grp.classroom || 'Salón'}</td>
+                        <td style="font-weight:900; color:#15803d; padding:2.5px 5px; border-bottom:1px solid #f1f5f9;">${grp.classroom || 'Salón'}</td>
                     </tr>
                     <tr>
                         <td style="font-weight:700; color:#475569; padding:2.5px 5px; border-bottom:1px solid #f1f5f9;">Grupo Asignado:</td>
@@ -4393,11 +4393,11 @@
             <body>
                 <div class="no-print-bar">
                     <div style="font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px;">
-                        <span>📄 Vista de Impresión Oficial ─ Medias Listas ENCCO</span>
+                        <span>Vista de Impresión Oficial ─ Medias Listas ENCCO</span>
                     </div>
                     <div style="display:flex; gap:8px;">
                         <button type="button" onclick="window.print()" style="background:#2563eb; color:#ffffff; border:none; padding:6px 14px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
-                            🖨️ Imprimir Documento
+                            Imprimir Documento
                         </button>
                         <button type="button" onclick="window.close()" style="background:#475569; color:#ffffff; border:none; padding:6px 12px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
                             ✕ Cerrar
@@ -4439,7 +4439,7 @@
                 daysTablesHtml += `
                     <div class="calendar-day-block">
                         <div class="calendar-day-header">
-                            📅 ${dFormatted} ${d.isPracticaDay ? '─ (JORNADA EXCLUSIVA DE PRÁCTICA SUPERVISADA)' : ''}
+                            ${dFormatted} ${d.isPracticaDay ? '─ (JORNADA EXCLUSIVA DE PRÁCTICA SUPERVISADA)' : ''}
                         </div>
                         <div style="border:1px solid #cbd5e1; padding:8px; text-align:center; color:#64748b; font-size:0.8rem;">
                             Sin evaluaciones programadas para este día.
@@ -4482,11 +4482,11 @@
                         const gB = ev.groupB || {};
                         cuidadoresStr = `Salón ${gA.classroom || 'Salón'} (A): ${gA.caretakerTeacherName || 'N/A'} / ${gA.caretakerTurn2Name || 'N/A'}<br>Salón ${gB.classroom || 'Salón'} (B): ${gB.caretakerTeacherName || 'N/A'} / ${gB.caretakerTurn2Name || 'N/A'}`;
                     } else if ((ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single') {
-                        cuidadoresStr = `${ev.isMecanografia ? '⌨️ Taller Meca' : '💻 Lab. Computación'}: ${ev.courseTeacherName} (Titular)`;
+                        cuidadoresStr = `${ev.isMecanografia ? 'Taller Meca' : 'Lab. Computación'}: ${ev.courseTeacherName} (Titular)`;
                     } else if (Array.isArray(ev.sections) && ev.sections.length > 0) {
                         cuidadoresStr = ev.sections.map(sec => {
                             if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') {
-                                return `<strong>${sec.section}:</strong> <span style="color:#92400e;">📁 En Proceso</span>`;
+                                return `<strong>${sec.section}:</strong> <span style="color:#92400e;">En Proceso</span>`;
                             }
                             if (isFull || sec.evaluationMode === 'SECCION_COMPLETA') {
                                 const sRoom = sec.singleRoom || sec.groupA || {};
@@ -4553,7 +4553,7 @@
                 dayGradesTablesHtml += `
                     <div class="calendar-grade-box">
                         <div class="calendar-grade-header">
-                            <span>🎓 ${gradeName.toUpperCase()}</span>
+                            <span>${gradeName.toUpperCase()}</span>
                             <span style="font-size:0.75rem; color:#cbd5e1; font-weight:600;">(${gradeEvals.length} evaluación/es)</span>
                         </div>
                         <table class="calendar-table">
@@ -4576,7 +4576,7 @@
             daysTablesHtml += `
                 <div class="calendar-day-block">
                     <div class="calendar-day-header">
-                        📅 ${dFormatted} ${d.isPracticaDay ? '─ (JORNADA EXCLUSIVA DE PRÁCTICA SUPERVISADA)' : ''}
+                        ${dFormatted} ${d.isPracticaDay ? '─ (JORNADA EXCLUSIVA DE PRÁCTICA SUPERVISADA)' : ''}
                     </div>
                     <div style="padding:0;">
                         ${dayGradesTablesHtml}
@@ -4694,11 +4694,11 @@
             <body>
                 <div class="no-print-bar">
                     <div style="font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px;">
-                        <span>📅 Vista de Impresión Oficial ─ Calendario General</span>
+                        <span>Vista de Impresión Oficial ─ Calendario General</span>
                     </div>
                     <div style="display:flex; gap:8px;">
                         <button type="button" onclick="window.print()" style="background:#2563eb; color:#ffffff; border:none; padding:6px 14px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
-                            🖨️ Imprimir Documento
+                            Imprimir Documento
                         </button>
                         <button type="button" onclick="window.close()" style="background:#475569; color:#ffffff; border:none; padding:6px 12px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
                             ✕ Cerrar
