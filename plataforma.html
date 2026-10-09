@@ -450,28 +450,39 @@
         </div>
     </div>
     <script>
-        // Transición de salida suave y fluida del overlay de hidratación
-        (function() {
-            function dismissOverlaySafely() {
-                var overlay = document.getElementById('appHydrationOverlay');
-                if (overlay && overlay.style.display !== 'none') {
-                    // Restaurar el color base del tema una vez montada la interfaz
-                    document.body.style.setProperty('background-color', '', '');
-                    overlay.style.opacity = '0';
-                    overlay.style.pointerEvents = 'none';
-                    setTimeout(function() {
-                        if (overlay) overlay.style.display = 'none';
-                    }, 250);
+        // Función oficial para descartar la pantalla de carga y revelar la plataforma solo cuando todo esté listo
+        window.dismissAppHydrationOverlay = function() {
+            var overlay = document.getElementById('appHydrationOverlay');
+            var topBar = document.getElementById('topRoleBar');
+            var mainLayout = document.getElementById('appMainLayout');
+            
+            // Revelar la estructura completa de la plataforma
+            if (topBar) topBar.style.display = 'block';
+            if (mainLayout) mainLayout.style.display = 'flex';
+            
+            if (overlay && overlay.style.display !== 'none') {
+                document.body.style.setProperty('background-color', '', '');
+                overlay.style.opacity = '0';
+                overlay.style.pointerEvents = 'none';
+                setTimeout(function() {
+                    if (overlay) overlay.style.display = 'none';
+                }, 300);
+            }
+        };
+
+        // Fallback de seguridad extendido por si ocurre un fallo crítico de red/módulos
+        setTimeout(function() {
+            var overlay = document.getElementById('appHydrationOverlay');
+            if (overlay && overlay.style.display !== 'none') {
+                var statusText = document.getElementById('hydrationStatusText');
+                if (statusText) statusText.textContent = 'Finalizando carga del sistema...';
+                if (typeof window.dismissAppHydrationOverlay === 'function') {
+                    window.dismissAppHydrationOverlay();
                 }
             }
-            // Si la app ya hidrató o tras 450ms, desvanecer fluidamente
-            setTimeout(dismissOverlaySafely, 450);
-            window.addEventListener('FirebaseModularReady', function() {
-                setTimeout(dismissOverlaySafely, 150);
-            });
-        })();
+        }, 8000);
     </script>
-<header class="top-role-bar" id="topRoleBar" style="display:block;">
+<header class="top-role-bar" id="topRoleBar" style="display:none;">
         <div class="role-bar-container">
             <div class="role-bar-brand">
                 <button type="button" class="btn btn-xs" id="sidebarCollapseToggleBtn" onclick="toggleSidebar()" title="Colapsar o Expandir Menú Lateral (Pantalla Completa)" style="background:rgba(255,255,255,0.18); color:#ffffff; border:1px solid rgba(255,255,255,0.3); border-radius:6px; padding:3px 9px; margin-right:8px; cursor:pointer; font-size:0.85rem; display:inline-flex; align-items:center;">
@@ -527,7 +538,7 @@
     </div>
 
     <!-- ESTRUCTURA PRINCIPAL DE LA APLICACIÓN (OCULTA HASTA INICIAR SESIÓN) -->
-    <div class="app-layout" id="appMainLayout" style="display:flex;">
+    <div class="app-layout" id="appMainLayout" style="display:none;">
         <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
         
         <!-- SIDEBAR DE NAVEGACIÓN TOTALMENTE AISLADA POR ROL -->
@@ -1680,9 +1691,6 @@
                             </select>
                         </div>
                         <div class="toolbar-actions" style="display:flex; gap:8px;">
-                            <a href="maestros-guias.html" target="_blank" class="btn btn-outline-primary" style="font-weight:700; text-decoration:none;">
-                                <i class="fa-solid fa-arrow-up-right-from-square"></i> Módulo Autónomo
-                            </a>
                             <button type="button" class="btn btn-primary" onclick="printGuideTeachersOfficialDirectory()" style="font-weight:700;">
                                 <i class="fa-solid fa-print"></i> Imprimir Lista de Docentes Guías
                             </button>

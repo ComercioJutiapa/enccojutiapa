@@ -1019,8 +1019,16 @@ const EnccoAuthStore = {
                 overlay.style.opacity = '1';
                 if (textEl && message) textEl.textContent = message;
             } else {
-                overlay.style.opacity = '0';
-                setTimeout(() => { overlay.style.display = 'none'; }, 300);
+                if (typeof window.dismissAppHydrationOverlay === 'function') {
+                    window.dismissAppHydrationOverlay();
+                } else {
+                    const topBar = document.getElementById('topRoleBar');
+                    const mainLayout = document.getElementById('appMainLayout');
+                    if (topBar) topBar.style.display = 'block';
+                    if (mainLayout) mainLayout.style.display = 'flex';
+                    overlay.style.opacity = '0';
+                    setTimeout(() => { overlay.style.display = 'none'; }, 300);
+                }
             }
         }
     }
@@ -7640,14 +7648,22 @@ async function initApp() {
     if (window.EnccoAuthStore && typeof window.EnccoAuthStore.setHydrated === 'function') {
         window.EnccoAuthStore.setHydrated(STATE.currentUser, STATE.currentRole);
     }
-    const _overlay = document.getElementById('appHydrationOverlay');
-    if (_overlay) {
-        if (typeof document !== 'undefined' && document.body) {
-            document.body.style.setProperty('background-color', '', '');
+    if (typeof window.dismissAppHydrationOverlay === 'function') {
+        window.dismissAppHydrationOverlay();
+    } else {
+        const _topBar = document.getElementById('topRoleBar');
+        const _mainLayout = document.getElementById('appMainLayout');
+        if (_topBar) _topBar.style.display = 'block';
+        if (_mainLayout) _mainLayout.style.display = 'flex';
+        const _overlay = document.getElementById('appHydrationOverlay');
+        if (_overlay) {
+            if (typeof document !== 'undefined' && document.body) {
+                document.body.style.setProperty('background-color', '', '');
+            }
+            _overlay.style.opacity = '0';
+            _overlay.style.pointerEvents = 'none';
+            setTimeout(() => { _overlay.style.display = 'none'; }, 250);
         }
-        _overlay.style.opacity = '0';
-        _overlay.style.pointerEvents = 'none';
-        setTimeout(() => { _overlay.style.display = 'none'; }, 250);
     }
 
     // Iniciar en dashboard y aplicar rol activo
