@@ -792,6 +792,105 @@ assert(!fixedEv.courseTeacherName.includes('Gamaliel'), 'Gamaliel queda 100% pur
 
 console.log('✅ Asignación de Cátedra y Reconciliación Oficial de Inglés Comercial II Verificadas al 100%.');
 
+// 22. Test Evaluaciones y Secciones "En Proceso" (Acumulativo Continuo)
+console.log('\n[Test 22] Verificando Manejo y Exclusión de Evaluaciones "En Proceso" (Opción 2)...');
+const mockDayWithProcess = {
+    id: 'day_process_test',
+    date: '2026-10-22',
+    evaluations: [
+        {
+            id: 'ev_normal',
+            academicGradeName: '4to Perito Contador',
+            gradeName: '4to Perito Contador',
+            courseName: 'Contabilidad General',
+            startTime: '07:30',
+            endTime: '08:30',
+            durationMinutes: 60,
+            evaluationStatus: 'EVALUA',
+            isEnProceso: false,
+            sections: [
+                {
+                    section: 'Sección A',
+                    teacherId: 'usr-doc-01',
+                    teacherName: 'Docente 1',
+                    evaluationStatus: 'EVALUA',
+                    isEnProceso: false,
+                    durationMinutes: 60,
+                    groupA: { classroom: 'Salón 1', caretakerTeacherId: '' },
+                    groupB: { classroom: 'Salón 2', caretakerTeacherId: '' }
+                }
+            ]
+        },
+        {
+            id: 'ev_normal_5',
+            academicGradeName: '5to Perito Contador',
+            gradeName: '5to Perito Contador',
+            courseName: 'Estadística',
+            startTime: '07:30',
+            endTime: '08:30',
+            durationMinutes: 60,
+            evaluationStatus: 'EVALUA',
+            isEnProceso: false,
+            sections: [
+                {
+                    section: 'Sección A',
+                    teacherId: 'usr-doc-03',
+                    teacherName: 'Docente 3',
+                    evaluationStatus: 'EVALUA',
+                    isEnProceso: false,
+                    durationMinutes: 60,
+                    groupA: { classroom: 'Salón 3', caretakerTeacherId: '' },
+                    groupB: { classroom: 'Salón 4', caretakerTeacherId: '' }
+                }
+            ]
+        },
+        {
+            id: 'ev_in_process',
+            academicGradeName: '6to Perito Contador',
+            gradeName: '6to Perito Contador',
+            courseName: 'Seminario',
+            startTime: '08:45',
+            endTime: '09:45',
+            durationMinutes: 60,
+            evaluationStatus: 'EN_PROCESO',
+            isEnProceso: true,
+            sections: [
+                {
+                    section: 'Sección A',
+                    teacherId: 'usr-doc-02',
+                    teacherName: 'Docente 2',
+                    evaluationStatus: 'EN_PROCESO',
+                    isEnProceso: true,
+                    durationMinutes: 60,
+                    groupA: { classroom: 'En Proceso', caretakerTeacherId: '' },
+                    groupB: { classroom: 'En Proceso', caretakerTeacherId: '' }
+                }
+            ]
+        }
+    ]
+};
+
+// A. Verificar que getActiveGradeColumnsForDay excluye 6to porque su única materia es "En Proceso"
+const activeColsWithProcess = mod.getActiveGradeColumnsForDay(mockDayWithProcess);
+assert.strictEqual(activeColsWithProcess.length, 2, 'Solo debe contar 4to y 5to porque 6to evalúa en proceso');
+assert(!activeColsWithProcess.some(c => c.key === '6to'), '6to NO debe tener columna activa cuando evalúa en proceso');
+
+// B. Verificar que autoAssignRandomProctors no asigna cuidadores a la evaluación en proceso
+const mockBlockProcess = { days: [mockDayWithProcess] };
+const sortResult = mod.autoAssignRandomProctors(mockBlockProcess, 'day_process_test');
+assert(sortResult.success, 'El sorteo debe completarse');
+const evProcessAfterSort = mockDayWithProcess.evaluations.find(e => e.id === 'ev_in_process');
+assert.strictEqual(evProcessAfterSort.sections[0].groupA.caretakerTeacherId, '', 'La sección en proceso NO debe recibir cuidador A');
+assert.strictEqual(evProcessAfterSort.sections[0].groupB.caretakerTeacherId, '', 'La sección en proceso NO debe recibir cuidador B');
+
+// C. Verificar que calculateTeacherWorkloadForDate no genera carga de minutos para materias en proceso
+const workloadAfterProcess = mod.calculateTeacherWorkloadForDate(mockBlockProcess, '2026-10-22');
+const totalWorkloadMinutes = Object.values(workloadAfterProcess).reduce((acc, t) => acc + t.minutes, 0);
+// Debe haber minutos para ev_normal (120 min) + ev_normal_5 (120 min) = 240 min, seminario en proceso = 0 min
+assert.strictEqual(totalWorkloadMinutes, 240, 'Solo las materias que evalúan examen generan carga (240 min), seminario en proceso 0 min');
+
+console.log('✅ Evaluaciones y Secciones "En Proceso" Verificadas: Excluidas del calendario, sin salones físicos ni cuidadores.');
+
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');
 console.log('================================================================================');

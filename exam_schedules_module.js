@@ -467,6 +467,9 @@
         const dayObj = (scheduleBlock.days || []).find(d => d.date === targetDate);
         if (dayObj && Array.isArray(dayObj.evaluations)) {
             dayObj.evaluations.forEach(ev => {
+                // Evaluaciones en proceso no generan carga de cuido
+                if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') return;
+
                 const dur = parseInt(ev.durationMinutes, 10) || 60;
 
                 if (ev.isPractica) {
@@ -474,6 +477,7 @@
                     const halfDur = Math.round(dur / 2);
                     if (Array.isArray(ev.sections) && ev.sections.length > 0) {
                         ev.sections.forEach(sec => {
+                            if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') return;
                             ['groupA', 'groupB'].forEach(grpKey => {
                                 const grp = sec[grpKey];
                                 if (grp) {
@@ -518,25 +522,45 @@
                     }
                 } else {
                     // Regular o Computación dividida
+                    const isFull = ev.evaluationMode === 'SECCION_COMPLETA';
                     if (Array.isArray(ev.sections) && ev.sections.length > 0) {
                         ev.sections.forEach(sec => {
+                            if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') return;
                             const secDur = parseInt(sec.durationMinutes, 10) || dur;
+                            const secIsFull = isFull || sec.evaluationMode === 'SECCION_COMPLETA';
+
+                            if (secIsFull) {
+                                const sRoom = sec.singleRoom || sec.groupA;
+                                if (sRoom && sRoom.caretakerTeacherId && workload[sRoom.caretakerTeacherId]) {
+                                    workload[sRoom.caretakerTeacherId].minutes += secDur;
+                                    workload[sRoom.caretakerTeacherId].salonesCount += 1;
+                                }
+                            } else {
+                                ['groupA', 'groupB'].forEach(grpKey => {
+                                    const grp = sec[grpKey];
+                                    if (grp && grp.caretakerTeacherId && workload[grp.caretakerTeacherId]) {
+                                        workload[grp.caretakerTeacherId].minutes += secDur;
+                                        workload[grp.caretakerTeacherId].salonesCount += 1;
+                                    }
+                                });
+                            }
+                        });
+                    } else {
+                        if (isFull) {
+                            const sRoom = ev.singleRoom || ev.groupA;
+                            if (sRoom && sRoom.caretakerTeacherId && workload[sRoom.caretakerTeacherId]) {
+                                workload[sRoom.caretakerTeacherId].minutes += dur;
+                                workload[sRoom.caretakerTeacherId].salonesCount += 1;
+                            }
+                        } else {
                             ['groupA', 'groupB'].forEach(grpKey => {
-                                const grp = sec[grpKey];
+                                const grp = ev[grpKey];
                                 if (grp && grp.caretakerTeacherId && workload[grp.caretakerTeacherId]) {
-                                    workload[grp.caretakerTeacherId].minutes += secDur;
+                                    workload[grp.caretakerTeacherId].minutes += dur;
                                     workload[grp.caretakerTeacherId].salonesCount += 1;
                                 }
                             });
-                        });
-                    } else {
-                        ['groupA', 'groupB'].forEach(grpKey => {
-                            const grp = ev[grpKey];
-                            if (grp && grp.caretakerTeacherId && workload[grp.caretakerTeacherId]) {
-                                workload[grp.caretakerTeacherId].minutes += dur;
-                                workload[grp.caretakerTeacherId].salonesCount += 1;
-                            }
-                        });
+                        }
                     }
                 }
             });
@@ -1144,7 +1168,8 @@
 
     // Obtener columnas de grados para una jornada (2 columnas para 4to y 5to; 3 columnas si hay 6to)
     function getActiveGradeColumnsForDay(dayObj) {
-        const evs = dayObj.evaluations || [];
+        // Excluir asignaturas evaluadas en proceso para el cálculo de columnas de examen
+        const evs = (dayObj.evaluations || []).filter(e => !e.isEnProceso && e.evaluationStatus !== 'EN_PROCESO');
         const has6to = evs.some(e => classifyGradeForDay(e).key === '6to');
         const has5to = evs.some(e => classifyGradeForDay(e).key === '5to');
         const has4to = evs.some(e => classifyGradeForDay(e).key === '4to');
@@ -1170,7 +1195,8 @@
 
     // Tabla de distribución de cuidos por grado y hora de evaluación
     function renderCuidoDistributionTableHtml(dayObj, activeGradeCols) {
-        const evs = dayObj.evaluations || [];
+        // Excluir materias en proceso de la tabla de cuidadores
+        const evs = (dayObj.evaluations || []).filter(e => !e.isEnProceso && e.evaluationStatus !== 'EN_PROCESO');
         if (evs.length === 0) return '';
 
         const timeIntervals = [];
@@ -1222,6 +1248,11 @@
                             `;
                         } else if (Array.isArray(ev.sections) && ev.sections.length > 0) {
                             cuidadoresList = ev.sections.map(sec => {
+                                if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') {
+                                    return `<div style="font-size:0.76rem; color:#92400e; line-height:1.3; margin-top:2px;">
+                                        <strong>${sec.section}:</strong> <span class="badge" style="background:#fef3c7; color:#92400e; font-size:0.7rem;">📁 En Proceso</span>
+                                    </div>`;
+                                }
                                 const secIsFull = isFull || sec.evaluationMode === 'SECCION_COMPLETA';
                                 if (secIsFull) {
                                     const sRoom = sec.singleRoom || sec.groupA || {};
@@ -1469,16 +1500,18 @@
                         </div>
                         <h4 style="margin:2px 0; font-size:1.05rem; font-weight:800; color:#0f172a;">
                             ${ev.gradeName || ev.gradeCode} ─ ${ev.courseName}
+                            ${(ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') ? '<span class="badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-size:0.75rem; font-weight:800; margin-left:6px;"><i class="fa-solid fa-folder-open"></i> En Proceso</span>' : ''}
                         </h4>
                         <div style="font-size:0.84rem; color:#475569;">
                             👤 <strong>Catedrático Titular:</strong> ${ev.courseTeacherName || 'Sin asignar'}
                             ${isPractica ? '<span style="color:#1d4ed8; font-weight:800; margin-left:8px;">(⭐ Práctica Supervisada - Relevo a los ' + Math.round(ev.durationMinutes / 2) + ' min)</span>' : ''}
                             ${ev.isComputacion ? '<span style="color:#0284c7; font-weight:800; margin-left:8px;">(💻 Laboratorio de Computación)</span>' : ''}
                             ${ev.isMecanografia ? '<span style="color:#b45309; font-weight:800; margin-left:8px;">(⌨️ Taller de Mecanografía ─ Titulares Evalúan)</span>' : ''}
+                            ${(ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') ? '<span style="color:#b45309; font-weight:800; margin-left:8px;">(📁 Acumulativo Continuo ─ No aplica examen en salón)</span>' : ''}
                         </div>
                     </div>
                     <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.printMediasListasModal('${dayObj.id}', '${ev.id}')" title="Imprimir Medias Listas de este examen">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.printMediasListasModal('${dayObj.id}', '${ev.id}')" title="${(ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') ? 'Materia en proceso (sin examen en salón)' : 'Imprimir Medias Listas de este examen'}">
                             <i class="fa-solid fa-print"></i> Imprimir Medias Listas
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-secondary" onclick="window.editEvaluationModal('${dayObj.id}', '${ev.id}')" title="Editar asignación">
@@ -1494,7 +1527,23 @@
                 <div style="margin-top:12px; overflow-x:auto;">
         `;
 
-        if (isPractica) {
+        if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') {
+            html += `
+                <div class="p-3 rounded" style="background:#fffbeb; border:1.5px dashed #f59e0b; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <strong style="color:#92400e; font-size:0.95rem; display:flex; align-items:center; gap:6px;">
+                            <i class="fa-solid fa-folder-open"></i> Evaluación en Proceso (Acumulativo Continuo)
+                        </strong>
+                        <div style="font-size:0.83rem; color:#78350f; margin-top:2px;">
+                            Esta asignatura evalúa formativa y sumativamente a lo largo del bimestre en el aula regular. No utiliza salones de examen ni cuidadores ajenos, y se omite del horario impreso de evaluaciones.
+                        </div>
+                    </div>
+                    <span class="badge" style="background:#fef3c7; color:#92400e; font-size:0.82rem; font-weight:800; padding:6px 12px; border:1px solid #fcd34d;">
+                        📁 Acumulativo de Clase
+                    </span>
+                </div>
+            `;
+        } else if (isPractica) {
             // Práctica Supervisada: Relevo en ambos salones
             const relevoTime = minutesToTimeString(timeStringToMinutes(ev.startTime) + Math.round(ev.durationMinutes / 2));
             html += `
@@ -1564,6 +1613,24 @@
                 const secStart = ev.startTime;
                 const secEnd = minutesToTimeString(timeStringToMinutes(secStart) + secDur);
                 const isSecFull = isFull || sec.evaluationMode === 'SECCION_COMPLETA';
+
+                if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') {
+                    html += `
+                        <tr>
+                            <td>
+                                <strong style="color:#15803d; font-size:0.95rem;">${sec.section}</strong>
+                                <div style="font-size:0.75rem; color:#334155; margin-top:2px;">Titular: <strong>${sec.teacherName || 'Sin asignar'}</strong></div>
+                            </td>
+                            <td>
+                                <span class="badge" style="background:#fef3c7; color:#92400e; font-weight:800; font-size:0.75rem;">📁 En Proceso</span>
+                            </td>
+                            <td colspan="${isSecFull ? 1 : 2}" style="background:#fffbeb; color:#92400e; font-size:0.82rem; font-weight:700;">
+                                <i class="fa-solid fa-folder-open"></i> Esta sección evalúa en proceso (acumulativo continuo). Sin salón ni docente cuidador asignado.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
 
                 if (isSecFull) {
                     const sRoom = sec.singleRoom || sec.groupA || {};
@@ -1988,6 +2055,45 @@
             }
         };
 
+        window.onSectionProcessStatusChanged = function (sIdx, newStatus) {
+            const salonsBox = document.getElementById(`evalSectionSalonsBox_${sIdx}`);
+            const noticeBox = document.getElementById(`evalSectionEnProcesoNotice_${sIdx}`);
+            const selElem = document.getElementById(`evalSectionProcessStatus_${sIdx}`);
+            const isEnProceso = (newStatus === 'EN_PROCESO');
+
+            if (salonsBox) salonsBox.style.display = isEnProceso ? 'none' : 'block';
+            if (noticeBox) noticeBox.style.display = isEnProceso ? 'block' : 'none';
+            if (selElem) {
+                selElem.style.background = isEnProceso ? '#fef3c7' : '#f0fdf4';
+                selElem.style.borderColor = isEnProceso ? '#f59e0b' : '#86efac';
+                selElem.style.color = isEnProceso ? '#92400e' : '#15803d';
+            }
+
+            const reqInputs = [
+                document.getElementById(`evalCaretakerSingle_${sIdx}`),
+                document.getElementById(`evalCaretakerA_${sIdx}`),
+                document.getElementById(`evalCaretakerB_${sIdx}`)
+            ];
+            reqInputs.forEach(inp => {
+                if (inp) {
+                    if (isEnProceso) {
+                        inp.removeAttribute('required');
+                    } else {
+                        inp.setAttribute('required', 'required');
+                    }
+                }
+            });
+        };
+
+        window.setAllSectionsProcessStatus = function (targetStatus) {
+            const selects = document.querySelectorAll('[id^="evalSectionProcessStatus_"]');
+            selects.forEach((sel) => {
+                sel.value = targetStatus;
+                const idx = sel.id.replace('evalSectionProcessStatus_', '');
+                window.onSectionProcessStatusChanged(idx, targetStatus);
+            });
+        };
+
         // Calcular hora de inicio automática según evaluaciones previas
         let autoStartMinutes = 450; // 07:30 AM
         if (dayObj.evaluations && dayObj.evaluations.length > 0 && !evalToEdit) {
@@ -2058,6 +2164,19 @@
                                     </select>
                                     <div style="font-size:0.78rem; color:#64748b; margin-top:2px;">
                                         Seleccione si los estudiantes se dividen en mitades de sección (A y B) o si se evalúa la sección entera en un único salón.
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px; background:#f8fafc; padding:6px 10px; border-radius:6px; border:1px solid #e2e8f0;">
+                                        <span style="font-size:0.8rem; font-weight:700; color:#334155;">
+                                            ⚡ Estado de Evaluación por Defecto (Todas las Secciones):
+                                        </span>
+                                        <div style="display:flex; gap:6px;">
+                                            <button type="button" class="btn btn-sm btn-outline-success" onclick="window.setAllSectionsProcessStatus('EVALUA')" style="font-size:0.75rem; font-weight:800; padding:3px 8px;">
+                                                📝 Marcar Todas: Evalúan (Examen)
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="window.setAllSectionsProcessStatus('EN_PROCESO')" style="font-size:0.75rem; font-weight:800; padding:3px 8px;">
+                                                📁 Marcar Todas: En Proceso
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -2402,6 +2521,18 @@
             const isSingleTitularMode = ((isComp || isMeca) && compMode === 'single') || isFullSection;
             const excludeForSelect = isSingleTitularMode ? [] : titularIds;
 
+            let isSecEnProceso = false;
+            if (editPayload) {
+                if (editPayload.isEnProceso || editPayload.evaluationStatus === 'EN_PROCESO') {
+                    isSecEnProceso = true;
+                } else if (Array.isArray(editPayload.sections)) {
+                    const foundSec = editPayload.sections.find(sc => sc.gradeCode === secCode || sc.section === secName);
+                    if (foundSec && (foundSec.isEnProceso || foundSec.evaluationStatus === 'EN_PROCESO')) {
+                        isSecEnProceso = true;
+                    }
+                }
+            }
+
             salonsHtml += `
                 <div class="p-2 mb-2 rounded" style="background:#ffffff; border:1px solid #cbd5e1;">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; background:#f8fafc; padding:6px 10px; border-radius:6px; margin-bottom:8px; border:1px solid #e2e8f0;">
@@ -2413,27 +2544,43 @@
                                 <i class="fa-solid fa-chalkboard-user"></i> Titular: ${sInfo.teacherName}
                             </span>
                         </div>
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <label style="font-size:0.78rem; font-weight:700; color:#475569; margin:0;">
-                                ⏱️ Tiempo:
-                            </label>
-                            <select id="evalSectionDuration_${sIdx}" class="form-control form-control-sm" style="width:130px; font-weight:700; font-size:0.8rem; padding:2px 6px; height:28px;" onchange="window.recalcEvalTimes()">
-                                <option value="45" ${secDuration === 45 ? 'selected' : ''}>45 minutos</option>
-                                <option value="50" ${secDuration === 50 ? 'selected' : ''}>50 minutos</option>
-                                <option value="60" ${secDuration === 60 ? 'selected' : ''}>60 minutos (1h)</option>
-                                <option value="75" ${secDuration === 75 ? 'selected' : ''}>75 min (1h 15m)</option>
-                                <option value="90" ${secDuration === 90 ? 'selected' : ''}>90 min (1h 30m)</option>
-                                <option value="120" ${secDuration === 120 ? 'selected' : ''}>120 minutos (2h)</option>
-                                <option value="300" ${secDuration === 300 ? 'selected' : ''}>300 min (Práctica)</option>
-                                ${![45, 50, 60, 75, 90, 120, 300].includes(secDuration) ? `<option value="${secDuration}" selected>${secDuration} min (Personalizado)</option>` : ''}
-                            </select>
-                            <input type="number" id="evalSectionDurationCustom_${sIdx}" class="form-control form-control-sm" style="width:58px; font-weight:700; text-align:center; font-size:0.8rem; padding:2px 4px; height:28px;" min="15" max="300" placeholder="Min" title="Editar minutos manualmente" value="${secDuration}" oninput="const sel = document.getElementById('evalSectionDuration_${sIdx}'); if(sel && this.value){ sel.value = this.value; } window.recalcEvalTimes();">
-                            <span id="evalSectionTimeBadge_${sIdx}" style="font-size:0.75rem; font-weight:800; background:#ffffff; color:#0f172a; padding:2px 6px; border-radius:4px; border:1px solid #cbd5e1;">
-                                --:-- a --:--
-                            </span>
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <label style="font-size:0.78rem; font-weight:700; color:#475569; margin:0;">
+                                    Modalidad:
+                                </label>
+                                <select id="evalSectionProcessStatus_${sIdx}" class="form-control form-control-sm" style="width:150px; font-weight:800; font-size:0.8rem; padding:2px 6px; height:28px; background:${isSecEnProceso ? '#fef3c7' : '#f0fdf4'}; border-color:${isSecEnProceso ? '#f59e0b' : '#86efac'}; color:${isSecEnProceso ? '#92400e' : '#15803d'};" onchange="window.onSectionProcessStatusChanged(${sIdx}, this.value)">
+                                    <option value="EVALUA" ${isSecEnProceso ? '' : 'selected'}>📝 Evalúa (Examen)</option>
+                                    <option value="EN_PROCESO" ${isSecEnProceso ? 'selected' : ''}>📁 En Proceso</option>
+                                </select>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <label style="font-size:0.78rem; font-weight:700; color:#475569; margin:0;">
+                                    ⏱️ Tiempo:
+                                </label>
+                                <select id="evalSectionDuration_${sIdx}" class="form-control form-control-sm" style="width:125px; font-weight:700; font-size:0.8rem; padding:2px 6px; height:28px;" onchange="window.recalcEvalTimes()">
+                                    <option value="45" ${secDuration === 45 ? 'selected' : ''}>45 minutos</option>
+                                    <option value="50" ${secDuration === 50 ? 'selected' : ''}>50 minutos</option>
+                                    <option value="60" ${secDuration === 60 ? 'selected' : ''}>60 minutos (1h)</option>
+                                    <option value="75" ${secDuration === 75 ? 'selected' : ''}>75 min (1h 15m)</option>
+                                    <option value="90" ${secDuration === 90 ? 'selected' : ''}>90 min (1h 30m)</option>
+                                    <option value="120" ${secDuration === 120 ? 'selected' : ''}>120 minutos (2h)</option>
+                                    <option value="300" ${secDuration === 300 ? 'selected' : ''}>300 min (Práctica)</option>
+                                    ${![45, 50, 60, 75, 90, 120, 300].includes(secDuration) ? `<option value="${secDuration}" selected>${secDuration} min (Personalizado)</option>` : ''}
+                                </select>
+                                <input type="number" id="evalSectionDurationCustom_${sIdx}" class="form-control form-control-sm" style="width:54px; font-weight:700; text-align:center; font-size:0.8rem; padding:2px 4px; height:28px;" min="15" max="300" placeholder="Min" title="Editar minutos manualmente" value="${secDuration}" oninput="const sel = document.getElementById('evalSectionDuration_${sIdx}'); if(sel && this.value){ sel.value = this.value; } window.recalcEvalTimes();">
+                                <span id="evalSectionTimeBadge_${sIdx}" style="font-size:0.75rem; font-weight:800; background:#ffffff; color:#0f172a; padding:2px 6px; border-radius:4px; border:1px solid #cbd5e1;">
+                                    --:-- a --:--
+                                </span>
+                            </div>
                         </div>
                     </div>
 
+                    <div id="evalSectionEnProcesoNotice_${sIdx}" class="p-2 rounded mb-2" style="display:${isSecEnProceso ? 'block' : 'none'}; background:#fffbeb; border:1px dashed #f59e0b; color:#92400e; font-size:0.82rem; font-weight:700;">
+                        📁 Esta sección evalúa en proceso (acumulativo continuo). No ocupa salón físico ni requiere docente cuidador, y no aparecerá en el calendario de exámenes.
+                    </div>
+
+                    <div id="evalSectionSalonsBox_${sIdx}" style="display:${isSecEnProceso ? 'none' : 'block'};">
                     ${isFullSection ? `
                         <div class="row g-2">
                             <div class="col-12">
@@ -2446,7 +2593,7 @@
                                     </div>
                                     <div style="display:grid; grid-template-columns: 140px 1fr; gap:8px; align-items:center;">
                                         <input type="text" id="evalClassroomSingle_${sIdx}" list="institutionalSalonsList" class="form-control form-control-sm" style="font-size:0.82rem; height:30px;" value="${curSingle.classroom}" placeholder="Salón 6A">
-                                        <select id="evalCaretakerSingle_${sIdx}" class="form-control form-control-sm" style="font-size:0.82rem; height:30px;" required>
+                                        <select id="evalCaretakerSingle_${sIdx}" class="form-control form-control-sm" style="font-size:0.82rem; height:30px;" ${isSecEnProceso ? '' : 'required'}>
                                             ${window._generateTeacherSelectOptions(curSingle.caretaker, excludeForSelect)}
                                         </select>
                                     </div>
@@ -2470,7 +2617,7 @@
                                     </div>
                                     <div style="display:grid; grid-template-columns: 100px 1fr; gap:6px; align-items:center; margin-bottom:4px;">
                                         <input type="text" id="evalClassroomA_${sIdx}" list="institutionalSalonsList" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" value="${curA.classroom}" placeholder="Salón 6A">
-                                        <select id="evalCaretakerA_${sIdx}" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" required>
+                                        <select id="evalCaretakerA_${sIdx}" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" ${isSecEnProceso ? '' : 'required'}>
                                             ${window._generateTeacherSelectOptions(curA.caretaker, excludeForSelect)}
                                         </select>
                                     </div>
@@ -2482,7 +2629,6 @@
                                     </div>
                                 </div>
                             </div>
-
                             <!-- GRUPO B -->
                             <div class="col-md-6">
                                 <div style="background:#fcfcfd; border:1px solid #e2e8f0; border-radius:6px; padding:8px;">
@@ -2493,8 +2639,8 @@
                                         <span class="badge" style="background:#dcfce7; color:#15803d; font-size:0.68rem; font-weight:700;">Editable</span>
                                     </div>
                                     <div style="display:grid; grid-template-columns: 100px 1fr; gap:6px; align-items:center; margin-bottom:4px;">
-                                        <input type="text" id="evalClassroomB_${sIdx}" list="institutionalSalonsList" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" value="${curB.classroom}" placeholder="Salón 6B">
-                                        <select id="evalCaretakerB_${sIdx}" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" required>
+                                        <input type="text" id="evalClassroomB_${sIdx}" list="institutionalSalonsList" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" value="${curB.classroom}" placeholder="Salón 6A">
+                                        <select id="evalCaretakerB_${sIdx}" class="form-control form-control-sm" style="font-size:0.8rem; height:28px;" ${isSecEnProceso ? '' : 'required'}>
                                             ${window._generateTeacherSelectOptions(curB.caretaker, excludeForSelect)}
                                         </select>
                                     </div>
@@ -2508,6 +2654,7 @@
                             </div>
                         </div>
                     `}
+                    </div>
                 </div>
             `;
         });
@@ -2617,6 +2764,10 @@
         const sectionsPayload = sectionsInfo.map((sInfo, sIdx) => {
             const splitData = splitStudentsInTwoGroups(sInfo.gradeCode, sInfo.section, sInfo.gradeName);
 
+            const processStatusSelect = document.getElementById(`evalSectionProcessStatus_${sIdx}`);
+            const secProcessStatus = processStatusSelect ? processStatusSelect.value : (sInfo.evaluationStatus || 'EVALUA');
+            const isSecEnProceso = secProcessStatus === 'EN_PROCESO';
+
             const secDurSelect = document.getElementById(`evalSectionDuration_${sIdx}`);
             const secDuration = secDurSelect ? (parseInt(secDurSelect.value, 10) || 60) : 60;
             if (secDuration > maxDurationFound) maxDurationFound = secDuration;
@@ -2629,7 +2780,15 @@
             let classroomB = '', caretakerB = '', turn2BId = '';
             let classroomSingle = '', caretakerSingle = '';
 
-            if (isFullSection) {
+            if (isSecEnProceso) {
+                // Modalidad En Proceso: no requiere cuidadores ajenos ni salones físicos de examen
+                classroomSingle = 'En Proceso';
+                caretakerSingle = '';
+                classroomA = 'En Proceso';
+                caretakerA = '';
+                classroomB = 'En Proceso';
+                caretakerB = '';
+            } else if (isFullSection) {
                 classroomSingle = (document.getElementById(`evalClassroomSingle_${sIdx}`) && document.getElementById(`evalClassroomSingle_${sIdx}`).value) || (document.getElementById(`evalClassroomA_${sIdx}`) && document.getElementById(`evalClassroomA_${sIdx}`).value) || `Salón ${sIdx + 1}`;
                 caretakerSingle = (document.getElementById(`evalCaretakerSingle_${sIdx}`) && document.getElementById(`evalCaretakerSingle_${sIdx}`).value) || (document.getElementById(`evalCaretakerA_${sIdx}`) && document.getElementById(`evalCaretakerA_${sIdx}`).value) || '';
                 classroomA = classroomSingle;
@@ -2659,20 +2818,22 @@
                 sectionLetter: sInfo.sectionLetter,
                 teacherId: sInfo.teacherId,
                 teacherName: sInfo.teacherName,
+                evaluationStatus: secProcessStatus,
+                isEnProceso: isSecEnProceso,
                 durationMinutes: secDuration,
                 startTime: startTime,
                 endTime: secEndTime,
                 evaluationMode: evalMode,
                 singleRoom: isFullSection ? {
                     classroom: classroomSingle,
-                    range: `01 al ${String(splitData.total).padStart(2, '0')}`,
+                    range: isSecEnProceso ? '' : `01 al ${String(splitData.total).padStart(2, '0')}`,
                     caretakerTeacherId: caretakerSingle,
                     caretakerTeacherName: uSingle ? uSingle.name : (uA ? uA.name : ''),
                     totalStudents: splitData.total
                 } : null,
                 groupA: {
                     classroom: classroomA,
-                    range: isFullSection ? `01 al ${String(splitData.total).padStart(2, '0')}` : splitData.rangeA,
+                    range: isSecEnProceso ? '' : (isFullSection ? `01 al ${String(splitData.total).padStart(2, '0')}` : splitData.rangeA),
                     caretakerTeacherId: caretakerA,
                     caretakerTeacherName: uA ? uA.name : '',
                     caretakerTurn2Id: turn2AId,
@@ -2680,7 +2841,7 @@
                 },
                 groupB: {
                     classroom: classroomB,
-                    range: isFullSection ? `01 al ${String(splitData.total).padStart(2, '0')}` : splitData.rangeB,
+                    range: isSecEnProceso ? '' : (isFullSection ? `01 al ${String(splitData.total).padStart(2, '0')}` : splitData.rangeB),
                     caretakerTeacherId: caretakerB,
                     caretakerTeacherName: uB ? uB.name : '',
                     caretakerTurn2Id: turn2BId,
@@ -2697,6 +2858,10 @@
             teacherName: s.teacherName
         }));
 
+        const allSectionsInProcess = sectionsPayload.length > 0 && sectionsPayload.every(s => s.isEnProceso);
+        const anySectionInProcess = sectionsPayload.some(s => s.isEnProceso);
+        const evalProcessStatus = allSectionsInProcess ? 'EN_PROCESO' : (anySectionInProcess ? 'MIXTO' : 'EVALUA');
+
         // Para retrocompatibilidad con vista legacy de 1 grado
         const firstSec = sectionsPayload[0] || {};
 
@@ -2711,6 +2876,8 @@
             courseTeacherName: titularNames.join(', ') || 'Catedráticos Titulares',
             titularTeachers: titularTeachers,
             sections: sectionsPayload,
+            evaluationStatus: evalProcessStatus,
+            isEnProceso: allSectionsInProcess,
             evaluationMode: evalMode,
             durationMinutes: maxDurationFound,
             startTime: startTime,
@@ -2806,6 +2973,9 @@
 
             // Procesar cada evaluación del día cronológicamente
             dayObj.evaluations.forEach(ev => {
+                // Si la evaluación es en proceso (acumulativo), no requiere salones ni cuidadores
+                if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') return;
+
                 const isPractica = ev.isPractica === true;
                 const isSingleTitularEvaluation = (ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single';
 
@@ -2922,6 +3092,9 @@
                     const assignedInT2 = new Set();
 
                     ev.sections.forEach(sec => {
+                        // Si la sección evalúa en proceso, no requiere asignación de cuidadores
+                        if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') return;
+
                         const secDur = parseInt(sec.durationMinutes, 10) || parseInt(ev.durationMinutes, 10) || 60;
                         const secStartMin = timeStringToMinutes(sec.startTime || ev.startTime);
                         const secEndMin = secStartMin + secDur;
@@ -3144,7 +3317,7 @@
             year: 'numeric'
         }).toUpperCase();
 
-        const evs = (dayObj.evaluations || []).slice();
+        const evs = (dayObj.evaluations || []).filter(e => !e.isEnProceso && e.evaluationStatus !== 'EN_PROCESO');
         evs.sort((a, b) => timeStringToMinutes(a.startTime) - timeStringToMinutes(b.startTime));
 
         const activeCols = getActiveGradeColumnsForDay(dayObj);
@@ -3207,6 +3380,13 @@
                             `;
                         } else if (Array.isArray(ev.sections) && ev.sections.length > 0) {
                             salonesHtml = ev.sections.map(sec => {
+                                if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') {
+                                    return `
+                                        <div style="margin-top:4px; font-size:0.82rem; border-bottom:1px dashed #e2e8f0; padding-bottom:3px; color:#92400e;">
+                                            <strong style="color:#15803d;">📌 ${sec.section}:</strong> 📁 Evaluación en Proceso (acumulativo continuo)
+                                        </div>
+                                    `;
+                                }
                                 const secIsFull = isFull || sec.evaluationMode === 'SECCION_COMPLETA';
                                 if (secIsFull) {
                                     const sRoom = sec.singleRoom || sec.groupA || {};
@@ -3405,6 +3585,11 @@
         const ev = dayObj.evaluations.find(e => e.id === evalId);
         if (!ev) return;
 
+        if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') {
+            alert("Esta asignatura evalúa en proceso (acumulativo continuo). No requiere listas de cuido de examen en salón.");
+            return;
+        }
+
         printEvaluationSheets(dayObj, ev, 'BOTH');
     };
 
@@ -3418,12 +3603,20 @@
             return;
         }
 
+        const printableEvals = dayObj.evaluations.filter(e => !e.isEnProceso && e.evaluationStatus !== 'EN_PROCESO');
+        if (printableEvals.length === 0) {
+            alert("No hay evaluaciones con examen presencial en esta fecha (las programadas evalúan en proceso).");
+            return;
+        }
+
         let combinedHtml = '';
-        dayObj.evaluations.forEach((ev, idx) => {
+        printableEvals.forEach(ev => {
             const isFull = ev.evaluationMode === 'SECCION_COMPLETA';
             if (Array.isArray(ev.sections) && ev.sections.length > 0) {
-                ev.sections.forEach((sec, sIdx) => {
+                const printableSecs = ev.sections.filter(s => !s.isEnProceso && s.evaluationStatus !== 'EN_PROCESO');
+                printableSecs.forEach(sec => {
                     const secIsFull = isFull || sec.evaluationMode === 'SECCION_COMPLETA';
+                    if (combinedHtml) combinedHtml += '<div style="page-break-after:always;"></div>';
                     if (secIsFull) {
                         combinedHtml += generateSingleGroupHtml(dayObj, ev, 'COMPLETA', sec);
                     } else {
@@ -3431,11 +3624,9 @@
                         combinedHtml += '<div style="page-break-after:always;"></div>';
                         combinedHtml += generateSingleGroupHtml(dayObj, ev, 'B', sec);
                     }
-                    if (sIdx < ev.sections.length - 1 || idx < dayObj.evaluations.length - 1) {
-                        combinedHtml += '<div style="page-break-after:always;"></div>';
-                    }
                 });
             } else {
+                if (combinedHtml) combinedHtml += '<div style="page-break-after:always;"></div>';
                 if (isFull) {
                     combinedHtml += generateSingleGroupHtml(dayObj, ev, 'COMPLETA');
                 } else {
@@ -3443,11 +3634,13 @@
                     combinedHtml += '<div style="page-break-after:always;"></div>';
                     combinedHtml += generateSingleGroupHtml(dayObj, ev, 'B');
                 }
-                if (idx < dayObj.evaluations.length - 1) {
-                    combinedHtml += '<div style="page-break-after:always;"></div>';
-                }
             }
         });
+
+        if (!combinedHtml) {
+            alert("No se encontraron secciones con examen presencial para imprimir en este día.");
+            return;
+        }
 
         wrapAndPrintSheets(combinedHtml, `Medias_Listas_${dayObj.date}`);
     };
@@ -3466,11 +3659,13 @@
         let combinedHtml = '';
 
         scheduleBlock.days.forEach(dayObj => {
-            (dayObj.evaluations || []).forEach(ev => {
+            const printableEvals = (dayObj.evaluations || []).filter(e => !e.isEnProceso && e.evaluationStatus !== 'EN_PROCESO');
+            printableEvals.forEach(ev => {
                 totalEvalsCount++;
                 const isFull = ev.evaluationMode === 'SECCION_COMPLETA';
                 if (Array.isArray(ev.sections) && ev.sections.length > 0) {
-                    ev.sections.forEach(sec => {
+                    const printableSecs = ev.sections.filter(s => !s.isEnProceso && s.evaluationStatus !== 'EN_PROCESO');
+                    printableSecs.forEach(sec => {
                         const secIsFull = isFull || sec.evaluationMode === 'SECCION_COMPLETA';
                         if (combinedHtml) combinedHtml += '<div style="page-break-after:always;"></div>';
                         if (secIsFull) {
@@ -3495,7 +3690,7 @@
         });
 
         if (totalEvalsCount === 0 || !combinedHtml) {
-            alert("No se encontraron evaluaciones registradas en este bimestre para imprimir.");
+            alert("No se encontraron evaluaciones con examen presencial en este bimestre para imprimir.");
             return;
         }
 
@@ -3503,17 +3698,25 @@
     };
 
     function printEvaluationSheets(dayObj, ev, mode = 'BOTH') {
+        if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') {
+            alert("Esta asignatura evalúa en proceso (acumulativo continuo). No requiere listas de cuido de examen.");
+            return;
+        }
+
         let contentHtml = '';
         const isFull = ev.evaluationMode === 'SECCION_COMPLETA';
 
         if (Array.isArray(ev.sections) && ev.sections.length > 0) {
-            ev.sections.forEach((sec, sIdx) => {
+            const printableSecs = ev.sections.filter(s => !s.isEnProceso && s.evaluationStatus !== 'EN_PROCESO');
+            if (printableSecs.length === 0) {
+                alert("Todas las secciones de esta asignatura evalúan en proceso.");
+                return;
+            }
+            printableSecs.forEach(sec => {
                 const secIsFull = isFull || sec.evaluationMode === 'SECCION_COMPLETA';
+                if (contentHtml) contentHtml += '<div style="page-break-after:always;"></div>';
                 if (secIsFull) {
                     contentHtml += generateSingleGroupHtml(dayObj, ev, 'COMPLETA', sec);
-                    if (sIdx < ev.sections.length - 1) {
-                        contentHtml += '<div style="page-break-after:always;"></div>';
-                    }
                 } else {
                     if (mode === 'A' || mode === 'BOTH') {
                         contentHtml += generateSingleGroupHtml(dayObj, ev, 'A', sec);
@@ -3523,9 +3726,6 @@
                     }
                     if (mode === 'B' || mode === 'BOTH') {
                         contentHtml += generateSingleGroupHtml(dayObj, ev, 'B', sec);
-                    }
-                    if (sIdx < ev.sections.length - 1) {
-                        contentHtml += '<div style="page-break-after:always;"></div>';
                     }
                 }
             });
@@ -3932,7 +4132,8 @@
                 year: 'numeric'
             }).toUpperCase();
 
-            const evs = d.evaluations || [];
+            // Excluir evaluaciones en proceso del calendario general consolidado impreso
+            const evs = (d.evaluations || []).filter(e => !e.isEnProceso && e.evaluationStatus !== 'EN_PROCESO');
             if (evs.length === 0) {
                 daysTablesHtml += `
                     <div class="calendar-day-block">
@@ -3981,6 +4182,9 @@
                         cuidadoresStr = `${ev.isMecanografia ? '⌨️ Taller Meca' : '💻 Lab. Computación'}: ${ev.courseTeacherName} (Titular)`;
                     } else if (Array.isArray(ev.sections) && ev.sections.length > 0) {
                         cuidadoresStr = ev.sections.map(sec => {
+                            if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') {
+                                return `<strong>${sec.section}:</strong> <span style="color:#92400e;">📁 En Proceso</span>`;
+                            }
                             if (isFull || sec.evaluationMode === 'SECCION_COMPLETA') {
                                 const sRoom = sec.singleRoom || sec.groupA || {};
                                 return `<strong>${sec.section}:</strong> Salón ${sRoom.classroom || 'Salón'} ─ ${sRoom.caretakerTeacherName || 'Sin asignar'}`;
@@ -4177,8 +4381,13 @@
         openPrintWindow(calendarHtml);
     };
 
-    // Helper unificado para abrir ventana de impresión
+    // Helper unificado para abrir ventana de impresión (protegido contra doble clic accidental)
+    let isPrintWindowOpening = false;
     function openPrintWindow(htmlContent) {
+        if (isPrintWindowOpening) return;
+        isPrintWindowOpening = true;
+        setTimeout(() => { isPrintWindowOpening = false; }, 1500);
+
         const printWin = window.open('', '_blank', 'width=980,height=720,menubar=no,toolbar=no,location=no,status=no');
         if (!printWin) {
             alert("El navegador bloqueó la ventana de impresión. Por favor habilite las ventanas emergentes (pop-ups).");
