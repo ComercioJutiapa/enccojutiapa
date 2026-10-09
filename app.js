@@ -19999,17 +19999,15 @@ function buildStudentReportCardInnerHtml(s) {
                     </tfoot>
                 </table>
 
-                <!-- BLOQUE DE FIRMA ÚNICA EXCLUSIVA DE LA DIRECCIÓN ELEVADA -->
-                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; margin-top:${isDense ? '12px' : '20px'}; margin-bottom:${isDense ? '4px' : '8px'};">
-                    <!-- IMAGEN DE FIRMA Y SELLO 100% SOBRE LA LÍNEA -->
-                    <div style="height:${isDense ? '52px' : '62px'}; display:flex; align-items:flex-end; justify-content:center; margin-bottom:0px; position:relative; z-index:2;">
-                        <img src="firma_director_sello.png" alt="Sello y Firma de Dirección" style="height:${isDense ? '58px' : '68px'}; width:auto; max-width:135px; pointer-events:none; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.12));">
-                    </div>
-                    <!-- LÍNEA DE FIRMA Y DATOS DE LA DIRECTORA -->
-                    <div style="width:280px; border-top:1.5px solid #000000; padding-top:4px; text-align:center; position:relative; z-index:1;">
-                        <div style="font-size:11px; font-weight:900; color:#0f172a; line-height:1.25;">${dirName}</div>
-                        <div style="font-size:9.5px; font-weight:700; color:#475569; line-height:1.2;">${dirTitle}</div>
-                        <div style="font-size:8.5px; font-weight:600; color:#64748b; line-height:1.15;">Escuela Nacional de Ciencias Comerciales — Jutiapa</div>
+                <!-- BLOQUE DE FIRMA ÚNICA EXCLUSIVA DE LA DIRECCIÓN -->
+                <div style="display:flex; justify-content:center; align-items:flex-end; margin-top:2px; padding-bottom:1px;">
+                    <div style="width:260px; text-align:center; position:relative;">
+                        <img src="firma_director_sello.png" alt="Sello y Firma de Dirección" style="position:absolute; bottom:28px; left:50%; transform:translateX(-50%); width:90px; height:auto; pointer-events:none; opacity:0.96; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.12));">
+                        <div style="border-top:1.5px solid #000000; margin-top:16px; padding-top:2px;">
+                            <div style="font-size:11px; font-weight:900; color:#0f172a; line-height:1.2;">${dirName}</div>
+                            <div style="font-size:9.5px; font-weight:700; color:#475569; line-height:1.15;">${dirTitle}</div>
+                            <div style="font-size:8.5px; font-weight:600; color:#64748b; line-height:1.15;">Escuela Nacional de Ciencias Comerciales — Jutiapa</div>
+                        </div>
                     </div>
                 </div>
 
