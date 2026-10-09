@@ -464,6 +464,29 @@
         return all[key];
     }
 
+    // Helper universal para ubicar un día programado y su bloque correspondiente sin fallos por desalineación de bimestre
+    function findDayAndScheduleBlock(dayId, preferredBim = null) {
+        if (!dayId) return { dayObj: null, scheduleBlock: null, scheduleKey: null };
+        const bimesterSelectVal = preferredBim || (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
+        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
+        let scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
+        let dayObj = (scheduleBlock.days || []).find(d => String(d.id) === String(dayId));
+        if (dayObj) return { dayObj, scheduleBlock, scheduleKey };
+
+        // Búsqueda exhaustiva en todos los bloques del sistema si no se encontró en el bimestre preferido
+        const all = getExamSchedulesData();
+        for (const key in all) {
+            const blk = all[key];
+            if (blk && Array.isArray(blk.days)) {
+                const foundDay = blk.days.find(d => String(d.id) === String(dayId));
+                if (foundDay) {
+                    return { dayObj: foundDay, scheduleBlock: blk, scheduleKey: key };
+                }
+            }
+        }
+        return { dayObj: null, scheduleBlock: scheduleBlock, scheduleKey: scheduleKey };
+    }
+
     // Calcular la matriz de carga de trabajo (minutos cuidados por cada profesor en una fecha)
     function calculateTeacherWorkloadForDate(scheduleBlock, targetDate) {
         const workload = {}; // { teacherId: { teacherName, minutes, salonesCount } }
@@ -1840,49 +1863,58 @@
     };
 
     window.confirmAddNewExamDay = function () {
-        const dateInput = document.getElementById('newExamDayDate');
-        const isPractica = document.getElementById('newExamDayIsPractica').checked;
-        if (!dateInput || !dateInput.value) {
-            alert("Por favor seleccione una fecha válida.");
-            return;
+        try {
+            const dateInput = document.getElementById('newExamDayDate');
+            const isPractica = document.getElementById('newExamDayIsPractica') ? document.getElementById('newExamDayIsPractica').checked : false;
+            if (!dateInput || !dateInput.value) {
+                alert("Por favor seleccione una fecha válida.");
+                return;
+            }
+
+            const dateVal = dateInput.value;
+            const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
+            const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
+            const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
+
+            // Evitar fechas duplicadas
+            if (scheduleBlock.days && scheduleBlock.days.some(d => d.date === dateVal)) {
+                alert("Esta fecha ya se encuentra programada en este bimestre.");
+                return;
+            }
+
+            const dayId = 'day_' + Date.now();
+            scheduleBlock.days = scheduleBlock.days || [];
+            scheduleBlock.days.push({
+                id: dayId,
+                date: dateVal,
+                isPracticaDay: isPractica,
+                evaluations: []
+            });
+
+            // Ordenar días por fecha cronológicamente
+            scheduleBlock.days.sort((a, b) => a.date.localeCompare(b.date));
+
+            saveExamSchedulesData(true);
+            window._examDaysExpandedState = window._examDaysExpandedState || {};
+            window._examDaysExpandedState[dayId] = true;
+            const m = document.getElementById('modalAddNewExamDay');
+            if (m) m.remove();
+            renderExamSchedulesView();
+        } catch (err) {
+            console.error("Error al programar nuevo día:", err);
+            alert("Error al guardar la nueva fecha: " + (err.message || err));
         }
-
-        const dateVal = dateInput.value;
-        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
-        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
-        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
-
-        // Evitar fechas duplicadas
-        if (scheduleBlock.days.some(d => d.date === dateVal)) {
-            alert("Esta fecha ya se encuentra programada en este bimestre.");
-            return;
-        }
-
-        const dayId = 'day_' + Date.now();
-        scheduleBlock.days.push({
-            id: dayId,
-            date: dateVal,
-            isPracticaDay: isPractica,
-            evaluations: []
-        });
-
-        // Ordenar días por fecha cronológicamente
-        scheduleBlock.days.sort((a, b) => a.date.localeCompare(b.date));
-
-        saveExamSchedulesData(true);
-        window._examDaysExpandedState = window._examDaysExpandedState || {};
-        window._examDaysExpandedState[dayId] = true;
-        document.getElementById('modalAddNewExamDay').remove();
-        renderExamSchedulesView();
     };
 
     window.deleteExamDay = function (dayId) {
         if (!confirm("¿Está seguro de eliminar esta fecha completa de evaluaciones y todas sus asignaciones?")) return;
-        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
-        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
-        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
+        const { scheduleBlock } = findDayAndScheduleBlock(dayId);
+        if (!scheduleBlock || !Array.isArray(scheduleBlock.days)) {
+            alert("No se pudo localizar el bloque del día a eliminar.");
+            return;
+        }
 
-        scheduleBlock.days = scheduleBlock.days.filter(d => d.id !== dayId);
+        scheduleBlock.days = scheduleBlock.days.filter(d => String(d.id) !== String(dayId));
         saveExamSchedulesData(true);
         renderExamSchedulesView();
     };
@@ -1939,10 +1971,7 @@
         });
         const titularNamesSet = new Set((sectionsInfo || []).map(s => (s.teacherName || '').toLowerCase().trim()).filter(Boolean));
 
-        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
-        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
-        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
-        const dayObj = (scheduleBlock.days || []).find(d => d.id === dayId);
+        const { dayObj } = findDayAndScheduleBlock(dayId);
 
         // Carga actual del día (antifatiga)
         const dayWorkload = {};
@@ -2092,11 +2121,11 @@
 
     // Modal para asignar una clase a un día (A nivel de Grado Académico completo con todas sus secciones)
     window.addEvaluationToDay = function (dayId, evalToEdit = null) {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
-        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
-        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
-        const dayObj = scheduleBlock.days.find(d => d.id === dayId);
-        if (!dayObj) return;
+        const { dayObj, scheduleBlock } = findDayAndScheduleBlock(dayId);
+        if (!dayObj) {
+            alert("No se pudo localizar el día seleccionado para asignar la evaluación.");
+            return;
+        }
 
         const modalId = 'modalAddEvaluation';
         let existingModal = document.getElementById(modalId);
@@ -2109,6 +2138,12 @@
         window._currentDayWorkload = workload;
         window._currentEditingDayId = dayId;
         window._currentEditingEvalId = evalToEdit ? evalToEdit.id : '';
+
+        // Función segura para cerrar el modal
+        window.closeAddEvaluationModal = function () {
+            const m = document.getElementById('modalAddEvaluation');
+            if (m) m.remove();
+        };
 
         // Manejador del cambio de duración global / de cátedra
         window.onMasterDurationChanged = function (newDurVal) {
@@ -2177,11 +2212,16 @@
 
         window.setAllSectionsProcessStatus = function (targetStatus) {
             const selects = document.querySelectorAll('[id^="evalSectionProcessStatus_"]');
+            if (!selects || selects.length === 0) {
+                alert("Primero seleccione grado y asignatura para cargar las secciones correspondientes.");
+                return;
+            }
             selects.forEach((sel) => {
                 sel.value = targetStatus;
                 const idx = sel.id.replace('evalSectionProcessStatus_', '');
                 window.onSectionProcessStatusChanged(idx, targetStatus);
             });
+            window.recalcEvalTimes();
         };
 
         // Calcular hora de inicio automática según evaluaciones previas
@@ -2217,16 +2257,16 @@
         const isInitFull = evalToEdit && evalToEdit.evaluationMode === 'SECCION_COMPLETA';
 
         const modalHtml = `
-            <div class="exam-modal-overlay" id="${modalId}" onclick="if(event.target===this) document.getElementById('${modalId}').remove()">
+            <div class="exam-modal-overlay" id="${modalId}" onclick="if(event.target===this) window.closeAddEvaluationModal()">
                 <div class="exam-modal-box modal-lg-box" style="max-height:92vh; display:flex; flex-direction:column;">
                     <div style="background:#0f172a; color:white; padding:16px 22px; display:flex; align-items:center; justify-content:space-between; border-radius:14px 14px 0 0; flex-shrink:0;">
                         <h4 style="margin:0; font-size:1.15rem; font-weight:800; display:flex; align-items:center; gap:8px; color:#ffffff;">
                             <i class="fa-solid fa-file-pen" style="color:#22c55e;"></i> ${evalToEdit ? 'Editar Evaluación a Nivel de Grado' : 'Asignar Asignatura y Cuidadores (Todas las Secciones)'}
                         </h4>
-                        <button type="button" onclick="document.getElementById('${modalId}').remove()" style="background:none; border:none; color:#ffffff; font-size:1.4rem; cursor:pointer; line-height:1; padding:0 4px;">&times;</button>
+                        <button type="button" onclick="window.closeAddEvaluationModal()" style="background:none; border:none; color:#ffffff; font-size:1.4rem; cursor:pointer; line-height:1; padding:0 4px;" title="Cerrar ventana">&times;</button>
                     </div>
-                    <div style="padding:22px; overflow-y:auto; flex:1;">
-                        <form id="formAddEval">
+                    <div style="padding:22px; overflow-y:auto; flex:1; min-height:0; -webkit-overflow-scrolling:touch;">
+                        <form id="formAddEval" onsubmit="event.preventDefault(); return false;">
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label" style="font-weight:700;">Grado Académico (Aplica a todas las secciones):</label>
@@ -2260,10 +2300,10 @@
                                             ⚡ Estado de Evaluación por Defecto (Todas las Secciones):
                                         </span>
                                         <div style="display:flex; gap:6px;">
-                                            <button type="button" class="btn btn-sm btn-outline-success" onclick="window.setAllSectionsProcessStatus('EVALUA')" style="font-size:0.75rem; font-weight:800; padding:3px 8px;">
+                                            <button type="button" class="btn btn-sm btn-outline-success" onclick="event.preventDefault(); event.stopPropagation(); window.setAllSectionsProcessStatus('EVALUA')" style="font-size:0.75rem; font-weight:800; padding:3px 8px;">
                                                 📝 Marcar Todas: Evalúan (Examen)
                                             </button>
-                                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="window.setAllSectionsProcessStatus('EN_PROCESO')" style="font-size:0.75rem; font-weight:800; padding:3px 8px;">
+                                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="event.preventDefault(); event.stopPropagation(); window.setAllSectionsProcessStatus('EN_PROCESO')" style="font-size:0.75rem; font-weight:800; padding:3px 8px;">
                                                 📁 Marcar Todas: En Proceso
                                             </button>
                                         </div>
@@ -2331,7 +2371,7 @@
                         </form>
                     </div>
                     <div style="padding:14px 22px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:10px; border-radius:0 0 14px 14px; flex-shrink:0;">
-                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('${modalId}').remove()" style="font-weight:700;">Cancelar</button>
+                        <button type="button" class="btn btn-secondary" onclick="window.closeAddEvaluationModal()" style="font-weight:700;">Cancelar</button>
                         <button type="button" class="btn btn-primary" onclick="window.confirmSaveEvaluation('${dayId}', '${evalToEdit ? evalToEdit.id : ''}')" style="background:#15803d; border-color:#166534; font-weight:700; padding:8px 18px;">
                             <i class="fa-solid fa-check"></i> Guardar Asignación
                         </button>
@@ -2807,216 +2847,231 @@
 
     // Guardar evaluación confirmada a nivel de grado consolidado con todas sus secciones
     window.confirmSaveEvaluation = function (dayId, evalIdToUpdate = '') {
-        const gradeSelect = document.getElementById('evalGradeSelect');
-        const courseSelect = document.getElementById('evalCourseSelect');
-        const academicGradeName = gradeSelect ? gradeSelect.value : '';
-        const courseName = courseSelect ? courseSelect.value : '';
-        const startTime = document.getElementById('evalStartTime').value;
-        const endTime = document.getElementById('evalEndTime').value;
-        const recess = parseInt(document.getElementById('evalRecessMinutes').value, 10) || 15;
+        try {
+            const gradeSelect = document.getElementById('evalGradeSelect');
+            const courseSelect = document.getElementById('evalCourseSelect');
+            const academicGradeName = gradeSelect ? gradeSelect.value : '';
+            const courseName = courseSelect ? courseSelect.value : '';
+            const startTimeInput = document.getElementById('evalStartTime');
+            const endTimeInput = document.getElementById('evalEndTime');
+            const startTime = startTimeInput ? startTimeInput.value : '07:30';
+            const endTime = endTimeInput ? endTimeInput.value : '08:30';
+            const recessInput = document.getElementById('evalRecessMinutes');
+            const recess = recessInput ? (parseInt(recessInput.value, 10) || 15) : 15;
 
-        if (!academicGradeName || !courseName) {
-            alert("Por favor seleccione grado y asignatura.");
-            return;
-        }
-
-        // Validación infranqueable de horario: NUNCA pasar de 12:30 PM
-        if (timeStringToMinutes(endTime) > 750) {
-            alert("🔒 RESTRICCIÓN OFICIAL DE JORNADA:\n\nLa evaluación finalizaría a las " + endTime + " hrs, sobrepasando el límite estricto de las 12:30 PM. Por favor reduzca la duración o inicie más temprano.");
-            return;
-        }
-
-        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
-        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
-        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
-        const dayObj = scheduleBlock.days.find(d => d.id === dayId);
-        if (!dayObj) return;
-
-        const sectionsInfo = getSectionsAndTitularsForCourse(academicGradeName, courseName);
-        const sUpper = courseName.toUpperCase();
-        const normSub = (str) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
-        const sNorm = normSub(courseName);
-
-        const isPrac = sNorm.includes('PRACTICA SUPERVISADA');
-        const isComp = sNorm.includes('COMPUT') || sNorm.includes('INFORM') || sNorm.includes('LABORAT') || sNorm.includes('TIC');
-        const isMeca = sNorm.includes('MECANOGRAF') || sNorm.includes('MECA');
-
-        let compMode = 'single';
-        const compRadio = document.querySelector('input[name="compMode"]:checked');
-        if (compRadio) compMode = compRadio.value;
-
-        const evalMode = (document.getElementById('evalSectionModeSelect') && document.getElementById('evalSectionModeSelect').value) || 'MEDIAS_SECCIONES';
-        const isFullSection = evalMode === 'SECCION_COMPLETA';
-
-        let maxDurationFound = 60;
-
-        // Construir la matriz de secciones configuradas con su propia duración
-        const sectionsPayload = sectionsInfo.map((sInfo, sIdx) => {
-            const splitData = splitStudentsInTwoGroups(sInfo.gradeCode, sInfo.section, sInfo.gradeName);
-
-            const processStatusSelect = document.getElementById(`evalSectionProcessStatus_${sIdx}`);
-            const secProcessStatus = processStatusSelect ? processStatusSelect.value : (sInfo.evaluationStatus || 'EVALUA');
-            const isSecEnProceso = secProcessStatus === 'EN_PROCESO';
-
-            const secDurSelect = document.getElementById(`evalSectionDuration_${sIdx}`);
-            const secDuration = secDurSelect ? (parseInt(secDurSelect.value, 10) || 60) : 60;
-            if (secDuration > maxDurationFound) maxDurationFound = secDuration;
-
-            const startMin = timeStringToMinutes(startTime);
-            const secEndMin = startMin + secDuration;
-            const secEndTime = minutesToTimeString(secEndMin);
-
-            let classroomA = '', caretakerA = '', turn2AId = '';
-            let classroomB = '', caretakerB = '', turn2BId = '';
-            let classroomSingle = '', caretakerSingle = '';
-
-            if (isSecEnProceso) {
-                // Modalidad En Proceso: no requiere cuidadores ajenos ni salones físicos de examen
-                classroomSingle = 'En Proceso';
-                caretakerSingle = '';
-                classroomA = 'En Proceso';
-                caretakerA = '';
-                classroomB = 'En Proceso';
-                caretakerB = '';
-            } else if (isFullSection) {
-                classroomSingle = (document.getElementById(`evalClassroomSingle_${sIdx}`) && document.getElementById(`evalClassroomSingle_${sIdx}`).value) || (document.getElementById(`evalClassroomA_${sIdx}`) && document.getElementById(`evalClassroomA_${sIdx}`).value) || `Salón ${sIdx + 1}`;
-                caretakerSingle = (document.getElementById(`evalCaretakerSingle_${sIdx}`) && document.getElementById(`evalCaretakerSingle_${sIdx}`).value) || (document.getElementById(`evalCaretakerA_${sIdx}`) && document.getElementById(`evalCaretakerA_${sIdx}`).value) || '';
-                classroomA = classroomSingle;
-                caretakerA = caretakerSingle;
-                classroomB = classroomSingle;
-                caretakerB = caretakerSingle;
-            } else {
-                classroomA = (document.getElementById(`evalClassroomA_${sIdx}`) && document.getElementById(`evalClassroomA_${sIdx}`).value) || `Salón ${(sIdx * 2) + 1}`;
-                caretakerA = (document.getElementById(`evalCaretakerA_${sIdx}`) && document.getElementById(`evalCaretakerA_${sIdx}`).value) || '';
-                turn2AId = (document.getElementById(`evalCaretakerTurn2A_${sIdx}`) && document.getElementById(`evalCaretakerTurn2A_${sIdx}`).value) || '';
-
-                classroomB = (document.getElementById(`evalClassroomB_${sIdx}`) && document.getElementById(`evalClassroomB_${sIdx}`).value) || `Salón ${(sIdx * 2) + 2}`;
-                caretakerB = (document.getElementById(`evalCaretakerB_${sIdx}`) && document.getElementById(`evalCaretakerB_${sIdx}`).value) || '';
-                turn2BId = (document.getElementById(`evalCaretakerTurn2B_${sIdx}`) && document.getElementById(`evalCaretakerTurn2B_${sIdx}`).value) || '';
+            if (!academicGradeName || !courseName) {
+                alert("Por favor seleccione grado y asignatura.");
+                return;
             }
 
-            const uA = (STATE.users || []).find(u => u.id === caretakerA);
-            const uB = (STATE.users || []).find(u => u.id === caretakerB);
-            const uSingle = (STATE.users || []).find(u => u.id === caretakerSingle);
-            const uTurn2A = (STATE.users || []).find(u => u.id === turn2AId);
-            const uTurn2B = (STATE.users || []).find(u => u.id === turn2BId);
+            // Validación infranqueable de horario: NUNCA pasar de 12:30 PM
+            if (timeStringToMinutes(endTime) > 750) {
+                alert("🔒 RESTRICCIÓN OFICIAL DE JORNADA:\n\nLa evaluación finalizaría a las " + endTime + " hrs, sobrepasando el límite estricto de las 12:30 PM. Por favor reduzca la duración o inicie más temprano.");
+                return;
+            }
 
-            return {
-                gradeCode: sInfo.gradeCode,
-                gradeName: sInfo.gradeName,
-                section: sInfo.section,
-                sectionLetter: sInfo.sectionLetter,
-                teacherId: sInfo.teacherId,
-                teacherName: sInfo.teacherName,
-                evaluationStatus: secProcessStatus,
-                isEnProceso: isSecEnProceso,
-                durationMinutes: secDuration,
-                startTime: startTime,
-                endTime: secEndTime,
-                evaluationMode: evalMode,
-                singleRoom: isFullSection ? {
-                    classroom: classroomSingle,
-                    range: isSecEnProceso ? '' : `01 al ${String(splitData.total).padStart(2, '0')}`,
-                    caretakerTeacherId: caretakerSingle,
-                    caretakerTeacherName: uSingle ? uSingle.name : (uA ? uA.name : ''),
-                    totalStudents: splitData.total
-                } : null,
-                groupA: {
-                    classroom: classroomA,
-                    range: isSecEnProceso ? '' : (isFullSection ? `01 al ${String(splitData.total).padStart(2, '0')}` : splitData.rangeA),
-                    caretakerTeacherId: caretakerA,
-                    caretakerTeacherName: uA ? uA.name : '',
-                    caretakerTurn2Id: turn2AId,
-                    caretakerTurn2Name: uTurn2A ? uTurn2A.name : ''
-                },
-                groupB: {
-                    classroom: classroomB,
-                    range: isSecEnProceso ? '' : (isFullSection ? `01 al ${String(splitData.total).padStart(2, '0')}` : splitData.rangeB),
-                    caretakerTeacherId: caretakerB,
-                    caretakerTeacherName: uB ? uB.name : '',
-                    caretakerTurn2Id: turn2BId,
-                    caretakerTurn2Name: uTurn2B ? uTurn2B.name : ''
+            const { dayObj, scheduleBlock } = findDayAndScheduleBlock(dayId);
+            if (!dayObj) {
+                alert("No se pudo localizar el día seleccionado (" + dayId + ") para guardar los cambios.");
+                return;
+            }
+
+            const sectionsInfo = getSectionsAndTitularsForCourse(academicGradeName, courseName);
+            const sUpper = courseName.toUpperCase();
+            const normSub = (str) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+            const sNorm = normSub(courseName);
+
+            const isPrac = sNorm.includes('PRACTICA SUPERVISADA');
+            const isComp = sNorm.includes('COMPUT') || sNorm.includes('INFORM') || sNorm.includes('LABORAT') || sNorm.includes('TIC');
+            const isMeca = sNorm.includes('MECANOGRAF') || sNorm.includes('MECA');
+
+            let compMode = 'single';
+            const compRadio = document.querySelector('input[name="compMode"]:checked');
+            if (compRadio) compMode = compRadio.value;
+
+            const evalMode = (document.getElementById('evalSectionModeSelect') && document.getElementById('evalSectionModeSelect').value) || 'MEDIAS_SECCIONES';
+            const isFullSection = evalMode === 'SECCION_COMPLETA';
+
+            let maxDurationFound = 60;
+
+            // Construir la matriz de secciones configuradas con su propia duración
+            const sectionsPayload = sectionsInfo.map((sInfo, sIdx) => {
+                const splitData = splitStudentsInTwoGroups(sInfo.gradeCode, sInfo.section, sInfo.gradeName);
+
+                const processStatusSelect = document.getElementById(`evalSectionProcessStatus_${sIdx}`);
+                const secProcessStatus = processStatusSelect ? processStatusSelect.value : (sInfo.evaluationStatus || 'EVALUA');
+                const isSecEnProceso = secProcessStatus === 'EN_PROCESO';
+
+                const secDurSelect = document.getElementById(`evalSectionDuration_${sIdx}`);
+                const secDuration = secDurSelect ? (parseInt(secDurSelect.value, 10) || 60) : 60;
+                if (secDuration > maxDurationFound) maxDurationFound = secDuration;
+
+                const startMin = timeStringToMinutes(startTime);
+                const secEndMin = startMin + secDuration;
+                const secEndTime = minutesToTimeString(secEndMin);
+
+                let classroomA = '', caretakerA = '', turn2AId = '';
+                let classroomB = '', caretakerB = '', turn2BId = '';
+                let classroomSingle = '', caretakerSingle = '';
+
+                if (isSecEnProceso) {
+                    // Modalidad En Proceso: no requiere cuidadores ajenos ni salones físicos de examen
+                    classroomSingle = 'En Proceso';
+                    caretakerSingle = '';
+                    classroomA = 'En Proceso';
+                    caretakerA = '';
+                    classroomB = 'En Proceso';
+                    caretakerB = '';
+                } else if (isFullSection) {
+                    classroomSingle = (document.getElementById(`evalClassroomSingle_${sIdx}`) && document.getElementById(`evalClassroomSingle_${sIdx}`).value) || (document.getElementById(`evalClassroomA_${sIdx}`) && document.getElementById(`evalClassroomA_${sIdx}`).value) || `Salón ${sIdx + 1}`;
+                    caretakerSingle = (document.getElementById(`evalCaretakerSingle_${sIdx}`) && document.getElementById(`evalCaretakerSingle_${sIdx}`).value) || (document.getElementById(`evalCaretakerA_${sIdx}`) && document.getElementById(`evalCaretakerA_${sIdx}`).value) || '';
+                    classroomA = classroomSingle;
+                    caretakerA = caretakerSingle;
+                    classroomB = classroomSingle;
+                    caretakerB = caretakerSingle;
+                } else {
+                    classroomA = (document.getElementById(`evalClassroomA_${sIdx}`) && document.getElementById(`evalClassroomA_${sIdx}`).value) || `Salón ${(sIdx * 2) + 1}`;
+                    caretakerA = (document.getElementById(`evalCaretakerA_${sIdx}`) && document.getElementById(`evalCaretakerA_${sIdx}`).value) || '';
+                    turn2AId = (document.getElementById(`evalCaretakerTurn2A_${sIdx}`) && document.getElementById(`evalCaretakerTurn2A_${sIdx}`).value) || '';
+
+                    classroomB = (document.getElementById(`evalClassroomB_${sIdx}`) && document.getElementById(`evalClassroomB_${sIdx}`).value) || `Salón ${(sIdx * 2) + 2}`;
+                    caretakerB = (document.getElementById(`evalCaretakerB_${sIdx}`) && document.getElementById(`evalCaretakerB_${sIdx}`).value) || '';
+                    turn2BId = (document.getElementById(`evalCaretakerTurn2B_${sIdx}`) && document.getElementById(`evalCaretakerTurn2B_${sIdx}`).value) || '';
                 }
+
+                const uA = (STATE.users || []).find(u => u.id === caretakerA);
+                const uB = (STATE.users || []).find(u => u.id === caretakerB);
+                const uSingle = (STATE.users || []).find(u => u.id === caretakerSingle);
+                const uTurn2A = (STATE.users || []).find(u => u.id === turn2AId);
+                const uTurn2B = (STATE.users || []).find(u => u.id === turn2BId);
+
+                return {
+                    gradeCode: sInfo.gradeCode,
+                    gradeName: sInfo.gradeName,
+                    section: sInfo.section,
+                    sectionLetter: sInfo.sectionLetter,
+                    teacherId: sInfo.teacherId,
+                    teacherName: sInfo.teacherName,
+                    evaluationStatus: secProcessStatus,
+                    isEnProceso: isSecEnProceso,
+                    durationMinutes: secDuration,
+                    startTime: startTime,
+                    endTime: secEndTime,
+                    evaluationMode: evalMode,
+                    singleRoom: isFullSection ? {
+                        classroom: classroomSingle,
+                        range: isSecEnProceso ? '' : `01 al ${String(splitData.total).padStart(2, '0')}`,
+                        caretakerTeacherId: caretakerSingle,
+                        caretakerTeacherName: uSingle ? uSingle.name : (uA ? uA.name : ''),
+                        totalStudents: splitData.total
+                    } : null,
+                    groupA: {
+                        classroom: classroomA,
+                        range: isSecEnProceso ? '' : (isFullSection ? `01 al ${String(splitData.total).padStart(2, '0')}` : splitData.rangeA),
+                        caretakerTeacherId: caretakerA,
+                        caretakerTeacherName: uA ? uA.name : '',
+                        caretakerTurn2Id: turn2AId,
+                        caretakerTurn2Name: uTurn2A ? uTurn2A.name : ''
+                    },
+                    groupB: {
+                        classroom: classroomB,
+                        range: isSecEnProceso ? '' : (isFullSection ? `01 al ${String(splitData.total).padStart(2, '0')}` : splitData.rangeB),
+                        caretakerTeacherId: caretakerB,
+                        caretakerTeacherName: uB ? uB.name : '',
+                        caretakerTurn2Id: turn2BId,
+                        caretakerTurn2Name: uTurn2B ? uTurn2B.name : ''
+                    }
+                };
+            });
+
+            // Titulares consolidados para exhibición
+            const titularNames = Array.from(new Set(sectionsInfo.map(s => s.teacherName).filter(Boolean)));
+            const titularTeachers = sectionsInfo.map(s => ({
+                section: s.section,
+                teacherId: s.teacherId,
+                teacherName: s.teacherName
+            }));
+
+            const allSectionsInProcess = sectionsPayload.length > 0 && sectionsPayload.every(s => s.isEnProceso);
+            const anySectionInProcess = sectionsPayload.some(s => s.isEnProceso);
+            const evalProcessStatus = allSectionsInProcess ? 'EN_PROCESO' : (anySectionInProcess ? 'MIXTO' : 'EVALUA');
+
+            // Para retrocompatibilidad con vista legacy de 1 grado
+            const firstSec = sectionsPayload[0] || {};
+
+            const evalPayload = {
+                id: evalIdToUpdate || ('eval_' + Date.now()),
+                academicGradeName: academicGradeName,
+                gradeCode: firstSec.gradeCode || academicGradeName,
+                gradeName: academicGradeName,
+                courseId: sectionsInfo[0] ? sectionsInfo[0].courseId : '',
+                courseName: courseName,
+                courseTeacherId: sectionsInfo[0] ? sectionsInfo[0].teacherId : '',
+                courseTeacherName: titularNames.join(', ') || 'Catedráticos Titulares',
+                titularTeachers: titularTeachers,
+                sections: sectionsPayload,
+                evaluationStatus: evalProcessStatus,
+                isEnProceso: allSectionsInProcess,
+                evaluationMode: evalMode,
+                durationMinutes: maxDurationFound,
+                startTime: startTime,
+                endTime: endTime,
+                recessMinutes: recess,
+                isPractica: isPrac,
+                isComputacion: isComp,
+                isMecanografia: isMeca,
+                computacionMode: compMode,
+                // Fallback de retrocompatibilidad
+                groupA: firstSec.groupA || { classroom: 'Salón 1', range: '', caretakerTeacherId: '', caretakerTeacherName: '' },
+                groupB: firstSec.groupB || { classroom: 'Salón 2', range: '', caretakerTeacherId: '', caretakerTeacherName: '' }
             };
-        });
 
-        // Titulares consolidados para exhibición
-        const titularNames = Array.from(new Set(sectionsInfo.map(s => s.teacherName).filter(Boolean)));
-        const titularTeachers = sectionsInfo.map(s => ({
-            section: s.section,
-            teacherId: s.teacherId,
-            teacherName: s.teacherName
-        }));
+            dayObj.evaluations = dayObj.evaluations || [];
+            if (evalIdToUpdate) {
+                const idx = dayObj.evaluations.findIndex(e => String(e.id) === String(evalIdToUpdate));
+                if (idx !== -1) dayObj.evaluations[idx] = evalPayload;
+                else dayObj.evaluations.push(evalPayload);
+            } else {
+                dayObj.evaluations.push(evalPayload);
+            }
 
-        const allSectionsInProcess = sectionsPayload.length > 0 && sectionsPayload.every(s => s.isEnProceso);
-        const anySectionInProcess = sectionsPayload.some(s => s.isEnProceso);
-        const evalProcessStatus = allSectionsInProcess ? 'EN_PROCESO' : (anySectionInProcess ? 'MIXTO' : 'EVALUA');
+            // Ordenar evaluaciones por hora de inicio
+            dayObj.evaluations.sort((a, b) => a.startTime.localeCompare(b.startTime));
 
-        // Para retrocompatibilidad con vista legacy de 1 grado
-        const firstSec = sectionsPayload[0] || {};
+            // Asegurar que el día editado se mantenga siempre desplegado para inspección inmediata
+            window._examDaysExpandedState = window._examDaysExpandedState || {};
+            window._examDaysExpandedState[dayObj.id] = true;
 
-        const evalPayload = {
-            id: evalIdToUpdate || ('eval_' + Date.now()),
-            academicGradeName: academicGradeName,
-            gradeCode: firstSec.gradeCode || academicGradeName,
-            gradeName: academicGradeName,
-            courseId: sectionsInfo[0] ? sectionsInfo[0].courseId : '',
-            courseName: courseName,
-            courseTeacherId: sectionsInfo[0] ? sectionsInfo[0].teacherId : '',
-            courseTeacherName: titularNames.join(', ') || 'Catedráticos Titulares',
-            titularTeachers: titularTeachers,
-            sections: sectionsPayload,
-            evaluationStatus: evalProcessStatus,
-            isEnProceso: allSectionsInProcess,
-            evaluationMode: evalMode,
-            durationMinutes: maxDurationFound,
-            startTime: startTime,
-            endTime: endTime,
-            recessMinutes: recess,
-            isPractica: isPrac,
-            isComputacion: isComp,
-            isMecanografia: isMeca,
-            computacionMode: compMode,
-            // Fallback de retrocompatibilidad
-            groupA: firstSec.groupA || { classroom: 'Salón 1', range: '', caretakerTeacherId: '', caretakerTeacherName: '' },
-            groupB: firstSec.groupB || { classroom: 'Salón 2', range: '', caretakerTeacherId: '', caretakerTeacherName: '' }
-        };
-
-        if (evalIdToUpdate) {
-            const idx = dayObj.evaluations.findIndex(e => e.id === evalIdToUpdate);
-            if (idx !== -1) dayObj.evaluations[idx] = evalPayload;
-        } else {
-            dayObj.evaluations.push(evalPayload);
+            saveExamSchedulesData(true);
+            const modalEl = document.getElementById('modalAddEvaluation');
+            if (modalEl) modalEl.remove();
+            renderExamSchedulesView();
+        } catch (err) {
+            console.error("Error al guardar evaluación:", err);
+            alert("Ocurrió un error al guardar la asignación: " + (err.message || err));
         }
-
-        // Ordenar evaluaciones por hora de inicio
-        dayObj.evaluations.sort((a, b) => a.startTime.localeCompare(b.startTime));
-
-        saveExamSchedulesData(true);
-        document.getElementById('modalAddEvaluation').remove();
-        renderExamSchedulesView();
     };
 
     window.editEvaluationModal = function (dayId, evalId) {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
-        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
-        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
-        const dayObj = scheduleBlock.days.find(d => d.id === dayId);
-        if (!dayObj) return;
-        const ev = dayObj.evaluations.find(e => e.id === evalId);
-        if (!ev) return;
+        const { dayObj } = findDayAndScheduleBlock(dayId);
+        if (!dayObj) {
+            alert("No se pudo localizar el día del examen a editar.");
+            return;
+        }
+        const ev = (dayObj.evaluations || []).find(e => String(e.id) === String(evalId));
+        if (!ev) {
+            alert("No se encontró la evaluación seleccionada.");
+            return;
+        }
         window.addEvaluationToDay(dayId, ev);
     };
 
     window.deleteEvaluation = function (dayId, evalId) {
         if (!confirm("¿Desea quitar esta evaluación de la programación de este día?")) return;
-        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
-        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
-        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
-        const dayObj = scheduleBlock.days.find(d => d.id === dayId);
-        if (!dayObj) return;
+        const { dayObj } = findDayAndScheduleBlock(dayId);
+        if (!dayObj || !Array.isArray(dayObj.evaluations)) return;
 
-        dayObj.evaluations = dayObj.evaluations.filter(e => e.id !== evalId);
+        dayObj.evaluations = dayObj.evaluations.filter(e => String(e.id) !== String(evalId));
         saveExamSchedulesData(true);
         renderExamSchedulesView();
     };
@@ -3394,11 +3449,12 @@
     // IMPRESIÓN 1: HORARIO DIARIO EN HOJA OFICIO (LEGAL - 3 COLUMNAS)
     // =========================================================================
     window.printDailyScheduleOficio = function (dayId) {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
-        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
-        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
-        const dayObj = scheduleBlock.days.find(d => d.id === dayId);
-        if (!dayObj) return;
+        const found = findDayAndScheduleBlock(dayId, window._currentSelectedExamBim);
+        if (!found || !found.day) {
+            alert('⚠️ No se encontró la jornada de examen solicitada para imprimir.');
+            return;
+        }
+        const dayObj = found.day;
 
         const dayFormatted = new Date(dayObj.date + 'T12:00:00').toLocaleDateString('es-GT', {
             weekday: 'long',
@@ -3703,13 +3759,17 @@
     // IMPRESIÓN 2: MEDIAS LISTAS OFICIALES (TODAS LAS SECCIONES, GRUPO A Y B)
     // =========================================================================
     window.printMediasListasModal = function (dayId, evalId) {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
-        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
-        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
-        const dayObj = scheduleBlock.days.find(d => d.id === dayId);
-        if (!dayObj) return;
-        const ev = dayObj.evaluations.find(e => e.id === evalId);
-        if (!ev) return;
+        const found = findDayAndScheduleBlock(dayId, window._currentSelectedExamBim);
+        if (!found || !found.day) {
+            alert('⚠️ No se encontró la jornada de examen solicitada.');
+            return;
+        }
+        const dayObj = found.day;
+        const ev = (dayObj.evaluations || []).find(e => e.id === evalId);
+        if (!ev) {
+            alert('⚠️ No se encontró la evaluación seleccionada.');
+            return;
+        }
 
         if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') {
             alert("Esta asignatura evalúa en proceso (acumulativo continuo). No requiere listas de cuido de examen en salón.");
@@ -3720,10 +3780,12 @@
     };
 
     window.printAllMediasListasOfDay = function (dayId) {
-        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
-        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
-        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
-        const dayObj = scheduleBlock.days.find(d => d.id === dayId);
+        const found = findDayAndScheduleBlock(dayId, window._currentSelectedExamBim);
+        if (!found || !found.day) {
+            alert('⚠️ No se encontró la jornada de examen solicitada.');
+            return;
+        }
+        const dayObj = found.day;
         if (!dayObj || !dayObj.evaluations || dayObj.evaluations.length === 0) {
             alert("No hay evaluaciones asignadas en este día.");
             return;
