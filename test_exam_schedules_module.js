@@ -513,8 +513,19 @@ assert(fullSecProctors['4PC_A'] !== undefined, 'Debe asignar cuidador para secci
 assert(fullSecProctors['4PC_B'] !== undefined, 'Debe asignar cuidador para sección B');
 assert(fullSecProctors['4PC_A'].caretakerSingle, 'Debe haber un cuidador único asignado a sección A');
 assert.strictEqual(fullSecProctors['4PC_A'].caretakerA, fullSecProctors['4PC_A'].caretakerB, 'En sección completa, grupo A y B comparten el mismo cuidador único');
-assert(!titularTestIds.includes(fullSecProctors['4PC_A'].caretakerSingle), 'El cuidador de sección completa A no debe ser titular');
-console.log('✅ Modo Sección Completa Verificado: 1 cuidador por sección única sin colisión.');
+// Nueva Regla Oficial: En sección completa (1 solo salón), el titular sí puede ser asignado como cuidador
+const halfSecProctors = mod.autoPickProctorsForModal(
+    sectionsTestInfo,
+    titularTestIds,
+    false,
+    '07:30',
+    null,
+    null,
+    false // isFullSection = false (Opción predeterminada)
+);
+assert(!titularTestIds.includes(halfSecProctors['4PC_A'].caretakerA), 'En medias secciones el titular A queda estrictamente excluido');
+assert(!titularTestIds.includes(halfSecProctors['4PC_A'].caretakerB), 'En medias secciones el titular B queda estrictamente excluido');
+console.log('✅ Modo Sección Completa Verificado: El titular puede cuidar en salón único y queda estrictamente excluido en 2 grupos.');
 
 // 16. Test Permisos Multi-Rol y Sincronización (Dirección, Secretaría, Auxiliatura)
 console.log('\n[Test 16] Verificando Visibilidad Multi-Rol (Dirección, Secretaría, Auxiliatura)...');
@@ -629,9 +640,75 @@ assert.strictEqual(secInfo4toTest19[1].teacherName, 'Profesor Multirol');
 
 console.log('✅ Sincronización Robusta de Cátedras, Titulares y Elegibilidad Docente Verificada con Éxito.');
 
+// =========================================================================
+// [Test 20] Verificando Cuido de Maestro Titular en Sección Completa y Hoja Oficio
+// =========================================================================
+console.log('\n[Test 20] Verificando Cuido de Maestro Titular en Sección Completa (1 solo salón) y Hoja Oficio...');
+
+// Simular día de evaluación con modalidad SECCION_COMPLETA
+const testDayId = 'day_test_20';
+global.STATE.examSchedules = {
+    '2026_B1': {
+        days: [
+            {
+                id: testDayId,
+                date: '2026-03-20',
+                evaluations: [
+                    {
+                        id: 'ev_full_sec_1',
+                        academicGradeName: '4to Perito Contador',
+                        courseName: 'Computación I',
+                        startTime: '07:30',
+                        endTime: '08:30',
+                        durationMinutes: 60,
+                        evaluationMode: 'SECCION_COMPLETA',
+                        sections: [
+                            {
+                                gradeCode: '4to A',
+                                section: 'Sección A',
+                                teacherId: 'u_doc_1',
+                                teacherName: 'Profesor Activo',
+                                evaluationMode: 'SECCION_COMPLETA',
+                                singleRoom: { classroom: 'Salón 1', caretakerTeacherId: '', caretakerTeacherName: '' },
+                                groupA: { classroom: 'Salón 1', caretakerTeacherId: '', caretakerTeacherName: '' },
+                                groupB: { classroom: 'Salón 1', caretakerTeacherId: '', caretakerTeacherName: '' }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+};
+
+const block20 = global.STATE.examSchedules['2026_B1'];
+const assignResult = mod.autoAssignRandomProctors(block20, testDayId);
+assert(assignResult.success, 'El sorteo debe ser exitoso');
+
+const updatedDay = global.STATE.examSchedules['2026_B1'].days[0];
+const updatedSec = updatedDay.evaluations[0].sections[0];
+// En SECCION_COMPLETA, el maestro titular u_doc_1 tiene permitido cuidar su salón
+assert(updatedSec.singleRoom.caretakerTeacherId, 'Debe tener un cuidador asignado');
+assert.strictEqual(updatedSec.singleRoom.caretakerTeacherId, 'u_doc_1', 'El maestro titular debe poder cuidar en Sección Completa');
+
+// Verificar que en modalidad MEDIAS_SECCIONES (predeterminada) el titular sigue estrictamente excluido
+global.STATE.examSchedules['2026_B1'].days[0].evaluations[0].evaluationMode = 'MEDIAS_SECCIONES';
+global.STATE.examSchedules['2026_B1'].days[0].evaluations[0].sections[0].evaluationMode = 'MEDIAS_SECCIONES';
+global.STATE.examSchedules['2026_B1'].days[0].evaluations[0].sections[0].groupA.caretakerTeacherId = '';
+global.STATE.examSchedules['2026_B1'].days[0].evaluations[0].sections[0].groupB.caretakerTeacherId = '';
+
+const assignResultMedias = mod.autoAssignRandomProctors(block20, testDayId);
+assert(assignResultMedias.success, 'El sorteo de medias secciones debe ser exitoso');
+const updatedSecMedias = global.STATE.examSchedules['2026_B1'].days[0].evaluations[0].sections[0];
+assert.notStrictEqual(updatedSecMedias.groupA.caretakerTeacherId, 'u_doc_1', 'El titular NO debe cuidar Grupo A en Medias Secciones');
+assert.notStrictEqual(updatedSecMedias.groupB.caretakerTeacherId, 'u_doc_1', 'El titular NO debe cuidar Grupo B en Medias Secciones');
+
+console.log('✅ Permiso de Cuido al Maestro Titular en Sección Completa y Exclusión Estricta en Medias Secciones Verificados.');
+
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');
 console.log('================================================================================');
+
 
 
 

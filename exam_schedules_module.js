@@ -1695,11 +1695,13 @@
         const assignedInTurn2 = new Set();
         const assignments = {};
 
-        function pickCaretaker(slotStart, slotEnd, assignedSet) {
+        function pickCaretaker(slotStart, slotEnd, assignedSet, allowTitulars = false) {
             const slotDur = slotEnd - slotStart;
             const eligible = allCandidates.filter(c => {
-                if (titularExclusionSet.has(c.id)) return false;
-                if (titularNamesSet.has((c.name || '').toLowerCase().trim())) return false;
+                if (!allowTitulars) {
+                    if (titularExclusionSet.has(c.id)) return false;
+                    if (titularNamesSet.has((c.name || '').toLowerCase().trim())) return false;
+                }
                 if (assignedSet.has(c.id)) return false;
                 const intervals = busyIntervals[c.id] || [];
                 return !intervals.some(([bStart, bEnd]) => Math.max(slotStart, bStart) < Math.min(slotEnd, bEnd));
@@ -1707,7 +1709,7 @@
 
             const candidatePool = (eligible.length > 0)
                 ? eligible
-                : allCandidates.filter(c => !titularExclusionSet.has(c.id) && !titularNamesSet.has((c.name || '').toLowerCase().trim()) && !assignedSet.has(c.id));
+                : allCandidates.filter(c => (allowTitulars || (!titularExclusionSet.has(c.id) && !titularNamesSet.has((c.name || '').toLowerCase().trim()))) && !assignedSet.has(c.id));
 
             if (candidatePool.length === 0) return null;
 
@@ -1751,7 +1753,21 @@
                     turn2B: t2B || ''
                 };
             } else if (isFullSection) {
-                const cSingle = pickCaretaker(startMin, secEnd, assignedInSlot);
+                // Cuando se seleccione un solo salón a cuidar (Sección Completa), puede cuidar el maestro titular de la sección
+                let cSingle = sInfo.teacherId;
+                const isTitEligible = cSingle && allCandidates.some(c => c.id === cSingle);
+                const intervals = (cSingle && busyIntervals[cSingle]) || [];
+                const hasCollision = intervals.some(([bStart, bEnd]) => Math.max(startMin, bStart) < Math.min(secEnd, bEnd));
+
+                if (isTitEligible && !assignedInSlot.has(cSingle) && !hasCollision) {
+                    assignedInSlot.add(cSingle);
+                    dayWorkload[cSingle] = (dayWorkload[cSingle] || 0) + secDur;
+                    if (!busyIntervals[cSingle]) busyIntervals[cSingle] = [];
+                    busyIntervals[cSingle].push([startMin, secEnd]);
+                } else {
+                    cSingle = pickCaretaker(startMin, secEnd, assignedInSlot, true);
+                }
+
                 assignments[secCode] = {
                     caretakerA: cSingle || '',
                     caretakerB: cSingle || '',
@@ -2040,19 +2056,27 @@
         const titularIds = sectionsInfo.map(s => s.teacherId).filter(Boolean);
         if (hiddenTitularIds) hiddenTitularIds.value = JSON.stringify(titularIds);
 
+        const modeSelect = document.getElementById('evalSectionModeSelect');
+        const isFullSection = modeSelect ? (modeSelect.value === 'SECCION_COMPLETA') : (editPayload && editPayload.evaluationMode === 'SECCION_COMPLETA');
+
         // Mostrar titulares detectados por sección
         if (titularsDiv) {
             if (sectionsInfo.length === 0) {
                 titularsDiv.innerHTML = `<span style="color:#b91c1c;">⚠️ No se encontraron secciones asignadas para esta materia.</span>`;
             } else {
+                const ruleNotice = isFullSection
+                    ? `<div style="font-size:0.78rem; color:#15803d; font-weight:700; margin-top:4px;">
+                        ℹ️ Modalidad Sección Completa (Salón Único): El maestro titular de la sección está habilitado para cuidar su propio salón.
+                       </div>`
+                    : `<div style="font-size:0.78rem; color:#dc2626; margin-top:4px;">
+                        🔒 Regla de Oro: En modalidad de 2 grupos (medias secciones), ninguno de estos catedráticos titulares podrá ser asignado como cuidador en este horario.
+                       </div>`;
                 titularsDiv.innerHTML = sectionsInfo.map(s => `
                     <div style="display:inline-block; margin-right:16px; margin-bottom:4px;">
                         <span class="badge" style="background:#0f172a; color:#fff; font-size:0.8rem; margin-right:4px;">${s.section}</span>
                         <strong>${s.teacherName}</strong>
                     </div>
-                `).join('') + `<div style="font-size:0.78rem; color:#dc2626; margin-top:4px;">
-                    🔒 Regla de Oro: Ninguno de estos catedráticos titulares podrá ser asignado como cuidador en este horario.
-                </div>`;
+                `).join('') + ruleNotice;
             }
         }
 
@@ -2103,9 +2127,6 @@
         } else {
             if (specialSec) specialSec.innerHTML = '';
         }
-
-        const modeSelect = document.getElementById('evalSectionModeSelect');
-        const isFullSection = modeSelect ? (modeSelect.value === 'SECCION_COMPLETA') : (editPayload && editPayload.evaluationMode === 'SECCION_COMPLETA');
 
         // Autoasignación automática y equitativa de cuidadores para todas las secciones (100% editable)
         const autoAssignments = (!editPayload) ? autoPickProctorsForModal(
@@ -2218,6 +2239,12 @@
                     curSingle.classroom = isComp ? 'Laboratorio de Computación' : 'Taller de Mecanografía';
                     curA.caretaker = sInfo.teacherId || '';
                     curB.caretaker = sInfo.teacherId || '';
+                } else if (isFullSection) {
+                    // Sección Completa (un solo salón): el maestro titular de la sección puede cuidar
+                    const autoForSec = autoAssignments[secCode] || autoAssignments[secName];
+                    curSingle.caretaker = (autoForSec && autoForSec.caretakerSingle) ? autoForSec.caretakerSingle : (sInfo.teacherId || '');
+                    curA.caretaker = curSingle.caretaker;
+                    curB.caretaker = curSingle.caretaker;
                 } else {
                     const autoForSec = autoAssignments[secCode] || autoAssignments[secName];
                     if (autoForSec) {
@@ -2230,7 +2257,7 @@
                 }
             }
 
-            const isSingleTitularMode = (isComp || isMeca) && compMode === 'single';
+            const isSingleTitularMode = ((isComp || isMeca) && compMode === 'single') || isFullSection;
             const excludeForSelect = isSingleTitularMode ? [] : titularIds;
 
             salonsHtml += `
@@ -2681,13 +2708,15 @@
                 const evStartMin = timeStringToMinutes(ev.startTime);
 
                 // Función auxiliar para seleccionar un cuidador idóneo aleatorio y balanceado
-                function pickBestCaretaker(slotStartMin, slotEndMin, currentlyAssignedInThisSlotSet = new Set()) {
+                function pickBestCaretaker(slotStartMin, slotEndMin, currentlyAssignedInThisSlotSet = new Set(), allowTitular = false) {
                     const slotDuration = slotEndMin - slotStartMin;
 
-                    // Candidatos que no sean titulares (por ID ni por nombre), no tengan colisión de horario y no estén ya en este mismo bloque
+                    // Candidatos que no sean titulares (salvo permitido), no tengan colisión de horario y no estén ya en este mismo bloque
                     const eligible = allCandidates.filter(c => {
-                        if (titularExclusionSet.has(c.id)) return false;
-                        if (titularNamesSet.has((c.name || '').toLowerCase().trim())) return false;
+                        if (!allowTitular) {
+                            if (titularExclusionSet.has(c.id)) return false;
+                            if (titularNamesSet.has((c.name || '').toLowerCase().trim())) return false;
+                        }
                         if (currentlyAssignedInThisSlotSet.has(c.id)) return false;
 
                         // Verificar colisión de horario
@@ -2700,8 +2729,8 @@
                     });
 
                     if (eligible.length === 0) {
-                        // Fallback de emergencia si no hay candidatos sin colisión: elegir cualquiera que no sea titular
-                        const fallbackEligible = allCandidates.filter(c => !titularExclusionSet.has(c.id) && !titularNamesSet.has((c.name || '').toLowerCase().trim()) && !currentlyAssignedInThisSlotSet.has(c.id));
+                        // Fallback de emergencia si no hay candidatos sin colisión
+                        const fallbackEligible = allCandidates.filter(c => (allowTitular || (!titularExclusionSet.has(c.id) && !titularNamesSet.has((c.name || '').toLowerCase().trim()))) && !currentlyAssignedInThisSlotSet.has(c.id));
                         if (fallbackEligible.length === 0) return null;
                         // Mezclar aleatoriamente
                         for (let i = fallbackEligible.length - 1; i > 0; i--) {
@@ -2784,8 +2813,37 @@
                                 sec.groupB.caretakerTurn2Id = cB2.id;
                                 sec.groupB.caretakerTurn2Name = cB2.name;
                             }
+                        } else if (sec.evaluationMode === 'SECCION_COMPLETA' || ev.evaluationMode === 'SECCION_COMPLETA') {
+                            // Cuando se seleccione un solo salón a cuidar (SECCION_COMPLETA), puede cuidar el maestro titular de la sección
+                            let assignedSingle = null;
+                            const titId = sec.teacherId;
+                            const titCandidate = titId ? allCandidates.find(c => c.id === titId) : null;
+                            const intervals = titCandidate ? (busyIntervals[titCandidate.id] || []) : [];
+                            const hasCollision = intervals.some(([bStart, bEnd]) => Math.max(secStartMin, bStart) < Math.min(secEndMin, bEnd));
+
+                            if (titCandidate && !assignedInThisSlot.has(titCandidate.id) && !hasCollision) {
+                                assignedSingle = titCandidate;
+                                if (!busyIntervals[titCandidate.id]) busyIntervals[titCandidate.id] = [];
+                                busyIntervals[titCandidate.id].push([secStartMin, secEndMin]);
+                                dayWorkload[titCandidate.id] = (dayWorkload[titCandidate.id] || 0) + secDur;
+                                assignedInThisSlot.add(titCandidate.id);
+                                assignedCount++;
+                            } else {
+                                assignedSingle = pickBestCaretaker(secStartMin, secEndMin, assignedInThisSlot, true);
+                            }
+
+                            if (assignedSingle) {
+                                if (sec.singleRoom) {
+                                    sec.singleRoom.caretakerTeacherId = assignedSingle.id;
+                                    sec.singleRoom.caretakerTeacherName = assignedSingle.name;
+                                }
+                                sec.groupA.caretakerTeacherId = assignedSingle.id;
+                                sec.groupA.caretakerTeacherName = assignedSingle.name;
+                                sec.groupB.caretakerTeacherId = assignedSingle.id;
+                                sec.groupB.caretakerTeacherName = assignedSingle.name;
+                            }
                         } else {
-                            // Examen regular: 1 cuidador para Grupo A y 1 cuidador para Grupo B
+                            // Examen regular (MEDIAS_SECCIONES): 1 cuidador para Grupo A y 1 cuidador para Grupo B (titulares estrictamente excluidos)
                             const cA = pickBestCaretaker(secStartMin, secEndMin, assignedInThisSlot);
                             if (cA) {
                                 sec.groupA.caretakerTeacherId = cA.id;
@@ -2801,8 +2859,41 @@
 
                     // Actualizar retrocompatibilidad con primer grupo
                     if (ev.sections[0]) {
+                        if (ev.sections[0].singleRoom) ev.singleRoom = ev.sections[0].singleRoom;
                         ev.groupA = ev.sections[0].groupA;
                         ev.groupB = ev.sections[0].groupB;
+                    }
+                } else if (ev.evaluationMode === 'SECCION_COMPLETA') {
+                    // Fallback para evaluación individual en Sección Completa (un solo salón)
+                    const evDur = parseInt(ev.durationMinutes, 10) || 60;
+                    const evEndMin = evStartMin + evDur;
+                    const assignedInThisSlot = new Set();
+                    let assignedSingle = null;
+                    const titId = ev.courseTeacherId;
+                    const titCandidate = titId ? allCandidates.find(c => c.id === titId) : null;
+                    const intervals = titCandidate ? (busyIntervals[titCandidate.id] || []) : [];
+                    const hasCollision = intervals.some(([bStart, bEnd]) => Math.max(evStartMin, bStart) < Math.min(evEndMin, bEnd));
+
+                    if (titCandidate && !assignedInThisSlot.has(titCandidate.id) && !hasCollision) {
+                        assignedSingle = titCandidate;
+                        if (!busyIntervals[titCandidate.id]) busyIntervals[titCandidate.id] = [];
+                        busyIntervals[titCandidate.id].push([evStartMin, evEndMin]);
+                        dayWorkload[titCandidate.id] = (dayWorkload[titCandidate.id] || 0) + evDur;
+                        assignedInThisSlot.add(titCandidate.id);
+                        assignedCount++;
+                    } else {
+                        assignedSingle = pickBestCaretaker(evStartMin, evEndMin, assignedInThisSlot, true);
+                    }
+
+                    if (assignedSingle) {
+                        if (ev.singleRoom) {
+                            ev.singleRoom.caretakerTeacherId = assignedSingle.id;
+                            ev.singleRoom.caretakerTeacherName = assignedSingle.name;
+                        }
+                        ev.groupA.caretakerTeacherId = assignedSingle.id;
+                        ev.groupA.caretakerTeacherName = assignedSingle.name;
+                        ev.groupB.caretakerTeacherId = assignedSingle.id;
+                        ev.groupB.caretakerTeacherName = assignedSingle.name;
                     }
                 } else {
                     // Fallback para evaluaciones con formato individual
@@ -3360,36 +3451,58 @@
             const carne = s.carne || s.id || '';
             const isExonerado = (typeof isStudentExonerated === 'function') ? isStudentExonerated(s) : false;
 
-            rowsHtml += `
-                <tr style="height:27px;">
-                    <td style="text-align:center; font-weight:800; font-size:0.82rem; border:1px solid #94a3b8; padding:3px 4px;">
-                        ${String(num).padStart(2, '0')}
-                    </td>
-                    <td style="text-align:center; font-size:0.78rem; font-weight:700; border:1px solid #94a3b8; padding:3px 4px; font-family:monospace;">
-                        ${carne}
-                    </td>
-                    <td style="font-size:0.85rem; font-weight:700; border:1px solid #94a3b8; padding:3px 6px;">
-                        ${fullName} ${isExonerado ? '<span style="color:#0284c7; font-size:0.7rem; font-weight:800;">[EXONERADO]</span>' : ''}
-                    </td>
-                    <td style="border:1px solid #94a3b8; width:180px; text-align:center;">
-                        <!-- Espacio de firma -->
-                    </td>
-                </tr>
-            `;
-        });
-
-        // Completar hasta al menos 20 filas para consistencia visual si la lista es corta
-        const minRows = 20;
-        if (studentList.length < minRows) {
-            for (let i = studentList.length + 1; i <= minRows; i++) {
+            if (isFullGroup) {
+                // Diseño ultra-compacto para que hasta 42+ estudiantes quepan con firmas en UNA SOLA HOJA tamaño oficio (8.5in x 13in)
                 rowsHtml += `
-                    <tr style="height:27px;">
-                        <td style="border:1px solid #cbd5e1; text-align:center; color:#cbd5e1; font-size:0.75rem;">${i}</td>
-                        <td style="border:1px solid #cbd5e1;"></td>
-                        <td style="border:1px solid #cbd5e1;"></td>
-                        <td style="border:1px solid #cbd5e1;"></td>
+                    <tr style="height:19px;">
+                        <td style="text-align:center; font-weight:800; font-size:0.75rem; border:1px solid #64748b; padding:1px 3px; line-height:1;">
+                            ${String(num).padStart(2, '0')}
+                        </td>
+                        <td style="text-align:center; font-size:0.72rem; font-weight:700; border:1px solid #64748b; padding:1px 3px; font-family:monospace; line-height:1;">
+                            ${carne}
+                        </td>
+                        <td style="font-size:0.76rem; font-weight:700; border:1px solid #64748b; padding:1px 5px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:270px;">
+                            ${fullName} ${isExonerado ? '<span style="color:#0284c7; font-size:0.65rem; font-weight:800;">[EXONERADO]</span>' : ''}
+                        </td>
+                        <td style="border:1px solid #64748b; width:160px; text-align:center; padding:0;">
+                            <!-- Espacio de firma -->
+                        </td>
                     </tr>
                 `;
+            } else {
+                rowsHtml += `
+                    <tr style="height:27px;">
+                        <td style="text-align:center; font-weight:800; font-size:0.82rem; border:1px solid #94a3b8; padding:3px 4px;">
+                            ${String(num).padStart(2, '0')}
+                        </td>
+                        <td style="text-align:center; font-size:0.78rem; font-weight:700; border:1px solid #94a3b8; padding:3px 4px; font-family:monospace;">
+                            ${carne}
+                        </td>
+                        <td style="font-size:0.85rem; font-weight:700; border:1px solid #94a3b8; padding:3px 6px;">
+                            ${fullName} ${isExonerado ? '<span style="color:#0284c7; font-size:0.7rem; font-weight:800;">[EXONERADO]</span>' : ''}
+                        </td>
+                        <td style="border:1px solid #94a3b8; width:180px; text-align:center;">
+                            <!-- Espacio de firma -->
+                        </td>
+                    </tr>
+                `;
+            }
+        });
+
+        // Completar hasta al menos 20 filas para consistencia visual si la lista es corta (SOLO en medias secciones)
+        if (!isFullGroup) {
+            const minRows = 20;
+            if (studentList.length < minRows) {
+                for (let i = studentList.length + 1; i <= minRows; i++) {
+                    rowsHtml += `
+                        <tr style="height:27px;">
+                            <td style="border:1px solid #cbd5e1; text-align:center; color:#cbd5e1; font-size:0.75rem;">${i}</td>
+                            <td style="border:1px solid #cbd5e1;"></td>
+                            <td style="border:1px solid #cbd5e1;"></td>
+                            <td style="border:1px solid #cbd5e1;"></td>
+                        </tr>
+                    `;
+                }
             }
         }
 
@@ -3420,6 +3533,110 @@
                     <td style="font-weight:700; padding:2px 0;">Docente Cuidador:</td>
                     <td colspan="3"><strong style="font-size:0.92rem; color:#0f172a;">${grp.caretakerTeacherName || 'Sin asignar'}</strong></td>
                 </tr>
+            `;
+        }
+
+        if (isFullGroup) {
+            return `
+            <div class="sheet-container" style="page-break-inside:avoid;">
+                <!-- ENCABEZADO CON LOGO Y MEMBRETE COMPACTO -->
+                <table style="width:100%; border-collapse:collapse; margin-bottom:4px; border-bottom:1.5px solid #0f172a; padding-bottom:3px;">
+                    <tr>
+                        <td style="width:52px; vertical-align:middle;">
+                            <img src="logo.png" onerror="this.src='portada-comercio-principal.webp'" style="height:42px; width:auto;">
+                        </td>
+                        <td style="vertical-align:middle; padding-left:8px;">
+                            <div style="font-size:0.95rem; font-weight:900; color:#0f172a; text-transform:uppercase; line-height:1.15;">
+                                ESCUELA NACIONAL DE CIENCIAS COMERCIALES
+                            </div>
+                            <div style="font-size:0.72rem; color:#475569; font-weight:700; line-height:1.15;">
+                                Jornada Matutina — Jutiapa, Guatemala — Ciclo Escolar ${(STATE && STATE.activeCycle) || '2026'}
+                            </div>
+                            <div style="font-size:0.78rem; font-weight:900; color:#15803d; margin-top:1px; line-height:1.15;">
+                                CONTROL OFICIAL DE EVALUACIONES BIMESTRALES — AUXILIATURA GENERAL
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- TARJETA DE DATOS DEL EXAMEN (SECCIÓN COMPLETA) -->
+                <table style="width:100%; border-collapse:collapse; font-size:0.74rem; margin-bottom:4px; background:#f8fafc; border:1px solid #cbd5e1; padding:3px;">
+                    <tr>
+                        <td style="width:18%; font-weight:700; padding:1px 4px;">Grado y Sección:</td>
+                        <td style="width:34%; font-weight:800; color:#0f172a;">${sectionNameToUse}</td>
+                        <td style="width:18%; font-weight:700; padding:1px 4px;">Fecha:</td>
+                        <td style="width:30%; text-transform:capitalize;">${dayFormatted}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:700; padding:1px 4px;">Asignatura:</td>
+                        <td style="font-weight:800; color:#0f172a;">${ev.courseName}</td>
+                        <td style="font-weight:700; padding:1px 4px;">Horario Oficial:</td>
+                        <td style="font-weight:800;">${ev.startTime} a ${ev.endTime} hrs (${ev.durationMinutes} min)</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:700; padding:1px 4px;">Catedrático Titular:</td>
+                        <td><strong>${titularNameToUse}</strong></td>
+                        <td style="font-weight:700; padding:1px 4px;">Salón Asignado:</td>
+                        <td style="font-weight:800; color:#15803d;">${grp.classroom || 'Salón'}</td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:700; padding:1px 4px;">Modalidad / Salón:</td>
+                        <td style="font-weight:900; color:#15803d;">
+                            SECCIÓN COMPLETA (Salón Único ─ 01 al ${String(studentList.length).padStart(2, '0')})
+                        </td>
+                        <td style="font-weight:700; padding:1px 4px;">Total Alumnos:</td>
+                        <td><strong>${studentList.length} estudiantes</strong></td>
+                    </tr>
+                    <tr>
+                        <td style="font-weight:700; padding:1px 4px;">Docente Cuidador:</td>
+                        <td colspan="3"><strong style="font-size:0.82rem; color:#0f172a;">${grp.caretakerTeacherName || 'Sin asignar'}</strong></td>
+                    </tr>
+                </table>
+
+                <!-- TABLA DE ALUMNOS CON FIRMA (COMPACTA) -->
+                <table style="width:100%; border-collapse:collapse; margin-top:2px;">
+                    <thead>
+                        <tr style="background:#0f172a; color:#ffffff; font-size:0.74rem; font-weight:800; height:20px;">
+                            <th style="width:32px; border:1px solid #0f172a; text-align:center;">No.</th>
+                            <th style="width:82px; border:1px solid #0f172a; text-align:center;">CÓDIGO</th>
+                            <th style="border:1px solid #0f172a; text-align:left; padding-left:6px;">APELLIDOS Y NOMBRES</th>
+                            <th style="width:160px; border:1px solid #0f172a; text-align:center;">FIRMA DEL ESTUDIANTE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+
+                <!-- OBSERVACIONES COMPACTAS -->
+                <div style="margin-top:4px; font-size:0.72rem; font-weight:700; color:#1e293b;">
+                    OBSERVACIONES:
+                    <div style="border-bottom:1px dotted #64748b; height:14px; margin-top:1px;">1. </div>
+                    <div style="border-bottom:1px dotted #64748b; height:14px;">2. </div>
+                </div>
+
+                <div style="margin-top:3px; font-size:0.72rem; font-weight:700;">
+                    Total de pruebas entregadas a Auxiliatura: [ _______ ] de ${studentList.length} estudiantes evaluados.
+                </div>
+
+                <!-- FIRMAS INFERIORES -->
+                <table style="width:100%; border-collapse:collapse; margin-top:10px; page-break-inside:avoid;">
+                    <tr>
+                        <td style="width:50%; text-align:center; vertical-align:bottom;">
+                            <div style="width:200px; margin:0 auto; border-top:1.5px solid #0f172a; padding-top:2px; font-size:0.74rem;">
+                                <strong>${grp.caretakerTeacherName || 'Docente Cuidador'}</strong><br>
+                                Docente Cuidador Responsable
+                            </div>
+                        </td>
+                        <td style="width:50%; text-align:center; vertical-align:bottom;">
+                            <div style="width:200px; margin:0 auto; border-top:1.5px solid #0f172a; padding-top:2px; font-size:0.74rem;">
+                                <strong>Auxiliatura General</strong><br>
+                                Sello y Recepción Oficial
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
             `;
         }
 
@@ -3468,7 +3685,7 @@
                     <tr>
                         <td style="font-weight:700; padding:2px 6px;">Grupo Asignado:</td>
                         <td style="font-weight:900; color:#15803d; font-size:0.92rem;">
-                            ${isFullGroup ? `SECCIÓN COMPLETA (Nómina 01 al ${String(studentList.length).padStart(2, '0')})` : `GRUPO "${groupLetter}" (Nómina ${grp.range})`}
+                            GRUPO "${groupLetter}" (Nómina ${grp.range})
                         </td>
                         <td style="font-weight:700; padding:2px 6px;">Total Alumnos:</td>
                         <td><strong>${studentList.length} estudiantes</strong></td>
@@ -3537,7 +3754,7 @@
                 <style>
                     @page {
                         size: 8.5in 13in portrait; /* HOJA OFICIO GUATEMALTECO 8.5in x 13in VERTICAL */
-                        margin: 8mm 12mm;
+                        margin: 5mm 8mm;
                     }
                     body {
                         font-family: Arial, Helvetica, sans-serif;
@@ -3548,6 +3765,8 @@
                     }
                     .sheet-container {
                         width: 100%;
+                        page-break-inside: avoid;
+                        box-sizing: border-box;
                     }
                 </style>
             </head>
@@ -3841,7 +4060,10 @@
         printWin.document.write(htmlContent);
         printWin.document.close();
 
+        let hasTriggered = false;
         const trigger = () => {
+            if (hasTriggered) return;
+            hasTriggered = true;
             try {
                 printWin.focus();
                 printWin.print();
@@ -3852,8 +4074,9 @@
 
         const img = printWin.document.querySelector('img');
         if (img) {
-            if (img.complete) setTimeout(trigger, 250);
-            else {
+            if (img.complete) {
+                setTimeout(trigger, 250);
+            } else {
                 img.onload = () => setTimeout(trigger, 200);
                 img.onerror = () => setTimeout(trigger, 200);
                 setTimeout(trigger, 1200);
