@@ -41,63 +41,76 @@
                 margin-bottom: 20px;
             }
             .exam-day-banner {
-                background: linear-gradient(135deg, #15803d 0%, #166534 100%);
-                color: #ffffff;
-                padding: 12px 18px;
+                background: #ffffff;
+                color: #0f172a;
+                border: 1px solid #e2e8f0;
+                border-left: 5px solid #16a34a;
+                padding: 10px 16px;
                 border-radius: 10px;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 flex-wrap: wrap;
                 gap: 10px;
-                margin-bottom: 16px;
+                margin-bottom: 12px;
                 cursor: pointer;
                 user-select: none;
-                transition: transform 0.15s ease, box-shadow 0.15s ease, margin-bottom 0.2s ease;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+                transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, margin-bottom 0.2s ease;
             }
             .exam-day-banner:hover {
-                box-shadow: 0 4px 14px rgba(21, 128, 61, 0.25);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+                border-color: #cbd5e1;
+                border-left-color: #15803d;
             }
             .exam-day-banner.is-collapsed {
-                margin-bottom: 12px;
-                opacity: 0.95;
+                margin-bottom: 10px;
+                background: #f8fafc;
             }
             .exam-day-banner.is-collapsed:hover {
-                opacity: 1;
+                background: #ffffff;
+            }
+            .exam-day-banner.is-practica-banner {
+                border-left-color: #2563eb !important;
+            }
+            .exam-day-banner.is-practica-banner:hover {
+                border-left-color: #1d4ed8 !important;
             }
             .exam-day-body {
                 transition: opacity 0.2s ease;
             }
             .exam-item-box {
-                background: #f8fafc;
-                border: 1.5px solid #cbd5e1;
-                border-radius: 10px;
-                padding: 16px;
-                margin-bottom: 14px;
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 9px;
+                padding: 12px 14px;
+                margin-bottom: 12px;
                 position: relative;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.02);
                 transition: border-color 0.2s, box-shadow 0.2s;
             }
             .exam-item-box:hover {
-                border-color: #0284c7;
-                box-shadow: 0 4px 12px rgba(2,132,199,0.08);
+                border-color: #94a3b8;
+                box-shadow: 0 3px 10px rgba(0,0,0,0.05);
             }
             .exam-item-practica {
-                background: #eff6ff;
-                border-color: #93c5fd;
+                background: #f8fafc;
+                border-color: #bfdbfe;
+                border-left: 4px solid #2563eb;
             }
             .exam-item-practica:hover {
-                border-color: #2563eb;
+                border-color: #60a5fa;
             }
             .exam-badge-time {
                 background: #0f172a;
                 color: #f8fafc;
-                padding: 4px 10px;
-                border-radius: 6px;
-                font-size: 0.82rem;
+                padding: 3px 8px;
+                border-radius: 5px;
+                font-size: 0.78rem;
                 font-weight: 800;
                 display: inline-flex;
                 align-items: center;
-                gap: 6px;
+                gap: 5px;
             }
             .exam-badge-time.limit-warn {
                 background: #dc2626 !important;
@@ -107,23 +120,29 @@
                 background: #ffffff;
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
-                padding: 12px;
-                margin-top: 10px;
+                padding: 10px;
+                margin-top: 8px;
             }
             .exam-teacher-chip {
                 display: inline-flex;
                 align-items: center;
-                gap: 6px;
-                padding: 4px 10px;
-                border-radius: 20px;
-                font-size: 0.78rem;
+                gap: 5px;
+                padding: 2.5px 8px;
+                border-radius: 6px;
+                font-size: 0.76rem;
                 font-weight: 700;
-                margin: 2px 4px 2px 0;
+                margin: 2px 2px;
+                transition: transform 0.1s ease, box-shadow 0.1s ease;
+                white-space: nowrap;
             }
-            .chip-green { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-            .chip-yellow { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
-            .chip-orange { background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
-            .chip-red { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+            .exam-teacher-chip:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+            }
+            .chip-green { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+            .chip-yellow { background: #fefce8; color: #a16207; border: 1px solid #fef08a; }
+            .chip-orange { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+            .chip-red { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 
             /* ESTILOS DE TABLA COMPACTA Y MODERNA PARA SALONES Y EVALUACIONES */
             .exam-compact-table {
@@ -1383,6 +1402,11 @@
     function renderSingleDayCardHtml(scheduleBlock, dayObj, dayIdx) {
         const workload = calculateTeacherWorkloadForDate(scheduleBlock, dayObj.date);
         const activeTeachersToday = Object.values(workload).filter(t => t.minutes > 0);
+        const sortedTeachers = activeTeachersToday.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        const normalCount = sortedTeachers.filter(t => t.minutes <= 120).length;
+        const moderateCount = sortedTeachers.filter(t => t.minutes > 120 && t.minutes <= 180).length;
+        const heavyCount = sortedTeachers.filter(t => t.minutes > 180).length;
+
         const dayDateFormatted = new Date(dayObj.date + 'T12:00:00').toLocaleDateString('es-GT', {
             weekday: 'long',
             day: 'numeric',
@@ -1400,45 +1424,45 @@
         const isExpanded = (window._examDaysExpandedState[dayObj.id] !== false);
 
         let html = `
-            <div class="exam-day-banner ${isExpanded ? '' : 'is-collapsed'}" id="examDayBanner_${dayObj.id}" onclick="window.toggleExamDayCollapse('${dayObj.id}')" style="${dayObj.isPracticaDay ? 'background:linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);' : ''}" title="Haga clic para ${isExpanded ? 'contraer' : 'desplegar'} el detalle de este día">
+            <div class="exam-day-banner ${isExpanded ? '' : 'is-collapsed'} ${dayObj.isPracticaDay ? 'is-practica-banner' : ''}" id="examDayBanner_${dayObj.id}" onclick="window.toggleExamDayCollapse('${dayObj.id}')" title="Haga clic para ${isExpanded ? 'contraer' : 'desplegar'} el detalle de este día">
                 <div style="display:flex; align-items:center; gap:12px;">
-                    <div style="width:34px; height:34px; border-radius:8px; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:1rem; border:1px solid rgba(255,255,255,0.35); flex-shrink:0;">
+                    <div style="width:34px; height:34px; border-radius:8px; background:#f1f5f9; color:#475569; display:flex; align-items:center; justify-content:center; font-size:0.95rem; border:1px solid #e2e8f0; flex-shrink:0;">
                         <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}" id="examDayChevron_${dayObj.id}"></i>
                     </div>
                     <div>
                         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                            <span style="text-transform:uppercase; font-size:0.73rem; letter-spacing:0.5px; opacity:0.92; font-weight:800;">
-                                ${dayObj.isPracticaDay ? '⭐ JORNADA EXCLUSIVA DE PRÁCTICA SUPERVISADA' : '🗓️ JORNADA DE EVALUACIONES'}
+                            <span style="font-size:0.71rem; letter-spacing:0.4px; font-weight:800; background:${dayObj.isPracticaDay ? '#eff6ff' : '#f0fdf4'}; color:${dayObj.isPracticaDay ? '#1d4ed8' : '#15803d'}; border:1px solid ${dayObj.isPracticaDay ? '#bfdbfe' : '#bbf7d0'}; padding:2px 7px; border-radius:4px; text-transform:uppercase;">
+                                ${dayObj.isPracticaDay ? '⭐ Práctica Supervisada' : '🗓️ Jornada de Evaluaciones'}
                             </span>
-                            <span class="badge" style="background:rgba(255,255,255,0.22); color:#ffffff; font-size:0.72rem; font-weight:800; padding:2px 7px;">
+                            <span class="badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.72rem; font-weight:800; padding:2px 7px;">
                                 ${evs.length} ${evs.length === 1 ? 'materia' : 'materias'}
                             </span>
-                            <span class="badge" style="background:rgba(255,255,255,0.22); color:#ffffff; font-size:0.72rem; font-weight:800; padding:2px 7px;">
+                            <span class="badge" style="background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe; font-size:0.72rem; font-weight:800; padding:2px 7px;">
                                 ${colCount} ${colCount === 1 ? 'grado' : 'grados'}
                             </span>
-                            <span class="badge" style="background:rgba(255,255,255,0.22); color:#ffffff; font-size:0.72rem; font-weight:800; padding:2px 7px;">
+                            <span class="badge" style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; font-size:0.72rem; font-weight:800; padding:2px 7px;">
                                 ${activeTeachersToday.length} cuidadores
                             </span>
                         </div>
-                        <h3 style="margin:2px 0 0 0; font-size:1.15rem; font-weight:800; color:#ffffff; text-transform:capitalize;">
+                        <h3 style="margin:3px 0 0 0; font-size:1.08rem; font-weight:800; color:#0f172a; text-transform:capitalize;">
                             ${dayDateFormatted}
                         </h3>
                     </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;" onclick="event.stopPropagation()">
-                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.toggleExamDayCollapse('${dayObj.id}')" style="background:rgba(255,255,255,0.2); color:#ffffff; font-weight:800; border:1px solid rgba(255,255,255,0.35); font-size:0.8rem; display:inline-flex; align-items:center; gap:5px;" title="Alternar vista desplegada / contraída">
+                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.toggleExamDayCollapse('${dayObj.id}')" style="background:#f8fafc; color:#475569; font-weight:700; border:1px solid #cbd5e1; font-size:0.78rem; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" title="Alternar vista desplegada / contraída">
                         <span id="examDayToggleText_${dayObj.id}">${isExpanded ? 'Contraer' : 'Desplegar'}</span>
                     </button>
-                    <button type="button" class="btn btn-sm btn-light" onclick="event.stopPropagation(); window.printDailyScheduleOficio('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir Horario Oficial en Hoja Oficio (${colCount} Columnas)">
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.printDailyScheduleOficio('${dayObj.id}')" style="background:#eff6ff; color:#1d4ed8; font-weight:700; border:1px solid #bfdbfe; font-size:0.78rem; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Imprimir Horario Oficial en Hoja Oficio (${colCount} Columnas)">
                         <i class="fa-solid fa-print"></i> Horario Hoja Oficio (${colCount} Col.)
                     </button>
-                    <button type="button" class="btn btn-sm btn-light" onclick="event.stopPropagation(); window.printAllMediasListasOfDay('${dayObj.id}')" style="font-weight:700; color:#0f172a;" title="Imprimir todas las nóminas (medias listas) de esta jornada">
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.printAllMediasListasOfDay('${dayObj.id}')" style="background:#f8fafc; color:#334155; font-weight:700; border:1px solid #cbd5e1; font-size:0.78rem; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Imprimir todas las nóminas (medias listas) de esta jornada">
                         <i class="fa-solid fa-file-signature"></i> Imprimir Nóminas del Día
                     </button>
-                    <button type="button" class="btn btn-sm btn-light" onclick="event.stopPropagation(); window.addEvaluationToDay('${dayObj.id}')" style="font-weight:700; color:#15803d;" title="Agregar otra evaluación a este día">
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.addEvaluationToDay('${dayObj.id}')" style="background:#15803d; color:#ffffff; font-weight:700; border:1px solid #166534; font-size:0.78rem; padding:4px 10px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Agregar otra evaluación a este día">
                         <i class="fa-solid fa-plus"></i> Asignar Clase
                     </button>
-                    <button type="button" class="btn btn-sm btn-danger" onclick="event.stopPropagation(); window.deleteExamDay('${dayObj.id}')" style="font-weight:700; padding:4px 8px;" title="Eliminar este día">
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.deleteExamDay('${dayObj.id}')" style="background:#fff1f2; color:#be123c; font-weight:700; border:1px solid #fecdd3; padding:4px 8px; border-radius:6px;" title="Eliminar este día">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </div>
@@ -1447,27 +1471,54 @@
             <!-- CONTENEDOR DESPLEGABLE DEL CUERPO DEL DÍA -->
             <div id="examDayBody_${dayObj.id}" class="exam-day-body" style="display:${isExpanded ? 'block' : 'none'}; margin-bottom:24px;">
                 <!-- BARRA DE EQUIDAD DOCENTE (ANTIFATIGA) PARA ESTE DÍA -->
-                <div style="background:#f1f5f9; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:0.82rem; border:1px solid #e2e8f0;">
-                    <div style="font-weight:800; color:#334155; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px;">
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <i class="fa-solid fa-scale-balanced" style="color:#0284c7;"></i>
-                            <strong>Matriz de Equidad y Cargas de Cuido (Docentes asignados hoy):</strong>
+                <div style="background:#ffffff; border-radius:10px; padding:12px 16px; margin-bottom:14px; font-size:0.82rem; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #f1f5f9;">
+                        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span style="background:#e0f2fe; color:#0369a1; width:26px; height:26px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; font-size:0.85rem;">
+                                    <i class="fa-solid fa-scale-balanced"></i>
+                                </span>
+                                <strong style="color:#0f172a; font-size:0.88rem;">Cuidadores Asignados Hoy:</strong>
+                                <span class="badge" style="background:#f1f5f9; color:#475569; font-size:0.75rem; font-weight:800; border:1px solid #e2e8f0;">
+                                    ${activeTeachersToday.length}
+                                </span>
+                            </div>
+                            ${activeTeachersToday.length > 0 ? `
+                            <div style="display:flex; align-items:center; gap:8px; font-size:0.74rem; color:#64748b; font-weight:700;">
+                                <span style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; padding:2px 6px; border-radius:4px;">
+                                    ● ${normalCount} Balanceados (≤120m)
+                                </span>
+                                ${moderateCount > 0 ? `
+                                <span style="background:#fefce8; color:#a16207; border:1px solid #fef08a; padding:2px 6px; border-radius:4px;">
+                                    ● ${moderateCount} Moderados (121-180m)
+                                </span>` : ''}
+                                ${heavyCount > 0 ? `
+                                <span style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; padding:2px 6px; border-radius:4px;">
+                                    ● ${heavyCount} Alta carga (>180m)
+                                </span>` : ''}
+                            </div>
+                            ` : ''}
                         </div>
+                        ${activeTeachersToday.length > 0 ? `
+                        <div style="position:relative; width:190px;">
+                            <input type="text" id="teacherSearch_${dayObj.id}" onkeyup="window.filterTeachersInDay('${dayObj.id}', this.value)" placeholder="🔍 Filtrar docente..." class="form-control form-control-sm" style="font-size:0.76rem; padding:3px 8px; border-radius:6px; border:1px solid #cbd5e1; background:#f8fafc; height:28px;">
+                        </div>
+                        ` : ''}
                     </div>
-                    <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                    <div id="teacherChipsContainer_${dayObj.id}" style="display:flex; flex-wrap:wrap; gap:4px; max-height:140px; overflow-y:auto; padding:2px 0;">
         `;
 
-        if (activeTeachersToday.length === 0) {
+        if (sortedTeachers.length === 0) {
             html += `<span style="color:#64748b; font-style:italic;">Aún no hay cuidadores asignados para esta fecha.</span>`;
         } else {
-            activeTeachersToday.forEach(t => {
+            sortedTeachers.forEach(t => {
                 let chipClass = 'chip-green';
                 if (t.minutes > 180) chipClass = 'chip-red';
                 else if (t.minutes > 120) chipClass = 'chip-orange';
                 else if (t.minutes > 60) chipClass = 'chip-yellow';
 
                 html += `
-                    <span class="exam-teacher-chip ${chipClass}" title="${t.name}: ${t.minutes} minutos (${t.salonesCount} salones)">
+                    <span class="exam-teacher-chip ${chipClass}" data-teacher-name="${(t.name || '').toLowerCase()}" title="${t.name}: ${t.minutes} minutos (${t.salonesCount} salones)">
                         <i class="fa-solid fa-user-check"></i> ${t.name}: <strong>${t.minutes} min</strong> (${t.salonesCount} sal.)
                     </span>
                 `;
@@ -1954,6 +2005,21 @@
             window._examDaysExpandedState[d.id] = expandAll;
         });
         renderExamSchedulesView();
+    };
+
+    window.filterTeachersInDay = function (dayId, query) {
+        const container = document.getElementById('teacherChipsContainer_' + dayId);
+        if (!container) return;
+        const q = (query || '').toLowerCase().trim();
+        const chips = container.querySelectorAll('.exam-teacher-chip');
+        chips.forEach(chip => {
+            const name = chip.getAttribute('data-teacher-name') || '';
+            if (!q || name.includes(q)) {
+                chip.style.display = 'inline-flex';
+            } else {
+                chip.style.display = 'none';
+            }
+        });
     };
 
     /**
@@ -4756,6 +4822,7 @@
     window.printAllNominasOfBimester = printAllNominasOfBimester;
     window.printConsolidatedCalendarPdf = printConsolidatedCalendarPdf;
     window.getInstitutionalSalonsList = getInstitutionalSalonsList;
+    window.filterTeachersInDay = filterTeachersInDay;
 
     window.EXAM_SCHEDULES_MODULE = {
         renderExamSchedulesView,
@@ -4784,7 +4851,8 @@
         getInstitutionalActiveBimester,
         getCurrentScheduleKey,
         getActiveGradeColumnsForDay,
-        classifyGradeForDay
+        classifyGradeForDay,
+        filterTeachersInDay
     };
 
     if (typeof module !== 'undefined' && module.exports) {
