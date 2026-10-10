@@ -248,18 +248,77 @@ function renderGradeStatsView() {
             return null;
         }
 
-        if (per === 'FINAL') {
-            const scores = [];
-            const maxB = parseInt(STATE.config?.activeBimestre) || 3;
-            for (let u = 1; u <= maxB; u++) {
-                const sVal = getUnitVal(u);
-                if (sVal !== null) scores.push(sVal);
+        // 🌟 REGLA INSTITUCIONAL: Promedios oficiales para 4to/5to (4 unidades), 6to (3 unidades),
+        // y materias especiales de graduación (Seminario y Práctica: nota única en B4, sin promedio).
+        if (typeof window !== 'undefined' && typeof window.getReportCardSubjectGrades === 'function') {
+            const r = window.getReportCardSubjectGrades(student, targetSubject);
+            if (per === 'FINAL') {
+                if (r.isSpecialUnique) {
+                    const sc = r.b4 > 0 ? r.b4 : null;
+                    return { score: sc, evaluated: sc !== null };
+                }
+                if (r.isFullyExon) {
+                    return { score: null, evaluated: false, isExonerated: true };
+                }
+                if (r.avg > 0) {
+                    return { score: r.avg, evaluated: true };
+                }
+                return { score: null, evaluated: false };
+            } else {
+                const u = parseInt(per) || 1;
+                if (r.isSpecialUnique) {
+                    if (u < 4) return { score: null, evaluated: false };
+                    const sc = r.b4 > 0 ? r.b4 : null;
+                    return { score: sc, evaluated: sc !== null };
+                }
+                if (r[`isExon${u}`]) {
+                    return { score: null, evaluated: false, isExonerated: true };
+                }
+                const sc = r[`b${u}`];
+                return { score: sc > 0 ? sc : null, evaluated: sc > 0 };
             }
+        }
+
+        const cleanSub = (targetSubject || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+        const isSpecialGrad = cleanSub.includes('seminario') || cleanSub.includes('practica');
+        const rawGradeStr = String(student.grade || student.gradeLevel || gradeVal || '').toUpperCase();
+        const is6to = rawGradeStr.includes('6') || rawGradeStr.includes('SEXTO') || rawGradeStr.includes('6TO');
+
+        if (per === 'FINAL') {
+            if (isSpecialGrad) {
+                const s4 = getUnitVal(4) ?? getUnitVal(3) ?? getUnitVal(2) ?? getUnitVal(1);
+                if (s4 !== null && s4 > 0) return { score: s4, evaluated: true };
+                return { score: null, evaluated: false };
+            }
+            const unitsTotal = is6to ? 3 : 4;
+            const scores = [];
+            let exonCount = 0;
+            for (let u = 1; u <= unitsTotal; u++) {
+                const isEx = (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, targetSubject, u)) ||
+                             (typeof window !== 'undefined' && window.isSubjectBimestreExonerated && window.isSubjectBimestreExonerated(student, targetSubject, u));
+                if (isEx) {
+                    exonCount++;
+                    continue;
+                }
+                const sVal = getUnitVal(u);
+                if (sVal !== null && sVal > 0) scores.push(sVal);
+            }
+            if (exonCount === unitsTotal) return { score: null, evaluated: false, isExonerated: true };
             if (!scores.length) return { score: null, evaluated: false };
-            const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+            const divisor = Math.max(1, unitsTotal - exonCount);
+            const avg = Math.round(scores.reduce((a, b) => a + b, 0) / divisor);
             return { score: avg, evaluated: true };
         } else {
             const u = parseInt(per) || 1;
+            if (isSpecialGrad) {
+                if (u < 4) return { score: null, evaluated: false };
+                const s4 = getUnitVal(4) ?? getUnitVal(3) ?? getUnitVal(2) ?? getUnitVal(1);
+                if (s4 !== null && s4 > 0) return { score: s4, evaluated: true };
+                return { score: null, evaluated: false };
+            }
+            const isEx = (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, targetSubject, u)) ||
+                         (typeof window !== 'undefined' && window.isSubjectBimestreExonerated && window.isSubjectBimestreExonerated(student, targetSubject, u));
+            if (isEx) return { score: null, evaluated: false, isExonerated: true };
             const sVal = getUnitVal(u);
             if (sVal !== null) return { score: sVal, evaluated: true };
             return { score: null, evaluated: false };

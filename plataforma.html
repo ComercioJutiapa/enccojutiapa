@@ -365,6 +365,103 @@
                 pointer-events: none !important;
             }
         }
+
+        /* ======================================================================
+           MEJORAS VISUALES Y EXPERIENCIA DE USUARIO PARA DOCENTES (V191)
+           ====================================================================== */
+        /* 1. Guía de Mira y Enfoque Activo en Cuadros de Notas */
+        #gradebookActivitiesTable tbody tr:hover td,
+        #gradebookSummaryTable tbody tr:hover td,
+        #gradebookAveragesTable tbody tr:hover td {
+            background-color: rgba(240, 253, 244, 0.75) !important;
+        }
+
+        #gradebookActivitiesTable tbody tr.gb-active-row td,
+        #gradebookSummaryTable tbody tr.gb-active-row td {
+            background-color: #ecfdf5 !important;
+        }
+
+        .gb-input-focused {
+            outline: 2.5px solid #16a34a !important;
+            background-color: #ffffff !important;
+            box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.2) !important;
+            font-weight: 800 !important;
+            color: #0f172a !important;
+        }
+
+        /* 2. Resaltado Destacado del Día Actual en Asistencia */
+        th.col-day-today {
+            background: linear-gradient(180deg, #16a34a 0%, #15803d 100%) !important;
+            color: #ffffff !important;
+            border-left: 2px solid #14532d !important;
+            border-right: 2px solid #14532d !important;
+            box-shadow: 0 2px 8px rgba(22, 163, 74, 0.35) !important;
+            position: relative;
+        }
+
+        td.col-cell-today {
+            background-color: rgba(220, 252, 231, 0.45) !important;
+            border-left: 1.5px solid #86efac !important;
+            border-right: 1.5px solid #86efac !important;
+        }
+
+        td.col-cell-today:hover {
+            background-color: rgba(187, 247, 208, 0.85) !important;
+        }
+
+        /* 3. Animación de Pulso Táctil al Marcar Asistencia por Teclado */
+        @keyframes attCellPulse {
+            0% { transform: scale(1.22); box-shadow: 0 0 10px rgba(22, 163, 74, 0.6); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .att-cell-pulsed {
+            animation: attCellPulse 0.28s ease-out !important;
+        }
+
+        /* 4. Modo Enfoque / Pantalla Completa (Zen Mode) del Libro de Notas */
+        body.gradebook-zen-active #sidebar {
+            display: none !important;
+        }
+
+        body.gradebook-zen-active .top-navbar,
+        body.gradebook-zen-active header.app-header {
+            display: none !important;
+        }
+
+        body.gradebook-zen-active .main-content {
+            margin-left: 0 !important;
+            padding: 8px 12px !important;
+            max-width: 100vw !important;
+            width: 100vw !important;
+        }
+
+        body.gradebook-zen-active #view-gradebook {
+            padding: 4px !important;
+        }
+
+        body.gradebook-zen-active .table-responsive {
+            max-height: calc(100vh - 170px) !important;
+        }
+
+        /* 5. Tarjetas del Hub Rápido del Docente */
+        .teacher-hub-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 16px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .teacher-hub-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+            border-color: #86efac;
+        }
     </style>
     <!-- REGLA ABSOLUTA DE VISIBILIDAD DE VENTANAS MODALES -->
     <style id="modalVisibilityEnforcementStyle">
@@ -727,9 +824,18 @@
 
                 <div class="header-right">
                     <div class="search-box">
-                        <i class="fa-solid fa-magnifying-glass"></i>
                         <input type="text" id="globalSearch" placeholder="Buscar en la plataforma..." oninput="handleGlobalSearch(this.value)" onkeyup="handleGlobalSearch(this.value)">
                     </div>
+
+                    <!-- BOTÓN RESPALDO MAESTRO (DIRECCIÓN / ADMIN) -->
+                    <button type="button" class="btn btn-outline-success btn-sm" id="btnHeaderMasterBackup" onclick="openUniversalBackupModal()" title="Copia de Seguridad Maestro y Descargas Oficiales" style="display:none; font-weight:700; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; cursor:pointer;">
+                        <i class="fa-solid fa-shield-halved"></i> <span>Respaldo Maestro</span>
+                    </button>
+
+                    <!-- BOTÓN BITÁCORA DE AUDITORÍA (DIRECCIÓN / SECRETARÍA) -->
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnHeaderAuditLog" onclick="openSystemAuditLogModal()" title="Bitácora y Trazabilidad de Auditoría" style="display:none; font-weight:700; align-items:center; gap:6px; padding:6px 12px; border-radius:8px; cursor:pointer;">
+                        <i class="fa-solid fa-clipboard-list"></i> <span>Auditoría</span>
+                    </button>
 
                     <div class="header-notifications" onclick="showNotificationToast()">
                         <i class="fa-solid fa-bell"></i>
@@ -2195,6 +2301,9 @@
                             <span id="gradebookSaveStatusBadge" class="badge" style="display:inline-flex; align-items:center; gap:6px; font-size:0.82rem; padding:6px 12px; font-weight:700; border-radius:6px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;" title="Estado de guardado de calificaciones">
                                 <i class="fa-solid fa-circle-check"></i> Calificaciones guardadas
                             </span>
+                            <button type="button" class="btn btn-outline-secondary" id="btnToggleZenMode" onclick="toggleGradebookZenMode()" title="Ampliar pantalla para concentrarse en el ingreso de notas">
+                                <i class="fa-solid fa-expand"></i> <span id="btnToggleZenModeText">Modo Enfoque</span>
+                            </button>
                             <button type="button" class="btn btn-outline-primary" onclick="exportGradebookOfficialExcel()" title="Descargar libro de Microsoft Excel (.xlsx) con formato y notas">
                                 <i class="fa-solid fa-file-excel"></i> Exportar Notas (Excel)
                             </button>
@@ -2228,6 +2337,8 @@
                         <div id="gradebookProgressBarContainer" style="display:none; width:100%; background:#e2e8f0; border-radius:10px; height:7px; overflow:hidden;">
                             <div id="gradebookProgressBarFill" style="height:100%; width:0%; background:linear-gradient(90deg, #10b981, #059669); transition:width 0.3s ease;"></div>
                         </div>
+                        <!-- KPI Strip en Vivo para Docente -->
+                        <div id="gradebookLiveKpiStrip" style="display:none;"></div>
                     </div>
 
                     <!-- Pestañas de Modo de Calificación (10 Casillas, Examen/Resumen, Totales de Evaluación) -->
@@ -3094,6 +3205,54 @@
 
                 <!-- 11. BOLETÍN DE CALIFICACIONES IMPRIMIBLE -->
                 <section class="app-view" id="view-reports">
+                    <!-- ACCESOS RÁPIDOS DE IMPRESIÓN Y REPORTES PARA EL DOCENTE -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin-bottom:16px;">
+                        <div class="teacher-hub-card" style="border-left:4px solid #16a34a;">
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                                <div style="width:36px; height:36px; border-radius:8px; background:#dcfce7; color:#15803d; display:flex; align-items:center; justify-content:center; font-size:1.1rem;">
+                                    <i class="fa-solid fa-table-list"></i>
+                                </div>
+                                <div>
+                                    <h5 style="margin:0; font-size:0.9rem; font-weight:800; color:#0f172a;">Sábana de Calificaciones</h5>
+                                    <p style="margin:0; font-size:0.75rem; color:#64748b;">Cuadro 40/60 oficial con zonas y exámenes</p>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-success btn-sm" onclick="navigateTo('view-gradebook')" style="font-weight:700; width:100%;">
+                                <i class="fa-solid fa-print"></i> Ir a Imprimir Sábana
+                            </button>
+                        </div>
+
+                        <div class="teacher-hub-card" style="border-left:4px solid #0284c7;">
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                                <div style="width:36px; height:36px; border-radius:8px; background:#e0f2fe; color:#0369a1; display:flex; align-items:center; justify-content:center; font-size:1.1rem;">
+                                    <i class="fa-solid fa-calendar-check"></i>
+                                </div>
+                                <div>
+                                    <h5 style="margin:0; font-size:0.9rem; font-weight:800; color:#0f172a;">Planilla de Asistencia</h5>
+                                    <p style="margin:0; font-size:0.75rem; color:#64748b;">Control mensual con resumen P, A, J, T</p>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="navigateTo('view-attendance')" style="font-weight:700; width:100%;">
+                                <i class="fa-solid fa-print"></i> Ir a Imprimir Asistencia
+                            </button>
+                        </div>
+
+                        <div class="teacher-hub-card" style="border-left:4px solid #d97706;">
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                                <div style="width:36px; height:36px; border-radius:8px; background:#fef3c7; color:#b45309; display:flex; align-items:center; justify-content:center; font-size:1.1rem;">
+                                    <i class="fa-solid fa-clipboard-list"></i>
+                                </div>
+                                <div>
+                                    <h5 style="margin:0; font-size:0.9rem; font-weight:800; color:#0f172a;">Lista de Cotejo en Blanco</h5>
+                                    <p style="margin:0; font-size:0.75rem; color:#64748b;">Formato físico para registro en aula</p>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-warning btn-sm" onclick="if(typeof printAttendanceOfficialSheet==='function'){ printAttendanceOfficialSheet(true); } else { navigateTo('view-attendance'); }" style="font-weight:700; width:100%; color:#b45309; border-color:#fcd34d;">
+                                <i class="fa-solid fa-print"></i> Imprimir Lista en Blanco
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- CONTROLES Y FILTROS JERÁRQUICOS -->
                     <div class="report-controls-box" style="display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; justify-content:space-between; background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:16px 20px; box-shadow:0 2px 5px rgba(0,0,0,0.05); margin-bottom:20px;">
                         <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; flex:1; min-width:320px;">
@@ -6219,6 +6378,203 @@
     </div>
 </div>
 
+<!-- ====================================================================== -->
+<!--   MODAL MAESTRO DE COPIA DE SEGURIDAD (BACKUP) Y DESCARGAS OFICIALES   -->
+<!-- ====================================================================== -->
+<div id="modalUniversalBackup" class="modal" style="display: none; position: fixed; inset: 0; z-index: 10060; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px);">
+    <div class="modal-dialog" style="max-width: 680px; width: 95%; margin: auto; border-radius: 14px; overflow: hidden; background: #ffffff; box-shadow: 0 20px 45px rgba(0,0,0,0.3); border: 2px solid #16a34a; animation: fadeIn 0.2s ease;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #15803d 0%, #059669 100%); color: #ffffff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <h4 style="margin: 0; font-size: 1.12rem; font-weight: 800; color: #ffffff;">Centro Maestro de Respaldo y Copias de Seguridad</h4>
+                    <span style="font-size: 0.78rem; opacity: 0.95; color: #dcfce7;">Escuela Nacional de Ciencias Comerciales ENCCO Jutiapa</span>
+                </div>
+            </div>
+            <button type="button" onclick="closeUniversalBackupModal()" style="background: rgba(255,255,255,0.2); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer;">&times;</button>
+        </div>
+
+        <div class="modal-body" style="padding: 20px; background: #f8fafc;">
+            <!-- BANNER DE INTEGRIDAD Y ESTADO -->
+            <div style="background: #ffffff; border: 1px solid #bbf7d0; border-left: 5px solid #16a34a; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <div style="font-weight: 800; font-size: 0.9rem; color: #166534; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa-solid fa-circle-check"></i> Integridad y Cero Pérdida de Datos Garantizada
+                    </div>
+                    <div style="font-size: 0.78rem; color: #4b5563; margin-top: 2px;">
+                        Descarga atómica en formato Blob nativo, sin restricciones de tamaño ni truncamiento de datos.
+                    </div>
+                </div>
+                <div id="backupLastRecordedBadge" class="badge" style="background: #f0fdf4; color: #15803d; border: 1px solid #86efac; padding: 6px 12px; font-weight: 700; font-size: 0.76rem;">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Verificando último respaldo...
+                </div>
+            </div>
+
+            <!-- GRILLA DE OPCIONES DE RESPALDO -->
+            <div style="display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 16px;">
+                <!-- OPCIÓN 1: RESPALDO TOTAL -->
+                <div style="background: #ffffff; border: 1.5px solid #86efac; border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 44px; height: 44px; border-radius: 10px; background: #dcfce7; color: #15803d; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-database"></i>
+                        </div>
+                        <div>
+                            <h5 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0f172a;">1. Respaldo Maestro Completo (100% Base de Datos)</h5>
+                            <p style="margin: 2px 0 0 0; font-size: 0.78rem; color: #64748b;">
+                                Estudiantes, notas 40/60, pensum oficial, claustro de profesores, asistencias, justificaciones, disciplina y bitácora de auditoría.
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-success btn-sm" onclick="exportSystemSafeBackup('all')" style="font-weight: 800; white-space: nowrap; padding: 8px 14px; flex-shrink: 0;">
+                        <i class="fa-solid fa-download"></i> Descargar Todo (.json)
+                    </button>
+                </div>
+
+                <!-- OPCIÓN 2: RESPALDO ACADÉMICO -->
+                <div style="background: #ffffff; border: 1.5px solid #bae6fd; border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 44px; height: 44px; border-radius: 10px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </div>
+                        <div>
+                            <h5 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0f172a;">2. Respaldo Académico y Calificaciones</h5>
+                            <p style="margin: 2px 0 0 0; font-size: 0.78rem; color: #64748b;">
+                                Padrón estudiantil, libro de calificaciones 40/60 completo de 4 unidades, asignaturas del pensum y asignación de cátedras.
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="exportSystemSafeBackup('academic')" style="font-weight: 800; white-space: nowrap; padding: 8px 14px; flex-shrink: 0;">
+                        <i class="fa-solid fa-download"></i> Descargar Académico (.json)
+                    </button>
+                </div>
+
+                <!-- OPCIÓN 3: RESPALDO ASISTENCIA Y CONVIVENCIA -->
+                <div style="background: #ffffff; border: 1.5px solid #fde68a; border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <div style="width: 44px; height: 44px; border-radius: 10px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0;">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                        <div>
+                            <h5 style="margin: 0; font-size: 0.95rem; font-weight: 800; color: #0f172a;">3. Respaldo de Asistencia y Disciplina</h5>
+                            <p style="margin: 2px 0 0 0; font-size: 0.78rem; color: #64748b;">
+                                Registros diarios de pase de lista, justificaciones oficiales de auxiliatura, pases de salida y actas de convivencia escolar.
+                            </p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-warning btn-sm" onclick="exportSystemSafeBackup('attendance')" style="font-weight: 800; white-space: nowrap; padding: 8px 14px; flex-shrink: 0; color: #78350f; border-color: #f59e0b;">
+                        <i class="fa-solid fa-download"></i> Descargar Asistencia (.json)
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECCIÓN DE RESTAURACIÓN CON CANDADO DE SEGURIDAD -->
+            <div style="background: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <span style="font-weight: 800; font-size: 0.85rem; color: #334155;">
+                        <i class="fa-solid fa-upload"></i> Restauración de Emergencia desde Archivo JSON:
+                    </span>
+                    <p style="margin: 2px 0 0 0; font-size: 0.75rem; color: #64748b;">
+                        Permite reestablecer la base de datos a partir de una copia oficial previamente descargada.
+                    </p>
+                </div>
+                <div>
+                    <input type="file" id="inputUniversalBackupFile" accept=".json" onchange="importDataBackupJSON(event)" style="display:none;">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('inputUniversalBackupFile').click()" style="font-weight: 700;">
+                        <i class="fa-solid fa-folder-open"></i> Seleccionar Archivo JSON...
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer" style="background: #ffffff; border-top: 1px solid #e2e8f0; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.75rem; color: #64748b;">
+                <i class="fa-solid fa-lock"></i> Copia certificada institucional ENCCO Jutiapa.
+            </span>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeUniversalBackupModal()" style="font-weight: 700;">
+                Cerrar Ventana
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ====================================================================== -->
+<!--   MODAL DE BITÁCORA Y AUDITORÍA GENERAL DEL SISTEMA                   -->
+<!-- ====================================================================== -->
+<div id="modalSystemAuditLog" class="modal" style="display: none; position: fixed; inset: 0; z-index: 10060; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px);">
+    <div class="modal-dialog" style="max-width: 920px; width: 95%; margin: auto; border-radius: 14px; overflow: hidden; background: #ffffff; box-shadow: 0 20px 45px rgba(0,0,0,0.3); border: 2px solid #0284c7; animation: fadeIn 0.2s ease;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(255,255,255,0.15); color: #38bdf8; display: flex; align-items: center; justify-content: center; font-size: 1.3rem;">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                </div>
+                <div>
+                    <h4 style="margin: 0; font-size: 1.12rem; font-weight: 800; color: #ffffff;">Bitácora de Auditoría y Trazabilidad Institucional</h4>
+                    <span style="font-size: 0.78rem; opacity: 0.95; color: #94a3b8;">Registro inmutable de actividades sensibles (Notas, Asistencia, Matrícula, Respaldos)</span>
+                </div>
+            </div>
+            <button type="button" onclick="closeSystemAuditLogModal()" style="background: rgba(255,255,255,0.2); border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer;">&times;</button>
+        </div>
+
+        <div class="modal-body" style="padding: 18px 20px; background: #f8fafc;">
+            <!-- BARRA DE FILTROS Y CONTROLES -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                    <select id="auditLogCategoryFilter" class="form-control" style="font-size: 0.82rem; height: 34px; padding: 4px 10px; min-width: 170px;" onchange="renderSystemAuditLogTable()">
+                        <option value="ALL">Todas las Categorías</option>
+                        <option value="Calificaciones">Calificaciones (Notas)</option>
+                        <option value="Asistencia">Control de Asistencia</option>
+                        <option value="Estudiantes">Estudiantes y Matrícula</option>
+                        <option value="Seguridad">Seguridad y Roles</option>
+                        <option value="Sistema">Sistema y Respaldos</option>
+                    </select>
+
+                    <input type="text" id="auditLogSearchInput" class="form-control" placeholder="Buscar por usuario o palabra..." style="font-size: 0.82rem; height: 34px; padding: 4px 10px; min-width: 220px;" oninput="renderSystemAuditLogTable()">
+                </div>
+
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span id="auditLogTotalCountBadge" class="badge" style="background: #e2e8f0; color: #334155; font-size: 0.78rem; padding: 6px 10px; font-weight: 700;">
+                        0 eventos registrados
+                    </span>
+                    <button type="button" class="btn btn-outline-success btn-sm" onclick="exportAuditLogCSV()" style="font-weight: 700;">
+                        <i class="fa-solid fa-file-csv"></i> Exportar CSV
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="renderSystemAuditLogTable()" title="Refrescar">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- TABLA DE EVENTOS DE AUDITORÍA -->
+            <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; overflow: hidden; max-height: 420px; overflow-y: auto;">
+                <table class="table table-hover" style="margin: 0; font-size: 0.83rem; width: 100%;">
+                    <thead>
+                        <tr style="background: #0f172a; color: #ffffff; position: sticky; top: 0; z-index: 2;">
+                            <th style="padding: 10px 12px; width: 140px;">Fecha y Hora</th>
+                            <th style="padding: 10px 12px; width: 160px;">Usuario & Rol</th>
+                            <th style="padding: 10px 12px; width: 120px;">Categoría</th>
+                            <th style="padding: 10px 12px; width: 130px;">Acción</th>
+                            <th style="padding: 10px 12px;">Detalles del Evento</th>
+                        </tr>
+                    </thead>
+                    <tbody id="systemAuditLogTableBody">
+                        <!-- Generado dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="modal-footer" style="background: #ffffff; border-top: 1px solid #e2e8f0; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.75rem; color: #64748b;">
+                <i class="fa-solid fa-shield-check"></i> Bitácora de acceso restringido a Dirección y Secretaría.
+            </span>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeSystemAuditLogModal()" style="font-weight: 700;">
+                Cerrar Bitácora
+            </button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

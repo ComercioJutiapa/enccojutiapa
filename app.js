@@ -2710,18 +2710,182 @@ async function saveActiveRolePermissions() {
 window.saveActiveRolePermissions = saveActiveRolePermissions;
 
 // ======================================================================
-// 🛡️ BÓVEDA DE RESPALDO SEGURO INSTITUCIONAL (EXCLUSIVO DIRECCIÓN GENERAL)
+// 🛡️ MOTOR UNIVERSAL DE AUDITORÍA Y TRAZABILIDAD (STATE.auditLog)
 // ======================================================================
-function exportSystemSafeBackup() {
-    if (typeof isDirectorOrSuperAdmin === 'function' && !isDirectorOrSuperAdmin()) {
-        if (typeof showToast === 'function') {
-            showToast('🔒 Acción restringida: La descarga de respaldo institucional está reservada exclusivamente a la Dirección General.', 'warning', 5000);
-        } else {
-            alert('Acción restringida exclusivamente a la Dirección General.');
-        }
+if (!window.STATE) window.STATE = {};
+if (!window.STATE.auditLog) {
+    try {
+        const savedLog = localStorage.getItem('ENCCO_AUDIT_LOG_SNAPSHOT');
+        window.STATE.auditLog = savedLog ? JSON.parse(savedLog) : [];
+    } catch(e) {
+        window.STATE.auditLog = [];
+    }
+}
+
+function recordAuditLog(action, category, details, targetId = '') {
+    if (!STATE.auditLog) STATE.auditLog = [];
+    const now = new Date();
+    const currentUser = STATE.currentUser || {};
+    const logEntry = {
+        id: 'aud_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        timestamp: now.toISOString(),
+        formattedTime: now.toLocaleString('es-GT', { dateStyle: 'short', timeStyle: 'medium' }),
+        userId: currentUser.id || 'system',
+        userName: currentUser.name || (STATE.currentRole === 'director' ? 'Dirección General' : (STATE.currentRole === 'secretaria' ? 'Secretaría Académica' : 'Usuario')),
+        userRole: STATE.currentRole || 'general',
+        action: action, // ej. 'GRADE_SAVE', 'ATTENDANCE_OVERRIDE', 'BACKUP_EXPORT', 'STUDENT_UPDATE'
+        category: category, // 'Calificaciones', 'Asistencia', 'Estudiantes', 'Seguridad', 'Sistema'
+        details: typeof details === 'object' ? JSON.stringify(details) : String(details),
+        targetId: targetId
+    };
+    STATE.auditLog.unshift(logEntry);
+    if (STATE.auditLog.length > 2000) {
+        STATE.auditLog = STATE.auditLog.slice(0, 2000);
+    }
+    try {
+        localStorage.setItem('ENCCO_AUDIT_LOG_SNAPSHOT', JSON.stringify(STATE.auditLog.slice(0, 300)));
+    } catch(e) {}
+    return logEntry;
+}
+window.recordAuditLog = recordAuditLog;
+
+function openSystemAuditLogModal() {
+    renderSystemAuditLogTable();
+    showModalById('modalSystemAuditLog');
+}
+window.openSystemAuditLogModal = openSystemAuditLogModal;
+
+function closeSystemAuditLogModal() {
+    closeModalProperly('modalSystemAuditLog');
+}
+window.closeSystemAuditLogModal = closeSystemAuditLogModal;
+
+function renderSystemAuditLogTable() {
+    const tbody = document.getElementById('systemAuditLogTableBody');
+    const badge = document.getElementById('auditLogTotalCountBadge');
+    if (!tbody) return;
+
+    const catFilter = document.getElementById('auditLogCategoryFilter')?.value || 'ALL';
+    const searchVal = (document.getElementById('auditLogSearchInput')?.value || '').toLowerCase().trim();
+
+    let logs = STATE.auditLog || [];
+    if (catFilter !== 'ALL') {
+        logs = logs.filter(l => (l.category || '').toLowerCase() === catFilter.toLowerCase());
+    }
+    if (searchVal) {
+        logs = logs.filter(l => 
+            (l.userName || '').toLowerCase().includes(searchVal) ||
+            (l.action || '').toLowerCase().includes(searchVal) ||
+            (l.details || '').toLowerCase().includes(searchVal) ||
+            (l.userRole || '').toLowerCase().includes(searchVal)
+        );
+    }
+
+    if (badge) {
+        badge.textContent = `${logs.length} ${logs.length === 1 ? 'evento registrado' : 'eventos registrados'}`;
+    }
+
+    if (logs.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align:center; padding:32px 14px; color:#64748b;">
+                    <i class="fa-solid fa-clipboard-check" style="font-size:2rem; color:#94a3b8; display:block; margin-bottom:8px;"></i>
+                    No se encontraron registros de auditoría con los criterios seleccionados.
+                </td>
+            </tr>
+        `;
         return;
     }
 
+    const catBadgeMap = {
+        'Calificaciones': 'background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;',
+        'Asistencia': 'background:#fef3c7; color:#92400e; border:1px solid #fde68a;',
+        'Estudiantes': 'background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;',
+        'Seguridad': 'background:#fdf2f8; color:#9d174d; border:1px solid #fbcfe8;',
+        'Sistema': 'background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;'
+    };
+
+    tbody.innerHTML = logs.slice(0, 150).map(l => {
+        const catStyle = catBadgeMap[l.category] || 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;';
+        return `
+            <tr>
+                <td style="white-space:nowrap; font-size:0.78rem; color:#64748b;">
+                    <i class="fa-regular fa-clock"></i> ${escapeHtml(l.formattedTime || l.timestamp?.slice(0, 16) || '')}
+                </td>
+                <td>
+                    <strong>${escapeHtml(l.userName || 'Sistema')}</strong>
+                    <br><small class="badge badge-secondary" style="font-size:0.7rem; padding:1px 5px;">${escapeHtml(l.userRole || 'rol')}</small>
+                </td>
+                <td>
+                    <span class="badge" style="${catStyle} font-size:0.74rem; font-weight:700;">
+                        ${escapeHtml(l.category || 'General')}
+                    </span>
+                </td>
+                <td>
+                    <strong style="font-size:0.8rem; color:#0f172a;">${escapeHtml(l.action || '')}</strong>
+                </td>
+                <td style="font-size:0.78rem; color:#334155; word-break:break-word;">
+                    ${escapeHtml(l.details || '')}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+window.renderSystemAuditLogTable = renderSystemAuditLogTable;
+
+function exportAuditLogCSV() {
+    const logs = STATE.auditLog || [];
+    if (logs.length === 0) {
+        if (typeof showToast === 'function') showToast('No hay registros de auditoría para exportar.', 'warning');
+        return;
+    }
+    const headers = ['Fecha y Hora', 'Usuario', 'Rol', 'Categoria', 'Accion', 'Detalles'];
+    const rows = logs.map(l => [
+        `"${(l.formattedTime || l.timestamp || '').replace(/"/g, '""')}"`,
+        `"${(l.userName || '').replace(/"/g, '""')}"`,
+        `"${(l.userRole || '').replace(/"/g, '""')}"`,
+        `"${(l.category || '').replace(/"/g, '""')}"`,
+        `"${(l.action || '').replace(/"/g, '""')}"`,
+        `"${(l.details || '').replace(/"/g, '""')}"`
+    ]);
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ENCCO_Bitacora_Auditoria_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if (typeof showToast === 'function') showToast('Bitácora de auditoría exportada en formato CSV.', 'success');
+}
+window.exportAuditLogCSV = exportAuditLogCSV;
+
+// ======================================================================
+// 🛡️ CENTRO MAESTRO DE RESPALDO Y BÓVEDA SEGURA INSTITUCIONAL
+// ======================================================================
+function openUniversalBackupModal() {
+    const badge = document.getElementById('backupLastRecordedBadge');
+    if (badge) {
+        const lastTime = localStorage.getItem('ENCCO_LAST_BACKUP_TIME');
+        if (lastTime) {
+            const dt = new Date(lastTime);
+            badge.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> Último respaldo: ${dt.toLocaleDateString('es-GT')} ${dt.toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' })}`;
+        } else {
+            badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Sin respaldo registrado en esta sesión`;
+        }
+    }
+    showModalById('modalUniversalBackup');
+}
+window.openUniversalBackupModal = openUniversalBackupModal;
+
+function closeUniversalBackupModal() {
+    closeModalProperly('modalUniversalBackup');
+}
+window.closeUniversalBackupModal = closeUniversalBackupModal;
+
+function exportSystemSafeBackup(backupCategory = 'all') {
     try {
         const now = new Date();
         const y = now.getFullYear();
@@ -2731,27 +2895,77 @@ function exportSystemSafeBackup() {
         const min = String(now.getMinutes()).padStart(2, '0');
 
         const currentUser = (window.STATE && window.STATE.currentUser) || {};
-        const role = (window.STATE && window.STATE.currentRole) || 'direccion';
+        const role = (window.STATE && window.STATE.currentRole) || 'director';
 
-        const backupData = {
-            institution: "ESCUELA NACIONAL DE CIENCIAS COMERCIALES DE JUTIAPA (ENCO)",
-            backupTimestamp: now.toISOString(),
-            formattedDate: `${d}/${m}/${y} ${h}:${min}`,
-            academicModel: "40% Zona / 60% Examen (100% Total)",
-            exportedBy: currentUser.name || role,
-            stateSnapshot: {
+        let snapshotData = {};
+        let labelCategory = 'Completo';
+
+        if (backupCategory === 'academic') {
+            labelCategory = 'Academico_Notas';
+            snapshotData = {
                 activeCycle: STATE.activeCycle || y,
                 studentsCount: Array.isArray(STATE.students) ? STATE.students.length : 0,
                 students: STATE.students || [],
                 gradesList: STATE.gradesList || [],
                 pensum: STATE.pensum || [],
+                pensumCatalog: STATE.pensumCatalog || [],
+                cycles: STATE.cycles || [],
+                exoneraciones: STATE.exoneraciones || []
+            };
+        } else if (backupCategory === 'attendance') {
+            labelCategory = 'Asistencia_Convivencia';
+            snapshotData = {
+                activeCycle: STATE.activeCycle || y,
+                attendanceRecords: STATE.attendanceRecords || {},
+                attendancePermissionsMeta: STATE.attendancePermissionsMeta || {},
+                studentPermissions: STATE.studentPermissions || [],
+                auxiliaturaLog: STATE.auxiliaturaLog || [],
+                disciplineReports: STATE.disciplineReports || []
+            };
+        } else {
+            // 'all' -> 100% Full System State
+            labelCategory = 'MAESTRO_COMPLETO';
+            snapshotData = {
+                activeCycle: STATE.activeCycle || y,
+                studentsCount: Array.isArray(STATE.students) ? STATE.students.length : 0,
+                students: STATE.students || [],
+                gradesList: STATE.gradesList || [],
+                pensum: STATE.pensum || [],
+                pensumCatalog: STATE.pensumCatalog || [],
+                users: STATE.users || [],
+                careers: STATE.careers || [],
+                cycles: STATE.cycles || [],
                 rolesConfig: STATE.rolesConfig || [],
                 attendanceRecords: STATE.attendanceRecords || {},
                 attendancePermissionsMeta: STATE.attendancePermissionsMeta || {},
                 studentPermissions: STATE.studentPermissions || [],
                 auxiliaturaLog: STATE.auxiliaturaLog || [],
-                exoneraciones: STATE.exoneraciones || []
-            }
+                exoneraciones: STATE.exoneraciones || [],
+                disciplineReports: STATE.disciplineReports || [],
+                announcements: STATE.announcements || [],
+                examSchedules: STATE.examSchedules || {},
+                auditLog: STATE.auditLog || [],
+                config: STATE.config || {}
+            };
+        }
+
+        const backupData = {
+            institution: "ESCUELA NACIONAL DE CIENCIAS COMERCIALES DE JUTIAPA (ENCCO)",
+            backupTimestamp: now.toISOString(),
+            formattedDate: `${d}/${m}/${y} ${h}:${min}`,
+            academicModel: "40% Zona / 60% Examen (100% Total)",
+            exportedBy: currentUser.name || role,
+            userRole: role,
+            backupCategory: backupCategory,
+            checksum: {
+                totalStudents: (STATE.students || []).length,
+                totalGrades: (STATE.gradesList || []).length,
+                totalPensum: (STATE.pensum || []).length,
+                totalUsers: (STATE.users || []).length,
+                totalAttendanceDays: Object.keys(STATE.attendanceRecords || {}).length,
+                totalAuditEvents: (STATE.auditLog || []).length
+            },
+            stateSnapshot: snapshotData
         };
 
         const jsonStr = JSON.stringify(backupData, null, 2);
@@ -2759,14 +2973,22 @@ function exportSystemSafeBackup() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `ENCO_RESPALDO_OFICIAL_${y}-${m}-${d}_${h}${min}.json`;
+        a.download = `ENCCO_RESPALDO_${labelCategory}_${y}-${m}-${d}_${h}${min}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
+        localStorage.setItem('ENCCO_LAST_BACKUP_TIME', now.toISOString());
+        recordAuditLog('BACKUP_EXPORT', 'Sistema', `Respaldo oficial descargado (${labelCategory}) con ${backupData.checksum.totalStudents} estudiantes y registros.`);
+
+        const badge = document.getElementById('backupLastRecordedBadge');
+        if (badge) {
+            badge.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> Último respaldo: Hoy ${h}:${min}`;
+        }
+
         if (typeof showToast === 'function') {
-            showToast(`✅ Respaldo Oficial Descargado: Se exportaron ${backupData.stateSnapshot.studentsCount} estudiantes y registros institucionales con éxito.`, 'success', 6000);
+            showToast(`✅ Respaldo ${labelCategory} descargado con éxito. Integridad garantizada.`, 'success', 5000);
         }
     } catch(err) {
         console.error("Error al exportar respaldo seguro:", err);
@@ -8465,6 +8687,16 @@ function updateTopRoleBar() {
             </span>
         `;
     }
+
+    const curR = (STATE.currentRole || '').toLowerCase();
+    const btnMasterBackup = document.getElementById('btnHeaderMasterBackup');
+    if (btnMasterBackup) {
+        btnMasterBackup.style.display = (curR === 'admin' || curR === 'director') ? 'inline-flex' : 'none';
+    }
+    const btnAuditLog = document.getElementById('btnHeaderAuditLog');
+    if (btnAuditLog) {
+        btnAuditLog.style.display = (curR === 'admin' || curR === 'director' || curR === 'secretaria') ? 'inline-flex' : 'none';
+    }
 }
 
 async function performLogout() {
@@ -9863,12 +10095,51 @@ function renderQuickActionsHub() {
                 fn: "openPermissionsHistoryModal()"
             }
         ];
+    } else if (role === 'director' || role === 'admin') {
+        actions = [
+            {
+                title: "Respaldo Maestro JSON",
+                desc: "Copia de seguridad certificada integral",
+                icon: "fa-shield-halved",
+                color: "#15803d",
+                bg: "#f0fdf4",
+                border: "#86efac",
+                fn: "openUniversalBackupModal()"
+            },
+            {
+                title: "Bitácora de Auditoría",
+                desc: "Trazabilidad de notas y operaciones",
+                icon: "fa-clipboard-list",
+                color: "#0284c7",
+                bg: "#f0f9ff",
+                border: "#7dd3fc",
+                fn: "openSystemAuditLogModal()"
+            },
+            {
+                title: "Cierre y Bloqueo de Bimestres",
+                desc: "Control de fechas de ingreso de notas",
+                icon: "fa-lock",
+                color: "#d97706",
+                bg: "#fffbeb",
+                border: "#fde68a",
+                fn: "navigateTo('grade-lock')"
+            },
+            {
+                title: "Boletines y Cuadros Oficiales",
+                desc: "Emisión de sábanas y consolidado",
+                icon: "fa-print",
+                color: "#7c3aed",
+                bg: "#f5f3ff",
+                border: "#c4b5fd",
+                fn: "navigateTo('reports')"
+            }
+        ];
     } else {
-        // Director, Secretaria, Admin
+        // Secretaria
         actions = [
             {
                 title: "Inscribir Estudiante",
-                desc: "Nueva matrícula y registro SIRE",
+                desc: "Nueva matrícula y expediente oficial",
                 icon: "fa-user-plus",
                 color: "#15803d",
                 bg: "#f0fdf4",
@@ -9876,31 +10147,31 @@ function renderQuickActionsHub() {
                 fn: "navigateTo('enrollment')"
             },
             {
-                title: "Carnés Oficiales CR80",
-                desc: "Emisión e impresión de credenciales",
-                icon: "fa-id-card",
+                title: "Módulo SIRE MINEDUC",
+                desc: "Cálculo y datos para sistema ministerial",
+                icon: "fa-cloud-arrow-up",
                 color: "#0284c7",
                 bg: "#f0f9ff",
                 border: "#7dd3fc",
+                fn: "navigateTo('datos-sire')"
+            },
+            {
+                title: "Carnés Oficiales CR80",
+                desc: "Emisión e impresión de credenciales",
+                icon: "fa-id-card",
+                color: "#2563eb",
+                bg: "#eff6ff",
+                border: "#bfdbfe",
                 fn: "navigateTo('carnets')"
             },
             {
-                title: "Boletines de Calificaciones",
-                desc: "Emisión masiva en media página",
+                title: "Sábanas y Expedientes",
+                desc: "Consultar récords y emitir reportes",
                 icon: "fa-print",
                 color: "#7c3aed",
                 bg: "#f5f3ff",
                 border: "#c4b5fd",
                 fn: "navigateTo('reports')"
-            },
-            {
-                title: "Bloqueo de Bimestres",
-                desc: "Configurar fechas y bimestre activo",
-                icon: "fa-lock",
-                color: "#d97706",
-                bg: "#fffbeb",
-                border: "#fde68a",
-                fn: "navigateTo('grade-lock')"
             }
         ];
     }
@@ -10031,6 +10302,21 @@ function renderDashboard() {
                 const studentCount = getStudentCountByGradeAndSection(g.grade, g.grade, g.section);
                 const secClean = (g.section || '').toLowerCase().startsWith('secci') ? g.section : 'Sección ' + (g.section || 'A');
 
+                const isGuideTeacherForThisSection = (STATE.gradesList || []).some(gl => {
+                    if (!gl) return false;
+                    const matchG = gl.name === g.grade || gl.code === g.grade || (gl.name && gl.name.includes(g.grade));
+                    const matchS = getCleanSectionLetter(gl.section) === getCleanSectionLetter(g.section);
+                    const glTName = (gl.guideTeacher || '').toLowerCase();
+                    const curName = (currentUser.name || '').toLowerCase();
+                    return matchG && matchS && (gl.guideTeacherId === currentUser.id || glTName === curName || (curName && glTName.includes(curName)));
+                });
+
+                const guideBadge = isGuideTeacherForThisSection ? `
+                    <span class="badge" style="background:#fef08a; color:#854d0e; border:1px solid #fde047; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:12px; display:inline-flex; align-items:center; gap:4px;">
+                        <i class="fa-solid fa-crown" style="color:#ca8a04;"></i> Maestro Guía
+                    </span>
+                ` : '';
+
                 cardsHtml += `
                     <div style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:10px; margin-bottom:20px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
                         <!-- ENCABEZADO DEL GRADO Y SECCIÓN -->
@@ -10040,7 +10326,10 @@ function renderDashboard() {
                                     <i class="fa-solid fa-graduation-cap"></i>
                                 </div>
                                 <div>
-                                    <strong style="font-size:1.08rem; display:block; letter-spacing:0.3px;">${g.grade} — ${secClean}</strong>
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <strong style="font-size:1.08rem; display:block; letter-spacing:0.3px;">${g.grade} — ${secClean}</strong>
+                                        ${guideBadge}
+                                    </div>
                                     <span style="font-size:0.82rem; opacity:0.92;"><i class="fa-solid fa-award"></i> ${g.career}</span>
                                 </div>
                             </div>
@@ -10049,35 +10338,74 @@ function renderDashboard() {
                                     <i class="fa-solid fa-users"></i> ${studentCount} Estudiantes
                                 </span>
                                 <button type="button" class="btn btn-xs" onclick="openAttendanceForGrade('${g.grade}', '${g.section}')" style="background:white; color:#15803d; font-weight:800; border:none; padding:5px 12px; border-radius:6px; cursor:pointer; font-size:0.8rem; box-shadow:0 1px 3px rgba(0,0,0,0.1);" title="Tomar asistencia para esta sección">
-                                    <i class="fa-solid fa-calendar-check"></i> Asistencia
+                                    <i class="fa-solid fa-calendar-check"></i> Asistencia Grado
                                 </button>
                             </div>
                         </div>
 
                         <!-- LISTADO DE MATERIAS / CLASES DE ESTE GRADO -->
                         <div style="padding:16px;">
-                            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:14px;">
-                                ${g.classes.map(c => `
+                            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap:14px;">
+                                ${g.classes.map(c => {
+                                    const classStudents = (typeof getSortedGradebookStudents === 'function')
+                                        ? getSortedGradebookStudents(c.gradeCode || c.grade, c)
+                                        : (STATE.students || []).filter(s => s && (s.grade === c.grade || (s.gradeLabel && s.gradeLabel.includes(c.grade))));
+                                    const activeClassStudents = classStudents.filter(s => s && s.status !== 'Retirado' && s.status !== 'Inactivo');
+                                    let gradedCount = 0;
+                                    activeClassStudents.forEach(s => {
+                                        const isExon = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, c.subject, activeBimestreDisplay);
+                                        if (isExon) { gradedCount++; return; }
+                                        const uData = s.gradebookDetails && s.gradebookDetails[c.subject] && s.gradebookDetails[c.subject][activeBimestreDisplay];
+                                        const acts = uData ? (uData.activities || []) : [];
+                                        const exam = uData ? (parseInt(uData.exam) || 0) : 0;
+                                        if (acts.some(v => (parseInt(v) || 0) > 0) || exam > 0) gradedCount++;
+                                    });
+                                    const totalSt = activeClassStudents.length;
+                                    const pct = totalSt > 0 ? Math.round((gradedCount / totalSt) * 100) : 0;
+
+                                    const editPerm = (typeof isGradebookEditableForUser === 'function')
+                                        ? isGradebookEditableForUser(c.id, activeBimestreDisplay)
+                                        : { editable: true };
+                                    const isEditable = editPerm && editPerm.editable;
+
+                                    return `
                                     <div style="background:var(--bg-main); border:1px solid var(--border-color); border-radius:8px; padding:14px; display:flex; flex-direction:column; justify-content:space-between; gap:12px; transition:box-shadow 0.2s;">
                                         <div>
-                                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                                                <strong style="font-size:0.98rem; color:var(--text-primary);"><i class="fa-solid fa-book-open" style="color:var(--brand-green); margin-right:8px;"></i>${c.subject}</strong>
+                                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                                                <strong style="font-size:0.98rem; color:var(--text-primary);"><i class="fa-solid fa-book-open" style="color:var(--brand-green); margin-right:8px;"></i>${escapeHtml(c.subject)}</strong>
+                                                <span class="badge" style="background:${isEditable ? '#ecfdf5' : '#fffbeb'}; color:${isEditable ? '#15803d' : '#b45309'}; border:1px solid ${isEditable ? '#a7f3d0' : '#fde68a'}; font-size:0.72rem; padding:3px 7px; font-weight:800; white-space:nowrap;">
+                                                    <i class="fa-solid ${isEditable ? 'fa-lock-open' : 'fa-lock'}"></i> ${isEditable ? 'Habilitado' : 'Cerrado'}
+                                                </span>
                                             </div>
-                                            <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:6px; display:flex; flex-direction:column; gap:2px;">
+                                            <div style="font-size:0.8rem; color:var(--text-secondary); margin-top:6px; display:flex; flex-direction:column; gap:3px;">
                                                 <span>Código: <code>${c.code || c.id}</code></span>
-                                                <span>Bimestre Habilitado: <strong style="color:var(--brand-green-dark);">${STATE.config?.activeBimestre || 2}° Bimestre</strong></span>
+                                                <span>Bimestre: <strong style="color:var(--brand-green-dark);">${activeBimestreDisplay}° Bimestre</strong></span>
+                                                
+                                                <div style="margin-top:4px;">
+                                                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.74rem; margin-bottom:2px;">
+                                                        <span style="font-weight:700; color:var(--text-secondary);">Avance Notas:</span>
+                                                        <span style="font-weight:800; color:${pct === 100 ? '#15803d' : (pct >= 50 ? '#0284c7' : '#b45309')};">${gradedCount}/${totalSt} (${pct}%)</span>
+                                                    </div>
+                                                    <div style="background:#e2e8f0; border-radius:999px; height:6px; overflow:hidden;">
+                                                        <div style="width:${pct}%; height:100%; background:${pct === 100 ? '#16a34a' : (pct >= 50 ? '#0284c7' : '#f59e0b')}; border-radius:999px; transition:width 0.3s ease;"></div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div style="display:flex; gap:8px; border-top:1px dashed var(--border-color); padding-top:10px;">
-                                            <button type="button" class="btn btn-primary btn-sm" onclick="openGradebookForCourse('${c.id}')" style="flex:2; font-weight:700;">
+                                        <div style="display:flex; gap:6px; border-top:1px dashed var(--border-color); padding-top:10px; flex-wrap:wrap;">
+                                            <button type="button" class="btn btn-primary btn-sm" onclick="openGradebookForCourse('${c.id}')" style="flex:2; font-weight:700; padding:4px 8px; font-size:0.82rem;">
                                                 <i class="fa-solid fa-pen-to-square"></i> Ingresar Notas
                                             </button>
-                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openCoursePrintModal('${c.id}', '${escapeHtml(g.grade)}', '${escapeHtml(g.section)}', '${escapeHtml(c.subject)}')" style="flex:1;" title="Imprimir Listas Oficiales">
+                                            <button type="button" class="btn btn-outline-success btn-sm" onclick="openAttendanceForGrade('${escapeHtml(g.grade)}', '${escapeHtml(g.section)}', '${c.id}')" style="flex:1.2; font-weight:700; padding:4px 8px; font-size:0.82rem;" title="Pase de lista de hoy para este curso">
+                                                <i class="fa-solid fa-calendar-check"></i> Asistencia
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openCoursePrintModal('${c.id}', '${escapeHtml(g.grade)}', '${escapeHtml(g.section)}', '${escapeHtml(c.subject)}')" style="flex:1; padding:4px 8px; font-size:0.82rem;" title="Imprimir Listas Oficiales">
                                                 <i class="fa-solid fa-print"></i> Lista
                                             </button>
                                         </div>
                                     </div>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </div>
                         </div>
                     </div>
@@ -10102,6 +10430,382 @@ function renderDashboard() {
             `;
         }
 
+        renderCurrentDashboardAlerts();
+    } else if (STATE.currentRole === 'director' || STATE.currentRole === 'admin') {
+        const isDirector = (STATE.currentRole === 'director');
+        welcomeTitle.textContent = isDirector ? `¡Bienvenido(a) Director(a), ${currentUser.name}!` : `¡Panel de Super Administrador, ${currentUser.name}!`;
+        welcomeSubtitle.textContent = `Supervisión Académica Integral, Auditoría de Calificaciones y Respaldo Institucional.`;
+
+        const activeBimestreDisplay = STATE.config?.bimestreActivoOficial || STATE.config?.activeBimestre || 1;
+        const allStudents = STATE.students || [];
+        const activeStudents = allStudents.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || s.active !== false);
+        const allPensum = STATE.pensum || [];
+        const allTeachers = (STATE.users || []).filter(u => u.role === 'docente');
+
+        // Calcular Semáforo de Cumplimiento Docente
+        let fullDoneTeachers = 0;
+        let inProgressTeachers = 0;
+        let pendingTeachers = 0;
+
+        const teacherStats = allTeachers.map(t => {
+            const tCourses = allPensum.filter(p => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(p, t) : (p.teacherId === t.id || (p.teacher && p.teacher.toLowerCase() === t.name.toLowerCase())));
+            let tTotalCourses = tCourses.length;
+            let tDoneCourses = 0;
+
+            tCourses.forEach(c => {
+                const gradeCode = c.gradeCode || c.grade;
+                const cStudents = (typeof getSortedGradebookStudents === 'function')
+                    ? getSortedGradebookStudents(gradeCode, c)
+                    : allStudents.filter(s => s.grade === gradeCode || (s.gradeLabel && s.gradeLabel.includes(c.grade)));
+                const cActive = cStudents.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo');
+                if (cActive.length === 0) return;
+                const isFullyGraded = cActive.every(s => {
+                    const isExon = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, c.subject, activeBimestreDisplay);
+                    if (isExon) return true;
+                    const uData = s.gradebookDetails && s.gradebookDetails[c.subject] && s.gradebookDetails[c.subject][activeBimestreDisplay];
+                    const acts = uData ? (uData.activities || []) : [];
+                    const exam = uData ? (parseInt(uData.exam) || 0) : 0;
+                    return acts.some(v => (parseInt(v) || 0) > 0) || exam > 0;
+                });
+                if (isFullyGraded) tDoneCourses++;
+            });
+
+            const status = tTotalCourses === 0 ? 'Sin cursos' : (tDoneCourses === tTotalCourses ? 'done' : (tDoneCourses > 0 ? 'progress' : 'pending'));
+            if (status === 'done') fullDoneTeachers++;
+            else if (status === 'progress') inProgressTeachers++;
+            else if (status === 'pending') pendingTeachers++;
+
+            return {
+                teacher: t,
+                totalCourses: tTotalCourses,
+                doneCourses: tDoneCourses,
+                status: status
+            };
+        });
+
+        const lastBackupStr = localStorage.getItem('ENCCO_LAST_BACKUP_TIME');
+        let backupLabel = 'Sin registrar';
+        if (lastBackupStr) {
+            const bDate = new Date(lastBackupStr);
+            backupLabel = `${bDate.toLocaleDateString('es-GT')} ${bDate.toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' })}`;
+        }
+
+        kpiGrid.innerHTML = `
+            <div class="kpi-card"><div class="kpi-icon green"><i class="fa-solid fa-graduation-cap"></i></div><div class="kpi-info"><h4>Matrícula Activa</h4><h2>${activeStudents.length}</h2><p>Estudiantes inscritos</p></div></div>
+            <div class="kpi-card"><div class="kpi-icon blue"><i class="fa-solid fa-chalkboard-user"></i></div><div class="kpi-info"><h4>Claustro Docente</h4><h2>${allTeachers.length}</h2><p>${fullDoneTeachers} al día (${activeBimestreDisplay}° Bimestre)</p></div></div>
+            <div class="kpi-card"><div class="kpi-icon purple"><i class="fa-solid fa-clipboard-check"></i></div><div class="kpi-info"><h4>Cátedras Oficiales</h4><h2>${allPensum.length}</h2><p>En pensum CNB</p></div></div>
+            <div class="kpi-card"><div class="kpi-icon orange"><i class="fa-solid fa-shield-halved"></i></div><div class="kpi-info"><h4>Último Respaldo</h4><h2 style="font-size:1.02rem; line-height:1.4;">${backupLabel}</h2><p>Base de datos certificada</p></div></div>
+        `;
+
+        mainBody.innerHTML = `
+            <!-- SEMÁFORO EJECUTIVO DE CUMPLIMIENTO DOCENTE -->
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:18px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.03);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
+                    <div>
+                        <h4 style="margin:0; font-size:1.02rem; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-traffic-light" style="color:#16a34a;"></i> Semáforo Ejecutivo de Entrega de Calificaciones (${activeBimestreDisplay}° Bimestre)
+                        </h4>
+                        <p style="margin:3px 0 0 0; font-size:0.78rem; color:#64748b;">
+                            Supervisión en tiempo real del progreso de ingreso de notas por cada catedrático titular.
+                        </p>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-outline-success btn-xs" onclick="openUniversalBackupModal()" style="font-weight:700;">
+                            <i class="fa-solid fa-shield-halved"></i> Respaldo Maestro JSON
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-xs" onclick="openSystemAuditLogModal()" style="font-weight:700;">
+                            <i class="fa-solid fa-clipboard-list"></i> Bitácora de Auditoría
+                        </button>
+                        <button type="button" class="btn btn-outline-warning btn-xs" onclick="navigateTo('grade-lock')" style="font-weight:700;">
+                            <i class="fa-solid fa-lock"></i> Cierres Bimestrales
+                        </button>
+                    </div>
+                </div>
+
+                <!-- RESUMEN DE ESTADO DOCENTE EN 3 PILARES -->
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:16px;">
+                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 14px; display:flex; align-items:center; gap:10px;">
+                        <div style="width:36px; height:36px; border-radius:50%; background:#22c55e; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800;">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:0.75rem; color:#166534; font-weight:700;">Al Día (100%):</div>
+                            <div style="font-size:1.15rem; font-weight:800; color:#14532d;">${fullDoneTeachers} Docentes</div>
+                        </div>
+                    </div>
+                    <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; display:flex; align-items:center; gap:10px;">
+                        <div style="width:36px; height:36px; border-radius:50%; background:#f59e0b; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800;">
+                            <i class="fa-solid fa-spinner"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:0.75rem; color:#92400e; font-weight:700;">En Progreso:</div>
+                            <div style="font-size:1.15rem; font-weight:800; color:#78350f;">${inProgressTeachers} Docentes</div>
+                        </div>
+                    </div>
+                    <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 14px; display:flex; align-items:center; gap:10px;">
+                        <div style="width:36px; height:36px; border-radius:50%; background:#ef4444; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800;">
+                            <i class="fa-solid fa-hourglass-start"></i>
+                        </div>
+                        <div>
+                            <div style="font-size:0.75rem; color:#b91c1c; font-weight:700;">Sin Iniciar:</div>
+                            <div style="font-size:1.15rem; font-weight:800; color:#7f1d1d;">${pendingTeachers} Docentes</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TABLA DE SUPERVISIÓN DOCENTE -->
+                <div style="max-height:280px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px;">
+                    <table class="table table-hover" style="margin:0; font-size:0.83rem;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#334155; position:sticky; top:0; z-index:1;">
+                                <th style="padding:8px 12px;">Catedrático(a)</th>
+                                <th style="padding:8px 12px; text-align:center;">Cátedras Asignadas</th>
+                                <th style="padding:8px 12px; text-align:center;">Cátedras al 100%</th>
+                                <th style="padding:8px 12px; text-align:center;">Estado</th>
+                                <th style="padding:8px 12px; text-align:center;">Acción Directiva</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${teacherStats.map(ts => {
+                                let badgeHtml = '<span class="badge badge-secondary">Sin cursos</span>';
+                                if (ts.status === 'done') badgeHtml = '<span class="badge badge-success"><i class="fa-solid fa-check"></i> Completo</span>';
+                                else if (ts.status === 'progress') badgeHtml = '<span class="badge badge-warning"><i class="fa-solid fa-clock"></i> En Progreso</span>';
+                                else if (ts.status === 'pending') badgeHtml = '<span class="badge badge-danger"><i class="fa-solid fa-triangle-exclamation"></i> Pendiente</span>';
+
+                                return `
+                                    <tr>
+                                        <td><strong>${escapeHtml(ts.teacher.name)}</strong><br><small style="color:#64748b;">${ts.teacher.title || 'Docente 011/021'}</small></td>
+                                        <td style="text-align:center; font-weight:700;">${ts.totalCourses}</td>
+                                        <td style="text-align:center; font-weight:800; color:#15803d;">${ts.doneCourses}/${ts.totalCourses}</td>
+                                        <td style="text-align:center;">${badgeHtml}</td>
+                                        <td style="text-align:center;">
+                                            <button type="button" class="btn btn-outline-primary btn-xs" onclick="openGradebookAuditForTeacher('${ts.teacher.id}')" title="Auditar calificaciones de este docente" style="padding:3px 8px; font-size:0.75rem;">
+                                                <i class="fa-solid fa-magnifying-glass"></i> Auditar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- MATRÍCULA Y RESUMEN POR SECCIÓN -->
+            <div style="border-top:1px solid var(--border-color); padding-top:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h4 style="color:var(--brand-green-dark); margin:0; font-size:0.95rem; font-weight:800;">
+                        <i class="fa-solid fa-chart-simple"></i> Matrícula por Grado y Sección (Ciclo ${STATE.activeCycle || '2026'}):
+                    </h4>
+                    <button class="btn btn-outline-primary btn-xs" onclick="navigateTo('grades')" style="font-size:0.78rem;">
+                        <i class="fa-solid fa-graduation-cap"></i> Gestionar Grados
+                    </button>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    ${(STATE.gradesList && STATE.gradesList.length > 0) ? STATE.gradesList.map(g => {
+                        const count = getStudentCountByGradeAndSection(g.code, g.name, g.section);
+                        return `
+                            <div style="background:var(--bg-main); border:1px solid var(--border-color); border-left:4px solid var(--brand-green); padding:8px 12px; border-radius:var(--radius-sm); min-width:180px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                                <div style="font-size:0.85rem; font-weight:700; color:var(--text-primary);">${g.name} <span class="badge badge-primary" style="font-size:0.72rem; padding:2px 6px;">${g.section}</span></div>
+                                <small style="color:var(--text-secondary);">${g.career}</small>
+                                <div style="margin-top:4px; font-size:0.88rem; font-weight:800; color:var(--brand-green-dark);">
+                                    <i class="fa-solid fa-users"></i> ${count} ${count === 1 ? 'estudiante' : 'estudiantes'}
+                                </div>
+                            </div>
+                        `;
+                    }).join('') : '<p style="color:var(--text-muted); font-size:0.85rem;">No hay grados ni secciones registradas aún.</p>'}
+                </div>
+            </div>
+        `;
+        renderCurrentDashboardAlerts();
+    } else if (STATE.currentRole === 'secretaria') {
+        welcomeTitle.textContent = `¡Bienvenida Secretaría Académica, ${currentUser.name}!`;
+        welcomeSubtitle.textContent = `Gestión Oficial de Matrícula, Fichas Estudiantiles, Expedientes y Módulo SIRE MINEDUC.`;
+
+        const allStudents = STATE.students || [];
+        const activeStudents = allStudents.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || s.active !== false);
+        const codeValidCount = allStudents.filter(s => s.personalCode && s.personalCode.trim().length >= 5).length;
+        const codeMissingCount = allStudents.length - codeValidCount;
+        const retiredCount = allStudents.filter(s => s.status === 'Retirado' || s.status === 'Ausente').length;
+
+        kpiGrid.innerHTML = `
+            <div class="kpi-card"><div class="kpi-icon green"><i class="fa-solid fa-user-graduate"></i></div><div class="kpi-info"><h4>Matrícula Total</h4><h2>${allStudents.length}</h2><p>${activeStudents.length} activos en el ciclo</p></div></div>
+            <div class="kpi-card"><div class="kpi-icon blue"><i class="fa-solid fa-id-badge"></i></div><div class="kpi-info"><h4>Códigos SIRE</h4><h2>${codeValidCount}</h2><p>${codeMissingCount} pendientes de código</p></div></div>
+            <div class="kpi-card"><div class="kpi-icon orange"><i class="fa-solid fa-user-xmark"></i></div><div class="kpi-info"><h4>Retirados / Bajas</h4><h2>${retiredCount}</h2><p>Con motivo registrado</p></div></div>
+            <div class="kpi-card"><div class="kpi-icon purple"><i class="fa-solid fa-folder-closed"></i></div><div class="kpi-info"><h4>Grados Habilitados</h4><h2>${(STATE.gradesList || []).length}</h2><p>Secciones oficiales</p></div></div>
+        `;
+
+        mainBody.innerHTML = `
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:18px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.03);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
+                    <div>
+                        <h4 style="margin:0; font-size:1.02rem; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-id-card-clip" style="color:#7c3aed;"></i> Panel de Control de Matrícula y Expedientes Oficiales
+                        </h4>
+                        <p style="margin:3px 0 0 0; font-size:0.78rem; color:#64748b;">
+                            Acceso directo para inscripción, emisión de certificados, sábanas y expedientes de estudiantes.
+                        </p>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-success btn-xs" onclick="navigateTo('enrollment')" style="font-weight:700;">
+                            <i class="fa-solid fa-user-plus"></i> Inscribir Estudiante
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-xs" onclick="navigateTo('datos-sire')" style="font-weight:700;">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Módulo SIRE
+                        </button>
+                        <button type="button" class="btn btn-outline-purple btn-xs" onclick="navigateTo('reports')" style="font-weight:700; color:#7c3aed; border-color:#c4b5fd;">
+                            <i class="fa-solid fa-print"></i> Sábanas y Boletines
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-xs" onclick="openSystemAuditLogModal()" style="font-weight:700;">
+                            <i class="fa-solid fa-clipboard-list"></i> Auditoría
+                        </button>
+                    </div>
+                </div>
+
+                <div style="border-top:1px solid var(--border-color); padding-top:14px;">
+                    <h5 style="margin-bottom:10px; font-weight:800; color:#334155; font-size:0.9rem;">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Estudiantes Recientemente Registrados / Actualizados:
+                    </h5>
+                    <table class="custom-table" style="font-size:0.83rem;">
+                        <thead><tr><th>Carné</th><th>Estudiante</th><th>Código MINEDUC</th><th>Grado y Sección</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <tbody>
+                            ${allStudents.slice(-6).reverse().map(s => `
+                                <tr>
+                                    <td><code>${s.carne || ''}</code></td>
+                                    <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
+                                    <td><small style="font-weight:700; color:#15803d;">${s.personalCode || '— Pendiente —'}</small></td>
+                                    <td>${formatStudentGradeAndSection(s)}</td>
+                                    <td><span class="badge ${s.status === 'Activo' || s.status === 'Inscrito' ? 'badge-success' : 'badge-danger'}">${s.status}</span></td>
+                                    <td>
+                                        <button class="btn btn-outline-primary btn-xs" onclick="openStudentProfileModal('${s.id}')" style="padding:2px 8px; font-size:0.75rem;">
+                                            <i class="fa-solid fa-id-card"></i> Expediente
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        renderCurrentDashboardAlerts();
+    } else if (STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar' || STATE.currentRole === 'auxiliatura') {
+        welcomeTitle.textContent = `¡Bienvenido Auxiliar y Convivencia, ${currentUser.name}!`;
+        welcomeSubtitle.textContent = `Control Central de Asistencia, Radar de Inasistencias Críticas y Pases de Salida.`;
+
+        const allStudents = STATE.students || [];
+        const activeStudents = allStudents.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || s.active !== false);
+
+        // Radar de ausencias críticas (estudiantes con >= 2 faltas en el mes actual)
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth() + 1;
+        const prefix = `${y}-${String(m).padStart(2, '0')}`;
+        const criticalAbsenceStudents = [];
+
+        activeStudents.forEach(s => {
+            let absCount = 0;
+            Object.keys(STATE.attendanceRecords || {}).forEach(k => {
+                if (k.startsWith(prefix)) {
+                    const rec = STATE.attendanceRecords[k];
+                    if (rec && (rec[s.id] === 'A' || rec[s.id] === 'ausente')) {
+                        absCount++;
+                    }
+                }
+            });
+            if (absCount >= 2) {
+                criticalAbsenceStudents.push({ student: s, absences: absCount });
+            }
+        });
+        criticalAbsenceStudents.sort((a, b) => b.absences - a.absences);
+
+        const permitsCount = (STATE.studentPermissions || []).length;
+        const disciplineCount = (STATE.disciplineReports || []).length;
+
+        kpiGrid.innerHTML = `
+            <div class="kpi-card"><div class="kpi-icon green"><i class="fa-solid fa-calendar-check"></i></div><div class="kpi-info"><h4>Alumnos Activos</h4><h2>${activeStudents.length}</h2><p>Bajo supervisión</p></div></div>
+            <div class="kpi-card"><div class="kpi-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="kpi-info"><h4>Radar Inasistencias</h4><h2>${criticalAbsenceStudents.length}</h2><p>Alumnos con ≥ 2 faltas</p></div></div>
+            <div class="kpi-card"><div class="kpi-icon blue"><i class="fa-solid fa-file-signature"></i></div><div class="kpi-info"><h4>Permisos Emitidos</h4><h2>${permitsCount}</h2><p>Justificaciones oficiales</p></div></div>
+            <div class="kpi-card"><div class="kpi-icon orange"><i class="fa-solid fa-scale-balanced"></i></div><div class="kpi-info"><h4>Actas Disciplinarias</h4><h2>${disciplineCount}</h2><p>Registros de convivencia</p></div></div>
+        `;
+
+        mainBody.innerHTML = `
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:18px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.03);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px; border-bottom:1px solid #f1f5f9; padding-bottom:10px;">
+                    <div>
+                        <h4 style="margin:0; font-size:1.02rem; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-bullhorn" style="color:#dc2626;"></i> Radar de Inasistencias Críticas y Alerta Temprana (Mes en Curso)
+                        </h4>
+                        <p style="margin:3px 0 0 0; font-size:0.78rem; color:#64748b;">
+                            Estudiantes con dos o más faltas injustificadas registradas por catedráticos en el pase de lista diario.
+                        </p>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-danger btn-xs" onclick="navigateTo('auxiliatura-log')" style="font-weight:700;">
+                            <i class="fa-solid fa-clipboard-user"></i> Bitácora de Ausencias
+                        </button>
+                        <button type="button" class="btn btn-success btn-xs" onclick="openAttendanceCameraScanner()" style="font-weight:700;">
+                            <i class="fa-solid fa-camera"></i> Escáner con Cámara
+                        </button>
+                        <button type="button" class="btn btn-warning btn-xs" onclick="openCreatePermissionModal()" style="font-weight:700; color:#78350f;">
+                            <i class="fa-solid fa-plus"></i> Emitir Permiso
+                        </button>
+                    </div>
+                </div>
+
+                <div style="max-height:300px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px;">
+                    <table class="table table-hover" style="margin:0; font-size:0.83rem;">
+                        <thead>
+                            <tr style="background:#f8fafc; color:#334155; position:sticky; top:0; z-index:1;">
+                                <th style="padding:8px 12px;">Estudiante</th>
+                                <th style="padding:8px 12px;">Grado y Sección</th>
+                                <th style="padding:8px 12px; text-align:center;">Faltas Mes</th>
+                                <th style="padding:8px 12px;">Encargado / Teléfono</th>
+                                <th style="padding:8px 12px; text-align:center;">Acciones Inmediatas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${criticalAbsenceStudents.length > 0 ? criticalAbsenceStudents.map(item => {
+                                const st = item.student;
+                                const tel = st.tutorPhone || st.phone;
+                                return `
+                                    <tr>
+                                        <td><strong>${escapeHtml(formatStudentDisplayName(st, 'lastFirst'))}</strong><br><small style="color:#64748b;">Carné: ${st.carne}</small></td>
+                                        <td>${formatStudentGradeAndSection(st)}</td>
+                                        <td style="text-align:center;">
+                                            <span class="badge badge-danger" style="font-weight:800; font-size:0.82rem;">${item.absences} faltas</span>
+                                        </td>
+                                        <td>
+                                            ${escapeHtml(st.tutor || 'No registrado')}<br>
+                                            <small style="color:#64748b;"><i class="fa-solid fa-phone"></i> ${escapeHtml(tel || 'Sin tel.')}</small>
+                                        </td>
+                                        <td style="text-align:center;">
+                                            <div style="display:inline-flex; gap:6px;">
+                                                ${tel ? `
+                                                    <button type="button" class="btn btn-xs" onclick="openStudentWhatsAppChat('${st.id}')" title="Avisar a encargado por WhatsApp" style="background:#25D366; color:#fff; border:none; padding:3px 8px; font-weight:700; border-radius:4px;">
+                                                        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                                                    </button>
+                                                ` : ''}
+                                                <button type="button" class="btn btn-outline-primary btn-xs" onclick="openStudentProfileModal('${st.id}')" title="Ver Ficha y Asistencias" style="padding:3px 8px;">
+                                                    <i class="fa-solid fa-id-card"></i> Expediente
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('') : `
+                                <tr>
+                                    <td colspan="5" style="text-align:center; padding:24px; color:#64748b;">
+                                        <i class="fa-solid fa-circle-check" style="font-size:1.8rem; color:#16a34a; display:block; margin-bottom:6px;"></i>
+                                        ¡Excelente! No hay estudiantes con ausencias críticas acumuladas en el mes actual.
+                                    </td>
+                                </tr>
+                            `}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
         renderCurrentDashboardAlerts();
     } else {
         const roleTitleMap = { admin: 'Super Administrador', director: 'Directora', secretaria: 'Secretaria Académica', profesor_auxiliar: 'Profesor Auxiliar y Disciplinario', docente: 'Catedrático Titular' };
@@ -10137,38 +10841,30 @@ function renderDashboard() {
                                 </div>
                             </div>
                         `;
-                    }).join('') : '<p style="color:var(--text-muted); font-size:0.85rem;">No hay grados ni secciones registradas aún. Registre grados para ver el conteo de matrícula.</p>'}
+                    }).join('') : '<p style="color:var(--text-muted); font-size:0.85rem;">No hay grados ni secciones registradas aún.</p>'}
                 </div>
-            </div>
-
-            <div style="border-top:1px solid var(--border-color); padding-top:14px;">
-                <h4 style="color:var(--text-primary); margin-bottom:10px; font-size:0.92rem; font-weight:800;">
-                    <i class="fa-solid fa-clock-rotate-left"></i> Últimos Alumnos Registrados:
-                </h4>
-                <table class="custom-table">
-                    <thead><tr><th>Carné</th><th>Estudiante</th><th>Grado y Sección</th><th>Estado</th></tr></thead>
-                    <tbody>
-                        ${(STATE.students || []).length > 0 ? (STATE.students || []).slice(-5).reverse().map(s => `
-                            <tr>
-                                <td><code>${s.carne || ''}</code></td>
-                                <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
-                                <td>${formatStudentGradeAndSection(s)}</td>
-                                <td><span class="badge ${s.status==='Activo'?'badge-success':'badge-danger'}">${s.status}</span></td>
-                            </tr>
-                        `).join('') : `
-                            <tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-muted);">
-                                <i class="fa-solid fa-user-graduate" style="font-size:1.5rem; margin-bottom:6px; display:block; color:var(--brand-green);"></i>
-                                Base de datos limpia y lista. No hay estudiantes inscritos aún.
-                            </td></tr>
-                        `}
-                    </tbody>
-                </table>
             </div>
         `;
 
         renderCurrentDashboardAlerts();
     }
 }
+
+function openGradebookAuditForTeacher(teacherId) {
+    navigateTo('gradebook');
+    setTimeout(() => {
+        if (typeof renderDirectorTeacherAuditPanel === 'function') {
+            renderDirectorTeacherAuditPanel();
+        }
+        const row = document.getElementById('teacherRow_' + teacherId);
+        if (row) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            row.style.background = '#fef08a';
+            setTimeout(() => { row.style.background = ''; }, 2500);
+        }
+    }, 150);
+}
+window.openGradebookAuditForTeacher = openGradebookAuditForTeacher;
 
 function openGradebookForCourse(courseId) {
     try {
@@ -10875,6 +11571,40 @@ function resetStudentFilters() {
 }
 window.resetStudentFilters = resetStudentFilters;
 
+// 📲 CONTACTO DIRECTO POR WHATSAPP CON EL ENCARGADO DEL ESTUDIANTE
+function openStudentWhatsAppChat(studentId) {
+    const student = (STATE.students || []).find(s => String(s.id) === String(studentId));
+    if (!student) return;
+    const phone = student.tutorPhone || student.guardianPhone || student.phone || student.motherPhone || student.fatherPhone || '';
+    const cleanPhone = String(phone).replace(/\D/g, '');
+    const sName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(student, 'lastFirst') : `${student.firstName || ''} ${student.lastName || ''}`;
+    const gradeLabel = student.grade || student.gradeLabel || '';
+    
+    if (!cleanPhone || cleanPhone.length < 8) {
+        if (typeof showToast === 'function') {
+            showToast(`El estudiante ${sName} no cuenta con un número de teléfono/WhatsApp válido registrado.`, 'warning');
+        }
+        return;
+    }
+    
+    const formattedPhone = cleanPhone.length === 8 ? `502${cleanPhone}` : cleanPhone;
+    const msg = `Estimado(a) padre/madre de familia o encargado de ${sName} (${gradeLabel}): Le saluda el personal docente de la Escuela Nacional de Ciencias Comerciales (ENCCO Jutiapa) para tratar asuntos académicos del estudiante.`;
+    window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+window.openStudentWhatsAppChat = openStudentWhatsAppChat;
+
+function showTeacherAssignedStudents() {
+    window._filterTeacherOnlyAssigned = true;
+    renderStudentsTable();
+}
+window.showTeacherAssignedStudents = showTeacherAssignedStudents;
+
+function toggleTeacherStudentsScope() {
+    window._filterTeacherOnlyAssigned = !window._filterTeacherOnlyAssigned;
+    renderStudentsTable();
+}
+window.toggleTeacherStudentsScope = toggleTeacherStudentsScope;
+
 function renderStudentsTable() {
     const tbody = document.getElementById('studentsTableBody');
     if (!tbody) return;
@@ -10926,9 +11656,10 @@ function renderStudentsTable() {
 
     const sValLower = (statusVal || '').toLowerCase().trim();
     const isSpecialStatusFilter = (sValLower === 'retirado' || sValLower === 'ausente' || sValLower === 'inactivo' || sValLower === 'all');
+    const isTeacherScope = (STATE.currentRole === 'docente' && window._filterTeacherOnlyAssigned);
 
     // Verificación estricta: Si no se ha seleccionado grado/sección, no hay búsqueda activa por texto y el estado es Activo (por defecto)
-    if (!gradeVal && !searchVal && !isSpecialStatusFilter) {
+    if (!gradeVal && !searchVal && !isSpecialStatusFilter && !isTeacherScope) {
         if (summaryBox) summaryBox.style.display = 'none';
         tbody.innerHTML = `
             <tr>
@@ -10943,11 +11674,18 @@ function renderStudentsTable() {
                         <p style="font-size:0.88rem; color:#64748b; line-height:1.5; margin-bottom:18px;">
                             Para visualizar la nómina regular de estudiantes activos, consultar expedientes o generar la <strong>Nómina en Blanco con 8 Casillas (sin firmas)</strong>, elija los filtros superiores o filtre directamente por estado (Retirados / Ausentes).
                         </p>
-                        <div style="display:flex; justify-content:center; gap:10px; font-size:0.82rem; font-weight:700;">
+                        <div style="display:flex; justify-content:center; gap:10px; font-size:0.82rem; font-weight:700; flex-wrap:wrap;">
                             <span class="badge" style="background:#e2e8f0; color:#334155; padding:6px 12px;"><i class="fa-solid fa-graduation-cap"></i> 1. Carrera</span>
                             <span class="badge" style="background:#e2e8f0; color:#334155; padding:6px 12px;"><i class="fa-solid fa-school"></i> 2. Grado</span>
                             <span class="badge" style="background:#e2e8f0; color:#334155; padding:6px 12px;"><i class="fa-solid fa-users-rectangle"></i> 3. Sección</span>
                         </div>
+                        ${STATE.currentRole === 'docente' ? `
+                            <div style="margin-top:18px; border-top:1px dashed #cbd5e1; padding-top:14px;">
+                                <button type="button" class="btn btn-success btn-sm" onclick="showTeacherAssignedStudents()" style="font-weight:700;">
+                                    <i class="fa-solid fa-users-viewfinder"></i> Ver Mis Alumnos Asignados Directamente
+                                </button>
+                            </div>
+                        ` : ''}
                     </div>
                 </td>
             </tr>
@@ -11065,6 +11803,13 @@ function renderStudentsTable() {
         else if (statusVal === 'Ausente') statusText = ' [Ausentes / Desertores]';
         else if (statusVal === 'ALL') statusText = ' [Todos los Estados]';
         
+        const isDocente = (STATE.currentRole === 'docente');
+        const teacherScopeBtn = isDocente ? `
+            <button type="button" class="btn ${window._filterTeacherOnlyAssigned ? 'btn-success' : 'btn-outline-primary'} btn-xs" onclick="toggleTeacherStudentsScope()" style="padding:3px 10px; font-size:0.75rem; font-weight:700;">
+                <i class="fa-solid fa-${window._filterTeacherOnlyAssigned ? 'users-viewfinder' : 'globe'}"></i> ${window._filterTeacherOnlyAssigned ? 'Mis Cátedras Solamente' : 'Ver Toda la Escuela'}
+            </button>
+        ` : '';
+
         summaryBox.innerHTML = `
             <div>
                 <i class="fa-solid fa-users" style="color:var(--brand-green);"></i> 
@@ -11072,6 +11817,7 @@ function renderStudentsTable() {
                 Total: <span class="badge badge-success" style="font-size:0.82rem; font-weight:800;">${list.length} ${list.length === 1 ? 'estudiante' : 'estudiantes'}</span>
             </div>
             <div style="display:flex; gap:8px;">
+                ${teacherScopeBtn}
                 <button type="button" class="btn btn-outline-secondary btn-xs" onclick="resetStudentFilters()" style="padding:3px 10px; font-size:0.75rem;">
                     <i class="fa-solid fa-xmark"></i> Limpiar Filtros
                 </button>
@@ -11128,6 +11874,8 @@ function renderStudentsTable() {
             `<span class="badge" style="background:#f1f5f9; color:#64748b; font-size:0.75rem; border:1px solid #cbd5e1;" title="El récord general de notas es de acceso reservado a Dirección y Secretaría"><i class="fa-solid fa-lock"></i> Dirección</span>` :
             `<strong style="color:var(--brand-green-dark);">${avg} pts</strong>`;
 
+        const tutorTel = s.tutorPhone || s.phone;
+
         return `
             <tr style="${(s.status === 'Retirado' || s.status === 'Ausente') ? 'background:#f8fafc;' : ''}">
                 <td><img src="${s.photo}" class="student-table-avatar" alt="Foto"></td>
@@ -11148,7 +11896,17 @@ function renderStudentsTable() {
                         <i class="fa-solid fa-users-rectangle"></i> ${escapeHtml(sectionName)}
                     </span>
                 </td>
-                <td>${s.tutor || 'No registrado'}<br><small style="color:var(--text-muted);"><i class="fa-solid fa-phone"></i> ${s.tutorPhone || s.phone || 'Sin tel.'}</small></td>
+                <td>
+                    ${escapeHtml(s.tutor || 'No registrado')}<br>
+                    <div style="display:inline-flex; align-items:center; gap:6px; margin-top:2px;">
+                        <small style="color:var(--text-muted);"><i class="fa-solid fa-phone"></i> ${escapeHtml(tutorTel || 'Sin tel.')}</small>
+                        ${tutorTel ? `
+                            <button type="button" class="btn btn-xs" onclick="openStudentWhatsAppChat('${s.id}')" title="Contactar al encargado vía WhatsApp" style="padding:1px 6px; font-size:0.72rem; background:#25D366; color:#fff; border:none; border-radius:4px; font-weight:700; display:inline-flex; align-items:center; gap:3px; cursor:pointer;">
+                                <i class="fa-brands fa-whatsapp"></i> Chat
+                            </button>
+                        ` : ''}
+                    </div>
+                </td>
                 <td style="text-align:center;">${avgColumnContent}</td>
                 <td>${statusBadge}</td>
                 <td>
@@ -11156,6 +11914,11 @@ function renderStudentsTable() {
                         <button class="btn ${isDocente ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="openStudentProfileModal('${s.id}')" title="Ver Ficha de Datos, Reportes y Expediente">
                             <i class="fa-solid fa-id-card"></i> ${isDocente ? 'Ficha y Reportes' : 'Ficha de Datos'}
                         </button>
+                        ${tutorTel ? `
+                            <button type="button" class="btn btn-outline-success btn-sm" onclick="openStudentWhatsAppChat('${s.id}')" title="Contactar al encargado por WhatsApp" style="color:#15803d; border-color:#86efac; font-weight:600;">
+                                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                            </button>
+                        ` : ''}
                         ${canEdit ? `<button class="btn btn-outline-primary btn-sm" onclick="openEditStudentModal('${s.id}')" title="Editar en Ventana de Inscripción"><i class="fa-solid fa-user-pen"></i> Editar</button>` : ''}
                         ${canEdit ? `<button class="btn btn-outline-info btn-sm" onclick="openAcademicExonerationModal('${s.id}')" title="Consideración individual y exoneración de notas"><i class="fa-solid fa-user-shield"></i> Exoneraciones</button>` : ''}
                         ${canDelete ? `<button class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="deleteStudent('${s.id}')" title="Eliminar Estudiante"><i class="fa-solid fa-trash"></i> Eliminar</button>` : ''}
@@ -11234,6 +11997,9 @@ async function deleteStudent(studentId) {
         renderTeacherGradeProgressTable();
         populateAttendanceSelects(false);
         showToast(`El estudiante "${sName}" ha sido eliminado del sistema.`, "info");
+        try {
+            recordAuditLog('STUDENT_DELETE', 'Secretaría', `Estudiante eliminado: "${sName}" (${student.carne || ''}) con grado: ${student.grade || student.gradeCode || 'N/A'}`, studentId);
+        } catch(e) {}
 
         // 🌟 Persistencia atómica en Firestore y RTDB en segundo plano
         (async () => {
@@ -11810,6 +12576,13 @@ async function saveStudentForm(e) {
         if (typeof renderDashboard === 'function') renderDashboard();
 
         showToast(`Estudiante "${firstName} ${lastName}" guardado exitosamente.`, 'success');
+        try {
+            const auditAction = isEditing ? 'STUDENT_UPDATE' : 'STUDENT_ENROLL';
+            const auditDetails = isEditing 
+                ? `Expediente de estudiante actualizado: ${firstName} ${lastName} (${studentObj.carne || studentObj.id}) - Grado: ${grade}` 
+                : `Nueva matrícula de estudiante registrada: ${firstName} ${lastName} (${studentObj.carne || studentObj.id}) - Grado: ${grade}`;
+            recordAuditLog(auditAction, 'Secretaría', auditDetails, studentObj.id);
+        } catch(e) {}
         try {
             document.dispatchEvent(new CustomEvent('encco:student-enrolled', { detail: studentObj }));
         } catch(evErr) {}
@@ -13074,25 +13847,26 @@ function renderStudentProfileGrades(student) {
     let failedCount = 0;
 
     tbody.innerHTML = subjects.map(sub => {
-        const grades = (student.grades && student.grades[sub]) ? student.grades[sub] : [0, 0, 0, 0];
-        const g1 = grades[0] || 0;
-        const g2 = grades[1] || 0;
-        const g3 = grades[2] || 0;
-        const g4 = grades[3] || 0;
+        const gradesObj = (typeof getReportCardSubjectGrades === 'function') 
+            ? getReportCardSubjectGrades(student, sub) 
+            : null;
 
-        const isExon1 = (typeof isSubjectBimestreExonerated === 'function') ? isSubjectBimestreExonerated(student, sub, 1) : false;
-        const isExon2 = (typeof isSubjectBimestreExonerated === 'function') ? isSubjectBimestreExonerated(student, sub, 2) : false;
-        const isExon3 = (typeof isSubjectBimestreExonerated === 'function') ? isSubjectBimestreExonerated(student, sub, 3) : false;
-        const isExon4 = (typeof isSubjectBimestreExonerated === 'function') ? isSubjectBimestreExonerated(student, sub, 4) : false;
+        const isSpecial = gradesObj ? gradesObj.isSpecialUnique : (typeof isMateriaEspecialGraduacion === 'function' && isMateriaEspecialGraduacion(sub));
+        const rawGradeStr = (student.grade || student.gradeLabel || student.gradeCode || '').toUpperCase();
+        const is6to = rawGradeStr.includes('6') || rawGradeStr.includes('SEXTO') || rawGradeStr.includes('6TO');
 
-        const activeVals = [];
-        if (!isExon1 && g1 > 0) activeVals.push(g1);
-        if (!isExon2 && g2 > 0) activeVals.push(g2);
-        if (!isExon3 && g3 > 0) activeVals.push(g3);
-        if (!isExon4 && g4 > 0) activeVals.push(g4);
+        const g1 = gradesObj ? gradesObj.b1 : ((student.grades && student.grades[sub]) ? student.grades[sub][0] || 0 : 0);
+        const g2 = gradesObj ? gradesObj.b2 : ((student.grades && student.grades[sub]) ? student.grades[sub][1] || 0 : 0);
+        const g3 = gradesObj ? gradesObj.b3 : ((student.grades && student.grades[sub]) ? student.grades[sub][2] || 0 : 0);
+        const g4 = gradesObj ? gradesObj.b4 : ((student.grades && student.grades[sub]) ? student.grades[sub][3] || 0 : 0);
 
-        const isFullyExon = (isExon1 && isExon2 && isExon3 && isExon4);
-        const finalAvg = activeVals.length > 0 ? Math.round(activeVals.reduce((a, b) => a + b, 0) / activeVals.length) : 0;
+        const isExon1 = gradesObj ? gradesObj.isExon1 : ((typeof isSubjectBimestreExonerated === 'function') ? isSubjectBimestreExonerated(student, sub, 1) : false);
+        const isExon2 = gradesObj ? gradesObj.isExon2 : ((typeof isSubjectBimestreExonerated === 'function') ? isSubjectBimestreExonerated(student, sub, 2) : false);
+        const isExon3 = gradesObj ? gradesObj.isExon3 : ((typeof isSubjectBimestreExonerated === 'function') ? isSubjectBimestreExonerated(student, sub, 3) : false);
+        const isExon4 = gradesObj ? gradesObj.isExon4 : ((typeof isSubjectBimestreExonerated === 'function') ? isSubjectBimestreExonerated(student, sub, 4) : false);
+
+        const isFullyExon = gradesObj ? gradesObj.isFullyExon : (isExon1 && isExon2 && isExon3 && isExon4);
+        const finalAvg = gradesObj ? gradesObj.avg : (isSpecial ? g4 : 0);
 
         if (finalAvg > 0) {
             totalAvgSum += finalAvg;
@@ -13103,7 +13877,10 @@ function renderStudentProfileGrades(student) {
 
         const isFail = (finalAvg > 0 && finalAvg < 60);
 
-        const formatGradeCell = (val, isExon) => {
+        const formatGradeCell = (val, isExon, isSpecialUnset) => {
+            if (isSpecialUnset) {
+                return '<span style="color:#94a3b8;">—</span>';
+            }
             if (isExon) {
                 return '<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; padding:2px 6px; border-radius:4px;" title="Materia Exonerada en este bimestre"><i class="fa-solid fa-shield-check"></i> Exon.</span>';
             }
@@ -13121,14 +13898,21 @@ function renderStudentProfileGrades(student) {
             statusBadge = `<span class="badge badge-secondary" style="font-size:0.78rem;">Pendiente</span>`;
         }
 
+        const avgTitle = isSpecial 
+            ? 'Nota única total de 4to Bimestre (Sin promedio)' 
+            : (is6to ? 'Promedio sobre 3 unidades (tomando en cuenta exoneraciones)' : 'Promedio sobre 4 unidades (tomando en cuenta exoneraciones)');
+
         return `
             <tr>
-                <td style="font-weight:700; text-align:left; padding:8px 12px; color:#1e293b;">${sub}</td>
-                <td style="text-align:center; font-weight:600;">${formatGradeCell(g1, isExon1)}</td>
-                <td style="text-align:center; font-weight:600;">${formatGradeCell(g2, isExon2)}</td>
-                <td style="text-align:center; font-weight:600;">${formatGradeCell(g3, isExon3)}</td>
-                <td style="text-align:center; font-weight:600;">${formatGradeCell(g4, isExon4)}</td>
-                <td style="text-align:center; font-weight:800; font-size:0.95rem; ${isFail ? 'color:#b91c1c; background:#fee2e2;' : (finalAvg >= 60 ? 'color:#15803d; background:#dcfce7;' : (isFullyExon ? 'color:#0369a1; background:#f0f9ff;' : 'color:#0369a1;'))}">${finalAvg > 0 ? finalAvg : (isFullyExon ? 'Exon.' : '—')}</td>
+                <td style="font-weight:700; text-align:left; padding:8px 12px; color:#1e293b;">
+                    ${escapeHtml(sub)}
+                    ${isSpecial ? ' <span class="badge" style="font-size:0.7rem; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; margin-left:4px;">Nota Única B4</span>' : ''}
+                </td>
+                <td style="text-align:center; font-weight:600;">${formatGradeCell(g1, isExon1, isSpecial)}</td>
+                <td style="text-align:center; font-weight:600;">${formatGradeCell(g2, isExon2, isSpecial)}</td>
+                <td style="text-align:center; font-weight:600;">${formatGradeCell(g3, isExon3, isSpecial)}</td>
+                <td style="text-align:center; font-weight:600;">${formatGradeCell(g4, isExon4, false)}</td>
+                <td style="text-align:center; font-weight:800; font-size:0.95rem; ${isFail ? 'color:#b91c1c; background:#fee2e2;' : (finalAvg >= 60 ? 'color:#15803d; background:#dcfce7;' : (isFullyExon ? 'color:#0369a1; background:#f0f9ff;' : 'color:#0369a1;'))}" title="${avgTitle}">${finalAvg > 0 ? finalAvg : (isFullyExon ? 'Exon.' : '—')}</td>
                 <td style="text-align:center;">
                     ${statusBadge}
                 </td>
@@ -19650,14 +20434,21 @@ window.saveCloudDatabaseConfig = typeof saveFirebaseDatabaseConfig === 'function
 window.toggleDbProviderFields = function() {};
 
 function exportDataBackupJSON() {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(STATE, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `ENCCO_Respaldo_BaseDatos_${new Date().toISOString().slice(0,10)}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-    showToast("¡Copia de seguridad JSON descargada con éxito!", "success");
+    if (typeof exportSystemSafeBackup === 'function') {
+        exportSystemSafeBackup('all');
+    } else {
+        const jsonStr = JSON.stringify(STATE, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ENCCO_Respaldo_BaseDatos_${new Date().toISOString().slice(0,10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast("¡Copia de seguridad JSON descargada con éxito!", "success");
+    }
 }
 window.exportDataBackupJSON = exportDataBackupJSON;
 
@@ -19665,10 +20456,17 @@ function importDataBackupJSON(e) {
     const file = e.target.files[0];
     if (!file) return;
 
+    if (!confirm("⚠️ ¿Está seguro que desea restaurar los datos desde este archivo de respaldo?\n\nEsta acción integrará los registros de estudiantes, notas y configuraciones del respaldo.")) {
+        e.target.value = '';
+        return;
+    }
+
     const reader = new FileReader();
     reader.onload = function(evt) {
         try {
-            const data = JSON.parse(evt.target.result);
+            const rawData = JSON.parse(evt.target.result);
+            const data = rawData.stateSnapshot ? rawData.stateSnapshot : rawData;
+
             if (data.users || data.students || data.gradesList) {
                 if (Array.isArray(data.users) && data.users.length >= 20) {
                     STATE.users = data.users;
@@ -19685,16 +20483,36 @@ function importDataBackupJSON(e) {
                 STATE.announcements = data.announcements || STATE.announcements;
                 STATE.disciplineReports = data.disciplineReports || STATE.disciplineReports;
                 STATE.attendanceRecords = data.attendanceRecords || STATE.attendanceRecords || {};
+                STATE.rolesConfig = data.rolesConfig || STATE.rolesConfig;
+                STATE.studentPermissions = data.studentPermissions || STATE.studentPermissions || [];
+                STATE.auxiliaturaLog = data.auxiliaturaLog || STATE.auxiliaturaLog || [];
+                STATE.exoneraciones = data.exoneraciones || STATE.exoneraciones || [];
+                STATE.examSchedules = data.examSchedules || STATE.examSchedules || {};
+
+                if (Array.isArray(data.auditLog) && data.auditLog.length > 0) {
+                    STATE.auditLog = [...(data.auditLog || []), ...(STATE.auditLog || [])].slice(0, 2000);
+                }
+
+                if (typeof recordAuditLog === 'function') {
+                    recordAuditLog('BACKUP_RESTORE', 'Sistema', `Restauración de respaldo ejecutada. Padrón cargado: ${(STATE.students || []).length} estudiantes.`);
+                }
+
                 saveStateToLocalStorage();
                 updateCycleSelects();
                 updateCareerSelects();
                 updateGradeSelects();
                 renderCurrentView();
-                showToast("¡Base de datos restaurada correctamente desde el respaldo JSON!", "success");
+
+                if (typeof closeUniversalBackupModal === 'function') {
+                    closeUniversalBackupModal();
+                }
+
+                showToast(`¡Base de datos restaurada correctamente! Se cargaron ${(STATE.students || []).length} estudiantes.`, "success", 6000);
             } else {
                 showToast("El archivo JSON no tiene el formato de respaldo válido de ENCCO.", "danger");
             }
         } catch (err) {
+            console.error("Error al importar respaldo:", err);
             showToast("Error al procesar el archivo JSON de respaldo.", "danger");
         }
     };
@@ -19986,7 +20804,14 @@ function getReportCardSubjects(student) {
 
     return subjects;
 }
-window.getReportCardSubjects = getReportCardSubjects;
+function isMateriaEspecialGraduacion(subjectName) {
+    if (!subjectName) return false;
+    const clean = (subjectName || '').toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, '');
+    return clean.includes('seminario') || clean.includes('practica');
+}
+window.isMateriaEspecialGraduacion = isMateriaEspecialGraduacion;
 
 function getReportCardSubjectGrades(student, subject) {
     let b1 = 0, b2 = 0, b3 = 0, b4 = 0;
@@ -20047,28 +20872,72 @@ function getReportCardSubjectGrades(student, subject) {
         }
     }
 
+    // 🌟 REGLA INSTITUCIONAL DE GRADUACIÓN (6to Grado):
+    // Práctica Supervisada y Seminario tienen notas únicas almacenadas en el 4to Bimestre.
+    // Son calificaciones totales y NO llevan promedio (su nota final es el total directo de B4).
+    const isSpecialUnique = isMateriaEspecialGraduacion(subject);
+
+    // Si por compatibilidad histórica o importación la nota vino en b1/b2/b3 pero no en b4, consolidarla en b4
+    if (isSpecialUnique && b4 === 0) {
+        if (b3 > 0) b4 = b3;
+        else if (b2 > 0) b4 = b2;
+        else if (b1 > 0) b4 = b1;
+    }
+    if (isSpecialUnique) {
+        b1 = 0;
+        b2 = 0;
+        b3 = 0;
+    }
+
     // 🌟 VALIDACIÓN ESTRICTA DE EXONERACIONES:
-    // Los alumnos que tienen exoneraciones: las notas de ese bimestre NO deben tomarse en cuenta y NO deben aparecer
-    const isExon1 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, subject, 1);
-    const isExon2 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, subject, 2);
-    const isExon3 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, subject, 3);
-    const isExon4 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, subject, 4);
+    // Los alumnos con exoneraciones: las notas de ese bimestre NO deben tomarse en cuenta y NO deben promediarse
+    const isExon1 = !isSpecialUnique && (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, subject, 1);
+    const isExon2 = !isSpecialUnique && (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, subject, 2);
+    const isExon3 = !isSpecialUnique && (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, subject, 3);
+    const isExon4 = !isSpecialUnique && (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, subject, 4);
 
     if (isExon1) b1 = 0;
     if (isExon2) b2 = 0;
     if (isExon3) b3 = 0;
     if (isExon4) b4 = 0;
 
-    const activeVals = [];
-    if (!isExon1 && b1 > 0) activeVals.push(b1);
-    if (!isExon2 && b2 > 0) activeVals.push(b2);
-    if (!isExon3 && b3 > 0) activeVals.push(b3);
-    if (!isExon4 && b4 > 0) activeVals.push(b4);
+    const rawGradeStr = (student.grade || student.gradeLabel || student.gradeCode || '').toUpperCase();
+    const is6to = rawGradeStr.includes('6') || rawGradeStr.includes('SEXTO') || rawGradeStr.includes('6TO');
 
-    const isFullyExon = (isExon1 && isExon2 && isExon3 && isExon4);
-    const avg = activeVals.length > 0 ? Math.round(activeVals.reduce((a, b) => a + b, 0) / activeVals.length) : 0;
+    let avg = 0;
+    let isFullyExon = false;
+
+    if (isSpecialUnique) {
+        // Seminario y Práctica: NOTA ÚNICA TOTAL en 4to Bimestre, SIN PROMEDIO
+        avg = b4 > 0 ? b4 : 0;
+        isFullyExon = false;
+    } else if (is6to) {
+        // SEXTO GRADO: Promedio sobre 3 unidades (B1, B2, B3) tomando en cuenta exoneraciones
+        const bimasVals = [];
+        let exonUnitsCount = 0;
+        if (isExon1) exonUnitsCount++; else if (b1 > 0) bimasVals.push(b1);
+        if (isExon2) exonUnitsCount++; else if (b2 > 0) bimasVals.push(b2);
+        if (isExon3) exonUnitsCount++; else if (b3 > 0) bimasVals.push(b3);
+
+        isFullyExon = (exonUnitsCount === 3);
+        const divisor = Math.max(1, 3 - exonUnitsCount);
+        avg = bimasVals.length > 0 ? Math.round(bimasVals.reduce((a, b) => a + b, 0) / divisor) : 0;
+    } else {
+        // 4TO Y 5TO GRADO: Promedio sobre 4 unidades (B1, B2, B3, B4) tomando en cuenta exoneraciones
+        const bimasVals = [];
+        let exonUnitsCount = 0;
+        if (isExon1) exonUnitsCount++; else if (b1 > 0) bimasVals.push(b1);
+        if (isExon2) exonUnitsCount++; else if (b2 > 0) bimasVals.push(b2);
+        if (isExon3) exonUnitsCount++; else if (b3 > 0) bimasVals.push(b3);
+        if (isExon4) exonUnitsCount++; else if (b4 > 0) bimasVals.push(b4);
+
+        isFullyExon = (exonUnitsCount === 4);
+        const divisor = Math.max(1, 4 - exonUnitsCount);
+        avg = bimasVals.length > 0 ? Math.round(bimasVals.reduce((a, b) => a + b, 0) / divisor) : 0;
+    }
+
     // 3. Pura LECTURA: jamás mutar student.grades ni student.gradebookDetails
-    return { b1, b2, b3, b4, avg, isExon1, isExon2, isExon3, isExon4, isFullyExon };
+    return { b1, b2, b3, b4, avg, isExon1, isExon2, isExon3, isExon4, isFullyExon, isSpecialUnique };
 }
 window.getReportCardSubjectGrades = getReportCardSubjectGrades;
 
@@ -20094,8 +20963,13 @@ function buildStudentReportCardInnerHtml(s) {
     const scoreFontSize = isDense ? "12px" : "13px";
     const headHeight = isDense ? "20px" : "22px";
 
+    const rawGradeStr = (s.grade || s.gradeLabel || s.gradeCode || '').toUpperCase();
+    const is6to = rawGradeStr.includes('6') || rawGradeStr.includes('SEXTO') || rawGradeStr.includes('6TO');
+
     const rowsHtml = subjects.map((sub, idx) => {
         const g = getReportCardSubjectGrades(s, sub);
+        const isSpecial = g.isSpecialUnique === true || isMateriaEspecialGraduacion(sub);
+
         if (g.avg > 0) {
             totalAvgSum += g.avg;
             subjectCount++;
@@ -20119,22 +20993,41 @@ function buildStudentReportCardInnerHtml(s) {
             resultColor = "#dc2626";
         }
 
-        const formatBimCell = (score, isFail, isExon) => {
+        const formatBimCell = (score, isFail, isExon, isDashOnly = false) => {
+            if (isDashOnly) {
+                return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:700; color:#94a3b8; border:1px solid #000000; width:40px;">—</td>`;
+            }
             if (isExon) {
                 return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:900; color:#0369a1; border:1px solid #000000; width:40px;">—</td>`;
             }
             return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:${isFail ? "900" : "800"}; color:${isFail ? "#dc2626" : (score > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:40px;">${score > 0 ? score : "—"}</td>`;
         };
 
+        // En materias especiales de 6to (Seminario / Práctica Supervisada):
+        // La nota es ÚNICA y se almacena en el 4to Bimestre. Las unidades 1, 2 y 3 no aplican (—).
+        // La columna de Promedio muestra la NOTA TOTAL directa (sin promedio).
+        const cellB1 = isSpecial ? formatBimCell(0, false, false, true) : formatBimCell(g.b1, isB1Fail, g.isExon1);
+        const cellB2 = isSpecial ? formatBimCell(0, false, false, true) : formatBimCell(g.b2, isB2Fail, g.isExon2);
+        const cellB3 = isSpecial ? formatBimCell(0, false, false, true) : formatBimCell(g.b3, isB3Fail, g.isExon3);
+        const cellB4 = formatBimCell(g.b4, isB4Fail, g.isExon4);
+
+        const avgDisplay = isSpecial
+            ? (g.b4 > 0 ? g.b4 : "—")
+            : (g.avg > 0 ? g.avg : (g.isFullyExon ? "Exon." : "—"));
+
+        const promTitle = isSpecial ? "Nota única total (Sin promedio)" : (is6to ? "Promedio calculado sobre 3 unidades (tomando en cuenta exoneraciones)" : "Promedio calculado sobre 4 unidades (tomando en cuenta exoneraciones)");
+
         return `
             <tr style="height:${rowHeight};">
                 <td style="text-align:center; font-weight:800; width:26px; border:1px solid #000000; padding:1px 2px; font-size:${subFontSize};">${idx + 1}</td>
-                <td style="font-weight:800; padding:1px 8px; text-align:left; border:1px solid #000000; font-size:${subFontSize}; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${sub}</td>
-                ${formatBimCell(g.b1, isB1Fail, g.isExon1)}
-                ${formatBimCell(g.b2, isB2Fail, g.isExon2)}
-                ${formatBimCell(g.b3, isB3Fail, g.isExon3)}
-                ${formatBimCell(g.b4, isB4Fail, g.isExon4)}
-                <td style="text-align:center; font-weight:900; font-size:${scoreFontSize}; border:1px solid #000000; width:46px; ${isAvgFail ? "color:#dc2626; background:#fee2e2;" : "color:#0369a1; background:#f0f9ff;"}">${g.avg > 0 ? g.avg : (g.isFullyExon ? "Exon." : "—")}</td>
+                <td style="font-weight:800; padding:1px 8px; text-align:left; border:1px solid #000000; font-size:${subFontSize}; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${sub}${isSpecial ? ' (Nota Única - 4to Bimestre)' : ''}">
+                    ${sub}${isSpecial ? ' <span style="font-size:8.5px; font-weight:700; color:#0369a1;">[Nota Única]</span>' : ''}
+                </td>
+                ${cellB1}
+                ${cellB2}
+                ${cellB3}
+                ${cellB4}
+                <td style="text-align:center; font-weight:900; font-size:${scoreFontSize}; border:1px solid #000000; width:46px; ${isAvgFail ? "color:#dc2626; background:#fee2e2;" : "color:#0369a1; background:#f0f9ff;"}" title="${promTitle}">${avgDisplay}</td>
                 <td style="text-align:center; font-weight:900; font-size:11px; border:1px solid #000000; width:84px; color:${resultColor}; letter-spacing:0.3px;">${resultText}</td>
             </tr>
         `;
@@ -20147,6 +21040,10 @@ function buildStudentReportCardInnerHtml(s) {
     const directorUser = (STATE.users || []).find(u => u.role === "director");
     const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || "Licda. Mirza Elizabeth Aragón Polanco de Hernández");
     const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes("licda") ? "Directora del Plantel" : "Director del Plantel");
+
+    const promedioFooterLabel = is6to 
+        ? "PROMEDIO GENERAL ACUMULADO (6TO GRADUANDOS - 3 UNIDADES / NOTA ÚNICA B4):" 
+        : "PROMEDIO GENERAL ACUMULADO (4 UNIDADES):";
 
     return `
         <div class="report-half-letter-sheet" style="background:#ffffff; color:#000000; width:100%; height:100%; max-height:100%; box-sizing:border-box; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display:flex; flex-direction:column; justify-content:space-between; margin:0 auto; overflow:hidden;">
@@ -20199,7 +21096,7 @@ function buildStudentReportCardInnerHtml(s) {
                     </tbody>
                     <tfoot>
                         <tr style="height:21px; background:#f1f5f9; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">
-                            <td colspan="6" style="text-align:right; font-weight:900; padding:2px 8px; border:1px solid #000000; font-size:11px; letter-spacing:0.3px;">PROMEDIO GENERAL ACUMULADO:</td>
+                            <td colspan="6" style="text-align:right; font-weight:900; padding:2px 8px; border:1px solid #000000; font-size:11px; letter-spacing:0.3px;">${promedioFooterLabel}</td>
                             <td style="text-align:center; font-weight:900; font-size:13.5px; border:1px solid #000000; color:${isOverallFail ? "#dc2626" : "#0369a1"}; background:${isOverallFail ? "#fee2e2" : "#e0f2fe"}; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">${overallAvg > 0 ? overallAvg : (isGlobalExonerated ? "EXON." : "—")}</td>
                             <td style="text-align:center; font-weight:900; font-size:11px; border:1px solid #000000; letter-spacing:0.3px; color:${isGlobalExonerated ? "#0369a1" : (overallAvg >= 60 ? "#15803d" : (overallAvg > 0 ? "#dc2626" : "#64748b"))};">${isGlobalExonerated ? "EXONERADO" : (overallAvg >= 60 ? "PROMOVIDO" : (overallAvg > 0 ? "EN RIESGO" : "EN CURSO"))}</td>
                         </tr>
@@ -22469,6 +23366,11 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
 
     if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.delete(student.id);
     saveStateToLocalStorage();
+
+    if (typeof recordAuditLog === 'function') {
+        recordAuditLog('GRADE_SAVE', 'Calificaciones', `Nota guardada para ${student.name || student.id}: ${subjectName} (${uNum}° Bimestre) Zona: ${currentUnitDetails.zona || 0}, Examen: ${currentUnitDetails.exam || 0}, Total: ${currentUnitDetails.total || 0}`, student.id);
+    }
+
     return true;
 }
 window.saveStudentSubjectGradeAtomic = saveStudentSubjectGradeAtomic;
@@ -23569,12 +24471,16 @@ function loadTeacherGradebook() {
                 `;
             }).join('');
 
+            const isLowZone = (!isInactive && !isExon && zonaSum > 0 && zonaSum < 24);
+            const zonaColorStyle = (zonaSum > cfg.zonaMax) ? 'color:#b91c1c;' : (isLowZone ? 'color:#d97706;' : '');
+            const lowZoneBadge = isLowZone ? '<span title="Zona baja (&lt; 24 pts): Riesgo de reprobación" style="font-size:0.68rem; font-weight:800; color:#b45309; background:#fef3c7; border:1px solid #fde68a; border-radius:4px; padding:1px 4px; margin-left:3px; vertical-align:middle;">⚠️ &lt;24</span>' : '';
+
             return `
                 <tr data-student-id="${s.id}" style="${isInactive ? 'background:rgba(241,245,249,0.6); opacity:0.85;' : ''}">
                     <td style="text-align:center;"><input type="checkbox" ${isInactive ? 'disabled' : ''}></td>
                     <td><strong>${idx + 1}. ${studentFullName}</strong>${statusTag}</td>
-                    <td style="text-align:center; background:${isInactive ? '#f1f5f9' : 'rgba(34,197,94,0.08)'}; font-weight:800; font-size:0.95rem; ${zonaSum > cfg.zonaMax ? 'color:#b91c1c;' : ''}" class="zona-sum-cell" id="zonaSum_${s.id}">
-                        ${isInactive ? '<span style="color:#94a3b8; font-size:0.8rem;">Bloqueado</span>' : `&Sigma; ${zonaSum}`}
+                    <td style="text-align:center; background:${isInactive ? '#f1f5f9' : (isLowZone ? 'rgba(254,243,199,0.35)' : 'rgba(34,197,94,0.08)')}; font-weight:800; font-size:0.95rem; ${zonaColorStyle}" class="zona-sum-cell" id="zonaSum_${s.id}">
+                        ${isInactive ? '<span style="color:#94a3b8; font-size:0.8rem;">Bloqueado</span>' : `&Sigma; ${zonaSum} ${lowZoneBadge}`}
                     </td>
                     ${actInputs}
                 </tr>
@@ -23702,18 +24608,28 @@ function loadTeacherGradebook() {
         tbodyAverages.innerHTML = students.map((s, idx) => {
             const studentFullName = escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase());
             const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
-            const g = s.grades[subjectName] || [0, 0, 0, 0];
-            const n1 = parseInt(g[0]) || 0;
-            const n2 = parseInt(g[1]) || 0;
-            const n3 = parseInt(g[2]) || 0;
-            const n4 = parseInt(g[3]) || 0;
+            const subGrades = (typeof getReportCardSubjectGrades === 'function')
+                ? getReportCardSubjectGrades(s, subjectName)
+                : null;
 
-            const isEx1 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 1);
-            const isEx2 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 2);
-            const isEx3 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 3);
-            const isEx4 = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 4);
+            const isSpecial = subGrades ? subGrades.isSpecialUnique : (typeof isMateriaEspecialGraduacion === 'function' && isMateriaEspecialGraduacion(subjectName));
+            const rawGradeStr = (s.grade || s.gradeLabel || s.gradeCode || '').toUpperCase();
+            const is6to = rawGradeStr.includes('6') || rawGradeStr.includes('SEXTO') || rawGradeStr.includes('6TO');
 
-            const renderAvgCell = (n, isEx) => {
+            const n1 = subGrades ? subGrades.b1 : (parseInt(s.grades?.[subjectName]?.[0]) || 0);
+            const n2 = subGrades ? subGrades.b2 : (parseInt(s.grades?.[subjectName]?.[1]) || 0);
+            const n3 = subGrades ? subGrades.b3 : (parseInt(s.grades?.[subjectName]?.[2]) || 0);
+            const n4 = subGrades ? subGrades.b4 : (parseInt(s.grades?.[subjectName]?.[3]) || 0);
+
+            const isEx1 = subGrades ? subGrades.isExon1 : ((typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 1));
+            const isEx2 = subGrades ? subGrades.isExon2 : ((typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 2));
+            const isEx3 = subGrades ? subGrades.isExon3 : ((typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 3));
+            const isEx4 = subGrades ? subGrades.isExon4 : ((typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 4));
+
+            const renderAvgCell = (n, isEx, isSpecialUnset) => {
+                if (isSpecialUnset) {
+                    return '<span style="color:#94a3b8;">—</span>';
+                }
                 if (isEx) {
                     return `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; padding:2px 6px; border-radius:4px;" title="Bimestre Exonerado"><i class="fa-solid fa-shield-check"></i> Exon.</span>`;
                 }
@@ -23721,14 +24637,8 @@ function loadTeacherGradebook() {
                 return n > 0 ? n : '—';
             };
 
-            const validNotes = [];
-            if (!isEx1 && n1 > 0) validNotes.push(n1);
-            if (!isEx2 && n2 > 0) validNotes.push(n2);
-            if (!isEx3 && n3 > 0) validNotes.push(n3);
-            if (!isEx4 && n4 > 0) validNotes.push(n4);
-
-            const isFullyExon = (isEx1 && isEx2 && isEx3 && isEx4);
-            const notaFinal = validNotes.length > 0 ? Math.round(validNotes.reduce((a, b) => a + b, 0) / validNotes.length) : 0;
+            const isFullyExon = subGrades ? subGrades.isFullyExon : (isEx1 && isEx2 && isEx3 && isEx4);
+            const notaFinal = subGrades ? subGrades.avg : (isSpecial ? n4 : 0);
 
             let statusTag = '';
             if (s.status === 'Retirado') {
@@ -23739,15 +24649,19 @@ function loadTeacherGradebook() {
                 statusTag = `<span class="badge badge-secondary" style="font-size:0.7rem; margin-left:6px;">Inactivo</span>`;
             }
 
+            const promTitle = isSpecial 
+                ? 'Nota única total de 4to Bimestre (Sin promedio)' 
+                : (is6to ? 'Promedio sobre 3 unidades (tomando en cuenta exoneraciones)' : 'Promedio sobre 4 unidades (tomando en cuenta exoneraciones)');
+
             return `
                 <tr data-student-id="${s.id}" style="${isInactive ? 'background:rgba(241,245,249,0.6); opacity:0.85;' : ''}">
                     <td style="text-align:center;"><input type="checkbox" ${isInactive ? 'disabled' : ''}></td>
                     <td><strong>${idx + 1}. ${studentFullName}</strong>${statusTag}</td>
-                    <td style="text-align:center;" class="${isInactive || isEx1 ? '' : (n1 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n1, isEx1)}</td>
-                    <td style="text-align:center;" class="${isInactive || isEx2 ? '' : (n2 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n2, isEx2)}</td>
-                    <td style="text-align:center;" class="${isInactive || isEx3 ? '' : (n3 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n3, isEx3)}</td>
-                    <td style="text-align:center;" class="${isInactive || isEx4 ? '' : (n4 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n4, isEx4)}</td>
-                    <td style="text-align:center; font-weight:800; font-size:1.05rem; background:${isInactive ? '#f1f5f9' : 'rgba(34,197,94,0.06)'};" class="${isInactive || isFullyExon ? '' : (notaFinal < 60 ? 'grade-score-fail' : 'grade-score-pass')}">
+                    <td style="text-align:center;" class="${isInactive || isEx1 || isSpecial ? '' : (n1 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n1, isEx1, isSpecial)}</td>
+                    <td style="text-align:center;" class="${isInactive || isEx2 || isSpecial ? '' : (n2 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n2, isEx2, isSpecial)}</td>
+                    <td style="text-align:center;" class="${isInactive || isEx3 || isSpecial ? '' : (n3 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n3, isEx3, isSpecial)}</td>
+                    <td style="text-align:center;" class="${isInactive || isEx4 ? '' : (n4 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n4, isEx4, false)}</td>
+                    <td style="text-align:center; font-weight:800; font-size:1.05rem; background:${isInactive ? '#f1f5f9' : 'rgba(34,197,94,0.06)'};" class="${isInactive || isFullyExon ? '' : (notaFinal < 60 ? 'grade-score-fail' : 'grade-score-pass')}" title="${promTitle}">
                         ${isInactive ? `<span class="badge ${s.status === 'Retirado' ? 'badge-danger' : 'badge-warning'}" style="font-size:0.75rem;">${s.status}</span>` : (isFullyExon ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem;">Exon.</span>` : (notaFinal > 0 ? notaFinal : '—'))}
                     </td>
                 </tr>
@@ -23845,13 +24759,134 @@ function refreshLiveGradeProgressBadge(subjectName, unit) {
             barFill.style.background = 'linear-gradient(90deg, #3b82f6, #2563eb)';
         }
     }
+
+    if (typeof updateGradebookLiveKpis === 'function') {
+        updateGradebookLiveKpis(currentSubject, currentUnitNum);
+    }
 }
 window.refreshLiveGradeProgressBadge = refreshLiveGradeProgressBadge;
 
+// 📈 CÁLCULO DE KPIS EN VIVO PARA EL DOCENTE (Promedio, Aprobados, En Riesgo, Evaluados)
+function updateGradebookLiveKpis(subjectName, unit) {
+    const strip = document.getElementById('gradebookLiveKpiStrip');
+    if (!strip) return;
+    const courseSelect = document.getElementById('teacherCourseSelect');
+    const selectedId = courseSelect?.value || STATE.selectedGradebookCourseId;
+    let targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
+    if (!targetPensum) {
+        strip.style.display = 'none';
+        return;
+    }
+    const currentSubject = targetPensum.subject || subjectName;
+    const currentUnitNum = parseInt(unit) || parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+    const gradeCode = targetPensum.gradeCode || '4TO_PERITO_A';
+    const students = (typeof getSortedGradebookStudents === 'function')
+        ? getSortedGradebookStudents(gradeCode, targetPensum)
+        : (STATE.students || []).filter(s => s.gradeCode === gradeCode || s.grade === targetPensum.grade);
+    const activeStudents = students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo' && s.status !== 'Ausente');
+    if (activeStudents.length === 0) {
+        strip.style.display = 'none';
+        return;
+    }
 
-// 🌐 SELECCIÓN Y ENFOQUE UNIVERSAL CROSS-BROWSER (Safari, Chrome, Firefox, Opera, Edge, Brave)
+    let gradedCount = 0;
+    let passingCount = 0;
+    let failingCount = 0;
+    let sumTotal = 0;
+
+    activeStudents.forEach(s => {
+        if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, currentSubject, currentUnitNum)) {
+            return;
+        }
+        const uData = s.gradebookDetails?.[currentSubject]?.[currentUnitNum];
+        let tot = (uData && uData.total !== undefined && uData.total !== null)
+            ? parseInt(uData.total)
+            : (s.grades?.[currentSubject]?.[currentUnitNum - 1] !== undefined ? parseInt(s.grades[currentSubject][currentUnitNum - 1]) : 0);
+        if (isNaN(tot)) tot = 0;
+        if (tot > 0 || (uData && ((uData.zona || 0) > 0 || (uData.exam || 0) > 0))) {
+            gradedCount++;
+            sumTotal += tot;
+            if (tot >= 60) {
+                passingCount++;
+            } else {
+                failingCount++;
+            }
+        }
+    });
+
+    const average = gradedCount > 0 ? (sumTotal / gradedCount).toFixed(1) : '—';
+    const totalActive = activeStudents.length;
+
+    strip.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.83rem; padding-top:6px; border-top:1px dashed #bbf7d0;">
+            <span style="font-weight:800; color:#15803d; font-size:0.82rem; display:inline-flex; align-items:center; gap:5px;">
+                <i class="fa-solid fa-gauge-high"></i> Métricas en Vivo del Grupo:
+            </span>
+            <span class="badge" style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; font-weight:800; padding:4px 8px;" title="Promedio general de los estudiantes con notas ingresadas">
+                <i class="fa-solid fa-calculator" style="color:#16a34a;"></i> Promedio: <strong>${average} pts</strong>
+            </span>
+            <span class="badge" style="background:#ecfdf5; color:#15803d; border:1px solid #86efac; font-weight:800; padding:4px 8px;" title="Estudiantes con nota final mayor o igual a 60">
+                <i class="fa-solid fa-circle-check" style="color:#22c55e;"></i> Aprobados: <strong>${passingCount}</strong>
+            </span>
+            <span class="badge" style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; font-weight:800; padding:4px 8px;" title="Estudiantes calificados con nota menor a 60">
+                <i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;"></i> En Riesgo: <strong>${failingCount}</strong>
+            </span>
+            <span class="badge" style="background:#f8fafc; color:#334155; border:1px solid #cbd5e1; font-weight:800; padding:4px 8px;" title="Avance de estudiantes con al menos una nota o zona registrada">
+                <i class="fa-solid fa-users" style="color:#64748b;"></i> Evaluados: <strong>${gradedCount}/${totalActive}</strong>
+            </span>
+        </div>
+    `;
+    strip.style.display = 'block';
+}
+window.updateGradebookLiveKpis = updateGradebookLiveKpis;
+
+// 🧘 MODO ENFOQUE (ZEN MODE) PARA INGRESO ÁGIL DE NOTAS
+function toggleGradebookZenMode() {
+    const isZen = document.body.classList.toggle('gradebook-zen-active');
+    const btn = document.getElementById('btnToggleZenMode');
+    if (btn) {
+        btn.innerHTML = isZen 
+            ? `<i class="fa-solid fa-compress"></i> <span id="btnToggleZenModeText">Salir de Enfoque</span>`
+            : `<i class="fa-solid fa-expand"></i> <span id="btnToggleZenModeText">Modo Enfoque</span>`;
+        if (isZen) {
+            btn.classList.add('btn-success');
+            btn.classList.remove('btn-outline-secondary');
+        } else {
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+        }
+    }
+    if (typeof showToast === 'function') {
+        showToast(isZen ? 'Modo Enfoque activado. Presione ESC para volver.' : 'Modo normal restaurado.', 'info', 2200);
+    }
+}
+window.toggleGradebookZenMode = toggleGradebookZenMode;
+
+if (typeof document !== 'undefined') {
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.body.classList.contains('gradebook-zen-active')) {
+            toggleGradebookZenMode();
+        }
+    });
+}
+
+// 🌐 SELECCIÓN Y ENFOQUE UNIVERSAL CROSS-BROWSER CON GUÍA DE MIRA ACTIVA
 function handleGradeInputFocus(input) {
     if (!input) return;
+    input.classList.add('gb-input-focused');
+    const tr = input.closest('tr');
+    if (tr) {
+        const tbody = tr.closest('tbody');
+        if (tbody) {
+            tbody.querySelectorAll('tr.gb-active-row').forEach(r => r.classList.remove('gb-active-row'));
+        }
+        tr.classList.add('gb-active-row');
+    }
+    input.addEventListener('blur', function onBlur() {
+        input.classList.remove('gb-input-focused');
+        if (tr) tr.classList.remove('gb-active-row');
+        input.removeEventListener('blur', onBlur);
+    });
     setTimeout(() => {
         try {
             if (typeof input.select === 'function') {
@@ -23867,6 +24902,14 @@ function handleGradeInputFocus(input) {
     }, 15);
 }
 window.handleGradeInputFocus = handleGradeInputFocus;
+
+function handleGradeInputBlur(input) {
+    if (!input) return;
+    input.classList.remove('gb-input-focused');
+    const tr = input.closest('tr');
+    if (tr) tr.classList.remove('gb-active-row');
+}
+window.handleGradeInputBlur = handleGradeInputBlur;
 
 // ⚡ NAVEGACIÓN FLUIDA ESTILO EXCEL UNIVERSAL (Enter y Flechas en Planilla de Notas)
 function handleGradeGridKeyDown(e, input) {
@@ -23976,10 +25019,13 @@ function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, 
     // 1. Actualizar celda de Suma de Zona en la pestaña de actividades
     const sumCell = document.getElementById(`zonaSum_${studentId}`);
     if (sumCell) {
-        sumCell.innerHTML = `&Sigma; ${zonaVal}`;
         const targetPensum = (STATE.pensum || []).find(p => p.subject === subjectName);
         const cfg = (typeof getGradingConfig === 'function') ? getGradingConfig(targetPensum, unit) : { zonaMax: 40, examMax: 60 };
-        sumCell.style.color = (zonaVal > cfg.zonaMax) ? '#b91c1c' : '';
+        const isLowZone = (zonaVal > 0 && zonaVal < 24);
+        const lowZoneBadge = isLowZone ? '<span title="Zona baja (&lt; 24 pts): Riesgo de reprobación" style="font-size:0.68rem; font-weight:800; color:#b45309; background:#fef3c7; border:1px solid #fde68a; border-radius:4px; padding:1px 4px; margin-left:3px; vertical-align:middle;">⚠️ &lt;24</span>' : '';
+        sumCell.innerHTML = `&Sigma; ${zonaVal} ${lowZoneBadge}`;
+        sumCell.style.color = (zonaVal > cfg.zonaMax) ? '#b91c1c' : (isLowZone ? '#d97706' : '');
+        sumCell.style.background = isLowZone ? 'rgba(254,243,199,0.35)' : 'rgba(34,197,94,0.08)';
     }
 
     // 2. Actualizar fila en la pestaña de Examen y Resumen sin destruir el DOM
@@ -24012,22 +25058,43 @@ function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, 
     if (avgRow) {
         const avgCells = avgRow.querySelectorAll('td');
         if (avgCells && avgCells.length >= 7) {
-            const bimCell = avgCells[unit + 1];
-            if (bimCell) {
-                bimCell.textContent = totalVal > 0 ? totalVal : '—';
-                bimCell.className = totalVal < 60 ? 'grade-score-fail' : 'grade-score-pass';
-            }
-            const g = student.grades?.[subjectName] || [0, 0, 0, 0];
-            const valid = [];
-            for (let b = 0; b < 4; b++) {
-                const val = parseInt(g[b]) || 0;
-                if (val > 0) valid.push(val);
-            }
-            const finalCell = avgCells[6];
-            if (finalCell) {
-                const finalAvg = valid.length > 0 ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : 0;
-                finalCell.textContent = finalAvg > 0 ? finalAvg : '—';
-                finalCell.className = finalAvg < 60 ? 'grade-score-fail' : 'grade-score-pass';
+            const subGrades = (typeof getReportCardSubjectGrades === 'function')
+                ? getReportCardSubjectGrades(student, subjectName)
+                : null;
+            if (subGrades) {
+                if (subGrades.isSpecialUnique) {
+                    if (avgCells[2]) avgCells[2].innerHTML = '<span style="color:#94a3b8;">—</span>';
+                    if (avgCells[3]) avgCells[3].innerHTML = '<span style="color:#94a3b8;">—</span>';
+                    if (avgCells[4]) avgCells[4].innerHTML = '<span style="color:#94a3b8;">—</span>';
+                    if (avgCells[5]) {
+                        avgCells[5].textContent = subGrades.b4 > 0 ? subGrades.b4 : '—';
+                        avgCells[5].className = subGrades.b4 < 60 ? 'grade-score-fail' : 'grade-score-pass';
+                    }
+                } else {
+                    const bimCell = avgCells[unit + 1];
+                    if (bimCell) {
+                        const isEx = subGrades[`isExon${unit}`];
+                        if (isEx) {
+                            bimCell.innerHTML = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; padding:2px 6px; border-radius:4px;"><i class="fa-solid fa-shield-check"></i> Exon.</span>`;
+                            bimCell.className = '';
+                        } else {
+                            const uScore = subGrades[`b${unit}`];
+                            bimCell.textContent = uScore > 0 ? uScore : '—';
+                            bimCell.className = uScore < 60 ? 'grade-score-fail' : 'grade-score-pass';
+                        }
+                    }
+                }
+                const finalCell = avgCells[6];
+                if (finalCell) {
+                    if (subGrades.isFullyExon) {
+                        finalCell.innerHTML = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem;">Exon.</span>`;
+                        finalCell.className = '';
+                    } else {
+                        const finalAvg = subGrades.avg;
+                        finalCell.textContent = finalAvg > 0 ? finalAvg : '—';
+                        finalCell.className = finalAvg < 60 ? 'grade-score-fail' : 'grade-score-pass';
+                    }
+                }
             }
         }
     }
@@ -24035,6 +25102,9 @@ function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, 
     // 4. Actualizar barra e indicador de avance calificado en vivo de la sección
     if (typeof refreshLiveGradeProgressBadge === 'function') {
         refreshLiveGradeProgressBadge(subjectName, unit);
+    }
+    if (typeof updateGradebookLiveKpis === 'function') {
+        updateGradebookLiveKpis(subjectName, unit);
     }
 }
 
@@ -25700,7 +26770,7 @@ function loadAttendanceList() {
                 }
 
                 const isTodayCol = isCurrentCalendarMonth && (day === todayDay);
-                const todayColClass = isTodayCol ? 'cell-day-today' : '';
+                const todayColClass = isTodayCol ? 'col-cell-today cell-day-today' : '';
 
                 const isPastDay = (year < todayYear) || 
                                   (year === todayYear && month < todayMonth) || 
@@ -26217,7 +27287,14 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
             td.setAttribute('data-origin-role', '');
             td.textContent = next;
         }
+        if (td.classList.contains('col-cell-today') || td.classList.contains('cell-day-today')) {
+            cellClass += ' col-cell-today cell-day-today';
+        }
         td.className = cellClass;
+        td.classList.add('att-cell-pulsed');
+        setTimeout(() => {
+            td.classList.remove('att-cell-pulsed');
+        }, 300);
         td.setAttribute('data-val', next || '');
         let cellTitle = next ? `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? (isAuditRole ? 'JUSTIFICADO (Autorizado por Dirección / Auxiliatura)' : 'JUSTIFICADO (Registrado por el docente - Haga clic para cambiar a T)') : 'TARDANZA'))} (Haga clic para alternar P/A/J/T)` : `Día ${day}: Sin registrar (Haga clic para marcar P)`;
         td.title = cellTitle;
@@ -26225,6 +27302,16 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
 
     saveAttendanceRecords(false, null, recordKey);
     updateAttendanceLiveStats(studentId);
+
+    // 📋 Registro en Auditoría Institucional
+    try {
+        const studentObj = (STATE.students || []).find(s => String(s.id) === String(studentId));
+        const sName = studentObj ? ((typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(studentObj, 'lastFirst') : `${studentObj.firstName || ''} ${studentObj.lastName || ''}`.trim()) : `Estudiante #${studentId}`;
+        const valLabel = next === 'P' ? 'Presente' : (next === 'A' ? 'Ausente/Falta' : (next === 'J' ? 'Justificado' : (next === 'T' ? 'Tardanza' : 'Casilla Limpia')));
+        recordAuditLog('ATTENDANCE_CHANGE', 'Asistencia', `Asistencia marcada (${valLabel}) para ${sName} el día ${day}/${month} [Grado: ${gradeCode}, Cátedra: ${courseId}]`, studentId);
+    } catch(auditErr) {
+        console.warn("Aviso auditoría asistencia:", auditErr);
+    }
 }
 
 let _attendanceStatsRaf = null;
@@ -27868,6 +28955,10 @@ function saveStudentPermissionForm(e) {
 
         closeCreatePermissionModal();
 
+        try {
+            recordAuditLog('PERMISSION_EDIT', 'Auxiliatura', `Permiso de inasistencia editado para ${perm.studentName} (${perm.startDate} al ${perm.endDate}): ${perm.reasonCategory} - ${perm.reasonDetail}`, perm.studentId);
+        } catch(e) {}
+
         if (typeof loadAttendanceList === 'function') {
             loadAttendanceList();
         }
@@ -27960,6 +29051,10 @@ function saveStudentPermissionForm(e) {
     }
 
     closeCreatePermissionModal();
+
+    try {
+        recordAuditLog('PERMISSION_CREATE', 'Auxiliatura', `Nuevo permiso autorizado para ${perm.studentName} (${perm.startDate} al ${perm.endDate}): ${perm.reasonCategory} - ${perm.reasonDetail}`, perm.studentId);
+    } catch(e) {}
 
     // Si la planilla de asistencia está abierta, recargarla
     if (typeof loadAttendanceList === 'function') {
