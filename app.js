@@ -1526,6 +1526,9 @@ function updatePermCardStyle(modKey, level) {
                 EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
             }
             if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
+            if (window.EnccoAuthStore && typeof window.EnccoAuthStore.applyReactivePermissions === 'function') {
+                window.EnccoAuthStore.applyReactivePermissions();
+            }
         }
     }
 }
@@ -1574,6 +1577,9 @@ function setAllPermissionsLevel(targetLevel = 'edit') {
             EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
         }
         if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
+        if (window.EnccoAuthStore && typeof window.EnccoAuthStore.applyReactivePermissions === 'function') {
+            window.EnccoAuthStore.applyReactivePermissions();
+        }
         showToast(`Todos los módulos actualizados a: ${targetLevel === 'edit' ? 'Ver y Modificar' : (targetLevel === 'view' ? 'Solo Ver' : 'Bloqueado')}`, 'info');
     }
 }
@@ -9190,8 +9196,12 @@ function applyIncomingCloudState(incomingState, force = false) {
     }
 
     // 2. Roles y Permisos (Matriz de 3 niveles: Modificar, Solo Ver y Bloqueado)
-    if (Array.isArray(incomingState.rolesConfig) && incomingState.rolesConfig.length > 0) {
-        STATE.rolesConfig = incomingState.rolesConfig;
+    let incomingRoles = incomingState.rolesConfig;
+    if (incomingRoles && typeof incomingRoles === 'object' && !Array.isArray(incomingRoles)) {
+        incomingRoles = Object.values(incomingRoles);
+    }
+    if (Array.isArray(incomingRoles) && incomingRoles.length > 0) {
+        STATE.rolesConfig = incomingRoles;
         if (typeof normalizeRolesConfig === 'function') normalizeRolesConfig();
         if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole || 'admin');
         if (STATE.activeView === 'roles' && typeof renderRolesTable === 'function') renderRolesTable();
@@ -9799,7 +9809,7 @@ function navigateTo(viewName, event = null) {
     if (viewName === 'datos-sire') {
         const allowed = ['director', 'secretaria', 'admin', 'super_usuario'];
         const currentRole = ((window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || '').toLowerCase();
-        if (allowed.includes(currentRole)) {
+        if (allowed.includes(currentRole) || (typeof hasRolePermission === 'function' && hasRolePermission('datos-sire', currentRole))) {
             if (typeof unsubscribeAllFirestoreListeners === "function") unsubscribeAllFirestoreListeners();
             window.location.href = 'datos-sire.html';
             return;
@@ -36501,7 +36511,7 @@ function applyUserRole(role = STATE.currentRole) {
         // Aplicar visibilidad granular estricta según la configuración de roles del administrador
     normalizeRolesConfig();
 
-    const isSuper = (role === 'admin' || role === 'super_usuario' || STATE.currentUser?.role === 'admin');
+    const isSuper = (role === 'admin' || role === 'super_usuario');
 
     // 1. Navegación lateral reactiva 100% dinámica
     document.querySelectorAll('.nav-item').forEach(el => {
@@ -43717,12 +43727,15 @@ function initSidebarGroups() {
     if (STATE && STATE.activeView) {
         expandGroupForView(STATE.activeView);
     }
-    // Asegurar títulos de grupo siempre visibles
+    // Asegurar títulos de grupo visibles solo si tienen items
     document.querySelectorAll('.nav-group-header .nav-section-label, .nav-group-title').forEach(el => {
         el.style.removeProperty('display');
         el.style.setProperty('display', 'block', 'important');
         el.classList.remove('hidden');
     });
+    if (STATE && STATE.currentRole && typeof applyUserRole === 'function') {
+        applyUserRole(STATE.currentRole);
+    }
 }
 window.initSidebarGroups = initSidebarGroups;
 

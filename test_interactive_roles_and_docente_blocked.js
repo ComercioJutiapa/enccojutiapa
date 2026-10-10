@@ -186,6 +186,17 @@ assert.strictEqual(fakeNavItems[2].style.display, 'none', 'reports debe tener di
 
 console.log('  ✅ Test 6 Superado: Los elementos bloqueados en la barra de navegación quedan ocultos (.hidden y display: none).');
 
+console.log('\n▶ [TEST 7] Verificación de que currentUser=admin no invalida el ocultamiento al probar/aplicar rol docente...');
+STATE.currentUser = { id: 'admin-01', name: 'Administrador', role: 'admin' };
+context.document.querySelectorAll = function(selector) {
+    if (selector === '.nav-item') return fakeNavItems;
+    return [];
+};
+context.applyUserRole('docente');
+assert(fakeNavItems[2].classList.contains('hidden'), 'reports DEBE SEGUIR OCULTO para rol docente aun si currentUser es admin');
+assert.strictEqual(fakeNavItems[2].style.display, 'none', 'reports debe tener display: none para rol docente');
+console.log('  ✅ Test 7 Superado: applyUserRole("docente") oculta módulos bloqueados incluso cuando currentUser es admin.');
+
 console.log('\n================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DE ROLES INTERACTIVOS PASARON AL 100%');
 console.log('================================================================\n');
