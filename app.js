@@ -34767,19 +34767,572 @@ function onPensumSubjectCareerOrGradeChange() {
     // El usuario asigna o deja en blanco el código manualmente.
 }
 
-function renderPensumCatalogTable(searchQuery = '') {
-    const tbody = document.getElementById('pensumCatalogTableBody');
-    if (!tbody) return;
+// ──────────────────────────────────────────────────────────────────────────
+// 🎓 CONTROLADOR DEL EDITOR DE PENSUM: PESTAÑAS POR GRADO Y HERO BANNER (OPCIÓN 1)
+// ──────────────────────────────────────────────────────────────────────────
 
+let currentPensumActiveGradeTab = '4to'; // '4to' (default), '5to', '6to', 'all'
+
+const PENSUM_GRADE_CONFIG = {
+    '4to': {
+        key: '4to',
+        name: 'Cuarto Perito Contador',
+        shortName: '4to Grado',
+        filterCode: '4TO',
+        targetNum: 4,
+        color: '#1d4ed8',
+        bg: '#eff6ff',
+        border: '#bfdbfe',
+        badgeClass: 'badge-primary',
+        icon: 'fa-1',
+        description: 'Fundamentación Contable, Matemática Comercial y Normativa Jurídica'
+    },
+    '5to': {
+        key: '5to',
+        name: 'Quinto Perito Contador',
+        shortName: '5to Grado',
+        filterCode: '5TO',
+        targetNum: 5,
+        color: '#059669',
+        bg: '#ecfdf5',
+        border: '#a7f3d0',
+        badgeClass: 'badge-success',
+        icon: 'fa-2',
+        description: 'Especialización en Costos, Legislación Fiscal, Aduanal y Finanzas Públicas'
+    },
+    '6to': {
+        key: '6to',
+        name: 'Sexto Perito Contador',
+        shortName: '6to Grado',
+        filterCode: '6TO',
+        targetNum: 6,
+        color: '#d97706',
+        bg: '#fffbeb',
+        border: '#fde68a',
+        badgeClass: 'badge-warning',
+        icon: 'fa-3',
+        description: 'Banca Central, Gubernamental Integrada, Auditoría y Práctica Supervisada'
+    },
+    'all': {
+        key: 'all',
+        name: 'Malla Curricular Completa',
+        shortName: 'Malla Completa',
+        filterCode: 'ALL',
+        targetNum: 0,
+        color: '#475569',
+        bg: '#f8fafc',
+        border: '#cbd5e1',
+        badgeClass: 'badge-secondary',
+        icon: 'fa-table-cells',
+        description: 'Vista consolidada de todas las asignaturas oficiales de la carrera'
+    }
+};
+
+function getPensumItemGradeKey(p) {
+    if (!p) return '4to';
+    const raw = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
+    if (raw.includes('6') || raw.includes('SEXTO') || raw.includes('6TO')) return '6to';
+    if (raw.includes('5') || raw.includes('QUINTO') || raw.includes('5TO')) return '5to';
+    if (raw.includes('4') || raw.includes('CUARTO') || raw.includes('4TO')) return '4to';
+    return '4to';
+}
+
+function selectPensumGradeTab(gradeKey) {
+    if (!PENSUM_GRADE_CONFIG[gradeKey]) gradeKey = '4to';
+    currentPensumActiveGradeTab = gradeKey;
+    renderPensumCatalogTable();
+}
+
+function openPensumSubjectModalForActiveGrade() {
+    let targetGrade = '4TO';
+    if (currentPensumActiveGradeTab === '5to') targetGrade = '5TO';
+    else if (currentPensumActiveGradeTab === '6to') targetGrade = '6TO';
+    openPensumSubjectModal(targetGrade);
+}
+
+function renderPensumGradeTabsBar(fullList = []) {
+    const container = document.getElementById('pensumGradeTabsList');
+    if (!container) return;
+
+    const grades = ['4to', '5to', '6to', 'all'];
+    const counts = { '4to': 0, '5to': 0, '6to': 0, 'all': fullList.length };
+    const periods = { '4to': 0, '5to': 0, '6to': 0, 'all': 0 };
+
+    fullList.forEach(p => {
+        const k = getPensumItemGradeKey(p);
+        const hrs = parseInt(p.periods || p.hours || p.periodsPerWeek || 4) || 4;
+        if (counts[k] !== undefined) {
+            counts[k]++;
+            periods[k] += hrs;
+        }
+        periods.all += hrs;
+    });
+
+    container.innerHTML = grades.map(k => {
+        const conf = PENSUM_GRADE_CONFIG[k];
+        const isActive = (currentPensumActiveGradeTab === k);
+        const count = counts[k] || 0;
+        const hrs = periods[k] || 0;
+
+        const activeStyles = isActive
+            ? 'background:linear-gradient(135deg, #065f46 0%, #047857 100%); color:#ffffff; border-color:#047857; box-shadow:0 3px 8px rgba(4,120,87,0.3); font-weight:800;'
+            : 'background:#f8fafc; color:#334155; border-color:#cbd5e1; font-weight:600;';
+
+        const badgeStyles = isActive
+            ? 'background:rgba(255,255,255,0.22); color:#ffffff; border:1px solid rgba(255,255,255,0.35);'
+            : 'background:#e2e8f0; color:#475569; border:1px solid #cbd5e1;';
+
+        return `
+            <button type="button" 
+                onclick="selectPensumGradeTab('${k}')" 
+                class="btn btn-sm ${isActive ? 'active' : ''}" 
+                style="display:inline-flex; align-items:center; gap:8px; padding:6px 14px; border-radius:9px; border:1.5px solid; cursor:pointer; transition:all 0.15s ease; ${activeStyles}">
+                <i class="fa-solid ${conf.icon}" style="font-size:0.85rem;"></i>
+                <span style="font-size:0.86rem;">${conf.shortName}</span>
+                <span style="font-size:0.73rem; padding:2px 7px; border-radius:12px; font-weight:700; ${badgeStyles}">
+                    ${count} ${k === 'all' ? 'materias' : 'clases'} &bull; ${hrs}h
+                </span>
+            </button>
+        `;
+    }).join('');
+}
+
+function renderPensumByGradeView(gradeKey, list = []) {
+    const container = document.getElementById('pensumByGradeContainer');
+    if (!container) return;
+
+    const conf = PENSUM_GRADE_CONFIG[gradeKey] || PENSUM_GRADE_CONFIG['4to'];
+    const gradeSubjects = list.filter(p => getPensumItemGradeKey(p) === gradeKey);
+
+    // Ordenar por sortOrder o order
+    gradeSubjects.sort((a, b) => {
+        const ordA = parseInt(a.sortOrder || a.order || 99);
+        const ordB = parseInt(b.sortOrder || b.order || 99);
+        return ordA - ordB;
+    });
+
+    const totalSubjects = gradeSubjects.length;
+    let totalPeriods = 0;
+    let withCodeCount = 0;
+
+    gradeSubjects.forEach(p => {
+        totalPeriods += (parseInt(p.periods || p.hours || p.periodsPerWeek || 4) || 4);
+        if (p.code && String(p.code).trim()) withCodeCount++;
+    });
+
+    // Detectar carrera actual
+    const careerFilterEl = document.getElementById('pensumCatalogCareerFilter');
+    const careerName = (careerFilterEl && careerFilterEl.value && careerFilterEl.value !== 'ALL')
+        ? careerFilterEl.value
+        : (gradeSubjects[0]?.career || 'Perito Contador');
+
+    // Hero Banner HTML
+    const heroBannerHtml = `
+        <div class="pensum-grade-hero" style="background:linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border:1.5px solid ${conf.border}; border-left:5px solid ${conf.color}; border-radius:12px; padding:16px 20px; margin-bottom:14px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div>
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                        <span class="badge" style="background:${conf.bg}; color:${conf.color}; border:1px solid ${conf.border}; font-size:0.78rem; font-weight:800; padding:4px 10px; border-radius:6px;">
+                            <i class="fa-solid ${conf.icon}"></i> ${conf.shortName}
+                        </span>
+                        <span style="font-size:0.8rem; color:#64748b; font-weight:600;">Plan Oficial de Estudios MINEDUC / CNB</span>
+                    </div>
+                    <h2 style="font-size:1.25rem; font-weight:800; color:#0f172a; margin:0 0 4px 0;">
+                        ${conf.name} &mdash; <span style="color:${conf.color}; font-weight:700;">${careerName}</span>
+                    </h2>
+                    <p style="font-size:0.83rem; color:#475569; margin:0;">
+                        <i class="fa-solid fa-circle-info" style="color:${conf.color}; margin-right:4px;"></i>
+                        ${conf.description}
+                    </p>
+                </div>
+                <!-- Pills de métricas -->
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:6px 12px; text-align:center; min-width:85px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                        <div style="font-size:1.15rem; font-weight:800; color:#0f172a;">${totalSubjects}</div>
+                        <div style="font-size:0.7rem; color:#64748b; font-weight:700; text-transform:uppercase;">Asignaturas</div>
+                    </div>
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:6px 12px; text-align:center; min-width:85px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                        <div style="font-size:1.15rem; font-weight:800; color:${conf.color};">${totalPeriods}</div>
+                        <div style="font-size:0.7rem; color:#64748b; font-weight:700; text-transform:uppercase;">Períodos / Sem</div>
+                    </div>
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:6px 12px; text-align:center; min-width:85px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                        <div style="font-size:1.15rem; font-weight:800; color:#059669;">${withCodeCount}/${totalSubjects}</div>
+                        <div style="font-size:0.7rem; color:#64748b; font-weight:700; text-transform:uppercase;">Cód. MINEDUC</div>
+                    </div>
+                    <!-- Botones rápidos dentro del banner -->
+                    <button type="button" class="btn btn-sm" onclick="openPensumSubjectModalForActiveGrade()" style="background:${conf.color}; color:#ffffff; border-radius:8px; font-weight:700; font-size:0.8rem; padding:8px 14px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                        <i class="fa-solid fa-plus"></i> Agregar a ${conf.shortName}
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="printPensumCurriculumReport('${gradeKey}')" style="font-size:0.8rem; font-weight:700; padding:8px 12px; border-radius:8px;" title="Imprimir pensum de este grado">
+                        <i class="fa-solid fa-print"></i> Imprimir Grado
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Si no hay materias en este grado
+    if (gradeSubjects.length === 0) {
+        container.innerHTML = `
+            ${heroBannerHtml}
+            <div style="background:#ffffff; border:1.5px dashed #cbd5e1; border-radius:12px; padding:40px 20px; text-align:center; margin-bottom:14px;">
+                <i class="fa-solid fa-book-open" style="font-size:2.4rem; color:#94a3b8; margin-bottom:12px; display:block;"></i>
+                <h4 style="font-size:1.05rem; font-weight:700; color:#334155; margin-bottom:6px;">No se encontraron asignaturas para ${conf.shortName}</h4>
+                <p style="font-size:0.84rem; color:#64748b; max-width:480px; margin:0 auto 16px auto;">
+                    Puede registrar las asignaturas correspondientes a este grado académico o importar la malla oficial del SIRE.
+                </p>
+                <div style="display:flex; justify-content:center; gap:8px;">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openPensumSubjectModalForActiveGrade()">
+                        <i class="fa-solid fa-plus"></i> Registrar Asignatura en ${conf.shortName}
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="openSirePensumImportModal()">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> Importar desde SIRE
+                    </button>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // Tabla exclusiva del grado
+    const rowsHtml = gradeSubjects.map((p, idx) => {
+        const pSubjectName = p.name || p.subject;
+        const seqNumber = idx + 1;
+        const periodsVal = p.periods || p.hours || p.periodsPerWeek || 4;
+        const courseCode = (p.code || '').trim().toUpperCase();
+        const cnbArea = typeof getCnbAreaInfo === 'function' ? getCnbAreaInfo(pSubjectName) : { name: 'Área General', shortName: 'General', color: '#475569', bg: '#f8fafc', border: '#cbd5e1', icon: 'fa-book-open' };
+
+        // Badge de Código de Curso
+        const courseCodeBadge = courseCode
+            ? `<span class="badge" style="font-family:'Courier New',Courier,monospace; font-weight:800; font-size:0.84rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; padding:4px 8px; letter-spacing:0.5px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" title="Código oficial del curso: ${courseCode}"><i class="fa-solid fa-barcode" style="font-size:0.75rem; opacity:0.75;"></i>${courseCode}</span>`
+            : `<span class="badge" style="background:#f1f5f9; color:#94a3b8; border:1px solid #e2e8f0; font-size:0.75rem; font-weight:600;">Sin Código</span>`;
+
+        // Badge de Área CNB
+        const cnbBadge = `<span class="badge" style="background:${cnbArea.bg}; color:${cnbArea.color}; border:1px solid ${cnbArea.border}; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; margin-top:3px;"><i class="fa-solid ${cnbArea.icon}"></i> ${cnbArea.name}</span>`;
+
+        // Docentes asignados a esta materia en tiempo real
+        let pGradeNum = conf.targetNum;
+        const matchingAssignments = (STATE.pensum || []).filter(a => {
+            const aGradeRaw = `${a.grade || ''} ${a.gradeCode || ''}`.toUpperCase();
+            let aGradeNum = 0;
+            if (aGradeRaw.includes('6') || aGradeRaw.includes('SEXTO') || aGradeRaw.includes('6TO')) aGradeNum = 6;
+            else if (aGradeRaw.includes('5') || aGradeRaw.includes('QUINTO') || aGradeRaw.includes('5TO')) aGradeNum = 5;
+            else if (aGradeRaw.includes('4') || aGradeRaw.includes('CUARTO') || aGradeRaw.includes('4TO')) aGradeNum = 4;
+
+            const isSameGrade = (pGradeNum > 0 && aGradeNum > 0) ? (pGradeNum === aGradeNum) : true;
+            const aSub = (a.subject || a.name || '').trim().toLowerCase();
+            const pSub = (p.name || p.subject || '').trim().toLowerCase();
+            return isSameGrade && (aSub === pSub || aSub.includes(pSub) || pSub.includes(aSub));
+        });
+
+        let teachersDisplay = '';
+        if (matchingAssignments.length > 0) {
+            teachersDisplay = matchingAssignments.map(a => 
+                `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-size:0.74rem; margin:2px; display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Catedrático: ${a.teacher} (Sección ${a.section || 'General'})"><i class="fa-solid fa-user-tie"></i> ${a.teacher} <strong>(${a.section || 'A'})</strong></span>`
+            ).join(' ');
+        } else {
+            teachersDisplay = `<span class="badge badge-warning" style="font-size:0.74rem; display:inline-flex; align-items:center; gap:4px; font-weight:600;"><i class="fa-solid fa-clock"></i> Sin docente asignado</span>`;
+        }
+
+        const isFirst = (idx === 0);
+        const isLast = (idx === gradeSubjects.length - 1);
+
+        return `
+            <tr style="transition:background 0.15s ease;">
+                <td style="text-align:center; vertical-align:middle;">
+                    <div style="display:inline-flex; align-items:center; justify-content:center; gap:4px;">
+                        <span style="font-weight:800; font-size:0.9rem; color:#0f172a; min-width:24px; text-align:right;">${seqNumber}.</span>
+                        <div style="display:flex; flex-direction:column; gap:1px;">
+                            <button type="button" 
+                                class="btn btn-xs btn-outline-primary" 
+                                onclick="movePensumSubjectOrderInGrade('${p.id}', -1)" 
+                                ${isFirst ? 'disabled style="opacity:0.3; cursor:not-allowed; padding:0 3px; font-size:0.6rem; height:13px; line-height:1;"' : 'style="padding:0 3px; font-size:0.6rem; height:13px; line-height:1;"'} 
+                                title="Subir orden en este grado">
+                                <i class="fa-solid fa-caret-up"></i>
+                            </button>
+                            <button type="button" 
+                                class="btn btn-xs btn-outline-primary" 
+                                onclick="movePensumSubjectOrderInGrade('${p.id}', 1)" 
+                                ${isLast ? 'disabled style="opacity:0.3; cursor:not-allowed; padding:0 3px; font-size:0.6rem; height:13px; line-height:1;"' : 'style="padding:0 3px; font-size:0.6rem; height:13px; line-height:1;"'} 
+                                title="Bajar orden en este grado">
+                                <i class="fa-solid fa-caret-down"></i>
+                            </button>
+                        </div>
+                    </div>
+                </td>
+                <td style="text-align:center; vertical-align:middle;">
+                    ${courseCodeBadge}
+                </td>
+                <td style="vertical-align:middle;">
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                        <strong style="color:#0f172a; font-size:0.92rem; font-weight:700;">${pSubjectName}</strong>
+                        <div>${cnbBadge}</div>
+                    </div>
+                </td>
+                <td style="text-align:center; vertical-align:middle; white-space:nowrap;">
+                    <span class="badge" style="background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1; font-weight:800; font-size:0.82rem; padding:4px 8px;">
+                        <i class="fa-solid fa-clock" style="color:${conf.color}; margin-right:4px;"></i>${periodsVal} períodos/sem
+                    </span>
+                </td>
+                <td style="vertical-align:middle;">
+                    <div style="display:flex; flex-wrap:wrap; gap:3px; align-items:center;">
+                        ${teachersDisplay}
+                    </div>
+                </td>
+                <td style="text-align:center; vertical-align:middle; white-space:nowrap;">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditPensumSubjectModal('${p.id}')" title="Editar Asignatura" style="padding:4px 8px; border-radius:6px; margin-right:3px;">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="deletePensumSubject('${p.id}')" title="Eliminar del Pensum" style="padding:4px 8px; border-radius:6px;">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    const tableHtml = `
+        <div class="table-card" style="margin-bottom:16px;">
+            <div class="table-responsive">
+                <table class="custom-table" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th style="width:75px; text-align:center;">#</th>
+                            <th style="width:140px; text-align:center;">Código de Curso</th>
+                            <th>Asignatura Oficial y Área Curricular</th>
+                            <th style="width:150px; text-align:center;">Carga Horaria</th>
+                            <th>Catedráticos Asignados y Secciones</th>
+                            <th style="width:105px; text-align:center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = heroBannerHtml + tableHtml;
+}
+
+function movePensumSubjectOrderInGrade(subjectId, delta) {
+    if (!Array.isArray(STATE.pensumCatalog)) return;
+    const item = STATE.pensumCatalog.find(x => x && x.id === subjectId);
+    if (!item) return;
+
+    const gradeKey = getPensumItemGradeKey(item);
+    const gradeItems = STATE.pensumCatalog.filter(p => getPensumItemGradeKey(p) === gradeKey);
+
+    gradeItems.sort((a, b) => {
+        const ordA = parseInt(a.sortOrder || a.order || 99);
+        const ordB = parseInt(b.sortOrder || b.order || 99);
+        return ordA - ordB;
+    });
+
+    const curIdx = gradeItems.findIndex(p => p.id === subjectId);
+    if (curIdx === -1) return;
+
+    const targetIdx = curIdx + delta;
+    if (targetIdx < 0 || targetIdx >= gradeItems.length) return;
+
+    // Normalizar órdenes secuenciales
+    gradeItems.forEach((p, idx) => {
+        p.sortOrder = idx + 1;
+        p.order = idx + 1;
+    });
+
+    // Intercambiar
+    const tempOrder = gradeItems[curIdx].sortOrder;
+    gradeItems[curIdx].sortOrder = gradeItems[targetIdx].sortOrder;
+    gradeItems[curIdx].order = gradeItems[targetIdx].sortOrder;
+    gradeItems[targetIdx].sortOrder = tempOrder;
+    gradeItems[targetIdx].order = tempOrder;
+
+    // Sincronizar en STATE.pensum (clases asignadas)
+    (STATE.pensum || []).forEach(p => {
+        const match = gradeItems.find(g => (g.subject === p.subject || g.name === p.subject));
+        if (match) {
+            p.sortOrder = match.sortOrder;
+        }
+    });
+
+    saveStateToLocalStorage();
+    renderPensumCatalogTable();
+    showToast(`Orden de "${item.name || item.subject}" actualizado correctamente.`, 'info');
+
+    // Sincronización en segundo plano con Firebase
+    (async () => {
+        try {
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+                await EnccoCloudSync.syncNode('pensumCatalog', STATE.pensumCatalog);
+            }
+        } catch(e) {
+            console.warn("Aviso al sincronizar orden de pensum:", e);
+        }
+    })();
+}
+
+function printPensumCurriculumReport(targetGrade) {
+    const gradeKey = targetGrade || (currentPensumActiveGradeTab !== 'all' ? currentPensumActiveGradeTab : 'all');
+    let list = Array.isArray(STATE.pensumCatalog) && STATE.pensumCatalog.length > 0
+        ? [...STATE.pensumCatalog]
+        : (typeof getInitialData === 'function' && Array.isArray(getInitialData().pensumCatalog) ? [...getInitialData().pensumCatalog] : []);
+
+    if (list.length === 0) {
+        showToast('No hay asignaturas en el pensum para imprimir.', 'warning');
+        return;
+    }
+
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {}) || {};
+    const schoolName = h.schoolName || 'Escuela Nacional de Ciencias Comerciales';
+    const location = h.location || 'Jutiapa, Guatemala';
+    const cycle = STATE.activeCycle || '2026';
+    const now = new Date();
+    const fechaEmision = now.toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    let gradesToPrint = ['4to', '5to', '6to'];
+    if (gradeKey && gradeKey !== 'all') {
+        gradesToPrint = [gradeKey];
+    }
+
+    let reportBodyHtml = '';
+
+    gradesToPrint.forEach(gKey => {
+        const conf = PENSUM_GRADE_CONFIG[gKey] || PENSUM_GRADE_CONFIG['4to'];
+        const gradeItems = list.filter(p => getPensumItemGradeKey(p) === gKey);
+        gradeItems.sort((a, b) => parseInt(a.sortOrder || a.order || 99) - parseInt(b.sortOrder || b.order || 99));
+
+        if (gradeItems.length === 0) return;
+
+        let totalHrs = 0;
+        const rows = gradeItems.map((p, idx) => {
+            const hrs = parseInt(p.periods || p.hours || p.periodsPerWeek || 4) || 4;
+            totalHrs += hrs;
+            const code = (p.code || '').trim().toUpperCase() || 'S/C';
+            const cnb = typeof getCnbAreaInfo === 'function' ? getCnbAreaInfo(p.name || p.subject) : { name: 'Área General' };
+            return `
+                <tr>
+                    <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+                    <td style="text-align:center; font-family:'Courier New', monospace; font-weight:800;">${code}</td>
+                    <td><strong>${p.name || p.subject}</strong></td>
+                    <td>${cnb.name}</td>
+                    <td style="text-align:center; font-weight:700;">${hrs} períodos</td>
+                </tr>
+            `;
+        }).join('');
+
+        reportBodyHtml += `
+            <div style="margin-bottom:24px; page-break-inside:avoid;">
+                <div style="background:#0f2b5c; color:#ffffff; padding:8px 14px; border-radius:6px 6px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="font-size:10.5pt; text-transform:uppercase;">${conf.name} &bull; Perito Contador</strong>
+                    <span style="font-size:9pt; background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px;">${gradeItems.length} Asignaturas &bull; ${totalHrs} Períodos Semanales</span>
+                </div>
+                <table style="width:100%; border-collapse:collapse; font-size:8.5pt; border:1px solid #cbd5e1;">
+                    <thead>
+                        <tr style="background:#f1f5f9; border-bottom:1.5px solid #0f2b5c;">
+                            <th style="padding:6px; width:35px; text-align:center; border:1px solid #cbd5e1;">No.</th>
+                            <th style="padding:6px; width:95px; text-align:center; border:1px solid #cbd5e1;">Código</th>
+                            <th style="padding:6px; text-align:left; border:1px solid #cbd5e1;">Asignatura Oficial</th>
+                            <th style="padding:6px; text-align:left; border:1px solid #cbd5e1;">Área Curricular CNB</th>
+                            <th style="padding:6px; width:110px; text-align:center; border:1px solid #cbd5e1;">Carga Horaria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    });
+
+    const printHtml = `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Malla Curricular Oficial del Pensum - ENCCO Jutiapa</title>
+        <style>
+            @page { size: letter portrait; margin: 12mm 12mm 14mm 12mm; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5pt; color: #1e293b; margin: 0; padding: 10px; }
+            .header-banner { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0f2b5c; padding-bottom: 12px; margin-bottom: 14px; }
+            .header-logo { width: 62px; height: 62px; object-fit: contain; }
+            .header-text { text-align: center; flex: 1; padding: 0 14px; }
+            .header-text h1 { font-size: 14.5pt; margin: 0; color: #0f2b5c; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; }
+            .header-text h2 { font-size: 10.5pt; margin: 3px 0 1px 0; color: #059669; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+            .header-text h3 { font-size: 9pt; margin: 2px 0 0 0; color: #475569; font-weight: 600; }
+            .header-side-badge { text-align: right; font-size: 8pt; color: #64748b; font-weight: 600; min-width: 80px; }
+            .signatures { margin-top: 36px; display: flex; justify-content: space-between; page-break-inside: avoid; text-align: center; }
+            .sig-box { width: 30%; border-top: 1.5px solid #334155; padding-top: 6px; font-size: 8pt; font-weight: 700; color: #334155; }
+            table td { padding: 5px 6px; border: 1px solid #cbd5e1; }
+        </style>
+    </head>
+    <body>
+        <div class="header-banner">
+            <img src="logo.png" alt="Logo ENCCO" class="header-logo" onerror="this.style.display='none'">
+            <div class="header-text">
+                <h1>${schoolName.toUpperCase()}</h1>
+                <h2>${location.toUpperCase()}</h2>
+                <h3>PLAN DE ESTUDIOS Y MALLA CURRICULAR OFICIAL &mdash; CICLO ESCOLAR ${cycle}</h3>
+                <div style="font-size:7.8pt; color:#64748b; margin-top:2px;">Carrera: Perito Contador &bull; Jornada Matutina &bull; Emisión: ${fechaEmision}</div>
+            </div>
+            <div class="header-side-badge">
+                <div style="font-weight:800; color:#0f2b5c; font-size:8.5pt;">ENCCO 1970</div>
+                <div>Perito Contador</div>
+            </div>
+        </div>
+
+        ${reportBodyHtml}
+
+        <div class="signatures">
+            <div class="sig-box">
+                Vo.Bo. Dirección General<br>
+                <span>ENCCO Jutiapa</span>
+            </div>
+            <div class="sig-box">
+                Comisión de Evaluación del Aprendizaje<br>
+                <span>Claustro de Docentes</span>
+            </div>
+            <div class="sig-box">
+                Secretaría y Registro Académico<br>
+                <span>Control Curricular MINEDUC</span>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(printHtml);
+    doc.close();
+
+    iframe.contentWindow.focus();
+    setTimeout(() => {
+        iframe.contentWindow.print();
+        setTimeout(() => {
+            document.body.removeChild(iframe);
+        }, 2000);
+    }, 400);
+}
+
+function renderPensumCatalogTable(searchQuery = '') {
     // Garantizar que todos los cursos del pensum tengan su código oficial normalizado
     normalizePensumCatalogCodes();
 
     const careerFilterEl = document.getElementById('pensumCatalogCareerFilter');
-    const gradeFilterEl = document.getElementById('pensumCatalogGradeFilter');
     const searchInputEl = document.getElementById('pensumCatalogSearchInput');
 
     const careerFilter = (careerFilterEl ? careerFilterEl.value : 'ALL') || 'ALL';
-    const gradeFilter = (gradeFilterEl ? gradeFilterEl.value : 'ALL') || 'ALL';
     const q = (typeof searchQuery === 'string' ? searchQuery : (searchInputEl ? searchInputEl.value : '')).trim().toLowerCase();
 
     // Garantizar que STATE.pensumCatalog tenga las materias oficiales si está vacío
@@ -34798,27 +35351,7 @@ function renderPensumCatalogTable(searchQuery = '') {
         });
     }
 
-    // Filtrar por Grado dinámico (detecta 4, 5, 6 en cualquier formato: '4TO', '4to Grado', '4to Perito Contador', etc.)
-    if (gradeFilter && gradeFilter !== 'ALL') {
-        const gRaw = gradeFilter.toUpperCase();
-        let targetNum = 0;
-        if (gRaw.includes('6') || gRaw.includes('SEXTO') || gRaw.includes('6TO')) targetNum = 6;
-        else if (gRaw.includes('5') || gRaw.includes('QUINTO') || gRaw.includes('5TO')) targetNum = 5;
-        else if (gRaw.includes('4') || gRaw.includes('CUARTO') || gRaw.includes('4TO')) targetNum = 4;
-
-        list = list.filter(p => {
-            const pGradeRaw = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
-            let pNum = 0;
-            if (pGradeRaw.includes('6') || pGradeRaw.includes('SEXTO') || pGradeRaw.includes('6TO')) pNum = 6;
-            else if (pGradeRaw.includes('5') || pGradeRaw.includes('QUINTO') || pGradeRaw.includes('5TO')) pNum = 5;
-            else if (pGradeRaw.includes('4') || pGradeRaw.includes('CUARTO') || pGradeRaw.includes('4TO')) pNum = 4;
-
-            if (targetNum > 0 && pNum > 0) return targetNum === pNum;
-            return pGradeRaw.includes(gRaw) || gRaw.includes(pGradeRaw);
-        });
-    }
-
-    // Búsqueda por texto (nombre, código, área)
+    // Búsqueda por texto (nombre, código, área, grado)
     if (q) {
         list = list.filter(p => 
             (p.subject || '').toLowerCase().includes(q) ||
@@ -34845,6 +35378,27 @@ function renderPensumCatalogTable(searchQuery = '') {
         return (parseInt(a.sortOrder || a.order || 99) - parseInt(b.sortOrder || b.order || 99));
     });
 
+    // 1. Renderizar la barra de pestañas (Tabs por grado)
+    renderPensumGradeTabsBar(list);
+
+    const gradeContainer = document.getElementById('pensumByGradeContainer');
+    const fullTableContainer = document.getElementById('pensumFullTableContainer');
+    const tbody = document.getElementById('pensumCatalogTableBody');
+
+    // 2. Si estamos en modo de grado ('4to', '5to', '6to')
+    if (currentPensumActiveGradeTab !== 'all') {
+        if (gradeContainer) gradeContainer.style.display = 'block';
+        if (fullTableContainer) fullTableContainer.style.display = 'none';
+        renderPensumByGradeView(currentPensumActiveGradeTab, list);
+        return;
+    }
+
+    // 3. Si estamos en modo 'all' (Malla Completa)
+    if (gradeContainer) gradeContainer.style.display = 'none';
+    if (fullTableContainer) fullTableContainer.style.display = 'block';
+
+    if (!tbody) return;
+
     if (list.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -34860,7 +35414,7 @@ function renderPensumCatalogTable(searchQuery = '') {
     tbody.innerHTML = list.map((p, idx) => {
         const pSubjectName = p.name || p.subject;
         const orderVal = p.sortOrder || p.order || (idx + 1);
-        const periodsVal = p.periods || p.hours || 4;
+        const periodsVal = p.periods || p.hours || p.periodsPerWeek || 4;
         const courseCode = (p.code || '').trim().toUpperCase() || 'S/C';
         const areaBadge = p.area ? `<div style="font-size:0.75rem; color:#64748b; margin-top:2px;"><i class="fa-solid fa-tag"></i> ${p.area}</div>` : '';
 
@@ -35510,7 +36064,7 @@ function filterPensumCatalogTable(query = '') {
 // 📖 CONTROLADOR DEL EDITOR DE MATERIAS EN PENSUM
 // ──────────────────────────────────────────────────────────────────────────
 
-function openPensumSubjectModal() {
+function openPensumSubjectModal(defaultGrade = null) {
     if (!checkEnrolmentPermissions()) return;
     const form = document.querySelector('#pensumSubjectModal form') || document.getElementById('pensumSubjectForm');
     if (form && typeof form.reset === 'function') form.reset();
@@ -35522,6 +36076,18 @@ function openPensumSubjectModal() {
     if (titleEl) titleEl.innerHTML = '<i class="fa-solid fa-book-open-reader"></i> Registrar Asignatura en Pensum';
 
     updatePensumCatalogSelects();
+
+    const gradeSelect = document.getElementById('pensumSubjectFormGrade') || document.getElementById('pensumSubjectGrade');
+    if (gradeSelect) {
+        const targetG = defaultGrade || (typeof currentPensumActiveGradeTab !== 'undefined' && currentPensumActiveGradeTab !== 'all' ? currentPensumActiveGradeTab : null);
+        if (targetG) {
+            const rawG = String(targetG).toUpperCase();
+            if (rawG.includes('4') || rawG.includes('CUARTO')) gradeSelect.value = '4TO';
+            else if (rawG.includes('5') || rawG.includes('QUINTO')) gradeSelect.value = '5TO';
+            else if (rawG.includes('6') || rawG.includes('SEXTO')) gradeSelect.value = '6TO';
+            else gradeSelect.value = targetG;
+        }
+    }
 
     const career = document.getElementById('pensumSubjectFormCareer')?.value || 'Perito Contador';
     const grade = document.getElementById('pensumSubjectFormGrade')?.value || '4to Perito Contador';
@@ -39188,6 +39754,12 @@ window.filterPensumCatalogTable = filterPensumCatalogTable;
 window.suggestNextPensumCourseCode = suggestNextPensumCourseCode;
 window.normalizePensumCatalogCodes = normalizePensumCatalogCodes;
 window.onPensumSubjectCareerOrGradeChange = onPensumSubjectCareerOrGradeChange;
+window.selectPensumGradeTab = selectPensumGradeTab;
+window.renderPensumGradeTabsBar = renderPensumGradeTabsBar;
+window.renderPensumByGradeView = renderPensumByGradeView;
+window.movePensumSubjectOrderInGrade = movePensumSubjectOrderInGrade;
+window.openPensumSubjectModalForActiveGrade = openPensumSubjectModalForActiveGrade;
+window.printPensumCurriculumReport = printPensumCurriculumReport;
 
 // ======================================================================
 // ⚡ ESCUCHADORES BIDIRECCIONALES FIRESTORE ON-SNAPSHOT (EN MEMORIA RAM)

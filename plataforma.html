@@ -1933,39 +1933,53 @@
 
                 <!-- 4B. EDITOR DE PENSUM (MALLA CURRICULAR Y MATERIAS OFICIALES) -->
                 <section class="app-view" id="view-pensum">
-                    <div class="section-toolbar">
-                        <div class="toolbar-search">
-                            <input type="text" id="pensumCatalogSearchInput" placeholder="Buscar materia o grado en pensum..." oninput="filterPensumCatalogTable(this.value)" onkeyup="filterPensumCatalogTable(this.value)">
+                    <!-- NAVEGACIÓN PRINCIPAL POR GRADOS (OPCIÓN 1: PESTAÑAS DE PENSUM) -->
+                    <div class="pensum-grade-nav-wrapper" style="margin-bottom:14px; background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:10px 14px; box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                            <!-- LISTADO DE PESTAÑAS (TABS) POR GRADO -->
+                            <div id="pensumGradeTabsList" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                                <!-- Pestañas inyectadas dinámicamente: 4to, 5to, 6to, Malla Completa -->
+                            </div>
+                            <!-- ACCIONES DE GESTIÓN -->
+                            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openCareerModal()" style="font-size:0.78rem; font-weight:700; padding:6px 12px; border-radius:8px;">
+                                    <i class="fa-solid fa-graduation-cap"></i> Carreras
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm role-restricted" data-allowed="admin,director,secretaria" onclick="openSirePensumImportModal()" style="font-size:0.78rem; font-weight:700; padding:6px 12px; border-radius:8px;">
+                                    <i class="fa-solid fa-cloud-arrow-down"></i> Importar SIRE
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="printPensumCurriculumReport()" style="font-size:0.78rem; font-weight:700; padding:6px 12px; border-radius:8px;" title="Imprimir pensum oficial membretado">
+                                    <i class="fa-solid fa-print"></i> Imprimir Pensum
+                                </button>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="openPensumSubjectModalForActiveGrade()" style="font-size:0.78rem; font-weight:800; padding:6px 14px; border-radius:8px;">
+                                    <i class="fa-solid fa-plus"></i> Nueva Materia
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BARRA DE BÚSQUEDA Y FILTROS -->
+                    <div class="section-toolbar" style="margin-bottom:14px;">
+                        <div class="toolbar-search" style="flex:1; max-width:420px;">
+                            <input type="text" id="pensumCatalogSearchInput" placeholder="Buscar materia o código en el pensum..." oninput="filterPensumCatalogTable(this.value)" onkeyup="filterPensumCatalogTable(this.value)">
                         </div>
                         <div class="toolbar-filters" style="display:flex; gap:8px;">
-                            <select id="pensumCatalogCareerFilter" class="form-control" onchange="filterPensumCatalogTable()">
+                            <select id="pensumCatalogCareerFilter" class="form-control" onchange="filterPensumCatalogTable()" style="font-size:0.82rem; min-width:180px;">
                                 <!-- Cargado dinámicamente con carreras -->
                             </select>
-                            <select id="pensumCatalogGradeFilter" class="form-control" onchange="filterPensumCatalogTable()">
+                            <select id="pensumCatalogGradeFilter" class="form-control" onchange="filterPensumCatalogTable()" style="font-size:0.82rem; display:none;">
                                 <option value="ALL">Todos los Grados</option>
                             </select>
                         </div>
-                        <div class="toolbar-actions">
-                            <button type="button" class="btn btn-accent" onclick="openCareerModal()">
-                                <i class="fa-solid fa-graduation-cap"></i> Gestionar Carreras
-                            </button>
-                                                        <button type="button" class="btn btn-outline role-restricted" data-allowed="admin,director,secretaria" style="border:1.5px solid #0284c7; color:#0284c7; font-weight:700;" onclick="openSirePensumImportModal()">
-                                <i class="fa-solid fa-cloud-arrow-down"></i> Importar de SIRE / MINEDUC
-                            </button>
-                            <button type="button" class="btn btn-primary" onclick="openPensumSubjectModal()">
-                                <i class="fa-solid fa-plus"></i> Nueva Materia en Pensum
-                            </button>
-                        </div>
                     </div>
 
-                    <div class="info-alert" style="display:none; margin-bottom:16px;">
-                        <i class="fa-solid fa-book-open-reader"></i>
-                        <div>
-                            <strong>Editor de Pensum (Malla Curricular):</strong> Defina el catálogo oficial de materias y períodos que componen el plan de estudios de cada carrera y grado.
-                        <button type="button" onclick="dismissBannerAlert(this)" title="Cerrar esta alerta" style="margin-left:auto; background:none; border:none; color:inherit; font-size:1.25rem; font-weight:700; cursor:pointer; opacity:0.65; padding:0 4px; line-height:1;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.65'">&times;</button></div>
+                    <!-- VISTA PRINCIPAL (OPCIÓN 1): MATRIZ POR GRADO -->
+                    <div id="pensumByGradeContainer" style="display:block;">
+                        <!-- Renderizado dinámico del grado activo: Hero Banner + Tabla exclusiva de materias del grado -->
                     </div>
 
-                    <div class="table-card">
+                    <!-- VISTA COMPLEMENTARIA: MALLA COMPLETA (TABLA CLÁSICA) -->
+                    <div class="table-card" id="pensumFullTableContainer" style="display:none;">
                         <div class="table-responsive">
                             <table class="custom-table">
                                 <thead>
