@@ -51,6 +51,7 @@
                 const pensum = (window.STATE && Array.isArray(window.STATE.pensum)) ? window.STATE.pensum : [];
                 const gradesList = (window.STATE && Array.isArray(window.STATE.gradesList)) ? window.STATE.gradesList : [];
                 const exoneraciones = (window.STATE && Array.isArray(window.STATE.academicExonerations)) ? window.STATE.academicExonerations : [];
+                const studentAnnotations = (window.STATE && Array.isArray(window.STATE.studentAnnotations)) ? window.STATE.studentAnnotations : [];
 
                 const archivePayload = {
                     cycle: targetCycle,
@@ -66,6 +67,7 @@
                     pensumSnapshot: JSON.parse(JSON.stringify(pensum)),
                     gradesSnapshot: JSON.parse(JSON.stringify(gradesList)),
                     exoneracionesSnapshot: JSON.parse(JSON.stringify(exoneraciones)),
+                    annotationsSnapshot: JSON.parse(JSON.stringify(studentAnnotations)),
                     summary: {
                         totalStudents: students.length,
                         totalAttendanceDates: Object.keys(attendance).length,
@@ -253,15 +255,31 @@
                     return cloned;
                 });
 
-                // 3. Resetear registros temporales y transaccionales del año anterior
+                // 3. Resetear registros temporales y transaccionales del año anterior preservando la bitácora acumulativa
                 if (window.STATE) {
                     window.STATE.students = promotedStudents;
+                    // Resguardar siempre las asistencias acumuladas en respaldo maestro permanente
+                    try {
+                        if (window.STATE.attendanceRecords && Object.keys(window.STATE.attendanceRecords).length > 0) {
+                            if (typeof localStorage !== 'undefined') {
+                                localStorage.setItem('ENCCO_ATTENDANCE_MASTER_BACKUP', JSON.stringify(window.STATE.attendanceRecords));
+                            }
+                        }
+                    } catch(e) {}
                     window.STATE.attendanceRecords = {};
                     window.STATE.studentPermissions = [];
                     window.STATE.disciplineReports = [];
                     window.STATE.dismissedAlerts = {};
                     window.STATE.academicCycle = targetNewCycle;
                     window.STATE.activeCycle = targetNewCycle;
+
+                    // Preservar la bitácora acumulativa de los estudiantes para los siguientes años
+                    if (!Array.isArray(window.STATE.studentAnnotations)) {
+                        window.STATE.studentAnnotations = [];
+                    }
+                    window.STATE.studentAnnotations.forEach(a => {
+                        if (!a.academicCycle) a.academicCycle = currentActiveCycle;
+                    });
 
                     if (!Array.isArray(window.STATE.cycles)) {
                         window.STATE.cycles = [];
@@ -302,12 +320,11 @@
                     saveStateToLocalStorage();
                 }
 
-                // Sincronizar nodos críticos inmediatamente
+                // Sincronizar nodos críticos inmediatamente (JAMÁS sincronizar asistencia vacía para no borrar historial)
                 if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
                     EnccoCloudSync.syncNode('activeCycle', targetNewCycle);
                     EnccoCloudSync.syncNode('cycles', window.STATE.cycles);
                     EnccoCloudSync.syncNode('students', window.STATE.students);
-                    EnccoCloudSync.syncNode('attendanceRecords', {});
                     EnccoCloudSync.syncNode('studentPermissions', []);
                     EnccoCloudSync.syncNode('disciplineReports', []);
                 }
