@@ -2034,52 +2034,57 @@
                         </div>
                     </div>
 
-                    <!-- NAVEGACIÓN PRINCIPAL POR GRADOS (OPCIÓN 1: PESTAÑAS SEPARADAS) -->
-                    <div class="asg-grade-nav-wrapper" style="margin-bottom:14px; background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:10px 14px; box-shadow:0 1px 4px rgba(0,0,0,0.04);">
-                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                            <!-- LISTADO DE PESTAÑAS (TABS) -->
-                            <div id="asgGradeTabsList" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                                <!-- Pestañas inyectadas dinámicamente: 4to, 5to, 6to, Vacantes, Tabla General, Carga Docente -->
-                            </div>
-                            <!-- ACCIONES GLOBALES -->
-                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="openPrintClassAssignmentsModal()" data-print-fn="printClassAssignmentsReport" style="font-size:0.78rem; font-weight:700; padding:6px 14px; border-radius:8px;" title="Imprimir distribución oficial de cátedras">
-                                    <i class="fa-solid fa-print"></i> Imprimir Distribución
-                                </button>
-                                <button type="button" class="btn btn-primary btn-sm" onclick="openClassAssignmentModal()" style="font-size:0.78rem; font-weight:800; padding:6px 16px; border-radius:8px;">
-                                    <i class="fa-solid fa-plus"></i> Asignar Clase a Docente
-                                </button>
-                            </div>
+                    <!-- BARRA DE MODOS DE VISTA Y ACCIONES -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px; background:#ffffff; padding:10px 14px; border-radius:10px; border:1px solid #e2e8f0;">
+                        <!-- SELECTOR DE MODOS DE VISTA -->
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button type="button" class="btn btn-sm btn-primary asg-view-mode-btn active" id="asgViewModeTableBtn" onclick="switchAssignmentsViewMode('table')" style="font-size:0.78rem; font-weight:700; padding:5px 12px;">
+                                <i class="fa-solid fa-table-list"></i> Tabla General
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary asg-view-mode-btn" id="asgViewModeGradeBtn" onclick="switchAssignmentsViewMode('byGrade')" style="font-size:0.78rem; font-weight:700; padding:5px 12px;">
+                                <i class="fa-solid fa-graduation-cap"></i> Por Grado / Cobertura
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary asg-view-mode-btn" id="asgViewModeTeacherBtn" onclick="switchAssignmentsViewMode('byTeacher')" style="font-size:0.78rem; font-weight:700; padding:5px 12px;">
+                                <i class="fa-solid fa-user-tie"></i> Carga Docente
+                            </button>
+                        </div>
+
+                        <!-- FILTROS RÁPIDOS POR GRADO E IMPRESIÓN -->
+                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                            <span style="font-size:0.74rem; font-weight:700; color:#64748b;">Grado:</span>
+                            <button type="button" class="asg-quick-grade-pill active" onclick="setAssignmentQuickFilter('ALL', this)" style="padding:3px 9px; border-radius:6px; font-size:0.74rem; font-weight:700; border:1px solid #0284c7; background:#0284c7; color:#fff; cursor:pointer;">Todos</button>
+                            <button type="button" class="asg-quick-grade-pill" onclick="setAssignmentQuickFilter('4to', this)" style="padding:3px 9px; border-radius:6px; font-size:0.74rem; font-weight:700; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; cursor:pointer;">4to</button>
+                            <button type="button" class="asg-quick-grade-pill" onclick="setAssignmentQuickFilter('5to', this)" style="padding:3px 9px; border-radius:6px; font-size:0.74rem; font-weight:700; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; cursor:pointer;">5to</button>
+                            <button type="button" class="asg-quick-grade-pill" onclick="setAssignmentQuickFilter('6to', this)" style="padding:3px 9px; border-radius:6px; font-size:0.74rem; font-weight:700; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; cursor:pointer;">6to</button>
+                            <button type="button" class="asg-quick-grade-pill" onclick="setAssignmentQuickFilter('UNASSIGNED', this)" style="padding:3px 9px; border-radius:6px; font-size:0.74rem; font-weight:700; border:1px solid #f97316; background:#fff7ed; color:#c2410c; cursor:pointer;"><i class="fa-solid fa-triangle-exclamation"></i> Sin Asignar</button>
+                            
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="openPrintClassAssignmentsModal()" data-print-fn="printClassAssignmentsReport" style="font-size:0.78rem; font-weight:700; padding:5px 12px; margin-left:6px;" title="Imprimir distribución oficial de cátedras">
+                                <i class="fa-solid fa-print"></i> Imprimir Distribución
+                            </button>
                         </div>
                     </div>
 
-                    <!-- BARRA DE BÚSQUEDA Y FILTRO RÁPIDO -->
-                    <div class="section-toolbar" id="assignmentsToolbar" style="margin-bottom:14px;">
-                        <div class="toolbar-search" style="flex:1; max-width:420px;">
-                            <input type="text" id="assignmentSearchInput" placeholder="Buscar asignatura o docente..." oninput="filterAssignmentsTable(this.value)" onkeyup="filterAssignmentsTable(this.value)">
+                    <div class="section-toolbar" style="margin-bottom:12px;">
+                        <div class="toolbar-search">
+                            <input type="text" id="assignmentSearchInput" placeholder="Buscar por docente, clase, grado o sección..." oninput="filterAssignmentsTable(this.value)" onkeyup="filterAssignmentsTable(this.value)">
                         </div>
                         <div class="toolbar-filters" style="display:flex; gap:8px;">
-                            <select id="assignmentTeacherFilter" class="form-control" onchange="filterAssignmentsTable()" style="font-size:0.82rem; min-width:200px;">
+                            <select id="assignmentTeacherFilter" class="form-control" onchange="filterAssignmentsTable()">
                                 <option value="ALL">Todos los Docentes</option>
                             </select>
-                            <select id="assignmentGradeFilter" class="form-control" onchange="filterAssignmentsTable()" style="font-size:0.82rem; display:none;">
+                            <select id="assignmentGradeFilter" class="form-control" onchange="filterAssignmentsTable()">
                                 <option value="ALL">Todos los Grados / Secciones</option>
                             </select>
                         </div>
+                        <div class="toolbar-actions">
+                            <button type="button" class="btn btn-primary" onclick="openClassAssignmentModal()">
+                                <i class="fa-solid fa-plus"></i> Asignar Clase a Docente
+                            </button>
+                        </div>
                     </div>
 
-                    <!-- VISTA PRINCIPAL (OPCIÓN 1): MATRIZ CURRICULAR POR GRADO -->
-                    <div id="assignmentsMatrixByGradeView" style="display:block;">
-                        <!-- Contenedor dinámico de la matriz del grado activo -->
-                    </div>
-
-                    <!-- VISTA DE CÁTEDRAS VACANTES / SIN ASIGNAR -->
-                    <div id="assignmentsVacantView" style="display:none;">
-                        <!-- Contenedor dinámico de vacantes -->
-                    </div>
-
-                    <!-- VISTA 1: TABLA GENERAL (MANTENIDA PARA COMPATIBILIDAD) -->
-                    <div class="table-card" id="assignmentsTableView" style="display:none;">
+                    <!-- VISTA 1: TABLA GENERAL -->
+                    <div class="table-card" id="assignmentsTableView">
                         <div class="table-responsive">
                             <table class="custom-table">
                                 <thead>
@@ -2097,7 +2102,7 @@
                         </div>
                     </div>
 
-                    <!-- VISTA 2: POR GRADO Y SECCIÓN (MATRIZ DE COBERTURA PREVIA) -->
+                    <!-- VISTA 2: POR GRADO Y SECCIÓN (MATRIZ DE COBERTURA) -->
                     <div id="assignmentsByGradeView" style="display:none;">
                         <div id="assignmentsByGradeContainer" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(360px, 1fr)); gap:14px;"></div>
                     </div>

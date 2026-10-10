@@ -35011,25 +35011,28 @@ function renderPensumByGradeView(gradeKey, list = []) {
         const cnbBadge = `<span class="badge" style="background:${cnbArea.bg}; color:${cnbArea.color}; border:1px solid ${cnbArea.border}; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; margin-top:3px;"><i class="fa-solid ${cnbArea.icon}"></i> ${cnbArea.name}</span>`;
 
         // Docentes asignados a esta materia en tiempo real
-        let pGradeNum = conf.targetNum;
+        let pGradeNum = conf.targetNum || 4;
         const matchingAssignments = (STATE.pensum || []).filter(a => {
-            const aGradeRaw = `${a.grade || ''} ${a.gradeCode || ''}`.toUpperCase();
-            let aGradeNum = 0;
-            if (aGradeRaw.includes('6') || aGradeRaw.includes('SEXTO') || aGradeRaw.includes('6TO')) aGradeNum = 6;
-            else if (aGradeRaw.includes('5') || aGradeRaw.includes('QUINTO') || aGradeRaw.includes('5TO')) aGradeNum = 5;
-            else if (aGradeRaw.includes('4') || aGradeRaw.includes('CUARTO') || aGradeRaw.includes('4TO')) aGradeNum = 4;
+            const gradeMatches = typeof isGradeMatch === 'function'
+                ? isGradeMatch(a.grade || a.gradeCode, gradeKey)
+                : true;
+            if (!gradeMatches) return false;
 
-            const isSameGrade = (pGradeNum > 0 && aGradeNum > 0) ? (pGradeNum === aGradeNum) : true;
-            const aSub = (a.subject || a.name || '').trim().toLowerCase();
-            const pSub = (p.name || p.subject || '').trim().toLowerCase();
-            return isSameGrade && (aSub === pSub || aSub.includes(pSub) || pSub.includes(aSub));
+            const aSub = (a.subject || a.name || '').trim();
+            const pSub = (p.name || p.subject || '').trim();
+            if (typeof isSubjectMatch === 'function') {
+                return isSubjectMatch(aSub, pSub, pGradeNum);
+            }
+            return aSub.toLowerCase() === pSub.toLowerCase() || aSub.toLowerCase().includes(pSub.toLowerCase()) || pSub.toLowerCase().includes(aSub.toLowerCase());
         });
 
         let teachersDisplay = '';
-        if (matchingAssignments.length > 0) {
-            teachersDisplay = matchingAssignments.map(a => 
-                `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-size:0.74rem; margin:2px; display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Catedrático: ${a.teacher} (Sección ${a.section || 'General'})"><i class="fa-solid fa-user-tie"></i> ${a.teacher} <strong>(${a.section || 'A'})</strong></span>`
-            ).join(' ');
+        const assignedMatches = matchingAssignments.filter(a => !isAssignmentUnassigned(a));
+        if (assignedMatches.length > 0) {
+            teachersDisplay = assignedMatches.map(a => {
+                const tName = (typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(a) : (a.teacher || a.teacherName || 'Docente');
+                return `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-size:0.74rem; margin:2px; display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Catedrático: ${escapeHtml(tName)} (Sección ${a.section || 'A'})"><i class="fa-solid fa-user-tie"></i> ${escapeHtml(tName)} <strong>(${a.section || 'A'})</strong></span>`;
+            }).join(' ');
         } else {
             teachersDisplay = `<span class="badge badge-warning" style="font-size:0.74rem; display:inline-flex; align-items:center; gap:4px; font-weight:600;"><i class="fa-solid fa-clock"></i> Sin docente asignado</span>`;
         }
@@ -35277,15 +35280,23 @@ function printPensumCurriculumReport(targetGrade) {
             const sectionCells = secList.map(sec => {
                 // Buscar la cátedra asignada a esta sección y materia
                 const asg = (STATE.pensum || []).find(a => {
-                    const aGradeRaw = `${a.grade || ''} ${a.gradeCode || ''}`.toUpperCase();
-                    const matchesGrade = aGradeRaw.includes(String(gradeNum))
-                        || (gradeNum === 4 && (aGradeRaw.includes('CUARTO') || aGradeRaw.includes('4TO')))
-                        || (gradeNum === 5 && (aGradeRaw.includes('QUINTO') || aGradeRaw.includes('5TO')))
-                        || (gradeNum === 6 && (aGradeRaw.includes('SEXTO') || aGradeRaw.includes('6TO')));
-                    if (!matchesGrade) return false;
+                    if (typeof isGradeMatch === 'function') {
+                        if (!isGradeMatch(a.grade || a.gradeCode, gKey)) return false;
+                    } else {
+                        const aGradeRaw = `${a.grade || ''} ${a.gradeCode || ''}`.toUpperCase();
+                        const matchesGrade = aGradeRaw.includes(String(gradeNum))
+                            || (gradeNum === 4 && (aGradeRaw.includes('CUARTO') || aGradeRaw.includes('4TO')))
+                            || (gradeNum === 5 && (aGradeRaw.includes('QUINTO') || aGradeRaw.includes('5TO')))
+                            || (gradeNum === 6 && (aGradeRaw.includes('SEXTO') || aGradeRaw.includes('6TO')));
+                        if (!matchesGrade) return false;
+                    }
 
-                    const aSec = String(a.section || '').toUpperCase().replace(/SECCI[OÓ]N/g, '').trim();
-                    if (aSec !== sec.key) return false;
+                    if (typeof isSectionMatch === 'function') {
+                        if (!isSectionMatch(a.section || a.gradeCode, sec.key || sec.label)) return false;
+                    } else {
+                        const aSec = String(a.section || '').toUpperCase().replace(/SECCI[OÓ]N/g, '').trim();
+                        if (aSec !== sec.key) return false;
+                    }
 
                     const aSub = (a.subject || a.name || '').trim();
                     const pSub = pSubjectName.trim();
@@ -35295,9 +35306,14 @@ function printPensumCurriculumReport(targetGrade) {
                     return aSub.toLowerCase() === pSub.toLowerCase() || aSub.toLowerCase().includes(pSub.toLowerCase()) || pSub.toLowerCase().includes(aSub.toLowerCase());
                 });
 
+                const isAssigned = asg && !isAssignmentUnassigned(asg);
+                const tName = isAssigned
+                    ? ((typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(asg) : (asg.teacher || asg.teacherName || ''))
+                    : '';
+
                 let teacherHtml = '';
-                if (asg && asg.teacher && asg.teacher.trim() && !asg.teacher.toLowerCase().includes('sin asignar')) {
-                    teacherHtml = `<div style="font-weight:700; color:#0f2b5c; line-height:1.15; font-size:7.2pt;">${escapeHtml(asg.teacher)}</div>`;
+                if (isAssigned && tName && !tName.toLowerCase().includes('sin asignar')) {
+                    teacherHtml = `<div style="font-weight:700; color:#0f2b5c; line-height:1.15; font-size:7.2pt;">${escapeHtml(tName)}</div>`;
                 } else {
                     teacherHtml = `<div style="color:#94a3b8; font-style:italic; font-size:6.8pt;">Pendiente</div>`;
                 }
@@ -35576,16 +35592,21 @@ function renderPensumCatalogTable(searchQuery = '') {
             else if (aGradeRaw.includes('4') || aGradeRaw.includes('CUARTO') || aGradeRaw.includes('4TO')) aGradeNum = 4;
 
             const isSameGrade = (pGradeNum > 0 && aGradeNum > 0) ? (pGradeNum === aGradeNum) : true;
-            const aSub = (a.subject || a.name || '').trim().toLowerCase();
-            const pSub = (p.name || p.subject || '').trim().toLowerCase();
-            return isSameGrade && (aSub === pSub || aSub.includes(pSub) || pSub.includes(aSub));
+            const aSub = (a.subject || a.name || '').trim();
+            const pSub = (p.name || p.subject || '').trim();
+            if (typeof isSubjectMatch === 'function') {
+                return isSameGrade && isSubjectMatch(aSub, pSub, pGradeNum);
+            }
+            return isSameGrade && (aSub.toLowerCase() === pSub.toLowerCase() || aSub.toLowerCase().includes(pSub.toLowerCase()) || pSub.toLowerCase().includes(aSub.toLowerCase()));
         });
 
         let teachersDisplay = '';
-        if (matchingAssignments.length > 0) {
-            teachersDisplay = matchingAssignments.map(a => 
-                `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-size:0.75rem; margin:2px; display:inline-flex; align-items:center; gap:4px;" title="Catedrático: ${a.teacher} (Sección ${a.section || 'General'})"><i class="fa-solid fa-user-tie"></i> ${a.teacher} <strong>(${a.section || 'A'})</strong></span>`
-            ).join(' ');
+        const assignedMatches = matchingAssignments.filter(a => !isAssignmentUnassigned(a));
+        if (assignedMatches.length > 0) {
+            teachersDisplay = assignedMatches.map(a => {
+                const tName = (typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(a) : (a.teacher || a.teacherName || 'Docente');
+                return `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-size:0.75rem; margin:2px; display:inline-flex; align-items:center; gap:4px;" title="Catedrático: ${escapeHtml(tName)} (Sección ${a.section || 'General'})"><i class="fa-solid fa-user-tie"></i> ${escapeHtml(tName)} <strong>(${a.section || 'A'})</strong></span>`;
+            }).join(' ');
         } else {
             teachersDisplay = `<span class="badge badge-warning" style="font-size:0.75rem; display:inline-flex; align-items:center; gap:4px;"><i class="fa-solid fa-clock"></i> Sin docente asignado</span>`;
         }
@@ -37422,15 +37443,7 @@ function isSubjectMatch(sub1, sub2, gradeNum = 0) {
 }
 
 function printGradeAssignmentsDirect(gradeName) {
-    let targetGrade = 'all';
-    const s = String(gradeName || '').toLowerCase();
-    if (s.includes('4') || s.includes('cuarto')) targetGrade = '4to';
-    else if (s.includes('5') || s.includes('quinto')) targetGrade = '5to';
-    else if (s.includes('6') || s.includes('sexto')) targetGrade = '6to';
-
-    if (typeof printPensumCurriculumReport === 'function') {
-        printPensumCurriculumReport(targetGrade);
-    } else if (typeof printClassAssignmentsReport === 'function') {
+    if (typeof printClassAssignmentsReport === 'function') {
         printClassAssignmentsReport('BY_GRADE', gradeName);
     }
 }
@@ -37603,47 +37616,57 @@ function updateAssignmentsKpis(list) {
 }
 
 function switchAssignmentsViewMode(mode) {
-    if (mode === 'byGrade') mode = 'matrix';
-    currentAssignmentsViewMode = mode || 'matrix';
+    currentAssignmentsViewMode = mode || 'table';
 
-    const matrixView = document.getElementById('assignmentsMatrixByGradeView');
-    const vacantView = document.getElementById('assignmentsVacantView');
+    const btnTable = document.getElementById('asgViewModeTableBtn');
+    const btnGrade = document.getElementById('asgViewModeGradeBtn');
+    const btnTeacher = document.getElementById('asgViewModeTeacherBtn');
+
+    if (btnTable) {
+        btnTable.className = `btn btn-sm ${currentAssignmentsViewMode === 'table' ? 'btn-primary' : 'btn-outline-secondary'} asg-view-mode-btn`;
+    }
+    if (btnGrade) {
+        btnGrade.className = `btn btn-sm ${currentAssignmentsViewMode === 'byGrade' ? 'btn-primary' : 'btn-outline-secondary'} asg-view-mode-btn`;
+    }
+    if (btnTeacher) {
+        btnTeacher.className = `btn btn-sm ${currentAssignmentsViewMode === 'byTeacher' ? 'btn-primary' : 'btn-outline-secondary'} asg-view-mode-btn`;
+    }
+
     const tableView = document.getElementById('assignmentsTableView');
     const gradeView = document.getElementById('assignmentsByGradeView');
     const teacherView = document.getElementById('assignmentsByTeacherView');
 
-    if (matrixView) matrixView.style.display = currentAssignmentsViewMode === 'matrix' ? 'block' : 'none';
-    if (vacantView) vacantView.style.display = currentAssignmentsViewMode === 'vacant' ? 'block' : 'none';
     if (tableView) tableView.style.display = currentAssignmentsViewMode === 'table' ? 'block' : 'none';
-    if (gradeView) gradeView.style.display = 'none';
+    if (gradeView) gradeView.style.display = currentAssignmentsViewMode === 'byGrade' ? 'block' : 'none';
     if (teacherView) teacherView.style.display = currentAssignmentsViewMode === 'byTeacher' ? 'block' : 'none';
 
     renderAssignmentsTable();
 }
 window.switchAssignmentsViewMode = switchAssignmentsViewMode;
 
-function selectAssignmentGradeTab(gradeKey) {
-    currentActiveGradeTab = gradeKey || '4to';
-    currentAssignmentsViewMode = 'matrix';
-
-    const matrixView = document.getElementById('assignmentsMatrixByGradeView');
-    const vacantView = document.getElementById('assignmentsVacantView');
-    const tableView = document.getElementById('assignmentsTableView');
-    const gradeView = document.getElementById('assignmentsByGradeView');
-    const teacherView = document.getElementById('assignmentsByTeacherView');
-
-    if (matrixView) matrixView.style.display = 'block';
-    if (vacantView) vacantView.style.display = 'none';
-    if (tableView) tableView.style.display = 'none';
-    if (gradeView) gradeView.style.display = 'none';
-    if (teacherView) teacherView.style.display = 'none';
-
-    renderAssignmentsTable();
-}
-window.selectAssignmentGradeTab = selectAssignmentGradeTab;
-
 function setAssignmentQuickFilter(filterType, btn) {
     currentAssignmentQuickFilter = filterType || 'ALL';
+
+    document.querySelectorAll('.asg-quick-grade-pill').forEach(p => {
+        p.classList.remove('active');
+        p.style.background = '#f8fafc';
+        p.style.color = '#334155';
+        p.style.borderColor = '#cbd5e1';
+    });
+
+    if (btn) {
+        btn.classList.add('active');
+        if (filterType === 'UNASSIGNED') {
+            btn.style.background = '#ea580c';
+            btn.style.color = '#ffffff';
+            btn.style.borderColor = '#ea580c';
+        } else {
+            btn.style.background = '#0284c7';
+            btn.style.color = '#ffffff';
+            btn.style.borderColor = '#0284c7';
+        }
+    }
+
     renderAssignmentsTable();
 }
 window.setAssignmentQuickFilter = setAssignmentQuickFilter;
@@ -38126,6 +38149,7 @@ function renderAssignmentsTable(searchQuery = '') {
     }
 
     const teacherFilter = (document.getElementById('assignmentTeacherFilter')?.value || 'ALL');
+    const gradeFilter = (document.getElementById('assignmentGradeFilter')?.value || 'ALL');
     const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('assignmentSearchInput')?.value || '')).toLowerCase().trim();
 
     let fullList = Array.isArray(STATE.pensum) && STATE.pensum.length > 0
@@ -38135,12 +38159,28 @@ function renderAssignmentsTable(searchQuery = '') {
     // 1. Actualizar siempre los KPIs institucionales con el pensum completo
     updateAssignmentsKpis(fullList);
 
-    // 2. Renderizar las pestañas de grado en tiempo real (Opción 1)
-    renderGradeTabsBar(fullList);
-
-    // 3. Filtrar para tabla y carga docente si aplica
+    // 2. Aplicar Filtro Rápido (Todos, 4to, 5to, 6to, Sin Asignar)
     let list = [...fullList];
+    if (currentAssignmentQuickFilter === 'UNASSIGNED') {
+        list = list.filter(a => isAssignmentUnassigned(a));
+    } else if (currentAssignmentQuickFilter === '4to') {
+        list = list.filter(a => {
+            const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toLowerCase();
+            return rawG.includes('4') || rawG.includes('cuarto') || rawG.includes('4to');
+        });
+    } else if (currentAssignmentQuickFilter === '5to') {
+        list = list.filter(a => {
+            const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toLowerCase();
+            return rawG.includes('5') || rawG.includes('quinto') || rawG.includes('5to');
+        });
+    } else if (currentAssignmentQuickFilter === '6to') {
+        list = list.filter(a => {
+            const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toLowerCase();
+            return rawG.includes('6') || rawG.includes('sexto') || rawG.includes('6to');
+        });
+    }
 
+    // 3. Filtro por Catedrático
     if (teacherFilter && teacherFilter !== 'ALL') {
         const targetUser = (STATE.users || []).find(u => u.name === teacherFilter || u.id === teacherFilter) || { name: teacherFilter, id: teacherFilter };
         list = list.filter(a => {
@@ -38157,6 +38197,18 @@ function renderAssignmentsTable(searchQuery = '') {
         });
     }
 
+    // 4. Filtro por Grado y Sección
+    if (gradeFilter && gradeFilter !== 'ALL') {
+        list = list.filter(a => 
+            a.gradeCode === gradeFilter || 
+            `${a.grade} (${a.section})` === gradeFilter ||
+            `${a.grade} ${a.section}` === gradeFilter ||
+            (a.section && a.grade && `${a.grade} (${a.section})`.toLowerCase() === gradeFilter.toLowerCase()) ||
+            (a.gradeCode && a.gradeCode.toLowerCase() === gradeFilter.toLowerCase())
+        );
+    }
+
+    // 5. Búsqueda de texto libre
     if (q) {
         const normQ = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         list = list.filter(a => {
@@ -38165,11 +38217,9 @@ function renderAssignmentsTable(searchQuery = '') {
         });
     }
 
-    // 4. Despachar según la vista activa
-    if (currentAssignmentsViewMode === 'matrix') {
-        renderGradeMatrixView(currentActiveGradeTab, q);
-    } else if (currentAssignmentsViewMode === 'vacant') {
-        renderVacantAssignmentsView(q);
+    // 6. Despachar según la vista activa
+    if (currentAssignmentsViewMode === 'byGrade') {
+        renderAssignmentsByGradeMatrix(list);
     } else if (currentAssignmentsViewMode === 'byTeacher') {
         renderAssignmentsByTeacherWorkload(list);
     } else {
