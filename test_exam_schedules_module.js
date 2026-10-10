@@ -932,9 +932,129 @@ assert.strictEqual(typeof global.window.printStudentCalendarPdf, 'function', 'pr
 global.window.printStudentCalendarPdf();
 console.log('✅ Calendario Oficial para Estudiantes verificado exitosamente (100%).');
 
+console.log('\n[Test 24] Verificando Regla Oficial: Docentes de Computación y Mecanografía NO pueden tener auxiliaturas mientras evalúan...');
+// Configurar claustro docente de prueba
+global.STATE.users = [
+    { id: 'T_COMP', name: 'Profesor de Computación', role: 'docente' },
+    { id: 'T_MECA', name: 'Profesor de Mecanografía', role: 'docente' },
+    { id: 'T_DOC1', name: 'Docente Juan', role: 'docente' },
+    { id: 'T_DOC2', name: 'Docente Mario', role: 'docente' },
+    { id: 'T_DOC3', name: 'Docente Carlos', role: 'docente' },
+    { id: 'T_DOC4', name: 'Docente Roberto', role: 'docente' }
+];
+
+const blockTestTech = {
+    days: [
+        {
+            id: 'day_tech_test',
+            date: '2026-10-25',
+            evaluations: [
+                {
+                    id: 'ev_comp_lab',
+                    academicGradeName: '4to Perito Contador',
+                    courseName: 'Computación I',
+                    startTime: '07:30',
+                    endTime: '08:30',
+                    durationMinutes: 60,
+                    courseTeacherId: 'T_COMP',
+                    courseTeacherName: 'Profesor de Computación',
+                    computacionMode: 'single',
+                    sections: [
+                        { section: 'Sección A', teacherId: 'T_COMP', teacherName: 'Profesor de Computación', durationMinutes: 60, singleRoom: { classroom: 'Lab Computación', caretakerTeacherId: '' } }
+                    ]
+                },
+                {
+                    id: 'ev_conta_costos',
+                    academicGradeName: '5to Perito Contador',
+                    courseName: 'Contabilidad de Costos',
+                    startTime: '07:30',
+                    endTime: '08:30',
+                    durationMinutes: 60,
+                    courseTeacherId: 'T_DOC1',
+                    courseTeacherName: 'Docente Juan',
+                    evaluationMode: 'MEDIAS_SECCIONES',
+                    sections: [
+                        {
+                            section: 'Sección A',
+                            teacherId: 'T_DOC1',
+                            teacherName: 'Docente Juan',
+                            durationMinutes: 60,
+                            groupA: { classroom: 'Salón 5', caretakerTeacherId: '' },
+                            groupB: { classroom: 'Salón 6', caretakerTeacherId: '' }
+                        }
+                    ]
+                },
+                {
+                    id: 'ev_meca_taller',
+                    academicGradeName: '4to Perito Contador',
+                    courseName: 'Mecanografía',
+                    startTime: '08:45',
+                    endTime: '09:45',
+                    durationMinutes: 60,
+                    courseTeacherId: 'T_MECA',
+                    courseTeacherName: 'Profesor de Mecanografía',
+                    computacionMode: 'single',
+                    sections: [
+                        { section: 'Sección A', teacherId: 'T_MECA', teacherName: 'Profesor de Mecanografía', durationMinutes: 60, singleRoom: { classroom: 'Taller Meca', caretakerTeacherId: '' } }
+                    ]
+                },
+                {
+                    id: 'ev_mate_comercial',
+                    academicGradeName: '6to Perito Contador',
+                    courseName: 'Matemática Comercial',
+                    startTime: '08:45',
+                    endTime: '09:45',
+                    durationMinutes: 60,
+                    courseTeacherId: 'T_DOC2',
+                    courseTeacherName: 'Docente Mario',
+                    evaluationMode: 'MEDIAS_SECCIONES',
+                    sections: [
+                        {
+                            section: 'Sección A',
+                            teacherId: 'T_DOC2',
+                            teacherName: 'Docente Mario',
+                            durationMinutes: 60,
+                            groupA: { classroom: 'Salón 1', caretakerTeacherId: '' },
+                            groupB: { classroom: 'Salón 2', caretakerTeacherId: '' }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+};
+
+const techSorteoRes = mod.autoAssignRandomProctors(blockTestTech, 'day_tech_test');
+assert.strictEqual(techSorteoRes.success, true, 'Sorteo debe ser exitoso');
+
+const evConta = blockTestTech.days[0].evaluations.find(e => e.id === 'ev_conta_costos');
+const evMate = blockTestTech.days[0].evaluations.find(e => e.id === 'ev_mate_comercial');
+
+// 1. T_COMP evalúa Computación de 07:30 a 08:30 -> NUNCA puede cuidar Contabilidad de Costos (07:30 a 08:30)
+assert.notStrictEqual(evConta.sections[0].groupA.caretakerTeacherId, 'T_COMP', 'Profesor de Computación NO puede tener auxiliatura en Grupo A de Contabilidad a las 07:30');
+assert.notStrictEqual(evConta.sections[0].groupB.caretakerTeacherId, 'T_COMP', 'Profesor de Computación NO puede tener auxiliatura en Grupo B de Contabilidad a las 07:30');
+
+// 2. T_MECA evalúa Mecanografía de 08:45 a 09:45 -> NUNCA puede cuidar Matemática Comercial (08:45 a 09:45)
+assert.notStrictEqual(evMate.sections[0].groupA.caretakerTeacherId, 'T_MECA', 'Profesor de Mecanografía NO puede tener auxiliatura en Grupo A de Matemática a las 08:45');
+assert.notStrictEqual(evMate.sections[0].groupB.caretakerTeacherId, 'T_MECA', 'Profesor de Mecanografía NO puede tener auxiliatura en Grupo B de Matemática a las 08:45');
+
+// 3. Probar autoPickProctorsForModal: si se solicita cuidador para las 07:30, T_COMP no debe ser asignado
+const modalPick = mod.autoPickProctorsForModal(
+    [{ gradeCode: '5PC', section: 'Sección A', teacherId: 'T_DOC1', teacherName: 'Docente Juan' }],
+    ['T_DOC1'],
+    false,
+    '07:30',
+    'day_tech_test'
+);
+assert.notStrictEqual(modalPick['5PC'].caretakerA, 'T_COMP', 'Modal autoPick no debe asignar a T_COMP a las 07:30');
+assert.notStrictEqual(modalPick['5PC'].caretakerB, 'T_COMP', 'Modal autoPick no debe asignar a T_COMP a las 07:30');
+
+console.log('✅ Regla Oficial Blindada: Docentes de Computación y Mecanografía no tienen auxiliaturas mientras evalúan.');
+
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');
 console.log('================================================================================');
+
 
 
 

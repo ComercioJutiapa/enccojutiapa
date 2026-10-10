@@ -506,6 +506,76 @@
         return { dayObj: null, day: null, scheduleBlock: scheduleBlock, scheduleKey: scheduleKey };
     }
 
+    // Helper universal para detectar cursos de Computación / Informática / TIC / Laboratorio
+    function isCourseComputacion(courseName) {
+        if (!courseName) return false;
+        const norm = (courseName || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+        return norm.includes('COMPUT') || norm.includes('INFORM') || norm.includes('LABORAT') || /\bTICS?\b/.test(norm);
+    }
+
+    // Helper universal para detectar cursos de Mecanografía
+    function isCourseMecanografia(courseName) {
+        if (!courseName) return false;
+        const norm = (courseName || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+        return norm.includes('MECANOGRAF') || norm.includes('MECA');
+    }
+
+    // Helper para verificar si una evaluación corresponde a Computación o Mecanografía
+    function isTechOrMecaEvaluation(ev) {
+        if (!ev) return false;
+        if (ev.isComputacion || ev.isMecanografia) return true;
+        return isCourseComputacion(ev.courseName) || isCourseMecanografia(ev.courseName);
+    }
+
+    // Extraer todos los IDs de docentes titulares de una evaluación
+    function getEvaluationTitularTeacherIds(ev) {
+        const ids = new Set();
+        if (!ev) return ids;
+        if (ev.courseTeacherId) ids.add(ev.courseTeacherId);
+        if (Array.isArray(ev.titularTeachers)) {
+            ev.titularTeachers.forEach(t => {
+                if (t.teacherId) ids.add(t.teacherId);
+            });
+        }
+        if (Array.isArray(ev.sections)) {
+            ev.sections.forEach(s => {
+                if (s.teacherId) ids.add(s.teacherId);
+            });
+        }
+        if (typeof getSectionsAndTitularsForCourse === 'function') {
+            const liveTitulars = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
+            liveTitulars.forEach(t => {
+                if (t.teacherId) ids.add(t.teacherId);
+            });
+        }
+        return ids;
+    }
+
+    // Obtener los intervalos de evaluación de Computación y Mecanografía para cada docente en una jornada
+    // REGLA OFICIAL: Los docentes de computación y mecanografía en el momento que evalúan no pueden tener auxiliaturas
+    function getDayTechAndMecaBusyIntervals(dayObj, ignoreEvalId = null) {
+        const teacherBusy = {}; // teacherId -> [ [startMin, endMin, courseName], ... ]
+        if (!dayObj || !Array.isArray(dayObj.evaluations)) return teacherBusy;
+
+        dayObj.evaluations.forEach(ev => {
+            if (ignoreEvalId && String(ev.id) === String(ignoreEvalId)) return;
+            if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') return;
+            if (!isTechOrMecaEvaluation(ev)) return;
+
+            const startMin = timeStringToMinutes(ev.startTime);
+            const dur = parseInt(ev.durationMinutes, 10) || 60;
+            const endMin = timeStringToMinutes(ev.endTime) || (startMin + dur);
+            const titIds = getEvaluationTitularTeacherIds(ev);
+
+            titIds.forEach(tId => {
+                if (!tId) return;
+                if (!teacherBusy[tId]) teacherBusy[tId] = [];
+                teacherBusy[tId].push([startMin, endMin, ev.courseName || 'Computación/Mecanografía']);
+            });
+        });
+        return teacherBusy;
+    }
+
     // Calcular la matriz de carga de trabajo (minutos cuidados por cada profesor en una fecha)
     function calculateTeacherWorkloadForDate(scheduleBlock, targetDate) {
         const workload = {}; // { teacherId: { teacherName, minutes, salonesCount } }
@@ -565,19 +635,15 @@
                             }
                         });
                     }
-                } else if ((ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single') {
-                    // Computación o Mecanografía salón/taller único: los titulares evalúan y cuidan
-                    if (Array.isArray(ev.titularTeachers) && ev.titularTeachers.length > 0) {
-                        ev.titularTeachers.forEach(tit => {
-                            if (tit.teacherId && workload[tit.teacherId]) {
-                                workload[tit.teacherId].minutes += dur;
-                                workload[tit.teacherId].salonesCount += 1;
-                            }
-                        });
-                    } else if (ev.courseTeacherId && workload[ev.courseTeacherId]) {
-                        workload[ev.courseTeacherId].minutes += dur;
-                        workload[ev.courseTeacherId].salonesCount += 1;
-                    }
+                } else if (isTechOrMecaEvaluation(ev)) {
+                    // Computación o Mecanografía: los titulares evalúan directamente en su laboratorio/taller
+                    const titIds = getEvaluationTitularTeacherIds(ev);
+                    titIds.forEach(tId => {
+                        if (tId && workload[tId]) {
+                            workload[tId].minutes += dur;
+                            workload[tId].salonesCount += 1;
+                        }
+                    });
                 } else {
                     // Regular o Computación dividida
                     const isFull = ev.evaluationMode === 'SECCION_COMPLETA';
@@ -2135,6 +2201,17 @@
             });
         }
 
+        // REGLA OFICIAL: Cargar intervalos de evaluación para docentes de Computación y Mecanografía
+        // En el momento que evalúan, NO pueden tener auxiliaturas en ningún salón
+        const techMecaBusyModal = getDayTechAndMecaBusyIntervals(dayObj, editEvalId);
+        Object.keys(techMecaBusyModal).forEach(tId => {
+            techMecaBusyModal[tId].forEach(([bStart, bEnd]) => {
+                if (!busyIntervals[tId]) busyIntervals[tId] = [];
+                busyIntervals[tId].push([bStart, bEnd]);
+                dayWorkload[tId] = (dayWorkload[tId] || 0) + (bEnd - bStart);
+            });
+        });
+
         const startMin = timeStringToMinutes(startTimeStr || '07:30');
         const assignedInSlot = new Set();
         const assignedInTurn2 = new Set();
@@ -2148,13 +2225,20 @@
                     if (titularNamesSet.has((c.name || '').toLowerCase().trim())) return false;
                 }
                 if (assignedSet.has(c.id)) return false;
+
+                // REGLA OFICIAL: Docente evaluando Computación o Mecanografía no puede tener auxiliatura en ese momento
+                const isTechMecaBusy = (techMecaBusyModal[c.id] || []).some(
+                    ([bStart, bEnd]) => Math.max(slotStart, bStart) < Math.min(slotEnd, bEnd)
+                );
+                if (isTechMecaBusy) return false;
+
                 const intervals = busyIntervals[c.id] || [];
                 return !intervals.some(([bStart, bEnd]) => Math.max(slotStart, bStart) < Math.min(slotEnd, bEnd));
             });
 
             const candidatePool = (eligible.length > 0)
                 ? eligible
-                : allCandidates.filter(c => (allowTitulars || (!titularExclusionSet.has(c.id) && !titularNamesSet.has((c.name || '').toLowerCase().trim()))) && !assignedSet.has(c.id));
+                : allCandidates.filter(c => (allowTitulars || (!titularExclusionSet.has(c.id) && !titularNamesSet.has((c.name || '').toLowerCase().trim()))) && !assignedSet.has(c.id) && !(techMecaBusyModal[c.id] || []).some(([bStart, bEnd]) => Math.max(slotStart, bStart) < Math.min(slotEnd, bEnd)));
 
             if (candidatePool.length === 0) return null;
 
@@ -2165,7 +2249,7 @@
             });
 
             const lowestGroup = candidatePool.filter(c => (dayWorkload[c.id] || 0) <= minMin + 15);
-            // Sorteo aleatorio uniforme (Fisher-Yates)
+            // Sorteo aleatorio uniforme (Fisher-Yates) para evitar cualquier favoritismo o sobrecarga
             for (let i = lowestGroup.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [lowestGroup[i], lowestGroup[j]] = [lowestGroup[j], lowestGroup[i]];
@@ -2351,12 +2435,44 @@
         const autoStartTime = minutesToTimeString(autoStartMinutes);
 
         // Opciones de profesores cuidadores excluyendo a TODOS los titulares de la cátedra
+        // REGLA OFICIAL: Los docentes de computación y mecanografía en el momento que evalúan NO pueden tener auxiliaturas
         window._generateTeacherSelectOptions = function (selectedId = '', excludeTeacherIds = []) {
             let opts = `<option value="">-- Seleccionar Cuidador --</option>`;
             const excludeSet = new Set(Array.isArray(excludeTeacherIds) ? excludeTeacherIds : [excludeTeacherIds].filter(Boolean));
+
+            let techMecaBusy = {};
+            if (window._currentEditingDayId) {
+                const { dayObj } = findDayAndScheduleBlock(window._currentEditingDayId);
+                if (dayObj) {
+                    techMecaBusy = getDayTechAndMecaBusyIntervals(dayObj, window._currentEditingEvalId);
+                }
+            }
+
+            const startTimeElem = document.getElementById('evalStartTime');
+            const endTimeElem = document.getElementById('evalEndTime');
+            const sStart = startTimeElem ? timeStringToMinutes(startTimeElem.value) : null;
+            const sEnd = endTimeElem ? timeStringToMinutes(endTimeElem.value) : null;
+
             (STATE.users || []).forEach(u => {
                 if (isTeacherEligibleForProctoring(u)) {
                     if (excludeSet.has(u.id)) return; // Regla de Oro: Titular(es) excluidos
+
+                    // Verificar si está evaluando Computación o Mecanografía en ese momento
+                    let isEvaluatingTechMeca = false;
+                    let conflictCourse = '';
+                    if (sStart !== null && sEnd !== null && techMecaBusy[u.id]) {
+                        const hit = techMecaBusy[u.id].find(([bStart, bEnd]) => Math.max(sStart, bStart) < Math.min(sEnd, bEnd));
+                        if (hit) {
+                            isEvaluatingTechMeca = true;
+                            conflictCourse = hit[2] || 'Computación/Mecanografía';
+                        }
+                    }
+
+                    if (isEvaluatingTechMeca) {
+                        opts += `<option value="${u.id}" disabled style="color:#dc2626; font-style:italic;">🔒 ${u.name} (Evaluando ${conflictCourse} ─ Sin auxiliatura)</option>`;
+                        return;
+                    }
+
                     const wl = (window._currentDayWorkload && window._currentDayWorkload[u.id]) || { minutes: 0, salonesCount: 0 };
                     const isSel = u.id === selectedId ? 'selected' : '';
                     opts += `<option value="${u.id}" ${isSel}>${u.name} (Hoy: ${wl.minutes} min | ${wl.salonesCount} sal.)</option>`;
@@ -2592,7 +2708,7 @@
         const normSub = (str) => (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
         const sNorm = normSub(courseName);
 
-        const isComp = sNorm.includes('COMPUT') || sNorm.includes('INFORM') || sNorm.includes('LABORAT') || sNorm.includes('TIC');
+        const isComp = sNorm.includes('COMPUT') || sNorm.includes('INFORM') || sNorm.includes('LABORAT') || /\bTICS?\b/.test(sNorm);
         const isMeca = sNorm.includes('MECANOGRAF') || sNorm.includes('MECA');
         const isPrac = sNorm.includes('PRACTICA SUPERVISADA');
 
@@ -2999,7 +3115,7 @@
             const sNorm = normSub(courseName);
 
             const isPrac = sNorm.includes('PRACTICA SUPERVISADA');
-            const isComp = sNorm.includes('COMPUT') || sNorm.includes('INFORM') || sNorm.includes('LABORAT') || sNorm.includes('TIC');
+            const isComp = sNorm.includes('COMPUT') || sNorm.includes('INFORM') || sNorm.includes('LABORAT') || /\bTICS?\b/.test(sNorm);
             const isMeca = sNorm.includes('MECANOGRAF') || sNorm.includes('MECA');
 
             let compMode = 'single';
@@ -3008,6 +3124,37 @@
 
             const evalMode = (document.getElementById('evalSectionModeSelect') && document.getElementById('evalSectionModeSelect').value) || 'MEDIAS_SECCIONES';
             const isFullSection = evalMode === 'SECCION_COMPLETA';
+
+            // REGLA OFICIAL INFRANQUEABLE: Los docentes de computación y mecanografía en el momento que evalúan NO pueden tener auxiliaturas
+            if (!isComp && !isMeca) {
+                const dayTechMecaBusy = getDayTechAndMecaBusyIntervals(dayObj, evalIdToUpdate);
+                const evalStartMin = timeStringToMinutes(startTime);
+                const evalEndMin = timeStringToMinutes(endTime);
+
+                for (let sIdx = 0; sIdx < sectionsInfo.length; sIdx++) {
+                    const secStatusSelect = document.getElementById(`evalSectionProcessStatus_${sIdx}`);
+                    if (secStatusSelect && secStatusSelect.value === 'EN_PROCESO') continue;
+
+                    const cSingle = (document.getElementById(`evalCaretakerSingle_${sIdx}`) && document.getElementById(`evalCaretakerSingle_${sIdx}`).value) || '';
+                    const cA = (document.getElementById(`evalCaretakerA_${sIdx}`) && document.getElementById(`evalCaretakerA_${sIdx}`).value) || '';
+                    const cB = (document.getElementById(`evalCaretakerB_${sIdx}`) && document.getElementById(`evalCaretakerB_${sIdx}`).value) || '';
+                    const t2A = (document.getElementById(`evalCaretakerTurn2A_${sIdx}`) && document.getElementById(`evalCaretakerTurn2A_${sIdx}`).value) || '';
+                    const t2B = (document.getElementById(`evalCaretakerTurn2B_${sIdx}`) && document.getElementById(`evalCaretakerTurn2B_${sIdx}`).value) || '';
+
+                    const caretakersToCheck = isFullSection ? [cSingle] : [cA, cB, t2A, t2B];
+                    for (const cId of caretakersToCheck) {
+                        if (!cId) continue;
+                        const busyList = dayTechMecaBusy[cId] || [];
+                        const collision = busyList.find(([bStart, bEnd]) => Math.max(evalStartMin, bStart) < Math.min(evalEndMin, bEnd));
+                        if (collision) {
+                            const teacherObj = (STATE.users || []).find(u => u.id === cId);
+                            const tName = teacherObj ? teacherObj.name : 'El docente';
+                            alert(`🔒 REGLA OFICIAL DE AUXILIATURA:\n\n${tName} está evaluando ${collision[2] || 'Computación/Mecanografía'} en el horario ${minutesToTimeString(collision[0])} a ${minutesToTimeString(collision[1])} hrs.\n\nLos docentes de computación y mecanografía no pueden tener auxiliaturas en el momento que evalúan.`);
+                            return;
+                        }
+                    }
+                }
+            }
 
             let maxDurationFound = 60;
 
@@ -3222,6 +3369,13 @@
 
         let assignedCount = 0;
 
+        // Rastreador de carga acumulada para todo el período/bimestre
+        // Garantiza equidad absoluta, evitando sobrecargas a un mismo docente y erradicando favoritismos
+        const cumulativeWorkload = {};
+        allCandidates.forEach(u => {
+            cumulativeWorkload[u.id] = { minutes: 0, salonesCount: 0 };
+        });
+
         daysToProcess.forEach(dayObj => {
             if (!Array.isArray(dayObj.evaluations) || dayObj.evaluations.length === 0) return;
 
@@ -3233,27 +3387,53 @@
             const busyIntervals = {};
             allCandidates.forEach(u => { busyIntervals[u.id] = []; });
 
+            // REGLA OFICIAL INFRANQUEABLE: Pre-identificar todos los intervalos de docentes evaluando Computación o Mecanografía
+            // Los docentes de computación y mecanografía en el momento que evalúan NO pueden tener auxiliaturas
+            const techMecaBusy = getDayTechAndMecaBusyIntervals(dayObj);
+            Object.keys(techMecaBusy).forEach(tId => {
+                techMecaBusy[tId].forEach(([bStart, bEnd]) => {
+                    const dur = bEnd - bStart;
+                    if (!busyIntervals[tId]) busyIntervals[tId] = [];
+                    busyIntervals[tId].push([bStart, bEnd]);
+                    dayWorkload[tId] = (dayWorkload[tId] || 0) + dur;
+                    if (cumulativeWorkload[tId]) {
+                        cumulativeWorkload[tId].minutes += dur;
+                        cumulativeWorkload[tId].salonesCount += 1;
+                    }
+                });
+            });
+
             // Procesar cada evaluación del día cronológicamente
             dayObj.evaluations.forEach(ev => {
                 // Si la evaluación es en proceso (acumulativo), no requiere salones ni cuidadores
                 if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') return;
 
                 const isPractica = ev.isPractica === true;
-                const isSingleTitularEvaluation = (ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single';
+                const isTechOrMeca = isTechOrMecaEvaluation(ev);
+                const isSingleTitularEvaluation = isTechOrMeca && (ev.computacionMode === 'single' || (!ev.computacionMode && ev.evaluationMode !== 'MEDIAS_SECCIONES'));
 
-                // Si es computación o mecanografía en salón único/taller, los titulares son quienes cuidan y evalúan
+                // REGLA OFICIAL: Computación o Mecanografía en salón/taller único (o Sección Completa):
+                // Catedráticos titulares evalúan directamente en su laboratorio o taller. NO llevan cuidadores ajenos.
                 if (isSingleTitularEvaluation) {
-                    const compStartMin = timeStringToMinutes(ev.startTime);
-                    const compEndMin = timeStringToMinutes(ev.endTime);
-                    const compDur = compEndMin - compStartMin;
-                    (ev.titularTeachers || []).forEach(tit => {
-                        if (tit.teacherId) {
-                            dayWorkload[tit.teacherId] = (dayWorkload[tit.teacherId] || 0) + compDur;
-                            if (!busyIntervals[tit.teacherId]) busyIntervals[tit.teacherId] = [];
-                            busyIntervals[tit.teacherId].push([compStartMin, compEndMin]);
-                        }
-                    });
-                    return; // No requiere cuidadores ajenos
+                    if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                        ev.sections.forEach(sec => {
+                            const titId = sec.teacherId || ev.courseTeacherId || '';
+                            const titName = sec.teacherName || ev.courseTeacherName || '';
+                            if (sec.singleRoom) {
+                                sec.singleRoom.caretakerTeacherId = titId;
+                                sec.singleRoom.caretakerTeacherName = titName;
+                            }
+                            if (sec.groupA) {
+                                sec.groupA.caretakerTeacherId = titId;
+                                sec.groupA.caretakerTeacherName = titName;
+                            }
+                            if (sec.groupB) {
+                                sec.groupB.caretakerTeacherId = titId;
+                                sec.groupB.caretakerTeacherName = titName;
+                            }
+                        });
+                    }
+                    return; // No requiere asignación de cuidadores ajenos
                 }
 
                 // Identificar conjunto de titulares a excluir
@@ -3293,7 +3473,13 @@
                         }
                         if (currentlyAssignedInThisSlotSet.has(c.id)) return false;
 
-                        // Verificar colisión de horario
+                        // REGLA OFICIAL INFRANQUEABLE: Docentes de Computación y Mecanografía no pueden tener auxiliaturas mientras evalúan
+                        const isBusyWithTechMeca = (techMecaBusy[c.id] || []).some(
+                            ([bStart, bEnd]) => Math.max(slotStartMin, bStart) < Math.min(slotEndMin, bEnd)
+                        );
+                        if (isBusyWithTechMeca) return false;
+
+                        // Verificar colisión general de horario
                         const intervals = busyIntervals[c.id] || [];
                         const hasCollision = intervals.some(([bStart, bEnd]) => {
                             // Dos intervalos se solapan si max(start) < min(end)
@@ -3304,7 +3490,13 @@
 
                     if (eligible.length === 0) {
                         // Fallback de emergencia si no hay candidatos sin colisión
-                        const fallbackEligible = allCandidates.filter(c => (allowTitular || (!titularExclusionSet.has(c.id) && !titularNamesSet.has((c.name || '').toLowerCase().trim()))) && !currentlyAssignedInThisSlotSet.has(c.id));
+                        const fallbackEligible = allCandidates.filter(c => {
+                            if (!allowTitular && (titularExclusionSet.has(c.id) || titularNamesSet.has((c.name || '').toLowerCase().trim()))) return false;
+                            if (currentlyAssignedInThisSlotSet.has(c.id)) return false;
+                            // Incluso en fallback, NUNCA asignar a un docente evaluando Computación o Mecanografía a esa misma hora
+                            if ((techMecaBusy[c.id] || []).some(([bStart, bEnd]) => Math.max(slotStartMin, bStart) < Math.min(slotEndMin, bEnd))) return false;
+                            return true;
+                        });
                         if (fallbackEligible.length === 0) return null;
                         // Mezclar aleatoriamente
                         for (let i = fallbackEligible.length - 1; i > 0; i--) {
@@ -3315,22 +3507,34 @@
                         if (!busyIntervals[fallbackSelected.id]) busyIntervals[fallbackSelected.id] = [];
                         busyIntervals[fallbackSelected.id].push([slotStartMin, slotEndMin]);
                         dayWorkload[fallbackSelected.id] = (dayWorkload[fallbackSelected.id] || 0) + slotDuration;
+                        if (cumulativeWorkload[fallbackSelected.id]) {
+                            cumulativeWorkload[fallbackSelected.id].minutes += slotDuration;
+                            cumulativeWorkload[fallbackSelected.id].salonesCount += 1;
+                        }
                         currentlyAssignedInThisSlotSet.add(fallbackSelected.id);
                         assignedCount++;
                         return fallbackSelected;
                     }
 
-                    // Encontrar el mínimo de minutos trabajados hoy entre los candidatos
-                    let minMinutes = Infinity;
+                    // Ponderar carga combinada: carga acumulada del bimestre y carga del día actual
+                    // Esto evita sobrecargar a un docente en el día o en toda la semana de exámenes y previene favoritismos
+                    let minScore = Infinity;
                     eligible.forEach(c => {
-                        const m = dayWorkload[c.id] || 0;
-                        if (m < minMinutes) minMinutes = m;
+                        const cumMin = (cumulativeWorkload[c.id] && cumulativeWorkload[c.id].minutes) || 0;
+                        const dayMin = dayWorkload[c.id] || 0;
+                        const score = (cumMin * 1.5) + dayMin;
+                        if (score < minScore) minScore = score;
                     });
 
-                    // Filtrar los que tengan la menor carga actual
-                    const lowestLoadGroup = eligible.filter(c => (dayWorkload[c.id] || 0) <= minMinutes + 15);
+                    // Seleccionar grupo con menor carga (margen de tolerancia para rotación equilibrada)
+                    const lowestLoadGroup = eligible.filter(c => {
+                        const cumMin = (cumulativeWorkload[c.id] && cumulativeWorkload[c.id].minutes) || 0;
+                        const dayMin = dayWorkload[c.id] || 0;
+                        const score = (cumMin * 1.5) + dayMin;
+                        return score <= minScore + 30;
+                    });
 
-                    // Sorteo aleatorio uniforme (Fisher-Yates shuffle sobre el grupo empatado)
+                    // Sorteo aleatorio uniforme e imparcial (Fisher-Yates shuffle) para erradicar cualquier favoritismo
                     for (let i = lowestLoadGroup.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
                         [lowestLoadGroup[i], lowestLoadGroup[j]] = [lowestLoadGroup[j], lowestLoadGroup[i]];
@@ -3341,6 +3545,10 @@
                     if (!busyIntervals[selected.id]) busyIntervals[selected.id] = [];
                     busyIntervals[selected.id].push([slotStartMin, slotEndMin]);
                     dayWorkload[selected.id] = (dayWorkload[selected.id] || 0) + slotDuration;
+                    if (cumulativeWorkload[selected.id]) {
+                        cumulativeWorkload[selected.id].minutes += slotDuration;
+                        cumulativeWorkload[selected.id].salonesCount += 1;
+                    }
                     currentlyAssignedInThisSlotSet.add(selected.id);
                     assignedCount++;
 
@@ -5348,7 +5556,12 @@
         getCurrentScheduleKey,
         getActiveGradeColumnsForDay,
         classifyGradeForDay,
-        filterTeachersInDay
+        filterTeachersInDay,
+        isCourseComputacion,
+        isCourseMecanografia,
+        isTechOrMecaEvaluation,
+        getEvaluationTitularTeacherIds,
+        getDayTechAndMecaBusyIntervals
     };
 
     if (typeof module !== 'undefined' && module.exports) {
