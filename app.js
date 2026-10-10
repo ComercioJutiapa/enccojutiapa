@@ -36667,8 +36667,162 @@ function checkClassAssignmentConflict() {
 // 🎛️ CONTROLADOR INTEGRAL Y VISUAL DE ASIGNACIÓN DE CÁTEDRAS A DOCENTES
 // ==========================================================================
 
-let currentAssignmentsViewMode = 'table';
+// ==========================================================================
+// 🎛️ CONTROLADOR INTEGRAL Y VISUAL DE ASIGNACIÓN DE CÁTEDRAS A DOCENTES (OPCIÓN 1)
+// ==========================================================================
+
+let currentAssignmentsViewMode = 'matrix'; // Opción 1: Matriz Curricular por Grado por defecto
+let currentActiveGradeTab = '4to';
 let currentAssignmentQuickFilter = 'ALL';
+
+function escapeHtmlAttr(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/'/g, '&#39;')
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function isGradeMatch(gradeStr, gradeKey) {
+    if (!gradeStr || !gradeKey) return false;
+    const g = String(gradeStr).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const k = String(gradeKey).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (k.includes('4') || k.includes('cuarto')) return g.includes('4') || g.includes('cuarto');
+    if (k.includes('5') || k.includes('quinto')) return g.includes('5') || g.includes('quinto');
+    if (k.includes('6') || k.includes('sexto')) return g.includes('6') || g.includes('sexto');
+    return g.includes(k) || k.includes(g);
+}
+
+function isSectionMatch(secStr, targetSec) {
+    if (!secStr || !targetSec) return false;
+    const s1 = String(secStr).trim().toLowerCase();
+    const s2 = String(targetSec).trim().toLowerCase();
+    if (s1 === s2) return true;
+    const letter1 = s1.replace(/[^a-z]/gi, '').slice(-1);
+    const letter2 = s2.replace(/[^a-z]/gi, '').slice(-1);
+    return letter1 && letter2 && letter1 === letter2;
+}
+
+function isSubjectMatch(sub1, sub2, gradeNum = 0) {
+    if (!sub1 || !sub2) return false;
+    const n1 = getFullOfficialSubjectName(sub1, gradeNum).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const n2 = getFullOfficialSubjectName(sub2, gradeNum).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return n1 === n2 || n1.includes(n2) || n2.includes(n1);
+}
+
+function printGradeAssignmentsDirect(gradeName) {
+    if (typeof printClassAssignmentsReport === 'function') {
+        printClassAssignmentsReport('BY_GRADE', gradeName);
+    }
+}
+window.printGradeAssignmentsDirect = printGradeAssignmentsDirect;
+
+function openClassAssignmentModalForGrade(gradeName) {
+    openClassAssignmentModal();
+    const gradeSelect = document.getElementById('classAssignmentFormGrade');
+    if (gradeSelect && gradeName) {
+        for (let i = 0; i < gradeSelect.options.length; i++) {
+            if (isGradeMatch(gradeSelect.options[i].value, gradeName)) {
+                gradeSelect.selectedIndex = i;
+                onClassAssignmentGradeChange(gradeSelect.value);
+                break;
+            }
+        }
+    }
+}
+window.openClassAssignmentModalForGrade = openClassAssignmentModalForGrade;
+
+function openQuickAssignMatrixModal(gradeName, sectionName, subjectName, periods) {
+    openClassAssignmentModal();
+    const gradeSelect = document.getElementById('classAssignmentFormGrade');
+    if (gradeSelect && gradeName) {
+        for (let i = 0; i < gradeSelect.options.length; i++) {
+            if (isGradeMatch(gradeSelect.options[i].value, gradeName)) {
+                gradeSelect.selectedIndex = i;
+                onClassAssignmentGradeChange(gradeSelect.value);
+                break;
+            }
+        }
+    }
+    setTimeout(() => {
+        const pills = document.querySelectorAll('#classAssignmentSectionsPillsContainer .asg-section-pill');
+        pills.forEach(p => {
+            const pSec = p.dataset.section || p.textContent.trim();
+            const pCode = p.dataset.code || '';
+            if (isSectionMatch(pSec, sectionName) || isSectionMatch(pCode, sectionName)) {
+                p.classList.add('active');
+                const icon = p.querySelector('i');
+                if (icon) icon.className = 'fa-solid fa-circle-check';
+            } else {
+                p.classList.remove('active');
+                const icon = p.querySelector('i');
+                if (icon) icon.className = 'fa-regular fa-circle';
+            }
+        });
+
+        const subjectSelect = document.getElementById('classAssignmentFormSubject');
+        if (subjectSelect && subjectName) {
+            for (let i = 0; i < subjectSelect.options.length; i++) {
+                if (subjectSelect.options[i].value.toLowerCase().includes(subjectName.toLowerCase()) || subjectName.toLowerCase().includes(subjectSelect.options[i].value.toLowerCase())) {
+                    subjectSelect.selectedIndex = i;
+                    break;
+                }
+            }
+            onClassAssignmentSubjectChange(subjectSelect);
+        }
+
+        if (periods) {
+            const hoursInput = document.getElementById('classAssignmentFormHours') || document.getElementById('classAssignmentFormPeriods');
+            if (hoursInput) hoursInput.value = periods;
+        }
+
+        checkClassAssignmentConflict();
+    }, 50);
+}
+window.openQuickAssignMatrixModal = openQuickAssignMatrixModal;
+
+function openBatchAssignMatrixModal(gradeName, subjectName, periods) {
+    openClassAssignmentModal();
+    const gradeSelect = document.getElementById('classAssignmentFormGrade');
+    if (gradeSelect && gradeName) {
+        for (let i = 0; i < gradeSelect.options.length; i++) {
+            if (isGradeMatch(gradeSelect.options[i].value, gradeName)) {
+                gradeSelect.selectedIndex = i;
+                onClassAssignmentGradeChange(gradeSelect.value);
+                break;
+            }
+        }
+    }
+    setTimeout(() => {
+        const pills = document.querySelectorAll('#classAssignmentSectionsPillsContainer .asg-section-pill');
+        pills.forEach(p => {
+            p.classList.add('active');
+            const icon = p.querySelector('i');
+            if (icon) icon.className = 'fa-solid fa-circle-check';
+        });
+
+        const subjectSelect = document.getElementById('classAssignmentFormSubject');
+        if (subjectSelect && subjectName) {
+            for (let i = 0; i < subjectSelect.options.length; i++) {
+                if (subjectSelect.options[i].value.toLowerCase().includes(subjectName.toLowerCase()) || subjectName.toLowerCase().includes(subjectSelect.options[i].value.toLowerCase())) {
+                    subjectSelect.selectedIndex = i;
+                    break;
+                }
+            }
+            onClassAssignmentSubjectChange(subjectSelect);
+        }
+
+        if (periods) {
+            const hoursInput = document.getElementById('classAssignmentFormHours') || document.getElementById('classAssignmentFormPeriods');
+            if (hoursInput) hoursInput.value = periods;
+        }
+
+        checkClassAssignmentConflict();
+    }, 50);
+}
+window.openBatchAssignMatrixModal = openBatchAssignMatrixModal;
 
 function getCnbAreaInfo(subjectName = '') {
     const s = String(subjectName).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -36732,57 +36886,47 @@ function updateAssignmentsKpis(list) {
 }
 
 function switchAssignmentsViewMode(mode) {
-    currentAssignmentsViewMode = mode || 'table';
+    if (mode === 'byGrade') mode = 'matrix';
+    currentAssignmentsViewMode = mode || 'matrix';
 
-    const btnTable = document.getElementById('asgViewModeTableBtn');
-    const btnGrade = document.getElementById('asgViewModeGradeBtn');
-    const btnTeacher = document.getElementById('asgViewModeTeacherBtn');
-
-    if (btnTable) {
-        btnTable.className = `btn btn-sm ${currentAssignmentsViewMode === 'table' ? 'btn-primary' : 'btn-outline-secondary'} asg-view-mode-btn`;
-    }
-    if (btnGrade) {
-        btnGrade.className = `btn btn-sm ${currentAssignmentsViewMode === 'byGrade' ? 'btn-primary' : 'btn-outline-secondary'} asg-view-mode-btn`;
-    }
-    if (btnTeacher) {
-        btnTeacher.className = `btn btn-sm ${currentAssignmentsViewMode === 'byTeacher' ? 'btn-primary' : 'btn-outline-secondary'} asg-view-mode-btn`;
-    }
-
+    const matrixView = document.getElementById('assignmentsMatrixByGradeView');
+    const vacantView = document.getElementById('assignmentsVacantView');
     const tableView = document.getElementById('assignmentsTableView');
     const gradeView = document.getElementById('assignmentsByGradeView');
     const teacherView = document.getElementById('assignmentsByTeacherView');
 
+    if (matrixView) matrixView.style.display = currentAssignmentsViewMode === 'matrix' ? 'block' : 'none';
+    if (vacantView) vacantView.style.display = currentAssignmentsViewMode === 'vacant' ? 'block' : 'none';
     if (tableView) tableView.style.display = currentAssignmentsViewMode === 'table' ? 'block' : 'none';
-    if (gradeView) gradeView.style.display = currentAssignmentsViewMode === 'byGrade' ? 'block' : 'none';
+    if (gradeView) gradeView.style.display = 'none';
     if (teacherView) teacherView.style.display = currentAssignmentsViewMode === 'byTeacher' ? 'block' : 'none';
 
     renderAssignmentsTable();
 }
 window.switchAssignmentsViewMode = switchAssignmentsViewMode;
 
+function selectAssignmentGradeTab(gradeKey) {
+    currentActiveGradeTab = gradeKey || '4to';
+    currentAssignmentsViewMode = 'matrix';
+
+    const matrixView = document.getElementById('assignmentsMatrixByGradeView');
+    const vacantView = document.getElementById('assignmentsVacantView');
+    const tableView = document.getElementById('assignmentsTableView');
+    const gradeView = document.getElementById('assignmentsByGradeView');
+    const teacherView = document.getElementById('assignmentsByTeacherView');
+
+    if (matrixView) matrixView.style.display = 'block';
+    if (vacantView) vacantView.style.display = 'none';
+    if (tableView) tableView.style.display = 'none';
+    if (gradeView) gradeView.style.display = 'none';
+    if (teacherView) teacherView.style.display = 'none';
+
+    renderAssignmentsTable();
+}
+window.selectAssignmentGradeTab = selectAssignmentGradeTab;
+
 function setAssignmentQuickFilter(filterType, btn) {
     currentAssignmentQuickFilter = filterType || 'ALL';
-
-    document.querySelectorAll('.asg-quick-grade-pill').forEach(p => {
-        p.classList.remove('active');
-        p.style.background = '#f8fafc';
-        p.style.color = '#334155';
-        p.style.borderColor = '#cbd5e1';
-    });
-
-    if (btn) {
-        btn.classList.add('active');
-        if (filterType === 'UNASSIGNED') {
-            btn.style.background = '#ea580c';
-            btn.style.color = '#ffffff';
-            btn.style.borderColor = '#ea580c';
-        } else {
-            btn.style.background = '#0284c7';
-            btn.style.color = '#ffffff';
-            btn.style.borderColor = '#0284c7';
-        }
-    }
-
     renderAssignmentsTable();
 }
 window.setAssignmentQuickFilter = setAssignmentQuickFilter;
@@ -36791,6 +36935,468 @@ function filterAssignmentsTable(searchQuery = '') {
     renderAssignmentsTable(searchQuery);
 }
 window.filterAssignmentsTable = filterAssignmentsTable;
+
+function renderGradeTabsBar(fullList) {
+    const tabsContainer = document.getElementById('asgGradeTabsList');
+    if (!tabsContainer) return;
+
+    if (!Array.isArray(fullList)) fullList = [];
+
+    const totalVacantSchool = fullList.filter(a => isAssignmentUnassigned(a)).length;
+
+    const gradesConfig = [
+        { key: '4to', label: '4to Perito Contador', icon: 'fa-graduation-cap' },
+        { key: '5to', label: '5to Perito Contador', icon: 'fa-graduation-cap' },
+        { key: '6to', label: '6to Perito Contador', icon: 'fa-graduation-cap' }
+    ];
+
+    (STATE.gradesList || []).forEach(g => {
+        const gName = g.name || '';
+        if (gName && !gradesConfig.some(gc => isGradeMatch(gName, gc.key))) {
+            gradesConfig.push({ key: gName, label: gName, icon: 'fa-graduation-cap' });
+        }
+    });
+
+    const tabsHtml = gradesConfig.map(gc => {
+        const isActive = (currentAssignmentsViewMode === 'matrix' && isGradeMatch(currentActiveGradeTab, gc.key));
+        
+        const gradeItems = fullList.filter(a => isGradeMatch(a.grade || a.gradeCode, gc.key));
+        const totalItems = gradeItems.length;
+        const assignedItems = gradeItems.filter(a => !isAssignmentUnassigned(a)).length;
+        const unassignedInGrade = gradeItems.filter(a => isAssignmentUnassigned(a)).length;
+        const pct = totalItems > 0 ? Math.round((assignedItems / totalItems) * 100) : 100;
+
+        let badgeStyle = pct === 100 ? 'background:#10b981; color:#fff;' : (unassignedInGrade > 0 ? 'background:#ea580c; color:#fff;' : 'background:#0284c7; color:#fff;');
+        if (isActive) {
+            badgeStyle = 'background:rgba(255,255,255,0.25); color:#ffffff; border:1px solid rgba(255,255,255,0.3);';
+        }
+
+        return `
+        <button type="button" class="asg-grade-tab-btn ${isActive ? 'active' : ''}" onclick="selectAssignmentGradeTab('${gc.key}')" title="Ver materias y cátedras de ${gc.label}">
+            <i class="fa-solid ${gc.icon}" style="${isActive ? 'color:#60a5fa;' : 'color:var(--brand-green);'}"></i>
+            <span>${gc.label}</span>
+            <span class="badge badge-tab" style="font-size:0.72rem; font-weight:800; border-radius:12px; padding:2px 7px; ${badgeStyle}">
+                ${unassignedInGrade > 0 ? `⚠️ ${unassignedInGrade} vacante${unassignedInGrade > 1 ? 's' : ''}` : `${pct}%`}
+            </span>
+        </button>
+        `;
+    }).join('');
+
+    const isVacantActive = (currentAssignmentsViewMode === 'vacant');
+    const isTableActive = (currentAssignmentsViewMode === 'table');
+    const isTeacherActive = (currentAssignmentsViewMode === 'byTeacher');
+
+    const extraTabsHtml = `
+    <button type="button" class="asg-grade-tab-btn tab-unassigned ${isVacantActive ? 'active' : ''}" onclick="switchAssignmentsViewMode('vacant')" title="Ver solo cátedras pendientes de asignar">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>Solo Vacantes</span>
+        <span class="badge" style="font-size:0.72rem; font-weight:800; border-radius:12px; padding:2px 7px; background:${isVacantActive ? 'rgba(255,255,255,0.3)' : (totalVacantSchool > 0 ? '#ea580c' : '#10b981')}; color:#ffffff;">
+            ${totalVacantSchool}
+        </span>
+    </button>
+    <button type="button" class="asg-grade-tab-btn ${isTableActive ? 'active' : ''}" onclick="switchAssignmentsViewMode('table')" title="Ver listado general en tabla clásica">
+        <i class="fa-solid fa-table-list"></i>
+        <span>Tabla General</span>
+    </button>
+    <button type="button" class="asg-grade-tab-btn ${isTeacherActive ? 'active' : ''}" onclick="switchAssignmentsViewMode('byTeacher')" title="Ver carga de períodos por catedrático">
+        <i class="fa-solid fa-user-tie"></i>
+        <span>Carga Docente</span>
+    </button>
+    `;
+
+    tabsContainer.innerHTML = tabsHtml + extraTabsHtml;
+}
+
+function renderGradeMatrixView(gradeKey = '4to', searchQuery = '') {
+    const container = document.getElementById('assignmentsMatrixByGradeView');
+    if (!container) return;
+
+    let gradeNum = 4;
+    let defaultGradeName = '4to Perito Contador';
+    const keyLower = String(gradeKey).toLowerCase();
+    if (keyLower.includes('5') || keyLower.includes('quinto')) {
+        gradeNum = 5;
+        defaultGradeName = '5to Perito Contador';
+    } else if (keyLower.includes('6') || keyLower.includes('sexto')) {
+        gradeNum = 6;
+        defaultGradeName = '6to Perito Contador';
+    }
+
+    const matchingGradeInList = (STATE.gradesList || []).find(g => isGradeMatch(g.name || g.code, gradeKey));
+    const gradeTitle = matchingGradeInList ? matchingGradeInList.name : defaultGradeName;
+
+    let sections = (STATE.gradesList || []).filter(g => isGradeMatch(g.name || g.code, gradeKey));
+    if (sections.length === 0) {
+        const foundSections = Array.from(new Set((STATE.pensum || []).filter(p => isGradeMatch(p.grade || p.gradeCode, gradeKey)).map(p => p.section).filter(Boolean)));
+        if (foundSections.length > 0) {
+            sections = foundSections.map(s => ({ section: s, code: `${gradeNum} ${s}` }));
+        } else {
+            sections = [
+                { section: 'Sección A', code: `${gradeNum}A` },
+                { section: 'Sección B', code: `${gradeNum}B` },
+                { section: 'Sección C', code: `${gradeNum}C` },
+                { section: 'Sección D', code: `${gradeNum}D` }
+            ];
+        }
+    }
+    sections.sort((a, b) => (a.section || '').localeCompare(b.section || '', 'es', { numeric: true }));
+
+    const canonicalSubs = (typeof CANONICAL_CNB_28_DICTIONARY !== 'undefined')
+        ? CANONICAL_CNB_28_DICTIONARY.filter(c => c.grade === gradeNum).map(c => c.full)
+        : [];
+    
+    const catalogSubs = (STATE.pensumCatalog || []).filter(p => {
+        const pG = `${p.grade || ''} ${p.gradeCode || ''}`.toLowerCase();
+        return isGradeMatch(pG, gradeKey);
+    }).map(p => p.name || p.subject).filter(Boolean);
+
+    const pensumSubs = (STATE.pensum || []).filter(p => isGradeMatch(p.grade || p.gradeCode, gradeKey)).map(p => p.subject || p.name).filter(Boolean);
+
+    const allRawSubs = Array.from(new Set([...canonicalSubs, ...catalogSubs, ...pensumSubs]));
+    const subjectMap = new Map();
+    allRawSubs.forEach(raw => {
+        const official = getFullOfficialSubjectName(raw, gradeNum);
+        if (official && !subjectMap.has(official)) {
+            const inCat = (STATE.pensumCatalog || []).find(p => (p.name || p.subject) === official || (p.name || p.subject) === raw);
+            const inPensum = (STATE.pensum || []).find(p => isGradeMatch(p.grade || p.gradeCode, gradeKey) && isSubjectMatch(p.subject || p.name, official, gradeNum));
+            let periods = 4;
+            if (inCat && (inCat.hours || inCat.periods)) periods = parseInt(inCat.hours || inCat.periods);
+            else if (inPensum && (inPensum.periodsPerWeek || inPensum.hours)) periods = parseInt(inPensum.periodsPerWeek || inPensum.hours);
+            else if (official.toLowerCase().includes('contabil') || official.toLowerCase().includes('matem')) periods = 5;
+            else if (official.toLowerCase().includes('computaci')) periods = 3;
+
+            const code = inCat?.code || inPensum?.code || '';
+            subjectMap.set(official, { name: official, periods, code, cnbArea: getCnbAreaInfo(official) });
+        }
+    });
+
+    let subjectList = Array.from(subjectMap.values());
+
+    const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('assignmentSearchInput')?.value || '')).toLowerCase().trim();
+    if (q) {
+        subjectList = subjectList.filter(s => {
+            const matchName = s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q) || s.cnbArea.name.toLowerCase().includes(q);
+            if (matchName) return true;
+            const hasTeacherMatch = (STATE.pensum || []).some(p => 
+                isGradeMatch(p.grade || p.gradeCode, gradeKey) && 
+                isSubjectMatch(p.subject || p.name, s.name, gradeNum) && 
+                (p.teacher || '').toLowerCase().includes(q)
+            );
+            return hasTeacherMatch;
+        });
+    }
+
+    let totalCells = 0;
+    let assignedCells = 0;
+    let totalGradeWeeklyPeriods = 0;
+    let unassignedCells = 0;
+
+    const pensumList = Array.isArray(STATE.pensum) ? STATE.pensum : [];
+    
+    const sectionCoverageMap = {};
+    sections.forEach(sec => {
+        sectionCoverageMap[sec.section] = { total: subjectList.length, assigned: 0 };
+    });
+
+    subjectList.forEach(s => {
+        sections.forEach(sec => {
+            totalCells++;
+            const match = pensumList.find(p => 
+                isGradeMatch(p.grade || p.gradeCode, gradeKey) &&
+                isSectionMatch(p.section || p.gradeCode, sec.section || sec.code) &&
+                isSubjectMatch(p.subject || p.name, s.name, gradeNum)
+            );
+            if (match && !isAssignmentUnassigned(match)) {
+                assignedCells++;
+                totalGradeWeeklyPeriods += (parseInt(match.periodsPerWeek || match.hours || match.periods) || s.periods || 4);
+                if (sectionCoverageMap[sec.section]) sectionCoverageMap[sec.section].assigned++;
+            } else {
+                unassignedCells++;
+            }
+        });
+    });
+
+    const coveragePct = totalCells > 0 ? Math.round((assignedCells / totalCells) * 100) : 0;
+    const isFull = coveragePct === 100;
+    const progressColor = isFull ? '#10b981' : (coveragePct >= 75 ? '#0284c7' : '#ea580c');
+
+    let html = `
+    <!-- HERO BANNER DEL GRADO -->
+    <div style="background:linear-gradient(135deg, #0f2b5c 0%, #1e3a8a 100%); color:#ffffff; border-radius:12px; padding:18px 22px; margin-bottom:16px; box-shadow:0 4px 14px rgba(15,43,92,0.15); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+        <div style="flex:1; min-width:280px;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
+                <h2 style="margin:0; font-size:1.4rem; font-weight:800; color:#ffffff; display:flex; align-items:center; gap:10px;">
+                    <i class="fa-solid fa-graduation-cap" style="color:#60a5fa;"></i> ${gradeTitle}
+                </h2>
+                <span class="badge" style="background:rgba(255,255,255,0.2); color:#ffffff; font-size:0.75rem; font-weight:700; border:1px solid rgba(255,255,255,0.3); padding:4px 8px; border-radius:6px;">
+                    Jornada Matutina
+                </span>
+                <span class="badge" style="background:rgba(255,255,255,0.15); color:#bfdbfe; font-size:0.75rem; font-weight:700; border:1px solid rgba(255,255,255,0.25); padding:4px 8px; border-radius:6px;">
+                    ${sections.length} Secciones (${sections.map(s => (s.section || '').replace(/secci[oó]n\s*/i, '').trim()).join(', ')})
+                </span>
+            </div>
+            <p style="margin:0; font-size:0.85rem; color:#bfdbfe;">
+                Distribución curricular y asignación de catedráticos titulares por sección.
+            </p>
+            <div style="margin-top:10px; max-width:440px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:4px; font-weight:700;">
+                    <span style="color:#bfdbfe;">Cobertura de Cátedras:</span>
+                    <span style="color:${isFull ? '#86efac' : '#fde047'}; font-weight:800;">${assignedCells} de ${totalCells} asignadas (${coveragePct}%)</span>
+                </div>
+                <div style="width:100%; height:8px; background:rgba(255,255,255,0.2); border-radius:4px; overflow:hidden;">
+                    <div style="width:${coveragePct}%; height:100%; background:${progressColor}; border-radius:4px; transition:width 0.4s ease;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:8px 14px; border-radius:8px; text-align:center;">
+                <span style="font-size:0.72rem; color:#93c5fd; display:block; font-weight:700;">Períodos Semanales</span>
+                <strong style="font-size:1.15rem; color:#ffffff;">${totalGradeWeeklyPeriods} hrs</strong>
+            </div>
+            <div style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:8px 14px; border-radius:8px; text-align:center;">
+                <span style="font-size:0.72rem; color:#93c5fd; display:block; font-weight:700;">Vacantes</span>
+                <strong style="font-size:1.15rem; color:${unassignedCells > 0 ? '#fca5a5' : '#86efac'};">${unassignedCells}</strong>
+            </div>
+            <button type="button" class="btn btn-sm" onclick="printGradeAssignmentsDirect('${escapeHtmlAttr(gradeTitle)}')" style="background:#ffffff; color:#0f2b5c; font-weight:800; border-radius:8px; padding:8px 14px; border:none; box-shadow:0 2px 6px rgba(0,0,0,0.15);" title="Imprimir distribución de este grado">
+                <i class="fa-solid fa-print"></i> Imprimir Grado
+            </button>
+            <button type="button" class="btn btn-sm btn-success" onclick="openClassAssignmentModalForGrade('${escapeHtmlAttr(gradeTitle)}')" style="font-weight:800; border-radius:8px; padding:8px 14px; background:#10b981; border:none; box-shadow:0 2px 6px rgba(0,0,0,0.15);" title="Asignar clase en este grado">
+                <i class="fa-solid fa-plus"></i> + Asignar Clase
+            </button>
+        </div>
+    </div>
+    `;
+
+    if (subjectList.length === 0) {
+        html += `
+        <div style="text-align:center; padding:45px; background:#ffffff; border-radius:12px; border:1px dashed #cbd5e1; color:#64748b;">
+            <i class="fa-solid fa-magnifying-glass" style="font-size:2rem; color:#0284c7; margin-bottom:10px; display:block;"></i>
+            <strong>No se encontraron materias que coincidan con la búsqueda "${q}".</strong><br>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('assignmentSearchInput').value=''; filterAssignmentsTable();" style="margin-top:10px;">Limpiar búsqueda</button>
+        </div>
+        `;
+    } else {
+        html += `
+        <div class="table-card" style="box-shadow:0 2px 10px rgba(0,0,0,0.04); border-radius:12px; overflow:hidden; border:1px solid #e2e8f0; margin-bottom:20px;">
+            <div class="table-responsive" style="max-height:calc(100vh - 340px); overflow-y:auto;">
+                <table class="asg-matrix-table">
+                    <thead>
+                        <tr>
+                            <th style="min-width:260px; position:sticky; top:0; z-index:2; background:#f8fafc;">
+                                <i class="fa-solid fa-book-open" style="color:var(--brand-blue); margin-right:6px;"></i> Asignatura Oficial (${subjectList.length})
+                            </th>
+                            ${sections.map(sec => {
+                                const cov = sectionCoverageMap[sec.section] || { assigned: 0, total: subjectList.length };
+                                const isSecFull = cov.assigned === cov.total;
+                                return `
+                                <th style="min-width:210px; text-align:center; position:sticky; top:0; z-index:2; background:#f8fafc;">
+                                    <div style="font-weight:800; font-size:0.9rem; color:#0f2b5c;">${sec.section}</div>
+                                    <span class="badge ${isSecFull ? 'badge-success' : 'badge-warning'}" style="font-size:0.7rem; font-weight:800; padding:2px 7px; margin-top:2px;">
+                                        ${cov.assigned}/${cov.total} Cubiertas
+                                    </span>
+                                </th>
+                                `;
+                            }).join('')}
+                            <th style="width:110px; text-align:center; position:sticky; top:0; z-index:2; background:#f8fafc;">
+                                <i class="fa-solid fa-bolt" style="color:#eab308; margin-right:4px;"></i> Acciones
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${subjectList.map(s => {
+                            const cnb = s.cnbArea;
+                            return `
+                            <tr>
+                                <td style="background:#ffffff;">
+                                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap;">
+                                        <span class="badge" style="background:${cnb.bg}; color:${cnb.color}; border:1px solid ${cnb.border}; font-size:0.68rem; padding:2px 6px; font-weight:700;" title="${cnb.name}">
+                                            <i class="fa-solid ${cnb.icon}" style="margin-right:2px;"></i>${cnb.shortName}
+                                        </span>
+                                        ${s.code ? `<span class="badge" style="font-family:'Courier New',Courier,monospace; font-size:0.72rem; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:800;">${s.code}</span>` : ''}
+                                    </div>
+                                    <strong style="color:#0f2b5c; font-size:0.92rem; display:block; line-height:1.25;">
+                                        ${s.name}
+                                    </strong>
+                                    <span style="font-size:0.75rem; color:#64748b; font-weight:700; margin-top:3px; display:inline-block;">
+                                        <i class="fa-solid fa-clock" style="font-size:0.7rem; margin-right:3px;"></i>${s.periods} períodos/sem
+                                    </span>
+                                </td>
+
+                                ${sections.map(sec => {
+                                    const match = pensumList.find(p => 
+                                        isGradeMatch(p.grade || p.gradeCode, gradeKey) &&
+                                        isSectionMatch(p.section || p.gradeCode, sec.section || sec.code) &&
+                                        isSubjectMatch(p.subject || p.name, s.name, gradeNum)
+                                    );
+                                    const isAssigned = match && !isAssignmentUnassigned(match);
+
+                                    if (isAssigned) {
+                                        const officialT = (typeof getTeacherOfficialName === 'function') ? getTeacherOfficialName(match) : (match.teacher || 'Docente');
+                                        const pHours = match.periodsPerWeek || match.hours || s.periods || 4;
+                                        return `
+                                        <td>
+                                            <div class="asg-cell-card">
+                                                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:4px; margin-bottom:4px;">
+                                                    <strong style="color:#0f2b5c; font-size:0.82rem; line-height:1.25; flex:1;" title="${officialT}">
+                                                        <i class="fa-solid fa-user-tie" style="color:#059669; margin-right:4px;"></i>${officialT}
+                                                    </strong>
+                                                </div>
+                                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                                    <span style="font-size:0.72rem; color:#64748b; font-weight:700;">
+                                                        <i class="fa-solid fa-clock" style="font-size:0.68rem; margin-right:2px;"></i>${pHours}p/sem
+                                                    </span>
+                                                    <div style="display:flex; gap:3px;">
+                                                        <button type="button" class="btn btn-xs btn-outline-primary" onclick="openEditClassAssignmentModal('${match.id}')" title="Editar asignación" style="padding:1px 6px; font-size:0.72rem; border-radius:4px;">
+                                                            <i class="fa-solid fa-pen-to-square"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="deleteClassAssignment('${match.id}')" title="Eliminar asignación" style="padding:1px 6px; font-size:0.72rem; border-radius:4px;">
+                                                            <i class="fa-solid fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        `;
+                                    } else {
+                                        return `
+                                        <td>
+                                            <div class="asg-cell-card vacant" style="display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:8px 6px;">
+                                                <span style="color:#c2410c; font-size:0.72rem; font-weight:800; margin-bottom:4px;">
+                                                    <i class="fa-solid fa-triangle-exclamation"></i> Sin Catedrático
+                                                </span>
+                                                <button type="button" class="btn btn-xs btn-primary" onclick="openQuickAssignMatrixModal('${escapeHtmlAttr(gradeTitle)}', '${escapeHtmlAttr(sec.section)}', '${escapeHtmlAttr(s.name)}', ${s.periods})" style="font-size:0.72rem; font-weight:800; padding:2px 8px; background:#ea580c; border-color:#c2410c; border-radius:5px;" title="Asignar docente a ${s.name} en ${sec.section}">
+                                                    <i class="fa-solid fa-user-plus"></i> + Asignar
+                                                </button>
+                                            </div>
+                                        </td>
+                                        `;
+                                    }
+                                }).join('')}
+
+                                <td style="text-align:center; background:#ffffff;">
+                                    <button type="button" class="btn btn-xs btn-outline-secondary" onclick="openBatchAssignMatrixModal('${escapeHtmlAttr(gradeTitle)}', '${escapeHtmlAttr(s.name)}', ${s.periods})" title="Asignar el mismo catedrático a todas las secciones de este grado" style="font-size:0.72rem; font-weight:700; padding:4px 8px; border-radius:6px; white-space:nowrap;">
+                                        <i class="fa-solid fa-bolt" style="color:#eab308; margin-right:3px;"></i>A todas
+                                    </button>
+                                </td>
+                            </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        `;
+    }
+
+    container.innerHTML = html;
+}
+
+function renderVacantAssignmentsView(searchQuery = '') {
+    const container = document.getElementById('assignmentsVacantView');
+    if (!container) return;
+
+    let fullList = Array.isArray(STATE.pensum) && STATE.pensum.length > 0
+        ? [...STATE.pensum]
+        : (typeof getInitialData === 'function' && Array.isArray(getInitialData().pensum) ? [...getInitialData().pensum] : []);
+
+    let vacantList = fullList.filter(a => isAssignmentUnassigned(a));
+
+    const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('assignmentSearchInput')?.value || '')).toLowerCase().trim();
+    if (q) {
+        vacantList = vacantList.filter(a => {
+            const raw = `${a.subject || a.name || ''} ${a.grade || ''} ${a.section || ''} ${a.gradeCode || ''}`.toLowerCase();
+            return raw.includes(q);
+        });
+    }
+
+    if (vacantList.length === 0) {
+        container.innerHTML = `
+        <div style="text-align:center; padding:50px 20px; background:#ffffff; border-radius:12px; border:1px solid #bbf7d0; box-shadow:0 2px 8px rgba(16,185,129,0.06);">
+            <div style="width:64px; height:64px; background:#dcfce7; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; margin-bottom:14px;">
+                <i class="fa-solid fa-circle-check" style="color:#10b981; font-size:2rem;"></i>
+            </div>
+            <h3 style="color:#0f2b5c; font-weight:800; font-size:1.25rem; margin-bottom:6px;">¡Excelente! Todas las Cátedras Tienen Docente Titular</h3>
+            <p style="color:#64748b; font-size:0.9rem; max-width:480px; margin:0 auto 16px auto;">
+                No hay materias huérfanas en el pensum actual. La distribución académica de todos los grados se encuentra 100% cubierta.
+            </p>
+            <button type="button" class="btn btn-primary btn-sm" onclick="selectAssignmentGradeTab('4to')" style="font-weight:700; border-radius:8px; padding:7px 16px;">
+                <i class="fa-solid fa-arrow-left"></i> Volver a la Matriz por Grado
+            </button>
+        </div>
+        `;
+        return;
+    }
+
+    const grouped = {};
+    vacantList.forEach(c => {
+        const gKey = c.grade || c.gradeCode || 'Otros';
+        if (!grouped[gKey]) grouped[gKey] = [];
+        grouped[gKey].push(c);
+    });
+
+    let html = `
+    <div style="background:#fff7ed; border:1.5px solid #fdba74; border-radius:12px; padding:16px 20px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div>
+            <strong style="color:#c2410c; font-size:1.05rem; display:flex; align-items:center; gap:8px;">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size:1.2rem;"></i> Cátedras Pendientes de Asignar (${vacantList.length} materias)
+            </strong>
+            <span style="font-size:0.83rem; color:#9a3412;">
+                Haga clic en "+ Asignar Catedrático" en cada ficha para completar la nómina docente.
+            </span>
+        </div>
+        <button type="button" class="btn btn-sm btn-primary" onclick="openClassAssignmentModal()" style="font-weight:800; border-radius:8px; background:#ea580c; border-color:#c2410c;">
+            <i class="fa-solid fa-plus"></i> Asignar Clase
+        </button>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:16px;">
+        ${Object.keys(grouped).map(gName => {
+            const items = grouped[gName];
+            return `
+            <div style="background:#ffffff; border-radius:12px; border:1px solid #e2e8f0; padding:16px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+                    <strong style="color:#0f2b5c; font-size:1rem; display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-graduation-cap" style="color:var(--brand-green);"></i> ${gName}
+                    </strong>
+                    <span class="badge badge-warning" style="font-weight:800; font-size:0.75rem;">
+                        ${items.length} pendiente${items.length > 1 ? 's' : ''}
+                    </span>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:10px;">
+                    ${items.map(c => {
+                        const cnb = getCnbAreaInfo(c.subject || c.name);
+                        return `
+                        <div style="background:#fffbf5; border:1.5px dashed #fed7aa; border-radius:8px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                            <div style="flex:1; min-width:0;">
+                                <div style="display:flex; align-items:center; gap:5px; margin-bottom:2px;">
+                                    <span class="badge" style="background:${cnb.bg}; color:${cnb.color}; border:1px solid ${cnb.border}; font-size:0.65rem; padding:1px 5px; font-weight:700;">
+                                        ${cnb.shortName}
+                                    </span>
+                                    <span style="font-weight:800; color:#ea580c; font-size:0.75rem;">${c.section || 'Sección A'}</span>
+                                </div>
+                                <strong style="color:#1e293b; font-size:0.85rem; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${c.subject || c.name}">
+                                    ${c.subject || c.name}
+                                </strong>
+                                <span style="font-size:0.72rem; color:#64748b; font-weight:700;">
+                                    ${c.periodsPerWeek || 4} períodos/sem
+                                </span>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="openEditClassAssignmentModal('${c.id}')" style="font-size:0.74rem; font-weight:800; padding:4px 10px; background:#ea580c; border-color:#c2410c; border-radius:6px; white-space:nowrap;">
+                                <i class="fa-solid fa-user-plus"></i> Asignar
+                            </button>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+            `;
+        }).join('')}
+    </div>
+    `;
+
+    container.innerHTML = html;
+}
 
 function renderAssignmentsTable(searchQuery = '') {
     const rutaColeccion = 'pensum';
@@ -36803,7 +37409,6 @@ function renderAssignmentsTable(searchQuery = '') {
     }
 
     const teacherFilter = (document.getElementById('assignmentTeacherFilter')?.value || 'ALL');
-    const gradeFilter = (document.getElementById('assignmentGradeFilter')?.value || 'ALL');
     const q = (typeof searchQuery === 'string' ? searchQuery : (document.getElementById('assignmentSearchInput')?.value || '')).toLowerCase().trim();
 
     let fullList = Array.isArray(STATE.pensum) && STATE.pensum.length > 0
@@ -36813,28 +37418,12 @@ function renderAssignmentsTable(searchQuery = '') {
     // 1. Actualizar siempre los KPIs institucionales con el pensum completo
     updateAssignmentsKpis(fullList);
 
-    // 2. Aplicar Filtro Rápido (Todos, 4to, 5to, 6to, Sin Asignar)
-    let list = [...fullList];
-    if (currentAssignmentQuickFilter === 'UNASSIGNED') {
-        list = list.filter(a => isAssignmentUnassigned(a));
-    } else if (currentAssignmentQuickFilter === '4to') {
-        list = list.filter(a => {
-            const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toLowerCase();
-            return rawG.includes('4') || rawG.includes('cuarto') || rawG.includes('4to');
-        });
-    } else if (currentAssignmentQuickFilter === '5to') {
-        list = list.filter(a => {
-            const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toLowerCase();
-            return rawG.includes('5') || rawG.includes('quinto') || rawG.includes('5to');
-        });
-    } else if (currentAssignmentQuickFilter === '6to') {
-        list = list.filter(a => {
-            const rawG = `${a.grade || ''} ${a.gradeCode || ''}`.toLowerCase();
-            return rawG.includes('6') || rawG.includes('sexto') || rawG.includes('6to');
-        });
-    }
+    // 2. Renderizar las pestañas de grado en tiempo real (Opción 1)
+    renderGradeTabsBar(fullList);
 
-    // 3. Filtro por Catedrático
+    // 3. Filtrar para tabla y carga docente si aplica
+    let list = [...fullList];
+
     if (teacherFilter && teacherFilter !== 'ALL') {
         const targetUser = (STATE.users || []).find(u => u.name === teacherFilter || u.id === teacherFilter) || { name: teacherFilter, id: teacherFilter };
         list = list.filter(a => {
@@ -36851,18 +37440,6 @@ function renderAssignmentsTable(searchQuery = '') {
         });
     }
 
-    // 4. Filtro por Grado y Sección
-    if (gradeFilter && gradeFilter !== 'ALL') {
-        list = list.filter(a => 
-            a.gradeCode === gradeFilter || 
-            `${a.grade} (${a.section})` === gradeFilter ||
-            `${a.grade} ${a.section}` === gradeFilter ||
-            (a.section && a.grade && `${a.grade} (${a.section})`.toLowerCase() === gradeFilter.toLowerCase()) ||
-            (a.gradeCode && a.gradeCode.toLowerCase() === gradeFilter.toLowerCase())
-        );
-    }
-
-    // 5. Búsqueda de texto libre
     if (q) {
         const normQ = q.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         list = list.filter(a => {
@@ -36871,9 +37448,11 @@ function renderAssignmentsTable(searchQuery = '') {
         });
     }
 
-    // 6. Despachar renderizado según el Modo de Vista activo
-    if (currentAssignmentsViewMode === 'byGrade') {
-        renderAssignmentsByGradeMatrix(list);
+    // 4. Despachar según la vista activa
+    if (currentAssignmentsViewMode === 'matrix') {
+        renderGradeMatrixView(currentActiveGradeTab, q);
+    } else if (currentAssignmentsViewMode === 'vacant') {
+        renderVacantAssignmentsView(q);
     } else if (currentAssignmentsViewMode === 'byTeacher') {
         renderAssignmentsByTeacherWorkload(list);
     } else {
@@ -37279,7 +37858,7 @@ function printClassAssignmentsReport(groupByMode = 'BY_GRADE', targetFilter = 'A
         if (groupByMode === 'BY_TEACHER') {
             list = list.filter(a => a.teacherId === targetFilter || a.teacher === targetFilter);
         } else if (groupByMode === 'BY_GRADE') {
-            list = list.filter(a => a.gradeCode === targetFilter || a.grade === targetFilter || `${a.grade} (${a.section})` === targetFilter);
+            list = list.filter(a => a.gradeCode === targetFilter || a.grade === targetFilter || `${a.grade} (${a.section})` === targetFilter || (typeof isGradeMatch === 'function' && isGradeMatch(a.grade || a.gradeCode, targetFilter)));
         }
     }
 
