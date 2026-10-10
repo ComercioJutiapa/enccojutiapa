@@ -870,17 +870,19 @@ const EnccoAuthStore = {
             let hasAccess = false;
             if (isSuper) {
                 hasAccess = true;
-            } else if (el.dataset.allowed === '*' || el.getAttribute('data-allowed') === '*') {
-                hasAccess = true;
-            } else if (el.dataset.allowed) {
-                const allowedList = el.dataset.allowed.split(',').map(r => r.trim().toLowerCase());
-                const roleLower = role.toLowerCase();
-                const isMatch = allowedList.includes(roleLower) ||
-                    (allowedList.includes('director') && roleLower === 'direccion') ||
-                    (allowedList.includes('profesor_auxiliar') && (roleLower === 'auxiliar' || roleLower === 'auxiliatura'));
-                hasAccess = isMatch && (permKey ? hasRolePermission(permKey, role) : true);
             } else if (permKey) {
                 hasAccess = hasRolePermission(permKey, role);
+            } else if (el.dataset.allowed) {
+                if (el.dataset.allowed === '*' || el.getAttribute('data-allowed') === '*') {
+                    hasAccess = true;
+                } else {
+                    const allowedList = el.dataset.allowed.split(',').map(r => r.trim().toLowerCase());
+                    const roleLower = role.toLowerCase();
+                    const isMatch = allowedList.includes(roleLower) ||
+                        (allowedList.includes('director') && roleLower === 'direccion') ||
+                        (allowedList.includes('profesor_auxiliar') && (roleLower === 'auxiliar' || roleLower === 'auxiliatura'));
+                    hasAccess = isMatch;
+                }
             } else if (targetView) {
                 hasAccess = hasRolePermission(targetView, role);
             }
@@ -949,16 +951,23 @@ const EnccoAuthStore = {
         document.querySelectorAll('.role-restricted, [data-perm]').forEach(el => {
             if (el.classList.contains('nav-item') || el.classList.contains('nav-section-label')) return;
 
-            const allowed = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim().toLowerCase()) : null;
             const permKey = el.dataset.perm || el.dataset.view;
+            const allowed = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim().toLowerCase()) : null;
 
             let hasPerm = false;
-            if (allowed) {
-                hasPerm = allowed.includes(role.toLowerCase()) || (isSuper && allowed.includes('admin'));
-            } else if (isSuper) {
+            if (isSuper) {
                 hasPerm = true;
             } else if (permKey) {
                 hasPerm = hasRolePermission(permKey, role);
+                if (hasPerm && allowed && !allowed.includes('*')) {
+                    hasPerm = allowed.includes(role.toLowerCase()) ||
+                        (allowed.includes('director') && role.toLowerCase() === 'direccion') ||
+                        (allowed.includes('profesor_auxiliar') && (role.toLowerCase() === 'auxiliar' || role.toLowerCase() === 'auxiliatura'));
+                }
+            } else if (allowed) {
+                hasPerm = allowed.includes('*') || allowed.includes(role.toLowerCase()) ||
+                    (allowed.includes('director') && role.toLowerCase() === 'direccion') ||
+                    (allowed.includes('profesor_auxiliar') && (role.toLowerCase() === 'auxiliar' || role.toLowerCase() === 'auxiliatura'));
             }
 
             if (hasPerm) {
@@ -1246,43 +1255,57 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
 
     const key = normalizePermKey(moduleKey);
 
-    // 🛡️ ACCESO TOTAL A BITÁCORA Y CENTRO DE CONTROL: Dirección, Auxiliatura y Secretaría
+    // 1. Prioridad Máxima: Configuración interactiva de roles en STATE.rolesConfig
+    if (typeof normalizeRolesConfig === 'function' && (!STATE.rolesConfig || !Array.isArray(STATE.rolesConfig) || STATE.rolesConfig.length === 0)) {
+        normalizeRolesConfig();
+    }
+    const r = (STATE.rolesConfig || []).find(x => x.key === roleKey);
+    if (r) {
+        // Nivel explícito interactivo en permissionLevels (Prioridad Absoluta)
+        if (r.permissionLevels && typeof r.permissionLevels[key] !== 'undefined') {
+            return r.permissionLevels[key];
+        }
+
+        // Mapeo derivado desde el arreglo permissions interactivo
+        if (Array.isArray(r.permissions)) {
+            if (r.permissions.includes(key + '_edit')) return 'edit';
+            if (r.permissions.includes(key + '_view')) return 'view';
+            if (r.permissions.includes(key)) {
+                if (roleKey === 'docente' && ['guide-teachers', 'students', 'reports', 'honor-roll', 'grade-stats'].includes(key)) return 'view';
+                if (roleKey === 'estudiante') return 'view';
+                return 'edit';
+            }
+            // Si el arreglo permissions existe y no contiene el módulo, está bloqueado
+            return 'none';
+        }
+    }
+
+    // 2. Fallbacks de seguridad institucional por defecto (únicamente si el rol no tiene configuración en rolesConfig)
     if (key === 'auxiliatura-log' || key === 'auxiliatura-center') {
         const allowedFull = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
         if (allowedFull.includes(roleKey)) return 'edit';
         return 'none';
     }
 
-    // 🛡️ ACCESO UNIVERSAL CON RESTRICCIÓN DE MODIFICACIÓN: "Registro Oficial de Exoneraciones"
-    if (key === 'exoneraciones-log') {
+    if (key === 'exoneraciones-log' || key === 'permissions-history') {
         const allowedManagers = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
         if (allowedManagers.includes(roleKey)) return 'edit';
-        return 'view'; // Docentes y cualquier usuario autenticado tienen consulta libre
+        return 'view';
     }
 
-    // 🛡️ ACCESO UNIVERSAL CON RESTRICCIÓN DE MODIFICACIÓN: "Historial de Permisos de Ausencia"
-    if (key === 'permissions-history') {
-        const allowedManagers = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
-        if (allowedManagers.includes(roleKey)) return 'edit';
-        return 'view'; // Docentes y cualquier usuario autenticado tienen consulta libre
-    }
-
-    // 🛡️ ACCESO UNIVERSAL CON RESTRICCIÓN DE MODIFICACIÓN: "Reportes de Conducta y Disciplina"
     if (key === 'discipline') {
         const allowedManagers = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
         if (allowedManagers.includes(roleKey)) return 'edit';
-        if (roleKey === 'docente') return 'edit'; // Docentes pueden registrar incidencias y llamadas de atención
-        return 'view'; // Estudiantes, padres y cualquier usuario autenticado tienen consulta libre
+        if (roleKey === 'docente') return 'edit';
+        return 'view';
     }
 
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Datos para Sire" exclusivo para Dirección, Secretaría y Admin
     if (key === 'datos-sire') {
         const allowedSire = ['director', 'secretaria', 'admin', 'super_usuario'];
         if (!allowedSire.includes(roleKey)) return 'none';
         return 'edit';
     }
 
-    // 🛡️ ACCESO A BOLETINES/TARJETAS, CUADRO DE HONOR Y PROMEDIOS: Dirección, Secretaría, Auxiliatura y Docentes (Docente en modo consulta/impresión)
     if (key === 'grade-stats' || key === 'honor-roll' || key === 'reports') {
         const allowedFull = ['director', 'direccion', 'secretaria', 'admin', 'super_usuario'];
         const allowedView = ['profesor_auxiliar', 'auxiliar', 'auxiliatura', 'docente', 'catedratico'];
@@ -1291,34 +1314,16 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
         return 'none';
     }
 
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Analítica Predictiva y Riesgo Escolar" exclusivo para Dirección, Secretaría, Admin y Superusuario
     if (key === 'predictive-analytics') {
         const allowedAnalytics = ['director', 'secretaria', 'admin', 'super_usuario'];
         if (!allowedAnalytics.includes(roleKey)) return 'none';
         return 'view';
     }
 
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Carnés Estudiantiles" exclusivo para Dirección, Secretaría, Admin y Superusuario
     if (key === 'carnets') {
         const allowedCarnets = ['director', 'secretaria', 'admin', 'super_usuario'];
         if (!allowedCarnets.includes(roleKey)) return 'none';
         return 'edit';
-    }
-
-    if (typeof normalizeRolesConfig === 'function') normalizeRolesConfig();
-    const r = (STATE.rolesConfig || []).find(x => x.key === roleKey);
-    if (!r) return 'none';
-
-    // 1. Nivel explícito en permissionLevels
-    if (r.permissionLevels && typeof r.permissionLevels[key] !== 'undefined') {
-        return r.permissionLevels[key];
-    }
-
-    // 2. Mapeo derivado desde el arreglo permissions
-    if (Array.isArray(r.permissions)) {
-        if (r.permissions.includes(key + '_edit')) return 'edit';
-        if (r.permissions.includes(key + '_view')) return 'view';
-        if (r.permissions.includes(key)) return 'edit';
     }
 
     return 'none';
@@ -1334,59 +1339,6 @@ function hasRolePermission(permKey, role = null) {
     if (targetRole === 'admin' || targetRole === 'super_usuario') return true;
 
     if (!permKey) return false;
-
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Datos para Sire" denegado terminantemente a docentes y otros roles
-    const testKey = normalizePermKey(String(permKey).trim());
-    if (testKey === 'datos-sire') {
-        const allowedSire = ['director', 'secretaria', 'admin', 'super_usuario'];
-        return allowedSire.includes(targetRole);
-    }
-
-    // 🛡️ ACCESO A BOLETINES/TARJETAS, CUADRO DE HONOR Y PROMEDIOS: Visible para Dirección, Secretaría, Auxiliatura y Docentes
-    if (testKey === 'grade-stats' || testKey === 'honor-roll' || testKey === 'reports') {
-        const allowedStats = ['director', 'direccion', 'secretaria', 'admin', 'super_usuario', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'docente', 'catedratico'];
-        return allowedStats.includes(targetRole);
-    }
-
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Analítica Predictiva y Riesgo Escolar" denegado terminantemente a docentes y otros roles
-    if (testKey === 'predictive-analytics') {
-        const allowedAnalytics = ['director', 'secretaria', 'admin', 'super_usuario'];
-        return allowedAnalytics.includes(targetRole);
-    }
-
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Carnés Estudiantiles" denegado terminantemente a docentes y otros roles
-    if (testKey === 'carnets') {
-        const allowedCarnets = ['director', 'secretaria', 'admin', 'super_usuario'];
-        return allowedCarnets.includes(targetRole);
-    }
-
-    // 🛡️ BLINDAJE RBAC ESTRICTO: "Auxiliaturas de Exámenes" (Auxiliares, Secretaría, Dirección, Admin - DENEGADO A DOCENTES)
-    if (testKey === 'exam-schedules' || testKey === 'view-exam-schedules') {
-        const allowedExams = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
-        return allowedExams.includes(targetRole);
-    }
-
-    // 🛡️ BLINDAJE RBAC: "Bitácora de Auxiliatura" y "Centro de Control" (Auxiliares, Secretaría, Dirección, Admin)
-    if (testKey === 'auxiliatura-log' || testKey === 'auxiliatura-center') {
-        const allowedAux = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
-        return allowedAux.includes(targetRole);
-    }
-
-    // 🛡️ ACCESO UNIVERSAL: "Registro Oficial de Exoneraciones" (Visible para consulta por todos los usuarios)
-    if (testKey === 'exoneraciones-log') {
-        return true;
-    }
-
-    // 🛡️ ACCESO UNIVERSAL: "Historial de Permisos de Ausencia" (Visible para consulta por todos los usuarios)
-    if (testKey === 'permissions-history') {
-        return true;
-    }
-
-    // 🛡️ ACCESO UNIVERSAL: "Reportes de Conducta y Disciplina" (Visible para consulta por todos los usuarios)
-    if (testKey === 'discipline') {
-        return true;
-    }
-
 
     try {
         const rawKey = String(permKey).trim();
@@ -1570,6 +1522,9 @@ function updatePermCardStyle(modKey, level) {
             }
 
             saveStateToLocalStorage();
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+                EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
+            }
             if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
         }
     }
@@ -3152,28 +3107,45 @@ function normalizeRolesConfig() {
             roleObj.permissionLevels = {};
         }
 
-        // Asegurar que el docente tenga acceso a estudiantes, boletas/tarjetas, cuadro de honor y estadísticas en modo consulta
+        // Asegurar que el docente tenga valores iniciales solo si aún no están definidos en permissionLevels
         if (roleObj.key === 'docente') {
-            const docenteEssential = ['dashboard', 'students', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'exoneraciones-log', 'permissions-history'];
-            docenteEssential.forEach(p => {
-                if (!roleObj.permissions.includes(p)) roleObj.permissions.push(p);
-            });
             if (!roleObj.permissionLevels) roleObj.permissionLevels = {};
-            roleObj.permissionLevels['students'] = 'view';
-            roleObj.permissionLevels['reports'] = 'view';
-            roleObj.permissionLevels['honor-roll'] = 'view';
-            roleObj.permissionLevels['grade-stats'] = 'view';
-            roleObj.permissionLevels['guide-teachers'] = 'view';
+            const docenteDefaults = {
+                'students': 'view',
+                'guide-teachers': 'view',
+                'reports': 'view',
+                'honor-roll': 'view',
+                'grade-stats': 'view',
+                'dashboard': 'view',
+                'gradebook': 'edit',
+                'attendance': 'edit',
+                'discipline': 'edit',
+                'exoneraciones-log': 'view',
+                'permissions-history': 'view'
+            };
+            Object.keys(docenteDefaults).forEach(p => {
+                if (typeof roleObj.permissionLevels[p] === 'undefined') {
+                    // Si nunca se ha configurado el nivel, usar el default y sincronizar permissions
+                    roleObj.permissionLevels[p] = docenteDefaults[p];
+                    if (!roleObj.permissions.includes(p)) roleObj.permissions.push(p);
+                }
+            });
         }
 
-        // 🛡️ ACCESO TOTAL A BITÁCORA Y CENTRO DE CONTROL: Dirección, Auxiliatura y Secretaría
+        // 🛡️ ACCESO TOTAL A BITÁCORA Y CENTRO DE CONTROL: Dirección, Auxiliatura y Secretaría (solo si no configurado)
         if (['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(roleObj.key)) {
-            roleObj.permissionLevels['auxiliatura-log'] = 'edit';
-            roleObj.permissionLevels['auxiliatura-center'] = 'edit';
-            if (!roleObj.permissions.includes('auxiliatura-log')) roleObj.permissions.push('auxiliatura-log');
-            if (!roleObj.permissions.includes('auxiliatura-center')) roleObj.permissions.push('auxiliatura-center');
-            if (roleObj.key === 'profesor_auxiliar' && !roleObj.permissions.includes('exam-schedules')) {
-                roleObj.permissions.push('exam-schedules');
+            if (!roleObj.permissionLevels) roleObj.permissionLevels = {};
+            if (typeof roleObj.permissionLevels['auxiliatura-log'] === 'undefined') {
+                roleObj.permissionLevels['auxiliatura-log'] = 'edit';
+                if (!roleObj.permissions.includes('auxiliatura-log')) roleObj.permissions.push('auxiliatura-log');
+            }
+            if (typeof roleObj.permissionLevels['auxiliatura-center'] === 'undefined') {
+                roleObj.permissionLevels['auxiliatura-center'] = 'edit';
+                if (!roleObj.permissions.includes('auxiliatura-center')) roleObj.permissions.push('auxiliatura-center');
+            }
+            if (roleObj.key === 'profesor_auxiliar' && typeof roleObj.permissionLevels['exam-schedules'] === 'undefined') {
+                roleObj.permissionLevels['exam-schedules'] = 'edit';
+                if (!roleObj.permissions.includes('exam-schedules')) roleObj.permissions.push('exam-schedules');
             }
         }
 
@@ -3201,6 +3173,11 @@ function normalizeRolesConfig() {
                 } else {
                     roleObj.permissionLevels[m.key] = 'none';
                 }
+            }
+
+            // Consistencia estricta: si el módulo está bloqueado ('none'), removerlo de permissions para que no haya desincronización
+            if (roleObj.key !== 'admin' && roleObj.permissionLevels[m.key] === 'none') {
+                roleObj.permissions = roleObj.permissions.filter(p => p !== m.key && p !== m.key + '_edit' && p !== m.key + '_view');
             }
         });
     });
@@ -9738,59 +9715,7 @@ function switchRole(role) {
         }
     }
 
-    STATE.currentRole = role;
-
-    const user = STATE.currentUser || STATE.users.find(u => u.role === role) || STATE.users[0];
-    const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2);
-    
-    const avatarEl = document.getElementById('userAvatar');
-    const nameEl = document.getElementById('userName');
-    const badgeEl = document.getElementById('userRoleBadge');
-    const currentRoleTextEl = document.getElementById('currentRoleText');
-    const loggedDisplayEl = document.getElementById('loggedUserDisplay');
-
-    if (avatarEl) avatarEl.textContent = initials;
-    if (nameEl) nameEl.textContent = user.name;
-    if (badgeEl) badgeEl.className = 'user-role-badge role-' + role;
-    
-    const roleTitles = { admin: 'Super Administrador', director: 'Dirección', secretaria: 'Secretaría', docente: 'Docente' };
-    const activeTitle = roleTitles[role] || (role === 'docente' ? 'Docente' : role);
-    
-    if (badgeEl) badgeEl.textContent = activeTitle;
-    if (currentRoleTextEl) currentRoleTextEl.textContent = `Acceso: ${activeTitle}`;
-    if (loggedDisplayEl) loggedDisplayEl.textContent = `${user.name} (${activeTitle})`;
-
-    // Mostrar/ocultar elementos dinámicamente según la matriz de permisos del rol
-    document.querySelectorAll('.role-restricted').forEach(el => {
-        const allowed = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim()) : [];
-        const viewName = el.dataset.view;
-        const hasPerm = (role === 'admin' || STATE.currentUser?.role === 'admin') || 
-                        allowed.includes(role) || 
-                        (viewName && typeof hasRolePermission === 'function' && hasRolePermission(viewName, role));
-        
-        if (hasPerm) {
-            el.style.removeProperty('display');
-            el.classList.remove('hidden');
-        } else {
-            el.style.setProperty('display', 'none', 'important');
-            el.classList.add('hidden');
-        }
-    });
-
-    updateTopRoleBar();
-    updateUserAlertsUI();
-
-    // Si el rol es profesor_auxiliar o docente y la vista activa es administrativa, redirigir a dashboard
-    const forbiddenViewsForAuxiliar = ['enrollment', 'pensum', 'class-assignments', 'grade-lock', 'cycles', 'database', 'settings'];
-    if (role === 'profesor_auxiliar' && (forbiddenViewsForAuxiliar.includes(STATE.currentView) || STATE.currentView === 'excel-import') && !hasRolePermission(STATE.currentView, role)) {
-        navigateTo('dashboard');
-    }
-    
-    // Si el rol es docente y la vista activa es administrativa, redirigir al panel principal del docente
-    // Permitir acceso fluido a todas las funciones configuradas para cada rol
-
-    renderCurrentView();
-    if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(viewName);
+    applyUserRole(role);
 }
 
 // ==========================================================================
@@ -36586,13 +36511,15 @@ function applyUserRole(role = STATE.currentRole) {
         let hasAccess = false;
         if (isSuper) {
             hasAccess = true;
-        } else if (el.dataset.allowed === '*' || el.getAttribute('data-allowed') === '*') {
-            hasAccess = true;
-        } else if (el.dataset.allowed) {
-            const allowedList = el.dataset.allowed.split(',').map(r => r.trim().toLowerCase());
-            hasAccess = allowedList.includes(role.toLowerCase()) && (permKey ? hasRolePermission(permKey, role) : true);
         } else if (permKey) {
             hasAccess = hasRolePermission(permKey, role);
+        } else if (el.dataset.allowed) {
+            if (el.dataset.allowed === '*' || el.getAttribute('data-allowed') === '*') {
+                hasAccess = true;
+            } else {
+                const allowedList = el.dataset.allowed.split(',').map(r => r.trim().toLowerCase());
+                hasAccess = allowedList.includes(role.toLowerCase());
+            }
         } else if (targetView) {
             hasAccess = hasRolePermission(targetView, role);
         }
@@ -36661,16 +36588,19 @@ function applyUserRole(role = STATE.currentRole) {
     document.querySelectorAll('.role-restricted, [data-perm]').forEach(el => {
         if (el.classList.contains('nav-item') || el.classList.contains('nav-section-label')) return;
 
-        const allowed = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim().toLowerCase()) : null;
         const permKey = el.dataset.perm || el.dataset.view;
+        const allowed = el.dataset.allowed ? el.dataset.allowed.split(',').map(r => r.trim().toLowerCase()) : null;
 
         let hasPerm = false;
-        if (allowed) {
-            hasPerm = allowed.includes(role.toLowerCase()) || (isSuper && allowed.includes('admin'));
-        } else if (isSuper) {
+        if (isSuper) {
             hasPerm = true;
         } else if (permKey) {
             hasPerm = hasRolePermission(permKey, role);
+            if (hasPerm && allowed && !allowed.includes('*')) {
+                hasPerm = allowed.includes(role.toLowerCase());
+            }
+        } else if (allowed) {
+            hasPerm = allowed.includes('*') || allowed.includes(role.toLowerCase());
         }
 
         if (hasPerm) {
@@ -36681,6 +36611,13 @@ function applyUserRole(role = STATE.currentRole) {
             el.classList.add('hidden');
         }
     });
+
+    // 4. Redirigir al inicio si la vista activa actual está bloqueada para el rol
+    if (!isSuper && STATE.activeView && STATE.activeView !== 'dashboard' && !hasRolePermission(STATE.activeView, role)) {
+        if (typeof navigateTo === 'function') {
+            navigateTo('dashboard');
+        }
+    }
 
     // Actualizar los selectores de roles en modales y filtros
     if (typeof updateUserRoleSelectOptions === 'function') updateUserRoleSelectOptions();

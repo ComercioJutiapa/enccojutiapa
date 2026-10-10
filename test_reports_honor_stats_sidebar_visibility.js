@@ -44,13 +44,15 @@ assert(!snippet.includes('navGroup-reports'), 'No debe existir contenedor navGro
 
 console.log('  ✅ Test 2 Superado: Los módulos están en la estructura original sin colapsarse.');
 
-// TEST 3: RBAC en app.js no oculta grade-stats para docentes y personal escolar
-console.log('\n▶ [TEST 3] Verificando permisos en app.js para docentes y auxiliares...');
+// TEST 3: RBAC interactivo en app.js para módulos de reportes
+console.log('\n▶ [TEST 3] Verificando evaluación interactiva de permisos en app.js...');
 
-assert(app.includes("allowedStats = ['director', 'direccion', 'secretaria', 'admin', 'super_usuario', 'profesor_auxiliar', 'auxiliar', 'auxiliatura']"),
-  'allowedStats en app.js debe restringir docente según instrucción oficial');
+assert(app.includes("key === 'grade-stats' || key === 'honor-roll' || key === 'reports'"),
+  'getModulePermissionLevel debe manejar grade-stats, honor-roll y reports');
+assert(app.includes("getModulePermissionLevel(key, targetRole)"),
+  'hasRolePermission debe delegar en getModulePermissionLevel interactivo');
 
-console.log('  ✅ Test 3 Superado: grade-stats accesible para autoridades y restringido para docentes.');
+console.log('  ✅ Test 3 Superado: grade-stats, honor-roll y reports gobernados de forma dinámica e interactiva.');
 
 console.log('\n================================================================');
 console.log('🎉 TODAS LAS VERIFICACIONES DE VISIBILIDAD PASARON AL 100%');
