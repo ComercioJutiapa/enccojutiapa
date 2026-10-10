@@ -37961,7 +37961,7 @@ function renderGradeMatrixView(gradeKey = '4to', searchQuery = '') {
                                                 </div>
                                                 <div style="display:flex; justify-content:space-between; align-items:center;">
                                                     <span style="font-size:0.72rem; color:#64748b; font-weight:700;">
-                                                        <i class="fa-solid fa-clock" style="font-size:0.68rem; margin-right:2px;"></i>${pHours}p/sem
+                                                        <i class="fa-solid fa-clock" style="font-size:0.68rem; margin-right:2px;"></i>${pHours} períodos/sem
                                                     </span>
                                                     <div style="display:flex; gap:3px;">
                                                         <button type="button" class="btn btn-xs btn-outline-primary" onclick="openEditClassAssignmentModal('${match.id}')" title="Editar asignación" style="padding:1px 6px; font-size:0.72rem; border-radius:4px;">
@@ -38340,7 +38340,7 @@ function renderAssignmentsByGradeMatrix(list) {
                                 ` : `
                                     <span style="color:#059669; font-weight:700;"><i class="fa-solid fa-user-tie"></i> ${tName}</span>
                                 `}
-                                <span style="color:#64748b;">• ${c.periodsPerWeek || c.hours || c.periods || 4}p/sem</span>
+                                <span style="color:#64748b;">• ${c.periodsPerWeek || c.hours || c.periods || 4} períodos/sem</span>
                             </div>
                         </div>
                         ${unassigned ? `
@@ -38418,7 +38418,7 @@ function renderAssignmentsByTeacherWorkload(list) {
                     <div style="background:#ffffff; border:1px solid #fdba74; padding:6px 10px; border-radius:8px; font-size:0.8rem; display:flex; align-items:center; gap:8px;">
                         <span style="font-weight:800; color:#ea580c;">${c.grade || c.gradeCode} (${c.section || 'A'})</span>
                         <strong style="color:#1e293b;">${c.subject || c.name}</strong>
-                        <span style="color:#64748b;">(${c.periodsPerWeek || 4}p)</span>
+                        <span style="color:#64748b;">(${c.periodsPerWeek || c.hours || c.periods || 4} períodos)</span>
                         <button type="button" class="btn btn-sm btn-primary" onclick="openEditClassAssignmentModal('${c.id}')" title="Asignar catedrático ahora" style="padding:1px 6px; font-size:0.72rem; margin-left:4px;">
                             <i class="fa-solid fa-plus"></i> Asignar
                         </button>
@@ -38454,9 +38454,14 @@ function renderAssignmentsByTeacherWorkload(list) {
                         </strong>
                         <span style="font-size:0.75rem; color:#64748b;">${t.title}</span>
                     </div>
-                    <span class="badge" style="background:${badgeStatus.bg}; color:${badgeStatus.color}; border:1px solid ${badgeStatus.border}; font-weight:800; font-size:0.72rem; padding:3px 8px;">
-                        ${badgeStatus.text}
-                    </span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span class="badge" style="background:${badgeStatus.bg}; color:${badgeStatus.color}; border:1px solid ${badgeStatus.border}; font-weight:800; font-size:0.72rem; padding:3px 8px;">
+                            ${badgeStatus.text}
+                        </span>
+                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="printClassAssignmentsReport('BY_TEACHER', '${escapeHtmlAttr(t.id || t.name)}')" title="Imprimir asignación oficial de este catedrático" style="padding:2px 7px; font-size:0.72rem; border-radius:6px; font-weight:700;">
+                            <i class="fa-solid fa-print"></i>
+                        </button>
+                    </div>
                 </div>
                 <div style="display:flex; gap:12px; margin-top:10px; font-size:0.8rem; font-weight:700;">
                     <span style="color:#0284c7;"><i class="fa-solid fa-book-open"></i> ${totalCourses} Cátedras</span>
@@ -38473,7 +38478,7 @@ function renderAssignmentsByTeacherWorkload(list) {
                             <span style="font-weight:600; color:#334155;">${c.subject || c.name}</span>
                         </div>
                         <div style="display:flex; align-items:center; gap:6px;">
-                            <span class="badge" style="background:${cnbArea.bg}; color:${cnbArea.color}; font-size:0.68rem; padding:2px 5px; font-weight:700;">${c.periodsPerWeek || 4}p</span>
+                            <span class="badge" style="background:${cnbArea.bg}; color:${cnbArea.color}; font-size:0.68rem; padding:2px 5px; font-weight:700;">${c.periodsPerWeek || c.hours || c.periods || 4} períodos</span>
                             <button type="button" class="btn btn-sm btn-outline-primary" onclick="openEditClassAssignmentModal('${c.id}')" title="Editar asignación" style="padding:1px 6px; font-size:0.72rem;">
                                 <i class="fa-solid fa-pen-to-square"></i>
                             </button>
@@ -38628,7 +38633,7 @@ function printClassAssignmentsReport(groupByMode = 'BY_GRADE', targetFilter = 'A
                             <th style="width:15%; padding:5px; border-bottom:1px solid #cbd5e1;">Área CNB</th>
                             <th style="width:10%; text-align:center; padding:5px; border-bottom:1px solid #cbd5e1;">Código</th>
                             <th style="width:34%; padding:5px; border-bottom:1px solid #cbd5e1;">Asignatura Oficial</th>
-                            <th style="width:8%; text-align:center; padding:5px; border-bottom:1px solid #cbd5e1;">Per.</th>
+                            <th style="width:12%; text-align:center; padding:5px; border-bottom:1px solid #cbd5e1;">Períodos</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -38681,8 +38686,8 @@ function printClassAssignmentsReport(groupByMode = 'BY_GRADE', targetFilter = 'A
                             <th style="width:10%; text-align:center; padding:5px; border-bottom:1px solid #cbd5e1;">Código</th>
                             <th style="width:35%; padding:5px; border-bottom:1px solid #cbd5e1;">Asignatura Oficial</th>
                             <th style="width:15%; padding:5px; border-bottom:1px solid #cbd5e1;">Área CNB</th>
-                            <th style="width:28%; padding:5px; border-bottom:1px solid #cbd5e1;">Catedrático Titular</th>
-                            <th style="width:7%; text-align:center; padding:5px; border-bottom:1px solid #cbd5e1;">Per.</th>
+                            <th style="width:25%; padding:5px; border-bottom:1px solid #cbd5e1;">Catedrático Titular</th>
+                            <th style="width:10%; text-align:center; padding:5px; border-bottom:1px solid #cbd5e1;">Períodos</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -38716,12 +38721,12 @@ function printClassAssignmentsReport(groupByMode = 'BY_GRADE', targetFilter = 'A
             <thead>
                 <tr style="background:#0f2b5c; color:#ffffff;">
                     <th style="width:4%; text-align:center; padding:6px 8px;">No.</th>
-                    <th style="width:20%; padding:6px 8px;">Grado y Sección</th>
+                    <th style="width:18%; padding:6px 8px;">Grado y Sección</th>
                     <th style="width:12%; padding:6px 8px;">Área CNB</th>
                     <th style="width:10%; text-align:center; padding:6px 8px;">Código</th>
                     <th style="width:28%; padding:6px 8px;">Asignatura Oficial</th>
-                    <th style="width:20%; padding:6px 8px;">Catedrático Titular</th>
-                    <th style="width:6%; text-align:center; padding:6px 8px;">Per.</th>
+                    <th style="width:18%; padding:6px 8px;">Catedrático Titular</th>
+                    <th style="width:10%; text-align:center; padding:6px 8px;">Períodos</th>
                 </tr>
             </thead>
             <tbody>
@@ -38750,6 +38755,7 @@ function printClassAssignmentsReport(groupByMode = 'BY_GRADE', targetFilter = 'A
         `;
     }
 
+    const isSingleTarget = Boolean(targetFilter && targetFilter !== 'ALL');
     const printHtml = `
     <!DOCTYPE html>
     <html lang="es">
@@ -38757,19 +38763,24 @@ function printClassAssignmentsReport(groupByMode = 'BY_GRADE', targetFilter = 'A
         <meta charset="UTF-8">
         <title>Distribución Oficial de Cátedras - ENCCO Jutiapa</title>
         <style>
-            @page { size: letter portrait; margin: 12mm 12mm 14mm 12mm; }
-            body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5pt; color: #1e293b; margin: 0; padding: 10px; }
-            .header-banner { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0f2b5c; padding-bottom: 12px; margin-bottom: 14px; }
-            .header-logo { width: 62px; height: 62px; object-fit: contain; }
-            .header-text { text-align: center; flex: 1; padding: 0 14px; }
-            .header-text h1 { font-size: 14.5pt; margin: 0; color: #0f2b5c; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; }
-            .header-text h2 { font-size: 10.5pt; margin: 3px 0 1px 0; color: #059669; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
-            .header-text h3 { font-size: 9pt; margin: 2px 0 0 0; color: #475569; font-weight: 600; }
-            .header-side-badge { text-align: right; font-size: 8pt; color: #64748b; font-weight: 600; min-width: 80px; }
-            .stats-bar { display: flex; justify-content: space-between; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 7px 14px; margin-bottom: 14px; font-size: 8.5pt; }
+            @page { size: letter portrait; margin: ${isSingleTarget ? '8mm 10mm 8mm 10mm' : '12mm 12mm 14mm 12mm'}; }
+            body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #1e293b; margin: 0; padding: ${isSingleTarget ? '4px' : '10px'}; }
+            .header-banner { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #0f2b5c; padding-bottom: 8px; margin-bottom: 10px; }
+            .header-logo { width: 50px; height: 50px; object-fit: contain; }
+            .header-text { text-align: center; flex: 1; padding: 0 12px; }
+            .header-text h1 { font-size: 13pt; margin: 0; color: #0f2b5c; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; }
+            .header-text h2 { font-size: 9.5pt; margin: 2px 0 1px 0; color: #059669; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+            .header-text h3 { font-size: 8.5pt; margin: 2px 0 0 0; color: #475569; font-weight: 600; }
+            .header-side-badge { text-align: right; font-size: 7.5pt; color: #64748b; font-weight: 600; min-width: 80px; }
+            .stats-bar { display: flex; justify-content: space-between; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; margin-bottom: 12px; font-size: 8pt; }
             .stats-bar span { font-weight: 800; color: #0f2b5c; }
-            .signatures { margin-top: 36px; display: flex; justify-content: space-between; page-break-inside: avoid; text-align: center; }
-            .sig-box { width: 30%; border-top: 1.5px solid #334155; padding-top: 6px; font-size: 8pt; font-weight: 700; color: #334155; }
+            .signatures { margin-top: 28px; display: flex; justify-content: space-between; page-break-inside: avoid; text-align: center; }
+            .sig-box { width: 30%; border-top: 1.5px solid #334155; padding-top: 5px; font-size: 7.5pt; font-weight: 700; color: #334155; }
+            @media print {
+                body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                table { page-break-inside: avoid; }
+                ${isSingleTarget ? 'html, body { overflow: hidden !important; }' : ''}
+            }
         </style>
     </head>
     <body>
@@ -38778,8 +38789,8 @@ function printClassAssignmentsReport(groupByMode = 'BY_GRADE', targetFilter = 'A
             <div class="header-text">
                 <h1>${schoolName.toUpperCase()}</h1>
                 <h2>${location.toUpperCase()}</h2>
-                <h3>DISTRIBUCIÓN OFICIAL DE CÁTEDRAS Y CARGA DOCENTE &mdash; CICLO ESCOLAR ${cycle}</h3>
-                <div style="font-size:7.8pt; color:#64748b; margin-top:2px;">Modalidad: ${groupByMode === 'BY_TEACHER' ? 'Organizado por Catedrático Titular' : (groupByMode === 'BY_GRADE' ? 'Organizado por Grado y Sección' : 'Nómina General')} &bull; Emisión: ${fechaEmision}</div>
+                <h3>DISTRIBUCIÓN OFICIAL DE CÁTEDRAS Y ASIGNACIÓN DE PERÍODOS &mdash; CICLO ESCOLAR ${cycle}</h3>
+                <div style="font-size:7.5pt; color:#64748b; margin-top:2px;">Modalidad: ${groupByMode === 'BY_TEACHER' ? 'Organizado por Catedrático Titular' : (groupByMode === 'BY_GRADE' ? 'Organizado por Grado y Sección' : 'Nómina General')} &bull; Emisión: ${fechaEmision}</div>
             </div>
             <div class="header-side-badge">
                 <div style="font-weight:800; color:#0f2b5c; font-size:8.5pt;">ENCCO 1970</div>
@@ -38796,6 +38807,7 @@ function printClassAssignmentsReport(groupByMode = 'BY_GRADE', targetFilter = 'A
 
         ${reportBodyHtml}
 
+        ${isSingleTarget ? '' : `
         <div class="signatures">
             <div class="sig-box">
                 Vo.Bo. Dirección General<br>
@@ -38810,6 +38822,7 @@ function printClassAssignmentsReport(groupByMode = 'BY_GRADE', targetFilter = 'A
                 <span>Registro Académico</span>
             </div>
         </div>
+        `}
     </body>
     </html>
     `;
