@@ -13052,17 +13052,18 @@ function getStudentAcademicInfo(student) {
 
     // REGLA OFICIAL DE CARGA Y DIVISOR DINÁMICO (Nivelación Base 100 Puntos):
     // - 4.º y 5.º Grado: siempre se nivela sobre 9 clases oficiales (divisor = 9)
-    // - 6.º Grado Perito: durante 1.º y 2.º bimestre sobre 8 clases activas (divisor = 8); en 3.º bimestre en adelante sobre 10 clases (divisor = 10)
+    // - 6.º Grado Perito: durante 1.º, 2.º y 3.º bimestre sobre 8 clases ordinarias (divisor = 8, Práctica y Seminario omitidos)
+    // - 6.º Grado Perito: en 4.º bimestre sobre 10 clases oficiales (divisor = 10, incluyendo nota única de B4 de Práctica y Seminario)
     let dynamicDivisor = 9;
     if (is6to) {
-        dynamicDivisor = (activeBimestre >= 3) ? 10 : 8;
+        dynamicDivisor = (activeBimestre >= 4) ? 10 : 8;
     } else {
         dynamicDivisor = 9;
     }
 
     const officialClassLoad = dynamicDivisor;
     const classLoadLabel = is6to 
-        ? (activeBimestre >= 3 ? '10 Clases (6to Graduandos)' : '8 Clases Activas (6to Perito)')
+        ? (activeBimestre >= 4 ? '10 Clases (6to Graduandos)' : '8 Clases Ordinarias (6to Perito)')
         : (is5to ? '9 Clases (5to Perito)' : '9 Clases (4to Perito)');
 
     let sumCourseAverages = 0;
@@ -13087,13 +13088,16 @@ function getStudentAcademicInfo(student) {
         subjects = getReportCardSubjects(student);
     }
 
-    // Si es 6to y estamos en Bimestre 1 o 2 (8 clases), excluir materias de graduación que inician en B3 (Práctica Supervisada y Seminario)
-    if (is6to && activeBimestre <= 2) {
-        const cleanStr = s => (s || '').toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, '');
-        subjects = subjects.filter(sub => {
-            const c = cleanStr(sub);
-            return !c.includes('practica') && !c.includes('seminario');
-        });
+    // Helper local para identificar materias especiales de graduación de 6to (Práctica Supervisada y Seminario)
+    const _cleanForMatch = s => (s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+    const _isMateriaEspecial6to = subName => {
+        const c = _cleanForMatch(subName);
+        return c.includes('practica') || c.includes('seminario');
+    };
+
+    // Si es 6to y estamos en Bimestre 1, 2 o 3 (8 clases), excluir materias de graduación (Práctica Supervisada y Seminario se agregan en B4)
+    if (is6to && activeBimestre <= 3) {
+        subjects = subjects.filter(sub => !_isMateriaEspecial6to(sub));
         if (subjects.length > 8) {
             subjects = subjects.slice(0, 8);
         }
@@ -13102,18 +13106,11 @@ function getStudentAcademicInfo(student) {
         if (subjects.length > 9) {
             subjects = subjects.slice(0, 9);
         }
-    } else if (is6to && activeBimestre >= 3) {
+    } else if (is6to && activeBimestre >= 4) {
         if (subjects.length > 10) {
             subjects = subjects.slice(0, 10);
         }
     }
-
-    // Helper local para identificar materias especiales de graduación de 6to (Práctica Supervisada y Seminario)
-    const _cleanForMatch = s => (s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
-    const _isMateriaEspecial6to = subName => {
-        const c = _cleanForMatch(subName);
-        return c.includes('practica') || c.includes('seminario');
-    };
 
     if (subjects.length > 0) {
         subjects.forEach(sub => {
@@ -13122,73 +13119,56 @@ function getStudentAcademicInfo(student) {
                 gradesObj = getReportCardSubjectGrades(student, sub);
             }
 
-            // ─── REGLA ESTRICTA: 6to Grado, 3er Bimestre ───────────────────────────
-            // Para el Cuadro de Honor del B3, se usa ÚNICAMENTE la nota puntual del
-            // bimestre activo (no el promedio histórico acumulado B1+B2+B3).
-            //   • 8 materias ordinarias  → nota directa b3 (Zona+Examen ya consolidados)
-            //   • 2 materias especiales  → suma explícita zona+examen del B3 desde gradebookDetails
-            // ────────────────────────────────────────────────────────────────────────
-            if (is6to && activeBimestre >= 3) {
-                // Verificar exoneración individual en esta materia para el B3
+            const isSpecialSub = is6to && _isMateriaEspecial6to(sub);
+
+            // ─── REGLA ESTRICTA 6to Grado: Práctica Supervisada y Seminario ──────────
+            // Nota única de B4 (se omiten los 3 bimestres anteriores).
+            // Solo se evalúan cuando activeBimestre >= 4.
+            if (isSpecialSub) {
+                if (activeBimestre < 4) {
+                    // Omitida en B1, B2 y B3
+                    return;
+                }
                 const isExoneratedSubject = (typeof isSubjectBimestreExonerated === 'function')
-                    ? isSubjectBimestreExonerated(student, sub, activeBimestre)
+                    ? isSubjectBimestreExonerated(student, sub, 4)
                     : false;
 
-                let scoreB3 = 0;
-
-                if (_isMateriaEspecial6to(sub)) {
-                    // Materias especiales: extraer Zona + Examen del B3 desde gradebookDetails
-                    const details = student.gradebookDetails || {};
-                    let bDetail = null;
-                    if (details[sub] && (details[sub][3] || details[sub]['3'])) {
-                        bDetail = details[sub][3] || details[sub]['3'];
-                    } else {
-                        // Buscar con limpieza de nombre
-                        const cSub = _cleanForMatch(sub);
-                        for (const k of Object.keys(details)) {
-                            if (_cleanForMatch(k) === cSub) {
-                                bDetail = details[k][3] || details[k]['3'] || null;
-                                break;
-                            }
-                        }
-                    }
-                    if (bDetail) {
-                        scoreB3 = (parseInt(bDetail.zona) || 0) + (parseInt(bDetail.exam) || 0);
-                        // Si total es 0 pero hay "total" registrado, usarlo
-                        if (scoreB3 === 0 && bDetail.total !== undefined && bDetail.total !== '') {
-                            scoreB3 = parseInt(bDetail.total) || 0;
-                        }
-                    }
-                    // Fallback: si gradebookDetails no tiene el B3, leer desde gradesObj.b3
-                    if (scoreB3 === 0 && gradesObj) {
-                        scoreB3 = gradesObj[`b${activeBimestre}`] || 0;
-                    }
-                } else {
-                    // Materias ordinarias: nota directa del bimestre activo
-                    scoreB3 = gradesObj ? (gradesObj[`b${activeBimestre}`] || 0) : 0;
-                }
-
                 if (isExoneratedSubject) {
-                    // Materia exonerada en B3: omitir del cálculo (divisor efectivo se reduce)
                     exoneratedCount++;
-                    return; // siguiente materia
+                    return;
                 }
 
-                if (scoreB3 > 0) {
-                    if (scoreB3 < 60) {
-                        hasFailedGrade = true;
-                        failedSubjectsList.push(`${sub} (B${activeBimestre}: ${scoreB3} pts)`);
+                let scoreB4 = gradesObj ? (gradesObj.b4 || 0) : 0;
+                if (scoreB4 === 0) {
+                    const details = student.gradebookDetails || {};
+                    const bDetail = details[sub]?.[4] || details[sub]?.['4'];
+                    if (bDetail) {
+                        scoreB4 = (parseInt(bDetail.zona) || 0) + (parseInt(bDetail.exam) || 0);
+                        if (scoreB4 === 0 && bDetail.total !== undefined && bDetail.total !== '') {
+                            scoreB4 = parseInt(bDetail.total) || 0;
+                        }
                     }
-                    sumCourseAverages += scoreB3;
+                }
+
+                if (scoreB4 > 0) {
+                    if (scoreB4 < 60) {
+                        hasFailedGrade = true;
+                        failedSubjectsList.push(`${sub} (B4: ${scoreB4} pts)`);
+                    }
+                    sumCourseAverages += scoreB4;
                     gradedCount++;
                 }
-                return; // procesado — saltar lógica histórica
+                return;
             }
 
-            // ─── LÓGICA HISTÓRICA para B1, B2 y para 4to/5to ────────────────────────
+            // ─── MATERIAS ORDINARIAS (4to, 5to y las 8 clases de 6to) ───────────────
+            // Se toman los bimestres evaluados tal como ya están asignados:
+            // Para 6to se toman los 3 bimestres asignados (B1, B2, B3).
             let validScores = [];
+            const maxUnitsToConsider = (is6to && activeBimestre >= 4) ? 3 : activeBimestre;
+
             if (gradesObj) {
-                for (let b = 1; b <= activeBimestre; b++) {
+                for (let b = 1; b <= maxUnitsToConsider; b++) {
                     if (isSubjectBimestreExonerated(student, sub, b)) {
                         exoneratedCount++;
                         continue;
@@ -29964,7 +29944,7 @@ function populateHonorRollSelect() {
     let opts = `
         <option value="ALL_BALANCED">🌟 Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)</option>
         <option value="GROUP_4TO_5TO">🥇 Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)</option>
-        <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (8 Clases B1/B2 — 10 Clases B3)</option>
+        <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (8 Clases Ordinarias B1 a B3 — 10 Clases en B4)</option>
     `;
 
     // ── Optgroup dinámico: Por Grado y Sección (desde STATE.gradesList) ────────
@@ -30037,7 +30017,7 @@ function renderHonorRollCustomDropdown() {
     html += `<div style="padding:8px 14px; font-size:0.75rem; font-weight:800; color:#0369a1; background:#f0f9ff; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #e0f2fe;">🌟 Modalidades Oficiales</div>`;
     html += makeItem('ALL_BALANCED', '🌟', 'Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)');
     html += makeItem('GROUP_4TO_5TO', '🥇', 'Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)');
-    html += makeItem('GROUP_6TO', '🎓', 'Cuadro de Honor Oficial: 6to Grado (8 Clases B1/B2 — 10 Clases B3)');
+    html += makeItem('GROUP_6TO', '🎓', 'Cuadro de Honor Oficial: 6to Grado (8 Clases Ordinarias B1 a B3 — 10 Clases en B4)');
 
     // 2. Grados y Secciones
     const grades = (STATE.gradesList || []).filter(g => g && g.code);
@@ -30143,7 +30123,7 @@ function loadHonorRoll() {
             return info.is4to || info.is5to;
         });
     } else if (type === 'GROUP_6TO') {
-        const bLabel6to = (parseInt(STATE.config?.activeBimestre) >= 3) ? '10 CLASES' : '8 CLASES ACTIVAS';
+        const bLabel6to = (parseInt(STATE.config?.activeBimestre) >= 4) ? '10 CLASES (B4)' : '8 CLASES ORDINARIAS (B1-B3)';
         titleText.textContent = `CUADRO DE HONOR OFICIAL - 6TO GRADO GRADUANDOS (${bLabel6to}) - CICLO ${STATE.activeCycle || '2026'}`;
         list = list.filter(s => {
             const info = getStudentAcademicInfo(s);
