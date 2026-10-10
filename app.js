@@ -35297,13 +35297,13 @@ function printPensumCurriculumReport(targetGrade) {
 
                 let teacherHtml = '';
                 if (asg && asg.teacher && asg.teacher.trim() && !asg.teacher.toLowerCase().includes('sin asignar')) {
-                    teacherHtml = `<div style="font-weight:700; color:#0f2b5c; line-height:1.2;">${escapeHtml(asg.teacher)}</div>`;
+                    teacherHtml = `<div style="font-weight:700; color:#0f2b5c; line-height:1.15; font-size:7.2pt;">${escapeHtml(asg.teacher)}</div>`;
                 } else {
-                    teacherHtml = `<div style="color:#94a3b8; font-style:italic; font-size:7.5pt;">Pendiente</div>`;
+                    teacherHtml = `<div style="color:#94a3b8; font-style:italic; font-size:6.8pt;">Pendiente</div>`;
                 }
 
                 return `
-                    <td style="padding:6px 8px; border:1px solid #cbd5e1; font-size:8pt; vertical-align:middle; text-align:left;">
+                    <td style="padding:2.5px 5px; border:1px solid #cbd5e1; font-size:7.2pt; vertical-align:middle; text-align:left;">
                         ${teacherHtml}
                     </td>
                 `;
@@ -35311,13 +35311,13 @@ function printPensumCurriculumReport(targetGrade) {
 
             return `
                 <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
-                    <td style="text-align:center; font-weight:800; border:1px solid #cbd5e1; padding:6px 4px; font-size:8pt;">${idx + 1}</td>
-                    <td style="text-align:center; font-family:'Courier New', monospace; font-weight:800; color:#0369a1; border:1px solid #cbd5e1; padding:6px; font-size:8pt;">${code}</td>
-                    <td style="border:1px solid #cbd5e1; padding:6px 8px; font-size:8.2pt;">
-                        <strong style="color:#0f172a;">${escapeHtml(pSubjectName)}</strong>
-                        <div style="font-size:7.2pt; color:#64748b; margin-top:1px;">${escapeHtml(cnb.name)}</div>
+                    <td style="text-align:center; font-weight:800; border:1px solid #cbd5e1; padding:2.5px 3px; font-size:7.2pt;">${idx + 1}</td>
+                    <td style="text-align:center; font-family:'Courier New', monospace; font-weight:800; color:#0369a1; border:1px solid #cbd5e1; padding:2.5px 4px; font-size:7.2pt;">${code}</td>
+                    <td style="border:1px solid #cbd5e1; padding:2.5px 6px; font-size:7.2pt; line-height:1.15;">
+                        <strong style="color:#0f172a; font-size:7.3pt; display:block;">${escapeHtml(pSubjectName)}</strong>
+                        <div style="font-size:6.2pt; color:#64748b; margin-top:1px; line-height:1;">${escapeHtml(cnb.name)}</div>
                     </td>
-                    <td style="text-align:center; font-weight:700; border:1px solid #cbd5e1; padding:6px; font-size:8pt; white-space:nowrap;">${hrs} períodos</td>
+                    <td style="text-align:center; font-weight:700; border:1px solid #cbd5e1; padding:2.5px 4px; font-size:7.2pt; white-space:nowrap;">${hrs} períodos</td>
                     ${sectionCells}
                 </tr>
             `;
@@ -35325,19 +35325,19 @@ function printPensumCurriculumReport(targetGrade) {
 
         // Cabeceras de columnas de sección
         const sectionHeaders = secList.map(sec => `
-            <th style="padding:7px 8px; text-align:left; border:1px solid #cbd5e1; background:#0f2b5c; color:#ffffff; font-size:8.2pt; min-width:130px;">
+            <th style="padding:3.5px 6px; text-align:left; border:1px solid #cbd5e1; background:#0f2b5c; color:#ffffff; font-size:7.2pt; min-width:110px;">
                 <div style="font-weight:800; text-transform:uppercase;">${sec.label}</div>
-                ${sec.guideName ? `<div style="font-size:7pt; color:#93c5fd; font-weight:600; margin-top:2px;">Guía: ${escapeHtml(sec.guideName)}</div>` : ''}
+                ${sec.guideName ? `<div style="font-size:6.2pt; color:#93c5fd; font-weight:600; line-height:1; margin-top:1px;">Guía: ${escapeHtml(sec.guideName)}</div>` : ''}
             </th>
         `).join('');
 
         // Barra informativa de secciones y maestros guías
         const guidesSummaryHtml = `
-            <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; padding:6px 12px; margin-bottom:10px; font-size:8pt;">
+            <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; padding:2.5px 8px; margin-bottom:4px; font-size:7pt; line-height:1.2;">
                 <div style="font-weight:800; color:#0f2b5c; text-transform:uppercase; letter-spacing:0.3px;">
-                    <i class="fa-solid fa-chalkboard-user" style="color:#059669; margin-right:4px;"></i> Secciones Habilitadas (${secList.length}):
+                    <i class="fa-solid fa-chalkboard-user" style="color:#059669; margin-right:3px;"></i> Secciones Habilitadas (${secList.length}):
                 </div>
-                <div style="display:flex; flex-wrap:wrap; gap:12px;">
+                <div style="display:flex; flex-wrap:wrap; gap:10px;">
                     ${secList.map(sec => `
                         <div>
                             <strong style="color:#0f2b5c;">${sec.label}:</strong>
@@ -35349,24 +35349,24 @@ function printPensumCurriculumReport(targetGrade) {
         `;
 
         reportBodyHtml += `
-            <div style="margin-bottom:26px; page-break-inside:avoid;">
-                <div style="background:linear-gradient(135deg, #0f2b5c 0%, #1e3a8a 100%); color:#ffffff; padding:9px 14px; border-radius:6px 6px 0 0; display:flex; justify-content:space-between; align-items:center;">
+            <div style="margin-bottom:0; page-break-inside:avoid; page-break-after:avoid;">
+                <div style="background:linear-gradient(135deg, #0f2b5c 0%, #1e3a8a 100%); color:#ffffff; padding:4px 10px; border-radius:4px 4px 0 0; display:flex; justify-content:space-between; align-items:center;">
                     <div>
-                        <strong style="font-size:10.5pt; text-transform:uppercase; letter-spacing:0.5px;">${conf.name} &bull; DISTRIBUCIÓN DE MATERIAS Y SECCIONES</strong>
-                        <div style="font-size:7.5pt; color:#93c5fd; margin-top:2px;">Plan Diario Matutina &bull; Perito Contador &bull; Ciclo Escolar ${cycle}</div>
+                        <strong style="font-size:8.8pt; text-transform:uppercase; letter-spacing:0.4px;">${conf.name} &bull; DISTRIBUCIÓN DE MATERIAS Y SECCIONES</strong>
+                        <div style="font-size:6.5pt; color:#93c5fd; line-height:1; margin-top:1px;">Plan Diario Matutina &bull; Perito Contador &bull; Ciclo Escolar ${cycle}</div>
                     </div>
-                    <span style="font-size:8.5pt; background:rgba(255,255,255,0.18); padding:3px 10px; border-radius:4px; font-weight:700;">
+                    <span style="font-size:7.2pt; background:rgba(255,255,255,0.18); padding:2px 8px; border-radius:3px; font-weight:700;">
                         ${gradeItems.length} Asignaturas &bull; ${totalHrs} Períodos Semanales
                     </span>
                 </div>
                 ${guidesSummaryHtml}
-                <table style="width:100%; border-collapse:collapse; font-size:8pt; border:1px solid #cbd5e1; background:#ffffff;">
+                <table style="width:100%; border-collapse:collapse; font-size:7.2pt; border:1px solid #cbd5e1; background:#ffffff;">
                     <thead>
                         <tr style="background:#0f2b5c; color:#ffffff;">
-                            <th style="padding:7px 4px; width:30px; text-align:center; border:1px solid #cbd5e1; font-size:8.2pt;">No.</th>
-                            <th style="padding:7px 6px; width:75px; text-align:center; border:1px solid #cbd5e1; font-size:8.2pt;">Código</th>
-                            <th style="padding:7px 8px; text-align:left; border:1px solid #cbd5e1; font-size:8.2pt; min-width:180px;">Asignatura Oficial y Área CNB</th>
-                            <th style="padding:7px 6px; width:65px; text-align:center; border:1px solid #cbd5e1; font-size:8.2pt;">Períodos</th>
+                            <th style="padding:3.5px 3px; width:26px; text-align:center; border:1px solid #cbd5e1; font-size:7.2pt;">No.</th>
+                            <th style="padding:3.5px 4px; width:65px; text-align:center; border:1px solid #cbd5e1; font-size:7.2pt;">Código</th>
+                            <th style="padding:3.5px 6px; text-align:left; border:1px solid #cbd5e1; font-size:7.2pt; min-width:170px;">Asignatura Oficial y Área CNB</th>
+                            <th style="padding:3.5px 4px; width:60px; text-align:center; border:1px solid #cbd5e1; font-size:7.2pt;">Períodos</th>
                             ${sectionHeaders}
                         </tr>
                     </thead>
@@ -35385,17 +35385,43 @@ function printPensumCurriculumReport(targetGrade) {
         <meta charset="UTF-8">
         <title>Distribución Oficial de Pensum por Secciones - ENCCO Jutiapa</title>
         <style>
-            @page { size: letter landscape; margin: 10mm 10mm 12mm 10mm; }
-            body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 8.5pt; color: #1e293b; margin: 0; padding: 6px; }
-            .header-banner { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0f2b5c; padding-bottom: 10px; margin-bottom: 12px; }
-            .header-logo { width: 56px; height: 56px; object-fit: contain; }
-            .header-text { text-align: center; flex: 1; padding: 0 14px; }
-            .header-text h1 { font-size: 13.5pt; margin: 0; color: #0f2b5c; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; }
-            .header-text h2 { font-size: 9.8pt; margin: 2px 0 1px 0; color: #059669; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
-            .header-text h3 { font-size: 8.5pt; margin: 2px 0 0 0; color: #475569; font-weight: 600; }
-            .header-side-badge { text-align: right; font-size: 7.5pt; color: #64748b; font-weight: 600; min-width: 90px; }
-            .signatures { margin-top: 32px; display: flex; justify-content: space-between; page-break-inside: avoid; text-align: center; }
-            .sig-box { width: 30%; border-top: 1.5px solid #334155; padding-top: 5px; font-size: 7.5pt; font-weight: 700; color: #334155; }
+            @page { size: letter landscape; margin: 4mm 6mm 4mm 6mm; }
+            * { box-sizing: border-box; }
+            html, body {
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 7.5pt;
+                color: #1e293b;
+                margin: 0;
+                padding: 0;
+                background: #ffffff;
+            }
+            .header-banner {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                border-bottom: 2px solid #0f2b5c;
+                padding-bottom: 3px;
+                margin-bottom: 4px;
+            }
+            .header-logo { width: 36px; height: 36px; object-fit: contain; }
+            .header-text { text-align: center; flex: 1; padding: 0 10px; }
+            .header-text h1 { font-size: 10.5pt; margin: 0; color: #0f2b5c; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 800; line-height: 1.1; }
+            .header-text h2 { font-size: 8pt; margin: 1px 0; color: #059669; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2px; line-height: 1.1; }
+            .header-text h3 { font-size: 7.2pt; margin: 1px 0 0 0; color: #475569; font-weight: 600; line-height: 1.1; }
+            .header-side-badge { text-align: right; font-size: 6.5pt; color: #64748b; font-weight: 600; min-width: 80px; line-height: 1.2; }
+            @media print {
+                html, body {
+                    width: 100%;
+                    height: 100%;
+                    overflow: hidden !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                table {
+                    page-break-inside: avoid;
+                    page-break-after: avoid;
+                }
+            }
         </style>
     </head>
     <body>
@@ -35405,31 +35431,16 @@ function printPensumCurriculumReport(targetGrade) {
                 <h1>${schoolName.toUpperCase()}</h1>
                 <h2>${location.toUpperCase()}</h2>
                 <h3>DISTRIBUCIÓN OFICIAL DE PENSUM POR SECCIONES Y CLAUSTRO DOCENTE &mdash; CICLO ${cycle}</h3>
-                <div style="font-size:7.5pt; color:#64748b; margin-top:2px;">Carrera: Perito Contador &bull; Jornada Matutina &bull; Emisión: ${fechaEmision}</div>
+                <div style="font-size:6.5pt; color:#64748b; margin-top:1px;">Carrera: Perito Contador &bull; Jornada Matutina &bull; Emisión: ${fechaEmision}</div>
             </div>
             <div class="header-side-badge">
-                <div style="font-weight:800; color:#0f2b5c; font-size:8.5pt;">ENCCO 1970</div>
+                <div style="font-weight:800; color:#0f2b5c; font-size:7.5pt;">ENCCO 1970</div>
                 <div>Perito Contador</div>
                 <div style="color:#059669; font-weight:700;">Plan Diario</div>
             </div>
         </div>
 
         ${reportBodyHtml}
-
-        <div class="signatures">
-            <div class="sig-box">
-                Vo.Bo. Dirección General<br>
-                <span>Escuela Nacional de Ciencias Comerciales</span>
-            </div>
-            <div class="sig-box">
-                Comisión de Evaluación y Horarios<br>
-                <span>Claustro de Catedráticos</span>
-            </div>
-            <div class="sig-box">
-                Secretaría Técnico-Pedagógica<br>
-                <span>Registro y Asignación Curricular</span>
-            </div>
-        </div>
     </body>
     </html>
     `;
@@ -37411,7 +37422,15 @@ function isSubjectMatch(sub1, sub2, gradeNum = 0) {
 }
 
 function printGradeAssignmentsDirect(gradeName) {
-    if (typeof printClassAssignmentsReport === 'function') {
+    let targetGrade = 'all';
+    const s = String(gradeName || '').toLowerCase();
+    if (s.includes('4') || s.includes('cuarto')) targetGrade = '4to';
+    else if (s.includes('5') || s.includes('quinto')) targetGrade = '5to';
+    else if (s.includes('6') || s.includes('sexto')) targetGrade = '6to';
+
+    if (typeof printPensumCurriculumReport === 'function') {
+        printPensumCurriculumReport(targetGrade);
+    } else if (typeof printClassAssignmentsReport === 'function') {
         printClassAssignmentsReport('BY_GRADE', gradeName);
     }
 }
