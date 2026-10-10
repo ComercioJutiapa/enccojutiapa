@@ -13230,7 +13230,9 @@ function getStudentAcademicInfo(student) {
     if (student.gradebookDetails && typeof student.gradebookDetails === 'object') {
         const courses = Object.keys(student.gradebookDetails);
         courses.forEach(cName => {
+            if (is6to && _isMateriaEspecial6to(cName) && activeBimestre < 4) return;
             for (let b = 1; b <= activeBimestre; b++) {
+                if (is6to && _isMateriaEspecial6to(cName) && b < 4) continue;
                 if (isSubjectBimestreExonerated(student, cName, b)) continue;
                 const bDetail = student.gradebookDetails[cName] && student.gradebookDetails[cName][b];
                 if (bDetail) {
@@ -13262,6 +13264,9 @@ function getStudentAcademicInfo(student) {
         const boundedAvg = Math.min(100.0, Math.max(0.0, rawAvg));
         const equitableAvg = Math.round(boundedAvg * 1000) / 1000;
         const totalPointsCalc = Math.round(sumCourseAverages * 10) / 10;
+        const accurateLoadLabel = is6to 
+            ? ((activeBimestre >= 4 && gradedCount >= 10) ? '10 Clases (6to Graduandos)' : '8 Clases Ordinarias (6to Perito)')
+            : classLoadLabel;
 
         return {
             average: equitableAvg,
@@ -13274,7 +13279,7 @@ function getStudentAcademicInfo(student) {
             is5to: is5to,
             is4to: is4to,
             officialClassLoad: dynamicDivisor,
-            classLoadLabel: classLoadLabel,
+            classLoadLabel: accurateLoadLabel,
             hasFailedGrade: hasFailedGrade,
             isExonerated: isStudentExonerated,
             eligibleForHonorRoll: isEligible,
@@ -30134,12 +30139,26 @@ function loadHonorRoll() {
         const gradeObj = (STATE.gradesList || []).find(x => x.code === gCode);
         const gName = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : gCode;
         titleText.textContent = `CUADRO DE HONOR - ${gName}`;
-        list = list.filter(s => s.grade === gCode || s.gradeLabel?.includes(gradeObj?.name));
+        list = list.filter(s => {
+            if (s.grade === gCode || s.gradeCode === gCode) return true;
+            if (gradeObj) {
+                const matchName = (s.grade === gradeObj.name || s.gradeLabel?.includes(gradeObj.name));
+                const matchSec = (!gradeObj.section || s.section === gradeObj.section);
+                if (matchName && matchSec) return true;
+            }
+            return false;
+        });
     } else if (type.startsWith('CAREER_')) {
         const cName = type.replace('CAREER_', '');
         titleText.textContent = `CUADRO DE HONOR - CARRERA: ${cName}`;
-        const matchingGrades = (STATE.gradesList || []).filter(g => g.career === cName).map(g => g.code);
-        list = list.filter(s => matchingGrades.includes(s.grade));
+        const matchingCodes = (STATE.gradesList || []).filter(g => g.career === cName).map(g => g.code);
+        const matchingNames = (STATE.gradesList || []).filter(g => g.career === cName).map(g => g.name);
+        list = list.filter(s => {
+            if (matchingCodes.includes(s.grade) || matchingCodes.includes(s.gradeCode)) return true;
+            if (s.career === cName) return true;
+            if (matchingNames.includes(s.grade)) return true;
+            return false;
+        });
     }
 
     // 🌟 REGLA FUNDAMENTAL DE INTEGRIDAD Y VISIBILIDAD:
@@ -30243,9 +30262,7 @@ function loadHonorRoll() {
             }
         }
 
-        const loadBadge = info.is6to 
-            ? `<span class="badge" style="background:#fef3c7; color:#92400e; font-weight:700; border:1px solid #fde68a;">10 Clases (6to)</span>`
-            : `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; border:1px solid #bae6fd;">9 Clases (4to/5to)</span>`;
+        const loadBadge = `<span class="badge" style="background:${info.is6to ? '#fef3c7' : '#e0f2fe'}; color:${info.is6to ? '#92400e' : '#0369a1'}; font-weight:700; border:1px solid ${info.is6to ? '#fde68a' : '#bae6fd'};">${escapeHtml(info.classLoadLabel)}</span>`;
 
         let exonBadges = '';
         if (info.exoneratedCount > 0) {
@@ -30265,7 +30282,7 @@ function loadHonorRoll() {
                 <td style="text-align:center;">${loadBadge}</td>
                 <td style="text-align:center;">
                     <strong style="color:${info.eligibleForHonorRoll ? 'var(--brand-green)' : (info.isExonerated ? '#0f766e' : '#b91c1c')}; font-size:1.15rem; font-variant-numeric:tabular-nums;">${info.average > 0 ? info.average.toFixed(3) + ' pts' : (info.isExonerated ? 'Exento' : '0.000 pts')}</strong>
-                    <div style="font-size:0.72rem; color:var(--text-muted);">${(info.isExonerated && info.gradedClasses === 0) ? 'Calificación Exenta' : `Total: ${info.totalPoints}/${info.officialClassLoad * 100} pts`}</div>
+                    <div style="font-size:0.72rem; color:var(--text-muted);">${(info.isExonerated && info.gradedClasses === 0) ? 'Calificación Exenta' : `Total: ${info.totalPoints}/${(info.gradedClasses || info.officialClassLoad) * 100} pts`}</div>
                 </td>
                 <td style="text-align:center;">${badgeHtml}</td>
                 <td style="text-align:center; white-space:nowrap;">
@@ -30300,11 +30317,25 @@ function printHonorRoll() {
     } else if (type.startsWith('GRADE_')) {
         const gCode = type.replace('GRADE_', '');
         const gradeObj = (STATE.gradesList || []).find(x => x.code === gCode);
-        list = list.filter(s => s.grade === gCode || s.gradeLabel?.includes(gradeObj?.name));
+        list = list.filter(s => {
+            if (s.grade === gCode || s.gradeCode === gCode) return true;
+            if (gradeObj) {
+                const matchName = (s.grade === gradeObj.name || s.gradeLabel?.includes(gradeObj.name));
+                const matchSec = (!gradeObj.section || s.section === gradeObj.section);
+                if (matchName && matchSec) return true;
+            }
+            return false;
+        });
     } else if (type.startsWith('CAREER_')) {
         const cName = type.replace('CAREER_', '');
-        const matchingGrades = (STATE.gradesList || []).filter(g => g.career === cName).map(g => g.code);
-        list = list.filter(s => matchingGrades.includes(s.grade));
+        const matchingCodes = (STATE.gradesList || []).filter(g => g.career === cName).map(g => g.code);
+        const matchingNames = (STATE.gradesList || []).filter(g => g.career === cName).map(g => g.name);
+        list = list.filter(s => {
+            if (matchingCodes.includes(s.grade) || matchingCodes.includes(s.gradeCode)) return true;
+            if (s.career === cName) return true;
+            if (matchingNames.includes(s.grade)) return true;
+            return false;
+        });
     }
 
     // 🌟 INTEGRIDAD ACADÉMICA Y VISIBILIDAD EN IMPRESIÓN:
