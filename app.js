@@ -34890,7 +34890,7 @@ function renderPensumGradeTabsBar(fullList = []) {
                 <i class="fa-solid ${conf.icon}" style="font-size:0.85rem;"></i>
                 <span style="font-size:0.86rem;">${conf.shortName}</span>
                 <span style="font-size:0.73rem; padding:2px 7px; border-radius:12px; font-weight:700; ${badgeStyles}">
-                    ${count} ${k === 'all' ? 'materias' : 'clases'} &bull; ${hrs}h
+                    ${count} ${k === 'all' ? 'materias' : 'clases'} &bull; ${hrs} períodos
                 </span>
             </button>
         `;
@@ -35100,7 +35100,7 @@ function renderPensumByGradeView(gradeKey, list = []) {
                             <th style="width:75px; text-align:center;">#</th>
                             <th style="width:140px; text-align:center;">Código de Curso</th>
                             <th>Asignatura Oficial y Área Curricular</th>
-                            <th style="width:150px; text-align:center;">Carga Horaria</th>
+                            <th style="width:150px; text-align:center;">Períodos Semanales</th>
                             <th>Catedráticos Asignados y Secciones</th>
                             <th style="width:105px; text-align:center;">Acciones</th>
                         </tr>
@@ -35317,7 +35317,7 @@ function printPensumCurriculumReport(targetGrade) {
                         <strong style="color:#0f172a;">${escapeHtml(pSubjectName)}</strong>
                         <div style="font-size:7.2pt; color:#64748b; margin-top:1px;">${escapeHtml(cnb.name)}</div>
                     </td>
-                    <td style="text-align:center; font-weight:700; border:1px solid #cbd5e1; padding:6px; font-size:8pt; white-space:nowrap;">${hrs} hrs</td>
+                    <td style="text-align:center; font-weight:700; border:1px solid #cbd5e1; padding:6px; font-size:8pt; white-space:nowrap;">${hrs} períodos</td>
                     ${sectionCells}
                 </tr>
             `;
@@ -35356,7 +35356,7 @@ function printPensumCurriculumReport(targetGrade) {
                         <div style="font-size:7.5pt; color:#93c5fd; margin-top:2px;">Plan Diario Matutina &bull; Perito Contador &bull; Ciclo Escolar ${cycle}</div>
                     </div>
                     <span style="font-size:8.5pt; background:rgba(255,255,255,0.18); padding:3px 10px; border-radius:4px; font-weight:700;">
-                        ${gradeItems.length} Asignaturas &bull; ${totalHrs} Períodos/Sem
+                        ${gradeItems.length} Asignaturas &bull; ${totalHrs} Períodos Semanales
                     </span>
                 </div>
                 ${guidesSummaryHtml}
@@ -35366,7 +35366,7 @@ function printPensumCurriculumReport(targetGrade) {
                             <th style="padding:7px 4px; width:30px; text-align:center; border:1px solid #cbd5e1; font-size:8.2pt;">No.</th>
                             <th style="padding:7px 6px; width:75px; text-align:center; border:1px solid #cbd5e1; font-size:8.2pt;">Código</th>
                             <th style="padding:7px 8px; text-align:left; border:1px solid #cbd5e1; font-size:8.2pt; min-width:180px;">Asignatura Oficial y Área CNB</th>
-                            <th style="padding:7px 6px; width:55px; text-align:center; border:1px solid #cbd5e1; font-size:8.2pt;">Carga</th>
+                            <th style="padding:7px 6px; width:65px; text-align:center; border:1px solid #cbd5e1; font-size:8.2pt;">Períodos</th>
                             ${sectionHeaders}
                         </tr>
                     </thead>
@@ -37850,7 +37850,7 @@ function renderGradeMatrixView(gradeKey = '4to', searchQuery = '') {
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
             <div style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:8px 14px; border-radius:8px; text-align:center;">
                 <span style="font-size:0.72rem; color:#93c5fd; display:block; font-weight:700;">Períodos Semanales</span>
-                <strong style="font-size:1.15rem; color:#ffffff;">${totalGradeWeeklyPeriods} hrs</strong>
+                <strong style="font-size:1.15rem; color:#ffffff;">${totalGradeWeeklyPeriods} períodos</strong>
             </div>
             <div style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding:8px 14px; border-radius:8px; text-align:center;">
                 <span style="font-size:0.72rem; color:#93c5fd; display:block; font-weight:700;">Vacantes</span>
