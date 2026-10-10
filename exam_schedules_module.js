@@ -726,12 +726,13 @@
     }
 
     /**
-     * Catálogo oficial de los 20 salones disponibles en el establecimiento:
-     * Secuencia institucional por antigüedad académica:
-     * 1. Salones de 6to Perito (Salón 6A, Salón 6B...)
-     * 2. Salones de 5to Perito (Salón 5A, Salón 5B, Salón 5C, Salón 5D...)
-     * 3. Salones de 4to Perito (Salón 4A, Salón 4B, Salón 4C, Salón 4D...)
-     * 4. Salones adicionales disponibles hasta completar los 20 salones físicos.
+     * Catálogo oficial de salones y espacios de evaluación:
+     * 1. Aulas base identificadas por número secuencial y sección:
+     *    Salón 1 - 6A, Salón 2 - 6B, Salón 3 - 6C, Salón 4 - 6D,
+     *    Salón 5 - 5A, Salón 6 - 5B, Salón 7 - 5C, Salón 8 - 5D,
+     *    Salón 9 - 4A, Salón 10 - 4B, Salón 11 - 4C, Salón 12 - 4D
+     * 2. 9 salones adicionales de apoyo (Salón 13 .. Salón 21).
+     * 3. Espacios abiertos y especiales: "Cancha" y "Salón" (Salón Mayor/Actos).
      */
     function getInstitutionalSalonsList() {
         const salons = [];
@@ -739,64 +740,44 @@
 
         function addSalon(name) {
             const clean = name.trim();
-            if (!seen.has(clean) && salons.length < 20) {
+            if (!seen.has(clean)) {
                 seen.add(clean);
                 salons.push(clean);
             }
         }
 
-        // 1. Salones de 6to
-        const grades6 = (STATE.gradesList || []).filter(g => (g.name || g.code || '').toUpperCase().includes('6'));
-        grades6.sort((a, b) => (a.section || '').localeCompare(b.section || '', 'es'));
-        if (grades6.length > 0) {
-            grades6.forEach(g => {
-                const sec = (g.section || 'A').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase() || 'A';
-                addSalon(`Salón 6${sec}`);
-            });
-        } else {
-            addSalon('Salón 6A');
-            addSalon('Salón 6B');
-        }
+        const gradeNums = [6, 5, 4];
+        let salonNum = 1;
 
-        // 2. Salones de 5to
-        const grades5 = (STATE.gradesList || []).filter(g => (g.name || g.code || '').toUpperCase().includes('5'));
-        grades5.sort((a, b) => (a.section || '').localeCompare(b.section || '', 'es'));
-        if (grades5.length > 0) {
-            grades5.forEach(g => {
-                const sec = (g.section || 'A').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase() || 'A';
-                addSalon(`Salón 5${sec}`);
+        gradeNums.forEach(num => {
+            const gradesForNum = (STATE.gradesList || []).filter(g => {
+                const raw = `${g.name || ''} ${g.code || ''}`.toUpperCase();
+                return raw.includes(String(num));
             });
-        } else {
-            addSalon('Salón 5A');
-            addSalon('Salón 5B');
-            addSalon('Salón 5C');
-            addSalon('Salón 5D');
-        }
-
-        // 3. Salones de 4to
-        const grades4 = (STATE.gradesList || []).filter(g => (g.name || g.code || '').toUpperCase().includes('4'));
-        grades4.sort((a, b) => (a.section || '').localeCompare(b.section || '', 'es'));
-        if (grades4.length > 0) {
-            grades4.forEach(g => {
-                const sec = (g.section || 'A').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase() || 'A';
-                addSalon(`Salón 4${sec}`);
-            });
-        } else {
-            addSalon('Salón 4A');
-            addSalon('Salón 4B');
-            addSalon('Salón 4C');
-            addSalon('Salón 4D');
-        }
-
-        // 4. Salones adicionales hasta totalizar 20 salones
-        let extraNum = 11;
-        while (salons.length < 20) {
-            const extraName = `Salón ${extraNum}`;
-            if (!seen.has(extraName)) {
-                addSalon(extraName);
+            gradesForNum.sort((a, b) => (a.section || '').localeCompare(b.section || '', 'es'));
+            if (gradesForNum.length > 0) {
+                gradesForNum.forEach(g => {
+                    const sec = (g.section || 'A').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase() || 'A';
+                    addSalon(`Salón ${salonNum} - ${num}${sec}`);
+                    salonNum++;
+                });
+            } else {
+                ['A', 'B', 'C', 'D'].forEach(sec => {
+                    addSalon(`Salón ${salonNum} - ${num}${sec}`);
+                    salonNum++;
+                });
             }
-            extraNum++;
+        });
+
+        // 9 salones adicionales numerados (iniciando inmediatamente después de las secciones)
+        for (let i = 0; i < 9; i++) {
+            addSalon(`Salón ${salonNum}`);
+            salonNum++;
         }
+
+        // Espacios institucionales adicionales
+        addSalon('Cancha');
+        addSalon('Salón');
 
         return salons;
     }
@@ -1182,8 +1163,11 @@
                             <button type="button" class="btn btn-primary" onclick="window.printAllNominasOfBimester()" style="background:#1d4ed8; border-color:#1e40af; font-weight:700; font-size:0.86rem; padding:7px 14px;" title="Imprimir de una sola vez todas las nóminas (medias listas) de evaluaciones de este bimestre">
                                 <i class="fa-solid fa-print"></i> Imprimir Todas las Nóminas
                             </button>
-                            <button type="button" class="btn btn-outline-primary" onclick="window.printConsolidatedCalendarPdf()" style="font-weight:700; font-size:0.86rem; background:#eff6ff;" title="Descargar o imprimir calendario completo en PDF">
-                                <i class="fa-solid fa-file-pdf"></i> Calendario General
+                            <button type="button" class="btn btn-outline-primary" onclick="window.printConsolidatedCalendarPdf()" style="font-weight:700; font-size:0.86rem; background:#eff6ff;" title="Descargar o imprimir calendario completo para personal y cuidadores en PDF">
+                                <i class="fa-solid fa-file-pdf"></i> Calendario Personal
+                            </button>
+                            <button type="button" class="btn btn-outline-success" onclick="window.printStudentCalendarPdf()" style="font-weight:700; font-size:0.86rem; background:#f0fdf4; color:#15803d; border-color:#86efac;" title="Imprimir o compartir calendario oficial para Estudiantes (Clases, Horarios, Titulares y Salones)">
+                                <i class="fa-solid fa-graduation-cap"></i> Calendario Estudiantes
                             </button>
                         </div>
 
@@ -5002,6 +4986,233 @@
             </html>
         `;
         openPrintWindow(calendarHtml, 'Calendario_General', 'portrait');
+    };
+
+    // IMPRESIÓN 4: CALENDARIO OFICIAL PARA ESTUDIANTES EN PDF (CLASES, HORARIOS, TITULARES Y SALONES)
+    window.printStudentCalendarPdf = function () {
+        const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
+        const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
+        const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
+
+        if (!scheduleBlock.days || scheduleBlock.days.length === 0) {
+            alert("No hay fechas de evaluación configuradas para este bimestre.");
+            return;
+        }
+
+        const bimesterLabels = {
+            'BIM1': 'I Bimestre',
+            'BIM2': 'II Bimestre',
+            'BIM3': 'III Bimestre',
+            'BIM4': 'IV Bimestre'
+        };
+
+        let daysTablesHtml = '';
+        scheduleBlock.days.forEach(d => {
+            const dFormatted = new Date(d.date + 'T12:00:00').toLocaleDateString('es-GT', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            }).toUpperCase();
+
+            // Excluir evaluaciones en proceso del calendario estudiantil
+            const evs = (d.evaluations || []).filter(e => !e.isEnProceso && e.evaluationStatus !== 'EN_PROCESO');
+            if (evs.length === 0) {
+                daysTablesHtml += `
+                    <div class="calendar-day-block" style="margin-bottom:14px;">
+                        <div class="calendar-day-header" style="background:#0f172a; color:#ffffff; padding:6px 10px; font-weight:800; font-size:0.86rem; border-radius:4px 4px 0 0;">
+                            ${dFormatted} ${d.isPracticaDay ? '─ (JORNADA EXCLUSIVA DE PRÁCTICA SUPERVISADA)' : ''}
+                        </div>
+                        <div style="border:1px solid #cbd5e1; padding:8px; text-align:center; color:#64748b; font-size:0.8rem;">
+                            Sin evaluaciones presenciales programadas para este día.
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Agrupar evaluaciones por grado académico
+            const gradeMap = new Map();
+            evs.forEach(ev => {
+                const gKey = (ev.academicGradeName || ev.gradeName || ev.gradeCode || 'Grado General').trim();
+                if (!gradeMap.has(gKey)) gradeMap.set(gKey, []);
+                gradeMap.get(gKey).push(ev);
+            });
+
+            // Ordenar grados académicamente: 4to -> 5to -> 6to
+            const sortedGradeKeys = Array.from(gradeMap.keys()).sort((a, b) => {
+                const getOrder = (str) => {
+                    if (str.includes('4') || /cuarto/i.test(str)) return 1;
+                    if (str.includes('5') || /quinto/i.test(str)) return 2;
+                    if (str.includes('6') || /sexto/i.test(str)) return 3;
+                    return 4;
+                };
+                return getOrder(a) - getOrder(b) || a.localeCompare(b, 'es');
+            });
+
+            let dayGradesTablesHtml = '';
+            sortedGradeKeys.forEach(gradeName => {
+                const gradeEvals = gradeMap.get(gradeName);
+                let evRows = '';
+
+                gradeEvals.forEach(ev => {
+                    const isFull = ev.evaluationMode === 'SECCION_COMPLETA';
+
+                    // 1. Salones por sección (Estrictamente SIN cuidadores ni auxiliares)
+                    let salonesStr = '';
+                    if (ev.isPractica) {
+                        const gA = ev.groupA || {};
+                        const gB = ev.groupB || {};
+                        salonesStr = `Salón ${gA.classroom || 'Salón'} (Grupo A)<br>Salón ${gB.classroom || 'Salón'} (Grupo B)`;
+                    } else if ((ev.isComputacion || ev.isMecanografia) && ev.computacionMode === 'single') {
+                        salonesStr = ev.isMecanografia ? '<span style="font-weight:700; color:#1e40af;">Taller de Mecanografía</span>' : '<span style="font-weight:700; color:#0369a1;">Laboratorio de Computación</span>';
+                    } else if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                        salonesStr = ev.sections.map(sec => {
+                            if (sec.isEnProceso || sec.evaluationStatus === 'EN_PROCESO') {
+                                return `<strong>${sec.section}:</strong> <span style="color:#92400e;">En Proceso</span>`;
+                            }
+                            if (isFull || sec.evaluationMode === 'SECCION_COMPLETA') {
+                                const sRoom = sec.singleRoom || sec.groupA || {};
+                                return `<strong>${sec.section}:</strong> <span style="color:#0f172a; font-weight:700;">${sRoom.classroom || 'Salón'}</span>`;
+                            } else {
+                                const sgA = sec.groupA || {};
+                                const sgB = sec.groupB || {};
+                                return `<strong>${sec.section}:</strong> <span style="color:#0f172a; font-weight:700;">${sgA.classroom || 'Salón'}</span> (Grupo A) ─ <span style="color:#0f172a; font-weight:700;">${sgB.classroom || 'Salón'}</span> (Grupo B)`;
+                            }
+                        }).join('<br>');
+                    } else {
+                        if (isFull) {
+                            const sRoom = ev.singleRoom || ev.groupA || {};
+                            salonesStr = `<span style="color:#0f172a; font-weight:700;">${sRoom.classroom || 'Salón'}</span> (Sección Completa)`;
+                        } else {
+                            const gA = ev.groupA || {};
+                            const gB = ev.groupB || {};
+                            salonesStr = `<span style="color:#0f172a; font-weight:700;">${gA.classroom || 'Salón'}</span> (Grupo A)<br><span style="color:#0f172a; font-weight:700;">${gB.classroom || 'Salón'}</span> (Grupo B)`;
+                        }
+                    }
+
+                    // 2. Catedrático Titular (identificando por sección)
+                    let titularesStr = '';
+                    if (Array.isArray(ev.sections) && ev.sections.length > 0) {
+                        titularesStr = ev.sections.map(sec => {
+                            const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
+                            const foundSec = fresh.find(f => f.sectionLetter === (sec.sectionLetter || (sec.section || '').replace(/Secci[oó]n\s*/i, '').trim()) || f.section === sec.section);
+                            const tName = (foundSec && foundSec.teacherName) ? foundSec.teacherName : sec.teacherName;
+                            return `<strong>${sec.section}:</strong> ${tName || 'Sin asignar'}`;
+                        }).join('<br>');
+                    } else {
+                        const fresh = getSectionsAndTitularsForCourse(ev.academicGradeName || ev.gradeName, ev.courseName);
+                        if (fresh.length > 0) {
+                            titularesStr = fresh.map(f => `<strong>${f.section}:</strong> ${f.teacherName}`).join('<br>');
+                        } else {
+                            titularesStr = ev.courseTeacherName || 'Sin asignar';
+                        }
+                    }
+
+                    const modoBadge = isFull
+                        ? '<span style="display:inline-block; font-size:0.68rem; font-weight:800; background:#dbeafe; color:#1e40af; padding:1px 5px; border-radius:3px; margin-top:2px;">SECCIÓN COMPLETA</span>'
+                        : '<span style="display:inline-block; font-size:0.68rem; font-weight:800; background:#dcfce7; color:#15803d; padding:1px 5px; border-radius:3px; margin-top:2px;">MEDIAS SECCIONES (A / B)</span>';
+
+                    evRows += `
+                        <tr>
+                            <td style="border:1px solid #cbd5e1; padding:6px 8px; font-weight:800; font-size:0.84rem; vertical-align:middle; white-space:nowrap; text-align:center; background:#f8fafc;">
+                                ${ev.startTime} ─ ${ev.endTime}
+                            </td>
+                            <td style="border:1px solid #cbd5e1; padding:6px 8px; font-size:0.82rem; vertical-align:middle;">
+                                <strong style="color:#0f172a; font-size:0.88rem;">${ev.courseName}</strong><br>
+                                ${modoBadge}
+                            </td>
+                            <td style="border:1px solid #cbd5e1; padding:6px 8px; font-size:0.80rem; vertical-align:middle; line-height:1.35; color:#334155;">
+                                ${titularesStr}
+                            </td>
+                            <td style="border:1px solid #cbd5e1; padding:6px 8px; font-size:0.80rem; line-height:1.35; vertical-align:middle;">
+                                ${salonesStr}
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                dayGradesTablesHtml += `
+                    <div class="calendar-grade-box" style="margin-bottom:12px;">
+                        <div class="calendar-grade-header" style="background:#1e293b; color:#ffffff; padding:5px 10px; font-weight:800; font-size:0.8rem; display:flex; justify-content:space-between; align-items:center;">
+                            <span>${gradeName.toUpperCase()}</span>
+                            <span style="font-size:0.75rem; color:#cbd5e1; font-weight:600;">(${gradeEvals.length} materia/s)</span>
+                        </div>
+                        <table class="calendar-table" style="width:100%; border-collapse:collapse; font-size:0.8rem;">
+                            <thead>
+                                <tr style="background:#f1f5f9; font-size:0.75rem; font-weight:800; color:#334155;">
+                                    <th style="width:15%; text-align:center; padding:5px; border:1px solid #cbd5e1;">HORARIO</th>
+                                    <th style="width:30%; text-align:left; padding:5px 8px; border:1px solid #cbd5e1;">CLASE / ASIGNATURA</th>
+                                    <th style="width:25%; text-align:left; padding:5px 8px; border:1px solid #cbd5e1;">CATEDRÁTICO TITULAR</th>
+                                    <th style="width:30%; text-align:left; padding:5px 8px; border:1px solid #cbd5e1;">SALÓN / SALONES ASIGNADOS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${evRows}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            });
+
+            daysTablesHtml += `
+                <div class="calendar-day-block" style="margin-bottom:18px; page-break-inside:avoid;">
+                    <div class="calendar-day-header" style="background:#15803d; color:#ffffff; padding:6px 12px; font-weight:800; font-size:0.88rem; border-radius:4px 4px 0 0; letter-spacing:0.5px;">
+                        📅 ${dFormatted} ${d.isPracticaDay ? '─ (JORNADA EXCLUSIVA DE PRÁCTICA SUPERVISADA)' : ''}
+                    </div>
+                    ${dayGradesTablesHtml}
+                </div>
+            `;
+        });
+
+        const activeCycleYear = (window.STATE && STATE.activeCycle) || '2026';
+        const calendarHtml = `
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <title>Rol de Exámenes Estudiantes - ${bimesterLabels[bimesterSelectVal] || bimesterSelectVal} (${activeCycleYear})</title>
+                <style>
+                    @page { size: letter portrait; margin: 10mm; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; color: #0f172a; font-size: 11px; }
+                    .calendar-header-table { width: 100%; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
+                    .no-print-bar { background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px 14px; margin-bottom: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+                    @media print { .no-print-bar { display: none !important; } }
+                </style>
+            </head>
+            <body>
+                <div class="no-print-bar">
+                    <div style="font-size:13px; font-weight:700; display:flex; align-items:center; gap:8px;">
+                        <span>🎓 Vista de Impresión Oficial ─ Rol de Exámenes para Estudiantes</span>
+                    </div>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" onclick="window.print()" style="background:#15803d; color:#ffffff; border:none; padding:6px 14px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
+                            Imprimir Documento
+                        </button>
+                        <button type="button" onclick="window.close()" style="background:#475569; color:#ffffff; border:none; padding:6px 12px; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">
+                            ✕ Cerrar
+                        </button>
+                    </div>
+                </div>
+                <table class="calendar-header-table">
+                    <tr>
+                        <td style="width:65px;"><img src="logo.png" onerror="this.src='portada-comercio-principal.webp'" style="height:52px;"></td>
+                        <td style="padding-left:12px;">
+                            <div style="font-size:1.15rem; font-weight:900; color:#0f172a;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES ─ JUTIAPA</div>
+                            <div style="font-size:0.86rem; color:#15803d; font-weight:800; margin-top:1px;">
+                                ROL OFICIAL DE EVALUACIONES PARA ESTUDIANTES ─ ${bimesterLabels[bimesterSelectVal] || bimesterSelectVal} (CICLO ${activeCycleYear})
+                            </div>
+                            <div style="font-size:0.75rem; color:#475569; margin-top:2px; font-weight:600;">
+                                📌 Instrucción: Presentarse puntualmente 10 minutos antes de cada horario en el salón asignado a su sección y grupo (A o B).
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+                ${daysTablesHtml}
+            </body>
+            </html>
+        `;
+        openPrintWindow(calendarHtml, 'Rol_Examenes_Estudiantes', 'portrait');
     };
 
     // Helper unificado para abrir ventana de impresión (protegido contra doble clic accidental y bloqueos de pop-up)

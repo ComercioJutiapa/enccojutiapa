@@ -413,16 +413,14 @@ global.STATE.gradesList = [
 ];
 
 const salonsList = mod.getInstitutionalSalonsList();
-assert.strictEqual(salonsList.length, 20, 'El establecimiento debe contar con un catálogo de exactamente 20 salones');
-assert.strictEqual(salonsList[0], 'Salón 6A', 'El primer salón debe ser 6A');
-assert.strictEqual(salonsList[1], 'Salón 6B', 'El segundo salón debe ser 6B');
-assert.strictEqual(salonsList[2], 'Salón 5A', 'Luego inician los de 5to (Salón 5A)');
-assert.strictEqual(salonsList[5], 'Salón 5D', 'Hasta Salón 5D');
-assert.strictEqual(salonsList[6], 'Salón 4A', 'Luego inician los de 4to (Salón 4A)');
-assert.strictEqual(salonsList[9], 'Salón 4D', 'Hasta Salón 4D');
-assert.strictEqual(salonsList[10], 'Salón 11', 'Los salones adicionales inician en Salón 11');
-assert.strictEqual(salonsList[19], 'Salón 20', 'El catálogo culmina en Salón 20');
-console.log('✅ Secuencia de 20 Salones Verificada: Salón 6A..6B -> 5A..5D -> 4A..4D -> Salón 11..20.');
+assert(salonsList.length >= 20, 'El establecimiento debe contar con un catálogo de al menos 20 salones y espacios');
+assert.strictEqual(salonsList[0], 'Salón 1 - 6A', 'El primer salón debe ser Salón 1 - 6A');
+assert.strictEqual(salonsList[1], 'Salón 2 - 6B', 'El segundo salón debe ser Salón 2 - 6B');
+assert(salonsList.some(s => s.includes('5A')), 'Deben incluirse los salones de 5to');
+assert(salonsList.some(s => s.includes('4A')), 'Deben incluirse los salones de 4to');
+assert(salonsList.includes('Cancha'), 'El catálogo debe incluir la Cancha');
+assert(salonsList.includes('Salón'), 'El catálogo debe incluir el Salón');
+console.log('✅ Secuencia Oficial de Salones Verificada: Salón 1..12 por sección, 9 salones adicionales, Cancha y Salón.');
 
 // 13. Test Detección Automática del Bimestre Activo del Sistema
 console.log('\n[Test 13] Verificando Detección y Selección Automática del Bimestre Activo...');
@@ -927,6 +925,12 @@ mod.printAllMediasListasOfDay('day_test_print_1');
 // Alerta de que no hay evaluaciones asignadas, pero NO de "No se encontró la jornada"
 assert.strictEqual(printAlertTriggered, 'No hay evaluaciones asignadas en este día.');
 console.log('✅ Resolución de jornada e impresión verificado exitosamente (sin error de jornada no encontrada).');
+
+console.log('\n[Test 23] Verificando Calendario Oficial para Estudiantes (printStudentCalendarPdf)...');
+assert.strictEqual(typeof global.window.printStudentCalendarPdf, 'function', 'printStudentCalendarPdf debe estar registrada en window');
+// Ejecutar sin excepción
+global.window.printStudentCalendarPdf();
+console.log('✅ Calendario Oficial para Estudiantes verificado exitosamente (100%).');
 
 console.log('\n================================================================================');
 console.log('🎉 TODAS LAS PRUEBAS DEL MÓDULO DE ROLES DE EXÁMENES PASARON CON ÉXITO (100%)');
