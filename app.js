@@ -1211,6 +1211,16 @@ function enforceViewReadOnlyMode(viewName) {
             const btnTitle = (btn.title || '').toLowerCase();
             const onclickText = (typeof btn.getAttribute === 'function' ? (btn.getAttribute('onclick') || '') : (btn.onclick ? String(btn.onclick) : '')).toLowerCase();
 
+            // NUNCA ocultar botones de impresión o exportación de nóminas institucionales
+            if (btn.classList.contains('print-btn') || 
+                onclickText.includes('printstudents') || 
+                onclickText.includes('exportstudent') || 
+                btnText.includes('nómina') || 
+                btnText.includes('imprimir') || 
+                btnText.includes('exportar excel')) {
+                return;
+            }
+
             if (btnText.includes('guardar') || btnText.includes('nuevo') || btnText.includes('crear') || 
                 btnText.includes('eliminar') || btnText.includes('importar') || btnText.includes('subir') || 
                 btnText.includes('editar') || btnTitle.includes('eliminar') || btnTitle.includes('editar') ||
@@ -6479,6 +6489,28 @@ function updateCareerSelects() {
                 const isCascadingFilter = (sel.id === 'studentCareerFilterSelect');
                 const hasAllOption = sel.id && (sel.id.toLowerCase().includes('filter') || sel.id.toLowerCase().includes('search')) && !isCascadingFilter;
                 
+                let listToUse = careers;
+                if (isCascadingFilter && STATE.currentRole === 'docente') {
+                    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+                    if (currentDocenteUser) {
+                        const myClasses = (typeof getTeacherAssignedCourses === 'function')
+                            ? getTeacherAssignedCourses(currentDocenteUser)
+                            : (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function' ? isCourseAssignedToTeacher(p, currentDocenteUser) : false));
+                        const myCareers = new Set();
+                        myClasses.forEach(c => {
+                            if (c.career) myCareers.add(c.career.trim().toLowerCase());
+                            const gObj = (STATE.gradesList || []).find(g => g.code === c.gradeCode || g.code === c.grade || g.name === c.grade);
+                            if (gObj && gObj.career) myCareers.add(gObj.career.trim().toLowerCase());
+                        });
+                        if (myCareers.size > 0) {
+                            const filteredCareers = careers.filter(c => myCareers.has((c.name || '').trim().toLowerCase()));
+                            if (filteredCareers.length > 0) {
+                                listToUse = filteredCareers;
+                            }
+                        }
+                    }
+                }
+
                 let html = '';
                 if (isCascadingFilter) {
                     html = '<option value="">-- Seleccione Carrera --</option>';
@@ -6486,10 +6518,15 @@ function updateCareerSelects() {
                     html = '<option value="ALL">Todas las Carreras</option>';
                 }
                 
-                html += careers.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+                html += listToUse.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
                 sel.innerHTML = html;
-                if (currentVal && (currentVal === 'ALL' || careers.some(c => c.name === currentVal))) {
+                if (currentVal && (currentVal === 'ALL' || listToUse.some(c => c.name === currentVal))) {
                     sel.value = currentVal;
+                } else if (isCascadingFilter && STATE.currentRole === 'docente' && listToUse.length === 1) {
+                    sel.value = listToUse[0].name;
+                    if (typeof onStudentCareerFilterChange === 'function') {
+                        onStudentCareerFilterChange(listToUse[0].name);
+                    }
                 }
             });
         }
@@ -11635,7 +11672,41 @@ function populateSubjectSelect(selectEl, gradeName, careerName = '') {
         selectEl.value = '';
         return;
     }
-    const subjects = getSubjectsForGradeAndCareer(gradeName, careerName);
+    let subjects = getSubjectsForGradeAndCareer(gradeName, careerName);
+
+    // Si el rol es docente, limitar las materias estrictamente a sus cátedras asignadas
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+    if (isDocente && currentDocenteUser) {
+        const myClasses = (typeof getTeacherAssignedCourses === 'function')
+            ? getTeacherAssignedCourses(currentDocenteUser)
+            : (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function' ? isCourseAssignedToTeacher(p, currentDocenteUser) : false));
+        
+        const mySubjs = new Set();
+        myClasses.forEach(c => {
+            const rawC = `${c.grade || ''} ${c.gradeCode || ''}`.toUpperCase();
+            let cGradeNum = 0;
+            if (rawC.includes('6') || rawC.includes('SEXTO') || rawC.includes('6TO')) cGradeNum = 6;
+            else if (rawC.includes('5') || rawC.includes('QUINTO') || rawC.includes('5TO')) cGradeNum = 5;
+            else if (rawC.includes('4') || rawC.includes('CUARTO') || rawC.includes('4TO')) cGradeNum = 4;
+
+            const targetG = (gradeName || '').toUpperCase();
+            let gGradeNum = 0;
+            if (targetG.includes('6') || targetG.includes('SEXTO') || targetG.includes('6TO')) gGradeNum = 6;
+            else if (targetG.includes('5') || targetG.includes('QUINTO') || targetG.includes('5TO')) gGradeNum = 5;
+            else if (targetG.includes('4') || targetG.includes('CUARTO') || targetG.includes('4TO')) gGradeNum = 4;
+
+            const isMatchGrade = (gGradeNum > 0 && cGradeNum > 0 && gGradeNum === cGradeNum) || (c.grade && gradeName && ((c.grade.toLowerCase().includes(gradeName.toLowerCase())) || gradeName.toLowerCase().includes(c.grade.toLowerCase())));
+            if (isMatchGrade) {
+                const sName = c.subject || c.courseName || c.name;
+                if (sName) mySubjs.add(sName.trim());
+            }
+        });
+        if (mySubjs.size > 0) {
+            subjects = Array.from(mySubjs).sort((a, b) => a.localeCompare(b, 'es'));
+        }
+    }
+
     let html = '<option value="">-- En blanco (a mano) --</option>';
     if (subjects.length > 0) {
         subjects.forEach(subj => {
@@ -11643,7 +11714,11 @@ function populateSubjectSelect(selectEl, gradeName, careerName = '') {
         });
     }
     selectEl.innerHTML = html;
-    selectEl.value = '';
+    if (isDocente && subjects.length === 1) {
+        selectEl.value = subjects[0];
+    } else {
+        selectEl.value = '';
+    }
 }
 window.populateSubjectSelect = populateSubjectSelect;
 
@@ -11677,12 +11752,45 @@ function onStudentCareerFilterChange(careerName) {
         return;
     }
 
-    const grades = (STATE.gradesList || []).filter(g => (g.career || '').toLowerCase() === careerName.toLowerCase());
+    let grades = (STATE.gradesList || []).filter(g => (g.career || '').toLowerCase() === careerName.toLowerCase());
+
+    // Si el usuario es docente, limitar a los grados donde tiene asignaciones
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+    if (isDocente && currentDocenteUser) {
+        const myClasses = (typeof getTeacherAssignedCourses === 'function')
+            ? getTeacherAssignedCourses(currentDocenteUser)
+            : (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function' ? isCourseAssignedToTeacher(p, currentDocenteUser) : false));
+        grades = grades.filter(g => {
+            return myClasses.some(a => {
+                if (a.gradeCode && g.code && a.gradeCode === g.code) return true;
+                const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+                let aGradeNum = 0;
+                if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+                else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+                else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+
+                const rawG = `${g.name || ''} ${g.code || ''}`.toUpperCase();
+                let gGradeNum = 0;
+                if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+                else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+                else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
+
+                const aSec = typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(a.section || a.gradeCode || rawA) : (a.section || '').replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+                const gSec = typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(g.section || g.code || rawG) : (g.section || '').replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+
+                const isMatchGrade = (gGradeNum > 0 && aGradeNum > 0 && gGradeNum === aGradeNum) || (a.grade && g.name && ((a.grade.toLowerCase().includes(g.name.toLowerCase())) || g.name.toLowerCase().includes(a.grade.toLowerCase())));
+                const isMatchSec = (!aSec || !gSec || aSec === gSec);
+                return isMatchGrade && isMatchSec;
+            });
+        });
+    }
+
     const distinctGradeNames = Array.from(new Set(grades.map(g => g.name)));
 
     if (gradeOnlySelect) {
         if (distinctGradeNames.length === 0) {
-            gradeOnlySelect.innerHTML = '<option value="">-- Sin grados para esta carrera --</option>';
+            gradeOnlySelect.innerHTML = '<option value="">-- Sin grados asignados para esta carrera --</option>';
         } else {
             gradeOnlySelect.innerHTML = '<option value="">-- Seleccione Grado --</option>' + 
                 distinctGradeNames.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
@@ -11695,6 +11803,13 @@ function onStudentCareerFilterChange(careerName) {
         sectionSelect.value = '';
     }
     if (hiddenGradeSelect) hiddenGradeSelect.value = '';
+
+    // Si para el docente sólo hay 1 grado asignado, auto-seleccionarlo fluidamente
+    if (isDocente && distinctGradeNames.length === 1 && gradeOnlySelect) {
+        gradeOnlySelect.value = distinctGradeNames[0];
+        onStudentGradeOnlyChange(distinctGradeNames[0]);
+        return;
+    }
 
     renderStudentsTable();
 }
@@ -11722,15 +11837,47 @@ function onStudentGradeOnlyChange(gradeName) {
         return;
     }
 
-    const matchingSections = (STATE.gradesList || []).filter(g => {
+    let matchingSections = (STATE.gradesList || []).filter(g => {
         const matchesCareer = !careerName || (g.career || '').toLowerCase() === careerName.toLowerCase();
         const matchesGrade = (g.name || '').toLowerCase() === gradeName.toLowerCase();
         return matchesCareer && matchesGrade;
     });
 
+    // Si es docente, limitar a las secciones asignadas donde imparte cátedra
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+    if (isDocente && currentDocenteUser) {
+        const myClasses = (typeof getTeacherAssignedCourses === 'function')
+            ? getTeacherAssignedCourses(currentDocenteUser)
+            : (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function' ? isCourseAssignedToTeacher(p, currentDocenteUser) : false));
+        matchingSections = matchingSections.filter(g => {
+            return myClasses.some(a => {
+                if (a.gradeCode && g.code && a.gradeCode === g.code) return true;
+                const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+                let aGradeNum = 0;
+                if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+                else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+                else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+
+                const rawG = `${g.name || ''} ${g.code || ''}`.toUpperCase();
+                let gGradeNum = 0;
+                if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+                else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+                else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
+
+                const aSec = typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(a.section || a.gradeCode || rawA) : (a.section || '').replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+                const gSec = typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(g.section || g.code || rawG) : (g.section || '').replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+
+                const isMatchGrade = (gGradeNum > 0 && aGradeNum > 0 && gGradeNum === aGradeNum) || (a.grade && g.name && ((a.grade.toLowerCase().includes(g.name.toLowerCase())) || g.name.toLowerCase().includes(a.grade.toLowerCase())));
+                const isMatchSec = (!aSec || !gSec || aSec === gSec);
+                return isMatchGrade && isMatchSec;
+            });
+        });
+    }
+
     if (sectionSelect) {
         if (matchingSections.length === 0) {
-            sectionSelect.innerHTML = '<option value="">-- Sin secciones registradas --</option>';
+            sectionSelect.innerHTML = '<option value="">-- Sin secciones asignadas --</option>';
         } else {
             sectionSelect.innerHTML = '<option value="">-- Seleccione Sección --</option>' + 
                 matchingSections.map(g => {
@@ -11742,6 +11889,14 @@ function onStudentGradeOnlyChange(gradeName) {
     }
     if (hiddenGradeSelect) hiddenGradeSelect.value = '';
 
+    // Si para el docente sólo hay 1 sección asignada en este grado, auto-seleccionarla
+    if (isDocente && matchingSections.length === 1 && sectionSelect) {
+        sectionSelect.value = matchingSections[0].code;
+        if (hiddenGradeSelect) hiddenGradeSelect.value = matchingSections[0].code;
+        onStudentSectionFilterChange(matchingSections[0].code);
+        return;
+    }
+
     renderStudentsTable();
 }
 window.onStudentGradeOnlyChange = onStudentGradeOnlyChange;
@@ -11749,6 +11904,39 @@ window.onStudentGradeOnlyChange = onStudentGradeOnlyChange;
 function onStudentSectionFilterChange(gradeCode) {
     const hiddenGradeSelect = document.getElementById('gradeFilterSelect');
     if (hiddenGradeSelect) hiddenGradeSelect.value = gradeCode || '';
+
+    // Si el usuario es docente y selecciona una sección, auto-seleccionar su materia asignada
+    if (STATE.currentRole === 'docente' && gradeCode) {
+        const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+        const subjSelect = document.getElementById('studentSubjectFilterSelect');
+        if (currentDocenteUser && subjSelect) {
+            const myClasses = (typeof getTeacherAssignedCourses === 'function') 
+                ? getTeacherAssignedCourses(currentDocenteUser) 
+                : (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentDocenteUser));
+            const secCourse = myClasses.find(a => a.gradeCode === gradeCode || a.grade === gradeCode);
+            if (secCourse) {
+                const sName = secCourse.subject || secCourse.courseName || secCourse.name;
+                if (sName) {
+                    let exists = false;
+                    for (let i = 0; i < subjSelect.options.length; i++) {
+                        if (subjSelect.options[i].value.toLowerCase() === sName.toLowerCase()) {
+                            subjSelect.selectedIndex = i;
+                            exists = true;
+                            break;
+                        }
+                    }
+                    if (!exists) {
+                        const opt = document.createElement('option');
+                        opt.value = sName;
+                        opt.textContent = sName;
+                        subjSelect.appendChild(opt);
+                        subjSelect.value = sName;
+                    }
+                }
+            }
+        }
+    }
+
     renderStudentsTable();
 }
 window.onStudentSectionFilterChange = onStudentSectionFilterChange;
@@ -17534,7 +17722,28 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
 
     // Asignatura / Materia (seleccionada o en blanco)
     const studentSubjSel = document.getElementById('studentSubjectFilterSelect');
-    const selectedSubject = targetSubject || (studentSubjSel ? studentSubjSel.value : '') || '';
+    let selectedSubject = targetSubject || (studentSubjSel ? studentSubjSel.value : '') || '';
+
+    // Si es docente y no se seleccionó materia explícitamente, intentar inferirla de sus clases asignadas para este grado y sección
+    if (!selectedSubject && isDocente && currentDocenteUser) {
+        const myAssignedCourses = (STATE.pensum || []).filter(a => {
+            if (!isCourseAssignedToTeacher(a, currentDocenteUser)) return false;
+            const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+            let aGradeNum = 0;
+            if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+            else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+            else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+            const aSec = typeof getCleanSectionLetter === 'function'
+                ? getCleanSectionLetter(a.section || a.gradeCode || rawA)
+                : (a.section || a.gradeCode || rawA).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+            const isMatchGrade = (qGradeNum === 0 || aGradeNum === 0 || qGradeNum === aGradeNum);
+            const isMatchSec = (!qSec || !aSec || qSec === aSec);
+            return isMatchGrade && isMatchSec;
+        });
+        if (myAssignedCourses.length === 1) {
+            selectedSubject = myAssignedCourses[0].subject || myAssignedCourses[0].courseName || myAssignedCourses[0].name || '';
+        }
+    }
 
     // Catedrático que imprime (automáticamente del usuario logueado)
     const loggedTeacherName = (STATE.currentUser && STATE.currentUser.name) ? STATE.currentUser.name : '';
@@ -33481,6 +33690,16 @@ function exportStudentsOfficialExcel() {
         let reportTitle = "MATRÍCULA GENERAL DE ESTUDIANTES";
         let fileName = `matricula_estudiantes_encc_${cycle}.xlsx`;
 
+        const isDocente = (STATE.currentRole === 'docente');
+        const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+
+        if (isDocente && currentDocenteUser) {
+            if (!gradeVal || gradeVal === 'ALL') {
+                showToast("Como docente, debe seleccionar un grado y sección específico de sus cátedras asignadas para exportar la nómina.", "warning");
+                return;
+            }
+        }
+
         if (gradeVal && gradeVal !== 'ALL') {
             const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeVal || g.id === gradeVal || g.name === gradeVal);
             const rawQ = `${gradeVal || ''} ${targetGradeObj ? (targetGradeObj.name + ' ' + targetGradeObj.section) : ''}`.toUpperCase();
@@ -33492,6 +33711,28 @@ function exportStudentsOfficialExcel() {
             const qSec = typeof getCleanSectionLetter === 'function'
                 ? getCleanSectionLetter(targetGradeObj ? targetGradeObj.section : gradeVal)
                 : (targetGradeObj ? targetGradeObj.section : gradeVal).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+
+            if (isDocente && currentDocenteUser) {
+                const hasAssignedClassInGrade = (STATE.pensum || []).some(a => {
+                    if (!isCourseAssignedToTeacher(a, currentDocenteUser)) return false;
+                    const rawA = `${a.grade || ''} ${a.gradeCode || ''} ${a.section || ''}`.toUpperCase();
+                    let aGradeNum = 0;
+                    if (rawA.includes('6') || rawA.includes('SEXTO') || rawA.includes('6TO')) aGradeNum = 6;
+                    else if (rawA.includes('5') || rawA.includes('QUINTO') || rawA.includes('5TO')) aGradeNum = 5;
+                    else if (rawA.includes('4') || rawA.includes('CUARTO') || rawA.includes('4TO')) aGradeNum = 4;
+                    const aSec = typeof getCleanSectionLetter === 'function'
+                        ? getCleanSectionLetter(a.section || a.gradeCode || rawA)
+                        : (a.section || a.gradeCode || rawA).replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+                    const isMatchGrade = (qGradeNum === 0 || aGradeNum === 0 || qGradeNum === aGradeNum);
+                    const isMatchSec = (!qSec || !aSec || qSec === aSec);
+                    return isMatchGrade && isMatchSec;
+                });
+
+                if (!hasAssignedClassInGrade) {
+                    showToast("Acceso Denegado: Como docente, únicamente tiene autorización para exportar nóminas de los grados y secciones donde imparte clases.", "danger");
+                    return;
+                }
+            }
 
             students = students.filter(s => {
                 const rawS = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''}`.toUpperCase();
