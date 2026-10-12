@@ -13235,12 +13235,16 @@ function getStudentAcademicInfo(student) {
     }
 
     // REGLAS ESTRICTAS DE CUADRO DE HONOR Y PROMEDIO EQUITATIVO:
-    // 1. Debe tener al menos una clase calificada (gradedCount > 0)
-    // 2. NO debe tener ninguna clase perdida (hasFailedGrade === false)
-    // 3. Exoneraciones de materia individual en 6to B3: reducen divisor pero NO excluyen del Cuadro
-    //    Solo excluye si el estudiante tiene exoneración GLOBAL (student.isExonerated / student.exonerated)
+    // 1. Debe ser estudiante activo (no Retirado ni Inactivo)
+    // 2. Debe tener su carga académica completa evaluada (al menos la carga ordinaria menos materias exoneradas)
+    // 3. NO debe tener ninguna clase perdida (hasFailedGrade === false, todas las notas >= 60)
+    // 4. Exoneraciones de materia individual reducen divisor pero NO excluyen del Cuadro;
+    //    solo excluye del Cuadro si tiene exoneración GLOBAL institucional (student.isExonerated)
+    const isRetired = (student.status === 'Retirado' || student.status === 'Inactivo');
     const hasGlobalExoneration = (student.isExonerated === true || student.exonerated === true);
-    const isEligible = (gradedCount > 0) && (!hasFailedGrade) && (!hasGlobalExoneration);
+    const minClassesRequired = Math.max(1, (is6to ? 8 : officialClassLoad) - exoneratedCount);
+    const hasCompleteLoad = (gradedCount >= minClassesRequired);
+    const isEligible = (!isRetired) && hasCompleteLoad && (!hasFailedGrade) && (!hasGlobalExoneration);
 
     if (gradedCount > 0) {
         // Promedio académico fiel basado únicamente en las notas actualizadas de las materias evaluadas
@@ -29141,14 +29145,20 @@ function loadHonorRoll() {
         return;
     }
 
-    // Ordenamiento estricto: primero los elegibles por promedio descendente, luego exonerados y no elegibles
+    // Ordenamiento estricto: primero los elegibles por promedio descendente, luego por total de puntos y nombre
     evaluatedList.sort((a, b) => {
         const infoA = getStudentAcademicInfo(a);
         const infoB = getStudentAcademicInfo(b);
         if (infoA.eligibleForHonorRoll !== infoB.eligibleForHonorRoll) {
             return infoA.eligibleForHonorRoll ? -1 : 1;
         }
-        return infoB.average - infoA.average;
+        if (Math.abs(infoB.average - infoA.average) > 0.0001) {
+            return infoB.average - infoA.average;
+        }
+        if (Math.abs(infoB.totalPoints - infoA.totalPoints) > 0.01) {
+            return infoB.totalPoints - infoA.totalPoints;
+        }
+        return (a.lastName || a.name || '').localeCompare(b.lastName || b.name || '');
     });
 
     // ── CAMBIO 4: PERSISTENCIA ATÓMICA DEL PUESTO (honorRank.bX) ────────────────
@@ -29307,7 +29317,13 @@ function printHonorRoll() {
         if (infoA.eligibleForHonorRoll !== infoB.eligibleForHonorRoll) {
             return infoA.eligibleForHonorRoll ? -1 : 1;
         }
-        return infoB.average - infoA.average;
+        if (Math.abs(infoB.average - infoA.average) > 0.0001) {
+            return infoB.average - infoA.average;
+        }
+        if (Math.abs(infoB.totalPoints - infoA.totalPoints) > 0.01) {
+            return infoB.totalPoints - infoA.totalPoints;
+        }
+        return (a.lastName || a.name || '').localeCompare(b.lastName || b.name || '');
     });
 
     if (list.length === 0) {
@@ -31267,12 +31283,37 @@ async function handleGradebookExcelImport(e) {
 }
 window.handleGradebookExcelImport = handleGradebookExcelImport;
 
+function parseCsvLine(textLine) {
+    if (!textLine) return [];
+    const result = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < textLine.length; i++) {
+        const c = textLine[i];
+        if (c === '"' || c === "'") {
+            if (inQuotes && textLine[i+1] === c) {
+                cur += c;
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if ((c === ',' || c === ';' || c === '\t') && !inQuotes) {
+            result.push(cur.trim());
+            cur = '';
+        } else {
+            cur += c;
+        }
+    }
+    result.push(cur.trim());
+    return result;
+}
+
 function fallbackTextGradebookRead(file, targetPensum, currentUnit) {
     const reader = new FileReader();
     reader.onload = function(evt) {
         const text = evt.target.result;
         const rawLines = parseImportFileRows(text);
-        const rawRows = rawLines.map(line => line.split(/,|;|\t/).map(c => c.replace(/^["']|["']$/g, '').trim()));
+        const rawRows = rawLines.map(line => parseCsvLine(line));
         processGradebookImportRows(rawRows, targetPensum, currentUnit, file ? file.name : '');
     };
     reader.readAsText(file);
@@ -31359,6 +31400,13 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             }
         }
 
+        if (r === 2 && row[1] && !detectedTeacher) {
+            const candidateTeacher = String(row[1]).trim();
+            if (candidateTeacher && !candidateTeacher.toLowerCase().includes('grado') && !candidateTeacher.toLowerCase().includes('seccion') && !candidateTeacher.toLowerCase().includes('bimestre') && !candidateTeacher.toLowerCase().includes('catedra')) {
+                detectedTeacher = candidateTeacher;
+            }
+        }
+
         if (r === 2 && row[14] && detectedFormat === 'Modelo de Cuadro Docente') {
             examValInHeader = parseInt(row[14]) || 0;
         }
@@ -31416,10 +31464,10 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         if (pFound) detectedSubject = pFound.subject;
     }
 
-    // 🚀 AUTO-ENRUTAMIENTO INTELIGENTE: Si el archivo define su propia materia, grado y/o sección,
+    // 🚀 AUTO-ENRUTAMIENTO INTELIGENTE: Si el archivo define su propia materia, grado, sección y/o docente,
     // sincronizar y seleccionar automáticamente la cátedra y bimestre asignados correctos del docente
     // para que la importación funcione inmediatamente en el primer intento sin obligar a cambiar selectores a mano.
-    if (detectedSubject || detectedGrade || detectedSection) {
+    if (detectedSubject || detectedGrade || detectedSection || detectedTeacher) {
         const cleanDetSubj = cleanStr(detectedSubject || '');
         const gNumFile = (detectedGrade || fileName || '').toString().match(/(\d+)/)?.[1] || '';
         const secFile = cleanStr(detectedSection || fileName || '').replace(/^seccion/, '').match(/([a-d])/i)?.[1]?.toLowerCase() || '';
@@ -31432,31 +31480,37 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             return true;
         });
 
-        const candidates = teacherPensumList.filter(p => {
-            if (gNumFile) {
-                const gNumP = (p.grade || p.gradeCode || '').toString().match(/(\d+)/)?.[1] || '';
-                if (gNumP && gNumP !== gNumFile) return false;
-            }
-            if (secFile) {
-                const secP = cleanStr(p.section || p.gradeCode || '').replace(/^seccion/, '').match(/([a-d])/i)?.[1]?.toLowerCase() || '';
-                if (secP && secP !== secFile) return false;
-            }
-            return true;
-        });
-
+        // Búsqueda exhaustiva por Grado + Sección + Materia (primero en asignadas al docente, luego en todo el pensum)
         let autoPensum = null;
-        if (cleanDetSubj) {
-            autoPensum = candidates.find(p => {
-                const cleanP = cleanStr(p.subject || '');
-                return cleanP === cleanDetSubj || cleanP.includes(cleanDetSubj) || cleanDetSubj.includes(cleanP);
+        const candidatePools = [teacherPensumList, STATE.pensum || []];
+
+        for (const pool of candidatePools) {
+            if (autoPensum) break;
+            const candidates = pool.filter(p => {
+                if (gNumFile) {
+                    const gNumP = (p.grade || p.gradeCode || '').toString().match(/(\d+)/)?.[1] || '';
+                    if (gNumP && gNumP !== gNumFile) return false;
+                }
+                if (secFile) {
+                    const secP = cleanStr(p.section || p.gradeCode || '').replace(/^seccion/, '').match(/([a-d])/i)?.[1]?.toLowerCase() || '';
+                    if (secP && secP !== secFile) return false;
+                }
+                return true;
             });
-        }
-        if (!autoPensum && fileName) {
-            const cleanFn = cleanStr(fileName);
-            autoPensum = candidates.find(p => cleanFn.includes(cleanStr(p.subject || '')));
-        }
-        if (!autoPensum && candidates.length === 1) {
-            autoPensum = candidates[0];
+
+            if (cleanDetSubj) {
+                autoPensum = candidates.find(p => {
+                    const cleanP = cleanStr(p.subject || '');
+                    return cleanP === cleanDetSubj || cleanP.includes(cleanDetSubj) || cleanDetSubj.includes(cleanP);
+                });
+            }
+            if (!autoPensum && fileName) {
+                const cleanFn = cleanStr(fileName);
+                autoPensum = candidates.find(p => cleanFn.includes(cleanStr(p.subject || '')));
+            }
+            if (!autoPensum && candidates.length === 1 && (gNumFile || secFile)) {
+                autoPensum = candidates[0];
+            }
         }
 
         if (autoPensum) {
@@ -31478,8 +31532,26 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         }
     }
 
-    // Auto-sincronizar Bimestre detectado automáticamente
-    if (hasExplicitUnit && detectedUnit >= 1 && detectedUnit <= 4) {
+    // 🛡️ REGLA INSTITUCIONAL DE GRADUACIÓN (6to Grado):
+    // Práctica Supervisada y Seminario tienen nota única evaluada en el 4to Bimestre (Unidad Oficial de Graduación).
+    // Si el archivo cargado corresponde a Seminario o Práctica, se asigna AUTOMÁTICAMENTE al 4to Bimestre (B4),
+    // aun cuando el encabezado del archivo o formato del docente indique "3er Bimestre".
+    const isSpecialGraduationSubj = (typeof isMateriaEspecialGraduacion === 'function')
+        ? isMateriaEspecialGraduacion(activePensum?.subject || detectedSubject)
+        : (cleanStr(activePensum?.subject || detectedSubject).includes('seminario') || cleanStr(activePensum?.subject || detectedSubject).includes('practica'));
+
+    if (isSpecialGraduationSubj) {
+        activeUnit = 4;
+        detectedUnit = 4;
+        hasExplicitUnit = true;
+        const bSelect = document.getElementById('gradebookBimestreSelect');
+        if (bSelect) bSelect.value = '4';
+        try {
+            sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', '4');
+            localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', '4');
+        } catch(e) {}
+    } else if (hasExplicitUnit && detectedUnit >= 1 && detectedUnit <= 4) {
+        // Auto-sincronizar Bimestre detectado automáticamente para materias ordinarias
         activeUnit = detectedUnit;
         const bSelect = document.getElementById('gradebookBimestreSelect');
         if (bSelect && parseInt(bSelect.value) !== detectedUnit) {
@@ -31528,8 +31600,8 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         }
     }
 
-    // REGLA 1: Verificación estricta de Bimestre
-    if (hasExplicitUnit && detectedUnit !== activeUnit) {
+    // REGLA 1: Verificación estricta de Bimestre (con excepción de graduación para Seminario y Práctica)
+    if (!isSpecialGraduationSubj && hasExplicitUnit && detectedUnit !== activeUnit) {
         showToast(`¡Bimestre Incorrecto! El archivo cargado corresponde a la Unidad/Bimestre ${detectedUnit}, pero actualmente tiene abierta la Unidad/Bimestre ${activeUnit}. Seleccione el Bimestre ${detectedUnit} en el selector antes de importar.`, "danger");
         return;
     }
