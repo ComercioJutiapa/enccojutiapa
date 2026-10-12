@@ -7022,6 +7022,33 @@ function ensureOfficialGradesList() {
 }
 window.ensureOfficialGradesList = ensureOfficialGradesList;
 
+const OFFICIAL_STAFF_USERS_DEFAULT = [
+    {"active":true,"classes":"","email":"nehemias.salguero1982@gmail.com","gender":"Masculino","id":"usr-aux-01","name":"Nehemias Yalil Salguero","password":"C@rolina1","renglon":"011","role":"admin","roles":["admin"],"secondaryEmail":"22-01-0014-14@mineduc.edu.gt","telefono":"42768436","title":"Super Administrador del Sistema","username":"nehemias"},
+    {"active":true,"email":"mirzaaragon6@gmail.com","gender":"Femenino","id":"usr-dir-01","name":"Mirza Elizabeth Aragón Polanco de Hernández","password":"Mirza1","renglon":"011","role":"director","telefono":"57153657","title":"Director","username":"director"},
+    {"active":true,"email":"jhoanajarro@gmail.com","gender":"Femenino","id":"usr-sec-01","name":"Sara Jhoana Najarro Corado","password":"Sara1","renglon":"021","role":"secretaria","telefono":"32242685","title":"Secretaria Académica Oficial","username":"secretaria"},
+    {"active":true,"classes":"","email":"yalilsag@gmail.com","gender":"Masculino","id":"usr-doc-01","lastModified":1790830978026,"name":"Nehemias Yalil Salguero Sagastume","password":"Nehemias12","renglon":"021","role":"docente","secondaryEmail":"","telefono":"31954410","title":"PEM / Catedrático Titular","username":"nehemias.doc"},
+    {"active":true,"email":"cajuarez2004@hotmail.com","gender":"Masculino","id":"usr-doc-05","name":"Carlos Augusto Juárez Alvarez","password":"Carlos1","renglon":"011","role":"docente","telefono":"53112482","title":"PEM / Catedrático Titular","username":"carlos.augusto"},
+    {"active":true,"email":"aleida@comercio.edu.gt","gender":"Femenino","id":"usr-doc-02","lastModified":1789433364807,"name":"Aleida Maribel Escobar de Palma","password":"Aleida1","renglon":"021","role":"docente","telefono":"1","title":"PEM / Catedrático Titular","username":"aleida"},
+    {"active":true,"email":"trobertoac1@gmail.com","gender":"Masculino","id":"usr-doc-03","name":"Roberto Alex Tobar Cermeño","password":"Roberto1","renglon":"011","role":"docente","telefono":"48355209","title":"PEM / Catedrático Titular","username":"roberto"},
+    {"active":true,"email":"wiliamsesmely@gmail.com","gender":"Masculino","id":"usr-doc-04","name":"Wiliams Esmely Gudiel Paredes","password":"Wiliams1","renglon":"011","role":"docente","telefono":"45380397","title":"PEM / Catedrático Titular","username":"williams"},
+    {"active":true,"email":"lilyalas917@gmail.com","gender":"Femenino","id":"usr-doc-06","name":"Lilian Alas Grijalva","password":"Lilian1","renglon":"011","role":"docente","telefono":"41169921","title":"PEM / Catedrático Titular","username":"lilian"},
+    {"active":true,"email":"nebegara47@gmail.com","gender":"Masculino","id":"usr-doc-07","name":"Nery Benjamín Galvez Ramos","password":"Nery1","renglon":"011","role":"docente","telefono":"42163570","title":"PEM / Catedrático Titular","username":"nery"},
+    {"active":true,"email":"edwin@comercio.edu.gt","gender":"Masculino","id":"usr-doc-08","name":"Edvin Osvaldo López Recinos","password":"Edwin1","renglon":"011","role":"docente","telefono":"","title":"PEM / Catedrático Titular","username":"edwin"},
+    {"active":true,"email":"gum31777@outlook.com","gender":"Masculino","id":"usr-doc-09","lastModified":1790094369648,"name":"Gamaliel Uzias Medrano Mayén","password":"Gamaliel147","renglon":"011","role":"docente","telefono":"47463344","title":"PEM / Catedrático Titular","username":"gamaliel"},
+    {"active":true,"email":"hectorelkatocho@gmail.com","gender":"Masculino","id":"usr-doc-10","name":"Héctor Noé Hernández Linares","password":"Héctor1","renglon":"011","role":"docente","telefono":"54262965","title":"PEM / Catedrático Titular","username":"hector"},
+    {"active":true,"email":"wilder.porfirio@gmail.com","gender":"Masculino","id":"usr-doc-11","name":"Wilder Porfirio Pérez López","password":"Wilder1","renglon":"011","role":"docente","telefono":"","title":"PEM / Catedrático Titular","username":"wilder"},
+    {"active":true,"email":"aranajulissa21@gmail.com","gender":"Femenino","id":"usr-doc-12","lastModified":1790085606520,"name":"Sandra Julissa Arana Lucero","password":"Sandra1","renglon":"021","role":"docente","telefono":"48616118","title":"PEM / Catedrático Titular","username":"sandra"},
+    {"active":true,"email":"dalessandra2014@gmail.com","gender":"Femenino","id":"usr-doc-13","name":"Damaris Violeta Escobar Contreras de Salguero","password":"Damaris1","renglon":"011","role":"docente","telefono":"32847200","title":"PEM / Catedrático Titular","username":"damaris"},
+    {"active":true,"email":"eldaargentinalopez@gmail.com","gender":"Femenino","id":"usr-doc-14","name":"Elda Argentina López Monzón","password":"Elda1","renglon":"011","role":"docente","telefono":"47083393","title":"PEM / Catedrático Titular","username":"elda"},
+    {"active":true,"email":"enlemagt@gmail.com","gender":"Femenino","id":"usr-doc-15","name":"Enma Leticia Macario Xúm de Ruano","password":"Enma1","renglon":"021","role":"docente","telefono":"42114100","title":"PEM / Catedrático Titular","username":"enma"},
+    {"active":true,"email":"salguerocomercio@gmail.com","gender":"Femenino","id":"usr-doc-16","lastModified":1790171505481,"name":"María Jannete Salguero Mellado","password":"Maria.78","renglon":"021","role":"docente","telefono":"30339359","title":"PEM / Catedrático Titular","username":"maria"},
+    {"active":true,"email":"paolabernal0310@gmail.com","gender":"Femenino","id":"usr-doc-17","name":"Sandra Paola Bernal Yanes de Argueta","password":"Sandra1","renglon":"011","role":"docente","telefono":"42985214","title":"PEM / Catedrático Titular","username":"sandra.paola"},
+    {"active":true,"email":"milvia_jacobo2010@hotmail.com","gender":"Femenino","id":"usr-doc-18","name":"Milvia Aracely Jacobo Escobar","password":"Milvia1","renglon":"021","role":"docente","telefono":"41732859","title":"PEM / Catedrático Titular","username":"milvia"},
+    {"active":true,"email":"carlosvgrijalva@gmail.com","gender":"Masculino","id":"usr-doc-19","name":"Carlos Vinicio Grijalva Cardona","password":"Carlos1","renglon":"021","role":"docente","telefono":"55756629","title":"PEM / Catedrático Titular","username":"carlos"},
+    {"active":true,"email":"juancarlospereiraquan@gmail.com","gender":"Masculino","id":"usr-doc-20","name":"Juan Carlos Pereira Quan","password":"Juan1","renglon":"011","role":"docente","telefono":"47403302","title":"PEM / Catedrático Titular","username":"juan"},
+    {"active":true,"classes":"","email":"licdafrancisgonzalez@gmail.com","gender":"Femenino","id":"usr-1788133386028-672","lastModified":1790101720668,"name":"Francisca Alcira González Zepeda","password":"Francis96","renglon":"011","role":"profesor_auxiliar","telefono":"49848524","title":"Auxiliar","username":"licdafrancis"}
+];
+window.OFFICIAL_STAFF_USERS_DEFAULT = OFFICIAL_STAFF_USERS_DEFAULT;
 
 function getInitialData() {
     return {
@@ -7036,7 +7063,7 @@ function getInitialData() {
         activeCycle: "2026",
         cycles: [],
         theme: "light",
-        users: [],
+        users: OFFICIAL_STAFF_USERS_DEFAULT.map(u => ({ ...u })),
         rolesConfig: [],
         careers: [],
         gradesList: [],
@@ -7760,7 +7787,7 @@ async function initApp() {
                     }
                 }
             } else {
-                console.error("❌ [v189] Firebase respondió con status: " + _cloudRes.status);
+                console.error("❌ [v189] Firebase respondió con status: " + (_cloudRes ? _cloudRes.status : 'timeout/sin respuesta'));
             }
         }
     } catch(_fbPullErr) {
@@ -7781,6 +7808,36 @@ async function initApp() {
             }
         } catch(_stErr) {
             console.warn("⚠️ Aviso al descargar /students.json de respaldo:", _stErr);
+        }
+    }
+
+    // 🛡️ Blindaje de Respaldo de Nómina Oficial de Usuarios y Claustro Docente (24 Usuarios)
+    if (!Array.isArray(STATE.users) || STATE.users.length < 20) {
+        try {
+            const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== "undefined" ? ENCCO_OFFICIAL_FIREBASE_URL : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com");
+            let _uRes = await fetch(_fbUrl + "/encc_school_state/users.json?t=" + Date.now());
+            if (!_uRes || !_uRes.ok) {
+                _uRes = await fetch(_fbUrl + "/users.json?t=" + Date.now());
+            }
+            if (_uRes && _uRes.ok) {
+                const _uData = await _uRes.json();
+                const _uArray = Array.isArray(_uData) ? _uData : Object.values(_uData || {});
+                if (_uArray.length >= 20) {
+                    STATE.users = (typeof deduplicateUsersCollection === 'function') ? deduplicateUsersCollection(_uArray) : _uArray;
+                    hasLoadedExistingUsers = true;
+                    console.log(`✅ [Claustro Oficial] ${_uArray.length} usuarios y docentes cargados exitosamente desde Firebase.`);
+                }
+            }
+        } catch(_uErr) {
+            console.warn("⚠️ Aviso al descargar nómina de usuarios de respaldo:", _uErr);
+        }
+        if (!Array.isArray(STATE.users) || STATE.users.length < 20) {
+            const initD = (typeof getInitialData === 'function') ? getInitialData() : {};
+            if (Array.isArray(initD.users) && initD.users.length >= 20) {
+                STATE.users = (typeof deduplicateUsersCollection === 'function') ? deduplicateUsersCollection(initD.users) : initD.users;
+                hasLoadedExistingUsers = true;
+                console.log(`🛡️ [Claustro Oficial] ${STATE.users.length} usuarios y docentes garantizados desde base institucional.`);
+            }
         }
     }
 
@@ -8010,8 +8067,12 @@ function ensureMasterAccount() {
     const initData = (typeof getInitialData === 'function') ? getInitialData() : {};
     const masterAccount = (initData.users && initData.users[0]) ? initData.users[0] : null;
 
-    if (!Array.isArray(STATE.users) || STATE.users.length === 0) {
-        STATE.users = (Array.isArray(initData.users) && initData.users.length > 0) ? initData.users : (STATE.users || []);
+    if (!Array.isArray(STATE.users) || STATE.users.length < 20) {
+        if (Array.isArray(initData.users) && initData.users.length >= 20) {
+            STATE.users = (typeof deduplicateUsersCollection === 'function') ? deduplicateUsersCollection(initData.users) : initData.users;
+        } else if (!Array.isArray(STATE.users) || STATE.users.length === 0) {
+            STATE.users = (Array.isArray(initData.users) && initData.users.length > 0) ? initData.users : (STATE.users || []);
+        }
     }
 
     // 1. Garantizar cuenta Administrador institucional (SIN CLASES ASIGNADAS)
@@ -8909,7 +8970,10 @@ window.reiniciarBaseDeDatosTotal = reiniciarBaseDeDatosTotal;
 window.resetDemoData = reiniciarBaseDeDatosTotal;
 
 function loadDefaults(autoSave = false) {
-    if (!Array.isArray(STATE.users)) STATE.users = [];
+    if (!Array.isArray(STATE.users) || STATE.users.length < 20) {
+        const initD = (typeof getInitialData === 'function') ? getInitialData() : {};
+        STATE.users = (Array.isArray(initD.users) && initD.users.length >= 20) ? initD.users.map(u => ({ ...u })) : (STATE.users || []);
+    }
     if (!Array.isArray(STATE.students)) {
         if (STATE.students && typeof STATE.students === 'object') {
             STATE.students = Object.values(STATE.students);
@@ -9114,13 +9178,36 @@ function applyIncomingCloudState(incomingState, force = false) {
     const incomingTime = incomingState.lastModified || Date.now();
 
     // 1. Usuarios y Autenticación
-    if (Array.isArray(incomingState.users) && incomingState.users.length > 0) {
-        STATE.users = incomingState.users;
-        // ⚡ Sincronización Reactiva en Tiempo Real con Firebase (TASK 4)
+    if (Array.isArray(incomingState.users) && incomingState.users.length >= 20) {
+        STATE.users = (typeof deduplicateUsersCollection === 'function') ? deduplicateUsersCollection(incomingState.users) : incomingState.users;
         if (window.EnccoAuthStore && typeof window.EnccoAuthStore.syncUserFromServer === "function") {
-            window.EnccoAuthStore.syncUserFromServer(incomingState.users, incomingState.rolesConfig);
+            window.EnccoAuthStore.syncUserFromServer(STATE.users, incomingState.rolesConfig);
         }
-        // ⚡ [v183] Refrescar tabla de usuarios en pantalla si está visible
+        if (document.getElementById("usersTableBody") && typeof renderUsersTable === "function") {
+            renderUsersTable();
+        }
+    } else if (Array.isArray(incomingState.users) && incomingState.users.length > 0) {
+        if (!Array.isArray(STATE.users) || STATE.users.length < 20) {
+            const initD = (typeof getInitialData === 'function') ? getInitialData() : {};
+            if (Array.isArray(initD.users) && initD.users.length >= 20) {
+                STATE.users = (typeof deduplicateUsersCollection === 'function') ? deduplicateUsersCollection(initD.users) : initD.users;
+            }
+        }
+        incomingState.users.forEach(incUser => {
+            if (!incUser || !incUser.id) return;
+            const idx = (STATE.users || []).findIndex(u => u.id === incUser.id);
+            if (idx !== -1) {
+                STATE.users[idx] = { ...STATE.users[idx], ...incUser };
+            } else {
+                STATE.users.push(incUser);
+            }
+        });
+        if (typeof deduplicateUsersCollection === 'function') {
+            STATE.users = deduplicateUsersCollection(STATE.users);
+        }
+        if (window.EnccoAuthStore && typeof window.EnccoAuthStore.syncUserFromServer === "function") {
+            window.EnccoAuthStore.syncUserFromServer(STATE.users, incomingState.rolesConfig);
+        }
         if (document.getElementById("usersTableBody") && typeof renderUsersTable === "function") {
             renderUsersTable();
         }
@@ -18701,6 +18788,29 @@ window.revokeGradeEditRequest = revokeGradeEditRequest;
 function renderUsersTable(filterVal = '') {
     const tbody = document.getElementById('usersTableBody');
     if (!tbody) return;
+
+    // 🛡️ Auto-recuperación garantizada de nómina oficial si el estado en memoria está vacío
+    if (!Array.isArray(STATE.users) || STATE.users.length === 0) {
+        const initD = (typeof getInitialData === 'function') ? getInitialData() : {};
+        if (Array.isArray(initD.users) && initD.users.length > 0) {
+            STATE.users = (typeof deduplicateUsersCollection === 'function') ? deduplicateUsersCollection(initD.users) : initD.users;
+        }
+        if ((!Array.isArray(STATE.users) || STATE.users.length === 0) && typeof window !== 'undefined' && !window._fetchingUsersDirect) {
+            window._fetchingUsersDirect = true;
+            const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== "undefined" ? ENCCO_OFFICIAL_FIREBASE_URL : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com");
+            fetch(_fbUrl + '/encc_school_state/users.json?t=' + Date.now())
+                .then(r => r.ok ? r.json() : null)
+                .then(uData => {
+                    const uArr = Array.isArray(uData) ? uData : Object.values(uData || {});
+                    if (uArr.length >= 20) {
+                        STATE.users = (typeof deduplicateUsersCollection === 'function') ? deduplicateUsersCollection(uArr) : uArr;
+                        renderUsersTable(filterVal);
+                    }
+                })
+                .catch(() => {})
+                .finally(() => { window._fetchingUsersDirect = false; });
+        }
+    }
 
     // Asegurar colección sin duplicados
     if (Array.isArray(STATE.users)) {
