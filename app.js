@@ -1281,7 +1281,7 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
             if (r.permissions.includes(key + '_edit')) return 'edit';
             if (r.permissions.includes(key + '_view')) return 'view';
             if (r.permissions.includes(key)) {
-                if (roleKey === 'docente' && ['guide-teachers', 'students', 'reports', 'honor-roll', 'grade-stats'].includes(key)) return 'view';
+                if (roleKey === 'docente' && ['guide-teachers', 'students', 'reports', 'honor-roll', 'grade-stats', 'users'].includes(key)) return 'view';
                 if (roleKey === 'estudiante') return 'view';
                 return 'edit';
             }
@@ -1291,6 +1291,14 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
     }
 
     // 2. Fallbacks de seguridad institucional por defecto (únicamente si el rol no tiene configuración en rolesConfig)
+    if (key === 'users') {
+        const allowedFull = ['director', 'direccion', 'secretaria', 'admin', 'super_usuario'];
+        const allowedView = ['profesor_auxiliar', 'auxiliar', 'auxiliatura', 'docente', 'catedratico'];
+        if (allowedFull.includes(roleKey)) return 'edit';
+        if (allowedView.includes(roleKey)) return 'view';
+        return 'none';
+    }
+
     if (key === 'auxiliatura-log' || key === 'auxiliatura-center') {
         const allowedFull = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
         if (allowedFull.includes(roleKey)) return 'edit';
@@ -3044,7 +3052,7 @@ function initDefaultRolesConfig() {
             description: 'Coordinación disciplinaria escolar, control de asistencia y convivencia',
             color: '#d97706',
             isSystem: true,
-            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'auxiliatura-center', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history', 'exam-schedules']
+            permissions: ['dashboard', 'students', 'grades', 'guide-teachers', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'auxiliatura-center', 'auxiliatura-log', 'exoneraciones-log', 'permissions-history', 'exam-schedules', 'users']
         },
         {
             key: 'docente',
@@ -3052,7 +3060,7 @@ function initDefaultRolesConfig() {
             description: 'Ingreso de calificaciones, control de asistencia y seguimiento pedagógico',
             color: '#0891b2',
             isSystem: true,
-            permissions: ['dashboard', 'students', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'exoneraciones-log', 'permissions-history']
+            permissions: ['dashboard', 'students', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'exoneraciones-log', 'permissions-history', 'users']
         },
         {
             key: 'estudiante',
@@ -3137,7 +3145,8 @@ function normalizeRolesConfig() {
                 'attendance': 'edit',
                 'discipline': 'edit',
                 'exoneraciones-log': 'view',
-                'permissions-history': 'view'
+                'permissions-history': 'view',
+                'users': 'view'
             };
             Object.keys(docenteDefaults).forEach(p => {
                 if (typeof roleObj.permissionLevels[p] === 'undefined') {
@@ -3146,6 +3155,11 @@ function normalizeRolesConfig() {
                     if (!roleObj.permissions.includes(p)) roleObj.permissions.push(p);
                 }
             });
+            // Garantizar que users esté disponible en modo consulta por defecto
+            if (roleObj.permissionLevels['users'] === 'none' && !roleObj.permissions.includes('users')) {
+                roleObj.permissionLevels['users'] = 'view';
+                roleObj.permissions.push('users', 'users_view');
+            }
         }
 
         // 🛡️ ACCESO TOTAL A BITÁCORA Y CENTRO DE CONTROL: Dirección, Auxiliatura y Secretaría (solo si no configurado)
@@ -3159,9 +3173,15 @@ function normalizeRolesConfig() {
                 roleObj.permissionLevels['auxiliatura-center'] = 'edit';
                 if (!roleObj.permissions.includes('auxiliatura-center')) roleObj.permissions.push('auxiliatura-center');
             }
-            if (roleObj.key === 'profesor_auxiliar' && typeof roleObj.permissionLevels['exam-schedules'] === 'undefined') {
-                roleObj.permissionLevels['exam-schedules'] = 'edit';
-                if (!roleObj.permissions.includes('exam-schedules')) roleObj.permissions.push('exam-schedules');
+            if (roleObj.key === 'profesor_auxiliar') {
+                if (typeof roleObj.permissionLevels['exam-schedules'] === 'undefined') {
+                    roleObj.permissionLevels['exam-schedules'] = 'edit';
+                    if (!roleObj.permissions.includes('exam-schedules')) roleObj.permissions.push('exam-schedules');
+                }
+                if (typeof roleObj.permissionLevels['users'] === 'undefined' || roleObj.permissionLevels['users'] === 'none') {
+                    roleObj.permissionLevels['users'] = 'view';
+                    if (!roleObj.permissions.includes('users')) roleObj.permissions.push('users', 'users_view');
+                }
             }
         }
 
@@ -3179,7 +3199,7 @@ function normalizeRolesConfig() {
                     roleObj.permissionLevels[m.key] = 'view';
                 } else if (roleObj.permissions.includes(m.key)) {
                     // Si el módulo base está incluido, si es docente en módulos de solo lectura es view por defecto
-                    if (roleObj.key === 'docente' && (m.key === 'guide-teachers' || m.key === 'students' || m.key === 'reports' || m.key === 'honor-roll' || m.key === 'grade-stats')) {
+                    if (roleObj.key === 'docente' && (m.key === 'guide-teachers' || m.key === 'students' || m.key === 'reports' || m.key === 'honor-roll' || m.key === 'grade-stats' || m.key === 'users')) {
                         roleObj.permissionLevels[m.key] = 'view';
                     } else if (roleObj.key === 'estudiante') {
                         roleObj.permissionLevels[m.key] = 'view';
@@ -9629,7 +9649,11 @@ function handlePasswordRecovery(e) {
 // ==========================================================================
 function switchRole(role) {
     // Protección de seguridad anti-hackeo: verificar autorización de rol
-    if (STATE.currentUser && STATE.currentUser.role !== 'admin' && STATE.currentUser.email !== 'admin@encc.edu.gt') {
+    const isAllowedAdmin = STATE.impersonatorAdmin || 
+        (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'super_usuario')) ||
+        (typeof EnccoFirebaseCacheEngine !== 'undefined' && EnccoFirebaseCacheEngine.isSuperUser(STATE.currentUser));
+
+    if (!isAllowedAdmin) {
         if (role !== STATE.currentUser.role) {
             showToast("Acceso restringido: Su usuario no posee permisos de administración.", "danger");
             return;
@@ -18683,13 +18707,13 @@ function renderUsersTable(filterVal = '') {
         STATE.users = deduplicateUsersCollection(STATE.users);
     }
 
-    // Calcular KPIs de Renglón 011 / 021 y Género en tiempo real
-    const allTeachers = (STATE.users || []).filter(u => u.role === 'docente' || u.id.startsWith('usr-doc-'));
+    // Calcular KPIs de Renglón 011 / 021 y Género en tiempo real sobre la nómina completa
+    const allUsers = (STATE.users || []);
     let count011_H = 0, count011_M = 0;
     let count021_H = 0, count021_M = 0;
     let countTotal_H = 0, countTotal_M = 0;
 
-    allTeachers.forEach(u => {
+    allUsers.forEach(u => {
         const r = u.renglon || '011';
         const g = u.gender || 'Masculino';
         if (g === 'Femenino') {
@@ -18709,22 +18733,37 @@ function renderUsersTable(filterVal = '') {
 
     if (kpi011El) kpi011El.innerHTML = `<i class="fa-solid fa-id-card"></i> 011: <strong>${count011_H + count011_M}</strong> (H:${count011_H}|M:${count011_M})`;
     if (kpi021El) kpi021El.innerHTML = `<i class="fa-solid fa-file-contract"></i> 021: <strong>${count021_H + count021_M}</strong> (H:${count021_H}|M:${count021_M})`;
-    if (kpiTotEl) kpiTotEl.innerHTML = `<i class="fa-solid fa-users"></i> Total: <strong>${allTeachers.length}</strong> (H:${countTotal_H}|M:${countTotal_M})`;
+    if (kpiTotEl) kpiTotEl.innerHTML = `<i class="fa-solid fa-users"></i> Total: <strong>${allUsers.length}</strong> (H:${countTotal_H}|M:${countTotal_M})`;
 
     const roleFilter = document.getElementById('userRoleFilterSelect')?.value || 'ALL';
     const q = (typeof filterVal === 'string' ? filterVal : (document.getElementById('userSearchInput')?.value || '')).toLowerCase();
 
     let list = STATE.users || [];
-    if (roleFilter === 'docente') {
-        list = list.filter(u => u.role === 'docente');
-    } else if (roleFilter === 'profesor_auxiliar' || roleFilter === 'auxiliar') {
-        list = list.filter(u => u.role === 'profesor_auxiliar');
-    } else if (roleFilter.includes('admin')) {
-        list = list.filter(u => u.role === 'admin' || u.role === 'director' || u.role === 'secretaria');
+    if (roleFilter && roleFilter !== 'ALL') {
+        if (roleFilter === 'admin,director,secretaria') {
+            list = list.filter(u => u.role === 'admin' || u.role === 'director' || u.role === 'secretaria');
+        } else if (roleFilter === 'profesor_auxiliar' || roleFilter === 'auxiliar') {
+            list = list.filter(u => u.role === 'profesor_auxiliar' || u.role === 'auxiliar');
+        } else if (roleFilter === 'docente') {
+            list = list.filter(u => u.role === 'docente');
+        } else {
+            list = list.filter(u => u.role === roleFilter);
+        }
     }
 
     if (q) {
-        list = list.filter(u => (u.name || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q) || (u.title || '').toLowerCase().includes(q) || (u.renglon || '').toLowerCase().includes(q));
+        list = list.filter(u => 
+            (u.name || '').toLowerCase().includes(q) || 
+            (u.email || '').toLowerCase().includes(q) || 
+            (u.title || '').toLowerCase().includes(q) || 
+            (u.renglon || '').toLowerCase().includes(q) ||
+            (u.role || '').toLowerCase().includes(q)
+        );
+    }
+
+    if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:24px; color:#64748b; font-weight:600;"><i class="fa-solid fa-users-slash" style="font-size:1.8rem; margin-bottom:8px; display:block; opacity:0.6;"></i>No se encontraron registros de usuarios o catedráticos para el filtro aplicado.</td></tr>`;
+        return;
     }
 
     const canViewPasswords = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentUser?.role === 'admin');
@@ -18767,13 +18806,19 @@ function renderUsersTable(filterVal = '') {
                 <td style="font-size:0.74rem; color:#475569; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:160px;" title="${u.title || ''}">${u.title || 'Catedrático'}</td>
                 <td style="text-align:center; white-space:nowrap;">
                     <div style="display:inline-flex; gap:3px; align-items:center;">
-                        <button class="btn btn-primary btn-xs" onclick="impersonateUser('${u.id}')" title="Probar usuario" style="font-size:0.68rem; padding:1px 5px; height:22px; font-weight:700;">
-                            <i class="fa-solid fa-user-astronaut"></i> Probar
-                        </button>
-                        <button class="btn btn-secondary btn-xs" onclick="openEditUserModal('${u.id}')" title="Editar" style="font-size:0.68rem; padding:1px 5px; height:22px;">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
-                        ${!isMaster ? `<button class="btn btn-secondary btn-xs" style="color:var(--danger); font-size:0.68rem; padding:1px 5px; height:22px;" onclick="deleteUser('${u.id}')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>` : ''}
+                        ${canEditUsers ? `
+                            <button class="btn btn-primary btn-xs" onclick="impersonateUser('${u.id}')" title="Probar usuario" style="font-size:0.68rem; padding:1px 5px; height:22px; font-weight:700;">
+                                <i class="fa-solid fa-user-astronaut"></i> Probar
+                            </button>
+                            <button class="btn btn-secondary btn-xs" onclick="openEditUserModal('${u.id}')" title="Editar" style="font-size:0.68rem; padding:1px 5px; height:22px;">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            ${!isMaster ? `<button class="btn btn-secondary btn-xs" style="color:var(--danger); font-size:0.68rem; padding:1px 5px; height:22px;" onclick="deleteUser('${u.id}')" title="Eliminar"><i class="fa-solid fa-trash"></i></button>` : ''}
+                        ` : `
+                            <span class="badge" style="background:#f1f5f9; color:#64748b; font-size:0.68rem; padding:2px 6px; border:1px solid #e2e8f0;">
+                                <i class="fa-solid fa-eye"></i> Consulta
+                            </span>
+                        `}
                     </div>
                 </td>
             </tr>
@@ -35334,8 +35379,18 @@ function updateUserRoleSelectOptions() {
 
     if (userRoleFilterSelect) {
         const cur = userRoleFilterSelect.value;
-        userRoleFilterSelect.innerHTML = `<option value="ALL">-- Todos los Roles --</option>` + optionsHtml;
-        if (cur && (cur === 'ALL' || roles.some(r => r.key === cur))) userRoleFilterSelect.value = cur;
+        const quickOptions = `
+            <option value="ALL">⭐ Todos los Roles</option>
+            <option value="docente">👨‍🏫 Solo Catedráticos</option>
+            <option value="admin,director,secretaria">🏛️ Directivos / Admin</option>
+            <option value="profesor_auxiliar">🛡️ Auxiliares / Disciplina</option>
+        `;
+        const extraRoles = roles.filter(r => !['docente', 'admin', 'director', 'secretaria', 'profesor_auxiliar'].includes(r.key))
+            .map(r => `<option value="${r.key}">${r.name}</option>`).join('');
+        userRoleFilterSelect.innerHTML = quickOptions + extraRoles;
+        if (cur && (cur === 'ALL' || cur === 'admin,director,secretaria' || roles.some(r => r.key === cur))) {
+            userRoleFilterSelect.value = cur;
+        }
     }
 }
 

@@ -3269,7 +3269,7 @@
                                     <i class="fa-solid fa-file-excel"></i> Cargar Excel
                                 </button>
                                 <input type="file" id="globalTeachersPensumFileInput" accept=".xlsx, .xls, .csv, .txt" style="display:none;" onchange="handleGlobalTeachersPensumExcelUpload(event)">
-                                <button type="button" class="btn btn-primary btn-xs" onclick="openUserModal()" style="height:26px; font-size:0.72rem; font-weight:700; padding:0 8px;">
+                                <button type="button" class="btn btn-primary btn-xs role-restricted" data-allowed="admin,director,secretaria" onclick="openUserModal()" style="height:26px; font-size:0.72rem; font-weight:700; padding:0 8px;">
                                     <i class="fa-solid fa-user-plus"></i> + Nuevo Usuario
                                 </button>
                             </div>
@@ -3280,11 +3280,12 @@
                             <div style="flex:1; max-width:320px;">
                                 <input type="text" id="userSearchInput" class="form-control" style="height:26px; font-size:0.75rem; background:#f8fafc; padding:2px 8px; border-radius:4px;" placeholder="🔍 Buscar por Nombre, Renglón 011/021, Cargo..." onkeyup="filterUsersTable(this.value)">
                             </div>
-                            <div style="width:200px;">
+                            <div style="width:220px;">
                                 <select id="userRoleFilterSelect" class="form-control" onchange="filterUsersTable()" style="height:26px; font-size:0.75rem; font-weight:700; background:#f8fafc; padding:2px 6px; border-radius:4px;">
                                     <option value="ALL">⭐ Todos los Roles</option>
                                     <option value="docente">👨‍🏫 Solo Catedráticos</option>
                                     <option value="admin,director,secretaria">🏛️ Directivos / Admin</option>
+                                    <option value="profesor_auxiliar">🛡️ Auxiliares / Disciplina</option>
                                 </select>
                             </div>
                         </div>
