@@ -13357,33 +13357,33 @@ function findStudentGradeForSubject(info, targetSubKeyOrName, colIdx) {
         if (cleanTarget === 'bancaria') return cName.includes('bancaria');
         if (cleanTarget === 'gubernamental') return cName.includes('gubernamental');
         if (cleanTarget === 'estadistica') return cName.includes('estadistica');
-        if (cleanTarget === 'organizacion') return cName.includes('organizacion') && !cName.includes('oficina') && !cName.includes('administracion');
+        if (cleanTarget === 'organizacion') return (cName.includes('organizacion') || cName.includes('oficina') || cName.includes('metodos')) && !cName.includes('administracion');
         if (cleanTarget === 'etica') return cName.includes('etica');
         if (cleanTarget === 'practica') return cName.includes('practica');
         if (cleanTarget === 'auditoria') return cName.includes('auditoria');
         if (cleanTarget === 'derecho') return cName.includes('derecho') && (cName.includes('mercantil') || cName.includes('laboral'));
-        if (cleanTarget === 'computacion') return cName.includes('computacion') && (cName.includes('3') || cName.includes('iii'));
+        if (cleanTarget === 'computacion') return cName.includes('computacion');
         if (cleanTarget === 'seminario') return cName.includes('seminario');
 
         if (cleanTarget === 'costos') return cName.includes('costos');
         if (cleanTarget === 'calculo') return cName.includes('calculo');
-        if (cleanTarget === 'ingles2') return cName.includes('ingles') && (cName.includes('2') || cName.includes('ii'));
+        if (cleanTarget === 'ingles2') return cName.includes('ingles') && (cName.includes('2') || cName.includes('ii') || !cName.includes('1'));
         if (cleanTarget === 'fiscal') return cName.includes('fiscal') || cName.includes('aduanera') || cName.includes('aduanal');
         if (cleanTarget === 'finanzas') return cName.includes('finanzas');
         if (cleanTarget === 'geografia') return cName.includes('geografia');
         if (cleanTarget === 'catalogacion') return cName.includes('catalogacion') || cName.includes('archivo');
         if (cleanTarget === 'mecanografia') return cName.includes('mecanografia');
-        if (cleanTarget === 'computacion2') return cName.includes('computacion') && (cName.includes('2') || cName.includes('ii'));
+        if (cleanTarget === 'computacion2') return cName.includes('computacion');
 
         if (cleanTarget === 'sociedades') return cName.includes('sociedades');
         if (cleanTarget === 'matematica') return cName.includes('matematica');
         if (cleanTarget === 'derecho4') return cName.includes('fundamento') || (cName.includes('derecho') && !cName.includes('mercantil') && !cName.includes('laboral'));
-        if (cleanTarget === 'ingles1') return cName.includes('ingles') && (cName.includes('1') || cName.includes('i')) && !cName.includes('ii');
+        if (cleanTarget === 'ingles1') return cName.includes('ingles');
         if (cleanTarget === 'redaccion') return cName.includes('redaccion') || cName.includes('correspondencia');
         if (cleanTarget === 'economia') return cName.includes('economia');
         if (cleanTarget === 'ortografia') return cName.includes('ortografia') || cName.includes('caligrafia');
         if (cleanTarget === 'administracion') return cName.includes('administracion');
-        if (cleanTarget === 'computacion1') return cName.includes('computacion') && (cName.includes('1') || cName.includes('i')) && !cName.includes('ii') && !cName.includes('iii');
+        if (cleanTarget === 'computacion1') return cName.includes('computacion');
 
         return false;
     });
@@ -30966,10 +30966,11 @@ function printHonorRoll() {
         return;
     }
 
-    // Top 30 estudiantes oficiales
-    const top30 = list.slice(0, 30);
-    const periodLabelPrint = _getHonorRollPeriodTitleBadge(periodMode);
+    // Para grados o secciones específicas se incluye toda la nómina elegible; para vista masiva de toda la escuela se limita a los primeros 40 más altos
+    const isSpecificFilter = type.startsWith('GRADE_') || type.startsWith('GROUP_') || type.startsWith('CAREER_');
+    const studentsToPrint = (isSpecificFilter || list.length <= 40) ? list : list.slice(0, 40);
 
+    const periodLabelPrint = _getHonorRollPeriodTitleBadge(periodMode);
     const directorUser = (STATE.users || []).find(u => u.role === "director");
     const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || "Licda. Mirza Elizabeth Aragón Polanco");
     const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes("licda") ? "Directora del Plantel" : "Director del Plantel");
@@ -30978,14 +30979,17 @@ function printHonorRoll() {
     const subjectCols = _getHonorRollSubjectsForView(type);
 
     let rankCounter = 0;
-    const printRowsHtml = top30.map((s) => {
+    const printRowsHtml = studentsToPrint.map((s) => {
         const info = getStudentAcademicInfo(s, periodMode);
         const fullName = formatStudentDisplayName(s, 'lastFirst');
         const shortGrade = formatStudentGradeAndSectionShort(s);
         let posText = '';
         if (info.eligibleForHonorRoll) {
             rankCounter++;
-            posText = `#${rankCounter}`;
+            if (rankCounter === 1) posText = `<span style="font-size:0.75rem;">🥇 #1</span>`;
+            else if (rankCounter === 2) posText = `<span style="font-size:0.75rem;">🥈 #2</span>`;
+            else if (rankCounter === 3) posText = `<span style="font-size:0.75rem;">🥉 #3</span>`;
+            else posText = `#${rankCounter}`;
         } else if (info.isExonerated || info.exoneratedCount > 0) {
             posText = `<span style="font-size:0.65rem; font-weight:700; color:#0f766e;">Exon.</span>`;
         } else {
@@ -31003,10 +31007,10 @@ function printHonorRoll() {
             if (cg) {
                 if (cg.isExon) {
                     scoreText = 'Ex';
-                    cellStyle = 'color:#0f766e; font-weight:700;';
+                    cellStyle = 'color:#0f766e; font-weight:700; background:#f0fdfa;';
                 } else if (cg.score > 0) {
                     scoreText = cg.scoreFormatted;
-                    cellStyle = (cg.score < 60) ? 'color:#dc2626; font-weight:700;' : 'color:#0f172a; font-weight:700;';
+                    cellStyle = (cg.score < 60) ? 'color:#dc2626; font-weight:700; background:#fef2f2;' : 'color:#0f172a; font-weight:700;';
                 }
             }
             classCellsHtml += `<td class="col-c" style="${cellStyle}" title="${cg?.name ? escapeHtml(cg.name + ': ' + scoreText) : ''}">${scoreText}</td>`;
@@ -31023,19 +31027,33 @@ function printHonorRoll() {
         `;
     }).join('');
 
+    // Leyenda de materias adaptada según el filtro visualizado
+    let pensumLegendHtml = '';
+    if (type === 'GROUP_6TO' || (type.startsWith('GRADE_') && subjectCols.length === 10 && subjectCols[0]?.short === 'BAN')) {
+        pensumLegendHtml = `<strong>📚 Pensum Oficial CNB 6.º Perito Contador (10 Clases):</strong> BAN: Contabilidad Bancaria | GUB: Contabilidad Gubernamental e Integrada | EST: Estadística Comercial | ORG: Organización de Empresas y Técnicas de Oficina | ÉTI: Ética Profesional y Relaciones Humanas | PRÁ: Práctica Supervisada | AUD: Auditoría | DER: Derecho Mercantil y Laboral | COM: Computación III | SEM: Seminario sobre Problemas Socioeconómicos.`;
+    } else if (type === 'GROUP_5TO' || (type.startsWith('GRADE_') && subjectCols[0]?.short === 'COS')) {
+        pensumLegendHtml = `<strong>📚 Pensum Oficial CNB 5.º Perito Contador (9 Clases):</strong> COS: Contabilidad de Costos | CÁL: Cálculo Mercantil y Financiero | IN2: Inglés Comercial II | FIS: Legislación Fiscal y Aduanera | FIN: Finanzas Públicas | GEO: Geografía Económica | CAT: Catalogación y Archivo | MEC: Mecanografía | COM: Computación II.`;
+    } else if (type === 'GROUP_4TO' || (type.startsWith('GRADE_') && subjectCols[0]?.short === 'SOC')) {
+        pensumLegendHtml = `<strong>📚 Pensum Oficial CNB 4.º Perito Contador (9 Clases):</strong> SOC: Contabilidad de Sociedades | MAT: Matemática Comercial | DER: Fundamentos de Derecho | IN1: Inglés Comercial I | RED: Redacción y Correspondencia Mercantil | ECO: Introducción a la Economía | ORT: Ortografía y Caligrafía | ADM: Administración y Organización de Empresas | COM: Computación I.`;
+    } else {
+        pensumLegendHtml = `<strong>📚 Abreviaturas Oficiales según Pensum CNB:</strong> <strong>6.º Grado (10 clases):</strong> BAN, GUB, EST, ORG, ÉTI, PRÁ, AUD, DER, COM, SEM. | <strong>5.º Grado (9 clases):</strong> COS, CÁL, IN2, FIS, FIN, GEO, CAT, MEC, COM. | <strong>4.º Grado (9 clases):</strong> SOC, MAT, DER, IN1, RED, ECO, ORT, ADM, COM. C01 a C10 corresponden al orden del pensum en vista global.`;
+    }
+
     const printWin = window.open('', '_blank');
     if (!printWin) {
         showToast("Permita las ventanas emergentes para visualizar e imprimir el cuadro de honor.", "warning");
         return;
     }
 
+    const baseHref = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+
     printWin.document.write(`
         <!DOCTYPE html>
         <html lang="es">
         <head>
             <meta charset="UTF-8">
-            <base href="${window.location.href}">
-            <title>${titleText} - Top 30 ENCCO Jutiapa</title>
+            <base href="${baseHref}">
+            <title>${titleText} — ENCCO Jutiapa</title>
             <style>
                 @page {
                     size: letter landscape;
@@ -31050,17 +31068,45 @@ function printHonorRoll() {
                     background: #ffffff;
                     font-size: 7pt;
                     width: 100%;
-                    height: 100%;
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
                 }
                 .report-container {
                     width: 100%;
-                    height: 100%;
+                    min-height: 100%;
                     display: flex;
                     flex-direction: column;
                     justify-content: space-between;
                 }
+
+                .no-print-toolbar {
+                    position: fixed;
+                    top: 8px;
+                    right: 12px;
+                    z-index: 99999;
+                    display: flex;
+                    gap: 8px;
+                    background: rgba(15, 23, 42, 0.9);
+                    padding: 6px 12px;
+                    border-radius: 30px;
+                    box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+                }
+                .no-print-toolbar button {
+                    border: none;
+                    padding: 6px 14px;
+                    border-radius: 20px;
+                    font-weight: 700;
+                    font-size: 11px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 5px;
+                    font-family: inherit;
+                }
+                .btn-print-action { background: #16a34a; color: #ffffff; }
+                .btn-print-action:hover { background: #15803d; }
+                .btn-close-action { background: #475569; color: #ffffff; }
+                .btn-close-action:hover { background: #334155; }
                 
                 .report-header {
                     display: flex;
@@ -31143,7 +31189,7 @@ function printHonorRoll() {
                     print-color-adjust: exact !important;
                 }
 
-                .col-pos { width: 24px; text-align: center; font-weight: 800; }
+                .col-pos { width: 28px; text-align: center; font-weight: 800; }
                 .col-name {
                     width: 175px;
                     text-align: left;
@@ -31204,11 +31250,10 @@ function printHonorRoll() {
                 @media print {
                     html, body {
                         width: 100% !important;
-                        height: 100% !important;
                         background: #ffffff !important;
-                        overflow: hidden !important;
+                        overflow: visible !important;
                     }
-                    .no-print { display: none !important; }
+                    .no-print-toolbar { display: none !important; }
                     table.honor-roll-table { width: 100% !important; }
                     table.honor-roll-table thead { display: table-header-group !important; }
                     table.honor-roll-table tr { break-inside: avoid !important; page-break-inside: avoid !important; }
@@ -31217,17 +31262,22 @@ function printHonorRoll() {
             </style>
         </head>
         <body>
+            <div class="no-print-toolbar">
+                <button type="button" class="btn-print-action" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+                <button type="button" class="btn-close-action" onclick="window.close()">✕ Cerrar</button>
+            </div>
+
             <div class="report-container">
                 <div>
                     <div class="report-header">
                         <div class="logo-box">
-                            <img src="logo.png" alt="Escudo Oficial" onerror="this.src='portada-comercio-principal.webp'">
+                            <img src="logo.png" alt="Escudo Oficial" onerror="this.src='images/portada-comercio-principal.webp'; this.onerror=function(){this.style.display='none';};">
                         </div>
                         <div class="header-info">
                             <h2>Ministerio de Educación — Guatemala</h2>
-                            <h1>${h.schoolName || 'Escuela Nacional de Ciencias Comerciales'}</h1>
-                            <h2>Jutiapa | Ciclo Lectivo ${STATE.activeCycle || '2026'}</h2>
-                            <div class="report-title">${titleText} — TOP 30</div>
+                            <h1>${escapeHtml(h.schoolName || 'Escuela Nacional de Ciencias Comerciales')}</h1>
+                            <h2>Jutiapa | Ciclo Lectivo ${escapeHtml(STATE.activeCycle || '2026')}</h2>
+                            <div class="report-title">${escapeHtml(titleText)} (${studentsToPrint.length} Estudiantes)</div>
                         </div>
                         <div class="header-meta">
                             <strong>Período:</strong> ${periodLabelPrint}<br>
@@ -31256,10 +31306,7 @@ function printHonorRoll() {
                     </table>
 
                     <div class="pensum-legend">
-                        <strong>📚 Pensum Oficial CNB de Perito Contador (ENCCO Jutiapa):</strong><br>
-                        <strong>6.º Grado (10 clases):</strong> 1. Contabilidad Bancaria | 2. Contabilidad Gubernamental e Integrada | 3. Estadística Comercial | 4. Organización de Empresas | 5. Ética Profesional y Relaciones Humanas | 6. Práctica Supervisada | 7. Auditoría | 8. Derecho Mercantil y Laboral | 9. Computación III | 10. Seminario.<br>
-                        <strong>5.º Grado (9 clases):</strong> 1. Contabilidad de Costos | 2. Cálculo Mercantil y Financiero | 3. Inglés Comercial II | 4. Legislación Fiscal y Aduanera | 5. Finanzas Públicas | 6. Geografía Económica | 7. Catalogación y Archivo | 8. Mecanografía | 9. Computación II.<br>
-                        <strong>4.º Grado (9 clases):</strong> 1. Contabilidad de Sociedades | 2. Matemática Comercial | 3. Fundamentos de Derecho | 4. Inglés Comercial I | 5. Redacción y Correspondencia | 6. Introducción a la Economía | 7. Ortografía y Caligrafía | 8. Administración y Organización de Empresas | 9. Computación I.
+                        ${pensumLegendHtml}
                     </div>
                 </div>
 
@@ -31272,8 +31319,8 @@ function printHonorRoll() {
                         </div>
                         <div class="signature-block">
                             <div class="signature-line"></div>
-                            <div class="signature-title">${dirName}</div>
-                            <div class="signature-subtitle">${dirTitle} — ENCCO Jutiapa</div>
+                            <div class="signature-title">${escapeHtml(dirName)}</div>
+                            <div class="signature-subtitle">${escapeHtml(dirTitle)} — ENCCO Jutiapa</div>
                         </div>
                     </div>
 
@@ -31283,14 +31330,22 @@ function printHonorRoll() {
                     </div>
                 </div>
             </div>
+
+            <script>
+                function triggerPrint() {
+                    try { window.focus(); } catch(e) {}
+                    try { window.print(); } catch(e) {}
+                }
+                if (document.readyState === 'complete') {
+                    setTimeout(triggerPrint, 350);
+                } else {
+                    window.addEventListener('load', function() { setTimeout(triggerPrint, 350); });
+                }
+            </script>
         </body>
         </html>
     `);
     printWin.document.close();
-    setTimeout(() => {
-        printWin.focus();
-        printWin.print();
-    }, 300);
 }
 
 // ==========================================================================
