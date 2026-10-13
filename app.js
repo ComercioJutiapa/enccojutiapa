@@ -4969,11 +4969,11 @@ function initFirebaseRealtimeConnection() {
                             } else {
                                 STATE.students = deduplicateStudentsCollection(incomingList);
                             }
-                            if (typeof renderGradebookTable === 'function') renderGradebookTable();
-                            if (typeof renderStudentsTable === 'function') renderStudentsTable();
-                            if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
-                            if (typeof loadAttendanceList === 'function') loadAttendanceList();
-                            if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView();
+                            if (typeof renderGradebookTable === 'function' && STATE.activeView === 'gradebook') renderGradebookTable();
+                            if (typeof renderStudentsTable === 'function' && STATE.activeView === 'students') renderStudentsTable();
+                            if (typeof renderTeacherGradeProgressTable === 'function' && STATE.activeView === 'teacher-progress') renderTeacherGradeProgressTable();
+                            if (typeof loadAttendanceList === 'function' && STATE.activeView === 'attendance') loadAttendanceList();
+                            if (typeof renderExoneracionesLogView === 'function' && STATE.activeView === 'exoneraciones-log') renderExoneracionesLogView();
                         }
                     } else if (cleanPath.startsWith('students/')) {
                         const subParts = cleanPath.split('/');
@@ -5023,11 +5023,11 @@ function initFirebaseRealtimeConnection() {
                                     targetStudent.gradebookDetails[subj][unitStr] = nodeData;
                                 }
                             }
-                            if (typeof renderGradebookTable === 'function') renderGradebookTable();
-                            if (typeof renderStudentsTable === 'function') renderStudentsTable();
-                            if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
-                            if (typeof loadAttendanceList === 'function') loadAttendanceList();
-                            if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView();
+                            if (typeof renderGradebookTable === 'function' && STATE.activeView === 'gradebook') renderGradebookTable();
+                            if (typeof renderStudentsTable === 'function' && STATE.activeView === 'students') renderStudentsTable();
+                            if (typeof renderTeacherGradeProgressTable === 'function' && STATE.activeView === 'teacher-progress') renderTeacherGradeProgressTable();
+                            if (typeof loadAttendanceList === 'function' && STATE.activeView === 'attendance') loadAttendanceList();
+                            if (typeof renderExoneracionesLogView === 'function' && STATE.activeView === 'exoneraciones-log') renderExoneracionesLogView();
                         }
                     } else if (cleanPath === 'attendanceRecords' || cleanPath.startsWith('attendanceRecords/')) {
                         if (nodeData && typeof nodeData === 'object') {
@@ -5190,10 +5190,10 @@ function initFirebaseRealtimeConnection() {
                                     if (st && typeof getStudentExonerationsList === 'function') getStudentExonerationsList(st);
                                 });
                             }
-                            if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView();
-                            if (typeof renderStudentsTable === 'function') renderStudentsTable();
-                            if (typeof loadAttendanceList === 'function') loadAttendanceList();
-                            if (typeof loadHonorRoll === 'function') loadHonorRoll();
+                            if (typeof renderExoneracionesLogView === 'function' && STATE.activeView === 'exoneraciones-log') renderExoneracionesLogView();
+                            if (typeof renderStudentsTable === 'function' && STATE.activeView === 'students') renderStudentsTable();
+                            if (typeof loadAttendanceList === 'function' && STATE.activeView === 'attendance') loadAttendanceList();
+                            if (typeof loadHonorRoll === 'function' && (STATE.activeView === 'honor-roll' || STATE.activeView === 'reports')) loadHonorRoll();
                         }
                     }
                     updateDbSyncStatus('synced');
@@ -5228,10 +5228,10 @@ function initFirebaseRealtimeConnection() {
                                     if (st && typeof getStudentExonerationsList === 'function') getStudentExonerationsList(st);
                                 });
                             }
-                            if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView();
-                            if (typeof renderStudentsTable === 'function') renderStudentsTable();
-                            if (typeof loadAttendanceList === 'function') loadAttendanceList();
-                            if (typeof loadHonorRoll === 'function') loadHonorRoll();
+                            if (typeof renderExoneracionesLogView === 'function' && STATE.activeView === 'exoneraciones-log') renderExoneracionesLogView();
+                            if (typeof renderStudentsTable === 'function' && STATE.activeView === 'students') renderStudentsTable();
+                            if (typeof loadAttendanceList === 'function' && STATE.activeView === 'attendance') loadAttendanceList();
+                            if (typeof loadHonorRoll === 'function' && (STATE.activeView === 'honor-roll' || STATE.activeView === 'reports')) loadHonorRoll();
                         } else if (data.path === '/attendanceRecords' || data.path.startsWith('/attendanceRecords')) {
                             // 🛡️ Actualización reactiva atómica de asistencia: respetar clics locales en vuelo y no reconstruir el DOM a mitad de clic
                             if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
@@ -30714,15 +30714,16 @@ function loadHonorRoll() {
         `;
     }
 
-    // 🌟 REGLA FUNDAMENTAL DE INTEGRIDAD Y VISIBILIDAD:
-    // Los estudiantes exonerados NUNCA deben borrarse de la lista.
-    const evaluatedList = list.filter(s => {
+    // 🌟 Precalcular información académica UNA SOLA VEZ por estudiante (Optimización 0ms)
+    const evaluatedList = [];
+    for (let i = 0; i < list.length; i++) {
+        const s = list[i];
         const info = getStudentAcademicInfo(s, periodMode);
-        if (onlyEligible) {
-            return info.eligibleForHonorRoll || info.isExonerated || (info.exoneratedCount > 0);
+        if (onlyEligible && !(info.eligibleForHonorRoll || info.isExonerated || (info.exoneratedCount > 0))) {
+            continue;
         }
-        return true;
-    });
+        evaluatedList.push({ s, info });
+    }
 
     if (evaluatedList.length === 0) {
         tbody.innerHTML = `
@@ -30739,10 +30740,10 @@ function loadHonorRoll() {
         return;
     }
 
-    // Ordenamiento estricto: primero los elegibles por promedio descendente (Base 100), luego por total de puntos y nombre
-    evaluatedList.sort((a, b) => {
-        const infoA = getStudentAcademicInfo(a, periodMode);
-        const infoB = getStudentAcademicInfo(b, periodMode);
+    // Ordenamiento estricto ultra-rápido en memoria RAM sin llamadas redundantes a getStudentAcademicInfo
+    evaluatedList.sort((itemA, itemB) => {
+        const infoA = itemA.info;
+        const infoB = itemB.info;
         if (infoA.eligibleForHonorRoll !== infoB.eligibleForHonorRoll) {
             return infoA.eligibleForHonorRoll ? -1 : 1;
         }
@@ -30752,42 +30753,11 @@ function loadHonorRoll() {
         if (Math.abs(infoB.totalPoints - infoA.totalPoints) > 0.01) {
             return infoB.totalPoints - infoA.totalPoints;
         }
-        return (a.lastName || a.name || '').localeCompare(b.lastName || b.name || '');
+        return (itemA.s.lastName || itemA.s.name || '').localeCompare(itemB.s.lastName || itemB.s.name || '');
     });
 
-    // ── PERSISTENCIA ATÓMICA DEL PUESTO (honorRank.bX) ────────────────
-    (async () => {
-        if (!window.FirebaseModular?.db) return;
-        const { db, doc, setDoc } = window.FirebaseModular;
-        const bim = parseInt(STATE.config?.activeBimestre) || 1;
-        let eligibleRank = 0;
-        for (let i = 0; i < evaluatedList.length; i++) {
-            const s = evaluatedList[i];
-            const info = getStudentAcademicInfo(s, periodMode);
-            if (!info.eligibleForHonorRoll) continue;
-            eligibleRank++;
-            const curRank = s.honorRank ? s.honorRank[`b${bim}`] : null;
-            const curAvg = s.honorAverage ? s.honorAverage[`b${bim}`] : null;
-            if (curRank === eligibleRank && curAvg === info.average) {
-                continue;
-            }
-            if (!s.honorRank) s.honorRank = {};
-            s.honorRank[`b${bim}`] = eligibleRank;
-            if (!s.honorAverage) s.honorAverage = {};
-            s.honorAverage[`b${bim}`] = info.average;
-
-            const rankPayload = {
-                honorRank:    { [`b${bim}`]: eligibleRank },
-                honorAverage: { [`b${bim}`]: info.average }
-            };
-            setDoc(doc(db, 'students', s.id), rankPayload, { merge: true })
-                .catch(e => console.warn('[Honor] Error al persistir puesto:', e));
-        }
-    })();
-
     let eligibleCounter = 0;
-    tbody.innerHTML = evaluatedList.map((s) => {
-        const info = getStudentAcademicInfo(s, periodMode);
+    tbody.innerHTML = evaluatedList.map(({ s, info }) => {
         let badgeHtml = '';
         let posBadge = '';
 
@@ -30938,17 +30908,25 @@ function printHonorRoll() {
         });
     }
 
-    const onlyEligible = document.getElementById('honorRollOnlyEligibleCheck') ? document.getElementById('honorRollOnlyEligibleCheck').checked : true;
-    if (onlyEligible) {
-        list = list.filter(s => {
-            const info = getStudentAcademicInfo(s, periodMode);
-            return info.eligibleForHonorRoll || info.isExonerated || (info.exoneratedCount > 0);
-        });
+    // Precalcular información académica UNA SOLA VEZ por estudiante para impresión instantánea
+    const evaluatedPrintItems = [];
+    for (let i = 0; i < list.length; i++) {
+        const s = list[i];
+        const info = getStudentAcademicInfo(s, periodMode);
+        if (onlyEligible && !(info.eligibleForHonorRoll || info.isExonerated || (info.exoneratedCount > 0))) {
+            continue;
+        }
+        evaluatedPrintItems.push({ s, info });
     }
 
-    list.sort((a, b) => {
-        const infoA = getStudentAcademicInfo(a, periodMode);
-        const infoB = getStudentAcademicInfo(b, periodMode);
+    if (evaluatedPrintItems.length === 0) {
+        showToast("No hay estudiantes para imprimir en el Cuadro de Honor seleccionado.", "warning");
+        return;
+    }
+
+    evaluatedPrintItems.sort((itemA, itemB) => {
+        const infoA = itemA.info;
+        const infoB = itemB.info;
         if (infoA.eligibleForHonorRoll !== infoB.eligibleForHonorRoll) {
             return infoA.eligibleForHonorRoll ? -1 : 1;
         }
@@ -30958,17 +30936,12 @@ function printHonorRoll() {
         if (Math.abs(infoB.totalPoints - infoA.totalPoints) > 0.01) {
             return infoB.totalPoints - infoA.totalPoints;
         }
-        return (a.lastName || a.name || '').localeCompare(b.lastName || b.name || '');
+        return (itemA.s.lastName || itemA.s.name || '').localeCompare(itemB.s.lastName || itemB.s.name || '');
     });
-
-    if (list.length === 0) {
-        showToast("No hay estudiantes para imprimir en el Cuadro de Honor seleccionado.", "warning");
-        return;
-    }
 
     // Para grados o secciones específicas se incluye toda la nómina elegible; para vista masiva de toda la escuela se limita a los primeros 40 más altos
     const isSpecificFilter = type.startsWith('GRADE_') || type.startsWith('GROUP_') || type.startsWith('CAREER_');
-    const studentsToPrint = (isSpecificFilter || list.length <= 40) ? list : list.slice(0, 40);
+    const studentsToPrint = (isSpecificFilter || evaluatedPrintItems.length <= 40) ? evaluatedPrintItems : evaluatedPrintItems.slice(0, 40);
 
     const periodLabelPrint = _getHonorRollPeriodTitleBadge(periodMode);
     const directorUser = (STATE.users || []).find(u => u.role === "director");
@@ -30979,8 +30952,7 @@ function printHonorRoll() {
     const subjectCols = _getHonorRollSubjectsForView(type);
 
     let rankCounter = 0;
-    const printRowsHtml = studentsToPrint.map((s) => {
-        const info = getStudentAcademicInfo(s, periodMode);
+    const printRowsHtml = studentsToPrint.map(({ s, info }) => {
         const fullName = formatStudentDisplayName(s, 'lastFirst');
         const shortGrade = formatStudentGradeAndSectionShort(s);
         let posText = '';
@@ -40346,11 +40318,11 @@ function initFirestoreModularLiveListeners() {
                      document.activeElement.closest?.('#gradebookActivitiesTable, #gradebookSummaryTable, #view-gradebook .clean-excel-table'));
 
                 if (!isEditingGradebook) {
-                    if (typeof renderGradebookTable === 'function') renderGradebookTable();
+                    if (typeof renderGradebookTable === 'function' && STATE.activeView === 'gradebook') renderGradebookTable();
                     if (typeof loadTeacherGradebook === 'function' && STATE.activeView === 'gradebook') loadTeacherGradebook();
                 }
-                if (typeof renderStudentsTable === 'function') renderStudentsTable();
-                if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+                if (typeof renderStudentsTable === 'function' && STATE.activeView === 'students') renderStudentsTable();
+                if (typeof renderTeacherGradeProgressTable === 'function' && STATE.activeView === 'teacher-progress') renderTeacherGradeProgressTable();
                 // Recalcular Cuadro de Honor en tiempo real al ingresar o editar notas
                 if (typeof loadHonorRoll === 'function' &&
                     (STATE.activeView === 'honor-roll' || STATE.activeView === 'reports')) {
