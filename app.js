@@ -10013,6 +10013,11 @@ function exitImpersonation() {
 function navigateTo(viewName, event = null) {
     if (event) event.preventDefault();
 
+    // ENCCO: Normalizar viewName si se envía con prefijo 'view-'
+    if (typeof viewName === 'string' && viewName.startsWith('view-')) {
+        viewName = viewName.replace(/^view-/, '');
+    }
+
     // ENCCO: Preservar posición de scroll del sidebar al navegar entre secciones
     var _sidebarEl = document.getElementById('sidebar');
     var _sidebarScrollTop = _sidebarEl ? _sidebarEl.scrollTop : 0;

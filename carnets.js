@@ -2018,6 +2018,7 @@
     // Exponer EnccoCarnets, helper de fotos y renderCarnetsView globalmente
     window.EnccoCarnets = EnccoCarnets;
     window.renderCarnetsView = renderCarnetsView;
+    window.openPhotoModal = (id, type = 'student', defaultMode = 'choice') => EnccoCarnets.openPhotoModal(id, type, defaultMode);
     window.processImageFileToCarnetFormat = (source) => EnccoCarnets.processImageToCarnetFormat(source);
 
 })(typeof window !== 'undefined' ? window : global);
