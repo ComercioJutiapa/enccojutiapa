@@ -9426,10 +9426,23 @@ function applyIncomingCloudState(incomingState, force = false) {
         });
         if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
     }
-    if (Array.isArray(incomingState.disciplineReports)) STATE.disciplineReports = incomingState.disciplineReports;
-    if (Array.isArray(incomingState.studentPermissions)) {
-        STATE.studentPermissions = incomingState.studentPermissions;
-        incomingState.studentPermissions.forEach(p => {
+    if (incomingState.disciplineReports) {
+        const cloudDisc = (Array.isArray(incomingState.disciplineReports)
+            ? incomingState.disciplineReports
+            : Object.values(incomingState.disciplineReports)).filter(d => d && d.id);
+        if (cloudDisc.length > 0 || !Array.isArray(STATE.disciplineReports)) {
+            STATE.disciplineReports = cloudDisc;
+        }
+        if (STATE.activeView === 'discipline' && typeof renderDisciplineTable === 'function') {
+            renderDisciplineTable();
+        }
+    }
+    if (incomingState.studentPermissions) {
+        const cloudPerms = (Array.isArray(incomingState.studentPermissions)
+            ? incomingState.studentPermissions
+            : Object.values(incomingState.studentPermissions)).filter(p => p && p.id);
+        STATE.studentPermissions = cloudPerms;
+        cloudPerms.forEach(p => {
             if (typeof applyStudentPermission === 'function') applyStudentPermission(p);
         });
         if (STATE.activeView === 'permissions-history' && typeof renderPermissionsHistoryView === 'function') {
@@ -9444,6 +9457,18 @@ function applyIncomingCloudState(incomingState, force = false) {
         if (STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') {
             loadAttendanceList();
         }
+    }
+    if (incomingState.studentAnnotations) {
+        const cloudAnnots = (Array.isArray(incomingState.studentAnnotations)
+            ? incomingState.studentAnnotations
+            : Object.values(incomingState.studentAnnotations)).filter(a => a && a.id);
+        if (!Array.isArray(STATE.studentAnnotations)) STATE.studentAnnotations = [];
+        const annotMap = new Map();
+        STATE.studentAnnotations.forEach(a => { if (a && a.id) annotMap.set(a.id, a); });
+        cloudAnnots.forEach(a => {
+            if (a && a.id) annotMap.set(a.id, { ...(annotMap.get(a.id) || {}), ...a });
+        });
+        STATE.studentAnnotations = Array.from(annotMap.values()).sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
     }
 
     // 5b. Solicitudes de Habilitación de Edición de Notas (Bimestres Cerrados)
@@ -9488,6 +9513,19 @@ function applyIncomingCloudState(incomingState, force = false) {
         if (typeof updateAssignmentSelects === 'function') updateAssignmentSelects();
         if (typeof populateAttendanceSelects === 'function') populateAttendanceSelects();
         if (typeof populatePensumTeacherSelect === 'function') populatePensumTeacherSelect();
+        // Si la Ficha de Datos del Estudiante está abierta y el usuario no está escribiendo en un input dentro de ella, refrescarla en tiempo real
+        const profModal = document.getElementById('studentProfileModal');
+        if (profModal && (profModal.classList.contains('active') || profModal.style.display === 'flex') && STATE.selectedStudentId) {
+            const activeEl = document.activeElement;
+            const isTypingInModal = activeEl && profModal.contains(activeEl) && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+            if (!isTypingInModal && typeof openStudentProfileModal === 'function') {
+                openStudentProfileModal(STATE.selectedStudentId);
+            }
+        }
+        const annotModal = document.getElementById('studentAnnotationModal');
+        if (annotModal && (annotModal.classList.contains('active') || annotModal.style.display === 'flex') && STATE.selectedStudentId) {
+            if (typeof renderStudentAnnotationsList === 'function') renderStudentAnnotationsList(STATE.selectedStudentId);
+        }
     } catch(e) {}
 
     return true;
@@ -13929,9 +13967,17 @@ function switchStudentProfileTab(tabKey) {
 }
 
 function openStudentProfileModal(id) {
-    const student = STATE.students.find(s => s.id === id);
+    const student = (STATE.students || []).find(s => s && (
+        String(s.id) === String(id) ||
+        (s.carne && String(s.carne) === String(id)) ||
+        (s.personalCode && String(s.personalCode) === String(id))
+    ));
     if (!student) return;
 
+    const modalEl = document.getElementById('studentProfileModal');
+    const wasAlreadyOpenForSame = !!(modalEl && (modalEl.classList.contains('active') || modalEl.style.display === 'flex') && String(STATE.selectedStudentId) === String(student.id));
+
+    id = student.id;
     STATE.selectedStudentId = id;
     const isDocente = (STATE.currentRole === 'docente');
     const canEdit = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria');
@@ -14366,8 +14412,10 @@ function openStudentProfileModal(id) {
     // 5. Cargar y sincronizar la Pestaña de Bitácora y Anotaciones
     renderStudentProfileAnnotations(id);
 
-    // Activar por defecto la Pestaña 1
-    switchStudentProfileTab('data');
+    // Activar por defecto la Pestaña 1 solo si el modal se está abriendo por primera vez
+    if (!wasAlreadyOpenForSame) {
+        switchStudentProfileTab('data');
+    }
 
     showModalById('studentProfileModal');
 }
@@ -14503,13 +14551,18 @@ function getStudentFullAttendanceAndDisciplineData(student) {
                 entry.status = rawVal;
             }
 
-            const dayMeta = metaDaysObj[dayStr] || metaDaysObj[dayNum];
+            const compositeMetaKey = `${matchedStudentKey}_${monthNum}_${dayNum}`;
+            const dayMeta = metaDaysObj[dayStr] || metaDaysObj[dayNum] || allMeta[compositeMetaKey];
             if (dayMeta) {
-                if (String(dayMeta.code || '').toUpperCase() === 'A' || String(dayMeta.category || '').toLowerCase().includes('injustificad')) {
+                const mCode = String(dayMeta.attendanceCode || dayMeta.code || '').toUpperCase();
+                const mCat = String(dayMeta.reasonCategory || dayMeta.category || '').toLowerCase();
+                const mReason = dayMeta.reasonDetail || dayMeta.reason || '';
+                const mCatLabel = dayMeta.reasonCategory || dayMeta.category || '';
+                if (mCode === 'A' || mCat.includes('injustificad') || dayMeta.is_locked_by_admin && rawVal === 'A') {
                     entry.isLockedA = true;
                 }
-                if (dayMeta.reason && !entry.metaNote) {
-                    entry.metaNote = `${dayMeta.category ? dayMeta.category + ': ' : ''}${dayMeta.reason}`;
+                if (mReason && !entry.metaNote) {
+                    entry.metaNote = `${mCatLabel ? mCatLabel + ': ' : ''}${mReason}`;
                 }
             }
         });
@@ -27988,6 +28041,7 @@ async function _syncAttendanceToFirebaseBackground(targetRecordKey = null) {
             const dataToSet = {
                 permissionsMeta: STATE.attendancePermissionsMeta || {},
                 attendancePermissionsMeta: STATE.attendancePermissionsMeta || {},
+                studentPermissions: Array.isArray(STATE.studentPermissions) ? STATE.studentPermissions : [],
                 lastModified: Date.now()
             };
             if (targetRecordKey && STATE.attendanceRecords && STATE.attendanceRecords[targetRecordKey]) {
@@ -28019,6 +28073,9 @@ async function _syncAttendanceToFirebaseBackground(targetRecordKey = null) {
             EnccoCloudSync.patchNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta || {}).catch(rtErr => {
                 console.warn("Aviso en Realtime Database al guardar attendancePermissionsMeta:", rtErr);
             });
+        }
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode && Array.isArray(STATE.studentPermissions)) {
+            EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
         }
     } catch(err) {
         console.warn("Error background RTDB asistencia:", err);
@@ -29276,6 +29333,7 @@ function saveStudentPermissionForm(e) {
         EnccoCloudSync.syncNode('attendanceRecords', STATE.attendanceRecords);
         EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta);
     }
+    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
 
     closeCreatePermissionModal();
 
@@ -29706,6 +29764,7 @@ function revokeStudentPermission(permId) {
         EnccoCloudSync.syncNode('attendanceRecords', STATE.attendanceRecords);
         EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta);
     }
+    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
 
     if (typeof renderPermissionsHistoryTable === 'function') {
         renderPermissionsHistoryTable();
@@ -29718,6 +29777,10 @@ function revokeStudentPermission(permId) {
     }
     if (typeof loadAttendanceList === 'function') {
         loadAttendanceList();
+    }
+    const profModalRevoke = document.getElementById('studentProfileModal');
+    if (profModalRevoke && (profModalRevoke.classList.contains('active') || profModalRevoke.style.display === 'flex') && STATE.selectedStudentId && typeof openStudentProfileModal === 'function') {
+        openStudentProfileModal(STATE.selectedStudentId);
     }
     showToast(`✅ Permiso de ${perm.studentName} anulado exitosamente. La asistencia se ha actualizado automáticamente.`, 'info');
 }
@@ -31082,10 +31145,15 @@ async function saveDisciplineForm(e) {
     if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
         EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports);
     }
+    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
 
     closeDisciplineModal();
     renderDisciplineTable();
     if (typeof renderDashboard === 'function') renderDashboard();
+    const profModalDisc = document.getElementById('studentProfileModal');
+    if (profModalDisc && (profModalDisc.classList.contains('active') || profModalDisc.style.display === 'flex') && STATE.selectedStudentId && typeof openStudentProfileModal === 'function') {
+        openStudentProfileModal(STATE.selectedStudentId);
+    }
     showToast(`Reporte disciplinario registrado correctamente. Ha sido canalizado al Profesor Auxiliar para su resolución y dictamen.`, 'success');
 
     // Notificación opcional inmediata por WhatsApp al padre/encargado
@@ -31407,6 +31475,7 @@ async function saveDisciplineResolutionForm(e) {
     if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
         EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports);
     }
+    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
 
     closeDisciplineResolutionModal();
     renderDisciplineTable();
@@ -31458,18 +31527,18 @@ function deleteDisciplineReport(reportId) {
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
             EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports);
         }
+        if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
         renderDisciplineTable();
 
         if (typeof closeDisciplineResolutionModal === 'function') {
             closeDisciplineResolutionModal();
         }
 
-        // Si el modal de perfil de estudiante está abierto, refrescar su historial disciplinario
+        // Si el modal de perfil de estudiante está abierto, refrescar su historial disciplinario completo
         const profModal = document.getElementById('studentProfileModal');
         if (profModal && (profModal.classList.contains('active') || profModal.style.display !== 'none')) {
-            if (STATE.selectedStudentId && typeof renderStudentProfile === 'function') {
-                const stu = (STATE.students || []).find(s => s.id === STATE.selectedStudentId);
-                if (stu) renderStudentProfile(stu);
+            if (STATE.selectedStudentId && typeof openStudentProfileModal === 'function') {
+                openStudentProfileModal(STATE.selectedStudentId);
             }
         }
 
@@ -40031,6 +40100,10 @@ function initFirestoreModularLiveListeners() {
                             if (STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
                                 renderAuxiliaturaLogView();
                             }
+                            const profModal = document.getElementById('studentProfileModal');
+                            if (profModal && (profModal.classList.contains('active') || profModal.style.display === 'flex') && STATE.selectedStudentId && typeof openStudentProfileModal === 'function') {
+                                openStudentProfileModal(STATE.selectedStudentId);
+                            }
                         }
                     }
                 });
@@ -40053,6 +40126,104 @@ function initFirestoreModularLiveListeners() {
                 }
             }, err => console.warn('Aviso en onSnapshot config/examSchedules:', err));
             if (typeof unsubExams === 'function') _firestoreModularUnsubscribers.push(unsubExams);
+        } catch(e) {}
+
+        // 9. 📋 ESCUCHAR ASISTENCIA Y PERMISOS ('config/asistencia') EN TIEMPO REAL
+        try {
+            const unsubAsistencia = onSnapshot(doc(db, 'config', 'asistencia'), (snap) => {
+                if (!snap || !snap.exists()) return;
+                const d = snap.data();
+                if (!d) return;
+                if (d.records && typeof d.records === 'object') {
+                    if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+                    for (const [recKey, studentsMap] of Object.entries(d.records)) {
+                        if (!studentsMap || typeof studentsMap !== 'object') continue;
+                        if (!STATE.attendanceRecords[recKey]) STATE.attendanceRecords[recKey] = {};
+                        for (const [sId, daysMap] of Object.entries(studentsMap)) {
+                            if (!daysMap || typeof daysMap !== 'object') continue;
+                            if (!STATE.attendanceRecords[recKey][sId]) STATE.attendanceRecords[recKey][sId] = {};
+                            Object.assign(STATE.attendanceRecords[recKey][sId], daysMap);
+                        }
+                    }
+                }
+                const metaSource = d.attendancePermissionsMeta || d.permissionsMeta;
+                if (metaSource && typeof metaSource === 'object') {
+                    STATE.attendancePermissionsMeta = { ...(STATE.attendancePermissionsMeta || {}), ...metaSource };
+                }
+                if (d.studentPermissions) {
+                    const cloudPerms = (Array.isArray(d.studentPermissions) ? d.studentPermissions : Object.values(d.studentPermissions)).filter(p => p && p.id);
+                    if (cloudPerms.length > 0) {
+                        STATE.studentPermissions = cloudPerms;
+                        cloudPerms.forEach(p => {
+                            if (typeof applyStudentPermission === 'function') applyStudentPermission(p);
+                        });
+                    }
+                }
+                if (STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') loadAttendanceList();
+                if (STATE.activeView === 'permissions-history' && typeof renderPermissionsHistoryView === 'function') renderPermissionsHistoryView();
+                const profModal = document.getElementById('studentProfileModal');
+                if (profModal && (profModal.classList.contains('active') || profModal.style.display === 'flex') && STATE.selectedStudentId && typeof openStudentProfileModal === 'function') {
+                    openStudentProfileModal(STATE.selectedStudentId);
+                }
+            }, err => console.warn('Aviso en onSnapshot config/asistencia:', err));
+            if (typeof unsubAsistencia === 'function') _firestoreModularUnsubscribers.push(unsubAsistencia);
+        } catch(e) {}
+
+        // 10. ⚖️ ESCUCHAR REPORTES DISCIPLINARIOS ('disciplina') EN TIEMPO REAL
+        try {
+            const unsubDisciplina = onSnapshot(collection(db, 'disciplina'), (snap) => {
+                if (!snap) return;
+                const items = [];
+                snap.forEach(d => {
+                    const data = d.data();
+                    if (data) items.push({ id: d.id, ...data });
+                });
+                if (items.length > 0 || !snap.empty) {
+                    items.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+                    STATE.disciplineReports = items;
+                    if (STATE.activeView === 'discipline' && typeof renderDisciplineTable === 'function') renderDisciplineTable();
+                    if (typeof renderDashboard === 'function') renderDashboard();
+                    const profModal = document.getElementById('studentProfileModal');
+                    if (profModal && (profModal.classList.contains('active') || profModal.style.display === 'flex') && STATE.selectedStudentId && typeof openStudentProfileModal === 'function') {
+                        openStudentProfileModal(STATE.selectedStudentId);
+                    }
+                }
+            }, err => console.warn('Aviso en onSnapshot disciplina:', err));
+            if (typeof unsubDisciplina === 'function') _firestoreModularUnsubscribers.push(unsubDisciplina);
+        } catch(e) {}
+
+        // 11. 📌 ESCUCHAR ANOTACIONES Y BITÁCORA DEL ESTUDIANTE ('studentAnnotations') EN TIEMPO REAL
+        try {
+            const unsubAnnotations = onSnapshot(collection(db, 'studentAnnotations'), (snap) => {
+                if (!snap) return;
+                if (!Array.isArray(STATE.studentAnnotations)) STATE.studentAnnotations = [];
+                let changed = false;
+                snap.docChanges().forEach(change => {
+                    const data = change.doc.data();
+                    const docId = (data && data.id) || change.doc.id;
+                    if (change.type === 'removed') {
+                        STATE.studentAnnotations = STATE.studentAnnotations.filter(a => a && a.id !== docId);
+                        changed = true;
+                    } else if (data && docId) {
+                        const exIdx = STATE.studentAnnotations.findIndex(a => a && a.id === docId);
+                        if (exIdx === -1) STATE.studentAnnotations.unshift({ id: docId, ...data });
+                        else STATE.studentAnnotations[exIdx] = { ...STATE.studentAnnotations[exIdx], ...data, id: docId };
+                        changed = true;
+                    }
+                });
+                if (changed) {
+                    STATE.studentAnnotations.sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
+                    const profModal = document.getElementById('studentProfileModal');
+                    if (profModal && (profModal.classList.contains('active') || profModal.style.display === 'flex') && STATE.selectedStudentId && typeof openStudentProfileModal === 'function') {
+                        openStudentProfileModal(STATE.selectedStudentId);
+                    }
+                    const annotModal = document.getElementById('studentAnnotationModal');
+                    if (annotModal && (annotModal.classList.contains('active') || annotModal.style.display === 'flex') && STATE.selectedStudentId && typeof renderStudentAnnotationsList === 'function') {
+                        renderStudentAnnotationsList(STATE.selectedStudentId);
+                    }
+                }
+            }, err => console.warn('Aviso en onSnapshot studentAnnotations:', err));
+            if (typeof unsubAnnotations === 'function') _firestoreModularUnsubscribers.push(unsubAnnotations);
         } catch(e) {}
     } catch(err) {
         console.warn('Aviso al configurar Firestore onSnapshot:', err);
@@ -41096,12 +41267,24 @@ async function submitAuxiliaturaJustification() {
 
     saveStateToLocalStorage();
 
-    // Sincronizar actualización de la alerta en RTDB
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-        EnccoCloudSync.patchNode(`attendanceAlerts/${alertId}`, alertObj).catch(err => {
-            console.warn("Aviso en RTDB al actualizar alerta:", err);
-        });
+    // Sincronizar actualización de la alerta en RTDB y Firestore
+    try {
+        const modular = window.FirebaseModular;
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+            modular.setDoc(modular.doc(modular.db, 'attendanceAlerts', alertId), alertObj, { merge: true }).catch(() => {});
+        }
+    } catch(e) {}
+    if (typeof EnccoCloudSync !== 'undefined') {
+        if (EnccoCloudSync.patchNode) {
+            EnccoCloudSync.patchNode(`attendanceAlerts/${alertId}`, alertObj).catch(err => {
+                console.warn("Aviso en RTDB al actualizar alerta:", err);
+            });
+        }
+        if (EnccoCloudSync.syncNode && Array.isArray(STATE.attendanceAlerts)) {
+            EnccoCloudSync.syncNode('attendanceAlerts', STATE.attendanceAlerts);
+        }
     }
+    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
 
     closeAuxiliaturaJustifyModal();
     updateAuxiliaturaBadge();
@@ -41140,9 +41323,21 @@ function markAuxiliaturaAlertStatus(alertId, newStatus) {
     alertObj.resolvedAt = new Date().toISOString();
 
     saveStateToLocalStorage();
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-        EnccoCloudSync.patchNode(`attendanceAlerts/${alertId}`, alertObj).catch(() => {});
+    try {
+        const modular = window.FirebaseModular;
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+            modular.setDoc(modular.doc(modular.db, 'attendanceAlerts', alertId), alertObj, { merge: true }).catch(() => {});
+        }
+    } catch(e) {}
+    if (typeof EnccoCloudSync !== 'undefined') {
+        if (EnccoCloudSync.patchNode) {
+            EnccoCloudSync.patchNode(`attendanceAlerts/${alertId}`, alertObj).catch(() => {});
+        }
+        if (EnccoCloudSync.syncNode && Array.isArray(STATE.attendanceAlerts)) {
+            EnccoCloudSync.syncNode('attendanceAlerts', STATE.attendanceAlerts);
+        }
     }
+    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
 
     updateAuxiliaturaBadge();
     renderAuxiliaturaLogView();
@@ -41452,9 +41647,26 @@ function addStudentAnnotation(data) {
     STATE.studentAnnotations.unshift(newAnnotation);
     saveStateToLocalStorage();
 
-    // Sincronizar en segundo plano si Firebase / CloudSync está disponible
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-        EnccoCloudSync.patchNode(`studentAnnotations/${newAnnotation.id}`, newAnnotation).catch(() => {});
+    // Sincronizar en segundo plano en Firestore y Realtime Database
+    try {
+        const modular = window.FirebaseModular;
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+            modular.setDoc(modular.doc(modular.db, 'studentAnnotations', newAnnotation.id), newAnnotation, { merge: true }).catch(() => {});
+        }
+    } catch(e) {}
+    if (typeof EnccoCloudSync !== 'undefined') {
+        if (EnccoCloudSync.patchNode) {
+            EnccoCloudSync.patchNode(`studentAnnotations/${newAnnotation.id}`, newAnnotation).catch(() => {});
+        }
+        if (EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('studentAnnotations', STATE.studentAnnotations);
+        }
+    }
+    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
+
+    const profModal = document.getElementById('studentProfileModal');
+    if (profModal && (profModal.classList.contains('active') || profModal.style.display === 'flex') && STATE.selectedStudentId && typeof openStudentProfileModal === 'function') {
+        openStudentProfileModal(STATE.selectedStudentId);
     }
 
     return newAnnotation;
@@ -41484,9 +41696,21 @@ function deleteStudentAnnotation(annotationId) {
     STATE.studentAnnotations.splice(idx, 1);
     saveStateToLocalStorage();
 
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.deleteNode) {
-        EnccoCloudSync.deleteNode(`studentAnnotations/${annotationId}`).catch(() => {});
+    try {
+        const modular = window.FirebaseModular;
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.deleteDoc === 'function') {
+            modular.deleteDoc(modular.doc(modular.db, 'studentAnnotations', annotationId)).catch(() => {});
+        }
+    } catch(e) {}
+    if (typeof EnccoCloudSync !== 'undefined') {
+        if (EnccoCloudSync.deleteNode) {
+            EnccoCloudSync.deleteNode(`studentAnnotations/${annotationId}`).catch(() => {});
+        }
+        if (EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('studentAnnotations', STATE.studentAnnotations);
+        }
     }
+    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
 
     showToast("Anotación eliminada correctamente.", "info");
     
@@ -41494,6 +41718,10 @@ function deleteStudentAnnotation(annotationId) {
     if (STATE.selectedStudentId) {
         renderStudentAnnotationsList(STATE.selectedStudentId);
         renderStudentProfileAnnotations(STATE.selectedStudentId);
+        const profModal = document.getElementById('studentProfileModal');
+        if (profModal && (profModal.classList.contains('active') || profModal.style.display === 'flex') && typeof openStudentProfileModal === 'function') {
+            openStudentProfileModal(STATE.selectedStudentId);
+        }
     }
     if (STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') {
         loadAttendanceList();
@@ -42050,13 +42278,20 @@ function renderStudentProfileAnnotations(studentId) {
     const student = (STATE.students || []).find(s => s && (s.id === studentId || (s.carne && s.carne === studentId)));
     const activeCycle = String((window.STATE && (window.STATE.activeCycle || window.STATE.academicCycle)) || '2026').trim();
 
+    const fullRecord = (student && typeof getStudentFullAttendanceAndDisciplineData === 'function')
+        ? getStudentFullAttendanceAndDisciplineData(student)
+        : null;
+
     // 1. Obtener anotaciones de seguimiento escolar
-    const rawAnnotations = getStudentAnnotations(studentId);
+    const rawAnnotations = fullRecord ? fullRecord.annotationsList : getStudentAnnotations(studentId);
 
     // 2. Obtener reportes disciplinarios / llamadas de atención
-    const discList = (STATE.disciplineReports || []).filter(d => d && (d.studentId === studentId || (student && student.carne && d.carne === student.carne)));
+    const discList = fullRecord
+        ? fullRecord.discList
+        : (STATE.disciplineReports || []).filter(d => d && (d.studentId === studentId || (student && student.carne && d.carne === student.carne)));
 
-    // 3. Obtener alertas e inasistencias reportadas
+    // 3. Obtener eventos integrales de asistencia (alertas, permisos oficiales J, ausencias blindadas A 🔒 y marcas diarias A/T/J en planilla)
+    const unifiedAttEvents = fullRecord ? (fullRecord.unifiedAttEvents || []) : [];
     const attAlerts = (STATE.attendanceAlerts || []).filter(a => {
         if (!a) return false;
         if (a.studentId && a.studentId === studentId) return true;
@@ -42107,26 +42342,50 @@ function renderStudentProfileAnnotations(studentId) {
         });
     });
 
-    attAlerts.forEach(a => {
-        const isLate = a.type === 'tardanza' || (a.comment && /tarde|retraso/i.test(a.comment));
-        unifiedList.push({
-            id: a.id || `att_${a.date}_${Math.random()}`,
-            originType: 'asistencia',
-            category: isLate ? 'tardanza' : 'asistencia',
-            academicCycle: String(a.academicCycle || activeCycle).trim(),
-            gradeAtEvent: a.grade || (student ? student.grade : ''),
-            date: a.date || '2026-01-01',
-            time: '',
-            title: isLate ? 'Llegada Tarde a Clases' : 'Inasistencia Reportada en Aula',
-            text: a.comment || (isLate ? 'Entrada tarde registrada en período escolar.' : 'Inasistencia registrada en control de aula.'),
-            authorName: a.teacherName || 'Control de Asistencia',
-            authorRole: 'Cátedra / Auxiliatura',
-            courseName: a.courseName || '',
-            parentNotified: a.status === 'justificada',
-            canDelete: false,
-            originalId: a.id
+    if (unifiedAttEvents.length > 0) {
+        unifiedAttEvents.forEach((ev, idx) => {
+            const isLate = ev.rawStatus === 'tardanza' || /tardanza|tarde/i.test(ev.statusLabel || '');
+            const cleanDetail = (ev.detailHtml || '').replace(/<[^>]+>/g, '');
+            unifiedList.push({
+                id: ev.permId || ev.alertId || `att_ev_${ev.sortDate}_${idx}`,
+                originType: 'asistencia',
+                category: isLate ? 'tardanza' : 'asistencia',
+                academicCycle: activeCycle,
+                gradeAtEvent: student ? (student.grade || student.gradeCode || '') : '',
+                date: ev.sortDate || '2026-01-01',
+                time: '',
+                title: ev.statusLabel || 'Registro de Asistencia',
+                text: `${cleanDetail}${ev.notes ? ' — ' + ev.notes : ''}`,
+                authorName: ev.permId ? 'Auxiliatura / Dirección' : 'Control de Asistencia',
+                authorRole: ev.permId ? 'Permiso / Ausencia Oficial' : 'Cátedra / Auxiliatura',
+                courseName: '',
+                parentNotified: ev.rawStatus === 'justificada',
+                canDelete: false,
+                originalId: ev.permId || ev.alertId || ''
+            });
         });
-    });
+    } else {
+        attAlerts.forEach(a => {
+            const isLate = a.type === 'tardanza' || (a.comment && /tarde|retraso/i.test(a.comment));
+            unifiedList.push({
+                id: a.id || `att_${a.date}_${Math.random()}`,
+                originType: 'asistencia',
+                category: isLate ? 'tardanza' : 'asistencia',
+                academicCycle: String(a.academicCycle || activeCycle).trim(),
+                gradeAtEvent: a.grade || (student ? student.grade : ''),
+                date: a.date || '2026-01-01',
+                time: '',
+                title: isLate ? 'Llegada Tarde a Clases' : 'Inasistencia Reportada en Aula',
+                text: a.comment || (isLate ? 'Entrada tarde registrada en período escolar.' : 'Inasistencia registrada en control de aula.'),
+                authorName: a.teacherName || 'Control de Asistencia',
+                authorRole: 'Cátedra / Auxiliatura',
+                courseName: a.courseName || '',
+                parentNotified: a.status === 'justificada',
+                canDelete: false,
+                originalId: a.id
+            });
+        });
+    }
 
     // 5. Actualizar el selector de ciclos disponibles en la ficha
     if (cycleFilterEl) {
