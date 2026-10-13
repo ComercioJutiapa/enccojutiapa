@@ -13229,6 +13229,176 @@ function isStudentExonerated(student) {
 }
 window.isStudentExonerated = isStudentExonerated;
 
+function getSubjectShortDisplayName(subjectName) {
+    if (!subjectName) return '—';
+    const clean = (subjectName || '').toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, '');
+
+    // 6to Perito
+    if (clean.includes('bancaria')) return 'Cont. Bancaria';
+    if (clean.includes('gubernamental')) return 'Cont. Gubernamental';
+    if (clean.includes('estadistica')) return 'Estadística';
+    if (clean.includes('organizacion') && !clean.includes('oficina') && !clean.includes('administracion')) return 'Org. Empresas';
+    if (clean.includes('etica')) return 'Ética Prof.';
+    if (clean.includes('practica')) return 'Práctica Superv.';
+    if (clean.includes('auditoria')) return 'Auditoría';
+    if (clean.includes('derecho') && (clean.includes('mercantil') || clean.includes('laboral'))) return 'Derecho Mercantil';
+    if (clean.includes('computacion') && (clean.includes('3') || clean.includes('iii'))) return 'Computación III';
+    if (clean.includes('seminario')) return 'Seminario';
+
+    // 5to Perito
+    if (clean.includes('costos')) return 'Cont. Costos';
+    if (clean.includes('calculo')) return 'Cálculo Mercantil';
+    if (clean.includes('ingles') && (clean.includes('2') || clean.includes('ii'))) return 'Inglés II';
+    if (clean.includes('fiscal') || clean.includes('aduanera') || clean.includes('aduanal')) return 'Legislación Fiscal';
+    if (clean.includes('finanzas')) return 'Finanzas Públicas';
+    if (clean.includes('geografia')) return 'Geografía Econ.';
+    if (clean.includes('catalogacion') || clean.includes('archivo')) return 'Catalogación y Arch.';
+    if (clean.includes('mecanografia')) return 'Mecanografía';
+    if (clean.includes('computacion') && (clean.includes('2') || clean.includes('ii'))) return 'Computación II';
+
+    // 4to Perito
+    if (clean.includes('sociedades')) return 'Cont. Sociedades';
+    if (clean.includes('matematica')) return 'Matemática Com.';
+    if (clean.includes('fundamento') || (clean.includes('derecho') && !clean.includes('mercantil') && !clean.includes('laboral'))) return 'Fund. Derecho';
+    if (clean.includes('ingles') && (clean.includes('1') || clean.includes('i')) && !clean.includes('ii')) return 'Inglés I';
+    if (clean.includes('redaccion') || clean.includes('correspondencia')) return 'Redacción y Corresp.';
+    if (clean.includes('economia')) return 'Intr. Economía';
+    if (clean.includes('ortografia') || clean.includes('caligrafia')) return 'Ortografía y Calig.';
+    if (clean.includes('administracion')) return 'Admón. Empresas';
+    if (clean.includes('computacion') && (clean.includes('1') || clean.includes('i')) && !clean.includes('ii') && !clean.includes('iii')) return 'Computación I';
+
+    // Fallbacks
+    if (clean.includes('computacion')) return 'Computación';
+    if (clean.includes('ingles')) return 'Inglés';
+    if (clean.includes('contabilidad')) return 'Contabilidad';
+
+    return subjectName.length > 18 ? subjectName.slice(0, 16) + '.' : subjectName;
+}
+window.getSubjectShortDisplayName = getSubjectShortDisplayName;
+
+function _getHonorRollSubjectsForView(type) {
+    let gradeNum = null;
+    if (type === 'GROUP_6TO') gradeNum = '6';
+    else if (type === 'GROUP_5TO') gradeNum = '5';
+    else if (type === 'GROUP_4TO') gradeNum = '4';
+    else if (type && type.startsWith('GRADE_')) {
+        const gCode = type.replace('GRADE_', '');
+        const gradeObj = (STATE.gradesList || []).find(x => x.code === gCode);
+        const gName = ((gradeObj ? (gradeObj.name + ' ' + (gradeObj.section || '')) : '') + ' ' + gCode).toUpperCase();
+        if (gName.includes('6') || gName.includes('SEXTO') || gName.includes('6TO')) gradeNum = '6';
+        else if (gName.includes('5') || gName.includes('QUINTO') || gName.includes('5TO')) gradeNum = '5';
+        else if (gName.includes('4') || gName.includes('CUARTO') || gName.includes('4TO')) gradeNum = '4';
+    }
+
+    if (gradeNum === '6') {
+        return [
+            { key: 'bancaria', short: 'Cont. Bancaria', full: 'Contabilidad Bancaria' },
+            { key: 'gubernamental', short: 'Cont. Gubernamental', full: 'Contabilidad Gubernamental e Integrada' },
+            { key: 'estadistica', short: 'Estadística', full: 'Estadística Comercial' },
+            { key: 'organizacion', short: 'Org. Empresas', full: 'Organización de Empresas' },
+            { key: 'etica', short: 'Ética Prof.', full: 'Ética Profesional y Relaciones Humanas' },
+            { key: 'practica', short: 'Práctica Superv.', full: 'Práctica Supervisada' },
+            { key: 'auditoria', short: 'Auditoría', full: 'Auditoría' },
+            { key: 'derecho', short: 'Derecho Merc.', full: 'Derecho Mercantil y Laboral' },
+            { key: 'computacion', short: 'Computación III', full: 'Computación III' },
+            { key: 'seminario', short: 'Seminario', full: 'Seminario sobre Problemas Socioeconómicos de Guatemala' }
+        ];
+    } else if (gradeNum === '5') {
+        return [
+            { key: 'costos', short: 'Cont. Costos', full: 'Contabilidad de Costos' },
+            { key: 'calculo', short: 'Cálculo Mercantil', full: 'Cálculo Mercantil y Financiero' },
+            { key: 'ingles2', short: 'Inglés II', full: 'Inglés Comercial II' },
+            { key: 'fiscal', short: 'Legislación Fiscal', full: 'Legislación Fiscal y Aduanera' },
+            { key: 'finanzas', short: 'Finanzas Públicas', full: 'Finanzas Públicas' },
+            { key: 'geografia', short: 'Geografía Econ.', full: 'Geografía Económica' },
+            { key: 'catalogacion', short: 'Catalogación y Arch.', full: 'Catalogación y Archivo' },
+            { key: 'mecanografia', short: 'Mecanografía', full: 'Mecanografía' },
+            { key: 'computacion2', short: 'Computación II', full: 'Computación II' }
+        ];
+    } else if (gradeNum === '4') {
+        return [
+            { key: 'sociedades', short: 'Cont. Sociedades', full: 'Contabilidad de Sociedades' },
+            { key: 'matematica', short: 'Matemática Com.', full: 'Matemática Comercial' },
+            { key: 'derecho4', short: 'Fund. Derecho', full: 'Fundamentos de Derecho' },
+            { key: 'ingles1', short: 'Inglés I', full: 'Inglés Comercial I' },
+            { key: 'redaccion', short: 'Redacción y Corresp.', full: 'Redacción y Correspondencia Mercantil' },
+            { key: 'economia', short: 'Intr. Economía', full: 'Introducción a la Economía' },
+            { key: 'ortografia', short: 'Ortografía y Calig.', full: 'Ortografía y Caligrafía' },
+            { key: 'administracion', short: 'Admón. Empresas', full: 'Administración y Organización de Empresas' },
+            { key: 'computacion1', short: 'Computación I', full: 'Computación I' }
+        ];
+    } else {
+        // Vista general / toda la escuela
+        return [
+            { key: 'c1', short: 'Clase 1: Contabilidad', full: 'Clase 1: Contabilidad (Bancaria / Costos / Sociedades)' },
+            { key: 'c2', short: 'Clase 2: Cálculo/Matem.', full: 'Clase 2: Cálculo Mercantil / Matemática Comercial / Cont. Gubernamental' },
+            { key: 'c3', short: 'Clase 3: Inglés/Estad.', full: 'Clase 3: Estadística / Inglés II / Fundamentos de Derecho' },
+            { key: 'c4', short: 'Clase 4: Org./Fiscal/Ing.', full: 'Clase 4: Organización de Empresas / Legislación Fiscal / Inglés I' },
+            { key: 'c5', short: 'Clase 5: Ética/Finanzas/Red.', full: 'Clase 5: Ética Profesional / Finanzas Públicas / Redacción' },
+            { key: 'c6', short: 'Clase 6: Práctica/Geog./Econ.', full: 'Clase 6: Práctica Supervisada / Geografía Económica / Economía' },
+            { key: 'c7', short: 'Clase 7: Auditoría/Cat./Ort.', full: 'Clase 7: Auditoría / Catalogación y Archivo / Ortografía' },
+            { key: 'c8', short: 'Clase 8: Derecho/Meca/Adm.', full: 'Clase 8: Derecho Mercantil / Mecanografía / Administración' },
+            { key: 'c9', short: 'Clase 9: Computación', full: 'Clase 9: Computación (I, II o III)' },
+            { key: 'c10', short: 'Clase 10: Seminario (6to)', full: 'Clase 10: Seminario (Exclusivo 6to Grado)' }
+        ];
+    }
+}
+window._getHonorRollSubjectsForView = _getHonorRollSubjectsForView;
+
+function findStudentGradeForSubject(info, targetSubKeyOrName, colIdx) {
+    if (!info || !info.courseGrades || info.courseGrades.length === 0) return null;
+    const cleanTarget = (targetSubKeyOrName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+
+    // 1. Coincidencia por clave canónica
+    const match = info.courseGrades.find(cg => {
+        const cName = (cg.name || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+        if (cleanTarget === 'bancaria') return cName.includes('bancaria');
+        if (cleanTarget === 'gubernamental') return cName.includes('gubernamental');
+        if (cleanTarget === 'estadistica') return cName.includes('estadistica');
+        if (cleanTarget === 'organizacion') return cName.includes('organizacion') && !cName.includes('oficina') && !cName.includes('administracion');
+        if (cleanTarget === 'etica') return cName.includes('etica');
+        if (cleanTarget === 'practica') return cName.includes('practica');
+        if (cleanTarget === 'auditoria') return cName.includes('auditoria');
+        if (cleanTarget === 'derecho') return cName.includes('derecho') && (cName.includes('mercantil') || cName.includes('laboral'));
+        if (cleanTarget === 'computacion') return cName.includes('computacion') && (cName.includes('3') || cName.includes('iii'));
+        if (cleanTarget === 'seminario') return cName.includes('seminario');
+
+        if (cleanTarget === 'costos') return cName.includes('costos');
+        if (cleanTarget === 'calculo') return cName.includes('calculo');
+        if (cleanTarget === 'ingles2') return cName.includes('ingles') && (cName.includes('2') || cName.includes('ii'));
+        if (cleanTarget === 'fiscal') return cName.includes('fiscal') || cName.includes('aduanera') || cName.includes('aduanal');
+        if (cleanTarget === 'finanzas') return cName.includes('finanzas');
+        if (cleanTarget === 'geografia') return cName.includes('geografia');
+        if (cleanTarget === 'catalogacion') return cName.includes('catalogacion') || cName.includes('archivo');
+        if (cleanTarget === 'mecanografia') return cName.includes('mecanografia');
+        if (cleanTarget === 'computacion2') return cName.includes('computacion') && (cName.includes('2') || cName.includes('ii'));
+
+        if (cleanTarget === 'sociedades') return cName.includes('sociedades');
+        if (cleanTarget === 'matematica') return cName.includes('matematica');
+        if (cleanTarget === 'derecho4') return cName.includes('fundamento') || (cName.includes('derecho') && !cName.includes('mercantil') && !cName.includes('laboral'));
+        if (cleanTarget === 'ingles1') return cName.includes('ingles') && (cName.includes('1') || cName.includes('i')) && !cName.includes('ii');
+        if (cleanTarget === 'redaccion') return cName.includes('redaccion') || cName.includes('correspondencia');
+        if (cleanTarget === 'economia') return cName.includes('economia');
+        if (cleanTarget === 'ortografia') return cName.includes('ortografia') || cName.includes('caligrafia');
+        if (cleanTarget === 'administracion') return cName.includes('administracion');
+        if (cleanTarget === 'computacion1') return cName.includes('computacion') && (cName.includes('1') || cName.includes('i')) && !cName.includes('ii') && !cName.includes('iii');
+
+        return false;
+    });
+
+    if (match) return match;
+
+    // 2. Si es vista consolidada general (claves 'c1'..'c10'), devolver por índice directo
+    if (colIdx !== undefined && info.courseGrades[colIdx]) {
+        return info.courseGrades[colIdx];
+    }
+
+    return null;
+}
+window.findStudentGradeForSubject = findStudentGradeForSubject;
+
 function getStudentAcademicInfo(student, periodOverride = null) {
     if (!student) {
         return {
@@ -13333,11 +13503,17 @@ function getStudentAcademicInfo(student, periodOverride = null) {
             const hasSem = subjects.some(sub => _cleanForMatch(sub).includes('seminario'));
             if (!hasPrac) subjects.push('Práctica Supervisada');
             if (!hasSem) subjects.push('Seminario');
+            if (typeof getPensumCatalogOrder === 'function') {
+                subjects.sort((a, b) => getPensumCatalogOrder(a, student.grade) - getPensumCatalogOrder(b, student.grade));
+            }
             if (subjects.length > 10) {
                 subjects = subjects.slice(0, 10);
             }
         }
     } else {
+        if (typeof getPensumCatalogOrder === 'function') {
+            subjects.sort((a, b) => getPensumCatalogOrder(a, student.grade) - getPensumCatalogOrder(b, student.grade));
+        }
         if (subjects.length > 9) {
             subjects = subjects.slice(0, 9);
         }
@@ -13387,6 +13563,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
             }
 
             const isSpecialSub = is6to && _isMateriaEspecial6to(sub);
+            const shortSubName = getSubjectShortDisplayName(sub);
 
             // ─── REGLA 6to Grado: Seminario y Práctica Supervisada (Evaluadas en 4to Bimestre B4) ───
             if (isSpecialSub) {
@@ -13401,6 +13578,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                     exoneratedCount++;
                     courseGrades.push({
                         name: sub,
+                        shortName: shortSubName,
                         score: 0,
                         scoreFormatted: 'Exon',
                         isExon: true
@@ -13420,6 +13598,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                     const sRound = Math.round(scoreB4 * 10) / 10;
                     courseGrades.push({
                         name: sub,
+                        shortName: shortSubName,
                         score: sRound,
                         scoreFormatted: Number.isInteger(sRound) ? sRound.toFixed(0) : sRound.toFixed(1),
                         isExon: false
@@ -13427,6 +13606,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                 } else {
                     courseGrades.push({
                         name: sub,
+                        shortName: shortSubName,
                         score: 0,
                         scoreFormatted: '—',
                         isExon: false
@@ -13443,6 +13623,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                     exoneratedCount++;
                     courseGrades.push({
                         name: sub,
+                        shortName: shortSubName,
                         score: 0,
                         scoreFormatted: 'Exon',
                         isExon: true
@@ -13460,6 +13641,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                     const sRound = Math.round(sc * 10) / 10;
                     courseGrades.push({
                         name: sub,
+                        shortName: shortSubName,
                         score: sRound,
                         scoreFormatted: Number.isInteger(sRound) ? sRound.toFixed(0) : sRound.toFixed(1),
                         isExon: false
@@ -13467,6 +13649,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                 } else {
                     courseGrades.push({
                         name: sub,
+                        shortName: shortSubName,
                         score: 0,
                         scoreFormatted: '—',
                         isExon: false
@@ -13482,6 +13665,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                     exoneratedCount++;
                     courseGrades.push({
                         name: sub,
+                        shortName: shortSubName,
                         score: 0,
                         scoreFormatted: 'Exon',
                         isExon: true
@@ -13499,6 +13683,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                     const sRound = Math.round(sc4 * 10) / 10;
                     courseGrades.push({
                         name: sub,
+                        shortName: shortSubName,
                         score: sRound,
                         scoreFormatted: Number.isInteger(sRound) ? sRound.toFixed(0) : sRound.toFixed(1),
                         isExon: false
@@ -13506,6 +13691,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                 } else {
                     courseGrades.push({
                         name: sub,
+                        shortName: shortSubName,
                         score: 0,
                         scoreFormatted: '—',
                         isExon: false
@@ -13521,6 +13707,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                     exoneratedCount++;
                     courseGrades.push({
                         name: sub,
+                        shortName: shortSubName,
                         score: 0,
                         scoreFormatted: 'Exon',
                         isExon: true
@@ -13538,6 +13725,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                     const sRound = Math.round(sc4 * 10) / 10;
                     courseGrades.push({
                         name: sub,
+                        shortName: shortSubName,
                         score: sRound,
                         scoreFormatted: Number.isInteger(sRound) ? sRound.toFixed(0) : sRound.toFixed(1),
                         isExon: false
@@ -13574,6 +13762,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                 const sRound = Math.round(cAvg * 10) / 10;
                 courseGrades.push({
                     name: sub,
+                    shortName: shortSubName,
                     score: sRound,
                     scoreFormatted: Number.isInteger(sRound) ? sRound.toFixed(0) : sRound.toFixed(1),
                     isExon: false
@@ -13581,6 +13770,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
             } else if (subExonUnits === maxUnits) {
                 courseGrades.push({
                     name: sub,
+                    shortName: shortSubName,
                     score: 0,
                     scoreFormatted: 'Exon',
                     isExon: true
@@ -13588,6 +13778,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
             } else {
                 courseGrades.push({
                     name: sub,
+                    shortName: shortSubName,
                     score: 0,
                     scoreFormatted: '—',
                     isExon: false
@@ -30442,6 +30633,7 @@ function loadHonorRoll() {
     const select = document.getElementById('honorRollTypeSelect');
     const periodSelect = document.getElementById('honorRollPeriodSelect');
     const tbody = document.getElementById('honorRollTableBody');
+    const thead = document.getElementById('honorRollTableHead');
     const titleText = document.getElementById('honorRollTitleText');
     if (!tbody || !select) return;
 
@@ -30502,6 +30694,26 @@ function loadHonorRoll() {
         });
     }
 
+    // Obtener las columnas dinámicas de clases según el filtro activo
+    const honorSubjectCols = _getHonorRollSubjectsForView(type);
+
+    // Actualizar encabezados dinámicos de la tabla para que cada materia tenga su columna
+    if (thead) {
+        thead.innerHTML = `
+            <tr>
+                <th style="width:55px; text-align:center;">Pos</th>
+                <th style="width:110px; text-align:center;">Código</th>
+                <th style="min-width:190px;">Estudiante (Apellidos y Nombres)</th>
+                <th style="width:95px; text-align:center;">Grado</th>
+                <th style="width:105px; text-align:center;">Carga</th>
+                ${honorSubjectCols.map(col => `<th style="text-align:center; min-width:85px; padding:6px 4px; font-size:0.8rem;" title="${escapeHtml(col.full)}">${escapeHtml(col.short)}</th>`).join('')}
+                <th style="width:130px; text-align:center;">Promedio Base 100</th>
+                <th style="width:140px; text-align:center;">Mérito Académico</th>
+                <th style="width:90px; text-align:center;">Acciones</th>
+            </tr>
+        `;
+    }
+
     // 🌟 REGLA FUNDAMENTAL DE INTEGRIDAD Y VISIBILIDAD:
     // Los estudiantes exonerados NUNCA deben borrarse de la lista.
     const evaluatedList = list.filter(s => {
@@ -30515,7 +30727,7 @@ function loadHonorRoll() {
     if (evaluatedList.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" style="text-align:center; padding:45px 20px; color:var(--text-muted);">
+                <td colspan="${5 + honorSubjectCols.length + 3}" style="text-align:center; padding:45px 20px; color:var(--text-muted);">
                     <i class="fa-solid fa-users" style="font-size:2.4rem; margin-bottom:12px; display:block; color:var(--brand-blue); opacity:0.8;"></i>
                     <strong style="font-size:1.1rem; color:var(--text-primary); display:block; margin-bottom:6px;">No se encontraron estudiantes elegibles en este período o grado</strong>
                     <span style="font-size:0.88rem; max-width:550px; display:inline-block; line-height:1.4;">
@@ -30623,17 +30835,37 @@ function loadHonorRoll() {
         const canExonerate = allowedExonRoles.includes((STATE.currentRole || '').toLowerCase());
         const actionBtn = canExonerate ? `<button type="button" class="btn btn-sm btn-outline-primary" style="padding:2px 8px; font-size:0.75rem;" onclick="openAcademicExonerationModal('${s.id}')" title="Configurar consideración individual o exoneración"><i class="fa-solid fa-user-shield"></i> Exonerar</button>` : '';
 
-        let classBadgesHtml = '';
-        if (info.courseGrades && info.courseGrades.length > 0) {
-            classBadgesHtml = `<div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:2px; justify-content:center; max-width:260px;">` +
-                info.courseGrades.map(cg => {
-                    const sc = cg.scoreFormatted;
-                    const bg = cg.isExon ? '#ccfbf1' : (cg.score >= 60 ? '#f1f5f9' : '#fee2e2');
-                    const col = cg.isExon ? '#0f766e' : (cg.score >= 60 ? '#1e293b' : '#b91c1c');
-                    return `<span class="badge" style="background:${bg}; color:${col}; font-size:0.65rem; padding:1px 4px; border:1px solid #cbd5e1;" title="${escapeHtml(cg.name)}">${escapeHtml(cg.name.slice(0, 4))}: ${sc}</span>`;
-                }).join('') +
-                `</div>`;
-        }
+        // Generar celdas individuales para cada clase
+        let subjectCellsHtml = '';
+        honorSubjectCols.forEach((col, cIdx) => {
+            const cg = findStudentGradeForSubject(info, col.key, cIdx);
+            if (cg) {
+                let cellVal = '—';
+                let cellStyle = 'background:#f8fafc; color:#64748b; border:1px solid #e2e8f0;';
+                if (cg.isExon) {
+                    cellVal = 'Exon';
+                    cellStyle = 'background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-weight:800;';
+                } else if (cg.score > 0) {
+                    cellVal = cg.scoreFormatted;
+                    if (cg.score >= 60) {
+                        cellStyle = 'background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-weight:800;';
+                    } else {
+                        cellStyle = 'background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; font-weight:800;';
+                    }
+                }
+                subjectCellsHtml += `
+                    <td style="text-align:center; padding:4px 3px;">
+                        <span class="badge" style="${cellStyle} font-size:0.82rem; padding:3px 6px; border-radius:4px; display:inline-block; min-width:34px;" title="${escapeHtml(cg.name)}: ${cellVal}">
+                            ${cellVal}
+                        </span>
+                    </td>
+                `;
+            } else {
+                subjectCellsHtml += `
+                    <td style="text-align:center; padding:4px 3px; color:#cbd5e1; font-size:0.85rem;">—</td>
+                `;
+            }
+        });
 
         return `
             <tr style="${!info.eligibleForHonorRoll ? 'background:#fff1f2; opacity:0.92;' : ''}">
@@ -30645,10 +30877,10 @@ function loadHonorRoll() {
                     <small style="color:var(--text-muted); font-size:0.75rem;">${formatStudentGradeAndSection(s)}</small>
                 </td>
                 <td style="text-align:center;">${loadBadge}</td>
+                ${subjectCellsHtml}
                 <td style="text-align:center;">
                     <strong style="color:${info.eligibleForHonorRoll ? 'var(--brand-green)' : (info.isExonerated ? '#0f766e' : '#b91c1c')}; font-size:1.15rem; font-variant-numeric:tabular-nums;">${info.average > 0 ? info.average.toFixed(3) + ' pts' : (info.isExonerated ? 'Exento' : '0.000 pts')}</strong>
                     <div style="font-size:0.72rem; color:var(--text-muted);">${(info.isExonerated && info.gradedClasses === 0) ? 'Calificación Exenta' : `Total: ${info.totalPoints}/${(info.gradedClasses || info.officialClassLoad) * 100} pts`}</div>
-                    ${classBadgesHtml}
                 </td>
                 <td style="text-align:center;">${badgeHtml}</td>
                 <td style="text-align:center; white-space:nowrap;">
@@ -30743,23 +30975,8 @@ function printHonorRoll() {
     const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || "Licda. Mirza Elizabeth Aragón Polanco");
     const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes("licda") ? "Directora del Plantel" : "Director del Plantel");
 
-    // Determinar columnas dinámicas de clases según el filtro y grado
-    let classHeaders = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C10'];
-    let classCountToRender = 10;
-
-    if (type === 'GROUP_6TO') {
-        classHeaders = ['BANC', 'GUB', 'O&M', 'AUD', 'ÉTIC', 'DER', 'ING', 'COMP', 'SEM', 'PRÁC'];
-        classCountToRender = 10;
-    } else if (type === 'GROUP_5TO') {
-        classHeaders = ['COST', 'CÁLC', 'EST', 'ING', 'FISC', 'FIN', 'GEOG', 'MECA', 'COMP'];
-        classCountToRender = 9;
-    } else if (type === 'GROUP_4TO') {
-        classHeaders = ['SOC', 'MAT', 'ADM', 'ECON', 'ORT', 'ING', 'LEG', 'RED', 'COMP'];
-        classCountToRender = 9;
-    } else {
-        classHeaders = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C10'];
-        classCountToRender = 10;
-    }
+    // Determinar columnas dinámicas de materias con nombres oficiales
+    const subjectCols = _getHonorRollSubjectsForView(type);
 
     let rankCounter = 0;
     const printRowsHtml = top30.map((s) => {
@@ -30780,8 +30997,8 @@ function printHonorRoll() {
         const exonTag = (info.isExonerated || info.exoneratedCount > 0) ? ` <span style="font-size:0.65rem; color:#0f766e; font-weight:700;">[Exon]</span>` : '';
 
         let classCellsHtml = '';
-        for (let cIdx = 0; cIdx < classCountToRender; cIdx++) {
-            const cg = (info.courseGrades && info.courseGrades[cIdx]) ? info.courseGrades[cIdx] : null;
+        subjectCols.forEach((col, cIdx) => {
+            const cg = findStudentGradeForSubject(info, col.key, cIdx);
             let scoreText = '—';
             let cellStyle = 'color:#64748b;';
             if (cg) {
@@ -30790,11 +31007,11 @@ function printHonorRoll() {
                     cellStyle = 'color:#0f766e; font-weight:700;';
                 } else if (cg.score > 0) {
                     scoreText = cg.scoreFormatted;
-                    cellStyle = (cg.score < 60) ? 'color:#dc2626; font-weight:700;' : 'color:#0f172a; font-weight:600;';
+                    cellStyle = (cg.score < 60) ? 'color:#dc2626; font-weight:700;' : 'color:#0f172a; font-weight:700;';
                 }
             }
             classCellsHtml += `<td class="col-c" style="${cellStyle}" title="${cg?.name ? escapeHtml(cg.name + ': ' + scoreText) : ''}">${scoreText}</td>`;
-        }
+        });
 
         return `
             <tr style="${!info.eligibleForHonorRoll ? 'background:#f0fdfa;' : ''}">
@@ -30822,8 +31039,8 @@ function printHonorRoll() {
             <title>${titleText} - Top 30 ENCCO Jutiapa</title>
             <style>
                 @page {
-                    size: letter portrait;
-                    margin: 4mm 5mm 4mm 5mm;
+                    size: letter landscape;
+                    margin: 4mm 6mm 4mm 6mm;
                 }
                 * { box-sizing: border-box; }
                 html, body {
@@ -30852,10 +31069,10 @@ function printHonorRoll() {
                     justify-content: space-between;
                     border-bottom: 2px solid #0369a1;
                     padding-bottom: 3px;
-                    margin-bottom: 4px;
+                    margin-bottom: 3px;
                     gap: 8px;
                 }
-                .report-header .logo-box { width: 40px; height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+                .report-header .logo-box { width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
                 .report-header .logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
                 .report-header .header-info { flex: 1; text-align: center; }
                 .report-header .header-info h1 { font-size: 9.5pt; font-weight: 900; color: #0369a1; text-transform: uppercase; margin: 0 0 1px 0; line-height: 1.1; }
@@ -30866,7 +31083,7 @@ function printHonorRoll() {
                     color: #ffffff;
                     font-size: 7.2pt;
                     font-weight: 800;
-                    padding: 1px 10px;
+                    padding: 1px 12px;
                     border-radius: 8px;
                     letter-spacing: 0.3px;
                     margin-top: 1px;
@@ -30880,9 +31097,9 @@ function printHonorRoll() {
                     border: 1px solid #bae6fd;
                     border-left: 3px solid #0284c7;
                     padding: 2.5px 6px;
-                    font-size: 6.2pt;
+                    font-size: 6.1pt;
                     color: #0369a1;
-                    margin-bottom: 4px;
+                    margin-bottom: 3px;
                     border-radius: 3px;
                     line-height: 1.2;
                     -webkit-print-color-adjust: exact !important;
@@ -30893,7 +31110,7 @@ function printHonorRoll() {
                     width: 100% !important;
                     border-collapse: collapse;
                     table-layout: fixed;
-                    margin-bottom: 4px;
+                    margin-bottom: 3px;
                 }
                 table.honor-roll-table thead {
                     display: table-header-group !important;
@@ -30906,8 +31123,8 @@ function printHonorRoll() {
                     background-color: #0369a1 !important;
                     color: #ffffff !important;
                     font-weight: 800;
-                    font-size: 6.5pt;
-                    padding: 2.5px 1px;
+                    font-size: 6.2pt;
+                    padding: 2.5px 2px;
                     border: 1px solid #0f172a;
                     text-transform: uppercase;
                     text-align: center;
@@ -30916,7 +31133,7 @@ function printHonorRoll() {
                 }
                 table.honor-roll-table td {
                     border: 1px solid #cbd5e1;
-                    padding: 1.8px 1px;
+                    padding: 1.8px 2px;
                     font-size: 6.5pt;
                     vertical-align: middle;
                     line-height: 1.15;
@@ -30929,43 +31146,57 @@ function printHonorRoll() {
 
                 .col-pos { width: 24px; text-align: center; font-weight: 800; }
                 .col-name {
+                    width: 175px;
                     text-align: left;
                     font-weight: 700;
-                    padding-left: 4px;
+                    padding-left: 5px;
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
                 }
-                .col-grade { width: 28px; text-align: center; font-weight: 800; color: #0369a1; font-size: 6.8pt; }
-                .col-c { width: 23px; text-align: center; font-variant-numeric: tabular-nums; }
+                .col-grade { width: 34px; text-align: center; font-weight: 800; color: #0369a1; font-size: 6.8pt; }
+                .col-c { text-align: center; font-variant-numeric: tabular-nums; }
                 .col-avg {
-                    width: 54px;
+                    width: 60px;
                     text-align: center;
                     font-weight: 800;
-                    font-size: 7pt;
+                    font-size: 7.2pt;
                     color: #15803d;
                     font-variant-numeric: tabular-nums;
+                }
+
+                .pensum-legend {
+                    margin-top: 3px;
+                    padding: 2.5px 6px;
+                    background: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 3px;
+                    font-size: 5.4pt;
+                    color: #334155;
+                    line-height: 1.25;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
                 }
 
                 .signatures-container {
                     display: flex;
                     justify-content: space-around;
                     align-items: flex-end;
-                    margin-top: 6px;
-                    padding-top: 4px;
+                    margin-top: 5px;
+                    padding-top: 3px;
                     break-inside: avoid !important;
                     page-break-inside: avoid !important;
                 }
-                .signature-block { width: 180px; text-align: center; font-size: 7.5pt; }
+                .signature-block { width: 190px; text-align: center; font-size: 7.2pt; }
                 .signature-line { border-top: 1px solid #000000; margin-bottom: 2px; padding-top: 2px; }
                 .signature-title { font-weight: 800; color: #0f172a; font-size: 6.8pt; }
                 .signature-subtitle { font-size: 6pt; color: #64748b; }
 
                 .footer-stamp {
-                    margin-top: 3px;
+                    margin-top: 2px;
                     display: flex;
                     justify-content: space-between;
-                    font-size: 5.8pt;
+                    font-size: 5.6pt;
                     color: #64748b;
                     border-top: 1px dotted #cbd5e1;
                     padding-top: 2px;
@@ -31007,7 +31238,7 @@ function printHonorRoll() {
                     </div>
 
                     <div class="balance-notice">
-                        ⚖️ <strong>Criterio Oficial de Nivelación a Base 100:</strong> <strong>6.º Grado</strong> se nivela sobre sus <strong>10 clases</strong> (8 clases ordinarias en B1–B3 + Seminario y Práctica Supervisada en 4.º Bimestre &divide; 10 = Base 100; o &divide; 8 en bimestres individuales B1–B3 y &divide; 2 en 4.º Bimestre exclusivo), y <strong>4.º y 5.º Grado</strong> se nivelan sobre sus <strong>9 clases (&divide; 9 = Base 100)</strong>. C1–C10 reflejan los promedios de cada materia. Todos los promedios se expresan a <strong>3 decimales</strong> sobre Base 100 puntos.
+                        ⚖️ <strong>Criterio Oficial de Nivelación a Base 100:</strong> <strong>6.º Grado</strong> se nivela sobre sus <strong>10 clases oficiales</strong> (8 clases ordinarias en B1–B3 + Seminario y Práctica Supervisada en 4.º Bimestre &divide; 10 = Base 100; o &divide; 8 en bimestres B1–B3 y &divide; 2 en B4 exclusivo), y <strong>4.º y 5.º Grado</strong> se nivelan sobre sus <strong>9 clases oficiales (&divide; 9 = Base 100)</strong>. Las columnas reflejan la calificación oficial obtenida en cada clase según el orden oficial del CNB. Todos los promedios se expresan a <strong>3 decimales</strong> sobre Base 100 puntos.
                     </div>
 
                     <table class="honor-roll-table">
@@ -31016,7 +31247,7 @@ function printHonorRoll() {
                                 <th class="col-pos">Pos</th>
                                 <th class="col-name">Nombre Completo del Estudiante</th>
                                 <th class="col-grade">Grado</th>
-                                ${classHeaders.map(ch => `<th class="col-c" title="${ch}">${ch}</th>`).join('')}
+                                ${subjectCols.map(col => `<th class="col-c" title="${escapeHtml(col.full)}">${escapeHtml(col.short)}</th>`).join('')}
                                 <th class="col-avg">Promedio</th>
                             </tr>
                         </thead>
@@ -31024,6 +31255,13 @@ function printHonorRoll() {
                             ${printRowsHtml}
                         </tbody>
                     </table>
+
+                    <div class="pensum-legend">
+                        <strong>📚 Pensum Oficial CNB de Perito Contador (ENCCO Jutiapa):</strong><br>
+                        <strong>6.º Grado (10 clases):</strong> 1. Contabilidad Bancaria | 2. Contabilidad Gubernamental e Integrada | 3. Estadística Comercial | 4. Organización de Empresas | 5. Ética Profesional y Relaciones Humanas | 6. Práctica Supervisada | 7. Auditoría | 8. Derecho Mercantil y Laboral | 9. Computación III | 10. Seminario.<br>
+                        <strong>5.º Grado (9 clases):</strong> 1. Contabilidad de Costos | 2. Cálculo Mercantil y Financiero | 3. Inglés Comercial II | 4. Legislación Fiscal y Aduanera | 5. Finanzas Públicas | 6. Geografía Económica | 7. Catalogación y Archivo | 8. Mecanografía | 9. Computación II.<br>
+                        <strong>4.º Grado (9 clases):</strong> 1. Contabilidad de Sociedades | 2. Matemática Comercial | 3. Fundamentos de Derecho | 4. Inglés Comercial I | 5. Redacción y Correspondencia | 6. Introducción a la Economía | 7. Ortografía y Caligrafía | 8. Administración y Organización de Empresas | 9. Computación I.
+                    </div>
                 </div>
 
                 <div>
