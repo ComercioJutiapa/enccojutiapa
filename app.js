@@ -13294,54 +13294,54 @@ function _getHonorRollSubjectsForView(type) {
 
     if (gradeNum === '6') {
         return [
-            { key: 'bancaria', short: 'Cont. Bancaria', full: 'Contabilidad Bancaria' },
-            { key: 'gubernamental', short: 'Cont. Gubernamental', full: 'Contabilidad Gubernamental e Integrada' },
-            { key: 'estadistica', short: 'Estadística', full: 'Estadística Comercial' },
-            { key: 'organizacion', short: 'Org. Empresas', full: 'Organización de Empresas' },
-            { key: 'etica', short: 'Ética Prof.', full: 'Ética Profesional y Relaciones Humanas' },
-            { key: 'practica', short: 'Práctica Superv.', full: 'Práctica Supervisada' },
-            { key: 'auditoria', short: 'Auditoría', full: 'Auditoría' },
-            { key: 'derecho', short: 'Derecho Merc.', full: 'Derecho Mercantil y Laboral' },
-            { key: 'computacion', short: 'Computación III', full: 'Computación III' },
-            { key: 'seminario', short: 'Seminario', full: 'Seminario sobre Problemas Socioeconómicos de Guatemala' }
+            { key: 'bancaria', short: 'BAN', full: 'Contabilidad Bancaria' },
+            { key: 'gubernamental', short: 'GUB', full: 'Contabilidad Gubernamental e Integrada' },
+            { key: 'estadistica', short: 'EST', full: 'Estadística Comercial' },
+            { key: 'organizacion', short: 'ORG', full: 'Organización de Empresas' },
+            { key: 'etica', short: 'ÉTI', full: 'Ética Profesional y Relaciones Humanas' },
+            { key: 'practica', short: 'PRÁ', full: 'Práctica Supervisada' },
+            { key: 'auditoria', short: 'AUD', full: 'Auditoría' },
+            { key: 'derecho', short: 'DER', full: 'Derecho Mercantil y Laboral' },
+            { key: 'computacion', short: 'COM', full: 'Computación III' },
+            { key: 'seminario', short: 'SEM', full: 'Seminario sobre Problemas Socioeconómicos de Guatemala' }
         ];
     } else if (gradeNum === '5') {
         return [
-            { key: 'costos', short: 'Cont. Costos', full: 'Contabilidad de Costos' },
-            { key: 'calculo', short: 'Cálculo Mercantil', full: 'Cálculo Mercantil y Financiero' },
-            { key: 'ingles2', short: 'Inglés II', full: 'Inglés Comercial II' },
-            { key: 'fiscal', short: 'Legislación Fiscal', full: 'Legislación Fiscal y Aduanera' },
-            { key: 'finanzas', short: 'Finanzas Públicas', full: 'Finanzas Públicas' },
-            { key: 'geografia', short: 'Geografía Econ.', full: 'Geografía Económica' },
-            { key: 'catalogacion', short: 'Catalogación y Arch.', full: 'Catalogación y Archivo' },
-            { key: 'mecanografia', short: 'Mecanografía', full: 'Mecanografía' },
-            { key: 'computacion2', short: 'Computación II', full: 'Computación II' }
+            { key: 'costos', short: 'COS', full: 'Contabilidad de Costos' },
+            { key: 'calculo', short: 'CÁL', full: 'Cálculo Mercantil y Financiero' },
+            { key: 'ingles2', short: 'IN2', full: 'Inglés Comercial II' },
+            { key: 'fiscal', short: 'FIS', full: 'Legislación Fiscal y Aduanera' },
+            { key: 'finanzas', short: 'FIN', full: 'Finanzas Públicas' },
+            { key: 'geografia', short: 'GEO', full: 'Geografía Económica' },
+            { key: 'catalogacion', short: 'CAT', full: 'Catalogación y Archivo' },
+            { key: 'mecanografia', short: 'MEC', full: 'Mecanografía' },
+            { key: 'computacion2', short: 'COM', full: 'Computación II' }
         ];
     } else if (gradeNum === '4') {
         return [
-            { key: 'sociedades', short: 'Cont. Sociedades', full: 'Contabilidad de Sociedades' },
-            { key: 'matematica', short: 'Matemática Com.', full: 'Matemática Comercial' },
-            { key: 'derecho4', short: 'Fund. Derecho', full: 'Fundamentos de Derecho' },
-            { key: 'ingles1', short: 'Inglés I', full: 'Inglés Comercial I' },
-            { key: 'redaccion', short: 'Redacción y Corresp.', full: 'Redacción y Correspondencia Mercantil' },
-            { key: 'economia', short: 'Intr. Economía', full: 'Introducción a la Economía' },
-            { key: 'ortografia', short: 'Ortografía y Calig.', full: 'Ortografía y Caligrafía' },
-            { key: 'administracion', short: 'Admón. Empresas', full: 'Administración y Organización de Empresas' },
-            { key: 'computacion1', short: 'Computación I', full: 'Computación I' }
+            { key: 'sociedades', short: 'SOC', full: 'Contabilidad de Sociedades' },
+            { key: 'matematica', short: 'MAT', full: 'Matemática Comercial' },
+            { key: 'derecho4', short: 'DER', full: 'Fundamentos de Derecho' },
+            { key: 'ingles1', short: 'IN1', full: 'Inglés Comercial I' },
+            { key: 'redaccion', short: 'RED', full: 'Redacción y Correspondencia Mercantil' },
+            { key: 'economia', short: 'ECO', full: 'Introducción a la Economía' },
+            { key: 'ortografia', short: 'ORT', full: 'Ortografía y Caligrafía' },
+            { key: 'administracion', short: 'ADM', full: 'Administración y Organización de Empresas' },
+            { key: 'computacion1', short: 'COM', full: 'Computación I' }
         ];
     } else {
         // Vista general / toda la escuela
         return [
-            { key: 'c1', short: 'Clase 1: Contabilidad', full: 'Clase 1: Contabilidad (Bancaria / Costos / Sociedades)' },
-            { key: 'c2', short: 'Clase 2: Cálculo/Matem.', full: 'Clase 2: Cálculo Mercantil / Matemática Comercial / Cont. Gubernamental' },
-            { key: 'c3', short: 'Clase 3: Inglés/Estad.', full: 'Clase 3: Estadística / Inglés II / Fundamentos de Derecho' },
-            { key: 'c4', short: 'Clase 4: Org./Fiscal/Ing.', full: 'Clase 4: Organización de Empresas / Legislación Fiscal / Inglés I' },
-            { key: 'c5', short: 'Clase 5: Ética/Finanzas/Red.', full: 'Clase 5: Ética Profesional / Finanzas Públicas / Redacción' },
-            { key: 'c6', short: 'Clase 6: Práctica/Geog./Econ.', full: 'Clase 6: Práctica Supervisada / Geografía Económica / Economía' },
-            { key: 'c7', short: 'Clase 7: Auditoría/Cat./Ort.', full: 'Clase 7: Auditoría / Catalogación y Archivo / Ortografía' },
-            { key: 'c8', short: 'Clase 8: Derecho/Meca/Adm.', full: 'Clase 8: Derecho Mercantil / Mecanografía / Administración' },
-            { key: 'c9', short: 'Clase 9: Computación', full: 'Clase 9: Computación (I, II o III)' },
-            { key: 'c10', short: 'Clase 10: Seminario (6to)', full: 'Clase 10: Seminario (Exclusivo 6to Grado)' }
+            { key: 'c1', short: 'C01', full: 'Clase 1: Contabilidad (Bancaria / Costos / Sociedades)' },
+            { key: 'c2', short: 'C02', full: 'Clase 2: Cálculo Mercantil / Matemática Comercial / Cont. Gubernamental' },
+            { key: 'c3', short: 'C03', full: 'Clase 3: Estadística / Inglés II / Fundamentos de Derecho' },
+            { key: 'c4', short: 'C04', full: 'Clase 4: Organización de Empresas / Legislación Fiscal / Inglés I' },
+            { key: 'c5', short: 'C05', full: 'Clase 5: Ética Profesional / Finanzas Públicas / Redacción' },
+            { key: 'c6', short: 'C06', full: 'Clase 6: Práctica Supervisada / Geografía Económica / Economía' },
+            { key: 'c7', short: 'C07', full: 'Clase 7: Auditoría / Catalogación y Archivo / Ortografía' },
+            { key: 'c8', short: 'C08', full: 'Clase 8: Derecho Mercantil / Mecanografía / Administración' },
+            { key: 'c9', short: 'C09', full: 'Clase 9: Computación (I, II o III)' },
+            { key: 'c10', short: 'C10', full: 'Clase 10: Seminario (Exclusivo 6to Grado)' }
         ];
     }
 }
@@ -30701,15 +30701,15 @@ function loadHonorRoll() {
     if (thead) {
         thead.innerHTML = `
             <tr>
-                <th style="width:55px; text-align:center;">Pos</th>
-                <th style="width:110px; text-align:center;">Código</th>
-                <th style="min-width:190px;">Estudiante (Apellidos y Nombres)</th>
-                <th style="width:95px; text-align:center;">Grado</th>
-                <th style="width:105px; text-align:center;">Carga</th>
-                ${honorSubjectCols.map(col => `<th style="text-align:center; min-width:85px; padding:6px 4px; font-size:0.8rem;" title="${escapeHtml(col.full)}">${escapeHtml(col.short)}</th>`).join('')}
-                <th style="width:130px; text-align:center;">Promedio Base 100</th>
-                <th style="width:140px; text-align:center;">Mérito Académico</th>
-                <th style="width:90px; text-align:center;">Acciones</th>
+                <th style="width:40px; text-align:center;">Pos</th>
+                <th style="width:90px; text-align:center;">Código</th>
+                <th style="min-width:160px;">Estudiante (Apellidos y Nombres)</th>
+                <th style="width:45px; text-align:center;">Grd</th>
+                <th style="width:50px; text-align:center;">Carga</th>
+                ${honorSubjectCols.map(col => `<th style="text-align:center; width:36px; min-width:36px; padding:5px 2px; font-size:0.75rem;" title="${escapeHtml(col.full)}">${escapeHtml(col.short)}</th>`).join('')}
+                <th style="width:115px; text-align:center;">Promedio</th>
+                <th style="width:130px; text-align:center;">Mérito</th>
+                <th style="width:75px; text-align:center;">Acciones</th>
             </tr>
         `;
     }
@@ -30793,16 +30793,16 @@ function loadHonorRoll() {
 
         if (!info.eligibleForHonorRoll) {
             if (info.isExonerated || info.exoneratedCount > 0) {
-                posBadge = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-size:0.75rem; font-weight:700;"><i class="fa-solid fa-user-shield"></i> Exonerado</span>`;
-                badgeHtml = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-weight:700;"><i class="fa-solid fa-user-shield"></i> Exonerado (Sin Cuadro)</span>`;
+                posBadge = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-size:0.75rem; font-weight:700;"><i class="fa-solid fa-user-shield"></i> Exon.</span>`;
+                badgeHtml = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-weight:700;"><i class="fa-solid fa-user-shield"></i> Exonerado</span>`;
             } else {
                 const reasonTitle = info.failedSubjectsList.length > 0
                     ? `Materias reprobadas: ${info.failedSubjectsList.join(', ')}`
                     : `Clases calificadas: ${info.gradedClasses}/${info.officialClassLoad}`;
-                posBadge = `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-size:0.75rem;"><i class="fa-solid fa-ban"></i> No Elegible</span>`;
+                posBadge = `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-size:0.75rem;"><i class="fa-solid fa-ban"></i> N/E</span>`;
                 badgeHtml = info.failedSubjectsList.length > 0
-                    ? `<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #f87171; font-weight:700;" title="${escapeHtml(reasonTitle)}"><i class="fa-solid fa-triangle-exclamation"></i> Nota &lt; 60 pts (${info.failedSubjectsList.length})</span>`
-                    : `<span class="badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-weight:700;" title="${escapeHtml(reasonTitle)}"><i class="fa-solid fa-clock"></i> Carga Incompleta (${info.gradedClasses}/${info.officialClassLoad})</span>`;
+                    ? `<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #f87171; font-weight:700;" title="${escapeHtml(reasonTitle)}"><i class="fa-solid fa-triangle-exclamation"></i> &lt; 60 pts (${info.failedSubjectsList.length})</span>`
+                    : `<span class="badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-weight:700;" title="${escapeHtml(reasonTitle)}"><i class="fa-solid fa-clock"></i> Incompleto (${info.gradedClasses}/${info.officialClassLoad})</span>`;
             }
         } else {
             const rankIdx = eligibleCounter;
@@ -30824,18 +30824,19 @@ function loadHonorRoll() {
             }
         }
 
-        const loadBadge = `<span class="badge" style="background:${info.is6to ? '#fef3c7' : '#e0f2fe'}; color:${info.is6to ? '#92400e' : '#0369a1'}; font-weight:700; border:1px solid ${info.is6to ? '#fde68a' : '#bae6fd'};">${escapeHtml(info.classLoadLabel)}</span>`;
+        const shortLoadLabel = info.is6to ? (info.officialClassLoad + ' Cl.') : '9 Cl.';
+        const loadBadge = `<span class="badge" style="background:${info.is6to ? '#fef3c7' : '#e0f2fe'}; color:${info.is6to ? '#92400e' : '#0369a1'}; font-weight:700; border:1px solid ${info.is6to ? '#fde68a' : '#bae6fd'}; white-space:nowrap; font-size:0.75rem;" title="${escapeHtml(info.classLoadLabel)}">${shortLoadLabel}</span>`;
 
         let exonBadges = '';
         if (info.exoneratedCount > 0) {
-            exonBadges = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-size:0.75rem; margin-right:4px;" title="Tiene ${info.exoneratedCount} consideración(es) o exoneración(es)"><i class="fa-solid fa-user-shield"></i> Exonerado</span>`;
+            exonBadges = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-size:0.72rem; margin-right:3px;" title="Tiene ${info.exoneratedCount} consideración(es) o exoneración(es)"><i class="fa-solid fa-user-shield"></i> Exon</span>`;
         }
 
         const allowedExonRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
         const canExonerate = allowedExonRoles.includes((STATE.currentRole || '').toLowerCase());
-        const actionBtn = canExonerate ? `<button type="button" class="btn btn-sm btn-outline-primary" style="padding:2px 8px; font-size:0.75rem;" onclick="openAcademicExonerationModal('${s.id}')" title="Configurar consideración individual o exoneración"><i class="fa-solid fa-user-shield"></i> Exonerar</button>` : '';
+        const actionBtn = canExonerate ? `<button type="button" class="btn btn-sm btn-outline-primary" style="padding:2px 6px; font-size:0.72rem;" onclick="openAcademicExonerationModal('${s.id}')" title="Configurar consideración individual o exoneración"><i class="fa-solid fa-user-shield"></i> Exonerar</button>` : '';
 
-        // Generar celdas individuales para cada clase
+        // Generar celdas ultra-compactas individuales para cada clase
         let subjectCellsHtml = '';
         honorSubjectCols.forEach((col, cIdx) => {
             const cg = findStudentGradeForSubject(info, col.key, cIdx);
@@ -30854,35 +30855,33 @@ function loadHonorRoll() {
                     }
                 }
                 subjectCellsHtml += `
-                    <td style="text-align:center; padding:4px 3px;">
-                        <span class="badge" style="${cellStyle} font-size:0.82rem; padding:3px 6px; border-radius:4px; display:inline-block; min-width:34px;" title="${escapeHtml(cg.name)}: ${cellVal}">
+                    <td style="text-align:center; padding:3px 1px; width:36px;">
+                        <span class="badge" style="${cellStyle} font-size:0.78rem; padding:2px 3px; border-radius:3px; display:inline-block; min-width:28px;" title="${escapeHtml(cg.name)}: ${cellVal}">
                             ${cellVal}
                         </span>
                     </td>
                 `;
             } else {
                 subjectCellsHtml += `
-                    <td style="text-align:center; padding:4px 3px; color:#cbd5e1; font-size:0.85rem;">—</td>
+                    <td style="text-align:center; padding:3px 1px; color:#cbd5e1; font-size:0.8rem; width:36px;">—</td>
                 `;
             }
         });
 
         return `
             <tr style="${!info.eligibleForHonorRoll ? 'background:#fff1f2; opacity:0.92;' : ''}">
-                <td style="text-align:center;">${posBadge}</td>
-                <td style="text-align:center;"><code>${s.personalCode || '—'}</code></td>
-                <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
-                <td>
-                    <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800; font-size:0.85rem; margin-right:4px;">${formatStudentGradeAndSectionShort(s)}</span>
-                    <small style="color:var(--text-muted); font-size:0.75rem;">${formatStudentGradeAndSection(s)}</small>
+                <td style="text-align:center; white-space:nowrap;">${posBadge}</td>
+                <td style="text-align:center; white-space:nowrap;"><code>${s.personalCode || '—'}</code></td>
+                <td style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:210px;" title="${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}"><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
+                <td style="text-align:center; white-space:nowrap;">
+                    <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800; font-size:0.85rem;" title="${escapeHtml(formatStudentGradeAndSection(s))}">${formatStudentGradeAndSectionShort(s)}</span>
                 </td>
-                <td style="text-align:center;">${loadBadge}</td>
+                <td style="text-align:center; white-space:nowrap;">${loadBadge}</td>
                 ${subjectCellsHtml}
-                <td style="text-align:center;">
-                    <strong style="color:${info.eligibleForHonorRoll ? 'var(--brand-green)' : (info.isExonerated ? '#0f766e' : '#b91c1c')}; font-size:1.15rem; font-variant-numeric:tabular-nums;">${info.average > 0 ? info.average.toFixed(3) + ' pts' : (info.isExonerated ? 'Exento' : '0.000 pts')}</strong>
-                    <div style="font-size:0.72rem; color:var(--text-muted);">${(info.isExonerated && info.gradedClasses === 0) ? 'Calificación Exenta' : `Total: ${info.totalPoints}/${(info.gradedClasses || info.officialClassLoad) * 100} pts`}</div>
+                <td style="text-align:center; white-space:nowrap;" title="${(info.isExonerated && info.gradedClasses === 0) ? 'Calificación Exenta' : `Total: ${info.totalPoints}/${(info.gradedClasses || info.officialClassLoad) * 100} pts`}">
+                    <strong style="color:${info.eligibleForHonorRoll ? 'var(--brand-green)' : (info.isExonerated ? '#0f766e' : '#b91c1c')}; font-size:1.02rem; font-variant-numeric:tabular-nums;">${info.average > 0 ? info.average.toFixed(3) + ' pts' : (info.isExonerated ? 'Exento' : '0.000 pts')}</strong>
                 </td>
-                <td style="text-align:center;">${badgeHtml}</td>
+                <td style="text-align:center; white-space:nowrap;">${badgeHtml}</td>
                 <td style="text-align:center; white-space:nowrap;">
                     ${exonBadges}
                     ${actionBtn || (exonBadges ? '' : '<span style="color:var(--text-muted); font-size:0.8rem;">—</span>')}
