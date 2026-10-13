@@ -14075,22 +14075,20 @@ function openStudentProfileModal(id) {
         retDate.readOnly = !canEdit;
     }
 
-    // 3. Pestaña 2: Incidencias, Inasistencias y Disciplina
-    const discList = (STATE.disciplineReports || []).filter(d => d.studentId === id || (student.carne && d.carne === student.carne));
-    const attAlerts = (STATE.attendanceAlerts || []).filter(a => {
-        if (!a) return false;
-        if (a.studentId && a.studentId === id) return true;
-        if (student.carne && a.carne && a.carne === student.carne) return true;
-        const sFullName = formatStudentDisplayName(student, 'lastFirst').toLowerCase();
-        if (a.studentName && sFullName.includes(a.studentName.toLowerCase())) return true;
-        return false;
-    });
-
-    const currentMonth = new Date().getMonth() + 1;
-    const monthAbsencesCount = (typeof getStudentMonthAbsenceDays === 'function') ? getStudentMonthAbsenceDays(id, currentMonth) : 0;
-    const totalCycleAbsences = Math.max(attAlerts.filter(a => a.status !== 'corregida').length, monthAbsencesCount);
-    const justifiedCount = attAlerts.filter(a => a.status === 'justificada').length;
-    const totalIncidents = discList.length + totalCycleAbsences;
+    // 3. Consolidación Dinámica Integral: Asistencia, Inasistencias, Tardanzas, Permisos ("J" y "A" Blindada), Disciplina y Bitácora
+    const fullRecord = getStudentFullAttendanceAndDisciplineData(student);
+    const discList = fullRecord.discList;
+    const attAlerts = fullRecord.attAlerts;
+    const totalCycleAbsences = fullRecord.totalAbsences;
+    const lockedAbsencesCount = fullRecord.lockedAbsencesCount;
+    const tardiesCount = fullRecord.tardiesCount;
+    const justifiedCount = fullRecord.justifiedCount;
+    const presentCount = fullRecord.presentCount;
+    const attendancePercent = fullRecord.attendancePercent;
+    const annotationsList = fullRecord.annotationsList;
+    const unifiedAttEvents = fullRecord.unifiedAttEvents;
+    const monthAbsencesCount = fullRecord.monthAbsencesCount;
+    const totalIncidents = discList.length + totalCycleAbsences + tardiesCount;
 
     // Badges en cabecera del perfil
     const countBadge = document.getElementById('profDisciplineCount');
@@ -14099,14 +14097,18 @@ function openStudentProfileModal(id) {
     const absBadge = document.getElementById('profAbsencesBadge');
     const absBadgeText = document.getElementById('profAbsencesBadgeText');
     if (absBadge && absBadgeText) {
-        if (totalCycleAbsences > 0) {
+        if (totalCycleAbsences > 0 || tardiesCount > 0) {
             absBadge.style.display = 'inline-flex';
-            absBadgeText.textContent = `${totalCycleAbsences} Inasistencia${totalCycleAbsences > 1 ? 's' : ''}`;
-            if (monthAbsencesCount >= 3) {
+            const parts = [];
+            if (totalCycleAbsences > 0) parts.push(`${totalCycleAbsences} Inasistencia${totalCycleAbsences > 1 ? 's' : ''}`);
+            if (lockedAbsencesCount > 0) parts.push(`🔒 ${lockedAbsencesCount} Blindada${lockedAbsencesCount > 1 ? 's' : ''}`);
+            if (tardiesCount > 0) parts.push(`${tardiesCount} Tardanza${tardiesCount > 1 ? 's' : ''}`);
+            absBadgeText.textContent = parts.join(' • ');
+            if (totalCycleAbsences >= 3 || lockedAbsencesCount > 0) {
                 absBadge.style.background = '#fee2e2';
                 absBadge.style.color = '#991b1b';
                 absBadge.style.borderColor = '#fca5a5';
-                absBadge.title = `Estudiante en riesgo: ${monthAbsencesCount} inasistencias este mes`;
+                absBadge.title = `Atención prioritaria: ${totalCycleAbsences} inasistencia(s) acumulada(s)`;
             } else {
                 absBadge.style.background = '#fef3c7';
                 absBadge.style.color = '#92400e';
@@ -14119,79 +14121,184 @@ function openStudentProfileModal(id) {
 
     // KPIs dentro de la Pestaña 2
     const elKpiTotAbs = document.getElementById('profKpiTotalAbsences');
+    const elKpiLockedAbs = document.getElementById('profKpiLockedAbsences');
     const elKpiMonAbs = document.getElementById('profKpiMonthAbsences');
     const elKpiJust = document.getElementById('profKpiJustifiedAbsences');
     const elKpiDisc = document.getElementById('profKpiDisciplineCount');
     if (elKpiTotAbs) elKpiTotAbs.textContent = totalCycleAbsences;
-    if (elKpiMonAbs) elKpiMonAbs.textContent = monthAbsencesCount || attAlerts.filter(a => a.status === 'pendiente' || !a.status).length;
+    if (elKpiLockedAbs) elKpiLockedAbs.textContent = lockedAbsencesCount;
+    if (elKpiMonAbs) elKpiMonAbs.textContent = tardiesCount;
     if (elKpiJust) elKpiJust.textContent = justifiedCount;
     if (elKpiDisc) elKpiDisc.textContent = discList.length;
 
-    // Renderizar Historial de Inasistencias en Aula
+    // Renderizar Resumen Integral en Pestaña 1 (Ficha de Datos Personales)
+    const quickSummaryBox = document.getElementById('profDataQuickSummaryBox');
+    if (quickSummaryBox) {
+        const hasGraveDiscipline = discList.some(d => d.severity === 'Grave' || d.severity === 'Muy Grave');
+        let semaforoBg = '#dcfce7';
+        let semaforoBorder = '#86efac';
+        let semaforoColor = '#166534';
+        let semaforoIcon = 'fa-shield-heart';
+        let semaforoLabel = 'Conducta y Asistencia Óptima';
+
+        if (totalCycleAbsences >= 5 || lockedAbsencesCount > 0 || hasGraveDiscipline || discList.length >= 3) {
+            semaforoBg = '#fee2e2';
+            semaforoBorder = '#fca5a5';
+            semaforoColor = '#991b1b';
+            semaforoIcon = 'fa-triangle-exclamation';
+            semaforoLabel = 'Alerta de Seguimiento / Citación';
+        } else if (totalCycleAbsences >= 2 || tardiesCount >= 2 || discList.length >= 1) {
+            semaforoBg = '#fef3c7';
+            semaforoBorder = '#fde047';
+            semaforoColor = '#92400e';
+            semaforoIcon = 'fa-circle-exclamation';
+            semaforoLabel = 'Atención Preventiva';
+        }
+
+        const recentHighlights = fullRecord.recentHighlights || [];
+        const canManagePerms = ['admin', 'super_usuario', 'director', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes((STATE.currentRole || '').toLowerCase());
+
+        quickSummaryBox.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid #cbd5e1;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="width:34px; height:34px; border-radius:8px; background:#0f172a; color:#fff; display:flex; align-items:center; justify-content:center; font-size:1rem;">
+                        <i class="fa-solid fa-chart-pie"></i>
+                    </div>
+                    <div>
+                        <h4 style="margin:0; font-size:0.94rem; font-weight:800; color:#0f172a;">Resumen Integral de Asistencia, Faltas y Disciplina</h4>
+                        <p style="margin:1px 0 0 0; font-size:0.75rem; color:#475569;">Sincronizado en tiempo real con listas de asistencia, Auxiliatura y Dirección (Ciclo ${STATE.activeCycle || '2026'})</p>
+                    </div>
+                </div>
+                <span class="badge" style="background:${semaforoBg}; color:${semaforoColor}; border:1px solid ${semaforoBorder}; font-size:0.76rem; font-weight:800; padding:5px 10px; display:inline-flex; align-items:center; gap:6px;">
+                    <i class="fa-solid ${semaforoIcon}"></i> ${semaforoLabel}
+                </span>
+            </div>
+
+            <!-- Tarjetas KPI Directas en la Ficha -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:8px; margin-bottom:12px;">
+                <div style="background:#ffffff; border:1px solid #cbd5e1; border-top:3px solid #0284c7; border-radius:8px; padding:7px 8px; text-align:center;">
+                    <div style="font-size:0.65rem; font-weight:800; color:#475569; text-transform:uppercase;">% Asistencia</div>
+                    <div style="font-size:1.15rem; font-weight:900; color:#0369a1;">${attendancePercent}%</div>
+                    <div style="font-size:0.65rem; color:#64748b;">${presentCount} presente(s)</div>
+                </div>
+                <div style="background:#ffffff; border:1px solid #fecaca; border-top:3px solid #dc2626; border-radius:8px; padding:7px 8px; text-align:center; cursor:pointer;" onclick="switchStudentProfileTab('discipline')" title="Ver detalle de inasistencias">
+                    <div style="font-size:0.65rem; font-weight:800; color:#991b1b; text-transform:uppercase;">Inasistencias (A)</div>
+                    <div style="font-size:1.15rem; font-weight:900; color:#dc2626;">${totalCycleAbsences}</div>
+                    <div style="font-size:0.65rem; color:#ef4444;">${monthAbsencesCount} este mes</div>
+                </div>
+                <div style="background:#ffffff; border:1px solid #fda4af; border-top:3px solid #be123c; border-radius:8px; padding:7px 8px; text-align:center; cursor:pointer;" onclick="switchStudentProfileTab('discipline')" title="Ausencias injustificadas blindadas con candado">
+                    <div style="font-size:0.65rem; font-weight:800; color:#881337; text-transform:uppercase;">🔒 "A" Blindadas</div>
+                    <div style="font-size:1.15rem; font-weight:900; color:#be123c;">${lockedAbsencesCount}</div>
+                    <div style="font-size:0.65rem; color:#9f1239;">Sin derecho</div>
+                </div>
+                <div style="background:#ffffff; border:1px solid #fde68a; border-top:3px solid #d97706; border-radius:8px; padding:7px 8px; text-align:center; cursor:pointer;" onclick="switchStudentProfileTab('discipline')" title="Ver llegadas tarde">
+                    <div style="font-size:0.65rem; font-weight:800; color:#92400e; text-transform:uppercase;">Tardanzas (T)</div>
+                    <div style="font-size:1.15rem; font-weight:900; color:#d97706;">${tardiesCount}</div>
+                    <div style="font-size:0.65rem; color:#b45309;">Llegadas tarde</div>
+                </div>
+                <div style="background:#ffffff; border:1px solid #bbf7d0; border-top:3px solid #16a34a; border-radius:8px; padding:7px 8px; text-align:center; cursor:pointer;" onclick="switchStudentProfileTab('discipline')" title="Ver permisos justificados">
+                    <div style="font-size:0.65rem; font-weight:800; color:#166534; text-transform:uppercase;">Permisos (J)</div>
+                    <div style="font-size:1.15rem; font-weight:900; color:#16a34a;">${justifiedCount}</div>
+                    <div style="font-size:0.65rem; color:#15803d;">Autorizados</div>
+                </div>
+                <div style="background:#ffffff; border:1px solid #fbcfe8; border-top:3px solid #db2777; border-radius:8px; padding:7px 8px; text-align:center; cursor:pointer;" onclick="switchStudentProfileTab('discipline')" title="Ver reportes de conducta y bitácora">
+                    <div style="font-size:0.65rem; font-weight:800; color:#9d174d; text-transform:uppercase;">Disciplina / Bitácora</div>
+                    <div style="font-size:1.15rem; font-weight:900; color:#db2777;">${discList.length} / ${annotationsList.length}</div>
+                    <div style="font-size:0.65rem; color:#be185d;">Reportes / Notas</div>
+                </div>
+            </div>
+
+            <!-- Últimos Registros en Vivo en la Ficha -->
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+                <div style="font-size:0.75rem; font-weight:800; color:#334155; text-transform:uppercase; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                    <span><i class="fa-solid fa-bolt" style="color:#d97706;"></i> Últimos Registros de Asistencia y Conducta del Alumno</span>
+                    <a href="javascript:void(0)" onclick="switchStudentProfileTab('discipline')" style="font-size:0.74rem; color:#0284c7; text-decoration:none; font-weight:700;">Ver expediente completo &rarr;</a>
+                </div>
+                ${recentHighlights.length === 0 ? `
+                    <div style="font-size:0.80rem; color:#15803d; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:8px 10px; display:flex; align-items:center; gap:8px;">
+                        <i class="fa-solid fa-circle-check" style="font-size:1rem;"></i>
+                        <span><strong>Expediente sin incidencias:</strong> El alumno mantiene asistencia puntual y conducta ejemplar sin reportes negativos registrados.</span>
+                    </div>
+                ` : `
+                    <div style="display:flex; flex-direction:column; gap:5px;">
+                        ${recentHighlights.slice(0, 4).map(item => `
+                            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:0.78rem; padding:5px 8px; border-radius:5px; background:${item.bg}; border-left:3px solid ${item.border};">
+                                <div style="flex:1; min-width:0;">
+                                    <span style="font-weight:800; color:${item.color};">${item.badge}:</span>
+                                    <span style="color:#1e293b; font-weight:600;"> ${escapeHtml(item.title)}</span>
+                                    ${item.subtitle ? `<span style="color:#64748b; font-size:0.73rem;"> — ${escapeHtml(item.subtitle)}</span>` : ''}
+                                </div>
+                                <span style="font-size:0.72rem; font-weight:700; color:#475569; white-space:nowrap;">${escapeHtml(item.date)}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `}
+            </div>
+
+            <!-- Botonera de Acciones Rápidas en la Ficha -->
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    ${canManagePerms ? `
+                        <button type="button" class="btn btn-xs" onclick="openCreatePermissionModal('${student.id}')" style="background:#0f172a; color:#fff; font-size:0.74rem; font-weight:700; padding:4px 10px; border-radius:6px;">
+                            <i class="fa-solid fa-file-signature"></i> + Permiso "J" / Ausencia "A" 🔒
+                        </button>
+                    ` : ''}
+                    <button type="button" class="btn btn-xs btn-warning" onclick="openDisciplineModalForStudent('${student.id}')" style="font-size:0.74rem; font-weight:700; padding:4px 10px; border-radius:6px;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> + Llamada de Atención
+                    </button>
+                    <button type="button" class="btn btn-xs btn-primary" onclick="openStudentAnnotationModal('${student.id}')" style="font-size:0.74rem; font-weight:700; padding:4px 10px; border-radius:6px;">
+                        <i class="fa-solid fa-clipboard-check"></i> + Anotación en Bitácora
+                    </button>
+                </div>
+                <button type="button" class="btn btn-xs btn-outline-secondary" onclick="printStudentFullFicha('${student.id}')" style="font-size:0.74rem; font-weight:800; padding:4px 10px; border-radius:6px; color:#0f172a; border-color:#94a3b8;">
+                    <i class="fa-solid fa-print"></i> Imprimir Ficha Integral
+                </button>
+            </div>
+        `;
+    }
+
+    // Renderizar Historial Integral de Inasistencias, Tardanzas y Permisos en Pestaña 2
     const attBox = document.getElementById('studentAttendanceHistory');
     if (attBox) {
-        if (attAlerts.length === 0 && monthAbsencesCount === 0) {
+        if (unifiedAttEvents.length === 0) {
             attBox.innerHTML = `
                 <div style="text-align:center; padding:18px 10px; color:var(--text-muted);">
                     <i class="fa-solid fa-circle-check" style="color:var(--brand-green); font-size:1.6rem; margin-bottom:4px; display:block;"></i>
-                    <strong style="color:var(--text-primary); font-size:0.88rem;">Sin Inasistencias Reportadas</strong>
-                    <p style="margin:2px 0 0 0; font-size:0.78rem;">El estudiante mantiene asistencia regular sin faltas registradas en el ciclo escolar.</p>
+                    <strong style="color:var(--text-primary); font-size:0.88rem;">Sin Inasistencias ni Tardanzas Registradas</strong>
+                    <p style="margin:2px 0 0 0; font-size:0.78rem;">El estudiante mantiene asistencia regular (${attendancePercent}% de asistencia, ${presentCount} día(s) presente) sin faltas en el ciclo escolar.</p>
                 </div>
             `;
         } else {
+            const canJustify = ['admin', 'super_usuario', 'director', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes((STATE.currentRole || '').toLowerCase());
             attBox.innerHTML = `
                 <div style="display:flex; flex-direction:column; gap:6px;">
-                    ${attAlerts.map(a => {
-                        let statusColor = '#dc2626';
-                        let statusBg = '#fee2e2';
-                        let statusBorder = '#fca5a5';
-                        let statusLabel = 'Pendiente de Justificar';
-                        let statusIcon = 'fa-clock';
-
-                        if (a.status === 'justificada') {
-                            statusColor = '#166534';
-                            statusBg = '#dcfce7';
-                            statusBorder = '#86efac';
-                            statusLabel = 'Justificada con Permiso';
-                            statusIcon = 'fa-circle-check';
-                        } else if (a.status === 'citacion') {
-                            statusColor = '#854d0e';
-                            statusBg = '#fef9c3';
-                            statusBorder = '#fde047';
-                            statusLabel = 'Con Citación a Padre';
-                            statusIcon = 'fa-envelope-open-text';
-                        } else if (a.status === 'verificada') {
-                            statusColor = '#334155';
-                            statusBg = '#f1f5f9';
-                            statusBorder = '#cbd5e1';
-                            statusLabel = 'Falta Verificada / Injustificada';
-                            statusIcon = 'fa-check-double';
-                        }
-
-                        const canJustify = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria' || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar');
-
+                    ${unifiedAttEvents.map(ev => {
                         return `
-                            <div style="border:1px solid #e2e8f0; border-radius:6px; padding:8px 10px; background:#ffffff; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                            <div style="border:1px solid ${ev.borderColor || '#e2e8f0'}; border-left:4px solid ${ev.accentColor || '#dc2626'}; border-radius:6px; padding:8px 10px; background:#ffffff; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                                 <div style="flex:1; min-width:200px;">
-                                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
-                                        <span style="font-weight:800; font-size:0.82rem; color:#0f172a;"><i class="fa-regular fa-calendar" style="color:#0369a1;"></i> ${a.date || 'Fecha actual'}</span>
-                                        ${a.time ? `<span style="font-size:0.75rem; color:#64748b;">(${a.time})</span>` : ''}
-                                        <span class="badge" style="background:${statusBg}; color:${statusColor}; border:1px solid ${statusBorder}; font-size:0.7rem; font-weight:700;">
-                                            <i class="fa-solid ${statusIcon}"></i> ${statusLabel}
+                                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:3px; flex-wrap:wrap;">
+                                        <span style="font-weight:800; font-size:0.82rem; color:#0f172a;"><i class="fa-regular fa-calendar" style="color:#0369a1;"></i> ${escapeHtml(ev.dateLabel)}</span>
+                                        <span class="badge" style="background:${ev.badgeBg}; color:${ev.badgeColor}; border:1px solid ${ev.badgeBorder}; font-size:0.7rem; font-weight:800;">
+                                            <i class="fa-solid ${ev.icon}"></i> ${escapeHtml(ev.statusLabel)}
                                         </span>
                                     </div>
                                     <div style="font-size:0.78rem; color:#334155;">
-                                        <strong>Cátedra:</strong> ${escapeHtml(a.courseName || a.subject || 'Asignatura')} &bull; <strong>Catedrático:</strong> ${escapeHtml(a.teacherName || 'Docente')}
+                                        ${ev.detailHtml}
                                     </div>
-                                    ${a.notes ? `<div style="font-size:0.74rem; color:#475569; font-style:italic; margin-top:2px; background:#f8fafc; padding:2px 6px; border-radius:3px;">📝 ${escapeHtml(a.notes)}</div>` : ''}
+                                    ${ev.notes ? `<div style="font-size:0.74rem; color:#475569; font-style:italic; margin-top:3px; background:#f8fafc; padding:3px 6px; border-radius:4px;">📝 ${escapeHtml(ev.notes)}</div>` : ''}
                                 </div>
-                                ${canJustify && a.status !== 'justificada' ? `
-                                    <div style="display:flex; gap:4px;">
-                                        <button type="button" class="btn btn-xs btn-outline-success" onclick="openAuxiliaturaJustifyModal('${a.id}')" style="font-size:0.72rem; padding:2px 6px; font-weight:700;">
+                                <div style="display:flex; gap:4px; align-items:center;">
+                                    ${ev.permId ? `
+                                        <button type="button" class="btn btn-xs btn-outline-secondary" onclick="printStudentPermissionPass('${ev.permId}')" title="Imprimir comprobante oficial" style="font-size:0.72rem; padding:2px 7px; font-weight:700;">
+                                            <i class="fa-solid fa-print"></i> Pase
+                                        </button>
+                                    ` : ''}
+                                    ${canJustify && ev.alertId && ev.rawStatus !== 'justificada' ? `
+                                        <button type="button" class="btn btn-xs btn-outline-success" onclick="openAuxiliaturaJustifyModal('${ev.alertId}')" style="font-size:0.72rem; padding:2px 6px; font-weight:700;">
                                             <i class="fa-solid fa-pen-to-square"></i> Justificar
                                         </button>
-                                    </div>
-                                ` : ''}
+                                    ` : ''}
+                                </div>
                             </div>
                         `;
                     }).join('')}
@@ -14200,6 +14307,7 @@ function openStudentProfileModal(id) {
         }
     }
 
+    // Renderizar Reportes Disciplinarios y Llamadas de Atención en Pestaña 2 (con fix del bloque else)
     const discBox = document.getElementById('studentDisciplineHistory');
     if (discBox) {
         if (discList.length === 0) {
@@ -14210,29 +14318,30 @@ function openStudentProfileModal(id) {
                     <p style="margin:4px 0 0 0; font-size:0.82rem;">El estudiante no cuenta con llamadas de atención ni reportes de conducta registrados.</p>
                 </div>
             `;
-            const canResolveDiscipline = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar');
+        } else {
+            const canResolveDiscipline = ['admin', 'super_usuario', 'director', 'profesor_auxiliar', 'auxiliar'].includes((STATE.currentRole || '').toLowerCase());
             const canDeleteDiscipline = typeof checkDisciplineDirectorPermission === 'function' ? checkDisciplineDirectorPermission() : false;
-            discBox.innerHTML = discList.map((d, index) => {
+            discBox.innerHTML = discList.map((d) => {
                 const isGrav = d.severity === 'Grave' || d.severity === 'Muy Grave';
                 const resolveBtnHtml = canResolveDiscipline ? `<button type="button" class="btn btn-xs btn-outline-primary" onclick="openDisciplineResolutionModal('${d.id}')" title="Atender o emitir resolución" style="padding:2px 7px; font-weight:700; font-size:0.75rem;"><i class="fa-solid fa-pen-to-square"></i> ${d.status === 'Resuelto' ? 'Ver Resolución' : 'Atender'}</button>` : '';
                 const deleteBtnHtml = canDeleteDiscipline ? '<button type="button" class="btn btn-xs btn-outline-danger" onclick="deleteDisciplineReport(\'' + d.id + '\')" title="Eliminar reporte (Dirección)" style="padding:2px 7px; font-weight:700; font-size:0.75rem;"><i class="fa-solid fa-trash"></i></button>' : '';
                 return `
-                    <div style="margin-bottom:8px; border:1px solid #e2e8f0; background:#ffffff; border-radius:6px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+                    <div style="margin-bottom:8px; border:1px solid #e2e8f0; border-left:4px solid ${isGrav ? '#dc2626' : '#f59e0b'}; background:#ffffff; border-radius:6px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; flex-wrap:wrap; gap:6px;">
                             <span class="badge ${isGrav ? 'badge-danger' : 'badge-warning'}" style="font-weight:700;">
-                                <i class="fa-solid fa-triangle-exclamation"></i> ${d.severity || 'Falta Leve'} &bull; ${escapeHtml(d.status || 'Pendiente')}
+                                <i class="fa-solid fa-triangle-exclamation"></i> ${escapeHtml(d.severity || 'Falta Leve')} &bull; ${escapeHtml(d.status || 'Pendiente')}
                             </span>
                             <div style="display:flex; align-items:center; gap:6px;">
-                                <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;"><i class="fa-regular fa-clock"></i> ${d.date}</span>
+                                <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;"><i class="fa-regular fa-clock"></i> ${escapeHtml(d.date || '')}</span>
                                 ${resolveBtnHtml}
                                 ${deleteBtnHtml}
                             </div>
                         </div>
-                        <div style="font-weight:700; color:#1e293b; font-size:0.88rem; margin-bottom:2px;">${escapeHtml(d.reason)}</div>
+                        <div style="font-weight:700; color:#1e293b; font-size:0.88rem; margin-bottom:2px;">${escapeHtml(d.reason || 'Reporte disciplinario')}</div>
                         ${d.notes ? `<div style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:4px; font-style:italic;">"${escapeHtml(d.notes)}"</div>` : ''}
                         ${d.status === 'Resuelto' ? `<div style="font-size:0.76rem; color:#166534; background:#dcfce7; border-left:3px solid #16a34a; padding:3px 6px; margin-top:4px; border-radius:2px;"><strong>Resolución:</strong> ${escapeHtml(d.resolution || d.resolutionText || 'Caso resuelto')} <span style="color:#64748b;">(${escapeHtml(d.resolvedBy || 'Auxiliatura')})</span></div>` : ''}
                         <div style="font-size:0.78rem; color:#0369a1; display:flex; justify-content:space-between; border-top:1px dashed #e2e8f0; padding-top:4px; margin-top:4px;">
-                            <span><strong>Reportado por:</strong> ${escapeHtml(d.teacher || 'Catedrático Titular')}</span>
+                            <span><strong>Reportado por:</strong> ${escapeHtml(d.teacher || 'Catedrático / Auxiliatura')}</span>
                             ${d.tutorNotified ? '<span style="color:#15803d; font-weight:700;"><i class="fa-solid fa-phone-volume"></i> Padres Notificados</span>' : '<span style="color:#b45309;">Sin notificar a padres</span>'}
                         </div>
                     </div>
@@ -14241,7 +14350,7 @@ function openStudentProfileModal(id) {
         }
     }
 
-    // 4. Pestaña 3: Récord de Calificaciones (RESTRINGIDO A DIRECCIÓN Y SECRETARÍA)
+    // 4. Pestaña 4: Récord de Calificaciones (RESTRINGIDO A DIRECCIÓN Y SECRETARÍA)
     const adminView = document.getElementById('profGradesAdminView');
     const docenteView = document.getElementById('profGradesDocenteRestrictedView');
 
@@ -14262,6 +14371,580 @@ function openStudentProfileModal(id) {
 
     showModalById('studentProfileModal');
 }
+
+function getStudentFullAttendanceAndDisciplineData(student) {
+    if (!student) {
+        return {
+            discList: [], attAlerts: [], totalAbsences: 0, lockedAbsencesCount: 0,
+            tardiesCount: 0, justifiedCount: 0, presentCount: 0, attendancePercent: 100,
+            monthAbsencesCount: 0, annotationsList: [], unifiedAttEvents: [], recentHighlights: []
+        };
+    }
+
+    const id = String(student.id || '');
+    const carne = String(student.carne || '').trim();
+    const personalCode = String(student.personalCode || '').trim();
+    const cui = String(student.cui || '').trim();
+    const sFullNameLower = (typeof formatStudentDisplayName === 'function'
+        ? formatStudentDisplayName(student, 'lastFirst')
+        : `${student.lastName || ''} ${student.firstName || ''}`).toLowerCase().trim();
+
+    const candidateKeys = new Set([id, carne, personalCode, cui].filter(Boolean));
+    const activeYear = parseInt(STATE.activeCycle) || new Date().getFullYear() || 2026;
+    const currentMonth = new Date().getMonth() + 1;
+
+    const monthNames = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+    // 1. Reportes Disciplinarios
+    const discList = (STATE.disciplineReports || []).filter(d => {
+        if (!d) return false;
+        if (d.studentId && candidateKeys.has(String(d.studentId))) return true;
+        if (d.carne && candidateKeys.has(String(d.carne))) return true;
+        if (d.studentName && sFullNameLower && d.studentName.toLowerCase().trim() === sFullNameLower) return true;
+        return false;
+    });
+
+    // 2. Alertas de Inasistencia en Aula
+    const attAlerts = (STATE.attendanceAlerts || []).filter(a => {
+        if (!a) return false;
+        if (a.studentId && candidateKeys.has(String(a.studentId))) return true;
+        if (a.carne && candidateKeys.has(String(a.carne))) return true;
+        if (a.studentName && sFullNameLower && sFullNameLower.includes(a.studentName.toLowerCase().trim())) return true;
+        return false;
+    });
+
+    // 3. Permisos Oficiales ("J") y Ausencias Injustificadas Blindadas ("A" 🔒)
+    const studentPerms = (STATE.studentPermissions || []).filter(p => {
+        if (!p) return false;
+        if (p.studentId && candidateKeys.has(String(p.studentId))) return true;
+        if (p.personalCode && candidateKeys.has(String(p.personalCode))) return true;
+        if (p.studentName && sFullNameLower && p.studentName.toLowerCase().trim() === sFullNameLower) return true;
+        return false;
+    });
+
+    const isUnjustPermFn = (p) => {
+        if (typeof isUnjustifiedPermission === 'function') return isUnjustifiedPermission(p);
+        const code = String(p.attendanceCode || p.code || '').toUpperCase();
+        const cat = String(p.reasonCategory || p.status || '').toLowerCase();
+        return code === 'A' || cat.includes('injustificad');
+    };
+
+    const lockedPerms = studentPerms.filter(p => isUnjustPermFn(p));
+    const justifiedPerms = studentPerms.filter(p => !isUnjustPermFn(p));
+
+    // 4. Escaneo Dinámico de STATE.attendanceRecords (P, A, T, J) en todos los meses y cursos
+    const dailyMarksByDate = {}; // 'YYYY-MM-DD' -> { status, courses: Set, isLockedA, metaNote }
+    const allRecords = STATE.attendanceRecords || {};
+    const allMeta = STATE.attendancePermissionsMeta || {};
+
+    Object.keys(allRecords).forEach(recordKey => {
+        const tableObj = allRecords[recordKey];
+        if (!tableObj || typeof tableObj !== 'object') return;
+
+        let matchedStudentKey = null;
+        for (const k of candidateKeys) {
+            if (tableObj[k] && typeof tableObj[k] === 'object') {
+                matchedStudentKey = k;
+                break;
+            }
+        }
+        if (!matchedStudentKey) return;
+
+        // Parsear mes y curso desde recordKey (<gradeCode>_<month>_<courseId>)
+        const parts = recordKey.split('_');
+        let monthNum = 0;
+        let courseId = 'GENERAL';
+        for (let i = 1; i < parts.length; i++) {
+            const maybeM = parseInt(parts[i], 10);
+            if (!isNaN(maybeM) && maybeM >= 1 && maybeM <= 12 && String(maybeM) === parts[i]) {
+                monthNum = maybeM;
+                courseId = parts.slice(i + 1).join('_') || 'GENERAL';
+                break;
+            }
+        }
+        if (!monthNum) return;
+
+        let courseName = 'Control General';
+        if (courseId && courseId !== 'GENERAL') {
+            const pCourse = (STATE.pensum || []).find(p => String(p.id) === String(courseId));
+            courseName = pCourse ? (pCourse.subject || pCourse.name || courseId) : courseId;
+        }
+
+        const studentDaysObj = tableObj[matchedStudentKey];
+        const metaDaysObj = (allMeta[recordKey] && allMeta[recordKey][matchedStudentKey]) ? allMeta[recordKey][matchedStudentKey] : {};
+
+        Object.keys(studentDaysObj).forEach(dayStr => {
+            const dayNum = parseInt(dayStr, 10);
+            if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) return;
+            const rawVal = String(studentDaysObj[dayStr] || '').toUpperCase().trim();
+            if (!['P', 'A', 'T', 'J'].includes(rawVal)) return;
+
+            const isoDate = `${activeYear}-${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+            if (!dailyMarksByDate[isoDate]) {
+                dailyMarksByDate[isoDate] = {
+                    isoDate,
+                    monthNum,
+                    dayNum,
+                    status: rawVal,
+                    courses: new Set(),
+                    isLockedA: false,
+                    metaNote: ''
+                };
+            }
+
+            const entry = dailyMarksByDate[isoDate];
+            if (rawVal !== 'P') {
+                entry.courses.add(courseName);
+            }
+
+            // Prioridad de estado del día: A > T > J > P
+            const priority = { 'A': 4, 'T': 3, 'J': 2, 'P': 1 };
+            if ((priority[rawVal] || 0) > (priority[entry.status] || 0)) {
+                entry.status = rawVal;
+            }
+
+            const dayMeta = metaDaysObj[dayStr] || metaDaysObj[dayNum];
+            if (dayMeta) {
+                if (String(dayMeta.code || '').toUpperCase() === 'A' || String(dayMeta.category || '').toLowerCase().includes('injustificad')) {
+                    entry.isLockedA = true;
+                }
+                if (dayMeta.reason && !entry.metaNote) {
+                    entry.metaNote = `${dayMeta.category ? dayMeta.category + ': ' : ''}${dayMeta.reason}`;
+                }
+            }
+        });
+    });
+
+    // Verificar también por función getStudentPermissionForDay si algún día marcado corresponde a permiso o "A" blindada
+    Object.values(dailyMarksByDate).forEach(entry => {
+        if (typeof getStudentPermissionForDay === 'function') {
+            const pObj = getStudentPermissionForDay(student.id, activeYear, entry.monthNum, entry.dayNum);
+            if (pObj) {
+                if (isUnjustPermFn(pObj)) {
+                    entry.status = 'A';
+                    entry.isLockedA = true;
+                } else if (entry.status !== 'A') {
+                    entry.status = 'J';
+                }
+                if (!entry.metaNote && pObj.reasonDetail) {
+                    entry.metaNote = `${pObj.reasonCategory || 'Registro'}: ${pObj.reasonDetail}`;
+                }
+            }
+        }
+    });
+
+    let presentDaysCount = 0;
+    let dailyAbsentCount = 0;
+    let dailyLockedAbsentCount = 0;
+    let dailyTardyCount = 0;
+    let dailyJustifiedCount = 0;
+    let monthAbsencesFromRecords = 0;
+
+    Object.values(dailyMarksByDate).forEach(entry => {
+        if (entry.status === 'P') presentDaysCount++;
+        else if (entry.status === 'A') {
+            dailyAbsentCount++;
+            if (entry.isLockedA) dailyLockedAbsentCount++;
+            if (entry.monthNum === currentMonth) monthAbsencesFromRecords++;
+        } else if (entry.status === 'T') {
+            dailyTardyCount++;
+        } else if (entry.status === 'J') {
+            dailyJustifiedCount++;
+        }
+    });
+
+    const helperMonthAbs = (typeof getStudentMonthAbsenceDays === 'function') ? getStudentMonthAbsenceDays(id, currentMonth) : 0;
+    const monthAbsencesCount = Math.max(monthAbsencesFromRecords, helperMonthAbs);
+
+    const activeAlertsAbsences = attAlerts.filter(a => a.status !== 'corregida' && a.status !== 'justificada').length;
+    const justifiedAlertsCount = attAlerts.filter(a => a.status === 'justificada').length;
+
+    const lockedAbsencesCount = Math.max(dailyLockedAbsentCount, lockedPerms.length);
+    const totalAbsences = Math.max(dailyAbsentCount, activeAlertsAbsences, monthAbsencesCount, lockedAbsencesCount);
+    const tardiesCount = dailyTardyCount;
+    const justifiedCount = Math.max(dailyJustifiedCount, justifiedPerms.length + justifiedAlertsCount);
+
+    const totalEvaluatedDays = presentDaysCount + totalAbsences + tardiesCount + justifiedCount;
+    const attendancePercent = totalEvaluatedDays > 0
+        ? Math.max(0, Math.min(100, Math.round(((presentDaysCount + justifiedCount + (tardiesCount * 0.5)) / totalEvaluatedDays) * 100)))
+        : 100;
+
+    // 5. Bitácora y Anotaciones del Estudiante
+    const globalAnns = (STATE.studentAnnotations || []).filter(a => {
+        if (!a) return false;
+        if (a.studentId && candidateKeys.has(String(a.studentId))) return true;
+        if (a.carne && candidateKeys.has(String(a.carne))) return true;
+        if (a.personalCode && candidateKeys.has(String(a.personalCode))) return true;
+        return false;
+    });
+    const localAnns = Array.isArray(student.annotations) ? student.annotations : [];
+    const annMap = new Map();
+    [...globalAnns, ...localAnns].forEach(a => {
+        if (a && a.id) annMap.set(a.id, a);
+    });
+    const annotationsList = Array.from(annMap.values());
+
+    // 6. Construir línea de tiempo unificada de Asistencia, Permisos y Ausencias para Pestaña 2
+    const unifiedAttEvents = [];
+    const coveredDatesByPerms = new Set();
+
+    // A) Permisos Oficiales y Ausencias "A" Blindadas
+    studentPerms.forEach(p => {
+        const isUnjust = isUnjustPermFn(p);
+        const dateRangeLabel = (p.startDate && p.endDate && p.endDate !== p.startDate)
+            ? `Del ${p.startDate} al ${p.endDate}`
+            : (p.startDate || 'Fecha registrada');
+
+        // Marcar fechas cubiertas para no duplicar con celdas individuales
+        if (p.startDate) {
+            const sD = new Date(p.startDate + 'T00:00:00');
+            const eD = new Date((p.endDate || p.startDate) + 'T00:00:00');
+            if (!isNaN(sD) && !isNaN(eD)) {
+                for (let d = new Date(sD); d <= eD; d.setDate(d.getDate() + 1)) {
+                    coveredDatesByPerms.add(d.toISOString().slice(0, 10));
+                }
+            }
+        }
+
+        unifiedAttEvents.push({
+            sortDate: p.startDate || (p.createdAt ? p.createdAt.slice(0, 10) : '2026-01-01'),
+            dateLabel: dateRangeLabel,
+            statusLabel: isUnjust ? '🔒 Ausencia Injustificada ("A" Blindada)' : 'Permiso Oficial Justificado ("J")',
+            icon: isUnjust ? 'fa-lock' : 'fa-file-circle-check',
+            badgeBg: isUnjust ? '#ffe4e6' : '#dcfce7',
+            badgeColor: isUnjust ? '#9f1239' : '#166534',
+            badgeBorder: isUnjust ? '#fda4af' : '#86efac',
+            accentColor: isUnjust ? '#be123c' : '#16a34a',
+            borderColor: isUnjust ? '#fecdd3' : '#bbf7d0',
+            detailHtml: `<strong>Categoría:</strong> ${escapeHtml(p.reasonCategory || 'General')} &bull; <strong>Autorizado/Reg.:</strong> ${escapeHtml(p.authorizedBy || 'Auxiliatura')}`,
+            notes: `${p.reasonDetail || ''}${p.docRef ? ' (Ref: ' + p.docRef + ')' : ''}`,
+            permId: p.id,
+            rawStatus: isUnjust ? 'injustificada_blindada' : 'justificada'
+        });
+    });
+
+    // B) Alertas de Inasistencia reportadas en Aula
+    attAlerts.forEach(a => {
+        if (a.status === 'corregida') return;
+        let badgeBg = '#fee2e2', badgeColor = '#dc2626', badgeBorder = '#fca5a5', statusLabel = 'Inasistencia en Aula', icon = 'fa-user-xmark', accent = '#dc2626';
+        if (a.status === 'justificada') {
+            badgeBg = '#dcfce7'; badgeColor = '#166534'; badgeBorder = '#86efac'; statusLabel = 'Justificada con Permiso'; icon = 'fa-circle-check'; accent = '#16a34a';
+        } else if (a.status === 'citacion') {
+            badgeBg = '#fef9c3'; badgeColor = '#854d0e'; badgeBorder = '#fde047'; statusLabel = 'Con Citación a Padres'; icon = 'fa-envelope-open-text'; accent = '#eab308';
+        }
+        unifiedAttEvents.push({
+            sortDate: a.date || '2026-01-01',
+            dateLabel: `${a.date || 'Fecha actual'}${a.time ? ' (' + a.time + ')' : ''}`,
+            statusLabel,
+            icon,
+            badgeBg,
+            badgeColor,
+            badgeBorder,
+            accentColor: accent,
+            borderColor: '#e2e8f0',
+            detailHtml: `<strong>Cátedra:</strong> ${escapeHtml(a.courseName || a.subject || 'Asignatura')} &bull; <strong>Catedrático:</strong> ${escapeHtml(a.teacherName || 'Docente')}`,
+            notes: a.notes || '',
+            alertId: a.id,
+            rawStatus: a.status || 'pendiente'
+        });
+    });
+
+    // C) Registros Diarios de Planilla (A, T, J) no cubiertos ya por un permiso de rango
+    Object.values(dailyMarksByDate).forEach(entry => {
+        if (entry.status === 'P') return;
+        if (coveredDatesByPerms.has(entry.isoDate)) return;
+
+        const mName = monthNames[entry.monthNum] || `Mes ${entry.monthNum}`;
+        const coursesStr = entry.courses.size > 0 ? Array.from(entry.courses).join(', ') : 'Control General';
+
+        if (entry.status === 'A') {
+            unifiedAttEvents.push({
+                sortDate: entry.isoDate,
+                dateLabel: `${entry.dayNum} de ${mName} (${entry.isoDate})`,
+                statusLabel: entry.isLockedA ? '🔒 Ausencia "A" Blindada' : 'Inasistencia en Planilla (A)',
+                icon: entry.isLockedA ? 'fa-lock' : 'fa-calendar-xmark',
+                badgeBg: '#fee2e2',
+                badgeColor: '#991b1b',
+                badgeBorder: '#fca5a5',
+                accentColor: '#dc2626',
+                borderColor: '#fecaca',
+                detailHtml: `<strong>Registro de Asistencia:</strong> ${escapeHtml(coursesStr)}`,
+                notes: entry.metaNote || '',
+                rawStatus: 'ausente'
+            });
+        } else if (entry.status === 'T') {
+            unifiedAttEvents.push({
+                sortDate: entry.isoDate,
+                dateLabel: `${entry.dayNum} de ${mName} (${entry.isoDate})`,
+                statusLabel: 'Llegada Tarde / Tardanza (T)',
+                icon: 'fa-clock',
+                badgeBg: '#fef3c7',
+                badgeColor: '#92400e',
+                badgeBorder: '#fde68a',
+                accentColor: '#d97706',
+                borderColor: '#fde68a',
+                detailHtml: `<strong>Registro de Puntualidad:</strong> ${escapeHtml(coursesStr)}`,
+                notes: entry.metaNote || '',
+                rawStatus: 'tardanza'
+            });
+        } else if (entry.status === 'J') {
+            unifiedAttEvents.push({
+                sortDate: entry.isoDate,
+                dateLabel: `${entry.dayNum} de ${mName} (${entry.isoDate})`,
+                statusLabel: 'Ausencia Justificada (J)',
+                icon: 'fa-circle-check',
+                badgeBg: '#dcfce7',
+                badgeColor: '#166534',
+                badgeBorder: '#86efac',
+                accentColor: '#16a34a',
+                borderColor: '#bbf7d0',
+                detailHtml: `<strong>Asistencia Justificada:</strong> ${escapeHtml(coursesStr)}`,
+                notes: entry.metaNote || '',
+                rawStatus: 'justificada'
+            });
+        }
+    });
+
+    unifiedAttEvents.sort((a, b) => String(b.sortDate || '').localeCompare(String(a.sortDate || '')));
+
+    // 7. Destacados recientes para mostrar directamente en la Ficha de Datos Personales (Pestaña 1)
+    const recentHighlights = [];
+    unifiedAttEvents.forEach(ev => {
+        recentHighlights.push({
+            sortDate: ev.sortDate || '',
+            date: ev.dateLabel,
+            badge: ev.statusLabel,
+            title: ev.notes || (ev.detailHtml || '').replace(/<[^>]+>/g, ''),
+            subtitle: '',
+            bg: ev.badgeBg,
+            border: ev.accentColor,
+            color: ev.badgeColor
+        });
+    });
+    discList.forEach(d => {
+        const isGrav = d.severity === 'Grave' || d.severity === 'Muy Grave';
+        recentHighlights.push({
+            sortDate: d.date || '',
+            date: d.date || 'Ciclo actual',
+            badge: `⚠️ ${d.severity || 'Conducta'}`,
+            title: d.reason || 'Llamada de atención',
+            subtitle: d.teacher || 'Auxiliatura',
+            bg: isGrav ? '#fef2f2' : '#fffbeb',
+            border: isGrav ? '#dc2626' : '#d97706',
+            color: isGrav ? '#991b1b' : '#92400e'
+        });
+    });
+    annotationsList.forEach(ann => {
+        recentHighlights.push({
+            sortDate: ann.date || (ann.createdAt ? ann.createdAt.slice(0, 10) : ''),
+            date: ann.date || 'Bitácora',
+            badge: `📌 ${ann.category || 'Bitácora'}`,
+            title: ann.text || ann.comment || ann.reason || 'Observación formativa',
+            subtitle: ann.author || ann.teacher || '',
+            bg: '#f0f9ff',
+            border: '#0284c7',
+            color: '#0369a1'
+        });
+    });
+    recentHighlights.sort((a, b) => String(b.sortDate || '').localeCompare(String(a.sortDate || '')));
+
+    return {
+        discList,
+        attAlerts,
+        studentPerms,
+        totalAbsences,
+        lockedAbsencesCount,
+        tardiesCount,
+        justifiedCount,
+        presentCount: presentDaysCount,
+        attendancePercent,
+        monthAbsencesCount,
+        annotationsList,
+        unifiedAttEvents,
+        recentHighlights
+    };
+}
+window.getStudentFullAttendanceAndDisciplineData = getStudentFullAttendanceAndDisciplineData;
+
+function printStudentFullFicha(studentId) {
+    const id = studentId || STATE.selectedStudentId;
+    const student = (STATE.students || []).find(s => String(s.id) === String(id) || (s.carne && String(s.carne) === String(id)));
+    if (!student) {
+        if (typeof showToast === 'function') showToast('Seleccione un estudiante válido para imprimir su Ficha Integral.', 'warning');
+        return;
+    }
+
+    const fullRecord = getStudentFullAttendanceAndDisciplineData(student);
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {}) || {};
+    const schoolName = h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES';
+    const slogan = h.slogan || 'JUTIAPA, GUATEMALA';
+    const directorName = h.directorName || 'Dirección del Establecimiento';
+    const secretaryName = h.secretaryName || 'Secretaría Académica';
+    const fullName = typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(student, 'lastFirst') : `${student.lastName || ''}, ${student.firstName || ''}`;
+    const assign = typeof getStudentAssignment === 'function' ? getStudentAssignment(student) : { fullLabel: `${student.grade || ''} - Sección ${student.section || 'A'}` };
+    const printDate = new Date().toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    const attRowsHtml = fullRecord.unifiedAttEvents.length === 0
+        ? `<tr><td colspan="4" style="text-align:center; padding:10px; color:#15803d; font-weight:700;">✅ Sin inasistencias, tardanzas ni permisos reportados en el ciclo escolar.</td></tr>`
+        : fullRecord.unifiedAttEvents.map((ev, idx) => `
+            <tr>
+                <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+                <td>${escapeHtml(ev.dateLabel)}</td>
+                <td><strong style="color:${ev.badgeColor};">${escapeHtml(ev.statusLabel)}</strong></td>
+                <td>${ev.detailHtml} ${ev.notes ? `<br><em>Nota: ${escapeHtml(ev.notes)}</em>` : ''}</td>
+            </tr>
+        `).join('');
+
+    const discRowsHtml = fullRecord.discList.length === 0
+        ? `<tr><td colspan="5" style="text-align:center; padding:10px; color:#15803d; font-weight:700;">✅ Expediente disciplinario impecable (0 llamadas de atención).</td></tr>`
+        : fullRecord.discList.map((d, idx) => `
+            <tr>
+                <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+                <td>${escapeHtml(d.date || '—')}</td>
+                <td><strong>${escapeHtml(d.severity || 'Leve')}</strong> (${escapeHtml(d.status || 'Pendiente')})</td>
+                <td><strong>${escapeHtml(d.reason || '')}</strong>${d.notes ? `<br><em>"${escapeHtml(d.notes)}"</em>` : ''}${d.resolution ? `<br><span style="color:#166534;">Resolución: ${escapeHtml(d.resolution)}</span>` : ''}</td>
+                <td>${escapeHtml(d.teacher || 'Auxiliatura')}</td>
+            </tr>
+        `).join('');
+
+    const annRowsHtml = fullRecord.annotationsList.length === 0
+        ? `<tr><td colspan="4" style="text-align:center; padding:10px; color:#475569;">Sin anotaciones adicionales en bitácora.</td></tr>`
+        : fullRecord.annotationsList.map((a, idx) => `
+            <tr>
+                <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+                <td>${escapeHtml(a.date || (a.createdAt ? a.createdAt.slice(0, 10) : '—'))}</td>
+                <td><strong>${escapeHtml(a.category || a.type || 'Observación')}</strong></td>
+                <td>${escapeHtml(a.text || a.comment || a.reason || '')} ${a.author ? `<br><small>Por: ${escapeHtml(a.author)}</small>` : ''}</td>
+            </tr>
+        `).join('');
+
+    const printWin = window.open('', '_blank', 'width=950,height=800');
+    if (!printWin) {
+        if (typeof showToast === 'function') showToast('Por favor habilite las ventanas emergentes para imprimir la Ficha Integral.', 'warning');
+        return;
+    }
+
+    printWin.document.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Ficha Integral - ${escapeHtml(fullName)}</title>
+            <style>
+                @page { size: letter portrait; margin: 12mm; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; font-size: 11px; line-height: 1.4; margin: 0; padding: 0; }
+                .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
+                .header-center { text-align: center; flex: 1; }
+                .header-center h1 { margin: 0; font-size: 15px; font-weight: 900; text-transform: uppercase; color: #0f172a; }
+                .header-center h2 { margin: 2px 0; font-size: 12px; font-weight: 800; color: #0369a1; }
+                .header-center p { margin: 0; font-size: 10px; color: #475569; }
+                .section-title { background: #0f172a; color: #fff; font-weight: 800; font-size: 11px; text-transform: uppercase; padding: 5px 10px; border-radius: 4px; margin: 12px 0 6px 0; letter-spacing: 0.4px; }
+                .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; }
+                .info-item { font-size: 10.5px; }
+                .info-item strong { color: #334155; }
+                .kpi-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin: 8px 0; }
+                .kpi-box { border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; text-align: center; background: #fff; }
+                .kpi-box .lbl { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #475569; }
+                .kpi-box .val { font-size: 15px; font-weight: 900; margin-top: 2px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 10px; }
+                th, td { border: 1px solid #cbd5e1; padding: 5px 7px; text-align: left; vertical-align: top; }
+                th { background: #f1f5f9; font-weight: 800; color: #0f172a; text-transform: uppercase; font-size: 9.5px; }
+                .signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; margin-top: 38px; text-align: center; font-size: 10px; }
+                .sig-line { border-top: 1px solid #0f172a; padding-top: 4px; font-weight: 700; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <img src="logo.png" alt="Logo" style="width:58px; height:58px; object-fit:contain;" onerror="this.style.display='none'">
+                <div class="header-center">
+                    <h1>${escapeHtml(schoolName)}</h1>
+                    <p>${escapeHtml(slogan)} &bull; Ciclo Escolar ${escapeHtml(String(STATE.activeCycle || '2026'))}</p>
+                    <h2>FICHA INTEGRAL DE DATOS PERSONALES, ASISTENCIA, FALTAS Y CONDUCTA</h2>
+                    <p>Fecha de emisión: ${escapeHtml(printDate)}</p>
+                </div>
+                <div style="text-align:right; font-size:10px; font-weight:800; border:1px solid #0f172a; padding:6px 10px; border-radius:6px;">
+                    CARNÉ<br><span style="font-size:13px; color:#0369a1;">${escapeHtml(student.carne || student.personalCode || student.id)}</span>
+                </div>
+            </div>
+
+            <div class="section-title">1. Datos Personales, Académicos y de Contacto Familiar</div>
+            <div class="info-grid">
+                <div class="info-item"><strong>Estudiante:</strong> ${escapeHtml(fullName)}</div>
+                <div class="info-item"><strong>Grado y Sección:</strong> ${escapeHtml(assign.fullLabel)}</div>
+                <div class="info-item"><strong>Estado Matrícula:</strong> ${escapeHtml(student.status || 'Activo')}</div>
+                <div class="info-item"><strong>Código Personal:</strong> ${escapeHtml(student.personalCode || '—')}</div>
+                <div class="info-item"><strong>CUI / DPI:</strong> ${escapeHtml(student.cui || '—')}</div>
+                <div class="info-item"><strong>Fecha Nacimiento:</strong> ${escapeHtml(student.dob || student.birthDate || '—')}</div>
+                <div class="info-item"><strong>Teléfono Alumno:</strong> ${escapeHtml(student.phone || '—')}</div>
+                <div class="info-item"><strong>Dirección:</strong> ${escapeHtml(student.address || '—')}</div>
+                <div class="info-item"><strong>Encargado / Padres:</strong> ${escapeHtml(student.guardianName || student.fatherName || student.motherName || '—')} (${escapeHtml(student.guardianPhone || student.fatherPhone || student.motherPhone || '—')})</div>
+            </div>
+
+            <div class="section-title">2. Consolidado General de Asistencia, Inasistencias y Disciplina</div>
+            <div class="kpi-row">
+                <div class="kpi-box"><div class="lbl">% Asistencia</div><div class="val" style="color:#0369a1;">${fullRecord.attendancePercent}%</div></div>
+                <div class="kpi-box"><div class="lbl">Inasistencias (A)</div><div class="val" style="color:#dc2626;">${fullRecord.totalAbsences}</div></div>
+                <div class="kpi-box"><div class="lbl">🔒 "A" Blindadas</div><div class="val" style="color:#be123c;">${fullRecord.lockedAbsencesCount}</div></div>
+                <div class="kpi-box"><div class="lbl">Tardanzas (T)</div><div class="val" style="color:#d97706;">${fullRecord.tardiesCount}</div></div>
+                <div class="kpi-box"><div class="lbl">Permisos (J)</div><div class="val" style="color:#16a34a;">${fullRecord.justifiedCount}</div></div>
+                <div class="kpi-box"><div class="lbl">Faltas Conducta</div><div class="val" style="color:#db2777;">${fullRecord.discList.length}</div></div>
+            </div>
+
+            <div class="section-title">3. Detalle de Inasistencias, Tardanzas y Permisos Oficiales ("J" y "A" Blindada)</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:30px; text-align:center;">No.</th>
+                        <th style="width:140px;">Fecha / Rango</th>
+                        <th style="width:180px;">Tipo de Registro</th>
+                        <th>Cátedra / Motivo / Autorización</th>
+                    </tr>
+                </thead>
+                <tbody>${attRowsHtml}</tbody>
+            </table>
+
+            <div class="section-title">4. Expediente Disciplinario y Llamadas de Atención</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:30px; text-align:center;">No.</th>
+                        <th style="width:90px;">Fecha</th>
+                        <th style="width:130px;">Gravedad / Estado</th>
+                        <th>Motivo, Observaciones y Resolución</th>
+                        <th style="width:130px;">Reportado Por</th>
+                    </tr>
+                </thead>
+                <tbody>${discRowsHtml}</tbody>
+            </table>
+
+            <div class="section-title">5. Bitácora Conductual y Observaciones Formativas</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:30px; text-align:center;">No.</th>
+                        <th style="width:90px;">Fecha</th>
+                        <th style="width:140px;">Categoría</th>
+                        <th>Detalle de la Observación</th>
+                    </tr>
+                </thead>
+                <tbody>${annRowsHtml}</tbody>
+            </table>
+
+            <div class="signatures">
+                <div class="sig-line">Firma de Padre, Madre o Encargado<br><span style="font-weight:400; color:#475569;">Enterado de Récord de Asistencia y Conducta</span></div>
+                <div class="sig-line">Auxiliatura / Comisión de Disciplina<br><span style="font-weight:400; color:#475569;">Control Disciplinario ENCCO</span></div>
+                <div class="sig-line">${escapeHtml(directorName)}<br><span style="font-weight:400; color:#475569;">Dirección / ${escapeHtml(secretaryName)}</span></div>
+            </div>
+            <script>
+                window.onload = function() { setTimeout(function() { window.print(); }, 350); };
+            </script>
+        </body>
+        </html>
+    `);
+    printWin.document.close();
+}
+window.printStudentFullFicha = printStudentFullFicha;
+
 
 function renderStudentProfileGrades(student) {
     const tbody = document.getElementById('profGradesTableBody');
@@ -28509,6 +29192,10 @@ function saveStudentPermissionForm(e) {
         if (typeof renderAuxiliaturaLogView === 'function' && STATE.activeView === 'auxiliatura-log') {
             renderAuxiliaturaLogView();
         }
+        const profModalEdit = document.getElementById('studentProfileModal');
+        if (profModalEdit && (profModalEdit.classList.contains('active') || profModalEdit.style.display === 'flex') && STATE.selectedStudentId) {
+            openStudentProfileModal(STATE.selectedStudentId);
+        }
 
         showToast(`✅ Registro actualizado exitosamente para ${perm.studentName}. La asistencia se ha sincronizado automáticamente.`, 'success');
         return;
@@ -28599,6 +29286,10 @@ function saveStudentPermissionForm(e) {
     // Si la planilla de asistencia está abierta, recargarla
     if (typeof loadAttendanceList === 'function') {
         loadAttendanceList();
+    }
+    const profModalCreate = document.getElementById('studentProfileModal');
+    if (profModalCreate && (profModalCreate.classList.contains('active') || profModalCreate.style.display === 'flex') && STATE.selectedStudentId) {
+        openStudentProfileModal(STATE.selectedStudentId);
     }
 
     if (isUnjust) {
