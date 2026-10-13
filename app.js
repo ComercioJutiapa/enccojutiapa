@@ -5032,11 +5032,30 @@ function initFirebaseRealtimeConnection() {
                     } else if (cleanPath === 'attendanceRecords' || cleanPath.startsWith('attendanceRecords/')) {
                         if (nodeData && typeof nodeData === 'object') {
                             if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+                            const dirtyMap = window._localDirtyAttendanceCells || {};
+                            const nowTs = Date.now();
+                            const mergeRecordSheet = (sheetKey, incomingSheet) => {
+                                if (!incomingSheet || typeof incomingSheet !== 'object') return;
+                                if (!STATE.attendanceRecords[sheetKey]) STATE.attendanceRecords[sheetKey] = {};
+                                Object.keys(incomingSheet).forEach(sId => {
+                                    const inDays = incomingSheet[sId];
+                                    if (!inDays || typeof inDays !== 'object') return;
+                                    if (!STATE.attendanceRecords[sheetKey][sId]) STATE.attendanceRecords[sheetKey][sId] = {};
+                                    Object.keys(inDays).forEach(dKey => {
+                                        const dirtyEntry = dirtyMap[`${sheetKey}_${sId}_${dKey}`];
+                                        if (dirtyEntry && (nowTs - dirtyEntry.ts < 5000)) {
+                                            if (dirtyEntry.val) STATE.attendanceRecords[sheetKey][sId][dKey] = dirtyEntry.val;
+                                            else delete STATE.attendanceRecords[sheetKey][sId][dKey];
+                                        } else {
+                                            STATE.attendanceRecords[sheetKey][sId][dKey] = inDays[dKey];
+                                        }
+                                    });
+                                });
+                            };
                             if (cleanPath === 'attendanceRecords') {
                                 Object.keys(nodeData).forEach(k => {
-                                    if (!STATE.attendanceRecords[k]) STATE.attendanceRecords[k] = {};
                                     if (typeof nodeData[k] === 'object') {
-                                        Object.assign(STATE.attendanceRecords[k], nodeData[k]);
+                                        mergeRecordSheet(k, nodeData[k]);
                                     } else {
                                         STATE.attendanceRecords[k] = nodeData[k];
                                     }
@@ -5044,17 +5063,19 @@ function initFirebaseRealtimeConnection() {
                             } else {
                                 const sub = cleanPath.replace(/^attendanceRecords\/?/, '');
                                 if (sub) {
-                                    if (!STATE.attendanceRecords[sub]) STATE.attendanceRecords[sub] = {};
                                     if (typeof nodeData === 'object') {
-                                        Object.assign(STATE.attendanceRecords[sub], nodeData);
+                                        mergeRecordSheet(sub, nodeData);
                                     } else {
                                         STATE.attendanceRecords[sub] = nodeData;
                                     }
                                 }
                             }
                             if (STATE.activeView === 'attendance') {
-                                if (typeof updateAttendanceLiveStats === 'function') updateAttendanceLiveStats();
-                                if (typeof loadAttendanceList === 'function') loadAttendanceList();
+                                const timeSinceLocalClick = Date.now() - (window._lastLocalAttendanceClickTime || 0);
+                                if (timeSinceLocalClick >= 2500) {
+                                    if (typeof updateAttendanceLiveStats === 'function') updateAttendanceLiveStats();
+                                    if (typeof loadAttendanceList === 'function') loadAttendanceList();
+                                }
                             }
                         }
                     } else if (cleanPath === 'attendanceAlerts' || cleanPath.startsWith('attendanceAlerts')) {
@@ -5103,7 +5124,10 @@ function initFirebaseRealtimeConnection() {
                         if (nodeData && typeof nodeData === 'object') {
                             STATE.attendancePermissionsMeta = { ...(STATE.attendancePermissionsMeta || {}), ...nodeData };
                             if (typeof loadAttendanceList === 'function' && STATE.activeView === 'attendance') {
-                                loadAttendanceList();
+                                const timeSinceLocalClick = Date.now() - (window._lastLocalAttendanceClickTime || 0);
+                                if (timeSinceLocalClick >= 2500) {
+                                    loadAttendanceList();
+                                }
                             }
                         }
                     } else if (cleanPath === 'rolesConfig') {
@@ -5209,19 +5233,45 @@ function initFirebaseRealtimeConnection() {
                             if (typeof loadAttendanceList === 'function') loadAttendanceList();
                             if (typeof loadHonorRoll === 'function') loadHonorRoll();
                         } else if (data.path === '/attendanceRecords' || data.path.startsWith('/attendanceRecords')) {
-                            // 🛡️ Actualización reactiva atómica de asistencia: no recargar toda la plataforma ni resetear selectores
+                            // 🛡️ Actualización reactiva atómica de asistencia: respetar clics locales en vuelo y no reconstruir el DOM a mitad de clic
                             if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+                            const dirtyMap = window._localDirtyAttendanceCells || {};
+                            const nowTs = Date.now();
+                            const mergeRecordSheet = (sheetKey, incomingSheet) => {
+                                if (!incomingSheet || typeof incomingSheet !== 'object') return;
+                                if (!STATE.attendanceRecords[sheetKey]) STATE.attendanceRecords[sheetKey] = {};
+                                Object.keys(incomingSheet).forEach(sId => {
+                                    const inDays = incomingSheet[sId];
+                                    if (!inDays || typeof inDays !== 'object') return;
+                                    if (!STATE.attendanceRecords[sheetKey][sId]) STATE.attendanceRecords[sheetKey][sId] = {};
+                                    Object.keys(inDays).forEach(dKey => {
+                                        const dirtyEntry = dirtyMap[`${sheetKey}_${sId}_${dKey}`];
+                                        if (dirtyEntry && (nowTs - dirtyEntry.ts < 5000)) {
+                                            if (dirtyEntry.val) STATE.attendanceRecords[sheetKey][sId][dKey] = dirtyEntry.val;
+                                            else delete STATE.attendanceRecords[sheetKey][sId][dKey];
+                                        } else {
+                                            STATE.attendanceRecords[sheetKey][sId][dKey] = inDays[dKey];
+                                        }
+                                    });
+                                });
+                            };
                             if (data.path === '/attendanceRecords') {
-                                Object.assign(STATE.attendanceRecords, data.data);
+                                Object.keys(data.data).forEach(k => {
+                                    if (typeof data.data[k] === 'object') mergeRecordSheet(k, data.data[k]);
+                                    else STATE.attendanceRecords[k] = data.data[k];
+                                });
                             } else {
                                 const subPath = data.path.replace(/^\/attendanceRecords\/?/, '');
                                 if (subPath) {
-                                    STATE.attendanceRecords[subPath] = { ...(STATE.attendanceRecords[subPath] || {}), ...data.data };
+                                    mergeRecordSheet(subPath, data.data);
                                 }
                             }
                             if (STATE.activeView === 'attendance') {
-                                if (typeof updateAttendanceLiveStats === 'function') updateAttendanceLiveStats();
-                                if (typeof loadAttendanceList === 'function') loadAttendanceList();
+                                const timeSinceLocalClick = Date.now() - (window._lastLocalAttendanceClickTime || 0);
+                                if (timeSinceLocalClick >= 2500) {
+                                    if (typeof updateAttendanceLiveStats === 'function') updateAttendanceLiveStats();
+                                    if (typeof loadAttendanceList === 'function') loadAttendanceList();
+                                }
                             }
                         } else if (data.path === '/attendanceAlerts' || data.path.startsWith('/attendanceAlerts')) {
                             // 🚨 Entrega reactiva inmediata de alertas de inasistencia por SSE patch
@@ -13116,7 +13166,7 @@ function isStudentExonerated(student) {
 }
 window.isStudentExonerated = isStudentExonerated;
 
-function getStudentAcademicInfo(student) {
+function getStudentAcademicInfo(student, periodOverride = null) {
     if (!student) {
         return {
             average: 0,
@@ -13130,6 +13180,7 @@ function getStudentAcademicInfo(student) {
             is4to: true,
             officialClassLoad: 9,
             classLoadLabel: '9 Clases (4to/5to)',
+            periodMode: 'CONSOLIDATED_100',
             hasFailedGrade: false,
             isExonerated: false,
             eligibleForHonorRoll: false,
@@ -13142,24 +13193,45 @@ function getStudentAcademicInfo(student) {
     const is6to = rawGrade.includes('6') || rawGrade.includes('SEXTO') || rawGrade.includes('6TO');
     const is5to = !is6to && (rawGrade.includes('5') || rawGrade.includes('QUINTO') || rawGrade.includes('5TO'));
     const is4to = !is6to && !is5to;
-    
-    const activeBimestre = parseInt(STATE.config?.activeBimestre) || 1;
 
-    // REGLA OFICIAL DE CARGA Y DIVISOR DINÁMICO (Nivelación Base 100 Puntos):
-    // - 4.º y 5.º Grado: siempre se nivela sobre 9 clases oficiales (divisor = 9)
-    // - 6.º Grado Perito: durante 1.º, 2.º y 3.º bimestre sobre 8 clases ordinarias (divisor = 8, Práctica y Seminario omitidos)
-    // - 6.º Grado Perito: en 4.º bimestre sobre 10 clases oficiales (divisor = 10, incluyendo nota única de B4 de Práctica y Seminario)
+    const periodSelectEl = (typeof document !== 'undefined') ? document.getElementById('honorRollPeriodSelect') : null;
+    const periodMode = periodOverride || (periodSelectEl && periodSelectEl.value ? periodSelectEl.value : 'CONSOLIDATED_100');
+
+    // Helper local para identificar materias especiales de graduación de 6to (Práctica Supervisada y Seminario)
+    const _cleanForMatch = s => (s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+    const _isMateriaEspecial6to = subName => {
+        const c = _cleanForMatch(subName);
+        return c.includes('practica') || c.includes('seminario');
+    };
+
+    // Determinar divisor oficial y etiqueta según el Período / Bimestre seleccionado (Idea 2)
     let dynamicDivisor = 9;
+    let classLoadLabel = is5to ? '9 Clases Niveladas (5to Perito)' : '9 Clases Niveladas (4to Perito)';
+
     if (is6to) {
-        dynamicDivisor = (activeBimestre >= 4) ? 10 : 8;
+        if (periodMode === 'B1' || periodMode === 'B2' || periodMode === 'B3') {
+            dynamicDivisor = 8;
+            classLoadLabel = `8 Clases Ord. (${periodMode} - 6to)`;
+        } else if (periodMode === 'B4_ONLY') {
+            dynamicDivisor = 2;
+            classLoadLabel = '2 Clases 4to Bim. (Sem. y Prác. - 6to)';
+        } else {
+            // CONSOLIDATED_100 o B4_10_CLASSES: 10 Clases (8 Ordinarias B1-B3 + 2 en 4to Bimestre)
+            dynamicDivisor = 10;
+            classLoadLabel = '10 Clases Niveladas (8 B1-B3 + 2 B4)';
+        }
     } else {
         dynamicDivisor = 9;
+        if (periodMode === 'B1' || periodMode === 'B2' || periodMode === 'B3') {
+            classLoadLabel = `9 Clases (${periodMode} - ${is5to ? '5to' : '4to'} Perito)`;
+        } else if (periodMode === 'B4_ONLY' || periodMode === 'B4_10_CLASSES') {
+            classLoadLabel = `9 Clases (4to Bim. - ${is5to ? '5to' : '4to'} Perito)`;
+        } else {
+            classLoadLabel = `9 Clases Niveladas (${is5to ? '5to' : '4to'} Perito)`;
+        }
     }
 
     const officialClassLoad = dynamicDivisor;
-    const classLoadLabel = is6to 
-        ? (activeBimestre >= 4 ? '10 Clases (6to Graduandos)' : '8 Clases Ordinarias (6to Perito)')
-        : (is5to ? '9 Clases (5to Perito)' : '9 Clases (4to Perito)');
 
     let sumCourseAverages = 0;
     let gradedCount = 0;
@@ -13167,7 +13239,7 @@ function getStudentAcademicInfo(student) {
     const failedSubjectsList = [];
     let exoneratedCount = 0;
 
-    // Verificar si el estudiante está exonerado
+    // Verificar si el estudiante está exonerado globalmente
     if (student.isExonerated === true || student.exonerated === true) {
         exoneratedCount++;
     }
@@ -13177,35 +13249,71 @@ function getStudentAcademicInfo(student) {
 
     const isStudentExonerated = (exoneratedCount > 0);
 
-    // 1. Obtener materias oficiales del pensum/boletín para evitar sumar nombres duplicados o alias informales
+    // 1. Obtener materias oficiales del pensum/boletín
     let subjects = [];
     if (typeof getReportCardSubjects === 'function') {
         subjects = getReportCardSubjects(student);
     }
 
-    // Helper local para identificar materias especiales de graduación de 6to (Práctica Supervisada y Seminario)
-    const _cleanForMatch = s => (s || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
-    const _isMateriaEspecial6to = subName => {
-        const c = _cleanForMatch(subName);
-        return c.includes('practica') || c.includes('seminario');
-    };
-
-    // Si es 6to y estamos en Bimestre 1, 2 o 3 (8 clases), excluir materias de graduación (Práctica Supervisada y Seminario se agregan en B4)
-    if (is6to && activeBimestre <= 3) {
-        subjects = subjects.filter(sub => !_isMateriaEspecial6to(sub));
-        if (subjects.length > 8) {
-            subjects = subjects.slice(0, 8);
+    // Filtrar materias según el grado y el período seleccionado
+    if (is6to) {
+        if (periodMode === 'B1' || periodMode === 'B2' || periodMode === 'B3') {
+            subjects = subjects.filter(sub => !_isMateriaEspecial6to(sub)).slice(0, 8);
+        } else if (periodMode === 'B4_ONLY') {
+            subjects = subjects.filter(sub => _isMateriaEspecial6to(sub)).slice(0, 2);
+            if (subjects.length === 0) {
+                subjects = ['Práctica Supervisada', 'Seminario'];
+            }
+        } else {
+            // CONSOLIDATED_100 o B4_10_CLASSES -> 10 clases completas (8 ordinarias + Seminario y Práctica en B4)
+            const hasPrac = subjects.some(sub => _cleanForMatch(sub).includes('practica'));
+            const hasSem = subjects.some(sub => _cleanForMatch(sub).includes('seminario'));
+            if (!hasPrac) subjects.push('Práctica Supervisada');
+            if (!hasSem) subjects.push('Seminario');
+            if (subjects.length > 10) {
+                subjects = subjects.slice(0, 10);
+            }
         }
-    } else if (!is6to) {
-        // 4to y 5to siempre sobre 9 clases
+    } else {
         if (subjects.length > 9) {
             subjects = subjects.slice(0, 9);
         }
-    } else if (is6to && activeBimestre >= 4) {
-        if (subjects.length > 10) {
-            subjects = subjects.slice(0, 10);
-        }
     }
+
+    // Helper seguro para extraer la nota de una materia en un bimestre específico (1..4)
+    const _extractBimScore = (gradesObj, subName, bimNum) => {
+        let sc = gradesObj ? (Number(gradesObj[`b${bimNum}`]) || 0) : 0;
+        if (sc > 0) return sc;
+
+        const targetClean = _cleanForMatch(subName);
+        const details = student.gradebookDetails || {};
+        let bDetail = details[subName]?.[bimNum] || details[subName]?.[String(bimNum)];
+        if (!bDetail) {
+            const matchKey = Object.keys(details).find(k => _cleanForMatch(k) === targetClean || (is6to && _isMateriaEspecial6to(subName) && _cleanForMatch(k).includes(targetClean.includes('practica') ? 'practica' : 'seminario')));
+            if (matchKey) {
+                bDetail = details[matchKey]?.[bimNum] || details[matchKey]?.[String(bimNum)];
+            }
+        }
+        if (bDetail) {
+            sc = (parseInt(bDetail.zona) || 0) + (parseInt(bDetail.exam) || 0);
+            if (sc === 0 && bDetail.total !== undefined && bDetail.total !== '') {
+                sc = parseInt(bDetail.total) || 0;
+            }
+        }
+        if (sc > 0) return sc;
+
+        if (student.grades && typeof student.grades === 'object') {
+            let arr = student.grades[subName];
+            if (!Array.isArray(arr)) {
+                const matchGradeKey = Object.keys(student.grades).find(k => _cleanForMatch(k) === targetClean || (is6to && _isMateriaEspecial6to(subName) && _cleanForMatch(k).includes(targetClean.includes('practica') ? 'practica' : 'seminario')));
+                if (matchGradeKey) arr = student.grades[matchGradeKey];
+            }
+            if (Array.isArray(arr)) {
+                sc = parseInt(arr[bimNum - 1]) || 0;
+            }
+        }
+        return sc;
+    };
 
     if (subjects.length > 0) {
         subjects.forEach(sub => {
@@ -13216,35 +13324,22 @@ function getStudentAcademicInfo(student) {
 
             const isSpecialSub = is6to && _isMateriaEspecial6to(sub);
 
-            // ─── REGLA ESTRICTA 6to Grado: Práctica Supervisada y Seminario ──────────
-            // Nota única de B4 (se omiten los 3 bimestres anteriores).
-            // Solo se evalúan cuando activeBimestre >= 4.
+            // ─── REGLA 6to Grado: Seminario y Práctica Supervisada (Evaluadas en 4to Bimestre B4) ───
             if (isSpecialSub) {
-                if (activeBimestre < 4) {
-                    // Omitida en B1, B2 y B3
-                    return;
+                if (periodMode === 'B1' || periodMode === 'B2' || periodMode === 'B3') {
+                    return; // No aplica en B1, B2 ni B3 individuales
                 }
-                const isExoneratedSubject = (typeof isSubjectBimestreExonerated === 'function')
+                const isExonB4 = (typeof isSubjectBimestreExonerated === 'function')
                     ? isSubjectBimestreExonerated(student, sub, 4)
                     : false;
 
-                if (isExoneratedSubject) {
+                if (isExonB4) {
                     exoneratedCount++;
                     return;
                 }
 
-                let scoreB4 = gradesObj ? (gradesObj.b4 || 0) : 0;
-                if (scoreB4 === 0) {
-                    const details = student.gradebookDetails || {};
-                    const bDetail = details[sub]?.[4] || details[sub]?.['4'];
-                    if (bDetail) {
-                        scoreB4 = (parseInt(bDetail.zona) || 0) + (parseInt(bDetail.exam) || 0);
-                        if (scoreB4 === 0 && bDetail.total !== undefined && bDetail.total !== '') {
-                            scoreB4 = parseInt(bDetail.total) || 0;
-                        }
-                    }
-                }
-
+                // Buscar nota en B4 (y como respaldo si se cargó en otra casilla cuando aún no había B4)
+                let scoreB4 = _extractBimScore(gradesObj, sub, 4);
                 if (scoreB4 > 0) {
                     if (scoreB4 < 60) {
                         hasFailedGrade = true;
@@ -13256,26 +13351,77 @@ function getStudentAcademicInfo(student) {
                 return;
             }
 
-            // ─── MATERIAS ORDINARIAS (4to, 5to y las 8 clases de 6to) ───────────────
-            // Se toman los bimestres evaluados tal como ya están asignados:
-            // Para 6to se toman los 3 bimestres asignados (B1, B2, B3).
-            let validScores = [];
-            const maxUnitsToConsider = (is6to && activeBimestre >= 4) ? 3 : activeBimestre;
+            // ─── MATERIAS ORDINARIAS (8 clases de 6to en B1-B3; 9 clases de 4to y 5to en B1-B4) ───
+            if (periodMode === 'B1' || periodMode === 'B2' || periodMode === 'B3') {
+                const targetB = parseInt(periodMode.replace('B', ''), 10);
+                if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, sub, targetB)) {
+                    exoneratedCount++;
+                    return;
+                }
+                const sc = _extractBimScore(gradesObj, sub, targetB);
+                if (sc > 0) {
+                    if (sc < 60) {
+                        hasFailedGrade = true;
+                        failedSubjectsList.push(`${sub} (B${targetB}: ${sc} pts)`);
+                    }
+                    sumCourseAverages += sc;
+                    gradedCount++;
+                }
+                return;
+            }
 
-            if (gradesObj) {
-                for (let b = 1; b <= maxUnitsToConsider; b++) {
-                    if (isSubjectBimestreExonerated(student, sub, b)) {
-                        exoneratedCount++;
-                        continue;
+            if (periodMode === 'B4_ONLY') {
+                // Solo 4to y 5to llegan aquí (6to fue filtrado a sus 2 materias especiales arriba)
+                if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, sub, 4)) {
+                    exoneratedCount++;
+                    return;
+                }
+                const sc4 = _extractBimScore(gradesObj, sub, 4);
+                if (sc4 > 0) {
+                    if (sc4 < 60) {
+                        hasFailedGrade = true;
+                        failedSubjectsList.push(`${sub} (B4: ${sc4} pts)`);
                     }
-                    const sc = gradesObj[`b${b}`] || 0;
-                    if (sc > 0) {
-                        if (sc < 60) {
-                            hasFailedGrade = true;
-                            failedSubjectsList.push(`${sub} (B${b}: ${sc} pts)`);
-                        }
-                        validScores.push(sc);
+                    sumCourseAverages += sc4;
+                    gradedCount++;
+                }
+                return;
+            }
+
+            if (periodMode === 'B4_10_CLASSES' && !is6to) {
+                // En 4to y 5to dentro de "4to Bimestre + Cierre 6to": priorizar B4 si ya tiene nota, o promedio acumulado B1-B4 si B4 aún está en blanco
+                if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, sub, 4)) {
+                    exoneratedCount++;
+                    return;
+                }
+                const sc4 = _extractBimScore(gradesObj, sub, 4);
+                if (sc4 > 0) {
+                    if (sc4 < 60) {
+                        hasFailedGrade = true;
+                        failedSubjectsList.push(`${sub} (B4: ${sc4} pts)`);
                     }
+                    sumCourseAverages += sc4;
+                    gradedCount++;
+                    return;
+                }
+            }
+
+            // Modo CONSOLIDATED_100 (y las 8 clases ordinarias de 6to en B4_10_CLASSES):
+            // 6to promedia sus 3 bimestres ordinarios (B1, B2, B3); 4to y 5to promedian sus 4 bimestres (B1, B2, B3, B4)
+            const maxUnits = is6to ? 3 : 4;
+            let validScores = [];
+            for (let b = 1; b <= maxUnits; b++) {
+                if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, sub, b)) {
+                    exoneratedCount++;
+                    continue;
+                }
+                const sc = _extractBimScore(gradesObj, sub, b);
+                if (sc > 0) {
+                    if (sc < 60) {
+                        hasFailedGrade = true;
+                        failedSubjectsList.push(`${sub} (B${b}: ${sc} pts)`);
+                    }
+                    validScores.push(sc);
                 }
             }
 
@@ -13285,87 +13431,34 @@ function getStudentAcademicInfo(student) {
                 gradedCount++;
             }
         });
-    } else {
-        // Fallback canónico si getReportCardSubjects no estuviese disponible en el momento
-        if (student.grades && typeof student.grades === 'object') {
-            const seenClean = new Set();
-            Object.keys(student.grades).forEach(cName => {
-                const clean = cName.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]/g, '');
-                if (seenClean.has(clean)) return;
-                seenClean.add(clean);
-
-                const bGrades = student.grades[cName];
-                if (Array.isArray(bGrades)) {
-                    let validScores = [];
-                    for (let b = 1; b <= activeBimestre; b++) {
-                        if (isSubjectBimestreExonerated(student, cName, b)) {
-                            exoneratedCount++;
-                            continue;
-                        }
-                        const score = parseInt(bGrades[b - 1]) || 0;
-                        if (score > 0) {
-                            if (score < 60) {
-                                hasFailedGrade = true;
-                                failedSubjectsList.push(`${cName} (${score} pts)`);
-                            }
-                            validScores.push(score);
-                        }
-                    }
-                    if (validScores.length > 0) {
-                        const cAvg = validScores.reduce((a, b) => a + b, 0) / validScores.length;
-                        sumCourseAverages += cAvg;
-                        gradedCount++;
-                    }
-                }
-            });
-        }
     }
 
-    // Revisar estructura moderna de gradebookDetails si existe para verificar reprobadas adicionales
-    if (student.gradebookDetails && typeof student.gradebookDetails === 'object') {
-        const courses = Object.keys(student.gradebookDetails);
-        courses.forEach(cName => {
-            if (is6to && _isMateriaEspecial6to(cName) && activeBimestre < 4) return;
-            for (let b = 1; b <= activeBimestre; b++) {
-                if (is6to && _isMateriaEspecial6to(cName) && b < 4) continue;
-                if (isSubjectBimestreExonerated(student, cName, b)) continue;
-                const bDetail = student.gradebookDetails[cName] && student.gradebookDetails[cName][b];
-                if (bDetail) {
-                    const totalScore = (parseInt(bDetail.zona) || 0) + (parseInt(bDetail.exam) || 0);
-                    if (totalScore > 0) {
-                        if (totalScore < 60) {
-                            hasFailedGrade = true;
-                            if (!failedSubjectsList.some(f => f.startsWith(cName))) {
-                                failedSubjectsList.push(`${cName} (${totalScore} pts)`);
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    // REGLAS ESTRICTAS DE CUADRO DE HONOR Y PROMEDIO EQUITATIVO:
+    // REGLAS ESTRICTAS DE CUADRO DE HONOR Y PROMEDIO NIVELADO A BASE 100:
     // 1. Debe ser estudiante activo (no Retirado ni Inactivo)
-    // 2. Debe tener su carga académica completa evaluada (al menos la carga ordinaria menos materias exoneradas)
+    // 2. Debe tener su carga académica evaluada (en 6to: 10 clases si ya tiene B4, u 8 si B4 aún no ha sido ingresado; en B4_ONLY: 2 clases; en 4to/5to: 9 clases)
     // 3. NO debe tener ninguna clase perdida (hasFailedGrade === false, todas las notas >= 60)
-    // 4. Exoneraciones de materia individual reducen divisor pero NO excluyen del Cuadro;
-    //    solo excluye del Cuadro si tiene exoneración GLOBAL institucional (student.isExonerated)
     const isRetired = (student.status === 'Retirado' || student.status === 'Inactivo');
     const hasGlobalExoneration = (student.isExonerated === true || student.exonerated === true);
-    const minClassesRequired = Math.max(1, (is6to ? 8 : officialClassLoad) - exoneratedCount);
+    const baseMinLoad = is6to
+        ? (periodMode === 'B4_ONLY' ? 2 : 8)
+        : 9;
+    const minClassesRequired = Math.max(1, baseMinLoad - exoneratedCount);
     const hasCompleteLoad = (gradedCount >= minClassesRequired);
     const isEligible = (!isRetired) && hasCompleteLoad && (!hasFailedGrade) && (!hasGlobalExoneration);
 
     if (gradedCount > 0) {
-        // Promedio académico fiel basado únicamente en las notas actualizadas de las materias evaluadas
+        // Nivelación exacta a Base 100 puntos (6to sobre sus 10 clases cuando B4 está cargado / 8 en B1-B3; 4to y 5to sobre sus 9 clases)
         const rawAvg = sumCourseAverages / gradedCount;
         const boundedAvg = Math.min(100.0, Math.max(0.0, rawAvg));
         const equitableAvg = Math.round(boundedAvg * 1000) / 1000;
         const totalPointsCalc = Math.round(sumCourseAverages * 10) / 10;
-        const accurateLoadLabel = is6to 
-            ? ((activeBimestre >= 4 && gradedCount >= 10) ? '10 Clases (6to Graduandos)' : '8 Clases Ordinarias (6to Perito)')
-            : classLoadLabel;
+
+        let accurateLoadLabel = classLoadLabel;
+        if (is6to && (periodMode === 'CONSOLIDATED_100' || periodMode === 'B4_10_CLASSES')) {
+            accurateLoadLabel = (gradedCount >= 9)
+                ? `${gradedCount} Clases Niveladas (B1-B3 + B4)`
+                : '8 Clases Ord. (B1-B3) — Base 100';
+        }
 
         return {
             average: equitableAvg,
@@ -13379,6 +13472,7 @@ function getStudentAcademicInfo(student) {
             is4to: is4to,
             officialClassLoad: dynamicDivisor,
             classLoadLabel: accurateLoadLabel,
+            periodMode: periodMode,
             hasFailedGrade: hasFailedGrade,
             isExonerated: isStudentExonerated,
             eligibleForHonorRoll: isEligible,
@@ -13387,7 +13481,7 @@ function getStudentAcademicInfo(student) {
         };
     }
 
-    // Si AÚN NO hay calificaciones ingresadas, todo permanece en 0 real (limpio)
+    // Si AÚN NO hay calificaciones ingresadas en ese período, todo permanece en 0 real
     return {
         average: 0,
         averageFormatted: '0.000',
@@ -13400,6 +13494,7 @@ function getStudentAcademicInfo(student) {
         is4to: is4to,
         officialClassLoad: officialClassLoad,
         classLoadLabel: classLoadLabel,
+        periodMode: periodMode,
         hasFailedGrade: false,
         isExonerated: isStudentExonerated,
         eligibleForHonorRoll: false,
@@ -24890,6 +24985,19 @@ window.selectTeacherCourseCard = function(courseId) {
 // 📱 CONTROL DE ASISTENCIA: MODAL DE PASE DE LISTA RÁPIDO DIARIO
 // ==========================================================================
 
+function isUnjustifiedPermission(permOrMeta) {
+    if (!permOrMeta || typeof permOrMeta !== 'object') return false;
+    if (permOrMeta.attendanceCode === 'A') return true;
+    const cat = String(permOrMeta.reasonCategory || '').toLowerCase().trim();
+    return cat.includes('injustificada');
+}
+window.isUnjustifiedPermission = isUnjustifiedPermission;
+
+function getPermissionAttendanceCode(permOrMeta) {
+    return isUnjustifiedPermission(permOrMeta) ? 'A' : 'J';
+}
+window.getPermissionAttendanceCode = getPermissionAttendanceCode;
+
 window.openQuickAttendanceModal = function() {
     const gradeSelect = document.getElementById('attendanceGradeSelect');
     const courseSelect = document.getElementById('attendanceCourseSelect');
@@ -24942,13 +25050,13 @@ window.openQuickAttendanceModal = function() {
 
     students.forEach(s => {
         if (!s) return;
-        const hasPermit = (typeof getStudentPermissionForDay === 'function')
-            ? !!getStudentPermissionForDay(s.id, todayYear, todayMonth, todayDay)
-            : false;
+        const permObj = (typeof getStudentPermissionForDay === 'function')
+            ? getStudentPermissionForDay(s.id, todayYear, todayMonth, todayDay)
+            : null;
         
         let existing = STATE.attendanceRecords[recordKey]?.[s.id]?.[todayDay];
-        if (hasPermit) {
-            existing = 'J';
+        if (permObj) {
+            existing = isUnjustifiedPermission(permObj) ? 'A' : 'J';
         } else if (!existing) {
             existing = 'P';
         }
@@ -24986,11 +25094,13 @@ window.renderQuickAttendanceList = function() {
     const html = students.map((s, idx) => {
         if (!s) return '';
         const isRetired = (s.status === 'Retirado' || s.status === 'Inactivo');
-        const hasPermit = (typeof getStudentPermissionForDay === 'function')
-            ? !!getStudentPermissionForDay(s.id, data.todayYear, data.todayMonth, data.todayDay)
-            : false;
+        const permObj = (typeof getStudentPermissionForDay === 'function')
+            ? getStudentPermissionForDay(s.id, data.todayYear, data.todayMonth, data.todayDay)
+            : null;
+        const hasPermit = !!permObj;
+        const isUnjustPermit = hasPermit && isUnjustifiedPermission(permObj);
 
-        const currentVal = isRetired ? '—' : (hasPermit ? 'J' : (data.records[s.id] || 'P'));
+        const currentVal = isRetired ? '—' : (hasPermit ? (isUnjustPermit ? 'A' : 'J') : (data.records[s.id] || 'P'));
 
         if (!isRetired) {
             if (currentVal === 'P') countP++;
@@ -25008,6 +25118,19 @@ window.renderQuickAttendanceList = function() {
                         <span style="display:inline-block; width:26px;">${idx + 1}.</span> ${fullName}
                     </div>
                     <span class="badge badge-danger" style="font-size:0.75rem;">Retirado</span>
+                </div>
+            `;
+        }
+
+        if (isUnjustPermit) {
+            return `
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; margin-bottom:8px;">
+                    <div style="font-size:0.88rem; color:#0f172a; font-weight:800;">
+                        <span style="display:inline-block; width:26px; color:#64748b;">${idx + 1}.</span> ${fullName}
+                    </div>
+                    <span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:800; font-size:0.82rem; padding:6px 12px; border-radius:6px; border:1px solid #f87171; display:inline-flex; align-items:center; gap:5px;" title="Ausencia Injustificada Blindada — Nadie puede cambiar esta A">
+                        <i class="fa-solid fa-lock"></i> A (Injustificada Blindada)
+                    </span>
                 </div>
             `;
         }
@@ -25071,6 +25194,15 @@ window.renderQuickAttendanceList = function() {
 
 window.setQuickAttStatus = function(studentId, status) {
     if (!window._quickAttendanceData) return;
+    const data = window._quickAttendanceData;
+    const permObj = (typeof getStudentPermissionForDay === 'function')
+        ? getStudentPermissionForDay(studentId, data.todayYear, data.todayMonth, data.todayDay)
+        : null;
+    if (permObj) {
+        data.records[studentId] = isUnjustifiedPermission(permObj) ? 'A' : 'J';
+        renderQuickAttendanceList();
+        return;
+    }
     window._quickAttendanceData.records[studentId] = status;
     renderQuickAttendanceList();
 };
@@ -25085,11 +25217,13 @@ window.markAllPresentInQuickModal = function() {
 
     students.forEach(s => {
         if (!s || s.status === 'Retirado' || s.status === 'Inactivo') return;
-        const hasPermit = (typeof getStudentPermissionForDay === 'function')
-            ? !!getStudentPermissionForDay(s.id, data.todayYear, data.todayMonth, data.todayDay)
-            : false;
-        if (!hasPermit) {
+        const permObj = (typeof getStudentPermissionForDay === 'function')
+            ? getStudentPermissionForDay(s.id, data.todayYear, data.todayMonth, data.todayDay)
+            : null;
+        if (!permObj) {
             data.records[s.id] = 'P';
+        } else {
+            data.records[s.id] = isUnjustifiedPermission(permObj) ? 'A' : 'J';
         }
     });
     renderQuickAttendanceList();
@@ -25607,7 +25741,7 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
             }
         });
 
-        // Permisos oficiales de autoridad institucional
+        // Permisos oficiales de autoridad institucional (J para justificados, A blindada para Injustificada)
         const year = parseInt(cycleKey) || 2026;
         (gradeStudents.length > 0 ? gradeStudents : (STATE.students || [])).forEach(s => {
             const sId = s.id;
@@ -25622,10 +25756,12 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
                 const metaIsAdmin = !!meta && (meta.is_locked_by_admin === true || authorityRoles.includes(metaOrigin)) && metaOrigin !== 'docente';
 
                 if (permIsAdmin || metaIsAdmin) {
+                    const effectiveObj = perm || meta;
+                    const code = isUnjustifiedPermission(effectiveObj) ? 'A' : 'J';
                     if (!monthData[sId]) monthData[sId] = {};
-                    monthData[sId][day] = 'J';
-                    if (s.carne) { if (!monthData[s.carne]) monthData[s.carne] = {}; monthData[s.carne][day] = 'J'; }
-                    if (s.personalCode) { if (!monthData[s.personalCode]) monthData[s.personalCode] = {}; monthData[s.personalCode][day] = 'J'; }
+                    monthData[sId][day] = code;
+                    if (s.carne) { if (!monthData[s.carne]) monthData[s.carne] = {}; monthData[s.carne][day] = code; }
+                    if (s.personalCode) { if (!monthData[s.personalCode]) monthData[s.personalCode] = {}; monthData[s.personalCode][day] = code; }
                 }
             }
         });
@@ -25703,7 +25839,7 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
             }
         });
 
-        // Asegurar justificaciones oficiales como 'J'
+        // Asegurar justificaciones oficiales como 'J' y faltas injustificadas oficiales como 'A'
         const year = parseInt(cycleKey) || 2026;
         (gradeStudents.length > 0 ? gradeStudents : (STATE.students || [])).forEach(s => {
             const sId = s.id;
@@ -25713,10 +25849,12 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
                 const meta = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]) || null;
                 const metaOrigin = meta ? (meta.origin_role || '').toLowerCase() : '';
                 if (perm || (meta && (meta.is_locked_by_admin || authorityRoles.includes(metaOrigin)))) {
+                    const effectiveObj = perm || meta;
+                    const code = isUnjustifiedPermission(effectiveObj) ? 'A' : 'J';
                     if (!monthData[sId]) monthData[sId] = {};
-                    monthData[sId][day] = 'J';
-                    if (s.carne) { if (!monthData[s.carne]) monthData[s.carne] = {}; monthData[s.carne][day] = 'J'; }
-                    if (s.personalCode) { if (!monthData[s.personalCode]) monthData[s.personalCode] = {}; monthData[s.personalCode][day] = 'J'; }
+                    monthData[sId][day] = code;
+                    if (s.carne) { if (!monthData[s.carne]) monthData[s.carne] = {}; monthData[s.carne][day] = code; }
+                    if (s.personalCode) { if (!monthData[s.personalCode]) monthData[s.personalCode] = {}; monthData[s.personalCode][day] = code; }
                 }
             }
         });
@@ -25773,7 +25911,8 @@ function getStudentPermissionForDay(studentId, year, month, day) {
                 date: targetDateStr,
                 studentName: found.studentName || '',
                 origin_role: (found.origin_role || found.originRole || 'profesor_auxiliar').toLowerCase(),
-                is_locked_by_admin: true
+                is_locked_by_admin: true,
+                attendanceCode: isUnjustifiedPermission(found) ? 'A' : 'J'
             };
         }
     }
@@ -25809,7 +25948,8 @@ function getStudentPermissionForDay(studentId, year, month, day) {
                 return {
                     ...meta,
                     origin_role: oRole || 'profesor_auxiliar',
-                    is_locked_by_admin: true
+                    is_locked_by_admin: true,
+                    attendanceCode: isUnjustifiedPermission(meta) ? 'A' : 'J'
                 };
             }
         }
@@ -26077,11 +26217,16 @@ function loadAttendanceList() {
                 const permOriginRole = permMeta ? (permMeta.origin_role || permMeta.originRole || '').toLowerCase() : '';
                 const permIsLockedByAdmin = permMeta ? (permMeta.is_locked_by_admin === true || (permMeta.is_locked_by_admin !== false && permOriginRole !== 'docente')) : false;
 
-                // ¿Es justificación oficial de Auxiliatura, Secretaría o Dirección?
-                const isOfficialJustified = (courseId === 'GENERAL' && genDayVal === 'J') || (!!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente');
+                // ¿Es ausencia INJUSTIFICADA oficial blindada ('A' inamovible en todos los maestros)?
+                const isOfficialUnjustified = !!permMeta && isUnjustifiedPermission(permMeta) && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente';
 
-                // Si tiene permiso o está justificado oficialmente por las autoridades, el indicador obligatorio es 'J'
-                if (isOfficialJustified) {
+                // ¿Es justificación oficial ('J') de Auxiliatura, Secretaría o Dirección?
+                const isOfficialJustified = !isOfficialUnjustified && ((courseId === 'GENERAL' && genDayVal === 'J') || (!!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente'));
+
+                // Si tiene falta injustificada oficial, el indicador obligatorio y blindado es 'A'; si es justificado oficial, es 'J'
+                if (isOfficialUnjustified) {
+                    val = 'A';
+                } else if (isOfficialJustified) {
                     val = 'J';
                 }
 
@@ -26089,7 +26234,7 @@ function loadAttendanceList() {
                 let cellTitle = `${studentFullName} — Día ${day}: Sin registrar (Haga clic para marcar P)`;
                 let cellInnerHtml = val;
                 let isCellReadonly = false;
-                let cellOriginRole = isOfficialJustified ? (permOriginRole || (genDayVal === 'J' ? 'profesor_auxiliar' : 'director')) : (val === 'J' ? 'docente' : '');
+                let cellOriginRole = (isOfficialJustified || isOfficialUnjustified) ? (permOriginRole || (genDayVal === 'J' ? 'profesor_auxiliar' : 'director')) : (val === 'J' ? 'docente' : '');
 
                 if (val === 'P') {
                     cellClass = 'att-val-p att-val-P';
@@ -26097,10 +26242,19 @@ function loadAttendanceList() {
                     dayPresentTotals[day]++;
                     cellTitle = `${studentFullName} — Día ${day}: PRESENTE`;
                 } else if (val === 'A') {
-                    cellClass = 'att-val-a att-val-A';
                     aCount++;
                     dayAbsentTotals[day]++;
-                    cellTitle = `${studentFullName} — Día ${day}: AUSENTE / FALTA`;
+                    if (isOfficialUnjustified) {
+                        const authBy = permMeta ? (permMeta.authorizedBy || 'Auxiliatura / Dirección') : 'Auxiliatura / Dirección';
+                        const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Ausencia Injustificada Oficial';
+                        isCellReadonly = true;
+                        cellClass = 'att-val-a att-val-A att-val-permiso att-cell-locked att-cell-unjustified-locked';
+                        cellTitle = `${studentFullName} — Día ${day}: AUSENCIA INJUSTIFICADA BLINDADA (📋 ${authBy}: ${reason}) — 🔒 Esta "A" está blindada y nadie puede cambiarla en la asistencia.`;
+                        cellInnerHtml = `<span onclick="event.stopPropagation(); if(typeof showJustificationDetailModal==='function') showJustificationDetailModal('${s.id}', ${day}, '${month}');" style="display:inline-flex; align-items:center; justify-content:center; gap:2px; cursor:pointer;" title="Ausencia Injustificada Blindada — Clic para ver detalles"><i class="fa-solid fa-lock" style="font-size:0.60rem; opacity:0.92; color:#991b1b;"></i>A</span>`;
+                    } else {
+                        cellClass = 'att-val-a att-val-A';
+                        cellTitle = `${studentFullName} — Día ${day}: AUSENTE / FALTA`;
+                    }
                 } else if (val === 'J') {
                     jCount++;
                     dayJustTotals[day]++;
@@ -26153,8 +26307,8 @@ function loadAttendanceList() {
                     else if (isFutureDay) cellTitle += ' (🔒 Fecha futura)';
                 }
 
-                const cellDisabledAttr = (isCellReadonly && !isAuditRole) ? 'disabled="disabled" aria-disabled="true"' : '';
-                const cellLockAdminAttr = isOfficialJustified ? 'data-locked-by-admin="true"' : 'data-locked-by-admin="false"';
+                const cellDisabledAttr = (isOfficialUnjustified || (isCellReadonly && !isAuditRole)) ? 'disabled="disabled" aria-disabled="true"' : '';
+                const cellLockAdminAttr = (isOfficialJustified || isOfficialUnjustified) ? 'data-locked-by-admin="true"' : 'data-locked-by-admin="false"';
                 const cellOriginRoleAttr = `data-origin-role="${cellOriginRole}"`;
 
                 const cellDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -26440,7 +26594,13 @@ function handleAttendanceGridArrowNav(e) {
 }
 window.handleAttendanceGridArrowNav = handleAttendanceGridArrowNav;
 
+const _cellSideEffectsTimers = {};
+
 function toggleAttendanceCell(studentId, day, forcedValue = null) {
+    // ⚡ Registrar marca de tiempo inmediata para evitar que ecos de red reconstruyan el DOM durante clics rápidos
+    window._lastLocalAttendanceClickTime = Date.now();
+    if (!window._localDirtyAttendanceCells) window._localDirtyAttendanceCells = {};
+
     const targetStudent = (STATE.students || []).find(s => String(s.id) === String(studentId));
     if (targetStudent && (targetStudent.status === 'Retirado' || targetStudent.status === 'Inactivo')) {
         const sName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(targetStudent, 'lastFirst') : `${targetStudent.firstName || ''} ${targetStudent.lastName || ''}`;
@@ -26489,22 +26649,18 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
                      (cycleYear === todayYear && month > todayMonth) || 
                      (cycleYear === todayYear && month === todayMonth && day > todayDay);
 
-    if (isPast) {
-        if (!isAuditRole) {
-            if (typeof showToast === 'function') {
-                showToast(`🔒 Toma de Asistencia Bloqueada: El día ${day} ya finalizó. No está permitido modificar la asistencia de fechas anteriores. Para justificaciones o cambios oficiales, comuníquese con Auxiliatura o Dirección.`, 'warning');
-            }
-            return;
+    if (isPast && !isAuditRole) {
+        if (typeof showToast === 'function') {
+            showToast(`🔒 Toma de Asistencia Bloqueada: El día ${day} ya finalizó. No está permitido modificar la asistencia de fechas anteriores. Para justificaciones o cambios oficiales, comuníquese con Auxiliatura o Dirección.`, 'warning');
         }
+        return;
     }
 
-    if (isFuture) {
-        if (!isAuditRole) {
-            if (typeof showToast === 'function') {
-                showToast(`🔒 Fecha Futura Bloqueada: No está permitido tomar asistencia de días futuros por adelantado.`, 'warning');
-            }
-            return;
+    if (isFuture && !isAuditRole) {
+        if (typeof showToast === 'function') {
+            showToast(`🔒 Fecha Futura Bloqueada: No está permitido tomar asistencia de días futuros por adelantado.`, 'warning');
         }
+        return;
     }
 
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
@@ -26512,9 +26668,11 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     if (!STATE.attendanceRecords[recordKey]) STATE.attendanceRecords[recordKey] = {};
     if (!STATE.attendanceRecords[recordKey][studentId]) STATE.attendanceRecords[recordKey][studentId] = {};
 
-    const cur = STATE.attendanceRecords[recordKey][studentId][day] || '';
+    const td = document.querySelector(`td[data-student-id="${studentId}"][data-day="${day}"]`);
+    const domVal = td ? td.getAttribute('data-val') : null;
+    const cur = (domVal !== null && domVal !== undefined) ? domVal : (STATE.attendanceRecords[recordKey][studentId][day] || '');
 
-    // 🛡️ Blindaje Estricto de Permisos Oficiales y Justificaciones de Auxiliatura / Dirección
+    // 🛡️ Blindaje Estricto de Permisos Oficiales y Ausencias Injustificadas Blindadas
     const permMeta = (typeof getStudentPermissionForDay === 'function')
         ? getStudentPermissionForDay(studentId, cycleYear, month, day)
         : null;
@@ -26524,23 +26682,36 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         ? STATE.attendanceRecords[genKey][studentId][day]
         : '';
 
-    // 🛡️ Blindaje Estricto de Permisos Oficiales y Justificaciones de Auxiliatura / Dirección / Secretaría
     const authorityRoles = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
     const permOriginRole = permMeta ? (permMeta.origin_role || permMeta.originRole || '').toLowerCase() : '';
     const permIsLockedByAdmin = permMeta ? (permMeta.is_locked_by_admin === true || (permMeta.is_locked_by_admin !== false && authorityRoles.includes(permOriginRole) && permOriginRole !== 'docente')) : false;
 
-    // ¿Es justificación oficial de Auxiliatura, Secretaría o Dirección?
+    // 🔒 1. ¿Es AUSENCIA INJUSTIFICADA BLINDADA ('A' que nadie puede cambiar en la planilla)?
+    const isOfficialUnjustified = (!!permMeta && isUnjustifiedPermission(permMeta) && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente') ||
+                                  (td && td.classList.contains('att-cell-unjustified-locked'));
+
+    if (isOfficialUnjustified) {
+        const studentObj = targetStudent || (STATE.students || []).find(s => s.id === studentId);
+        const sName = studentObj ? formatStudentDisplayName(studentObj, 'lastFirst') : 'El estudiante';
+        const authBy = permMeta ? (permMeta.authorizedBy || 'Auxiliatura / Dirección') : 'Auxiliatura / Dirección';
+        const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Ausencia Injustificada Oficial';
+        if (typeof showToast === 'function') {
+            showToast(`🔒 Ausencia Injustificada Blindada: ${sName} tiene registrada una falta injustificada oficial por ${authBy} (${reason}). Esta "A" está blindada y nadie puede cambiarla en la planilla.`, 'error', 5500);
+        }
+        return;
+    }
+
+    // 🔒 2. ¿Es justificación oficial ('J') de Auxiliatura, Secretaría o Dirección?
     const isOfficialJustified = (courseId === 'GENERAL' && genVal === 'J' && permOriginRole !== 'docente') || 
                                 (!!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente');
 
     if (isOfficialJustified) {
-        const studentObj = (STATE.students || []).find(s => s.id === studentId);
+        const studentObj = targetStudent || (STATE.students || []).find(s => s.id === studentId);
         const sName = studentObj ? formatStudentDisplayName(studentObj, 'lastFirst') : 'El estudiante';
         const authBy = permMeta ? (permMeta.authorizedBy || 'Auxiliatura') : 'Auxiliatura / Dirección / Secretaría';
         const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Justificación / Permiso Oficial Autorizado';
 
         if (!isAuditRole) {
-            // DOCENTE BLOQUEADO: Registro de solo lectura ÚNICAMENTE si fue justificado por Auxiliatura, Secretaría o Dirección
             if (typeof showToast === 'function') {
                 showToast(`🔒 Registro Bloqueado: ${sName} cuenta con inasistencia justificada autorizada por ${authBy} (${reason}). Este registro es de solo lectura y no puede ser modificado por docentes.`, 'warning', 6000);
             }
@@ -26553,6 +26724,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         }
     }
 
+    // ⚡ Ciclo dinámico instantáneo: '' -> 'P' -> 'A' -> 'J' -> 'T' -> ''
     let next = 'P';
     if (forcedValue !== null && forcedValue !== undefined) {
         next = forcedValue;
@@ -26569,6 +26741,12 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         delete STATE.attendanceRecords[recordKey][studentId][day];
     }
 
+    // Proteger esta celda contra ecos de red durante 5 segundos
+    window._localDirtyAttendanceCells[`${recordKey}_${studentId}_${day}`] = {
+        val: next || '',
+        ts: Date.now()
+    };
+
     // 🛡️ Control Técnico de Justificaciones y Permisos (Estrictamente Individual por Cátedra)
     const isDocenteCourse = (courseId && courseId !== 'GENERAL');
     const courseScopedMetaKey = isDocenteCourse ? `${studentId}_${month}_${day}_${courseId}` : `${studentId}_${month}_${day}`;
@@ -26577,18 +26755,16 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
 
     if (next === 'J') {
         if (isAuditRole && courseId === 'GENERAL') {
-            // Justificación en Control General por una autoridad institucional (Válida institucionalmente)
             STATE.attendancePermissionsMeta[globalInstMetaKey] = {
                 reasonCategory: 'Permiso / Justificación Oficial',
                 reasonDetail: 'Justificación autorizada por ' + currentRole.toUpperCase(),
                 authorizedBy: (STATE.currentUser && STATE.currentUser.name) || currentRole,
                 origin_role: currentRole,
                 is_locked_by_admin: true,
+                attendanceCode: 'J',
                 timestamp: Date.now()
             };
         } else {
-            // Justificación en aula por el docente: INDIVIDUAL y EXCLUSIVA de su propia cátedra
-            // NUNCA contamina la clave institucional `${studentId}_${month}_${day}`
             STATE.attendancePermissionsMeta[courseScopedMetaKey] = {
                 reasonCategory: 'Justificación en Aula por Docente',
                 reasonDetail: 'Registrado directamente por el catedrático titular',
@@ -26596,16 +26772,15 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
                 origin_role: 'docente',
                 courseId: courseId,
                 is_locked_by_admin: false,
+                attendanceCode: 'J',
                 timestamp: Date.now()
             };
-            // Si por error existía una justificación no autorizada de docente en la clave global, limpiarla
             if (STATE.attendancePermissionsMeta[globalInstMetaKey] && 
                 (STATE.attendancePermissionsMeta[globalInstMetaKey].origin_role === 'docente' || !STATE.attendancePermissionsMeta[globalInstMetaKey].is_locked_by_admin)) {
                 delete STATE.attendancePermissionsMeta[globalInstMetaKey];
             }
         }
     } else if (cur === 'J') {
-        // Se revirtió la 'J'
         if (isDocenteCourse && STATE.attendancePermissionsMeta[courseScopedMetaKey]) {
             delete STATE.attendancePermissionsMeta[courseScopedMetaKey];
         }
@@ -26621,65 +26796,57 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         }
     }
 
-    // 🚨 Alerta Inmediata a Auxiliatura cuando un docente marca ausencia en aula
-    if (next === 'A' && typeof emitAttendanceAbsenceAlert === 'function') {
-        emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month);
-    } else if (cur === 'A' && next !== 'A' && typeof dismissAttendanceAbsenceAlert === 'function') {
-        dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month);
-    }
-
-    // Actualizar visualmente la celda de inmediato con su letra y color asignado
-    const td = document.querySelector(`td[data-student-id="${studentId}"][data-day="${day}"]`);
+    // ⚡ Actualizar visualmente la celda en <1ms sin esperar red ni alertas
     if (td) {
+        const keepToday = td.classList.contains('col-cell-today') || td.classList.contains('cell-day-today');
         let cellClass = next ? `att-cell att-val-${next.toLowerCase()} att-val-${next.toUpperCase()}` : 'att-cell att-val-empty';
-        if (next === 'J') {
-            if (isAuditRole) {
-                cellClass += ' att-val-permiso';
-                td.setAttribute('data-origin-role', currentRole);
-                td.setAttribute('data-locked-by-admin', 'true');
-            } else {
-                td.setAttribute('data-origin-role', 'docente');
-                td.setAttribute('data-locked-by-admin', 'false');
-                td.removeAttribute('disabled');
-                td.removeAttribute('aria-disabled');
-                td.removeAttribute('data-readonly');
-                td.removeAttribute('aria-readonly');
-            }
-            td.textContent = next;
+        if (next === 'J' && isAuditRole) {
+            cellClass += ' att-val-permiso';
+            td.setAttribute('data-origin-role', currentRole);
+            td.setAttribute('data-locked-by-admin', 'true');
         } else {
+            td.setAttribute('data-origin-role', next === 'J' ? 'docente' : '');
+            td.setAttribute('data-locked-by-admin', 'false');
             td.removeAttribute('disabled');
             td.removeAttribute('aria-disabled');
             td.removeAttribute('data-readonly');
             td.removeAttribute('aria-readonly');
-            td.setAttribute('data-locked-by-admin', 'false');
-            td.setAttribute('data-origin-role', '');
-            td.textContent = next;
         }
-        if (td.classList.contains('col-cell-today') || td.classList.contains('cell-day-today')) {
+        if (keepToday) {
             cellClass += ' col-cell-today cell-day-today';
         }
         td.className = cellClass;
-        td.classList.add('att-cell-pulsed');
-        setTimeout(() => {
-            td.classList.remove('att-cell-pulsed');
-        }, 300);
         td.setAttribute('data-val', next || '');
-        let cellTitle = next ? `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? (isAuditRole ? 'JUSTIFICADO (Autorizado por Dirección / Auxiliatura)' : 'JUSTIFICADO (Registrado por el docente - Haga clic para cambiar a T)') : 'TARDANZA'))} (Haga clic para alternar P/A/J/T)` : `Día ${day}: Sin registrar (Haga clic para marcar P)`;
-        td.title = cellTitle;
+        td.textContent = next || '';
+        td.title = next
+            ? `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? (isAuditRole ? 'JUSTIFICADO (Autorizado por Dirección / Auxiliatura)' : 'JUSTIFICADO (Registrado por el docente - Haga clic para cambiar a T)') : 'TARDANZA'))} (Haga clic para alternar P/A/J/T)`
+            : `Día ${day}: Sin registrar (Haga clic para marcar P)`;
     }
 
-    saveAttendanceRecords(false, null, recordKey);
+    // Actualizar estadísticas de la fila del alumno al instante y programar resumen general en el siguiente frame
     updateAttendanceLiveStats(studentId);
+    saveAttendanceRecords(false, null, recordKey);
 
-    // 📋 Registro en Auditoría Institucional
-    try {
-        const studentObj = (STATE.students || []).find(s => String(s.id) === String(studentId));
-        const sName = studentObj ? ((typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(studentObj, 'lastFirst') : `${studentObj.firstName || ''} ${studentObj.lastName || ''}`.trim()) : `Estudiante #${studentId}`;
-        const valLabel = next === 'P' ? 'Presente' : (next === 'A' ? 'Ausente/Falta' : (next === 'J' ? 'Justificado' : (next === 'T' ? 'Tardanza' : 'Casilla Limpia')));
-        recordAuditLog('ATTENDANCE_CHANGE', 'Asistencia', `Asistencia marcada (${valLabel}) para ${sName} el día ${day}/${month} [Grado: ${gradeCode}, Cátedra: ${courseId}]`, studentId);
-    } catch(auditErr) {
-        console.warn("Aviso auditoría asistencia:", auditErr);
+    // ⚡ Diferir alertas de inasistencia y bitácora 450ms para que al hacer clic rápido P -> A -> J -> T no se trabe ni dispare alertas intermedias
+    const sideEffectKey = `${recordKey}_${studentId}_${day}`;
+    if (_cellSideEffectsTimers[sideEffectKey]) {
+        clearTimeout(_cellSideEffectsTimers[sideEffectKey]);
     }
+    _cellSideEffectsTimers[sideEffectKey] = setTimeout(() => {
+        delete _cellSideEffectsTimers[sideEffectKey];
+        const finalVal = STATE.attendanceRecords?.[recordKey]?.[studentId]?.[day] || '';
+        if (finalVal === 'A' && typeof emitAttendanceAbsenceAlert === 'function') {
+            emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month);
+        } else if (finalVal !== 'A' && typeof dismissAttendanceAbsenceAlert === 'function') {
+            dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month);
+        }
+        try {
+            const studentObj = targetStudent || (STATE.students || []).find(s => String(s.id) === String(studentId));
+            const sName = studentObj ? ((typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(studentObj, 'lastFirst') : `${studentObj.firstName || ''} ${studentObj.lastName || ''}`.trim()) : `Estudiante #${studentId}`;
+            const valLabel = finalVal === 'P' ? 'Presente' : (finalVal === 'A' ? 'Ausente/Falta' : (finalVal === 'J' ? 'Justificado' : (finalVal === 'T' ? 'Tardanza' : 'Casilla Limpia')));
+            recordAuditLog('ATTENDANCE_CHANGE', 'Asistencia', `Asistencia marcada (${valLabel}) para ${sName} el día ${day}/${month} [Grado: ${gradeCode}, Cátedra: ${courseId}]`, studentId);
+        } catch(auditErr) {}
+    }, 450);
 }
 
 let _attendanceStatsRaf = null;
@@ -26701,11 +26868,11 @@ function updateAttendanceLiveStats(targetStudentId = null) {
             const cells = tr.querySelectorAll('td.att-cell:not([data-weekend="true"])');
             let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
             cells.forEach(td => {
-                const text = (td.textContent || '').trim();
-                if (text === 'P') pCount++;
-                else if (text === 'A') aCount++;
-                else if (text === 'J') jCount++;
-                else if (text === 'T') tCount++;
+                const v = td.getAttribute('data-val') || (td.textContent || '').replace(/[^PAJT]/g, '').trim();
+                if (v === 'P') pCount++;
+                else if (v === 'A') aCount++;
+                else if (v === 'J') jCount++;
+                else if (v === 'T') tCount++;
             });
 
             const totalLogged = pCount + aCount + jCount + tCount;
@@ -26779,7 +26946,7 @@ function _renderAttendanceFullTableStats(daysInMonth, year, month, foot, statsSu
 
         cells.forEach(td => {
             const day = parseInt(td.getAttribute('data-day')) || 0;
-            const text = (td.textContent || '').trim();
+            const text = td.getAttribute('data-val') || (td.textContent || '').replace(/[^PAJT]/g, '').trim();
             if (text === 'P') {
                 pCount++;
                 if (day > 0) dayPresentTotals[day]++;
@@ -26844,47 +27011,7 @@ function _renderAttendanceFullTableStats(daysInMonth, year, month, foot, statsSu
 }
 
 function _renderAttendanceFooterAndSummary(daysInMonth, year, month, foot, statsSummary) {
-    const gradeSelect = document.getElementById('attendanceGradeSelect');
-    const courseSelect = document.getElementById('attendanceCourseSelect');
-    const gradeCode = gradeSelect ? gradeSelect.value : '';
-    const courseId = courseSelect ? courseSelect.value : 'GENERAL';
-
-    if (gradeCode && STATE.attendanceRecords) {
-        const monthData = (typeof getConsolidatedAttendanceMonthData === 'function')
-            ? getConsolidatedAttendanceMonthData(gradeCode, month, courseId)
-            : ((STATE.attendanceRecords && STATE.attendanceRecords[`${gradeCode}_${month}_${courseId}`]) || {});
-        const currentCourseObj = (courseId && courseId !== 'GENERAL') ? (STATE.pensum || []).find(p => p.id === courseId) : null;
-        const students = (typeof getAttendanceStudents === 'function')
-            ? getAttendanceStudents(gradeCode, currentCourseObj)
-            : (STATE.students || []).filter(s => s.gradeCode === gradeCode || s.grade === gradeCode);
-
-        let dayPresentTotals = new Array(daysInMonth + 1).fill(0);
-        let dayAbsentTotals = new Array(daysInMonth + 1).fill(0);
-        let dayJustTotals = new Array(daysInMonth + 1).fill(0);
-        let dayTardyTotals = new Array(daysInMonth + 1).fill(0);
-        let totalClassLogs = 0;
-        let totalClassPresent = 0;
-
-        students.forEach(s => {
-            if (s.status === 'Retirado' || s.status === 'Inactivo') return;
-            const sRecords = monthData[s.id] || {};
-            let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
-            for (let day = 1; day <= daysInMonth; day++) {
-                const val = sRecords[day];
-                if (val === 'P') { pCount++; dayPresentTotals[day]++; }
-                else if (val === 'A') { aCount++; dayAbsentTotals[day]++; }
-                else if (val === 'J') { jCount++; dayJustTotals[day]++; }
-                else if (val === 'T') { tCount++; dayTardyTotals[day]++; }
-            }
-            const totalLogged = pCount + aCount + jCount + tCount;
-            totalClassPresent += (pCount + jCount + (tCount * 0.5));
-            totalClassLogs += (totalLogged > 0 ? totalLogged : 0);
-        });
-
-        _renderAttendanceFooterAndSummaryFromData(students.length, daysInMonth, year, month, foot, statsSummary, dayPresentTotals, dayAbsentTotals, dayJustTotals, dayTardyTotals, totalClassPresent, totalClassLogs);
-        return;
-    }
-
+    // ⚡ Cálculo directo en <2ms desde las celdas ya renderizadas en el DOM usando data-val
     const rows = document.querySelectorAll('#attendanceExcelGridBody tr[data-student-id]');
     let dayPresentTotals = new Array(daysInMonth + 1).fill(0);
     let dayAbsentTotals = new Array(daysInMonth + 1).fill(0);
@@ -26894,11 +27021,12 @@ function _renderAttendanceFooterAndSummary(daysInMonth, year, month, foot, stats
     let totalClassPresent = 0;
 
     rows.forEach(tr => {
+        if (tr.classList.contains('row-student-retired')) return;
         const cells = tr.querySelectorAll('td.att-cell:not([data-weekend="true"])');
         let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
         cells.forEach(td => {
             const day = parseInt(td.getAttribute('data-day')) || 0;
-            const text = (td.textContent || '').trim();
+            const text = td.getAttribute('data-val') || (td.textContent || '').replace(/[^PAJT]/g, '').trim();
             if (text === 'P') {
                 pCount++;
                 if (day > 0) dayPresentTotals[day]++;
@@ -27068,8 +27196,7 @@ function markAllPresentToday() {
 
     let markedCount = 0;
     let preservedJustifiedCount = 0;
-
-    const genRecordKey = (courseId && courseId !== 'GENERAL') ? getAttendanceRecordKey(gradeCode, todayMonth, 'GENERAL') : null;
+    let preservedUnjustifiedCount = 0;
 
     students.forEach(s => {
         if (!s) return;
@@ -27079,13 +27206,19 @@ function markAllPresentToday() {
         }
         if (!STATE.attendanceRecords[recordKey][s.id]) STATE.attendanceRecords[recordKey][s.id] = {};
         
-        // 🛡️ Regla de oro: No sobrescribir alumnos con permiso oficial justificado 'J' de Auxiliatura o Dirección
-        const hasPermit = (typeof getStudentPermissionForDay === 'function')
-            ? !!getStudentPermissionForDay(s.id, today.getFullYear(), todayMonth, todayDay)
-            : false;
+        // 🛡️ Regla de oro: No sobrescribir alumnos con permiso oficial ('J') ni con falta injustificada blindada ('A')
+        const permObj = (typeof getStudentPermissionForDay === 'function')
+            ? getStudentPermissionForDay(s.id, today.getFullYear(), todayMonth, todayDay)
+            : null;
         const currentVal = STATE.attendanceRecords[recordKey][s.id][todayDay];
 
-        if (currentVal === 'J' || hasPermit) {
+        if (permObj && isUnjustifiedPermission(permObj)) {
+            STATE.attendanceRecords[recordKey][s.id][todayDay] = 'A';
+            preservedUnjustifiedCount++;
+            return;
+        }
+
+        if (currentVal === 'J' || permObj) {
             STATE.attendanceRecords[recordKey][s.id][todayDay] = 'J';
             preservedJustifiedCount++;
             return;
@@ -27098,8 +27231,8 @@ function markAllPresentToday() {
     saveAttendanceRecords(false, null, recordKey);
     loadAttendanceList();
 
-    if (preservedJustifiedCount > 0) {
-        showToast(`✔ ${markedCount} estudiantes marcados en 'Presente' para el día de hoy (${todayDay} de ${monthName}). Se respetaron ${preservedJustifiedCount} permisos justificados de Auxiliatura.`, 'success');
+    if (preservedJustifiedCount > 0 || preservedUnjustifiedCount > 0) {
+        showToast(`✔ ${markedCount} estudiantes marcados en 'Presente' hoy (${todayDay} de ${monthName}). Se respetaron ${preservedJustifiedCount} permisos 'J' y ${preservedUnjustifiedCount} faltas 'A' blindadas.`, 'success');
     } else {
         showToast(`✔ Todos los ${markedCount} estudiantes marcados en 'Presente' para el día de hoy (${todayDay} de ${monthName}).`, 'success');
     }
@@ -27502,18 +27635,24 @@ function registerAttendanceByCode(rawCode) {
     // Marcar presente en el día de hoy (o día 1 si el mes seleccionado no es el actual)
     const targetDay = (activeMonth === todayMonth) ? todayDay : 1;
 
-    // 🛡️ Regla de oro: No sobrescribir si el alumno tiene permiso justificado oficial de Auxiliatura / Dirección
-    const genRecKey = (activeCourse !== 'GENERAL') 
-        ? ((typeof getAttendanceRecordKey === 'function') ? getAttendanceRecordKey(activeGradeCode, activeMonth, 'GENERAL') : `${activeGradeCode}_${activeMonth}_GENERAL`)
-        : null;
+    // 🛡️ Regla de oro: No sobrescribir si el alumno tiene permiso justificado ('J') o falta injustificada blindada ('A')
     const curVal = STATE.attendanceRecords[recordKey][student.id][targetDay];
-    const hasPermit = (typeof getStudentPermissionForDay === 'function')
-        ? !!getStudentPermissionForDay(student.id, today.getFullYear(), activeMonth, targetDay)
-        : false;
+    const permObj = (typeof getStudentPermissionForDay === 'function')
+        ? getStudentPermissionForDay(student.id, today.getFullYear(), activeMonth, targetDay)
+        : null;
 
     const sFullName = formatStudentDisplayName(student, 'lastFirst') || 'Estudiante';
 
-    if (curVal === 'J' || hasPermit) {
+    if (permObj && isUnjustifiedPermission(permObj)) {
+        STATE.attendanceRecords[recordKey][student.id][targetDay] = 'A';
+        if (typeof saveAttendanceRecords === 'function') saveAttendanceRecords(false, null, recordKey);
+        playAttendanceBeep(false);
+        if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([200]);
+        updateLastScannedBanner(student, 'error', `🔒 Ausencia Injustificada Blindada 'A' (Día ${targetDay})`);
+        if (typeof showToast === 'function') {
+            showToast(`🔒 ${sFullName} tiene una Ausencia Injustificada Blindada ('A') registrada para el día ${targetDay}. Nadie puede cambiarla.`, 'error');
+        }
+    } else if (curVal === 'J' || permObj) {
         STATE.attendanceRecords[recordKey][student.id][targetDay] = 'J';
         if (typeof saveAttendanceRecords === 'function') saveAttendanceRecords(false, null, recordKey);
         playAttendanceBeep(true);
@@ -28256,6 +28395,36 @@ function onPermissionStudentSelected() {
 }
 window.onPermissionStudentSelected = onPermissionStudentSelected;
 
+function onPermissionCategoryChanged() {
+    const catSelect = document.getElementById('permReasonCategory');
+    const infoNotice = document.getElementById('permModalInfoNotice');
+    if (!catSelect || !infoNotice) return;
+
+    const val = (catSelect.value || '').trim().toLowerCase();
+    if (val.includes('injustificad')) {
+        infoNotice.innerHTML = `
+            <i class="fa-solid fa-lock" style="font-size:1.25rem; margin-top:2px; flex-shrink:0; color:#dc2626;"></i>
+            <div>
+                <strong style="color:#991b1b;">Efecto Automático — Falta Injustificada ("A" Blindada):</strong> Al registrar este motivo como <strong>Injustificada</strong>, aparecerá automáticamente la letra <strong style="color:#dc2626;">"A" (Ausencia Injustificada Blindada con Candado 🔒)</strong> en la asistencia de <strong>TODOS los maestros</strong> y nadie podrá cambiarla ni sobreescribirla.
+            </div>
+        `;
+        infoNotice.style.background = '#fef2f2';
+        infoNotice.style.borderColor = '#fecaca';
+        infoNotice.style.borderLeftColor = '#dc2626';
+    } else {
+        infoNotice.innerHTML = `
+            <i class="fa-solid fa-circle-info" style="font-size:1.25rem; margin-top:2px; flex-shrink:0; color:#d97706;"></i>
+            <div>
+                <strong style="color:#b45309;">Efecto Automático en Toda la Plataforma:</strong> Al autorizar este permiso, se registrará como <strong style="color:#15803d;">"J" (Justificado)</strong> en las listas de asistencia de <strong>TODOS los catedráticos</strong> y se mostrará la justificación oficial en pantalla.
+            </div>
+        `;
+        infoNotice.style.background = '#fffbeb';
+        infoNotice.style.borderColor = '#fde68a';
+        infoNotice.style.borderLeftColor = '#f59e0b';
+    }
+}
+window.onPermissionCategoryChanged = onPermissionCategoryChanged;
+
 function saveStudentPermissionForm(e) {
     if (e) {
         e.preventDefault();
@@ -28307,6 +28476,7 @@ function saveStudentPermissionForm(e) {
         perm.reasonDetail = reasonDetail;
         perm.docRef = docRef;
         perm.authorizedBy = authorizedBy;
+        perm.attendanceCode = isUnjustifiedPermission(perm) ? 'A' : 'J';
         perm.lastEditedAt = new Date().toISOString();
         perm.lastEditedBy = 'Dirección General';
 
@@ -28340,7 +28510,7 @@ function saveStudentPermissionForm(e) {
             renderAuxiliaturaLogView();
         }
 
-        showToast(`✅ Permiso actualizado exitosamente para ${perm.studentName} por Dirección General. La asistencia se ha sincronizado automáticamente.`, 'success');
+        showToast(`✅ Registro actualizado exitosamente para ${perm.studentName}. La asistencia se ha sincronizado automáticamente.`, 'success');
         return;
     }
 
@@ -28378,6 +28548,7 @@ function saveStudentPermissionForm(e) {
 
     const docRef = (document.getElementById('permDocRef')?.value || '').trim();
     const authorizedBy = (document.getElementById('permAuthorizedBy')?.value || 'Auxiliatura').trim();
+    const isUnjust = reasonCategory.toLowerCase().includes('injustificad');
 
     const perm = {
         id: 'perm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
@@ -28396,8 +28567,9 @@ function saveStudentPermissionForm(e) {
         authorizedById: (STATE.currentUser && STATE.currentUser.id) ? STATE.currentUser.id : 'auxiliar',
         origin_role: ((window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || (STATE.currentUser && STATE.currentUser.role) || 'profesor_auxiliar').toLowerCase(),
         is_locked_by_admin: true,
+        attendanceCode: isUnjust ? 'A' : 'J',
         createdAt: new Date().toISOString(),
-        status: 'Autorizado'
+        status: isUnjust ? 'Injustificada Blindada' : 'Autorizado'
     };
 
     if (!Array.isArray(STATE.studentPermissions)) {
@@ -28421,7 +28593,7 @@ function saveStudentPermissionForm(e) {
     closeCreatePermissionModal();
 
     try {
-        recordAuditLog('PERMISSION_CREATE', 'Auxiliatura', `Nuevo permiso autorizado para ${perm.studentName} (${perm.startDate} al ${perm.endDate}): ${perm.reasonCategory} - ${perm.reasonDetail}`, perm.studentId);
+        recordAuditLog('PERMISSION_CREATE', 'Auxiliatura', `Nuevo registro de ausencia (${perm.attendanceCode}) para ${perm.studentName} (${perm.startDate} al ${perm.endDate}): ${perm.reasonCategory} - ${perm.reasonDetail}`, perm.studentId);
     } catch(e) {}
 
     // Si la planilla de asistencia está abierta, recargarla
@@ -28429,11 +28601,15 @@ function saveStudentPermissionForm(e) {
         loadAttendanceList();
     }
 
-    showToast(`✅ Permiso autorizado exitosamente para ${perm.studentName}. Se reflejará automáticamente en la asistencia de todos los docentes.`, 'success');
+    if (isUnjust) {
+        showToast(`🔒 Ausencia Injustificada ("A" Blindada) registrada para ${perm.studentName}. Se aplicó automáticamente en la asistencia de TODOS los maestros y nadie podrá modificarla.`, 'warning');
+    } else {
+        showToast(`✅ Permiso autorizado exitosamente para ${perm.studentName}. Se reflejará automáticamente en la asistencia de todos los docentes.`, 'success');
+    }
 
     // Ofrecer impresión del comprobante oficial
     setTimeout(() => {
-        if (confirm(`¿Desea imprimir el Comprobante Oficial de Permiso / Justificación para ${perm.studentName}?`)) {
+        if (confirm(`¿Desea imprimir el Comprobante Oficial de Ausencia / Permiso para ${perm.studentName}?`)) {
             printStudentPermissionPass(perm.id);
         }
     }, 400);
@@ -28506,16 +28682,18 @@ function removeStudentPermissionDatesFromAttendance(perm, oldStartDate = null, o
                     delete STATE.attendancePermissionsMeta[metaKey];
                 }
 
-                // 2. Limpiar 'J' de la asistencia general y de cada cátedra
+                // 2. Limpiar 'J' o 'A' de la asistencia general y de cada cátedra
                 matchingGradeCodes.forEach(gCode => {
                     const genKey = getAttendanceRecordKey(gCode, m, 'GENERAL');
-                    if (STATE.attendanceRecords[genKey]?.[aliasId]?.[d] === 'J') {
+                    const genVal = STATE.attendanceRecords[genKey]?.[aliasId]?.[d];
+                    if (genVal === 'J' || genVal === 'A') {
                         delete STATE.attendanceRecords[genKey][aliasId][d];
                     }
 
                     matchingCourses.forEach(c => {
                         const cKey = getAttendanceRecordKey(gCode, m, c.id);
-                        if (STATE.attendanceRecords[cKey]?.[aliasId]?.[d] === 'J') {
+                        const cVal = STATE.attendanceRecords[cKey]?.[aliasId]?.[d];
+                        if (cVal === 'J' || cVal === 'A') {
                             delete STATE.attendanceRecords[cKey][aliasId][d];
                         }
                     });
@@ -28535,6 +28713,7 @@ function applyStudentPermission(perm) {
 
     const start = new Date(perm.startDate + 'T00:00:00');
     const end = new Date((perm.endDate || perm.startDate) + 'T00:00:00');
+    const targetLetter = isUnjustifiedPermission(perm) ? 'A' : 'J';
 
     // Encontrar estudiante y sus códigos
     const student = (STATE.students || []).find(s => s.id === perm.studentId);
@@ -28583,25 +28762,25 @@ function applyStudentPermission(perm) {
         const m = curDate.getMonth() + 1;
         const d = curDate.getDate();
 
-        // 1. Marcar 'J' en el Control General y en CADA una de las clases de todos los docentes
+        // 1. Marcar 'J' o 'A' (blindada) en el Control General y en CADA una de las clases de todos los docentes
         studentAliases.forEach(aliasId => {
             matchingGradeCodes.forEach(gCode => {
                 // General
                 const genKey = getAttendanceRecordKey(gCode, m, 'GENERAL');
                 if (!STATE.attendanceRecords[genKey]) STATE.attendanceRecords[genKey] = {};
                 if (!STATE.attendanceRecords[genKey][aliasId]) STATE.attendanceRecords[genKey][aliasId] = {};
-                STATE.attendanceRecords[genKey][aliasId][d] = 'J';
+                STATE.attendanceRecords[genKey][aliasId][d] = targetLetter;
 
                 // Cada curso
                 matchingCourses.forEach(c => {
                     const cKey = getAttendanceRecordKey(gCode, m, c.id);
                     if (!STATE.attendanceRecords[cKey]) STATE.attendanceRecords[cKey] = {};
                     if (!STATE.attendanceRecords[cKey][aliasId]) STATE.attendanceRecords[cKey][aliasId] = {};
-                    STATE.attendanceRecords[cKey][aliasId][d] = 'J';
+                    STATE.attendanceRecords[cKey][aliasId][d] = targetLetter;
                 });
             });
 
-            // 2. Guardar metadata para tooltip y advertencia de sobreescritura
+            // 2. Guardar metadata para tooltip y blindaje de celda
             const metaKey = `${aliasId}_${m}_${d}`;
             STATE.attendancePermissionsMeta[metaKey] = {
                 permissionId: perm.id,
@@ -28612,6 +28791,7 @@ function applyStudentPermission(perm) {
                 authorizedById: perm.authorizedById,
                 origin_role: (perm.origin_role || perm.originRole || 'profesor_auxiliar').toLowerCase(),
                 is_locked_by_admin: true,
+                attendanceCode: targetLetter,
                 date: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
                 studentName: perm.studentName
             };
@@ -28766,11 +28946,15 @@ function renderPermissionsHistoryTable() {
             ? `<strong>${p.startDate}</strong>` 
             : `<strong>${p.startDate}</strong> al <strong>${p.endDate}</strong>`;
         const refTag = p.docRef ? `<br><small style="color:#64748b;"><i class="fa-solid fa-paperclip"></i> ${p.docRef}</small>` : '';
+        const isUnjust = isUnjustifiedPermission(p);
+        const catBadge = isUnjust
+            ? `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:800; font-size:0.75rem; border:1px solid #fca5a5;"><i class="fa-solid fa-lock"></i> ${p.reasonCategory} (A Blindada)</span>`
+            : `<span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.75rem;">${p.reasonCategory}</span>`;
 
         return `
             <tr>
                 <td style="white-space:nowrap;">
-                    <i class="fa-solid fa-calendar-check" style="color:#d97706;"></i> ${dateDisplay}
+                    <i class="fa-solid fa-calendar-check" style="color:${isUnjust ? '#dc2626' : '#d97706'};"></i> ${dateDisplay}
                 </td>
                 <td>
                     <strong>${p.studentName}</strong>
@@ -28780,7 +28964,7 @@ function renderPermissionsHistoryTable() {
                     ${p.grade || 'Grado Oficial'} (${p.section || 'A'})
                 </td>
                 <td>
-                    <span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.75rem;">${p.reasonCategory}</span>
+                    ${catBadge}
                     <div style="font-size:0.8rem; margin-top:3px; color:#334155;">${p.reasonDetail}</div>
                     ${refTag}
                 </td>
@@ -28818,7 +29002,7 @@ function revokeStudentPermission(permId) {
         return;
     }
 
-    // 1. Remover automáticamente la marca de justificación ('J') y metadata de todas las asistencias vinculadas
+    // 1. Remover automáticamente la marca de justificación ('J') o falta ('A') y metadata de todas las asistencias vinculadas
     removeStudentPermissionDatesFromAttendance(perm, perm.startDate, perm.endDate, null, null);
 
     // 2. Remover de la lista oficial de permisos
@@ -28863,6 +29047,7 @@ function printStudentPermissionPass(permId) {
 
     const isSingleDay = !perm.endDate || perm.endDate === perm.startDate;
     const datesAuthorized = isSingleDay ? perm.startDate : `Del ${perm.startDate} al ${perm.endDate}`;
+    const isUnjust = isUnjustifiedPermission(perm);
 
     printWin.document.write(`
         <!DOCTYPE html>
@@ -28916,14 +29101,14 @@ function printStudentPermissionPass(permId) {
                 .pass-header-text h4 {
                     margin: 3px 0 0 0;
                     font-size: 0.88rem;
-                    color: #b45309;
+                    color: ${isUnjust ? '#dc2626' : '#b45309'};
                     font-weight: 800;
                     text-transform: uppercase;
                 }
                 .pass-badge {
-                    border: 1.5px solid #d97706;
-                    background: #fffbeb;
-                    color: #b45309;
+                    border: 1.5px solid ${isUnjust ? '#dc2626' : '#d97706'};
+                    background: ${isUnjust ? '#fef2f2' : '#fffbeb'};
+                    color: ${isUnjust ? '#b91c1c' : '#b45309'};
                     padding: 4px 10px;
                     border-radius: 6px;
                     font-size: 0.78rem;
@@ -28970,7 +29155,7 @@ function printStudentPermissionPass(permId) {
                     left: 50%;
                     transform: translate(-50%, -50%) rotate(-15deg);
                     font-size: 3.2rem;
-                    color: rgba(217, 119, 6, 0.08);
+                    color: ${isUnjust ? 'rgba(220, 38, 38, 0.08)' : 'rgba(217, 119, 6, 0.08)'};
                     font-weight: 900;
                     text-transform: uppercase;
                     pointer-events: none;
@@ -28980,7 +29165,7 @@ function printStudentPermissionPass(permId) {
         </head>
         <body>
             <div class="pass-container">
-                <div class="watermark">JUSTIFICADO OFICIAL</div>
+                <div class="watermark">${isUnjust ? 'AUSENCIA INJUSTIFICADA (A)' : 'JUSTIFICADO OFICIAL'}</div>
                 <div class="pass-header">
                     <div style="font-size:0.75rem; font-weight:800; color:#047857;">
                         MINISTERIO DE EDUCACIÓN<br>DIRECCIÓN DEPARTAMENTAL
@@ -28988,7 +29173,7 @@ function printStudentPermissionPass(permId) {
                     <div class="pass-header-text">
                         <h2>Escuela Nacional de Ciencias Comerciales</h2>
                         <h3>Auxiliatura y Control de Disciplina Estudiantil</h3>
-                        <h4>Comprobante Oficial de Permiso / Justificación de Ausencia</h4>
+                        <h4>${isUnjust ? 'Constancia Oficial de Ausencia Injustificada (A Blindada)' : 'Comprobante Oficial de Permiso / Justificación de Ausencia'}</h4>
                     </div>
                     <div class="pass-badge">
                         FOLIO: ${perm.id.replace('perm_', 'PERM-').substr(0, 14).toUpperCase()}<br>
@@ -29003,17 +29188,17 @@ function printStudentPermissionPass(permId) {
                         <div class="pass-row"><strong>Grado y Sección:</strong> ${perm.grade || 'Grado Oficial'} — Sección ${perm.section || 'A'}</div>
                     </div>
                     <div>
-                        <div class="pass-row"><strong>Fecha(s) Autorizada(s):</strong> ${datesAuthorized}</div>
+                        <div class="pass-row"><strong>Fecha(s) Registrada(s):</strong> ${datesAuthorized}</div>
                         <div class="pass-row"><strong>Categoría:</strong> ${perm.reasonCategory}</div>
                         <div class="pass-row"><strong>Constancia Ref:</strong> ${perm.docRef || 'Ninguna / Verbal'}</div>
                     </div>
                 </div>
 
                 <div class="reason-box">
-                    <strong>Motivo y Justificación Registrada:</strong><br>
+                    <strong>Motivo y Observación Registrada:</strong><br>
                     "${perm.reasonDetail}"
                     <div style="margin-top:4px; font-size:0.76rem; color:#64748b;">
-                        <em>* Este permiso ha sido notificado y aplicado automáticamente en la lista de asistencia de todos los catedráticos del estudiante con código 'J' (Justificado).</em>
+                        <em>* Este registro ha sido aplicado automáticamente en la lista de asistencia de todos los catedráticos del estudiante con código '${isUnjust ? 'A\' (Ausencia Injustificada Blindada)' : 'J\' (Justificado)'}.</em>
                     </div>
                 </div>
 
@@ -29050,7 +29235,7 @@ function printStudentPermissionPass(permId) {
 }
 window.printStudentPermissionPass = printStudentPermissionPass;
 
-// ── HELPER: REPOBLAR SELECTOR DE MODALIDAD DEL CUADRO DE HONOR ─────────────────────────────
+// ── HELPER: REPOBLAR SELECTORES DE MODALIDAD Y PERÍODO DEL CUADRO DE HONOR (IDEA 2) ────────────────
 function populateHonorRollSelect() {
     const select = document.getElementById('honorRollTypeSelect');
     if (!select) return;
@@ -29059,9 +29244,11 @@ function populateHonorRollSelect() {
 
     // ── Opciones estáticas generales ───────────────────────────────────────────
     let opts = `
-        <option value="ALL_BALANCED">🌟 Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)</option>
-        <option value="GROUP_4TO_5TO">🥇 Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)</option>
-        <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (8 Clases Ordinarias B1 a B3 — 10 Clases en B4)</option>
+        <option value="ALL_BALANCED">🌟 Cuadro de Honor General de Toda la Escuela (Promedio Nivelado Base 100)</option>
+        <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (10 Clases Niveladas a Base 100)</option>
+        <option value="GROUP_5TO">🥇 Cuadro de Honor Oficial: 5to Grado (9 Clases Niveladas a Base 100)</option>
+        <option value="GROUP_4TO">🥈 Cuadro de Honor Oficial: 4to Grado (9 Clases Niveladas a Base 100)</option>
+        <option value="GROUP_4TO_5TO">🏅 Cuadro de Honor Conjunto: 4to y 5to Grado (9 Clases Niveladas a Base 100)</option>
     `;
 
     // ── Optgroup dinámico: Por Grado y Sección (desde STATE.gradesList) ────────
@@ -29089,16 +29276,18 @@ function populateHonorRollSelect() {
     const normalizedOpts = opts.replace(/\s+/g, ' ').trim();
     const normalizedCurrent = (select._renderedOpts || '').replace(/\s+/g, ' ').trim();
 
-    if (normalizedCurrent !== normalizedOpts || select.options.length <= 3) {
+    if (normalizedCurrent !== normalizedOpts || select.options.length <= 5) {
         select._renderedOpts = opts;
         select.innerHTML = opts;
         select.value = curVal;
         if (!select.value) select.value = 'ALL_BALANCED';
     }
 
-    // Sincronizar el Menú Desplegable Personalizado en el DOM (100% fondo blanco y visible)
     if (typeof renderHonorRollCustomDropdown === 'function') {
         renderHonorRollCustomDropdown();
+    }
+    if (typeof renderHonorRollPeriodDropdown === 'function') {
+        renderHonorRollPeriodDropdown();
     }
 }
 window.populateHonorRollSelect = populateHonorRollSelect;
@@ -29131,10 +29320,12 @@ function renderHonorRollCustomDropdown() {
     };
 
     // 1. Opciones generales
-    html += `<div style="padding:8px 14px; font-size:0.75rem; font-weight:800; color:#0369a1; background:#f0f9ff; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #e0f2fe;">🌟 Modalidades Oficiales</div>`;
-    html += makeItem('ALL_BALANCED', '🌟', 'Cuadro de Honor General de Toda la Escuela (Promedio Equilibrado Base 100)');
-    html += makeItem('GROUP_4TO_5TO', '🥇', 'Cuadro de Honor Oficial: 4to y 5to Grado (9 Clases)');
-    html += makeItem('GROUP_6TO', '🎓', 'Cuadro de Honor Oficial: 6to Grado (8 Clases Ordinarias B1 a B3 — 10 Clases en B4)');
+    html += `<div style="padding:8px 14px; font-size:0.75rem; font-weight:800; color:#0369a1; background:#f0f9ff; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #e0f2fe;">🌟 Modalidades Oficiales (Niveladas a Base 100)</div>`;
+    html += makeItem('ALL_BALANCED', '🌟', 'Cuadro de Honor General de Toda la Escuela (Promedio Nivelado Base 100)');
+    html += makeItem('GROUP_6TO', '🎓', 'Cuadro de Honor Oficial: 6to Grado (10 Clases Niveladas a Base 100)');
+    html += makeItem('GROUP_5TO', '🥇', 'Cuadro de Honor Oficial: 5to Grado (9 Clases Niveladas a Base 100)');
+    html += makeItem('GROUP_4TO', '🥈', 'Cuadro de Honor Oficial: 4to Grado (9 Clases Niveladas a Base 100)');
+    html += makeItem('GROUP_4TO_5TO', '🏅', 'Cuadro de Honor Conjunto: 4to y 5to Grado (9 Clases Niveladas a Base 100)');
 
     // 2. Grados y Secciones
     const grades = (STATE.gradesList || []).filter(g => g && g.code);
@@ -29170,11 +29361,67 @@ function renderHonorRollCustomDropdown() {
 }
 window.renderHonorRollCustomDropdown = renderHonorRollCustomDropdown;
 
+function renderHonorRollPeriodDropdown() {
+    const select = document.getElementById('honorRollPeriodSelect');
+    const menu = document.getElementById('honorRollPeriodCustomMenu');
+    const textSpan = document.getElementById('honorRollPeriodCustomText');
+    if (!select || !menu) return;
+
+    const curVal = select.value || 'CONSOLIDATED_100';
+    let html = '';
+
+    const makePeriodItem = (val, icon, text, subtitle) => {
+        const isSelected = (val === curVal);
+        const bg = isSelected ? '#f0fdf4' : '#ffffff';
+        const color = isSelected ? '#15803d' : '#0f172a';
+        const weight = isSelected ? '800' : '600';
+        const check = isSelected ? '<i class="fa-solid fa-check" style="color:#16a34a; margin-left:10px; font-size:0.95rem;"></i>' : '';
+        return `
+            <div class="custom-honor-period-opt ${isSelected ? 'selected' : ''}" 
+                 onclick="selectHonorRollPeriod('${val}')"
+                 onmouseover="if (!this.classList.contains('selected')) { this.style.background='#f8fafc'; }"
+                 onmouseout="if (!this.classList.contains('selected')) { this.style.background='#ffffff'; }"
+                 style="padding:10px 16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; background:${bg}; color:${color}; font-weight:${weight}; font-size:0.86rem; border-bottom:1px solid #f1f5f9; transition:background 0.15s ease; user-select:none;">
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                    <span style="display:flex; align-items:center; gap:8px;">${icon} ${text}</span>
+                    ${subtitle ? `<span style="font-size:0.75rem; color:#64748b; font-weight:500; padding-left:24px;">${subtitle}</span>` : ''}
+                </div>
+                ${check}
+            </div>
+        `;
+    };
+
+    html += `<div style="padding:8px 14px; font-size:0.75rem; font-weight:800; color:#15803d; background:#f0fdf4; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #dcfce7;">🏆 Consolidado y 4to Bimestre (Idea 2)</div>`;
+    html += makePeriodItem('CONSOLIDATED_100', '🏆', 'Consolidado Final Nivelado a Base 100', '6to: 10 Clases (8 B1–B3 + Seminario y Práctica en B4 ÷ 10) | 4to y 5to: 9 Clases (B1–B4 ÷ 9)');
+    html += makePeriodItem('B4_10_CLASSES', '🎓', '4to Bimestre + Cierre 6to (10 Clases Niveladas a 100)', '6to: 10 Clases completas con 4to Bimestre ÷ 10 | 4to y 5to: 9 Clases de 4to Bimestre ÷ 9');
+    html += makePeriodItem('B4_ONLY', '📘', '4to Bimestre Exclusivo (Solo Materias de B4)', '6to: 2 Clases de 4to Bimestre (Seminario y Práctica ÷ 2) | 4to y 5to: 9 Clases de 4to Bimestre ÷ 9');
+
+    html += `<div style="padding:8px 14px; font-size:0.75rem; font-weight:800; color:#0369a1; background:#f0f9ff; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid #e0f2fe; border-top:1px solid #e2e8f0;">📅 Consulta por Bimestre Individual (Base 100)</div>`;
+    html += makePeriodItem('B1', '1️⃣', '1er Bimestre Nivelado a Base 100', '6to: 8 Clases Ordinarias (÷ 8) | 4to y 5to: 9 Clases (÷ 9)');
+    html += makePeriodItem('B2', '2️⃣', '2do Bimestre Nivelado a Base 100', '6to: 8 Clases Ordinarias (÷ 8) | 4to y 5to: 9 Clases (÷ 9)');
+    html += makePeriodItem('B3', '3️⃣', '3er Bimestre Nivelado a Base 100', '6to: 8 Clases Ordinarias (÷ 8) | 4to y 5to: 9 Clases (÷ 9)');
+
+    menu.innerHTML = html;
+
+    if (textSpan) {
+        let opt = (select.selectedIndex >= 0 && select.options[select.selectedIndex]) ? select.options[select.selectedIndex] : null;
+        if (!opt) {
+            opt = Array.from(select.options).find(o => o.value === curVal);
+        }
+        if (opt) {
+            textSpan.textContent = opt.textContent;
+        }
+    }
+}
+window.renderHonorRollPeriodDropdown = renderHonorRollPeriodDropdown;
+
 function toggleHonorRollCustomMenu(e) {
     if (e) {
         e.stopPropagation();
         e.preventDefault();
     }
+    const pMenu = document.getElementById('honorRollPeriodCustomMenu');
+    if (pMenu) pMenu.style.display = 'none';
     const menu = document.getElementById('honorRollCustomSelectMenu');
     if (!menu) return;
     const isVisible = menu.style.display === 'block';
@@ -29203,6 +29450,41 @@ function selectHonorRollOption(val) {
 }
 window.selectHonorRollOption = selectHonorRollOption;
 
+function toggleHonorRollPeriodMenu(e) {
+    if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+    }
+    const tMenu = document.getElementById('honorRollCustomSelectMenu');
+    if (tMenu) tMenu.style.display = 'none';
+    const menu = document.getElementById('honorRollPeriodCustomMenu');
+    if (!menu) return;
+    const isVisible = menu.style.display === 'block';
+    if (isVisible) {
+        menu.style.display = 'none';
+    } else {
+        renderHonorRollPeriodDropdown();
+        menu.style.display = 'block';
+    }
+}
+window.toggleHonorRollPeriodMenu = toggleHonorRollPeriodMenu;
+
+function selectHonorRollPeriod(val) {
+    const select = document.getElementById('honorRollPeriodSelect');
+    const menu = document.getElementById('honorRollPeriodCustomMenu');
+    if (select) {
+        select.value = val;
+    }
+    if (menu) {
+        menu.style.display = 'none';
+    }
+    renderHonorRollPeriodDropdown();
+    if (typeof loadHonorRoll === 'function') {
+        loadHonorRoll();
+    }
+}
+window.selectHonorRollPeriod = selectHonorRollPeriod;
+
 // Cerrar el menú al hacer clic fuera
 if (typeof document !== 'undefined') {
     document.addEventListener('click', function(e) {
@@ -29213,12 +29495,31 @@ if (typeof document !== 'undefined') {
                 menu.style.display = 'none';
             }
         }
+        const pWrapper = document.getElementById('honorRollPeriodCustomWrapper');
+        const pMenu = document.getElementById('honorRollPeriodCustomMenu');
+        if (pMenu && pMenu.style.display === 'block') {
+            if (!pWrapper || !pWrapper.contains(e.target)) {
+                pMenu.style.display = 'none';
+            }
+        }
     });
 }
 // ───────────────────────────────────────────────────────────────────────────────
 
+function _getHonorRollPeriodTitleBadge(periodMode) {
+    switch (periodMode) {
+        case 'B1': return '1ER BIMESTRE (NIVELADO BASE 100)';
+        case 'B2': return '2DO BIMESTRE (NIVELADO BASE 100)';
+        case 'B3': return '3ER BIMESTRE (NIVELADO BASE 100)';
+        case 'B4_ONLY': return '4TO BIMESTRE EXCLUSIVO (6TO: SEM. Y PRÁC. | 4TO-5TO: 9 CLASES)';
+        case 'B4_10_CLASSES': return '4TO BIMESTRE + CIERRE 10 CLASES 6TO (NIVELADO BASE 100)';
+        default: return 'CONSOLIDADO FINAL NIVELADO A BASE 100 (6TO: 10 CLASES | 5TO Y 4TO: 9 CLASES)';
+    }
+}
+
 function loadHonorRoll() {
     const select = document.getElementById('honorRollTypeSelect');
+    const periodSelect = document.getElementById('honorRollPeriodSelect');
     const tbody = document.getElementById('honorRollTableBody');
     const titleText = document.getElementById('honorRollTitleText');
     if (!tbody || !select) return;
@@ -29227,30 +29528,37 @@ function loadHonorRoll() {
     populateHonorRollSelect();
 
     const type = select.value;
+    const periodMode = (periodSelect && periodSelect.value) ? periodSelect.value : 'CONSOLIDATED_100';
+    const periodBadgeText = _getHonorRollPeriodTitleBadge(periodMode);
     const onlyEligible = document.getElementById('honorRollOnlyEligibleCheck') ? document.getElementById('honorRollOnlyEligibleCheck').checked : true;
 
     let list = (STATE.students || []).filter(s => isStudentActive(s));
 
     if (type === 'ALL_BALANCED' || type === 'SCHOOL') {
-        titleText.textContent = `CUADRO DE HONOR GENERAL - TODA LA ESCUELA (CICLO ${STATE.activeCycle || '2026'})`;
-    } else if (type === 'GROUP_4TO_5TO') {
-        titleText.textContent = `CUADRO DE HONOR OFICIAL - 4TO Y 5TO GRADO (9 CLASES) - CICLO ${STATE.activeCycle || '2026'}`;
-        list = list.filter(s => {
-            const info = getStudentAcademicInfo(s);
-            return info.is4to || info.is5to;
-        });
+        titleText.textContent = `CUADRO DE HONOR GENERAL — ${periodBadgeText}`;
     } else if (type === 'GROUP_6TO') {
-        const bLabel6to = (parseInt(STATE.config?.activeBimestre) >= 4) ? '10 CLASES (B4)' : '8 CLASES ORDINARIAS (B1-B3)';
-        titleText.textContent = `CUADRO DE HONOR OFICIAL - 6TO GRADO GRADUANDOS (${bLabel6to}) - CICLO ${STATE.activeCycle || '2026'}`;
+        const bLabel6to = (periodMode === 'B1' || periodMode === 'B2' || periodMode === 'B3')
+            ? `8 CLASES ORDINARIAS (${periodMode})`
+            : (periodMode === 'B4_ONLY' ? '2 CLASES 4TO BIMESTRE (SEMINARIO Y PRÁCTICA)' : '10 CLASES NIVELADAS A 100 (8 B1-B3 + 2 EN 4TO BIMESTRE)');
+        titleText.textContent = `CUADRO DE HONOR OFICIAL - 6TO GRADO (${bLabel6to})`;
+        list = list.filter(s => getStudentAcademicInfo(s, periodMode).is6to);
+    } else if (type === 'GROUP_5TO') {
+        titleText.textContent = `CUADRO DE HONOR OFICIAL - 5TO GRADO (9 CLASES NIVELADAS A 100) — ${periodBadgeText}`;
+        list = list.filter(s => getStudentAcademicInfo(s, periodMode).is5to);
+    } else if (type === 'GROUP_4TO') {
+        titleText.textContent = `CUADRO DE HONOR OFICIAL - 4TO GRADO (9 CLASES NIVELADAS A 100) — ${periodBadgeText}`;
+        list = list.filter(s => getStudentAcademicInfo(s, periodMode).is4to);
+    } else if (type === 'GROUP_4TO_5TO') {
+        titleText.textContent = `CUADRO DE HONOR OFICIAL - 4TO Y 5TO GRADO (9 CLASES NIVELADAS A 100) — ${periodBadgeText}`;
         list = list.filter(s => {
-            const info = getStudentAcademicInfo(s);
-            return info.is6to;
+            const info = getStudentAcademicInfo(s, periodMode);
+            return info.is4to || info.is5to;
         });
     } else if (type.startsWith('GRADE_')) {
         const gCode = type.replace('GRADE_', '');
         const gradeObj = (STATE.gradesList || []).find(x => x.code === gCode);
         const gName = gradeObj ? `${gradeObj.name} (${gradeObj.section})` : gCode;
-        titleText.textContent = `CUADRO DE HONOR - ${gName}`;
+        titleText.textContent = `CUADRO DE HONOR - ${gName} — ${periodBadgeText}`;
         list = list.filter(s => {
             if (s.grade === gCode || s.gradeCode === gCode) return true;
             if (gradeObj) {
@@ -29262,7 +29570,7 @@ function loadHonorRoll() {
         });
     } else if (type.startsWith('CAREER_')) {
         const cName = type.replace('CAREER_', '');
-        titleText.textContent = `CUADRO DE HONOR - CARRERA: ${cName}`;
+        titleText.textContent = `CUADRO DE HONOR - CARRERA: ${cName} — ${periodBadgeText}`;
         const matchingCodes = (STATE.gradesList || []).filter(g => g.career === cName).map(g => g.code);
         const matchingNames = (STATE.gradesList || []).filter(g => g.career === cName).map(g => g.name);
         list = list.filter(s => {
@@ -29275,10 +29583,8 @@ function loadHonorRoll() {
 
     // 🌟 REGLA FUNDAMENTAL DE INTEGRIDAD Y VISIBILIDAD:
     // Los estudiantes exonerados NUNCA deben borrarse de la lista.
-    // - Si onlyEligible está activo: mostrar elegibles Y TAMBIÉN a los exonerados (con distintivo Exonerado).
-    // - Si onlyEligible está desactivado: mostrar a todos los estudiantes de la nómina.
     const evaluatedList = list.filter(s => {
-        const info = getStudentAcademicInfo(s);
+        const info = getStudentAcademicInfo(s, periodMode);
         if (onlyEligible) {
             return info.eligibleForHonorRoll || info.isExonerated || (info.exoneratedCount > 0);
         }
@@ -29290,9 +29596,9 @@ function loadHonorRoll() {
             <tr>
                 <td colspan="8" style="text-align:center; padding:45px 20px; color:var(--text-muted);">
                     <i class="fa-solid fa-users" style="font-size:2.4rem; margin-bottom:12px; display:block; color:var(--brand-blue); opacity:0.8;"></i>
-                    <strong style="font-size:1.1rem; color:var(--text-primary); display:block; margin-bottom:6px;">No se encontraron estudiantes en este grado o sección</strong>
+                    <strong style="font-size:1.1rem; color:var(--text-primary); display:block; margin-bottom:6px;">No se encontraron estudiantes elegibles en este período o grado</strong>
                     <span style="font-size:0.88rem; max-width:550px; display:inline-block; line-height:1.4;">
-                        Desmarque la casilla "Solo Estudiantes Elegibles" superior si desea visualizar estudiantes con notas pendientes.
+                        Desmarque la casilla "Solo Estudiantes Elegibles" superior o cambie el Período/Bimestre si desea visualizar estudiantes con notas pendientes en este corte.
                     </span>
                 </td>
             </tr>
@@ -29300,10 +29606,10 @@ function loadHonorRoll() {
         return;
     }
 
-    // Ordenamiento estricto: primero los elegibles por promedio descendente, luego por total de puntos y nombre
+    // Ordenamiento estricto: primero los elegibles por promedio descendente (Base 100), luego por total de puntos y nombre
     evaluatedList.sort((a, b) => {
-        const infoA = getStudentAcademicInfo(a);
-        const infoB = getStudentAcademicInfo(b);
+        const infoA = getStudentAcademicInfo(a, periodMode);
+        const infoB = getStudentAcademicInfo(b, periodMode);
         if (infoA.eligibleForHonorRoll !== infoB.eligibleForHonorRoll) {
             return infoA.eligibleForHonorRoll ? -1 : 1;
         }
@@ -29316,10 +29622,7 @@ function loadHonorRoll() {
         return (a.lastName || a.name || '').localeCompare(b.lastName || b.name || '');
     });
 
-    // ── CAMBIO 4: PERSISTENCIA ATÓMICA DEL PUESTO (honorRank.bX) ────────────────
-    // Guarda el puesto y promedio de cada estudiante elegible en Firestore,
-    // vinculado unívocamente a (estudianteId + bimestre activo) via setDoc merge.
-    // Solo persiste si de verdad cambió el valor, evitando bucles con onSnapshot.
+    // ── PERSISTENCIA ATÓMICA DEL PUESTO (honorRank.bX) ────────────────
     (async () => {
         if (!window.FirebaseModular?.db) return;
         const { db, doc, setDoc } = window.FirebaseModular;
@@ -29327,13 +29630,13 @@ function loadHonorRoll() {
         let eligibleRank = 0;
         for (let i = 0; i < evaluatedList.length; i++) {
             const s = evaluatedList[i];
-            const info = getStudentAcademicInfo(s);
+            const info = getStudentAcademicInfo(s, periodMode);
             if (!info.eligibleForHonorRoll) continue;
             eligibleRank++;
             const curRank = s.honorRank ? s.honorRank[`b${bim}`] : null;
             const curAvg = s.honorAverage ? s.honorAverage[`b${bim}`] : null;
             if (curRank === eligibleRank && curAvg === info.average) {
-                continue; // Ya sincronizado, omitir escritura
+                continue;
             }
             if (!s.honorRank) s.honorRank = {};
             s.honorRank[`b${bim}`] = eligibleRank;
@@ -29348,32 +29651,40 @@ function loadHonorRoll() {
                 .catch(e => console.warn('[Honor] Error al persistir puesto:', e));
         }
     })();
-    // ─────────────────────────────────────────────────────────────────────────────
 
-    tbody.innerHTML = evaluatedList.map((s, idx) => {
-        const info = getStudentAcademicInfo(s);
+    let eligibleCounter = 0;
+    tbody.innerHTML = evaluatedList.map((s) => {
+        const info = getStudentAcademicInfo(s, periodMode);
         let badgeHtml = '';
-        let posBadge = `<span style="font-weight:800; font-size:1.05rem;">#${idx + 1}</span>`;
+        let posBadge = '';
 
         if (!info.eligibleForHonorRoll) {
             if (info.isExonerated || info.exoneratedCount > 0) {
                 posBadge = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-size:0.75rem; font-weight:700;"><i class="fa-solid fa-user-shield"></i> Exonerado</span>`;
                 badgeHtml = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-weight:700;"><i class="fa-solid fa-user-shield"></i> Exonerado (Sin Cuadro)</span>`;
             } else {
+                const reasonTitle = info.failedSubjectsList.length > 0
+                    ? `Materias reprobadas: ${info.failedSubjectsList.join(', ')}`
+                    : `Clases calificadas: ${info.gradedClasses}/${info.officialClassLoad}`;
                 posBadge = `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-size:0.75rem;"><i class="fa-solid fa-ban"></i> No Elegible</span>`;
-                badgeHtml = `<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #f87171; font-weight:700;" title="Materias reprobadas: ${info.failedSubjectsList.join(', ')}"><i class="fa-solid fa-triangle-exclamation"></i> Nota &lt; 60 pts (${info.failedSubjectsList.length})</span>`;
+                badgeHtml = info.failedSubjectsList.length > 0
+                    ? `<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #f87171; font-weight:700;" title="${escapeHtml(reasonTitle)}"><i class="fa-solid fa-triangle-exclamation"></i> Nota &lt; 60 pts (${info.failedSubjectsList.length})</span>`
+                    : `<span class="badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-weight:700;" title="${escapeHtml(reasonTitle)}"><i class="fa-solid fa-clock"></i> Carga Incompleta (${info.gradedClasses}/${info.officialClassLoad})</span>`;
             }
         } else {
-            if (idx === 0) {
+            const rankIdx = eligibleCounter;
+            eligibleCounter++;
+            posBadge = `<span style="font-weight:800; font-size:1.05rem;">#${rankIdx + 1}</span>`;
+            if (rankIdx === 0) {
                 posBadge = `<span style="font-size:1.15rem;">🥇 <strong>#1</strong></span>`;
                 badgeHtml = `<span class="badge" style="background:#fef08a; color:#854d0e; border:1px solid #eab308; font-weight:800;"><i class="fa-solid fa-medal"></i> 1er Lugar - Oro</span>`;
-            } else if (idx === 1) {
+            } else if (rankIdx === 1) {
                 posBadge = `<span style="font-size:1.1rem;">🥈 <strong>#2</strong></span>`;
                 badgeHtml = `<span class="badge" style="background:#f1f5f9; color:#334155; border:1px solid #94a3b8; font-weight:800;"><i class="fa-solid fa-medal"></i> 2do Lugar - Plata</span>`;
-            } else if (idx === 2) {
+            } else if (rankIdx === 2) {
                 posBadge = `<span style="font-size:1.1rem;">🥉 <strong>#3</strong></span>`;
                 badgeHtml = `<span class="badge" style="background:#ffedd5; color:#9a3412; border:1px solid #f97316; font-weight:800;"><i class="fa-solid fa-medal"></i> 3er Lugar - Bronce</span>`;
-            } else if (idx < 10) {
+            } else if (rankIdx < 10) {
                 badgeHtml = `<span class="badge badge-success" style="font-weight:700;"><i class="fa-solid fa-star"></i> Cuadro de Honor</span>`;
             } else {
                 badgeHtml = `<span class="badge badge-info"><i class="fa-solid fa-award"></i> Alto Rendimiento</span>`;
@@ -29416,21 +29727,24 @@ function loadHonorRoll() {
 function printHonorRoll() {
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {});
     const select = document.getElementById('honorRollTypeSelect');
+    const periodSelect = document.getElementById('honorRollPeriodSelect');
     const titleText = document.getElementById('honorRollTitleText')?.textContent || 'CUADRO DE HONOR OFICIAL';
     if (!select) return;
 
     const type = select.value;
+    const periodMode = (periodSelect && periodSelect.value) ? periodSelect.value : 'CONSOLIDATED_100';
     let list = (STATE.students || []).filter(s => isStudentActive(s));
 
-    if (type === 'GROUP_4TO_5TO') {
+    if (type === 'GROUP_6TO') {
+        list = list.filter(s => getStudentAcademicInfo(s, periodMode).is6to);
+    } else if (type === 'GROUP_5TO') {
+        list = list.filter(s => getStudentAcademicInfo(s, periodMode).is5to);
+    } else if (type === 'GROUP_4TO') {
+        list = list.filter(s => getStudentAcademicInfo(s, periodMode).is4to);
+    } else if (type === 'GROUP_4TO_5TO') {
         list = list.filter(s => {
-            const info = getStudentAcademicInfo(s);
+            const info = getStudentAcademicInfo(s, periodMode);
             return info.is4to || info.is5to;
-        });
-    } else if (type === 'GROUP_6TO') {
-        list = list.filter(s => {
-            const info = getStudentAcademicInfo(s);
-            return info.is6to;
         });
     } else if (type.startsWith('GRADE_')) {
         const gCode = type.replace('GRADE_', '');
@@ -29456,19 +29770,17 @@ function printHonorRoll() {
         });
     }
 
-    // 🌟 INTEGRIDAD ACADÉMICA Y VISIBILIDAD EN IMPRESIÓN:
-    // Los estudiantes exonerados se muestran claramente identificados con su distintivo de exoneración.
     const onlyEligible = document.getElementById('honorRollOnlyEligibleCheck') ? document.getElementById('honorRollOnlyEligibleCheck').checked : true;
     if (onlyEligible) {
         list = list.filter(s => {
-            const info = getStudentAcademicInfo(s);
+            const info = getStudentAcademicInfo(s, periodMode);
             return info.eligibleForHonorRoll || info.isExonerated || (info.exoneratedCount > 0);
         });
     }
 
     list.sort((a, b) => {
-        const infoA = getStudentAcademicInfo(a);
-        const infoB = getStudentAcademicInfo(b);
+        const infoA = getStudentAcademicInfo(a, periodMode);
+        const infoB = getStudentAcademicInfo(b, periodMode);
         if (infoA.eligibleForHonorRoll !== infoB.eligibleForHonorRoll) {
             return infoA.eligibleForHonorRoll ? -1 : 1;
         }
@@ -29488,15 +29800,15 @@ function printHonorRoll() {
 
     // Top 30 estudiantes oficiales
     const top30 = list.slice(0, 30);
-    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
+    const periodLabelPrint = _getHonorRollPeriodTitleBadge(periodMode);
 
     const directorUser = (STATE.users || []).find(u => u.role === "director");
     const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || "Licda. Mirza Elizabeth Aragón Polanco");
     const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes("licda") ? "Directora del Plantel" : "Director del Plantel");
 
     let rankCounter = 0;
-    const printRowsHtml = top30.map((s, idx) => {
-        const info = getStudentAcademicInfo(s);
+    const printRowsHtml = top30.map((s) => {
+        const info = getStudentAcademicInfo(s, periodMode);
         const fullName = formatStudentDisplayName(s, 'lastFirst');
         const gradeSection = formatStudentGradeAndSection(s);
         let posText = '';
@@ -29603,11 +29915,11 @@ function printHonorRoll() {
                     margin-bottom: 12px;
                 }
                 table.honor-roll-table thead {
-                    display: table-header-group !important; /* Repite automáticamente en cada página */
+                    display: table-header-group !important;
                 }
                 table.honor-roll-table tr {
                     break-inside: avoid !important;
-                    page-break-inside: avoid !important; /* Previene cortes erróneos a mitad de fila */
+                    page-break-inside: avoid !important;
                 }
                 table.honor-roll-table th {
                     background-color: #0369a1 !important;
@@ -29622,7 +29934,7 @@ function printHonorRoll() {
                 }
                 table.honor-roll-table td {
                     border: 1px solid #cbd5e1;
-                    padding: 5px 6px; /* Altura compacta */
+                    padding: 5px 6px;
                     font-size: 8.5pt;
                     vertical-align: middle;
                 }
@@ -29641,7 +29953,7 @@ function printHonorRoll() {
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
-                    max-width: 250px; /* Truncado de nombres largos con ellipsis */
+                    max-width: 250px;
                 }
                 .col-grade { width: 180px; text-align: center; font-size: 8pt; }
                 .col-avg {
@@ -29660,7 +29972,7 @@ function printHonorRoll() {
                     margin-top: 30px;
                     padding-top: 10px;
                     break-inside: avoid !important;
-                    page-break-inside: avoid !important; /* Bloque permanece unido sin quiebres huérfanos */
+                    page-break-inside: avoid !important;
                 }
                 .signature-block { width: 200px; text-align: center; font-size: 10pt; }
                 .signature-line { border-top: 1.5px solid #000000; margin-bottom: 4px; padding-top: 3px; }
@@ -29700,14 +30012,14 @@ function printHonorRoll() {
                         <div class="report-title">${titleText} — TOP 30</div>
                     </div>
                     <div class="header-meta">
-                        <strong>Bimestre:</strong> ${activeBim}.º Bimestre<br>
+                        <strong>Período:</strong> ${periodLabelPrint}<br>
                         <strong>Emisión:</strong> ${new Date().toLocaleDateString('es-GT')}<br>
                         <strong>Jornada:</strong> Matutina
                     </div>
                 </div>
 
                 <div class="balance-notice">
-                    ⚖️ <strong>Criterio Oficial de Promedio Equitativo:</strong> Divisor dinámico ajustado a la carga de materias activas del bimestre (4.º y 5.º Grado: divisor fijo de 9 materias en B1, B2 y B3; 6.º Grado: divisor de 8 materias en B1 y B2 excluyendo materias no impartidas, y 10 materias en B3). Todos los promedios están calculados y formateados estrictamente a <strong>3 decimales</strong> sobre Base 100 puntos.
+                    ⚖️ <strong>Criterio Oficial de Nivelación a Base 100:</strong> <strong>6.º Grado</strong> se nivela sobre sus <strong>10 clases</strong> (8 clases ordinarias en B1–B3 + Seminario y Práctica Supervisada en 4.º Bimestre &divide; 10 = Base 100; o &divide; 8 en bimestres individuales B1–B3 y &divide; 2 en 4.º Bimestre exclusivo), y <strong>4.º y 5.º Grado</strong> se nivelan sobre sus <strong>9 clases (&divide; 9 = Base 100)</strong>. Todos los promedios se expresan a <strong>3 decimales</strong> sobre Base 100 puntos.
                 </div>
 
                 <table class="honor-roll-table">
@@ -42099,12 +42411,17 @@ function renderPermissionsHistoryView() {
             : `<strong style="color:#0f172a;">${escapeHtml(p.startDate)}</strong><br><small style="color:#64748b;">al ${escapeHtml(p.endDate)}</small>`;
         const refTag = p.docRef ? `<br><small style="color:#64748b;"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(p.docRef)}</small>` : '';
 
+        const isUnjust = isUnjustifiedPermission(p);
+        const catBadgeHtml = isUnjust
+            ? `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:800; font-size:0.75rem; border:1px solid #fca5a5;"><i class="fa-solid fa-lock"></i> ${escapeHtml(p.reasonCategory)} (A Blindada)</span>`
+            : `<span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.75rem; border:1px solid #fed7aa;">${escapeHtml(p.reasonCategory)}</span>`;
+
         return `
             <tr style="border-bottom:1px solid #f1f5f9;">
                 <td style="text-align:center; font-weight:700; color:#64748b;">${idx + 1}</td>
                 <td style="white-space:nowrap;">
                     <div style="font-size:0.84rem; display:flex; align-items:center; gap:6px;">
-                        <i class="fa-solid fa-calendar-check" style="color:#d97706;"></i>
+                        <i class="fa-solid fa-calendar-check" style="color:${isUnjust ? '#dc2626' : '#d97706'};"></i>
                         <div>${dateDisplay}</div>
                     </div>
                 </td>
@@ -42116,9 +42433,7 @@ function renderPermissionsHistoryView() {
                     <span style="font-weight:600; color:#334155;">${escapeHtml(p.grade || 'Grado Oficial')} (${escapeHtml(p.section || 'A')})</span>
                 </td>
                 <td>
-                    <span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.75rem; border:1px solid #fed7aa;">
-                        ${escapeHtml(p.reasonCategory)}
-                    </span>
+                    ${catBadgeHtml}
                     <div style="font-size:0.83rem; margin-top:3px; color:#334155; line-height:1.35;">${escapeHtml(p.reasonDetail)}</div>
                     ${refTag}
                 </td>
