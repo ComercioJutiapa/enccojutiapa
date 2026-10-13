@@ -6183,6 +6183,31 @@ function formatStudentGradeAndSection(s) {
 }
 window.formatStudentGradeAndSection = formatStudentGradeAndSection;
 
+function formatStudentGradeAndSectionShort(s) {
+    if (!s) return '—';
+    if (typeof s === 'string') {
+        const letter = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(s) : '';
+        let num = '';
+        if (s.includes('6') || s.toLowerCase().includes('sexto')) num = '6';
+        else if (s.includes('5') || s.toLowerCase().includes('quinto')) num = '5';
+        else if (s.includes('4') || s.toLowerCase().includes('cuarto')) num = '4';
+        return (num && letter) ? `${num}${letter}` : s;
+    }
+    const assign = (typeof getStudentAssignment === 'function') ? getStudentAssignment(s) : { grade: s.grade || '', section: s.section || '', fullLabel: s.grade || '' };
+    const gradeStr = (s.grade || s.gradeLabel || s.gradeCode || assign.grade || '').toUpperCase();
+    let num = '';
+    if (gradeStr.includes('6') || gradeStr.includes('SEXTO') || gradeStr.includes('6TO')) num = '6';
+    else if (gradeStr.includes('5') || gradeStr.includes('QUINTO') || gradeStr.includes('5TO')) num = '5';
+    else if (gradeStr.includes('4') || gradeStr.includes('CUARTO') || gradeStr.includes('4TO')) num = '4';
+    else {
+        const m = gradeStr.match(/\d+/);
+        if (m) num = m[0];
+    }
+    const secLetter = (typeof getCleanSectionLetter === 'function') ? (getCleanSectionLetter(s.section || assign.section || s.gradeCode || gradeStr) || 'A') : 'A';
+    return (num && secLetter) ? `${num}${secLetter}` : (assign.fullLabel || '—');
+}
+window.formatStudentGradeAndSectionShort = formatStudentGradeAndSectionShort;
+
 /**
  * Formatea y preserva la legibilidad de nombres de estudiantes con caracteres especiales y tildes (á, é, í, ó, ú, ñ, Á, É, Í, Ó, Ú, Ñ).
  * Evita la visualización de "undefined undefined" o comas sueltas cuando solo existe un campo o viene de importación.
@@ -13353,6 +13378,7 @@ function getStudentAcademicInfo(student, periodOverride = null) {
         return sc;
     };
 
+    const courseGrades = [];
     if (subjects.length > 0) {
         subjects.forEach(sub => {
             let gradesObj = null;
@@ -13373,6 +13399,12 @@ function getStudentAcademicInfo(student, periodOverride = null) {
 
                 if (isExonB4) {
                     exoneratedCount++;
+                    courseGrades.push({
+                        name: sub,
+                        score: 0,
+                        scoreFormatted: 'Exon',
+                        isExon: true
+                    });
                     return;
                 }
 
@@ -13385,6 +13417,20 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                     }
                     sumCourseAverages += scoreB4;
                     gradedCount++;
+                    const sRound = Math.round(scoreB4 * 10) / 10;
+                    courseGrades.push({
+                        name: sub,
+                        score: sRound,
+                        scoreFormatted: Number.isInteger(sRound) ? sRound.toFixed(0) : sRound.toFixed(1),
+                        isExon: false
+                    });
+                } else {
+                    courseGrades.push({
+                        name: sub,
+                        score: 0,
+                        scoreFormatted: '—',
+                        isExon: false
+                    });
                 }
                 return;
             }
@@ -13392,8 +13438,15 @@ function getStudentAcademicInfo(student, periodOverride = null) {
             // ─── MATERIAS ORDINARIAS (8 clases de 6to en B1-B3; 9 clases de 4to y 5to en B1-B4) ───
             if (periodMode === 'B1' || periodMode === 'B2' || periodMode === 'B3') {
                 const targetB = parseInt(periodMode.replace('B', ''), 10);
-                if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, sub, targetB)) {
+                const isExon = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, sub, targetB);
+                if (isExon) {
                     exoneratedCount++;
+                    courseGrades.push({
+                        name: sub,
+                        score: 0,
+                        scoreFormatted: 'Exon',
+                        isExon: true
+                    });
                     return;
                 }
                 const sc = _extractBimScore(gradesObj, sub, targetB);
@@ -13404,14 +13457,35 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                     }
                     sumCourseAverages += sc;
                     gradedCount++;
+                    const sRound = Math.round(sc * 10) / 10;
+                    courseGrades.push({
+                        name: sub,
+                        score: sRound,
+                        scoreFormatted: Number.isInteger(sRound) ? sRound.toFixed(0) : sRound.toFixed(1),
+                        isExon: false
+                    });
+                } else {
+                    courseGrades.push({
+                        name: sub,
+                        score: 0,
+                        scoreFormatted: '—',
+                        isExon: false
+                    });
                 }
                 return;
             }
 
             if (periodMode === 'B4_ONLY') {
                 // Solo 4to y 5to llegan aquí (6to fue filtrado a sus 2 materias especiales arriba)
-                if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, sub, 4)) {
+                const isExon = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, sub, 4);
+                if (isExon) {
                     exoneratedCount++;
+                    courseGrades.push({
+                        name: sub,
+                        score: 0,
+                        scoreFormatted: 'Exon',
+                        isExon: true
+                    });
                     return;
                 }
                 const sc4 = _extractBimScore(gradesObj, sub, 4);
@@ -13422,14 +13496,35 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                     }
                     sumCourseAverages += sc4;
                     gradedCount++;
+                    const sRound = Math.round(sc4 * 10) / 10;
+                    courseGrades.push({
+                        name: sub,
+                        score: sRound,
+                        scoreFormatted: Number.isInteger(sRound) ? sRound.toFixed(0) : sRound.toFixed(1),
+                        isExon: false
+                    });
+                } else {
+                    courseGrades.push({
+                        name: sub,
+                        score: 0,
+                        scoreFormatted: '—',
+                        isExon: false
+                    });
                 }
                 return;
             }
 
             if (periodMode === 'B4_10_CLASSES' && !is6to) {
                 // En 4to y 5to dentro de "4to Bimestre + Cierre 6to": priorizar B4 si ya tiene nota, o promedio acumulado B1-B4 si B4 aún está en blanco
-                if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, sub, 4)) {
+                const isExon = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(student, sub, 4);
+                if (isExon) {
                     exoneratedCount++;
+                    courseGrades.push({
+                        name: sub,
+                        score: 0,
+                        scoreFormatted: 'Exon',
+                        isExon: true
+                    });
                     return;
                 }
                 const sc4 = _extractBimScore(gradesObj, sub, 4);
@@ -13440,6 +13535,13 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                     }
                     sumCourseAverages += sc4;
                     gradedCount++;
+                    const sRound = Math.round(sc4 * 10) / 10;
+                    courseGrades.push({
+                        name: sub,
+                        score: sRound,
+                        scoreFormatted: Number.isInteger(sRound) ? sRound.toFixed(0) : sRound.toFixed(1),
+                        isExon: false
+                    });
                     return;
                 }
             }
@@ -13448,9 +13550,11 @@ function getStudentAcademicInfo(student, periodOverride = null) {
             // 6to promedia sus 3 bimestres ordinarios (B1, B2, B3); 4to y 5to promedian sus 4 bimestres (B1, B2, B3, B4)
             const maxUnits = is6to ? 3 : 4;
             let validScores = [];
+            let subExonUnits = 0;
             for (let b = 1; b <= maxUnits; b++) {
                 if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, sub, b)) {
                     exoneratedCount++;
+                    subExonUnits++;
                     continue;
                 }
                 const sc = _extractBimScore(gradesObj, sub, b);
@@ -13467,6 +13571,27 @@ function getStudentAcademicInfo(student, periodOverride = null) {
                 const cAvg = validScores.reduce((a, b) => a + b, 0) / validScores.length;
                 sumCourseAverages += cAvg;
                 gradedCount++;
+                const sRound = Math.round(cAvg * 10) / 10;
+                courseGrades.push({
+                    name: sub,
+                    score: sRound,
+                    scoreFormatted: Number.isInteger(sRound) ? sRound.toFixed(0) : sRound.toFixed(1),
+                    isExon: false
+                });
+            } else if (subExonUnits === maxUnits) {
+                courseGrades.push({
+                    name: sub,
+                    score: 0,
+                    scoreFormatted: 'Exon',
+                    isExon: true
+                });
+            } else {
+                courseGrades.push({
+                    name: sub,
+                    score: 0,
+                    scoreFormatted: '—',
+                    isExon: false
+                });
             }
         });
     }
@@ -13515,7 +13640,8 @@ function getStudentAcademicInfo(student, periodOverride = null) {
             isExonerated: isStudentExonerated,
             eligibleForHonorRoll: isEligible,
             failedSubjectsList: failedSubjectsList,
-            exoneratedCount: exoneratedCount
+            exoneratedCount: exoneratedCount,
+            courseGrades: courseGrades
         };
     }
 
@@ -13537,7 +13663,8 @@ function getStudentAcademicInfo(student, periodOverride = null) {
         isExonerated: isStudentExonerated,
         eligibleForHonorRoll: false,
         failedSubjectsList: [],
-        exoneratedCount: exoneratedCount
+        exoneratedCount: exoneratedCount,
+        courseGrades: []
     };
 }
 
@@ -26411,6 +26538,41 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
         return k.includes(`_M${m}_`) || k.includes(`_M0${m}_`) || k.endsWith(`_M${m}`) || k.endsWith(`_M0${m}`);
     };
 
+    // Helper inteligente para extraer grado, sección y curso de la clave SIN que el año (ej. 2026) ni el ID de pensum interfieran
+    function parseKeyGradeAndSection(k) {
+        const pensumMatch = k.match(/pen-[a-z0-9-]+/i);
+        const kCourseId = pensumMatch ? pensumMatch[0] : '';
+        const withoutCourse = kCourseId ? k.replace(new RegExp('_?' + kCourseId + '$'), '') : k;
+        const gradeOnlyStr = withoutCourse.replace(/^[^_]+_M\d+_?/i, '');
+        const gUpper = gradeOnlyStr.toUpperCase();
+
+        let kNum = 0;
+        if (gUpper.includes('6') || gUpper.includes('SEXTO') || gUpper.includes('6TO')) kNum = 6;
+        else if (gUpper.includes('5') || gUpper.includes('QUINTO') || gUpper.includes('5TO')) kNum = 5;
+        else if (gUpper.includes('4') || gUpper.includes('CUARTO') || gUpper.includes('4TO')) kNum = 4;
+
+        let kSec = getCleanSectionLetter(gradeOnlyStr);
+
+        let pensumCourse = null;
+        if (kCourseId) {
+            pensumCourse = (STATE.pensum || []).find(p => p && p.id === kCourseId);
+        }
+
+        if (pensumCourse) {
+            if (!kNum) {
+                const pStr = (pensumCourse.grade || pensumCourse.gradeCode || '').toUpperCase();
+                if (pStr.includes('6') || pStr.includes('SEXTO') || pStr.includes('6TO')) kNum = 6;
+                else if (pStr.includes('5') || pStr.includes('QUINTO') || pStr.includes('5TO')) kNum = 5;
+                else if (pStr.includes('4') || pStr.includes('CUARTO') || pStr.includes('4TO')) kNum = 4;
+            }
+            if (!kSec) {
+                kSec = getCleanSectionLetter(pensumCourse.section || pensumCourse.gradeCode || pensumCourse.grade);
+            }
+        }
+
+        return { kNum, kSec, kCourseId, pensumCourse };
+    }
+
     const isGeneralView = (!courseId || courseId === 'GENERAL');
 
     if (!isGeneralView) {
@@ -26431,28 +26593,11 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
             // Coincidencia estricta de la cátedra
             if (!k.endsWith(`_${courseId}`) && !k.includes(`_${courseId}_`) && !k.includes(courseId)) return;
 
-            // Coincidencia de grado: por número y sección O si contiene alumnos del grado
-            const gradePart = k.replace(new RegExp(`_?${courseId}$`), '').replace(new RegExp(`^.*?_M0?${month}_?`), '');
-            const kUpper = gradePart.toUpperCase();
-            let kNum = 0;
-            if (kUpper.includes('6') || kUpper.includes('SEXTO') || kUpper.includes('6TO')) kNum = 6;
-            else if (kUpper.includes('5') || kUpper.includes('QUINTO') || kUpper.includes('5TO')) kNum = 5;
-            else if (kUpper.includes('4') || kUpper.includes('CUARTO') || kUpper.includes('4TO')) kNum = 4;
-            const kSec = getCleanSectionLetter(gradePart);
+            const { kNum, kSec } = parseKeyGradeAndSection(k);
+            if (targetNum > 0 && kNum > 0 && kNum !== targetNum) return;
+            if (targetSec && kSec && kSec !== targetSec) return;
 
-            let matchesStudent = false;
-            if (gradeStudentIdSet.size > 0 && STATE.attendanceRecords[k] && typeof STATE.attendanceRecords[k] === 'object') {
-                for (const rawId of Object.keys(STATE.attendanceRecords[k])) {
-                    if (gradeStudentIdSet.has(rawId)) {
-                        matchesStudent = true;
-                        break;
-                    }
-                }
-            }
-
-            if ((targetNum > 0 && kNum === targetNum && targetSec && kSec === targetSec) || matchesStudent) {
-                courseKeys.add(k);
-            }
+            courseKeys.add(k);
         });
 
         // Consolidar registros propios de la cátedra
@@ -26461,7 +26606,7 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
             if (src && typeof src === 'object') {
                 for (const [rawId, daysObj] of Object.entries(src)) {
                     if (!daysObj || typeof daysObj !== 'object') continue;
-                    const student = aliasToStudentMap[rawId] || (STATE.students || []).find(s => s && (s.id === rawId || s.carne === rawId || s.personalCode === rawId));
+                    const student = aliasToStudentMap[rawId] || (STATE.students || []).find(s => s && (s.id === rawId || s.carne === rawId || s.personalCode === rawId || s.codigoPersonal === rawId));
                     const canonicalId = student ? student.id : rawId;
 
                     if (!monthData[canonicalId]) monthData[canonicalId] = {};
@@ -26469,9 +26614,12 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
                         if (val) monthData[canonicalId][d] = val;
                     }
                     if (student) {
-                        if (student.carne) { if (!monthData[student.carne]) monthData[student.carne] = {}; Object.assign(monthData[student.carne], monthData[canonicalId]); }
-                        if (student.personalCode) { if (!monthData[student.personalCode]) monthData[student.personalCode] = {}; Object.assign(monthData[student.personalCode], monthData[canonicalId]); }
-                        if (student.codigoPersonal) { if (!monthData[student.codigoPersonal]) monthData[student.codigoPersonal] = {}; Object.assign(monthData[student.codigoPersonal], monthData[canonicalId]); }
+                        const merged = { ...monthData[canonicalId] };
+                        if (student.id) monthData[student.id] = merged;
+                        if (student.carne) monthData[student.carne] = merged;
+                        if (student.personalCode) monthData[student.personalCode] = merged;
+                        if (student.codigoPersonal) monthData[student.codigoPersonal] = merged;
+                        if (student.cui) monthData[student.cui] = merged;
                     }
                 }
             }
@@ -26498,6 +26646,7 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
                     monthData[sId][day] = code;
                     if (s.carne) { if (!monthData[s.carne]) monthData[s.carne] = {}; monthData[s.carne][day] = code; }
                     if (s.personalCode) { if (!monthData[s.personalCode]) monthData[s.personalCode] = {}; monthData[s.personalCode][day] = code; }
+                    if (s.codigoPersonal) { if (!monthData[s.codigoPersonal]) monthData[s.codigoPersonal] = {}; monthData[s.codigoPersonal][day] = code; }
                 }
             }
         });
@@ -26519,12 +26668,11 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
         Object.keys(STATE.attendanceRecords).forEach(k => {
             if (!isMatchingMonth(k, month)) return;
 
-            const kUpper = k.toUpperCase();
-            let kNum = 0;
-            if (kUpper.includes('6') || kUpper.includes('SEXTO') || kUpper.includes('6TO')) kNum = 6;
-            else if (kUpper.includes('5') || kUpper.includes('QUINTO') || kUpper.includes('5TO')) kNum = 5;
-            else if (kUpper.includes('4') || kUpper.includes('CUARTO') || kUpper.includes('4TO')) kNum = 4;
-            const kSec = getCleanSectionLetter(k);
+            const { kNum, kSec } = parseKeyGradeAndSection(k);
+
+            // Si kNum o kSec están definidos y contradicen explícitamente el grado o sección objetivo, no pertenece a este grado
+            if (targetNum > 0 && kNum > 0 && kNum !== targetNum) return;
+            if (targetSec && kSec && kSec !== targetSec) return;
 
             let matchesStudent = false;
             if (gradeStudentIdSet.size > 0 && STATE.attendanceRecords[k] && typeof STATE.attendanceRecords[k] === 'object') {
@@ -26536,7 +26684,8 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
                 }
             }
 
-            if ((targetNum > 0 && kNum === targetNum && targetSec && kSec === targetSec) || matchesStudent) {
+            const byGrade = (targetNum > 0 && kNum === targetNum && (!targetSec || !kSec || targetSec === kSec));
+            if (byGrade || matchesStudent) {
                 genKeys.add(k);
             }
         });
@@ -26547,7 +26696,7 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
             if (src && typeof src === 'object') {
                 for (const [rawId, daysObj] of Object.entries(src)) {
                     if (!daysObj || typeof daysObj !== 'object') continue;
-                    const student = aliasToStudentMap[rawId] || (STATE.students || []).find(s => s && (s.id === rawId || s.carne === rawId || s.personalCode === rawId));
+                    const student = aliasToStudentMap[rawId] || (STATE.students || []).find(s => s && (s.id === rawId || s.carne === rawId || s.personalCode === rawId || s.codigoPersonal === rawId));
                     const canonicalId = student ? student.id : rawId;
 
                     if (!monthData[canonicalId]) monthData[canonicalId] = {};
@@ -26567,9 +26716,12 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
                         }
                     }
                     if (student) {
-                        if (student.carne) { if (!monthData[student.carne]) monthData[student.carne] = {}; Object.assign(monthData[student.carne], monthData[canonicalId]); }
-                        if (student.personalCode) { if (!monthData[student.personalCode]) monthData[student.personalCode] = {}; Object.assign(monthData[student.personalCode], monthData[canonicalId]); }
-                        if (student.codigoPersonal) { if (!monthData[student.codigoPersonal]) monthData[student.codigoPersonal] = {}; Object.assign(monthData[student.codigoPersonal], monthData[canonicalId]); }
+                        const merged = { ...monthData[canonicalId] };
+                        if (student.id) monthData[student.id] = merged;
+                        if (student.carne) monthData[student.carne] = merged;
+                        if (student.personalCode) monthData[student.personalCode] = merged;
+                        if (student.codigoPersonal) monthData[student.codigoPersonal] = merged;
+                        if (student.cui) monthData[student.cui] = merged;
                     }
                 }
             }
@@ -26591,6 +26743,7 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
                     monthData[sId][day] = code;
                     if (s.carne) { if (!monthData[s.carne]) monthData[s.carne] = {}; monthData[s.carne][day] = code; }
                     if (s.personalCode) { if (!monthData[s.personalCode]) monthData[s.personalCode] = {}; monthData[s.personalCode][day] = code; }
+                    if (s.codigoPersonal) { if (!monthData[s.codigoPersonal]) monthData[s.codigoPersonal] = {}; monthData[s.codigoPersonal][day] = code; }
                 }
             }
         });
@@ -26901,9 +27054,11 @@ function loadAttendanceList() {
 
     students.forEach((s, idx) => {
         const sRecords = {
+            ...(s.cui && monthData[s.cui] ? monthData[s.cui] : {}),
             ...(s.carne && monthData[s.carne] ? monthData[s.carne] : {}),
             ...(s.personalCode && monthData[s.personalCode] ? monthData[s.personalCode] : {}),
             ...(s.codigoPersonal && monthData[s.codigoPersonal] ? monthData[s.codigoPersonal] : {}),
+            ...(s.studentId && monthData[s.studentId] ? monthData[s.studentId] : {}),
             ...(s.id && monthData[s.id] ? monthData[s.id] : {})
         };
         let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
@@ -26918,8 +27073,17 @@ function loadAttendanceList() {
             const isWeekend = (dObj.getDay() === 0 || dObj.getDay() === 6);
             const weekendClass = isWeekend ? 'col-day-weekend' : '';
 
-            if (isWeekend) {
-                cellsHtml += `<td class="att-cell ${weekendClass}" data-weekend="true">-</td>`;
+            let rawVal = sRecords[day];
+            let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : '';
+            const permMeta = (typeof getStudentPermissionForDay === 'function') ? getStudentPermissionForDay(s.id, year, month, day) : null;
+            const genKey = getAttendanceRecordKey(gradeCode, month, 'GENERAL');
+            const genDayVal = (courseId === 'GENERAL' && STATE.attendanceRecords && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][s.id])
+                ? STATE.attendanceRecords[genKey][s.id][day]
+                : '';
+            const hasDataEntered = (val !== '') || !!permMeta || (genDayVal !== '');
+
+            if (isWeekend && !hasDataEntered) {
+                cellsHtml += `<td class="att-cell ${weekendClass}" data-weekend="true" data-student-id="${s.id}" data-day="${day}" onclick="toggleAttendanceCell('${s.id}', ${day})" title="${studentFullName} — Fin de semana (Haga clic para registrar asistencia)">-</td>`;
             } else if (isRetired) {
                 // 🛑 Alumno Retirado: Relleno distintivo suave, casillas bloqueadas con guión
                 cellsHtml += `
@@ -26935,18 +27099,6 @@ function loadAttendanceList() {
                     </td>
                 `;
             } else {
-                let rawVal = sRecords[day];
-                // Las casillas de asistencia aparecen en blanco inicialmente; al marcarse muestran su letra y color asignado
-                let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : '';
-
-                // 🛡️ 1. Verificar si existe permiso oficial autorizado por Auxiliatura / Dirección / Secretaría
-                const permMeta = (typeof getStudentPermissionForDay === 'function') ? getStudentPermissionForDay(s.id, year, month, day) : null;
-
-                // 🛡️ 2. Verificar si está justificado en Control General (GENERAL) ÚNICAMENTE cuando la vista activa ES GENERAL
-                const genKey = getAttendanceRecordKey(gradeCode, month, 'GENERAL');
-                const genDayVal = (courseId === 'GENERAL' && STATE.attendanceRecords && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][s.id])
-                    ? STATE.attendanceRecords[genKey][s.id][day]
-                    : '';
 
                 // Determinar origen y si es bloqueo estricto por Autoridad (Dirección, Auxiliatura, Secretaría)
                 const authorityRoles = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
@@ -27056,7 +27208,7 @@ function loadAttendanceList() {
                 }
 
                 cellsHtml += `
-                    <td class="att-cell ${cellClass} ${todayColClass}" 
+                    <td class="att-cell ${cellClass} ${todayColClass} ${weekendClass}" 
                         data-student-id="${s.id}" 
                         data-day="${day}" 
                         data-val="${val}"
@@ -27424,7 +27576,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
 
     // 🔒 1. ¿Es AUSENCIA INJUSTIFICADA BLINDADA ('A' que nadie puede cambiar en la planilla)?
     const isOfficialUnjustified = (!!permMeta && isUnjustifiedPermission(permMeta) && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente') ||
-                                  (td && td.classList.contains('att-cell-unjustified-locked'));
+                                  (td && td.classList && td.classList.contains('att-cell-unjustified-locked'));
 
     if (isOfficialUnjustified) {
         const studentObj = targetStudent || (STATE.students || []).find(s => s.id === studentId);
@@ -27534,7 +27686,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
 
     // ⚡ Actualizar visualmente la celda en <1ms sin esperar red ni alertas
     if (td) {
-        const keepToday = td.classList.contains('col-cell-today') || td.classList.contains('cell-day-today');
+        const keepToday = (td.classList && (td.classList.contains('col-cell-today') || td.classList.contains('cell-day-today'))) || (td.className && (td.className.includes('col-cell-today') || td.className.includes('cell-day-today')));
         let cellClass = next ? `att-cell att-val-${next.toLowerCase()} att-val-${next.toUpperCase()}` : 'att-cell att-val-empty';
         if (next === 'J' && isAuditRole) {
             cellClass += ' att-val-permiso';
@@ -29424,29 +29576,37 @@ function removeStudentPermissionDatesFromAttendance(perm, oldStartDate = null, o
         const isStillInNewRange = newStartDate && (dateStr >= newStartDate && dateStr <= (newEndDate || newStartDate));
         if (!isStillInNewRange) {
             studentAliases.forEach(aliasId => {
-                // 1. Eliminar metadata asociada
                 const metaKey = `${aliasId}_${m}_${d}`;
                 const meta = STATE.attendancePermissionsMeta[metaKey];
-                if (!meta || meta.permissionId === perm.id || !meta.permissionId) {
-                    delete STATE.attendancePermissionsMeta[metaKey];
-                }
+                const prevMarks = (meta && meta.previousMarks) || {};
 
-                // 2. Limpiar 'J' o 'A' de la asistencia general y de cada cátedra
+                // Limpiar 'J' o 'A' de la asistencia general y de cada cátedra restaurando marcas previas de los docentes si existían
                 matchingGradeCodes.forEach(gCode => {
                     const genKey = getAttendanceRecordKey(gCode, m, 'GENERAL');
-                    const genVal = STATE.attendanceRecords[genKey]?.[aliasId]?.[d];
-                    if (genVal === 'J' || genVal === 'A') {
+                    if (prevMarks[genKey]) {
+                        if (!STATE.attendanceRecords[genKey]) STATE.attendanceRecords[genKey] = {};
+                        if (!STATE.attendanceRecords[genKey][aliasId]) STATE.attendanceRecords[genKey][aliasId] = {};
+                        STATE.attendanceRecords[genKey][aliasId][d] = prevMarks[genKey];
+                    } else if (STATE.attendanceRecords[genKey]?.[aliasId]?.[d] === 'J' || STATE.attendanceRecords[genKey]?.[aliasId]?.[d] === 'A') {
                         delete STATE.attendanceRecords[genKey][aliasId][d];
                     }
 
                     matchingCourses.forEach(c => {
                         const cKey = getAttendanceRecordKey(gCode, m, c.id);
-                        const cVal = STATE.attendanceRecords[cKey]?.[aliasId]?.[d];
-                        if (cVal === 'J' || cVal === 'A') {
+                        if (prevMarks[cKey]) {
+                            if (!STATE.attendanceRecords[cKey]) STATE.attendanceRecords[cKey] = {};
+                            if (!STATE.attendanceRecords[cKey][aliasId]) STATE.attendanceRecords[cKey][aliasId] = {};
+                            STATE.attendanceRecords[cKey][aliasId][d] = prevMarks[cKey];
+                        } else if (STATE.attendanceRecords[cKey]?.[aliasId]?.[d] === 'J' || STATE.attendanceRecords[cKey]?.[aliasId]?.[d] === 'A') {
                             delete STATE.attendanceRecords[cKey][aliasId][d];
                         }
                     });
                 });
+
+                // Eliminar metadata asociada
+                if (!meta || meta.permissionId === perm.id || !meta.permissionId) {
+                    delete STATE.attendancePermissionsMeta[metaKey];
+                }
             });
         }
         curDate.setDate(curDate.getDate() + 1);
@@ -29513,11 +29673,16 @@ function applyStudentPermission(perm) {
 
         // 1. Marcar 'J' o 'A' (blindada) en el Control General y en CADA una de las clases de todos los docentes
         studentAliases.forEach(aliasId => {
+            const metaKey = `${aliasId}_${m}_${d}`;
+            const previousMarks = {};
+
             matchingGradeCodes.forEach(gCode => {
                 // General
                 const genKey = getAttendanceRecordKey(gCode, m, 'GENERAL');
                 if (!STATE.attendanceRecords[genKey]) STATE.attendanceRecords[genKey] = {};
                 if (!STATE.attendanceRecords[genKey][aliasId]) STATE.attendanceRecords[genKey][aliasId] = {};
+                const prevGen = STATE.attendanceRecords[genKey][aliasId][d];
+                if (prevGen && prevGen !== targetLetter) previousMarks[genKey] = prevGen;
                 STATE.attendanceRecords[genKey][aliasId][d] = targetLetter;
 
                 // Cada curso
@@ -29525,12 +29690,13 @@ function applyStudentPermission(perm) {
                     const cKey = getAttendanceRecordKey(gCode, m, c.id);
                     if (!STATE.attendanceRecords[cKey]) STATE.attendanceRecords[cKey] = {};
                     if (!STATE.attendanceRecords[cKey][aliasId]) STATE.attendanceRecords[cKey][aliasId] = {};
+                    const prevC = STATE.attendanceRecords[cKey][aliasId][d];
+                    if (prevC && prevC !== targetLetter) previousMarks[cKey] = prevC;
                     STATE.attendanceRecords[cKey][aliasId][d] = targetLetter;
                 });
             });
 
-            // 2. Guardar metadata para tooltip y blindaje de celda
-            const metaKey = `${aliasId}_${m}_${d}`;
+            // 2. Guardar metadata para tooltip y blindaje de celda con respaldo de marcas previas
             STATE.attendancePermissionsMeta[metaKey] = {
                 permissionId: perm.id,
                 reasonCategory: perm.reasonCategory,
@@ -29542,7 +29708,8 @@ function applyStudentPermission(perm) {
                 is_locked_by_admin: true,
                 attendanceCode: targetLetter,
                 date: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
-                studentName: perm.studentName
+                studentName: perm.studentName,
+                previousMarks: previousMarks
             };
         });
 
@@ -30456,16 +30623,32 @@ function loadHonorRoll() {
         const canExonerate = allowedExonRoles.includes((STATE.currentRole || '').toLowerCase());
         const actionBtn = canExonerate ? `<button type="button" class="btn btn-sm btn-outline-primary" style="padding:2px 8px; font-size:0.75rem;" onclick="openAcademicExonerationModal('${s.id}')" title="Configurar consideración individual o exoneración"><i class="fa-solid fa-user-shield"></i> Exonerar</button>` : '';
 
+        let classBadgesHtml = '';
+        if (info.courseGrades && info.courseGrades.length > 0) {
+            classBadgesHtml = `<div style="margin-top:4px; display:flex; flex-wrap:wrap; gap:2px; justify-content:center; max-width:260px;">` +
+                info.courseGrades.map(cg => {
+                    const sc = cg.scoreFormatted;
+                    const bg = cg.isExon ? '#ccfbf1' : (cg.score >= 60 ? '#f1f5f9' : '#fee2e2');
+                    const col = cg.isExon ? '#0f766e' : (cg.score >= 60 ? '#1e293b' : '#b91c1c');
+                    return `<span class="badge" style="background:${bg}; color:${col}; font-size:0.65rem; padding:1px 4px; border:1px solid #cbd5e1;" title="${escapeHtml(cg.name)}">${escapeHtml(cg.name.slice(0, 4))}: ${sc}</span>`;
+                }).join('') +
+                `</div>`;
+        }
+
         return `
             <tr style="${!info.eligibleForHonorRoll ? 'background:#fff1f2; opacity:0.92;' : ''}">
                 <td style="text-align:center;">${posBadge}</td>
                 <td style="text-align:center;"><code>${s.personalCode || '—'}</code></td>
                 <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
-                <td>${formatStudentGradeAndSection(s)}</td>
+                <td>
+                    <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800; font-size:0.85rem; margin-right:4px;">${formatStudentGradeAndSectionShort(s)}</span>
+                    <small style="color:var(--text-muted); font-size:0.75rem;">${formatStudentGradeAndSection(s)}</small>
+                </td>
                 <td style="text-align:center;">${loadBadge}</td>
                 <td style="text-align:center;">
                     <strong style="color:${info.eligibleForHonorRoll ? 'var(--brand-green)' : (info.isExonerated ? '#0f766e' : '#b91c1c')}; font-size:1.15rem; font-variant-numeric:tabular-nums;">${info.average > 0 ? info.average.toFixed(3) + ' pts' : (info.isExonerated ? 'Exento' : '0.000 pts')}</strong>
                     <div style="font-size:0.72rem; color:var(--text-muted);">${(info.isExonerated && info.gradedClasses === 0) ? 'Calificación Exenta' : `Total: ${info.totalPoints}/${(info.gradedClasses || info.officialClassLoad) * 100} pts`}</div>
+                    ${classBadgesHtml}
                 </td>
                 <td style="text-align:center;">${badgeHtml}</td>
                 <td style="text-align:center; white-space:nowrap;">
@@ -30560,29 +30743,65 @@ function printHonorRoll() {
     const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || "Licda. Mirza Elizabeth Aragón Polanco");
     const dirTitle = (STATE.schoolHeader?.directorTitle) || (dirName.toLowerCase().includes("licda") ? "Directora del Plantel" : "Director del Plantel");
 
+    // Determinar columnas dinámicas de clases según el filtro y grado
+    let classHeaders = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C10'];
+    let classCountToRender = 10;
+
+    if (type === 'GROUP_6TO') {
+        classHeaders = ['BANC', 'GUB', 'O&M', 'AUD', 'ÉTIC', 'DER', 'ING', 'COMP', 'SEM', 'PRÁC'];
+        classCountToRender = 10;
+    } else if (type === 'GROUP_5TO') {
+        classHeaders = ['COST', 'CÁLC', 'EST', 'ING', 'FISC', 'FIN', 'GEOG', 'MECA', 'COMP'];
+        classCountToRender = 9;
+    } else if (type === 'GROUP_4TO') {
+        classHeaders = ['SOC', 'MAT', 'ADM', 'ECON', 'ORT', 'ING', 'LEG', 'RED', 'COMP'];
+        classCountToRender = 9;
+    } else {
+        classHeaders = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9', 'C10'];
+        classCountToRender = 10;
+    }
+
     let rankCounter = 0;
     const printRowsHtml = top30.map((s) => {
         const info = getStudentAcademicInfo(s, periodMode);
         const fullName = formatStudentDisplayName(s, 'lastFirst');
-        const gradeSection = formatStudentGradeAndSection(s);
+        const shortGrade = formatStudentGradeAndSectionShort(s);
         let posText = '';
         if (info.eligibleForHonorRoll) {
             rankCounter++;
             posText = `#${rankCounter}`;
         } else if (info.isExonerated || info.exoneratedCount > 0) {
-            posText = `<span style="font-size:0.75rem; font-weight:700; color:#0f766e;">Exon.</span>`;
+            posText = `<span style="font-size:0.65rem; font-weight:700; color:#0f766e;">Exon.</span>`;
         } else {
-            posText = `<span style="font-size:0.75rem; color:#dc2626;">—</span>`;
+            posText = `<span style="font-size:0.65rem; color:#dc2626;">—</span>`;
         }
 
         const avgText = info.average > 0 ? `${info.average.toFixed(3)} pts` : (info.isExonerated ? 'Exento' : '0.000 pts');
-        const exonTag = (info.isExonerated || info.exoneratedCount > 0) ? ` <span style="font-size:0.72rem; color:#0f766e; font-weight:700;">[Exonerado]</span>` : '';
+        const exonTag = (info.isExonerated || info.exoneratedCount > 0) ? ` <span style="font-size:0.65rem; color:#0f766e; font-weight:700;">[Exon]</span>` : '';
+
+        let classCellsHtml = '';
+        for (let cIdx = 0; cIdx < classCountToRender; cIdx++) {
+            const cg = (info.courseGrades && info.courseGrades[cIdx]) ? info.courseGrades[cIdx] : null;
+            let scoreText = '—';
+            let cellStyle = 'color:#64748b;';
+            if (cg) {
+                if (cg.isExon) {
+                    scoreText = 'Ex';
+                    cellStyle = 'color:#0f766e; font-weight:700;';
+                } else if (cg.score > 0) {
+                    scoreText = cg.scoreFormatted;
+                    cellStyle = (cg.score < 60) ? 'color:#dc2626; font-weight:700;' : 'color:#0f172a; font-weight:600;';
+                }
+            }
+            classCellsHtml += `<td class="col-c" style="${cellStyle}" title="${cg?.name ? escapeHtml(cg.name + ': ' + scoreText) : ''}">${scoreText}</td>`;
+        }
 
         return `
             <tr style="${!info.eligibleForHonorRoll ? 'background:#f0fdfa;' : ''}">
                 <td class="col-pos">${posText}</td>
-                <td class="col-name" title="${fullName}">${fullName}${exonTag}</td>
-                <td class="col-grade">${gradeSection}</td>
+                <td class="col-name" title="${escapeHtml(fullName)}">${escapeHtml(fullName)}${exonTag}</td>
+                <td class="col-grade">${shortGrade}</td>
+                ${classCellsHtml}
                 <td class="col-avg">${avgText}</td>
             </tr>
         `;
@@ -30604,60 +30823,68 @@ function printHonorRoll() {
             <style>
                 @page {
                     size: letter portrait;
-                    margin: 1cm;
+                    margin: 4mm 5mm 4mm 5mm;
                 }
                 * { box-sizing: border-box; }
-                body {
+                html, body {
                     font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
                     color: #0f172a;
                     margin: 0;
                     padding: 0;
                     background: #ffffff;
-                    font-size: 9pt;
+                    font-size: 7pt;
                     width: 100%;
+                    height: 100%;
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
                 }
-                .report-container { width: 100%; }
+                .report-container {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                }
                 
                 .report-header {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
                     border-bottom: 2px solid #0369a1;
-                    padding-bottom: 6px;
-                    margin-bottom: 8px;
-                    gap: 12px;
+                    padding-bottom: 3px;
+                    margin-bottom: 4px;
+                    gap: 8px;
                 }
-                .report-header .logo-box { width: 50px; height: 50px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+                .report-header .logo-box { width: 40px; height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
                 .report-header .logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
                 .report-header .header-info { flex: 1; text-align: center; }
-                .report-header .header-info h1 { font-size: 11pt; font-weight: 900; color: #0369a1; text-transform: uppercase; margin: 0 0 1px 0; }
-                .report-header .header-info h2 { font-size: 7.5pt; font-weight: 800; color: #475569; text-transform: uppercase; margin: 0 0 1px 0; }
+                .report-header .header-info h1 { font-size: 9.5pt; font-weight: 900; color: #0369a1; text-transform: uppercase; margin: 0 0 1px 0; line-height: 1.1; }
+                .report-header .header-info h2 { font-size: 6.8pt; font-weight: 800; color: #475569; text-transform: uppercase; margin: 0 0 1px 0; line-height: 1.1; }
                 .report-header .header-info .report-title {
                     display: inline-block;
                     background: #0369a1;
                     color: #ffffff;
-                    font-size: 8pt;
+                    font-size: 7.2pt;
                     font-weight: 800;
-                    padding: 1.5px 12px;
-                    border-radius: 10px;
-                    letter-spacing: 0.4px;
-                    margin-top: 2px;
+                    padding: 1px 10px;
+                    border-radius: 8px;
+                    letter-spacing: 0.3px;
+                    margin-top: 1px;
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
                 }
-                .report-header .header-meta { text-align: right; font-size: 7.5pt; color: #475569; flex-shrink: 0; line-height: 1.35; }
+                .report-header .header-meta { text-align: right; font-size: 6.5pt; color: #475569; flex-shrink: 0; line-height: 1.25; }
 
                 .balance-notice {
                     background-color: #f0f9ff;
                     border: 1px solid #bae6fd;
-                    border-left: 3.5px solid #0284c7;
-                    padding: 4px 8px;
-                    font-size: 7.5pt;
+                    border-left: 3px solid #0284c7;
+                    padding: 2.5px 6px;
+                    font-size: 6.2pt;
                     color: #0369a1;
-                    margin-bottom: 8px;
+                    margin-bottom: 4px;
                     border-radius: 3px;
+                    line-height: 1.2;
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
                 }
@@ -30666,7 +30893,7 @@ function printHonorRoll() {
                     width: 100% !important;
                     border-collapse: collapse;
                     table-layout: fixed;
-                    margin-bottom: 12px;
+                    margin-bottom: 4px;
                 }
                 table.honor-roll-table thead {
                     display: table-header-group !important;
@@ -30679,18 +30906,20 @@ function printHonorRoll() {
                     background-color: #0369a1 !important;
                     color: #ffffff !important;
                     font-weight: 800;
-                    font-size: 8.5pt;
-                    padding: 5px 6px;
+                    font-size: 6.5pt;
+                    padding: 2.5px 1px;
                     border: 1px solid #0f172a;
                     text-transform: uppercase;
+                    text-align: center;
                     -webkit-print-color-adjust: exact !important;
                     print-color-adjust: exact !important;
                 }
                 table.honor-roll-table td {
                     border: 1px solid #cbd5e1;
-                    padding: 5px 6px;
-                    font-size: 8.5pt;
+                    padding: 1.8px 1px;
+                    font-size: 6.5pt;
                     vertical-align: middle;
+                    line-height: 1.15;
                 }
                 table.honor-roll-table tbody tr:nth-child(even) {
                     background-color: #f8fafc;
@@ -30698,23 +30927,22 @@ function printHonorRoll() {
                     print-color-adjust: exact !important;
                 }
 
-                .col-pos { width: 65px; text-align: center; font-weight: 800; }
+                .col-pos { width: 24px; text-align: center; font-weight: 800; }
                 .col-name {
-                    width: auto;
                     text-align: left;
                     font-weight: 700;
-                    padding-left: 8px;
+                    padding-left: 4px;
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
-                    max-width: 250px;
                 }
-                .col-grade { width: 180px; text-align: center; font-size: 8pt; }
+                .col-grade { width: 28px; text-align: center; font-weight: 800; color: #0369a1; font-size: 6.8pt; }
+                .col-c { width: 23px; text-align: center; font-variant-numeric: tabular-nums; }
                 .col-avg {
-                    width: 110px;
+                    width: 54px;
                     text-align: center;
                     font-weight: 800;
-                    font-size: 9pt;
+                    font-size: 7pt;
                     color: #15803d;
                     font-variant-numeric: tabular-nums;
                 }
@@ -30723,28 +30951,33 @@ function printHonorRoll() {
                     display: flex;
                     justify-content: space-around;
                     align-items: flex-end;
-                    margin-top: 30px;
-                    padding-top: 10px;
+                    margin-top: 6px;
+                    padding-top: 4px;
                     break-inside: avoid !important;
                     page-break-inside: avoid !important;
                 }
-                .signature-block { width: 200px; text-align: center; font-size: 10pt; }
-                .signature-line { border-top: 1.5px solid #000000; margin-bottom: 4px; padding-top: 3px; }
-                .signature-title { font-weight: 800; color: #0f172a; font-size: 8.5pt; }
-                .signature-subtitle { font-size: 7.5pt; color: #64748b; }
+                .signature-block { width: 180px; text-align: center; font-size: 7.5pt; }
+                .signature-line { border-top: 1px solid #000000; margin-bottom: 2px; padding-top: 2px; }
+                .signature-title { font-weight: 800; color: #0f172a; font-size: 6.8pt; }
+                .signature-subtitle { font-size: 6pt; color: #64748b; }
 
                 .footer-stamp {
-                    margin-top: 12px;
+                    margin-top: 3px;
                     display: flex;
                     justify-content: space-between;
-                    font-size: 7.5pt;
+                    font-size: 5.8pt;
                     color: #64748b;
                     border-top: 1px dotted #cbd5e1;
-                    padding-top: 3px;
+                    padding-top: 2px;
                 }
 
                 @media print {
-                    body { background: #ffffff !important; }
+                    html, body {
+                        width: 100% !important;
+                        height: 100% !important;
+                        background: #ffffff !important;
+                        overflow: hidden !important;
+                    }
                     .no-print { display: none !important; }
                     table.honor-roll-table { width: 100% !important; }
                     table.honor-roll-table thead { display: table-header-group !important; }
@@ -30755,57 +30988,62 @@ function printHonorRoll() {
         </head>
         <body>
             <div class="report-container">
-                <div class="report-header">
-                    <div class="logo-box">
-                        <img src="logo.png" alt="Escudo Oficial" onerror="this.src='portada-comercio-principal.webp'">
+                <div>
+                    <div class="report-header">
+                        <div class="logo-box">
+                            <img src="logo.png" alt="Escudo Oficial" onerror="this.src='portada-comercio-principal.webp'">
+                        </div>
+                        <div class="header-info">
+                            <h2>Ministerio de Educación — Guatemala</h2>
+                            <h1>${h.schoolName || 'Escuela Nacional de Ciencias Comerciales'}</h1>
+                            <h2>Jutiapa | Ciclo Lectivo ${STATE.activeCycle || '2026'}</h2>
+                            <div class="report-title">${titleText} — TOP 30</div>
+                        </div>
+                        <div class="header-meta">
+                            <strong>Período:</strong> ${periodLabelPrint}<br>
+                            <strong>Emisión:</strong> ${new Date().toLocaleDateString('es-GT')}<br>
+                            <strong>Jornada:</strong> Matutina
+                        </div>
                     </div>
-                    <div class="header-info">
-                        <h2>Ministerio de Educación — Guatemala</h2>
-                        <h1>${h.schoolName || 'Escuela Nacional de Ciencias Comerciales'}</h1>
-                        <h2>Jutiapa | Ciclo Lectivo ${STATE.activeCycle || '2026'}</h2>
-                        <div class="report-title">${titleText} — TOP 30</div>
+
+                    <div class="balance-notice">
+                        ⚖️ <strong>Criterio Oficial de Nivelación a Base 100:</strong> <strong>6.º Grado</strong> se nivela sobre sus <strong>10 clases</strong> (8 clases ordinarias en B1–B3 + Seminario y Práctica Supervisada en 4.º Bimestre &divide; 10 = Base 100; o &divide; 8 en bimestres individuales B1–B3 y &divide; 2 en 4.º Bimestre exclusivo), y <strong>4.º y 5.º Grado</strong> se nivelan sobre sus <strong>9 clases (&divide; 9 = Base 100)</strong>. C1–C10 reflejan los promedios de cada materia. Todos los promedios se expresan a <strong>3 decimales</strong> sobre Base 100 puntos.
                     </div>
-                    <div class="header-meta">
-                        <strong>Período:</strong> ${periodLabelPrint}<br>
-                        <strong>Emisión:</strong> ${new Date().toLocaleDateString('es-GT')}<br>
-                        <strong>Jornada:</strong> Matutina
-                    </div>
+
+                    <table class="honor-roll-table">
+                        <thead>
+                            <tr>
+                                <th class="col-pos">Pos</th>
+                                <th class="col-name">Nombre Completo del Estudiante</th>
+                                <th class="col-grade">Grado</th>
+                                ${classHeaders.map(ch => `<th class="col-c" title="${ch}">${ch}</th>`).join('')}
+                                <th class="col-avg">Promedio</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${printRowsHtml}
+                        </tbody>
+                    </table>
                 </div>
 
-                <div class="balance-notice">
-                    ⚖️ <strong>Criterio Oficial de Nivelación a Base 100:</strong> <strong>6.º Grado</strong> se nivela sobre sus <strong>10 clases</strong> (8 clases ordinarias en B1–B3 + Seminario y Práctica Supervisada en 4.º Bimestre &divide; 10 = Base 100; o &divide; 8 en bimestres individuales B1–B3 y &divide; 2 en 4.º Bimestre exclusivo), y <strong>4.º y 5.º Grado</strong> se nivelan sobre sus <strong>9 clases (&divide; 9 = Base 100)</strong>. Todos los promedios se expresan a <strong>3 decimales</strong> sobre Base 100 puntos.
-                </div>
-
-                <table class="honor-roll-table">
-                    <thead>
-                        <tr>
-                            <th class="col-pos">Posición</th>
-                            <th class="col-name">Nombre Completo del Estudiante</th>
-                            <th class="col-grade">Grado y Sección</th>
-                            <th class="col-avg">Promedio</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${printRowsHtml}
-                    </tbody>
-                </table>
-
-                <div class="signatures-container">
-                    <div class="signature-block">
-                        <div class="signature-line"></div>
-                        <div class="signature-title">Comisión de Evaluación / Maestro Guía</div>
-                        <div class="signature-subtitle">Registro y Control Académico</div>
+                <div>
+                    <div class="signatures-container">
+                        <div class="signature-block">
+                            <div class="signature-line"></div>
+                            <div class="signature-title">Comisión de Evaluación / Maestro Guía</div>
+                            <div class="signature-subtitle">Registro y Control Académico</div>
+                        </div>
+                        <div class="signature-block">
+                            <div class="signature-line"></div>
+                            <div class="signature-title">${dirName}</div>
+                            <div class="signature-subtitle">${dirTitle} — ENCCO Jutiapa</div>
+                        </div>
                     </div>
-                    <div class="signature-block">
-                        <div class="signature-line"></div>
-                        <div class="signature-title">${dirName}</div>
-                        <div class="signature-subtitle">${dirTitle} — ENCCO Jutiapa</div>
-                    </div>
-                </div>
 
-                <div class="footer-stamp">
-                    <span>Excelencia Académica ENCCO Jutiapa - Fundada en 1970</span>
-                    <span>Generado el: ${new Date().toLocaleDateString('es-GT')}</span>
+                    <div class="footer-stamp">
+                        <span>Excelencia Académica ENCCO Jutiapa - Fundada en 1970</span>
+                        <span>Generado el: ${new Date().toLocaleDateString('es-GT')}</span>
+                    </div>
                 </div>
             </div>
         </body>
