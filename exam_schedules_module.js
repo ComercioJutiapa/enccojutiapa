@@ -1555,8 +1555,11 @@
                             </span>
                             ${coverageBadgeHtml}
                         </div>
-                        <h3 style="margin:3px 0 0 0; font-size:1.08rem; font-weight:800; color:#0f172a; text-transform:capitalize;">
-                            ${dayDateFormatted}
+                        <h3 style="margin:3px 0 0 0; font-size:1.08rem; font-weight:800; color:#0f172a; text-transform:capitalize; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                            <span>${dayDateFormatted}</span>
+                            <button type="button" class="btn btn-xs" onclick="event.stopPropagation(); window.editExamDayDate('${dayObj.id}')" style="background:#f1f5f9; color:#0284c7; border:1px solid #cbd5e1; font-size:0.72rem; font-weight:700; padding:2px 7px; border-radius:4px; line-height:1.2; display:inline-flex; align-items:center; gap:4px; cursor:pointer;" title="Modificar la fecha de este día de exámenes">
+                                <i class="fa-solid fa-calendar-day"></i> Cambiar Fecha
+                            </button>
                         </h3>
                     </div>
                 </div>
@@ -2071,6 +2074,100 @@
         } catch (err) {
             console.error("Error al programar nuevo día:", err);
             alert("Error al guardar la nueva fecha: " + (err.message || err));
+        }
+    };
+
+    window.editExamDayDate = function (dayId) {
+        try {
+            const { dayObj, scheduleBlock } = findDayAndScheduleBlock(dayId);
+            if (!dayObj || !scheduleBlock) {
+                alert("No se pudo localizar la jornada de exámenes seleccionada.");
+                return;
+            }
+
+            const modalId = 'modalEditExamDayDate';
+            const existingModal = document.getElementById(modalId);
+            if (existingModal) existingModal.remove();
+
+            const modalHtml = `
+                <div class="modal-overlay" id="${modalId}" style="position:fixed; inset:0; z-index:10000; background:rgba(15,23,42,0.65); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; padding:15px;" onclick="if(event.target===this) this.remove()">
+                    <div style="background:#ffffff; border-radius:12px; width:100%; max-width:420px; box-shadow:0 12px 30px rgba(0,0,0,0.25); border:1px solid #cbd5e1; overflow:hidden;">
+                        <div style="padding:14px 18px; background:#0f172a; color:#ffffff; display:flex; justify-content:space-between; align-items:center;">
+                            <div style="font-weight:800; font-size:0.95rem; display:flex; align-items:center; gap:8px;">
+                                <i class="fa-solid fa-calendar-day" style="color:#38bdf8;"></i> Cambiar Fecha de Exámenes
+                            </div>
+                            <button type="button" onclick="document.getElementById('${modalId}').remove()" style="background:transparent; border:none; color:#94a3b8; font-size:1.1rem; cursor:pointer;" title="Cerrar">✕</button>
+                        </div>
+                        <div style="padding:18px 20px;">
+                            <label style="font-size:0.83rem; font-weight:700; color:#334155; margin-bottom:6px; display:block;">
+                                Nueva Fecha Oficial de la Jornada:
+                            </label>
+                            <input type="date" id="inputEditExamDayDate" class="form-control" value="${dayObj.date || ''}" style="width:100%; font-size:0.95rem; font-weight:700; border:1.5px solid #cbd5e1; border-radius:6px; padding:8px 10px;">
+                            <small style="color:#64748b; font-size:0.75rem; margin-top:8px; display:block; line-height:1.4;">
+                                ℹ️ Al modificar la fecha, todas las materias, horarios, salones y cuidadores de este día se conservarán intactos.
+                            </small>
+                        </div>
+                        <div style="padding:12px 18px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:8px;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('${modalId}').remove()" style="font-weight:700;">Cancelar</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="window.confirmEditExamDayDate('${dayId}')" style="background:#15803d; border-color:#166534; font-weight:700; padding:6px 14px;">
+                                <i class="fa-solid fa-check"></i> Guardar Fecha
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const inputEl = document.getElementById('inputEditExamDayDate');
+            if (inputEl) inputEl.focus();
+        } catch (err) {
+            console.error("Error al abrir editor de fecha:", err);
+            alert("No se pudo abrir el editor de fecha: " + (err.message || err));
+        }
+    };
+
+    window.confirmEditExamDayDate = function (dayId) {
+        try {
+            const inputEl = document.getElementById('inputEditExamDayDate');
+            if (!inputEl || !inputEl.value) {
+                alert("Por favor seleccione una fecha válida.");
+                return;
+            }
+
+            const newDateVal = inputEl.value.trim();
+            const { dayObj, scheduleBlock } = findDayAndScheduleBlock(dayId);
+            if (!dayObj || !scheduleBlock) {
+                alert("No se pudo localizar el día a actualizar.");
+                return;
+            }
+
+            if (dayObj.date === newDateVal) {
+                const modal = document.getElementById('modalEditExamDayDate');
+                if (modal) modal.remove();
+                return;
+            }
+
+            // Verificar si ya existe otro día con esta misma fecha en el bloque
+            if (Array.isArray(scheduleBlock.days) && scheduleBlock.days.some(d => String(d.id) !== String(dayId) && d.date === newDateVal)) {
+                alert(`Ya existe otra jornada de evaluaciones programada para la fecha ${newDateVal}.`);
+                return;
+            }
+
+            dayObj.date = newDateVal;
+
+            // Reordenar días cronológicamente
+            scheduleBlock.days.sort((a, b) => a.date.localeCompare(b.date));
+
+            saveExamSchedulesData(true);
+            const modal = document.getElementById('modalEditExamDayDate');
+            if (modal) modal.remove();
+            renderExamSchedulesView();
+
+            if (typeof showToast === 'function') {
+                showToast(`Fecha de exámenes actualizada correctamente a ${newDateVal}.`, 'success');
+            }
+        } catch (err) {
+            console.error("Error al guardar la nueva fecha del examen:", err);
+            alert("Error al actualizar la fecha: " + (err.message || err));
         }
     };
 
@@ -4062,17 +4159,6 @@
                 <div style="margin-top:14px; font-size:0.78rem; color:#64748b; font-style:italic;">
                     * Norma Institucional: Ninguna evaluación podrá extenderse más allá de las 12:30 PM. Los docentes cuidadores deben presentarse al salón 5 minutos antes de la hora indicada y entregar las pruebas en Auxiliatura al finalizar.
                 </div>
-
-                <div class="footer-signatures">
-                    <div class="sig-line">
-                        <strong>Auxiliatura General</strong><br>
-                        Control de Evaluaciones
-                    </div>
-                    <div class="sig-line">
-                        <strong>Dirección del Plantel</strong><br>
-                        Vo.Bo. Institucional
-                    </div>
-                </div>
             </body>
             </html>
         `;
@@ -4466,24 +4552,6 @@
                 <div style="margin-top:3px; font-size:0.72rem; font-weight:700;">
                     Total de pruebas entregadas a Auxiliatura: [ _______ ] de ${studentList.length} estudiantes evaluados.
                 </div>
-
-                <!-- FIRMAS INFERIORES -->
-                <table style="width:100%; border-collapse:collapse; margin-top:10px; page-break-inside:avoid;">
-                    <tr>
-                        <td style="width:50%; text-align:center; vertical-align:bottom;">
-                            <div style="width:200px; margin:0 auto; border-top:1.5px solid #0f172a; padding-top:2px; font-size:0.74rem;">
-                                <strong>${grp.caretakerTeacherName || 'Docente Cuidador'}</strong><br>
-                                Docente Cuidador Responsable
-                            </div>
-                        </td>
-                        <td style="width:50%; text-align:center; vertical-align:bottom;">
-                            <div style="width:200px; margin:0 auto; border-top:1.5px solid #0f172a; padding-top:2px; font-size:0.74rem;">
-                                <strong>Auxiliatura General</strong><br>
-                                Sello y Recepción Oficial
-                            </div>
-                        </td>
-                    </tr>
-                </table>
             </div>
             `;
         }
@@ -4569,24 +4637,6 @@
                 <div style="margin-top:3px; font-size:0.73rem; font-weight:700;">
                     Total de pruebas entregadas a Auxiliatura: [ _______ ] de ${studentList.length} estudiantes evaluados.
                 </div>
-
-                <!-- FIRMAS INFERIORES -->
-                <table style="width:100%; border-collapse:collapse; margin-top:12px; page-break-inside:avoid;">
-                    <tr>
-                        <td style="width:50%; text-align:center; vertical-align:bottom;">
-                            <div style="width:210px; margin:0 auto; border-top:1.5px solid #0f172a; padding-top:2px; font-size:0.75rem;">
-                                <strong>${isPractica ? (grp.caretakerTurn2Name || 'Docente Cuidador Cierre') : (grp.caretakerTeacherName || 'Docente Cuidador')}</strong><br>
-                                Docente Cuidador Responsable
-                            </div>
-                        </td>
-                        <td style="width:50%; text-align:center; vertical-align:bottom;">
-                            <div style="width:210px; margin:0 auto; border-top:1.5px solid #0f172a; padding-top:2px; font-size:0.75rem;">
-                                <strong>Auxiliatura General</strong><br>
-                                Sello y Recepción Oficial
-                            </div>
-                        </td>
-                    </tr>
-                </table>
             </div>
         `;
     }
@@ -5381,7 +5431,7 @@
                 <meta charset="UTF-8">
                 <title>Rol de Exámenes Estudiantes - ${bimesterLabels[bimesterSelectVal] || bimesterSelectVal} (${activeCycleYear})</title>
                 <style>
-                    @page { size: letter portrait; margin: 10mm; }
+                    @page { size: 8.5in 13in portrait; margin: 10mm; } /* HOJA OFICIO GUATEMALTECO 8.5in x 13in VERTICAL */
                     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; color: #0f172a; font-size: 11px; }
                     .calendar-header-table { width: 100%; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
                     .no-print-bar { background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px 14px; margin-bottom: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
@@ -5527,6 +5577,8 @@
     window.printConsolidatedCalendarPdf = printConsolidatedCalendarPdf;
     window.getInstitutionalSalonsList = getInstitutionalSalonsList;
     window.filterTeachersInDay = filterTeachersInDay;
+    window.editExamDayDate = editExamDayDate;
+    window.confirmEditExamDayDate = confirmEditExamDayDate;
 
     window.EXAM_SCHEDULES_MODULE = {
         renderExamSchedulesView,
@@ -5561,7 +5613,9 @@
         isCourseMecanografia,
         isTechOrMecaEvaluation,
         getEvaluationTitularTeacherIds,
-        getDayTechAndMecaBusyIntervals
+        getDayTechAndMecaBusyIntervals,
+        editExamDayDate,
+        confirmEditExamDayDate
     };
 
     if (typeof module !== 'undefined' && module.exports) {
