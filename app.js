@@ -6164,8 +6164,13 @@ function getStudentAssignment(s) {
     // 3. Limpiar nombre de grado (remover sufijos de sección si venían incrustados)
     let cleanGrade = grade;
     if (cleanGrade.includes(' - Sección')) cleanGrade = cleanGrade.split(' - Sección')[0].trim();
+    else if (cleanGrade.includes(' - Seccion')) cleanGrade = cleanGrade.split(' - Seccion')[0].trim();
     else if (cleanGrade.includes(' (Sección')) cleanGrade = cleanGrade.split(' (Sección')[0].trim();
+    else if (cleanGrade.includes(' (Seccion')) cleanGrade = cleanGrade.split(' (Seccion')[0].trim();
     else if (cleanGrade.includes(' Sección')) cleanGrade = cleanGrade.split(' Sección')[0].trim();
+    else if (cleanGrade.includes(' Seccion')) cleanGrade = cleanGrade.split(' Seccion')[0].trim();
+    else if (cleanGrade.match(/\s*-\s*[A-D]\b/i)) cleanGrade = cleanGrade.replace(/\s*-\s*[A-D]\b/i, '').trim();
+    else if (cleanGrade.match(/\s*\([A-D]\)\s*/i)) cleanGrade = cleanGrade.replace(/\s*\([A-D]\)\s*/i, '').trim();
     
     if (!cleanGrade) cleanGrade = '4to Perito Contador';
     if (!section) section = 'Sección A';
@@ -6174,6 +6179,78 @@ function getStudentAssignment(s) {
     return { grade: cleanGrade, section, gradeCode, fullLabel };
 }
 window.getStudentAssignment = getStudentAssignment;
+
+/**
+ * Sanitiza recursivamente objetos destinados a Firebase Firestore eliminando valores undefined
+ * que causarían excepciones irreversibles en SDK modular/compat.
+ */
+function sanitizePayloadForFirestore(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) {
+        return obj.map(item => sanitizePayloadForFirestore(item)).filter(item => item !== undefined);
+    }
+    const clean = {};
+    for (const key of Object.keys(obj)) {
+        const val = obj[key];
+        if (val === undefined || typeof val === 'function') continue;
+        if (val !== null && typeof val === 'object' && !(val instanceof Date)) {
+            clean[key] = sanitizePayloadForFirestore(val);
+        } else {
+            clean[key] = val;
+        }
+    }
+    return clean;
+}
+window.sanitizePayloadForFirestore = sanitizePayloadForFirestore;
+
+/**
+ * Sincroniza y activa de inmediato los selectores de filtrado en la vista de estudiantes
+ * para que muestren la sección que acaba de asignarse al alumno.
+ */
+function setStudentFiltersToMatch(gradeName, sectionName, gradeCode) {
+    try {
+        const careerSelect = document.getElementById('studentCareerFilterSelect');
+        const gradeOnlySelect = document.getElementById('studentGradeOnlyFilterSelect');
+        const sectionSelect = document.getElementById('studentSectionFilterSelect');
+        const hiddenGradeSelect = document.getElementById('gradeFilterSelect');
+
+        if (careerSelect && careerSelect.options.length > 0) {
+            careerSelect.value = 'Perito Contador';
+            if (typeof onStudentCareerFilterChange === 'function') {
+                onStudentCareerFilterChange('Perito Contador');
+            }
+        }
+        if (gradeOnlySelect && gradeName) {
+            gradeOnlySelect.value = gradeName;
+            if (typeof onStudentGradeOnlyChange === 'function') {
+                onStudentGradeOnlyChange(gradeName);
+            }
+        }
+        if (sectionSelect) {
+            const secLetter = typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(sectionName || gradeCode) : '';
+            const opt = Array.from(sectionSelect.options).find(o => 
+                (gradeCode && o.value === gradeCode) ||
+                (secLetter && (o.value.includes(secLetter) || o.text.includes(`Sección ${secLetter}`))) ||
+                (sectionName && o.text.includes(sectionName))
+            );
+            if (opt) {
+                sectionSelect.value = opt.value;
+                if (typeof onStudentSectionFilterChange === 'function') {
+                    onStudentSectionFilterChange(opt.value);
+                }
+            } else if (hiddenGradeSelect && gradeCode) {
+                hiddenGradeSelect.value = gradeCode;
+                renderStudentsTable();
+            }
+        } else if (hiddenGradeSelect && gradeCode) {
+            hiddenGradeSelect.value = gradeCode;
+            renderStudentsTable();
+        }
+    } catch(e) {
+        console.warn("Aviso al sincronizar filtros de sección:", e);
+    }
+}
+window.setStudentFiltersToMatch = setStudentFiltersToMatch;
 
 function formatStudentGradeAndSection(s) {
     if (!s) return 'Sin grado asignado';
@@ -12714,6 +12791,9 @@ function openEditStudentModal(studentId) {
             gradeFormSelect.appendChild(newOpt);
             gradeFormSelect.value = targetVal;
         }
+        if (typeof updateEnrollmentSectionLiveBadge === 'function') {
+            updateEnrollmentSectionLiveBadge();
+        }
     }
 
     setVal('studentFormCycle', student.cycle || STATE.activeCycle || '2026');
@@ -12967,12 +13047,28 @@ async function saveStudentForm(e) {
     const lastName = document.getElementById('studentFormLastName')?.value?.trim() || '';
     const birthDate = document.getElementById('studentFormBirthDate')?.value || '';
     const age = typeof calculateStudentAge === 'function' ? calculateStudentAge(birthDate) : '';
+    const gender = document.getElementById('studentFormGender')?.value || 'Femenino';
     const phone = document.getElementById('studentFormPhone')?.value?.trim() || '';
     const email = document.getElementById('studentFormEmail')?.value?.trim() || '';
     const address = document.getElementById('studentFormAddress')?.value?.trim() || '';
-    const grade = document.getElementById('studentFormGrade')?.value || '';
     const cycle = document.getElementById('studentFormCycle')?.value || STATE.activeCycle;
     const shift = document.getElementById('studentFormShift')?.value || 'Matutina';
+
+    // Datos familiares
+    const motherName = document.getElementById('studentFormMotherName')?.value?.trim() || '';
+    const motherDpi = document.getElementById('studentFormMotherDpi')?.value?.trim() || '';
+    const motherPhone1 = document.getElementById('studentFormMotherPhone1')?.value?.trim() || '';
+    const motherPhone2 = document.getElementById('studentFormMotherPhone2')?.value?.trim() || '';
+    const fatherName = document.getElementById('studentFormFatherName')?.value?.trim() || '';
+    const fatherDpi = document.getElementById('studentFormFatherDpi')?.value?.trim() || '';
+    const fatherPhone1 = document.getElementById('studentFormFatherPhone1')?.value?.trim() || '';
+    const fatherPhone2 = document.getElementById('studentFormFatherPhone2')?.value?.trim() || '';
+    const guardianName = document.getElementById('studentFormGuardianName')?.value?.trim() || '';
+    const guardianDpi = document.getElementById('studentFormGuardianDpi')?.value?.trim() || '';
+    const guardianPhone1 = document.getElementById('studentFormGuardianPhone1')?.value?.trim() || '';
+    const guardianPhone2 = document.getElementById('studentFormGuardianPhone2')?.value?.trim() || '';
+    const photoPreviewEl = document.getElementById('studentFormPhotoPreview');
+    const photoUrl = (photoPreviewEl && photoPreviewEl.src && !photoPreviewEl.src.includes('ui-avatars.com')) ? photoPreviewEl.src : '';
 
     const isEditing = Boolean(studentId);
     if (isEditing) {
@@ -12983,10 +13079,61 @@ async function saveStudentForm(e) {
         }
     }
 
-    if (!firstName || !lastName || !grade) {
-        showToast("Complete los campos obligatorios del estudiante (Nombres, Apellidos y Grado).", "warning");
+    // Procesamiento y asignación exacta de Grado y Sección
+    const gradeSelectEl = document.getElementById('studentFormGrade');
+    const rawGradeVal = (gradeSelectEl?.value || '').trim();
+
+    if (!firstName || !lastName || !rawGradeVal) {
+        showToast("Complete los campos obligatorios del estudiante (Nombres, Apellidos y Grado/Sección).", "warning");
         return;
     }
+
+    const selOpt = gradeSelectEl?.selectedOptions?.[0] || Array.from(gradeSelectEl?.options || []).find(o => o.value === rawGradeVal);
+    let selectedGrade = '';
+    let selectedSection = '';
+    let selectedCode = '';
+
+    if (selOpt && selOpt.dataset && (selOpt.dataset.grade || selOpt.dataset.section)) {
+        selectedGrade = selOpt.dataset.grade || '';
+        selectedSection = selOpt.dataset.section || '';
+        selectedCode = selOpt.dataset.code || '';
+    }
+
+    if (!selectedGrade || !selectedSection) {
+        if (rawGradeVal.includes(' - ')) {
+            const parts = rawGradeVal.split(' - ');
+            selectedGrade = parts[0].trim();
+            selectedSection = parts.slice(1).join(' - ').trim();
+        } else {
+            selectedGrade = rawGradeVal;
+        }
+    }
+
+    const secLetter = typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(selectedSection || rawGradeVal) : '';
+    if (secLetter) {
+        selectedSection = `Sección ${secLetter}`;
+    }
+
+    const matchedGrade = (STATE.gradesList || []).find(g => 
+        (selectedCode && g.code === selectedCode) ||
+        (`${g.name} - ${g.section}` === rawGradeVal) ||
+        (g.name === selectedGrade && (g.section === selectedSection || (typeof getCleanSectionLetter === 'function' && getCleanSectionLetter(g.section) === secLetter)))
+    );
+
+    if (matchedGrade) {
+        selectedGrade = matchedGrade.name;
+        selectedSection = matchedGrade.section;
+        selectedCode = matchedGrade.code;
+    }
+
+    const cleanAssign = (typeof getStudentAssignment === 'function') 
+        ? getStudentAssignment({ grade: selectedGrade, section: selectedSection, gradeCode: selectedCode })
+        : { grade: selectedGrade, section: selectedSection, gradeCode: selectedCode, fullLabel: `${selectedGrade} (${selectedSection})` };
+
+    const finalGrade = cleanAssign.grade || selectedGrade || '4to Perito Contador';
+    const finalSection = cleanAssign.section || selectedSection || 'Sección A';
+    const finalGradeCode = cleanAssign.gradeCode || selectedCode || matchedGrade?.code || `${finalGrade.split(' ')[0]} ${secLetter || 'A'}`;
+    const finalGradeLabel = cleanAssign.fullLabel || `${finalGrade} (${finalSection})`;
 
     // Verificar duplicado
     if (typeof checkStudentDuplicateEnrollment === 'function') {
@@ -13024,8 +13171,27 @@ async function saveStudentForm(e) {
                     ...STATE.students[idx],
                     carne, personalCode, cui, firstName, lastName,
                     name: `${firstName} ${lastName}`.trim(),
-                    birthDate, age, phone, email, address,
-                    grade, gradeCode: grade, cycle, shift,
+                    birthDate, age, gender, phone, email, address,
+                    grade: finalGrade,
+                    section: finalSection,
+                    gradeCode: finalGradeCode,
+                    gradeLabel: finalGradeLabel,
+                    career: matchedGrade?.career || STATE.students[idx].career || 'Perito Contador',
+                    cycle, shift,
+                    motherName: motherName || STATE.students[idx].motherName || '',
+                    motherDpi: motherDpi || STATE.students[idx].motherDpi || '',
+                    motherPhone1: motherPhone1 || STATE.students[idx].motherPhone1 || '',
+                    motherPhone2: motherPhone2 || STATE.students[idx].motherPhone2 || '',
+                    fatherName: fatherName || STATE.students[idx].fatherName || '',
+                    fatherDpi: fatherDpi || STATE.students[idx].fatherDpi || '',
+                    fatherPhone1: fatherPhone1 || STATE.students[idx].fatherPhone1 || '',
+                    fatherPhone2: fatherPhone2 || STATE.students[idx].fatherPhone2 || '',
+                    guardianName: guardianName || STATE.students[idx].guardianName || '',
+                    guardianDpi: guardianDpi || STATE.students[idx].guardianDpi || '',
+                    guardianPhone1: guardianPhone1 || STATE.students[idx].guardianPhone1 || '',
+                    guardianPhone2: guardianPhone2 || STATE.students[idx].guardianPhone2 || '',
+                    tutor: guardianName || STATE.students[idx].tutor || '',
+                    photo: photoUrl || STATE.students[idx].photo || '',
                     lastModified: Date.now()
                 };
                 studentObj = STATE.students[idx];
@@ -13037,9 +13203,19 @@ async function saveStudentForm(e) {
                 id: 'stu-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
                 carne, personalCode, cui, firstName, lastName,
                 name: `${firstName} ${lastName}`.trim(),
-                birthDate, age, phone, email, address,
-                grade, gradeCode: grade, cycle, shift,
+                birthDate, age, gender, phone, email, address,
+                grade: finalGrade,
+                section: finalSection,
+                gradeCode: finalGradeCode,
+                gradeLabel: finalGradeLabel,
+                career: matchedGrade?.career || 'Perito Contador',
+                cycle, shift,
                 status: 'Activo',
+                motherName, motherDpi, motherPhone1, motherPhone2,
+                fatherName, fatherDpi, fatherPhone1, fatherPhone2,
+                guardianName, guardianDpi, guardianPhone1, guardianPhone2,
+                tutor: guardianName || '',
+                photo: photoUrl || '',
                 enrolledAt: new Date().toISOString(),
                 lastModified: Date.now()
             };
@@ -13051,15 +13227,24 @@ async function saveStudentForm(e) {
 
         // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
         saveStateToLocalStorage();
-        if (typeof renderStudentsTable === 'function') renderStudentsTable();
+        if (isEditing) {
+            if (typeof navigateTo === 'function') navigateTo('students');
+            if (typeof setStudentFiltersToMatch === 'function') {
+                setStudentFiltersToMatch(finalGrade, finalSection, finalGradeCode);
+            } else if (typeof renderStudentsTable === 'function') {
+                renderStudentsTable();
+            }
+        } else {
+            if (typeof renderStudentsTable === 'function') renderStudentsTable();
+        }
         if (typeof renderDashboard === 'function') renderDashboard();
 
-        showToast(`Estudiante "${firstName} ${lastName}" guardado exitosamente.`, 'success');
+        showToast(`Estudiante "${firstName} ${lastName}" asignado y guardado en ${finalGrade} (${finalSection}).`, 'success');
         try {
             const auditAction = isEditing ? 'STUDENT_UPDATE' : 'STUDENT_ENROLL';
             const auditDetails = isEditing 
-                ? `Expediente de estudiante actualizado: ${firstName} ${lastName} (${studentObj.carne || studentObj.id}) - Grado: ${grade}` 
-                : `Nueva matrícula de estudiante registrada: ${firstName} ${lastName} (${studentObj.carne || studentObj.id}) - Grado: ${grade}`;
+                ? `Expediente de estudiante actualizado: ${firstName} ${lastName} (${studentObj.carne || studentObj.id}) - Asignado a: ${finalGrade} (${finalSection})` 
+                : `Nueva matrícula de estudiante registrada: ${firstName} ${lastName} (${studentObj.carne || studentObj.id}) - Asignado a: ${finalGrade} (${finalSection})`;
             recordAuditLog(auditAction, 'Secretaría', auditDetails, studentObj.id);
         } catch(e) {}
         try {
@@ -13075,9 +13260,11 @@ async function saveStudentForm(e) {
                 try {
                     const { db, doc, setDoc } = window.FirebaseModular;
                     const stuRef = doc(db, 'students', studentObj.id);
-                    const stuPayload = { ...studentObj, lastModified: nowTime };
+                    const cleanPayload = (typeof sanitizePayloadForFirestore === 'function') 
+                        ? sanitizePayloadForFirestore({ ...studentObj, lastModified: nowTime }) 
+                        : { ...studentObj, lastModified: nowTime };
                     if (typeof setDoc === 'function') {
-                        await withTimeout(setDoc(stuRef, stuPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
+                        await withTimeout(setDoc(stuRef, cleanPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
                     }
                 } catch(fsErr) {
                     console.warn("Aviso al persistir estudiante en Firestore:", fsErr);
@@ -15578,28 +15765,54 @@ async function saveStudentProfileForm(e) {
 
     const profGradeEl = document.getElementById('profGradeSelect');
     if (profGradeEl && profGradeEl.value) {
-        const selOpt = profGradeEl.selectedOptions?.[0];
+        const rawVal = profGradeEl.value.trim();
+        const selOpt = profGradeEl.selectedOptions?.[0] || Array.from(profGradeEl.options || []).find(o => o.value === rawVal);
         let pGrade = '';
         let pSection = '';
         let pCode = '';
-        if (selOpt && selOpt.dataset && selOpt.dataset.grade) {
-            pGrade = selOpt.dataset.grade;
-            pSection = selOpt.dataset.section || student.section;
-            pCode = selOpt.dataset.code || student.gradeCode;
-        } else {
-            const parts = profGradeEl.value.split(' - ');
-            if (parts.length >= 2) {
+
+        if (selOpt && selOpt.dataset && (selOpt.dataset.grade || selOpt.dataset.section)) {
+            pGrade = selOpt.dataset.grade || '';
+            pSection = selOpt.dataset.section || '';
+            pCode = selOpt.dataset.code || '';
+        }
+
+        if (!pGrade || !pSection) {
+            if (rawVal.includes(' - ')) {
+                const parts = rawVal.split(' - ');
                 pGrade = parts[0].trim();
-                pSection = parts[1].trim();
+                pSection = parts.slice(1).join(' - ').trim();
             } else {
-                pGrade = profGradeEl.value;
+                pGrade = rawVal;
             }
         }
-        const cleanAssign = getStudentAssignment({ grade: pGrade, section: pSection, gradeCode: pCode });
-        student.grade = cleanAssign.grade;
-        student.section = cleanAssign.section;
-        student.gradeCode = cleanAssign.gradeCode || pCode;
-        student.gradeLabel = cleanAssign.fullLabel;
+
+        const secLetter = typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(pSection || rawVal) : '';
+        if (secLetter) {
+            pSection = `Sección ${secLetter}`;
+        }
+
+        const matchedGrade = (STATE.gradesList || []).find(g => 
+            (pCode && g.code === pCode) ||
+            (`${g.name} - ${g.section}` === rawVal) ||
+            (g.name === pGrade && (g.section === pSection || (typeof getCleanSectionLetter === 'function' && getCleanSectionLetter(g.section) === secLetter)))
+        );
+
+        if (matchedGrade) {
+            pGrade = matchedGrade.name;
+            pSection = matchedGrade.section;
+            pCode = matchedGrade.code;
+        }
+
+        const cleanAssign = (typeof getStudentAssignment === 'function')
+            ? getStudentAssignment({ grade: pGrade, section: pSection, gradeCode: pCode })
+            : { grade: pGrade, section: pSection, gradeCode: pCode, fullLabel: `${pGrade} (${pSection})` };
+
+        student.grade = cleanAssign.grade || pGrade;
+        student.section = cleanAssign.section || pSection;
+        student.gradeCode = cleanAssign.gradeCode || pCode || matchedGrade?.code || `${student.grade.split(' ')[0]} ${secLetter || 'A'}`;
+        student.gradeLabel = cleanAssign.fullLabel || `${student.grade} (${student.section})`;
+        student.career = matchedGrade?.career || student.career || 'Perito Contador';
     }
     student.address = document.getElementById('profAddressDisplay')?.value || '';
     student.phone = document.getElementById('profPhone')?.value || '';
@@ -15617,18 +15830,16 @@ async function saveStudentProfileForm(e) {
 
     try {
         student.lastModified = Date.now();
-        // 🌟 A. Persistencia Atómica en Firestore (colección students con merge: true)
+        // 🌟 A. Persistencia Atómica en Firestore (colección students con merge: true y sanitización anti-undefined)
         const modular = window.FirebaseModular;
         if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
             try {
-                const { db, doc, updateDoc, setDoc } = modular;
+                const { db, doc, setDoc } = modular;
                 const stuRef = doc(db, 'students', student.id);
-                const fsAction = (typeof modular.updateDoc === 'function')
-                    ? modular.updateDoc(stuRef, student).catch(e => {
-                        return modular.setDoc(stuRef, student, { merge: true });
-                    })
-                    : modular.setDoc(stuRef, student, { merge: true });
-                await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
+                const cleanStudent = (typeof sanitizePayloadForFirestore === 'function') 
+                    ? sanitizePayloadForFirestore(student) 
+                    : student;
+                await withTimeout(setDoc(stuRef, cleanStudent, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
             } catch(fsErr) {
                 console.warn("Aviso al guardar estudiante en Firestore:", fsErr);
             }
@@ -15646,8 +15857,12 @@ async function saveStudentProfileForm(e) {
 
         saveStateToLocalStorage();
         closeStudentProfileModal();
-        renderStudentsTable();
-        showToast(`Estado de matrícula y expediente de ${formatStudentDisplayName(student, 'lastFirst')} actualizado y confirmado en Firebase (${newStatus}).`, "success");
+        if (typeof setStudentFiltersToMatch === 'function' && student.grade && student.section) {
+            setStudentFiltersToMatch(student.grade, student.section, student.gradeCode);
+        } else if (typeof renderStudentsTable === 'function') {
+            renderStudentsTable();
+        }
+        showToast(`Expediente de ${formatStudentDisplayName(student, 'lastFirst')} actualizado y reasignado a ${student.grade} (${student.section}).`, "success");
     } catch(err) {
         console.error("❌ Error al guardar perfil del estudiante en Firebase:", err);
         showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
