@@ -1555,11 +1555,8 @@
                             </span>
                             ${coverageBadgeHtml}
                         </div>
-                        <h3 style="margin:3px 0 0 0; font-size:1.08rem; font-weight:800; color:#0f172a; text-transform:capitalize; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                            <span>${dayDateFormatted}</span>
-                            <button type="button" class="btn btn-xs" onclick="event.preventDefault(); event.stopPropagation(); window.editExamDayDate('${dayObj.id}'); return false;" style="background:#f1f5f9; color:#0284c7; border:1px solid #cbd5e1; font-size:0.72rem; font-weight:700; padding:2px 7px; border-radius:4px; line-height:1.2; display:inline-flex; align-items:center; gap:4px; cursor:pointer;" title="Modificar la fecha de este día de exámenes">
-                                <i class="fa-solid fa-calendar-day" style="pointer-events:none;"></i> Cambiar Fecha
-                            </button>
+                        <h3 style="margin:3px 0 0 0; font-size:1.08rem; font-weight:800; color:#0f172a; text-transform:capitalize;">
+                            ${dayDateFormatted}
                         </h3>
                     </div>
                 </div>
