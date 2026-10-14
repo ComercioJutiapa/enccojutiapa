@@ -739,8 +739,12 @@
         else if (targetGrade.includes('6') || codeUpper.includes('6')) targetNum = '6';
 
         const students = (STATE.students || []).filter(s => {
-            const isRetired = s.status === 'Retirado' || s.status === 'retirado';
-            if (isRetired) return false;
+            if (!s) return false;
+
+            // 1. Filtrar registros fantasma o sin identidad verificable
+            const hasName = !!((s.lastName && s.lastName.trim()) || (s.firstName && s.firstName.trim()) || (s.name && s.name.trim()));
+            const hasCode = !!(s.personalCode || s.carne || (s.id && !s.id.startsWith('stu-sire-')));
+            if (!hasName && !hasCode) return false;
 
             // Extraer y normalizar los datos del estudiante
             const stuSec = (s.section || '').replace(/Secci[oó]n\s*/i, '').trim().toUpperCase();
@@ -761,17 +765,20 @@
             else if (fullStuGradeStr.includes('5')) stuNum = '5';
             else if (fullStuGradeStr.includes('6')) stuNum = '6';
 
-            // Coincidencia exacta por ID de grado (ej. '4PC' cuando los estudiantes tienen s.gradeCode === '4PC')
-            if (s.gradeCode === rawCode || s.grade === rawCode) return true;
+            // Coincidencia exacta por ID de grado (ej. '4to PC A' cuando los estudiantes tienen s.gradeCode === '4to PC A')
+            if (rawCode && (s.gradeCode === rawCode || s.grade === rawCode)) return true;
 
-            // REGLA FUNDAMENTAL: Si se conoce la sección objetivo, el estudiante DEBE pertenecer a esa sección
+            // REGLA FUNDAMENTAL: Si se conoce la sección objetivo y el grado objetivo, AMBOS deben coincidir estrictamente
             if (targetSec && targetNum) {
-                const secMatches = (stuSecLetter === targetSec);
-                const gradeMatches = (stuNum === targetNum);
-                return secMatches && gradeMatches;
+                return (stuSecLetter === targetSec) && (stuNum === targetNum);
             }
 
-            // Si se conoce la sección pero no el grado
+            // Si se conoce el grado objetivo pero no la sección
+            if (targetNum) {
+                return (stuNum === targetNum);
+            }
+
+            // Si solo se conoce la sección pero no el grado
             if (targetSec) {
                 return (stuSecLetter === targetSec);
             }
@@ -4383,43 +4390,63 @@
         let rowsHtml = '';
         studentList.forEach((s, idx) => {
             const num = isFullGroup ? (idx + 1) : (isGroupA ? (idx + 1) : (splitData.groupA.length + idx + 1));
-            const fullName = ((s.lastName || '') + ', ' + (s.firstName || '')).trim();
-            const codigoPersonal = s.personalCode || s.codigoPersonal || s.personal_code || s.carne || s.id || '';
-            const isExonerado = (typeof isStudentExonerated === 'function') ? isStudentExonerated(s) : false;
+            
+            // Construcción robusta de nombres y apellidos sin comas huérfanas
+            let fullName = '';
+            if (s.lastName || s.firstName) {
+                fullName = ((s.lastName || '').trim() + (s.lastName && s.firstName ? ', ' : '') + (s.firstName || '').trim()).trim();
+            } else if (s.name) {
+                fullName = s.name.trim();
+            } else if (s.fullName) {
+                fullName = s.fullName.trim();
+            }
+            if (!fullName || fullName === ',') {
+                fullName = 'ESTUDIANTE PENDIENTE DE NOMBRE';
+            }
+
+            const rawCode = s.personalCode || s.codigoPersonal || s.personal_code || s.carne || s.id || '';
+            const codigoPersonal = rawCode.startsWith('stu-sire-') ? rawCode.replace('stu-sire-', '') : rawCode;
+
+            const isRetired = (s.status === 'Retirado' || s.status === 'retirado' || s.isRetired === true || s.retired === true);
+            const isExonerado = !isRetired && ((typeof isStudentExonerated === 'function') ? isStudentExonerated(s) : false);
             const rowBg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
 
             if (isFullGroup) {
-                // Diseño ultra-compacto y limpio para que hasta 42+ estudiantes quepan con firmas en UNA SOLA HOJA tamaño oficio (8.5in x 13in)
+                // Diseño ultra-compacto y limpio para que quepan en UNA SOLA HOJA tamaño oficio (8.5in x 13in)
                 rowsHtml += `
-                    <tr style="height:19px; background:${rowBg};">
-                        <td style="text-align:center; font-weight:800; font-size:0.75rem; border:1px solid #cbd5e1; padding:1px 3px; line-height:1; color:#0f172a;">
+                    <tr style="height:19px; background:${isRetired ? '#fef2f2' : rowBg};">
+                        <td style="text-align:center; font-weight:800; font-size:0.75rem; border:1px solid #cbd5e1; padding:1px 3px; line-height:1; color:${isRetired ? '#991b1b' : '#0f172a'};">
                             ${String(num).padStart(2, '0')}
                         </td>
                         <td style="text-align:center; font-size:0.73rem; font-weight:700; border:1px solid #cbd5e1; padding:1px 4px; font-family:'Roboto Mono', Consolas, monospace; line-height:1; color:#334155; letter-spacing:0.3px;">
                             ${codigoPersonal}
                         </td>
-                        <td style="font-size:0.76rem; font-weight:700; border:1px solid #cbd5e1; padding:1px 6px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:270px; color:#0f172a;">
-                            ${fullName} ${isExonerado ? '<span style="color:#0284c7; font-size:0.65rem; font-weight:800;">[EXONERADO]</span>' : ''}
+                        <td style="font-size:0.76rem; font-weight:700; border:1px solid #cbd5e1; padding:1px 6px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:270px; color:${isRetired ? '#64748b' : '#0f172a'};">
+                            ${isRetired ? `<span style="text-decoration:line-through; color:#64748b;">${fullName}</span>` : fullName}
+                            ${isRetired ? '<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; font-size:0.65rem; font-weight:900; padding:1px 5px; border-radius:3px; margin-left:4px;"><i class="fa-solid fa-user-xmark"></i> RETIRADO</span>' : ''}
+                            ${isExonerado ? '<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-size:0.65rem; font-weight:900; padding:1px 5px; border-radius:3px; margin-left:4px;"><i class="fa-solid fa-award"></i> EXONERADO</span>' : ''}
                         </td>
-                        <td style="border:1px solid #cbd5e1; width:160px; text-align:center; padding:0; background:#ffffff;">
-                            <!-- Espacio de firma -->
+                        <td style="border:1px solid #cbd5e1; width:160px; text-align:center; padding:0; background:${isRetired ? '#fef2f2' : (isExonerado ? '#f0f9ff' : '#ffffff')};">
+                            ${isRetired ? '<span style="color:#b91c1c; font-weight:900; font-size:0.72rem; letter-spacing:0.5px;">RETIRADO</span>' : (isExonerado ? '<span style="color:#0369a1; font-weight:900; font-size:0.72rem; letter-spacing:0.5px;">EXONERADO</span>' : '<!-- Espacio de firma -->')}
                         </td>
                     </tr>
                 `;
             } else {
                 rowsHtml += `
-                    <tr style="height:22px; background:${rowBg};">
-                        <td style="text-align:center; font-weight:800; font-size:0.78rem; border:1px solid #cbd5e1; padding:2px 3px; line-height:1; color:#0f172a;">
+                    <tr style="height:22px; background:${isRetired ? '#fef2f2' : rowBg};">
+                        <td style="text-align:center; font-weight:800; font-size:0.78rem; border:1px solid #cbd5e1; padding:2px 3px; line-height:1; color:${isRetired ? '#991b1b' : '#0f172a'};">
                             ${String(num).padStart(2, '0')}
                         </td>
                         <td style="text-align:center; font-size:0.75rem; font-weight:700; border:1px solid #cbd5e1; padding:2px 4px; font-family:'Roboto Mono', Consolas, monospace; line-height:1; color:#334155; letter-spacing:0.3px;">
                             ${codigoPersonal}
                         </td>
-                        <td style="font-size:0.8rem; font-weight:700; border:1px solid #cbd5e1; padding:2px 6px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:280px; color:#0f172a;">
-                            ${fullName} ${isExonerado ? '<span style="color:#0284c7; font-size:0.68rem; font-weight:800;">[EXONERADO]</span>' : ''}
+                        <td style="font-size:0.8rem; font-weight:700; border:1px solid #cbd5e1; padding:2px 6px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:280px; color:${isRetired ? '#64748b' : '#0f172a'};">
+                            ${isRetired ? `<span style="text-decoration:line-through; color:#64748b;">${fullName}</span>` : fullName}
+                            ${isRetired ? '<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; font-size:0.68rem; font-weight:900; padding:1px 5px; border-radius:3px; margin-left:4px;"><i class="fa-solid fa-user-xmark"></i> RETIRADO</span>' : ''}
+                            ${isExonerado ? '<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-size:0.68rem; font-weight:900; padding:1px 5px; border-radius:3px; margin-left:4px;"><i class="fa-solid fa-award"></i> EXONERADO</span>' : ''}
                         </td>
-                        <td style="border:1px solid #cbd5e1; width:160px; text-align:center; padding:0; background:#ffffff;">
-                            <!-- Espacio de firma -->
+                        <td style="border:1px solid #cbd5e1; width:160px; text-align:center; padding:0; background:${isRetired ? '#fef2f2' : (isExonerado ? '#f0f9ff' : '#ffffff')};">
+                            ${isRetired ? '<span style="color:#b91c1c; font-weight:900; font-size:0.74rem; letter-spacing:0.5px;">RETIRADO</span>' : (isExonerado ? '<span style="color:#0369a1; font-weight:900; font-size:0.74rem; letter-spacing:0.5px;">EXONERADO</span>' : '<!-- Espacio de firma -->')}
                         </td>
                     </tr>
                 `;
@@ -5572,17 +5599,7 @@
     window.getExamSchedulesData = getExamSchedulesData;
     window.saveExamSchedulesData = saveExamSchedulesData;
     window.autoAssignRandomProctors = autoAssignRandomProctors;
-    window.randomizeProctorsForBimester = randomizeProctorsForBimester;
-    window.randomizeProctorsForDay = randomizeProctorsForDay;
-    window.printDailyScheduleOficio = printDailyScheduleOficio;
-    window.printMediasListasModal = printMediasListasModal;
-    window.printAllMediasListasOfDay = printAllMediasListasOfDay;
-    window.printAllNominasOfBimester = printAllNominasOfBimester;
-    window.printConsolidatedCalendarPdf = printConsolidatedCalendarPdf;
     window.getInstitutionalSalonsList = getInstitutionalSalonsList;
-    window.filterTeachersInDay = filterTeachersInDay;
-    window.editExamDayDate = editExamDayDate;
-    window.confirmEditExamDayDate = confirmEditExamDayDate;
 
     window.EXAM_SCHEDULES_MODULE = {
         renderExamSchedulesView,
@@ -5601,25 +5618,25 @@
         getInstitutionalSalonsList,
         autoAssignRandomProctors,
         autoPickProctorsForModal,
-        randomizeProctorsForBimester,
-        randomizeProctorsForDay,
-        printDailyScheduleOficio,
-        printMediasListasModal,
-        printAllMediasListasOfDay,
-        printAllNominasOfBimester,
-        printConsolidatedCalendarPdf,
+        randomizeProctorsForBimester: window.randomizeProctorsForBimester,
+        randomizeProctorsForDay: window.randomizeProctorsForDay,
+        printDailyScheduleOficio: window.printDailyScheduleOficio,
+        printMediasListasModal: window.printMediasListasModal,
+        printAllMediasListasOfDay: window.printAllMediasListasOfDay,
+        printAllNominasOfBimester: window.printAllNominasOfBimester,
+        printConsolidatedCalendarPdf: window.printConsolidatedCalendarPdf,
         getInstitutionalActiveBimester,
         getCurrentScheduleKey,
         getActiveGradeColumnsForDay,
         classifyGradeForDay,
-        filterTeachersInDay,
+        filterTeachersInDay: window.filterTeachersInDay,
         isCourseComputacion,
         isCourseMecanografia,
         isTechOrMecaEvaluation,
         getEvaluationTitularTeacherIds,
         getDayTechAndMecaBusyIntervals,
-        editExamDayDate,
-        confirmEditExamDayDate
+        editExamDayDate: window.editExamDayDate,
+        confirmEditExamDayDate: window.confirmEditExamDayDate
     };
 
     if (typeof module !== 'undefined' && module.exports) {

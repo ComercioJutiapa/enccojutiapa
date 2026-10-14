@@ -6804,8 +6804,8 @@ function ensureSireOfficialStudents() {
     // 🌟 Normalizar estatus 'Inscrito' a 'Activo' y garantizar Grado y Sección asignados para cada alumno
     (STATE.students || []).forEach(s => {
         if (!s) return;
-        // 🛡️ Auto-sanación canónica para Dulce María Ramos Florián
-        if (s.id === 'stu-sire-E195FVT' || s.personalCode === 'E195FVT' || (s.carne && s.carne.includes('2026-QD-025')) || (s.lastName && s.lastName.includes('RAMOS FLORIÁN'))) {
+        // 🛡️ Auto-sanación canónica para Dulce María Ramos Florián (5to Perito Contador Sección D)
+        if (s.id === 'stu-sire-E195FVT' || s.personalCode === 'E195FVT' || (s.carne && s.carne.includes('2026-QD-025')) || ((s.lastName && s.lastName.includes('RAMOS FLORIÁN')) && ((s.firstName && s.firstName.includes('DULCE')) || (s.name && s.name.includes('DULCE'))))) {
             s.id = 'stu-sire-E195FVT';
             s.personalCode = 'E195FVT';
             s.carne = '2026-QD-025';
@@ -6816,6 +6816,26 @@ function ensureSireOfficialStudents() {
             s.gradeCode = '5to PC D';
             s.gradeLabel = '5to Perito Contador (Sección D)';
             s.section = 'Sección D';
+            s.career = 'Perito Contador';
+            s.careerCode = 'PC';
+            s.gender = 'FEMENINO';
+            s.status = 'Activo';
+            s.statusSire = 'INSCRITO';
+            s.active = true;
+        }
+
+        // 🛡️ Auto-sanación canónica para Alicia Carolina Ramos Florián (5to Perito Contador Sección A)
+        if (s.id === 'stu-sire-G482XGW' || s.personalCode === 'G482XGW' || (s.carne && s.carne.includes('2026-QA-035')) || ((s.lastName && s.lastName.includes('RAMOS FLORIÁN')) && ((s.firstName && s.firstName.includes('ALICIA')) || (s.name && s.name.includes('ALICIA'))))) {
+            s.id = 'stu-sire-G482XGW';
+            s.personalCode = 'G482XGW';
+            s.carne = '2026-QA-035';
+            s.firstName = s.firstName || 'ALICIA CAROLINA';
+            s.lastName = s.lastName || 'RAMOS FLORIÁN';
+            s.name = s.name || 'RAMOS FLORIÁN ALICIA CAROLINA';
+            s.grade = '5to Perito Contador';
+            s.gradeCode = '5to PC A';
+            s.gradeLabel = '5to Perito Contador (Sección A)';
+            s.section = 'Sección A';
             s.career = 'Perito Contador';
             s.careerCode = 'PC';
             s.gender = 'FEMENINO';
@@ -40524,7 +40544,9 @@ function initFirestoreModularLiveListeners() {
                             };
                         } else {
                             if (!STATE.students) STATE.students = [];
-                            STATE.students.push(fullStudent);
+                            if (fullStudent && (fullStudent.name || fullStudent.lastName || fullStudent.firstName || fullStudent.personalCode || fullStudent.carne)) {
+                                STATE.students.push(fullStudent);
+                            }
                         }
                     } else if (change.type === 'removed') {
                         if (idx !== -1) STATE.students.splice(idx, 1);
