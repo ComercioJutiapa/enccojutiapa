@@ -3516,86 +3516,85 @@ async function guardarPermisosRol(e) {
             showToast(msgSuccess, "success");
         }
 
-        // 🌟 Persistencia atómica en Firestore y RTDB en segundo plano
-        (async () => {
-            if (window.FirebaseModular && window.FirebaseModular.db) {
-                const { db, doc, setDoc } = window.FirebaseModular;
-                try {
-                    const rolRef = doc(db, "roles", rolIdSeleccionado);
-                    const roleDocRef = doc(db, "rolesConfig", rolIdSeleccionado);
-                    const configDocRef = doc(db, "config", "rolesConfig");
-
-                    const fsActions = [
-                        setDoc(rolRef, {
-                            id: key,
-                            key: key,
-                            nombre: name,
-                            name: name,
-                            descripcion: desc,
-                            description: desc,
-                            color: color,
-                            permisos: permissions,
-                            permissions: permissions,
-                            ultimaModificacion: nowIso,
-                            lastModified: now
-                        }, { merge: true }),
-                        setDoc(roleDocRef, roleAtomicPayload, { merge: true }),
-                        setDoc(configDocRef, {
-                            roles: STATE.rolesConfig,
-                            list: STATE.rolesConfig,
-                            lastModified: now,
-                            ultimaModificacion: nowIso
-                        }, { merge: true })
-                    ];
-
-                    (STATE.rolesConfig || []).forEach(r => {
-                        if (r && r.key && r.key !== key) {
-                            fsActions.push(setDoc(doc(db, "rolesConfig", r.key), r, { merge: true }));
-                        }
-                    });
-
-                    await withTimeout(Promise.all(fsActions), 6000, 'Tiempo de espera agotado al conectar con Google Cloud Firestore.');
-                    console.log(`🔥 [Firestore] Rol "${name}" (${key}) persistido atómicamente con setDoc({ merge: true }).`);
-                } catch(fsErr) {
-                    console.warn("Aviso al persistir rol en Firestore (continuando con RTDB):", fsErr);
-                }
-            }
-
+        // 🌟 Persistencia atómica directa y garantizada en Firestore y Realtime Database
+        if (window.FirebaseModular && window.FirebaseModular.db) {
+            const { db, doc, setDoc } = window.FirebaseModular;
             try {
-                const rtdbPromises = [];
-                if (typeof EnccoCloudSync !== 'undefined') {
-                    if (typeof EnccoCloudSync.patchNode === 'function') {
-                        rtdbPromises.push(EnccoCloudSync.patchNode(`roles/${key}`, roleAtomicPayload));
-                    }
-                    if (typeof EnccoCloudSync.syncNode === 'function') {
-                        rtdbPromises.push(EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig));
-                    }
-                }
+                const rolRef = doc(db, "roles", rolIdSeleccionado);
+                const roleDocRef = doc(db, "rolesConfig", rolIdSeleccionado);
+                const configDocRef = doc(db, "config", "rolesConfig");
 
-                if (rtdbPromises.length > 0) {
-                    await withTimeout(Promise.all(rtdbPromises), 6000, 'Tiempo de espera en Realtime Database agotado.');
-                } else {
-                    const fUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
-                    if (fUrl) {
-                        const controller = new AbortController();
-                        const fetchTimeout = setTimeout(() => controller.abort(), 5000);
-                        try {
-                            await fetch(`${fUrl}/encc_school_state/rolesConfig.json`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(STATE.rolesConfig),
-                                signal: controller.signal
-                            });
-                            clearTimeout(fetchTimeout);
-                        } catch(fetchErr) {
-                            clearTimeout(fetchTimeout);
-                        }
+                const fsActions = [
+                    setDoc(rolRef, {
+                        id: key,
+                        key: key,
+                        nombre: name,
+                        name: name,
+                        descripcion: desc,
+                        description: desc,
+                        color: color,
+                        permisos: permissions,
+                        permissions: permissions,
+                        ultimaModificacion: nowIso,
+                        lastModified: now
+                    }, { merge: true }),
+                    setDoc(roleDocRef, roleAtomicPayload, { merge: true }),
+                    setDoc(configDocRef, {
+                        roles: STATE.rolesConfig,
+                        list: STATE.rolesConfig,
+                        lastModified: now,
+                        ultimaModificacion: nowIso
+                    }, { merge: true })
+                ];
+
+                (STATE.rolesConfig || []).forEach(r => {
+                    if (r && r.key && r.key !== key) {
+                        fsActions.push(setDoc(doc(db, "rolesConfig", r.key), r, { merge: true }));
+                    }
+                });
+
+                await withTimeout(Promise.all(fsActions), 6000, 'Tiempo de espera agotado al conectar con Google Cloud Firestore.');
+                console.log(`🔥 [Firestore] Rol "${name}" (${key}) persistido atómicamente con setDoc({ merge: true }).`);
+            } catch(fsErr) {
+                console.warn("Aviso al persistir rol en Firestore (continuando con RTDB):", fsErr);
+            }
+        }
+
+        try {
+            const rtdbPromises = [];
+            if (typeof EnccoCloudSync !== 'undefined') {
+                if (typeof EnccoCloudSync.patchNode === 'function') {
+                    rtdbPromises.push(EnccoCloudSync.patchNode(`roles/${key}`, roleAtomicPayload));
+                }
+                if (typeof EnccoCloudSync.syncNode === 'function') {
+                    rtdbPromises.push(EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig));
+                }
+            }
+
+            if (rtdbPromises.length > 0) {
+                await withTimeout(Promise.all(rtdbPromises), 6000, 'Tiempo de espera en Realtime Database agotado.');
+                console.log(`✅ [RTDB] Roles y permisos sincronizados exitosamente en Firebase.`);
+            } else {
+                const fUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
+                if (fUrl) {
+                    const controller = new AbortController();
+                    const fetchTimeout = setTimeout(() => controller.abort(), 5000);
+                    try {
+                        await fetch(`${fUrl}/encc_school_state/rolesConfig.json`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(STATE.rolesConfig),
+                            signal: controller.signal
+                        });
+                        clearTimeout(fetchTimeout);
+                    } catch(fetchErr) {
+                        clearTimeout(fetchTimeout);
                     }
                 }
-            } catch (rtdbErr) {
-                console.warn("Aviso en Realtime Database al guardar rol:", rtdbErr);
             }
-        })();
+        } catch (rtdbErr) {
+            console.warn("Aviso en Realtime Database al guardar rol:", rtdbErr);
+        }
     } catch(err) {
         console.error("❌ [Firebase Error] Falló el guardado de rol:", err);
         if (typeof showToast === 'function') {
