@@ -5376,17 +5376,17 @@
 
                     evRows += `
                         <tr>
-                            <td style="border:1px solid #cbd5e1; padding:6px 8px; font-weight:800; font-size:0.84rem; vertical-align:middle; white-space:nowrap; text-align:center; background:#f8fafc;">
+                            <td style="border:1px solid #cbd5e1; padding:3px 6px; font-weight:800; font-size:0.80rem; vertical-align:middle; white-space:nowrap; text-align:center; background:#f8fafc;">
                                 ${ev.startTime} ─ ${ev.endTime}
                             </td>
-                            <td style="border:1px solid #cbd5e1; padding:6px 8px; font-size:0.82rem; vertical-align:middle;">
-                                <strong style="color:#0f172a; font-size:0.88rem;">${ev.courseName}</strong><br>
+                            <td style="border:1px solid #cbd5e1; padding:3px 6px; font-size:0.80rem; vertical-align:middle; line-height:1.25;">
+                                <strong style="color:#0f172a; font-size:0.83rem;">${ev.courseName}</strong><br>
                                 ${modoBadge}
                             </td>
-                            <td style="border:1px solid #cbd5e1; padding:6px 8px; font-size:0.80rem; vertical-align:middle; line-height:1.35; color:#334155;">
+                            <td style="border:1px solid #cbd5e1; padding:3px 6px; font-size:0.77rem; vertical-align:middle; line-height:1.25; color:#334155;">
                                 ${titularesStr}
                             </td>
-                            <td style="border:1px solid #cbd5e1; padding:6px 8px; font-size:0.80rem; line-height:1.35; vertical-align:middle;">
+                            <td style="border:1px solid #cbd5e1; padding:3px 6px; font-size:0.77rem; line-height:1.25; vertical-align:middle;">
                                 ${salonesStr}
                             </td>
                         </tr>
@@ -5394,18 +5394,18 @@
                 });
 
                 dayGradesTablesHtml += `
-                    <div class="calendar-grade-box" style="margin-bottom:12px;">
-                        <div class="calendar-grade-header" style="background:#1e293b; color:#ffffff; padding:5px 10px; font-weight:800; font-size:0.8rem; display:flex; justify-content:space-between; align-items:center;">
+                    <div class="calendar-grade-box" style="margin-bottom:8px; page-break-inside:avoid; break-inside:avoid;">
+                        <div class="calendar-grade-header" style="background:#1e293b; color:#ffffff; padding:3px 8px; font-weight:800; font-size:0.76rem; display:flex; justify-content:space-between; align-items:center; page-break-after:avoid; break-after:avoid;">
                             <span>${gradeName.toUpperCase()}</span>
-                            <span style="font-size:0.75rem; color:#cbd5e1; font-weight:600;">(${gradeEvals.length} materia/s)</span>
+                            <span style="font-size:0.72rem; color:#cbd5e1; font-weight:600;">(${gradeEvals.length} materia/s)</span>
                         </div>
-                        <table class="calendar-table" style="width:100%; border-collapse:collapse; font-size:0.8rem;">
+                        <table class="calendar-table" style="width:100%; border-collapse:collapse; font-size:0.78rem; page-break-inside:avoid; break-inside:avoid;">
                             <thead>
-                                <tr style="background:#f1f5f9; font-size:0.75rem; font-weight:800; color:#334155;">
-                                    <th style="width:15%; text-align:center; padding:5px; border:1px solid #cbd5e1;">HORARIO</th>
-                                    <th style="width:30%; text-align:left; padding:5px 8px; border:1px solid #cbd5e1;">CLASE / ASIGNATURA</th>
-                                    <th style="width:25%; text-align:left; padding:5px 8px; border:1px solid #cbd5e1;">CATEDRÁTICO TITULAR</th>
-                                    <th style="width:30%; text-align:left; padding:5px 8px; border:1px solid #cbd5e1;">SALÓN / SALONES ASIGNADOS</th>
+                                <tr style="background:#f1f5f9; font-size:0.72rem; font-weight:800; color:#334155;">
+                                    <th style="width:15%; text-align:center; padding:3px 5px; border:1px solid #cbd5e1;">HORARIO</th>
+                                    <th style="width:30%; text-align:left; padding:3px 6px; border:1px solid #cbd5e1;">CLASE / ASIGNATURA</th>
+                                    <th style="width:25%; text-align:left; padding:3px 6px; border:1px solid #cbd5e1;">CATEDRÁTICO TITULAR</th>
+                                    <th style="width:30%; text-align:left; padding:3px 6px; border:1px solid #cbd5e1;">SALÓN / SALONES ASIGNADOS</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -5417,8 +5417,8 @@
             });
 
             daysTablesHtml += `
-                <div class="calendar-day-block" style="margin-bottom:18px; page-break-inside:avoid;">
-                    <div class="calendar-day-header" style="background:#15803d; color:#ffffff; padding:6px 12px; font-weight:800; font-size:0.88rem; border-radius:4px 4px 0 0; letter-spacing:0.5px;">
+                <div class="calendar-day-block" style="margin-bottom:12px; page-break-inside:auto; break-inside:auto;">
+                    <div class="calendar-day-header" style="background:#15803d; color:#ffffff; padding:4px 10px; font-weight:800; font-size:0.84rem; border-radius:3px 3px 0 0; letter-spacing:0.4px; page-break-after:avoid; break-after:avoid;">
                         📅 ${dFormatted} ${d.isPracticaDay ? '─ (JORNADA EXCLUSIVA DE PRÁCTICA SUPERVISADA)' : ''}
                     </div>
                     ${dayGradesTablesHtml}
@@ -5434,10 +5434,10 @@
                 <meta charset="UTF-8">
                 <title>Rol de Exámenes Estudiantes - ${bimesterLabels[bimesterSelectVal] || bimesterSelectVal} (${activeCycleYear})</title>
                 <style>
-                    @page { size: 8.5in 13in portrait; margin: 10mm; } /* HOJA OFICIO GUATEMALTECO 8.5in x 13in VERTICAL */
+                    @page { size: 8.5in 13in portrait; margin: 8mm 10mm; } /* HOJA OFICIO GUATEMALTECO 8.5in x 13in VERTICAL */
                     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; color: #0f172a; font-size: 11px; }
-                    .calendar-header-table { width: 100%; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; }
-                    .no-print-bar { background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px 14px; margin-bottom: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+                    .calendar-header-table { width: 100%; border-bottom: 2px solid #0f172a; padding-bottom: 4px; margin-bottom: 8px; page-break-after: avoid; break-after: avoid; }
+                    .no-print-bar { background: #f8fafc; border: 1px solid #cbd5e1; padding: 10px 14px; margin-bottom: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
                     @media print { .no-print-bar { display: none !important; } }
                 </style>
             </head>
@@ -5457,13 +5457,13 @@
                 </div>
                 <table class="calendar-header-table">
                     <tr>
-                        <td style="width:65px;"><img src="logo.png" onerror="this.src='portada-comercio-principal.webp'" style="height:52px;"></td>
-                        <td style="padding-left:12px;">
-                            <div style="font-size:1.15rem; font-weight:900; color:#0f172a;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES ─ JUTIAPA</div>
-                            <div style="font-size:0.86rem; color:#15803d; font-weight:800; margin-top:1px;">
+                        <td style="width:55px;"><img src="logo.png" onerror="this.src='portada-comercio-principal.webp'" style="height:44px;"></td>
+                        <td style="padding-left:10px;">
+                            <div style="font-size:1.10rem; font-weight:900; color:#0f172a;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES ─ JUTIAPA</div>
+                            <div style="font-size:0.84rem; color:#15803d; font-weight:800; margin-top:1px;">
                                 ROL OFICIAL DE EVALUACIONES PARA ESTUDIANTES ─ ${bimesterLabels[bimesterSelectVal] || bimesterSelectVal} (CICLO ${activeCycleYear})
                             </div>
-                            <div style="font-size:0.75rem; color:#475569; margin-top:2px; font-weight:600;">
+                            <div style="font-size:0.73rem; color:#475569; margin-top:2px; font-weight:600;">
                                 📌 Instrucción: Presentarse puntualmente 10 minutos antes de cada horario en el salón asignado a su sección y grupo (A o B).
                             </div>
                         </td>
