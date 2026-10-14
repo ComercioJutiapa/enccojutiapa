@@ -7936,7 +7936,7 @@ async function initApp() {
             let _cloudRes = null;
             try {
                 const _abortCtrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-                const _timeoutId = _abortCtrl ? setTimeout(() => _abortCtrl.abort(), 3500) : null;
+                const _timeoutId = _abortCtrl ? setTimeout(() => _abortCtrl.abort(), 2500) : null;
                 _cloudRes = await fetch(_fbUrl + "/encc_school_state.json?t=" + Date.now(), { 
                     method: "GET", 
                     headers: { "Accept": "application/json" },
@@ -7944,7 +7944,7 @@ async function initApp() {
                 });
                 if (_timeoutId) clearTimeout(_timeoutId);
             } catch(_fetchErr) {
-                console.warn("⚠️ [v189] Aviso o timeout al consultar Firebase en arranque:", _fetchErr);
+                console.warn("⚡ [v189] Aviso o timeout al consultar Firebase en arranque:", _fetchErr);
             }
             if (_cloudRes && _cloudRes.ok) {
                 const _cloudData = await _cloudRes.json();

@@ -108,11 +108,15 @@
         }
     </style>
     
-    <!-- Fuentes Google Fonts & Iconos -->
+    <!-- Fuentes Google Fonts & Iconos (Carga Asíncrona No Bloqueante) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    </noscript>
         <!-- Firebase Modular SDK v10 para Gestión de Caché (memoryLocalCache exclusivo en RAM) y Auth (browserSessionPersistence) -->
     <script type="module">
         try {
@@ -6010,8 +6014,40 @@
 
     <!-- IMPRESIÓN DE CREDENCIALES DE MAESTROS/USUARIOS CON CONTRASEÑAS -->
     <div id="printUserCredentialsArea" style="display:none;"></div>
-    <script src="xlsx.full.min.js" defer charset="UTF-8"></script>
+
+    <!-- ⚡ GESTIÓN DE CARGA INTELIGENTE Y DIFERIDA (Lazy-loading de librerías pesadas: XLSX 881KB y QRCode) -->
     <script>
+        window._ensureXLSXLoaded = function(callback) {
+            if (typeof XLSX !== 'undefined') {
+                if (typeof callback === 'function') callback();
+                return Promise.resolve(window.XLSX);
+            }
+            return new Promise(function(resolve, reject) {
+                var s = document.createElement('script');
+                s.src = 'xlsx.full.min.js';
+                s.charset = 'UTF-8';
+                s.onload = function() {
+                    console.log('⚡ [LazyLoad] XLSX cargado exitosamente bajo demanda.');
+                    if (typeof callback === 'function') callback();
+                    resolve(window.XLSX);
+                };
+                s.onerror = function(err) {
+                    console.error('❌ Error cargando XLSX:', err);
+                    reject(err);
+                };
+                document.head.appendChild(s);
+            });
+        };
+
+        // Precarga en segundo plano tras 3.5 segundos de inactividad para que al pulsar Excel ya esté disponible
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                if (typeof window._ensureXLSXLoaded === 'function' && typeof XLSX === 'undefined') {
+                    window._ensureXLSXLoaded();
+                }
+            }, 3500);
+        });
+
         // Registro de Service Worker para PWA y disponibilidad fuera de línea
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
@@ -6025,16 +6061,16 @@
     <script src="db.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="ui.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="sire.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
-    <script src="app.js?v=20261013_v247_nomina_retirados_exonerados" charset="UTF-8"></script>
+    <script src="app.js?v=20261014_v248_opt_performance" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20260925_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20260924_v234_modular_phase2" charset="UTF-8"></script>
     <script src="analytics.js?v=2026.09.21.v225_analytics_and_carnets" charset="UTF-8"></script>
-    <script src="qrcode.min.js" charset="UTF-8"></script>
+    <script src="qrcode.min.js" defer charset="UTF-8"></script>
     <script src="carnets.js?v=2026.09.21.v226_carnets_horizontal_vertical" charset="UTF-8"></script>
     <script src="auxiliatura_center.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="db_repository.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="modal_manager.js?v=20261003_v1" charset="UTF-8"></script>
-    <script src="exam_schedules_module.js?v=20261013_v247_nomina_retirados_exonerados" charset="UTF-8"></script>
+    <script src="exam_schedules_module.js?v=20261014_v248_opt_performance" charset="UTF-8"></script>
 
     <script>
         // Forzar hidratación y renderizado inmediato de calificaciones del 1er Bimestre
