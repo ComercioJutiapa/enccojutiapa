@@ -6805,13 +6805,13 @@ function ensureSireOfficialStudents() {
     (STATE.students || []).forEach(s => {
         if (!s) return;
         // 🛡️ Auto-sanación canónica para Dulce María Ramos Florián (5to Perito Contador Sección D)
-        if (s.id === 'stu-sire-E195FVT' || s.personalCode === 'E195FVT' || (s.carne && s.carne.includes('2026-QD-025')) || ((s.lastName && s.lastName.includes('RAMOS FLORIÁN')) && ((s.firstName && s.firstName.includes('DULCE')) || (s.name && s.name.includes('DULCE'))))) {
+        if (s.id === 'stu-sire-E195FVT' || s.personalCode === 'E195FVT' || (s.carne && s.carne.includes('2026-QD-025')) || (s.gradeCode === '5to PC D' && s.lastName && s.lastName.includes('RAMOS FLORIÁN'))) {
             s.id = 'stu-sire-E195FVT';
             s.personalCode = 'E195FVT';
             s.carne = '2026-QD-025';
-            s.firstName = s.firstName || 'DULCE MARÍA';
-            s.lastName = s.lastName || 'RAMOS FLORIÁN';
-            s.name = s.name || 'RAMOS FLORIÁN DULCE MARÍA';
+            s.firstName = 'DULCE MARÍA';
+            s.lastName = 'RAMOS FLORIÁN';
+            s.name = 'RAMOS FLORIÁN DULCE MARÍA';
             s.grade = '5to Perito Contador';
             s.gradeCode = '5to PC D';
             s.gradeLabel = '5to Perito Contador (Sección D)';
@@ -6825,13 +6825,13 @@ function ensureSireOfficialStudents() {
         }
 
         // 🛡️ Auto-sanación canónica para Alicia Carolina Ramos Florián (5to Perito Contador Sección A)
-        if (s.id === 'stu-sire-G482XGW' || s.personalCode === 'G482XGW' || (s.carne && s.carne.includes('2026-QA-035')) || ((s.lastName && s.lastName.includes('RAMOS FLORIÁN')) && ((s.firstName && s.firstName.includes('ALICIA')) || (s.name && s.name.includes('ALICIA'))))) {
+        if (s.id === 'stu-sire-G482XGW' || s.personalCode === 'G482XGW' || (s.carne && s.carne.includes('2026-QA-035')) || (s.gradeCode === '5to PC A' && s.lastName && s.lastName.includes('RAMOS FLORIÁN'))) {
             s.id = 'stu-sire-G482XGW';
             s.personalCode = 'G482XGW';
             s.carne = '2026-QA-035';
-            s.firstName = s.firstName || 'ALICIA CAROLINA';
-            s.lastName = s.lastName || 'RAMOS FLORIÁN';
-            s.name = s.name || 'RAMOS FLORIÁN ALICIA CAROLINA';
+            s.firstName = 'ALICIA CAROLINA';
+            s.lastName = 'RAMOS FLORIÁN';
+            s.name = 'RAMOS FLORIÁN ALICIA CAROLINA';
             s.grade = '5to Perito Contador';
             s.gradeCode = '5to PC A';
             s.gradeLabel = '5to Perito Contador (Sección A)';
