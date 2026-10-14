@@ -76,41 +76,51 @@
             .exam-day-banner.is-practica-banner:hover {
                 border-left-color: #1d4ed8 !important;
             }
+            .exam-day-banner.is-pending-banner {
+                border-left-color: #d97706 !important;
+            }
+            .exam-day-banner.is-pending-banner:hover {
+                border-left-color: #b45309 !important;
+            }
             .exam-day-body {
                 transition: opacity 0.2s ease;
             }
             .exam-item-box {
                 background: #ffffff;
                 border: 1px solid #e2e8f0;
-                border-radius: 9px;
+                border-left: 4px solid #cbd5e1;
+                border-radius: 10px;
                 padding: 12px 14px;
                 margin-bottom: 12px;
                 position: relative;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+                box-shadow: 0 1px 3px rgba(0,0,0,0.02);
                 transition: border-color 0.2s, box-shadow 0.2s;
             }
             .exam-item-box:hover {
                 border-color: #94a3b8;
-                box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+                border-left-color: #0284c7;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             }
             .exam-item-practica {
                 background: #f8fafc;
                 border-color: #bfdbfe;
-                border-left: 4px solid #2563eb;
+                border-left: 4px solid #2563eb !important;
             }
             .exam-item-practica:hover {
                 border-color: #60a5fa;
+                border-left-color: #1d4ed8 !important;
             }
             .exam-badge-time {
                 background: #0f172a;
                 color: #f8fafc;
-                padding: 3px 8px;
-                border-radius: 5px;
+                padding: 3px 9px;
+                border-radius: 6px;
                 font-size: 0.78rem;
                 font-weight: 800;
                 display: inline-flex;
                 align-items: center;
                 gap: 5px;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.06);
             }
             .exam-badge-time.limit-warn {
                 background: #dc2626 !important;
@@ -1511,34 +1521,35 @@
 
         // Indicador en vivo de cobertura de cuidadores en salones
         const coverageStats = getDayProctorCoverageStats(dayObj);
+        const isPendingDay = !dayObj.isPracticaDay && coverageStats.totalSlots > 0 && coverageStats.missingSlots > 0;
         const coverageBadgeHtml = coverageStats.totalSlots === 0 ? '' : (
             coverageStats.missingSlots === 0
-                ? `<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-size:0.72rem; font-weight:800; padding:2px 7px;" title="Todos los salones y turnos cuentan con cuidadores asignados"><i class="fa-solid fa-circle-check"></i> Salones: 100% cubiertos</span>`
-                : `<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fcd34d; font-size:0.72rem; font-weight:800; padding:2px 7px;" title="Existen salones o turnos pendientes de cuidador"><i class="fa-solid fa-triangle-exclamation"></i> ${coverageStats.missingSlots} puesto(s) sin asignar</span>`
+                ? `<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:9999px; display:inline-flex; align-items:center; gap:4px;" title="Todos los salones y turnos cuentan con cuidadores asignados"><i class="fa-solid fa-circle-check"></i> Salones: 100% cubiertos</span>`
+                : `<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fcd34d; font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:9999px; display:inline-flex; align-items:center; gap:4px;" title="Existen salones o turnos pendientes de cuidador"><i class="fa-solid fa-triangle-exclamation"></i> ${coverageStats.missingSlots} puesto(s) sin asignar</span>`
         );
 
         window._examDaysExpandedState = window._examDaysExpandedState || {};
         const isExpanded = (window._examDaysExpandedState[dayObj.id] !== false);
 
         let html = `
-            <div class="exam-day-banner ${isExpanded ? '' : 'is-collapsed'} ${dayObj.isPracticaDay ? 'is-practica-banner' : ''}" id="examDayBanner_${dayObj.id}" onclick="window.toggleExamDayCollapse('${dayObj.id}')" title="Haga clic para ${isExpanded ? 'contraer' : 'desplegar'} el detalle de este día">
+            <div class="exam-day-banner ${isExpanded ? '' : 'is-collapsed'} ${dayObj.isPracticaDay ? 'is-practica-banner' : (isPendingDay ? 'is-pending-banner' : '')}" id="examDayBanner_${dayObj.id}" onclick="window.toggleExamDayCollapse('${dayObj.id}')" title="Haga clic para ${isExpanded ? 'contraer' : 'desplegar'} el detalle de este día">
                 <div style="display:flex; align-items:center; gap:12px;">
                     <div style="width:34px; height:34px; border-radius:8px; background:#f1f5f9; color:#475569; display:flex; align-items:center; justify-content:center; font-size:0.95rem; border:1px solid #e2e8f0; flex-shrink:0;">
                         <i class="fa-solid ${isExpanded ? 'fa-chevron-up' : 'fa-chevron-down'}" id="examDayChevron_${dayObj.id}"></i>
                     </div>
                     <div>
                         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                            <span style="font-size:0.71rem; letter-spacing:0.4px; font-weight:800; background:${dayObj.isPracticaDay ? '#eff6ff' : '#f0fdf4'}; color:${dayObj.isPracticaDay ? '#1d4ed8' : '#15803d'}; border:1px solid ${dayObj.isPracticaDay ? '#bfdbfe' : '#bbf7d0'}; padding:2px 7px; border-radius:4px; text-transform:uppercase;">
+                            <span style="font-size:0.71rem; letter-spacing:0.3px; font-weight:800; background:${dayObj.isPracticaDay ? '#eff6ff' : '#f0fdf4'}; color:${dayObj.isPracticaDay ? '#1d4ed8' : '#15803d'}; border:1px solid ${dayObj.isPracticaDay ? '#bfdbfe' : '#bbf7d0'}; padding:3px 10px; border-radius:9999px; text-transform:uppercase; display:inline-flex; align-items:center; gap:4px;">
                                 ${dayObj.isPracticaDay ? '⭐ Práctica Supervisada' : '🗓️ Jornada de Evaluaciones'}
                             </span>
-                            <span class="badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.72rem; font-weight:800; padding:2px 7px;">
-                                ${evs.length} ${evs.length === 1 ? 'materia' : 'materias'}
+                            <span class="badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:9999px; display:inline-flex; align-items:center; gap:4px;">
+                                <i class="fa-solid fa-book-open"></i> ${evs.length} ${evs.length === 1 ? 'materia' : 'materias'}
                             </span>
-                            <span class="badge" style="background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe; font-size:0.72rem; font-weight:800; padding:2px 7px;">
-                                ${colCount} ${colCount === 1 ? 'grado' : 'grados'}
+                            <span class="badge" style="background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe; font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:9999px; display:inline-flex; align-items:center; gap:4px;">
+                                <i class="fa-solid fa-graduation-cap"></i> ${colCount} ${colCount === 1 ? 'grado' : 'grados'}
                             </span>
-                            <span class="badge" style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; font-size:0.72rem; font-weight:800; padding:2px 7px;">
-                                ${activeTeachersToday.length} cuidadores
+                            <span class="badge" style="background:#ecfdf5; color:#047857; border:1px solid #a7f3d0; font-size:0.72rem; font-weight:800; padding:3px 10px; border-radius:9999px; display:inline-flex; align-items:center; gap:4px;">
+                                <i class="fa-solid fa-user-check"></i> ${activeTeachersToday.length} cuidadores
                             </span>
                             ${coverageBadgeHtml}
                         </div>
@@ -1790,16 +1801,16 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td><strong style="color:#1d4ed8;">Salón Grupo A</strong><br><span style="font-size:0.75rem; color:#64748b;">${ev.groupA.range || '1 a N/2'}</span></td>
-                            <td><span class="badge" style="background:#dbeafe; color:#1e40af; font-weight:800;">${ev.startTime} - ${ev.endTime}</span> (${ev.durationMinutes} min)</td>
-                            <td><strong>🏫 ${ev.groupA.classroom || 'Salón 1'}</strong><br><span style="color:#334155;">👤 ${ev.groupA.caretakerTeacherName || 'Sin asignar'}</span></td>
-                            <td><strong>🏫 ${ev.groupA.classroom || 'Salón 1'}</strong><br><span style="color:#334155;">👤 ${ev.groupA.caretakerTurn2Name || 'Sin asignar'}</span></td>
+                            <td><div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:4px 8px;"><strong style="color:#0284c7;">Salón Grupo A</strong><br><span style="font-size:0.75rem; color:#64748b;">${ev.groupA.range || '1 a N/2'}</span></div></td>
+                            <td><span class="badge" style="background:#dbeafe; color:#1e40af; font-weight:800; border-radius:4px;">${ev.startTime} - ${ev.endTime}</span> (${ev.durationMinutes} min)</td>
+                            <td><strong>🏫 ${ev.groupA.classroom || 'Salón 1'}</strong><br><span style="color:#334155;">👤 ${ev.groupA.caretakerTeacherName || '<span style="color:#dc2626; font-weight:700;">Sin asignar</span>'}</span></td>
+                            <td><strong>🏫 ${ev.groupA.classroom || 'Salón 1'}</strong><br><span style="color:#334155;">👤 ${ev.groupA.caretakerTurn2Name || '<span style="color:#dc2626; font-weight:700;">Sin asignar</span>'}</span></td>
                         </tr>
                         <tr>
-                            <td><strong style="color:#1d4ed8;">Salón Grupo B</strong><br><span style="font-size:0.75rem; color:#64748b;">${ev.groupB.range || 'N/2+1 a N'}</span></td>
-                            <td><span class="badge" style="background:#dbeafe; color:#1e40af; font-weight:800;">${ev.startTime} - ${ev.endTime}</span> (${ev.durationMinutes} min)</td>
-                            <td><strong>🏫 ${ev.groupB.classroom || 'Salón 2'}</strong><br><span style="color:#334155;">👤 ${ev.groupB.caretakerTeacherName || 'Sin asignar'}</span></td>
-                            <td><strong>🏫 ${ev.groupB.classroom || 'Salón 2'}</strong><br><span style="color:#334155;">👤 ${ev.groupB.caretakerTurn2Name || 'Sin asignar'}</span></td>
+                            <td><div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:4px 8px;"><strong style="color:#16a34a;">Salón Grupo B</strong><br><span style="font-size:0.75rem; color:#64748b;">${ev.groupB.range || 'N/2+1 a N'}</span></div></td>
+                            <td><span class="badge" style="background:#dbeafe; color:#1e40af; font-weight:800; border-radius:4px;">${ev.startTime} - ${ev.endTime}</span> (${ev.durationMinutes} min)</td>
+                            <td><strong>🏫 ${ev.groupB.classroom || 'Salón 2'}</strong><br><span style="color:#334155;">👤 ${ev.groupB.caretakerTeacherName || '<span style="color:#dc2626; font-weight:700;">Sin asignar</span>'}</span></td>
+                            <td><strong>🏫 ${ev.groupB.classroom || 'Salón 2'}</strong><br><span style="color:#334155;">👤 ${ev.groupB.caretakerTurn2Name || '<span style="color:#dc2626; font-weight:700;">Sin asignar</span>'}</span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -1877,16 +1888,18 @@
                                 <div style="font-size:0.75rem; color:#64748b; font-weight:700;">⏱️ ${secDur} min</div>
                             </td>
                             <td>
-                                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                                    <span class="badge" style="background:#f1f5f9; color:#0f172a; font-size:0.84rem; font-weight:800; border:1px solid #cbd5e1;">
-                                        🏫 ${sRoom.classroom || 'Salón Único'}
-                                    </span>
-                                    <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:0.72rem; font-weight:800;">
-                                        👥 Sección Completa (${sRoom.range || 'Nómina'})
-                                    </span>
-                                </div>
-                                <div style="margin-top:4px; font-size:0.84rem; color:#334155;">
-                                    👤 <strong>Cuida:</strong> ${sRoom.caretakerTeacherName || 'Sin asignar'}
+                                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:6px 10px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                                        <span class="badge" style="background:#334155; color:#ffffff; font-size:0.8rem; font-weight:800; border-radius:4px; padding:2px 6px;">
+                                            🏫 ${sRoom.classroom || 'Salón Único'}
+                                        </span>
+                                        <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:0.72rem; font-weight:800; border-radius:4px; padding:2px 6px;">
+                                            👥 Sección Completa (${sRoom.range || 'Nómina'})
+                                        </span>
+                                    </div>
+                                    <div style="margin-top:4px; font-size:0.82rem; color:#334155;">
+                                        👤 <strong>Cuida:</strong> ${sRoom.caretakerTeacherName || '<span style="color:#dc2626; font-weight:700;">Sin asignar</span>'}
+                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -1903,25 +1916,29 @@
                                 <div style="font-size:0.75rem; color:#64748b; font-weight:700;">⏱️ ${secDur} min</div>
                             </td>
                             <td>
-                                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                                    <span class="badge" style="background:#f1f5f9; color:#0f172a; font-size:0.8rem; font-weight:800; border:1px solid #cbd5e1;">
-                                        🏫 ${sec.groupA.classroom || 'Salón 1'}
-                                    </span>
-                                    <span style="font-size:0.73rem; color:#64748b; font-weight:700;">${sec.groupA.range || 'Mitad A'}</span>
-                                </div>
-                                <div style="margin-top:4px; font-size:0.82rem; color:#334155;">
-                                    👤 <strong>Cuida:</strong> ${sec.groupA.caretakerTeacherName || 'Sin asignar'}
+                                <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:6px; padding:6px 10px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                                        <span class="badge" style="background:#0284c7; color:#ffffff; font-size:0.8rem; font-weight:800; border-radius:4px; padding:2px 6px;">
+                                            🏫 ${sec.groupA.classroom || 'Salón 1'}
+                                        </span>
+                                        <span style="font-size:0.72rem; color:#0369a1; font-weight:700; background:#e0f2fe; padding:2px 6px; border-radius:4px; border:1px solid #bae6fd;">${sec.groupA.range || 'Mitad A'}</span>
+                                    </div>
+                                    <div style="margin-top:4px; font-size:0.82rem; color:#334155;">
+                                        👤 <strong>Cuida:</strong> ${sec.groupA.caretakerTeacherName || '<span style="color:#dc2626; font-weight:700;">Sin asignar</span>'}
+                                    </div>
                                 </div>
                             </td>
                             <td>
-                                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                                    <span class="badge" style="background:#f1f5f9; color:#0f172a; font-size:0.8rem; font-weight:800; border:1px solid #cbd5e1;">
-                                        🏫 ${sec.groupB.classroom || 'Salón 2'}
-                                    </span>
-                                    <span style="font-size:0.73rem; color:#64748b; font-weight:700;">${sec.groupB.range || 'Mitad B'}</span>
-                                </div>
-                                <div style="margin-top:4px; font-size:0.82rem; color:#334155;">
-                                    👤 <strong>Cuida:</strong> ${sec.groupB.caretakerTeacherName || 'Sin asignar'}
+                                <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:6px 10px;">
+                                    <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                                        <span class="badge" style="background:#16a34a; color:#ffffff; font-size:0.78rem; font-weight:800; border-radius:4px; padding:2px 6px;">
+                                            🏫 ${sec.groupB.classroom || 'Salón 2'}
+                                        </span>
+                                        <span style="font-size:0.72rem; color:#15803d; font-weight:700; background:#dcfce7; padding:2px 6px; border-radius:4px; border:1px solid #bbf7d0;">${sec.groupB.range || 'Mitad B'}</span>
+                                    </div>
+                                    <div style="margin-top:4px; font-size:0.82rem; color:#334155;">
+                                        👤 <strong>Cuida:</strong> ${sec.groupB.caretakerTeacherName || '<span style="color:#dc2626; font-weight:700;">Sin asignar</span>'}
+                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -1946,16 +1963,16 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td><strong>Grupo A</strong> (${ev.groupA.range || '1 a N/2'})</td>
-                            <td><span style="font-weight:800;">${ev.startTime} - ${ev.endTime}</span></td>
-                            <td><strong>🏫 ${ev.groupA.classroom || 'Salón 1'}</strong></td>
-                            <td>👤 ${ev.groupA.caretakerTeacherName || 'Sin asignar'}</td>
+                            <td><span class="badge" style="background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; font-weight:800; border-radius:4px; padding:2px 6px;">Grupo A</span> (${ev.groupA.range || '1 a N/2'})</td>
+                            <td><span style="font-weight:800; color:#0f172a;">${ev.startTime} - ${ev.endTime}</span></td>
+                            <td><strong style="color:#0284c7;">🏫 ${ev.groupA.classroom || 'Salón 1'}</strong></td>
+                            <td>👤 ${ev.groupA.caretakerTeacherName || '<span style="color:#dc2626; font-weight:700;">Sin asignar</span>'}</td>
                         </tr>
                         <tr>
-                            <td><strong>Grupo B</strong> (${ev.groupB.range || 'N/2+1 a N'})</td>
-                            <td><span style="font-weight:800;">${ev.startTime} - ${ev.endTime}</span></td>
-                            <td><strong>🏫 ${ev.groupB.classroom || 'Salón 2'}</strong></td>
-                            <td>👤 ${ev.groupB.caretakerTeacherName || 'Sin asignar'}</td>
+                            <td><span class="badge" style="background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; font-size:0.75rem; font-weight:800; border-radius:4px; padding:2px 6px;">Grupo B</span> (${ev.groupB.range || 'N/2+1 a N'})</td>
+                            <td><span style="font-weight:800; color:#0f172a;">${ev.startTime} - ${ev.endTime}</span></td>
+                            <td><strong style="color:#16a34a;">🏫 ${ev.groupB.classroom || 'Salón 2'}</strong></td>
+                            <td>👤 ${ev.groupB.caretakerTeacherName || '<span style="color:#dc2626; font-weight:700;">Sin asignar</span>'}</td>
                         </tr>
                     </tbody>
                 </table>
