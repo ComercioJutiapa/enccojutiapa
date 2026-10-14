@@ -13279,31 +13279,30 @@ async function saveStudentForm(e) {
             resetStudentEnrollmentForm();
         }
 
-        // 🌟 Persistencia atómica en Firestore con setDoc { merge: true } y RTDB en segundo plano
-        (async () => {
-            if (window.FirebaseModular && window.FirebaseModular.db && studentObj) {
-                try {
-                    const { db, doc, setDoc } = window.FirebaseModular;
-                    const stuRef = doc(db, 'students', studentObj.id);
-                    const cleanPayload = (typeof sanitizePayloadForFirestore === 'function') 
-                        ? sanitizePayloadForFirestore({ ...studentObj, lastModified: nowTime }) 
-                        : { ...studentObj, lastModified: nowTime };
-                    if (typeof setDoc === 'function') {
-                        await withTimeout(setDoc(stuRef, cleanPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
-                    }
-                } catch(fsErr) {
-                    console.warn("Aviso al persistir estudiante en Firestore:", fsErr);
+        // 🌟 Persistencia atómica directa y garantizada en Firestore y Realtime Database
+        if (window.FirebaseModular && window.FirebaseModular.db && studentObj) {
+            try {
+                const { db, doc, setDoc } = window.FirebaseModular;
+                const stuRef = doc(db, 'students', studentObj.id);
+                const cleanPayload = (typeof sanitizePayloadForFirestore === 'function') 
+                    ? sanitizePayloadForFirestore({ ...studentObj, lastModified: nowTime }) 
+                    : { ...studentObj, lastModified: nowTime };
+                if (typeof setDoc === 'function') {
+                    await withTimeout(setDoc(stuRef, cleanPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
                 }
+            } catch(fsErr) {
+                console.warn("Aviso al persistir estudiante en Firestore:", fsErr);
             }
+        }
 
-            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-                try {
-                    await withTimeout(EnccoCloudSync.syncNode('students', STATE.students), 8000, 'Tiempo de espera en Realtime Database agotado.');
-                } catch(rtdbErr) {
-                    console.warn("Aviso al sincronizar estudiantes en RTDB:", rtdbErr);
-                }
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            try {
+                await withTimeout(EnccoCloudSync.syncNode('students', STATE.students), 8000, 'Tiempo de espera en Realtime Database agotado.');
+                console.log(`✅ [Estudiantes] Sincronización exitosa en Firebase para: ${studentObj.name}`);
+            } catch(rtdbErr) {
+                console.warn("Aviso al sincronizar estudiantes en RTDB:", rtdbErr);
             }
-        })();
+        }
     } catch(err) {
         console.error("❌ Error al guardar estudiante en Firebase:", err);
         showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
