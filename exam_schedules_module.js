@@ -1557,8 +1557,8 @@
                         </div>
                         <h3 style="margin:3px 0 0 0; font-size:1.08rem; font-weight:800; color:#0f172a; text-transform:capitalize; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                             <span>${dayDateFormatted}</span>
-                            <button type="button" class="btn btn-xs" onclick="event.stopPropagation(); window.editExamDayDate('${dayObj.id}')" style="background:#f1f5f9; color:#0284c7; border:1px solid #cbd5e1; font-size:0.72rem; font-weight:700; padding:2px 7px; border-radius:4px; line-height:1.2; display:inline-flex; align-items:center; gap:4px; cursor:pointer;" title="Modificar la fecha de este día de exámenes">
-                                <i class="fa-solid fa-calendar-day"></i> Cambiar Fecha
+                            <button type="button" class="btn btn-xs" onclick="event.preventDefault(); event.stopPropagation(); window.editExamDayDate('${dayObj.id}'); return false;" style="background:#f1f5f9; color:#0284c7; border:1px solid #cbd5e1; font-size:0.72rem; font-weight:700; padding:2px 7px; border-radius:4px; line-height:1.2; display:inline-flex; align-items:center; gap:4px; cursor:pointer;" title="Modificar la fecha de este día de exámenes">
+                                <i class="fa-solid fa-calendar-day" style="pointer-events:none;"></i> Cambiar Fecha
                             </button>
                         </h3>
                     </div>
@@ -1566,6 +1566,9 @@
                 <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
                     <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.toggleExamDayCollapse('${dayObj.id}')" style="background:#f8fafc; color:#475569; font-weight:700; border:1px solid #cbd5e1; font-size:0.78rem; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;" title="Alternar vista desplegada / contraída">
                         <span id="examDayToggleText_${dayObj.id}">${isExpanded ? 'Contraer' : 'Desplegar'}</span>
+                    </button>
+                    <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.editExamDayDate('${dayObj.id}')" style="background:#f0f9ff; color:#0369a1; font-weight:700; border:1px solid #bae6fd; font-size:0.78rem; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Modificar la fecha oficial de esta jornada de exámenes">
+                        <i class="fa-solid fa-calendar-day" style="pointer-events:none;"></i> Cambiar Fecha
                     </button>
                     <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); window.printDailyScheduleOficio('${dayObj.id}')" style="background:#eff6ff; color:#1d4ed8; font-weight:700; border:1px solid #bfdbfe; font-size:0.78rem; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Imprimir Horario Oficial en Hoja Oficio (${colCount} Columnas)">
                         <i class="fa-solid fa-print"></i> Horario Hoja Oficio (${colCount} Col.)
@@ -2090,26 +2093,26 @@
             if (existingModal) existingModal.remove();
 
             const modalHtml = `
-                <div class="modal-overlay" id="${modalId}" style="position:fixed; inset:0; z-index:10000; background:rgba(15,23,42,0.65); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; padding:15px;" onclick="if(event.target===this) this.remove()">
-                    <div style="background:#ffffff; border-radius:12px; width:100%; max-width:420px; box-shadow:0 12px 30px rgba(0,0,0,0.25); border:1px solid #cbd5e1; overflow:hidden;">
-                        <div style="padding:14px 18px; background:#0f172a; color:#ffffff; display:flex; justify-content:space-between; align-items:center;">
-                            <div style="font-weight:800; font-size:0.95rem; display:flex; align-items:center; gap:8px;">
+                <div class="exam-modal-overlay" id="${modalId}" onclick="if(event.target===this) document.getElementById('${modalId}').remove()">
+                    <div class="exam-modal-box" style="max-width:440px;">
+                        <div style="background:#0f172a; color:#ffffff; padding:15px 20px; display:flex; align-items:center; justify-content:space-between; border-radius:14px 14px 0 0;">
+                            <h4 style="margin:0; font-size:1.05rem; font-weight:800; display:flex; align-items:center; gap:8px; color:#ffffff;">
                                 <i class="fa-solid fa-calendar-day" style="color:#38bdf8;"></i> Cambiar Fecha de Exámenes
-                            </div>
-                            <button type="button" onclick="document.getElementById('${modalId}').remove()" style="background:transparent; border:none; color:#94a3b8; font-size:1.1rem; cursor:pointer;" title="Cerrar">✕</button>
+                            </h4>
+                            <button type="button" onclick="document.getElementById('${modalId}').remove()" style="background:none; border:none; color:#ffffff; font-size:1.4rem; cursor:pointer; line-height:1; padding:0 4px;">&times;</button>
                         </div>
-                        <div style="padding:18px 20px;">
-                            <label style="font-size:0.83rem; font-weight:700; color:#334155; margin-bottom:6px; display:block;">
-                                Nueva Fecha Oficial de la Jornada:
+                        <div style="padding:22px;">
+                            <label style="font-size:0.85rem; font-weight:700; color:#1e293b; margin-bottom:8px; display:block;">
+                                Seleccione la nueva fecha oficial:
                             </label>
-                            <input type="date" id="inputEditExamDayDate" class="form-control" value="${dayObj.date || ''}" style="width:100%; font-size:0.95rem; font-weight:700; border:1.5px solid #cbd5e1; border-radius:6px; padding:8px 10px;">
-                            <small style="color:#64748b; font-size:0.75rem; margin-top:8px; display:block; line-height:1.4;">
-                                ℹ️ Al modificar la fecha, todas las materias, horarios, salones y cuidadores de este día se conservarán intactos.
+                            <input type="date" id="inputEditExamDayDate" class="form-control" value="${dayObj.date || ''}" required style="height:44px; font-weight:800; font-size:1rem; border:1.5px solid #cbd5e1; border-radius:8px; padding:6px 12px; width:100%;">
+                            <small style="color:#64748b; font-size:0.78rem; margin-top:8px; display:block; line-height:1.4;">
+                                ℹ️ Todas las materias, horarios, salones y cuidadores asignados se conservarán intactos.
                             </small>
                         </div>
-                        <div style="padding:12px 18px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:8px;">
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('${modalId}').remove()" style="font-weight:700;">Cancelar</button>
-                            <button type="button" class="btn btn-primary btn-sm" onclick="window.confirmEditExamDayDate('${dayId}')" style="background:#15803d; border-color:#166534; font-weight:700; padding:6px 14px;">
+                        <div style="padding:14px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:10px; border-radius:0 0 14px 14px;">
+                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('${modalId}').remove()" style="font-weight:700;">Cancelar</button>
+                            <button type="button" class="btn btn-primary" onclick="window.confirmEditExamDayDate('${dayId}')" style="background:#15803d; border-color:#166534; font-weight:700; padding:8px 18px;">
                                 <i class="fa-solid fa-check"></i> Guardar Fecha
                             </button>
                         </div>
