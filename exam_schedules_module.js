@@ -1184,45 +1184,32 @@
 
         let html = `
             <div class="exam-sched-card">
-                <!-- BARRA SUPERIOR: TÍTULO Y CENTRO DE IMPRESIÓN Y ACCIÓN RÁPIDA -->
+                <!-- BARRA SUPERIOR: CONTROLES, BIMESTRE, IMPRESIÓN Y NUEVO DÍA -->
                 <div class="exam-quick-actions-bar">
-                    <div style="display:flex; align-items:center; gap:12px;">
-                        <div style="background:#f0fdf4; color:#15803d; width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.3rem; border:1px solid #bbf7d0;">
-                            <i class="fa-solid fa-calendar-check"></i>
-                        </div>
-                        <div>
-                            <h2 style="margin:0; font-size:1.25rem; font-weight:800; color:#0f172a;">
-                                Auxiliaturas de Exámenes
-                            </h2>
-                            <p style="margin:2px 0 0 0; color:#64748b; font-size:0.82rem;">
-                                Auxiliatura General ─ Cuido equitativo, salones automáticos y medias listas oficiales.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                        <div style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:4px 8px;">
-                            <label style="font-weight:700; font-size:0.82rem; color:#475569; margin:0;">Bimestre:</label>
-                            <select id="examBimesterSelect" class="form-control form-control-sm" style="width:175px; font-weight:800; border:none; background:transparent; padding:2px 4px;" onchange="window.changeExamBimester(this.value)">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <div style="display:flex; align-items:center; gap:6px; background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:8px; padding:5px 10px;">
+                            <label style="font-weight:800; font-size:0.84rem; color:#334155; margin:0;"><i class="fa-solid fa-calendar-days" style="color:#0284c7;"></i> Bimestre:</label>
+                            <select id="examBimesterSelect" class="form-control form-control-sm" style="width:170px; font-weight:800; border:none; background:transparent; padding:2px 4px; font-size:0.86rem; color:#0f172a;" onchange="window.changeExamBimester(this.value)">
                                 <option value="BIM1" ${bimesterSelectVal === 'BIM1' ? 'selected' : ''}>I Bimestre ${officialActiveBim === 'BIM1' ? '⭐ (Activo)' : ''}</option>
                                 <option value="BIM2" ${bimesterSelectVal === 'BIM2' ? 'selected' : ''}>II Bimestre ${officialActiveBim === 'BIM2' ? '⭐ (Activo)' : ''}</option>
                                 <option value="BIM3" ${bimesterSelectVal === 'BIM3' ? 'selected' : ''}>III Bimestre ${officialActiveBim === 'BIM3' ? '⭐ (Activo)' : ''}</option>
                                 <option value="BIM4" ${bimesterSelectVal === 'BIM4' ? 'selected' : ''}>IV Bimestre ${officialActiveBim === 'BIM4' ? '⭐ (Activo)' : ''}</option>
                             </select>
-                            <span class="badge" style="background:#15803d; color:#ffffff; font-size:0.7rem; font-weight:800; padding:3px 6px;" title="Bimestre fijado activamente en la plataforma">
+                            <span class="badge" style="background:#15803d; color:#ffffff; font-size:0.72rem; font-weight:800; padding:4px 8px; border-radius:6px;" title="Bimestre fijado activamente en la plataforma">
                                 Activo: ${bimesterLabels[officialActiveBim] || officialActiveBim}
                             </span>
                         </div>
 
                         <!-- CONTROLES DE VISTA: EXPANDIR / CONTRAER TODOS -->
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-outline-secondary" onclick="window.toggleAllExamDays(true)" style="font-weight:700; font-size:0.84rem; background:#ffffff; color:#334155;" title="Desplegar el detalle de todos los días para edición">
-                                <i class="fa-solid fa-angles-down"></i> Desplegar Todos
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.toggleAllExamDays(true)" style="font-weight:700; font-size:0.82rem; background:#ffffff; color:#334155;" title="Desplegar el detalle de todos los días para edición">
+                                <i class="fa-solid fa-angles-down"></i> Desplegar
                             </button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="window.toggleAllExamDays(false)" style="font-weight:700; font-size:0.84rem; background:#ffffff; color:#334155;" title="Contraer todos los días para vista panorámica limpia">
-                                <i class="fa-solid fa-angles-up"></i> Contraer Todos
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.toggleAllExamDays(false)" style="font-weight:700; font-size:0.82rem; background:#ffffff; color:#334155;" title="Contraer todos los días para vista panorámica limpia">
+                                <i class="fa-solid fa-angles-up"></i> Contraer
                             </button>
                         </div>
+                    </div>
 
                         <!-- CENTRO DE IMPRESIÓN CONSOLIDADO -->
                         <div class="btn-group" role="group">
