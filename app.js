@@ -12505,10 +12505,10 @@ function renderStudentsTable() {
         return `
             <tr style="${(s.status === 'Retirado' || s.status === 'Ausente') ? 'background:#f8fafc;' : ''}">
                 <td style="text-align:center; padding:8px 6px;">${avatarHtml}</td>
-                <td style="padding:8px 10px;">
-                    <code style="font-weight:700; color:#0f2b5c; font-size:0.82rem;">${escapeHtml(s.carne || 'S/C')}</code>
-                    ${s.personalCode ? `<br><small style="color:var(--brand-green-dark); font-weight:700;" title="Código Personal MINEDUC"><i class="fa-solid fa-id-badge"></i> ${escapeHtml(s.personalCode)}</small>` : ''}
-                    ${s.cui ? `<br><small style="color:#64748b; font-size:0.75rem;">CUI: ${escapeHtml(s.cui)}</small>` : ''}
+                <td style="padding:6px 6px; line-height:1.2;">
+                    <div style="font-weight:800; color:#0f2b5c; font-size:0.79rem; letter-spacing:0.2px;">${escapeHtml(s.carne || 'S/C')}</div>
+                    ${s.personalCode ? `<div style="color:var(--brand-green-dark); font-weight:700; font-size:0.73rem;" title="Código Personal MINEDUC"><i class="fa-solid fa-id-badge" style="font-size:0.68rem;"></i> ${escapeHtml(s.personalCode)}</div>` : ''}
+                    ${s.cui ? `<div style="color:#64748b; font-size:0.70rem;">CUI: ${escapeHtml(s.cui)}</div>` : ''}
                 </td>
                 <td style="padding:8px 10px;">
                     <strong style="color:#0f172a; font-size:0.88rem;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong>

@@ -3729,10 +3729,21 @@ body.theme-dark tr.row-student-exonerado td.att-cell.att-val-empty {
     padding-right: 6px !important;
 }
 
-#view-students .horizontal-student-table th:nth-child(2),
+#view-students .horizontal-student-table th:nth-child(2) {
+    width: 110px !important;
+    max-width: 120px !important;
+    white-space: normal !important;
+    line-height: 1.15 !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+}
+
 #view-students .horizontal-student-table td:nth-child(2) {
-    width: 140px !important;
+    width: 110px !important;
+    max-width: 120px !important;
     white-space: nowrap !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
 }
 
 #view-students .horizontal-student-table th:nth-child(3),
