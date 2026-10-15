@@ -3591,19 +3591,19 @@ body.theme-dark tr.row-student-exonerado td.att-cell.att-val-empty {
 .students-control-panel {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
-    border-radius: 12px !important;
-    padding: 16px 18px !important;
-    margin-bottom: 16px !important;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
+    border-radius: 10px !important;
+    padding: 10px 14px !important;
+    margin-bottom: 8px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 12px !important;
+    gap: 8px !important;
 }
 
 .students-filters-grid {
     display: grid !important;
     grid-template-columns: 1.25fr 1fr 0.9fr 1.05fr 1fr !important;
-    gap: 12px !important;
+    gap: 10px !important;
     align-items: flex-end !important;
     width: 100% !important;
 }
@@ -3617,24 +3617,24 @@ body.theme-dark tr.row-student-exonerado td.att-cell.att-val-empty {
     align-items: center !important;
     justify-content: space-between !important;
     flex-wrap: wrap !important;
-    gap: 12px !important;
+    gap: 8px !important;
     width: 100% !important;
 }
 
 .students-search-wrapper {
-    flex: 1 1 300px !important;
-    max-width: 440px !important;
+    flex: 1 1 260px !important;
+    max-width: 400px !important;
     position: relative !important;
 }
 
 .students-search-wrapper input {
     width: 100% !important;
-    height: 40px !important;
-    padding-left: 38px !important;
-    padding-right: 14px !important;
-    font-size: 0.88rem !important;
+    height: 36px !important;
+    padding-left: 36px !important;
+    padding-right: 12px !important;
+    font-size: 0.84rem !important;
     font-weight: 600 !important;
-    border-radius: 8px !important;
+    border-radius: 7px !important;
     border: 1.5px solid #cbd5e1 !important;
     background: #f8fafc !important;
     color: #0f172a !important;
@@ -3651,8 +3651,156 @@ body.theme-dark tr.row-student-exonerado td.att-cell.att-val-empty {
 .students-buttons-group {
     display: flex !important;
     align-items: center !important;
-    gap: 8px !important;
+    gap: 6px !important;
     flex-wrap: wrap !important;
+}
+
+/* ==========================================================================
+   AJUSTE DE TABLA Y SCROLL RESPONSIVO CON ENCABEZADO FIJO (#view-students)
+   ========================================================================== */
+#view-students .table-card {
+    border-radius: 10px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
+    overflow: hidden !important;
+    margin-bottom: 12px !important;
+}
+
+#view-students .table-responsive {
+    max-height: calc(100vh - 250px) !important;
+    min-height: 320px !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+    position: relative !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: #94a3b8 #f1f5f9 !important;
+}
+
+#view-students .table-responsive::-webkit-scrollbar {
+    width: 7px !important;
+    height: 7px !important;
+}
+
+#view-students .table-responsive::-webkit-scrollbar-thumb {
+    background-color: #94a3b8 !important;
+    border-radius: 4px !important;
+}
+
+#view-students .horizontal-student-table {
+    margin-bottom: 0 !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    width: 100% !important;
+}
+
+#view-students .horizontal-student-table thead th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 8 !important;
+    background: #0f2b5c !important;
+    color: #ffffff !important;
+    padding: 9px 10px !important;
+    font-size: 0.74rem !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.4px !important;
+    text-transform: uppercase !important;
+    border-bottom: 2px solid #0284c7 !important;
+    box-shadow: 0 2px 4px rgba(15, 43, 92, 0.12) !important;
+    white-space: nowrap !important;
+}
+
+#view-students .horizontal-student-table tbody td {
+    padding: 7px 10px !important;
+    font-size: 0.82rem !important;
+    vertical-align: middle !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+}
+
+#view-students .horizontal-student-table tbody tr:hover td {
+    background-color: #f8fafc !important;
+}
+
+/* Anchos y proporciones equilibradas de columnas */
+#view-students .horizontal-student-table th:nth-child(1),
+#view-students .horizontal-student-table td:nth-child(1) {
+    width: 48px !important;
+    text-align: center !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+}
+
+#view-students .horizontal-student-table th:nth-child(2),
+#view-students .horizontal-student-table td:nth-child(2) {
+    width: 140px !important;
+    white-space: nowrap !important;
+}
+
+#view-students .horizontal-student-table th:nth-child(3),
+#view-students .horizontal-student-table td:nth-child(3) {
+    min-width: 200px !important;
+}
+
+#view-students .horizontal-student-table th:nth-child(4),
+#view-students .horizontal-student-table td:nth-child(4) {
+    width: 130px !important;
+    white-space: nowrap !important;
+}
+
+#view-students .horizontal-student-table th:nth-child(5),
+#view-students .horizontal-student-table td:nth-child(5) {
+    min-width: 160px !important;
+    white-space: nowrap !important;
+}
+
+#view-students .horizontal-student-table th:nth-child(6),
+#view-students .horizontal-student-table td:nth-child(6) {
+    width: 85px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
+
+#view-students .horizontal-student-table th:nth-child(7),
+#view-students .horizontal-student-table td:nth-child(7) {
+    width: 95px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
+
+#view-students .horizontal-student-table th:nth-child(8),
+#view-students .horizontal-student-table td:nth-child(8) {
+    width: 165px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
+
+body.theme-dark .students-control-panel {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+body.theme-dark #view-students .table-card {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+body.theme-dark #view-students .horizontal-student-table thead th {
+    background: #0f172a !important;
+    color: #f8fafc !important;
+    border-bottom: 2px solid #38bdf8 !important;
+}
+
+body.theme-dark #view-students .horizontal-student-table tbody td {
+    border-bottom-color: #334155 !important;
+}
+
+body.theme-dark #view-students .horizontal-student-table tbody tr:hover td {
+    background-color: #273549 !important;
+}
+
+body.theme-dark .students-search-wrapper input {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
 }
 
 @media (max-width: 1100px) and (min-width: 769px) {
@@ -3664,7 +3812,7 @@ body.theme-dark tr.row-student-exonerado td.att-cell.att-val-empty {
 @media (max-width: 768px) {
     .students-filters-grid {
         grid-template-columns: 1fr !important;
-        gap: 10px !important;
+        gap: 8px !important;
     }
     .students-actions-row {
         flex-direction: column !important;
@@ -3687,6 +3835,10 @@ body.theme-dark tr.row-student-exonerado td.att-cell.att-val-empty {
 @media print {
     .students-control-panel {
         display: none !important;
+    }
+    #view-students .table-responsive {
+        max-height: none !important;
+        overflow: visible !important;
     }
 }
 
