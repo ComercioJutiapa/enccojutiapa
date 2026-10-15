@@ -12448,20 +12448,24 @@ function renderStudentsTable() {
     tbody.innerHTML = list.map(s => {
         const rawAvg = calculateStudentAvg(s);
         const formattedAvg = (typeof rawAvg === 'number') ? rawAvg.toFixed(1) : (!isNaN(parseFloat(rawAvg)) ? parseFloat(rawAvg).toFixed(1) : (rawAvg || '0'));
+        const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
         let statusBadge = '';
-        if (s.status === 'Retirado') {
-            statusBadge = `<span class="badge badge-danger" style="font-weight:700;" title="Retirado: ${escapeHtml(s.retireReason || 'Sin motivo registrado')}"><i class="fa-solid fa-user-slash"></i> Retirado</span>`;
-        } else if (s.status === 'Ausente') {
-            statusBadge = `<span class="badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-weight:700;" title="Ausente: ${escapeHtml(s.retireReason || 'Inasistencia')}"><i class="fa-solid fa-user-xmark"></i> Ausente</span>`;
+        const isRetBim = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
+        const isAusBim = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
+
+        if (isRetBim) {
+            statusBadge = `<span class="badge badge-danger" style="font-weight:700;" title="Retirado: ${escapeHtml(s.retireReason || 'Sin motivo registrado')}${s.retireDate ? ` (${escapeHtml(s.retireDate)})` : ''}"><i class="fa-solid fa-user-slash"></i> Retirado</span>`;
+        } else if (isAusBim) {
+            statusBadge = `<span class="badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-weight:700;" title="Ausente: ${escapeHtml(s.retireReason || 'Inasistencia')}${s.retireDate ? ` (${escapeHtml(s.retireDate)})` : ''}"><i class="fa-solid fa-user-xmark"></i> Ausente</span>`;
         } else if (s.status === 'Inactivo') {
             statusBadge = `<span class="badge badge-secondary">Inactivo</span>`;
         } else {
             statusBadge = `<span class="badge badge-success">Activo</span>`;
         }
 
-        const hasExon = (s.isExonerated === true || s.exonerated === true || (Array.isArray(s.academicExceptions) && s.academicExceptions.length > 0) || (Array.isArray(s.exoneraciones) && s.exoneraciones.length > 0));
+        const hasExon = !isRetBim && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, activeBim) : false);
         if (hasExon) {
-            statusBadge += `<br><span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-size:0.72rem; margin-top:3px; display:inline-block;" title="Estudiante con exoneración o consideración académica activa"><i class="fa-solid fa-user-shield"></i> Exonerado</span>`;
+            statusBadge += `<br><span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; font-size:0.72rem; margin-top:3px; display:inline-block;" title="Exoneración activa para el Bimestre ${activeBim}"><i class="fa-solid fa-user-shield"></i> Exonerado</span>`;
         }
 
         const assign = getStudentAssignment(s);
@@ -13464,16 +13468,87 @@ function isSubjectBimestreExonerated(student, subjectName, bimestreNum) {
 }
 window.isSubjectBimestreExonerated = isSubjectBimestreExonerated;
 
-function isStudentExonerated(student) {
+function getBimestreFromMonth(month) {
+    const m = parseInt(month) || 1;
+    if (m <= 3) return 1;
+    if (m <= 5) return 2;
+    if (m <= 8) return 3;
+    return 4;
+}
+window.getBimestreFromMonth = getBimestreFromMonth;
+
+function getStudentRetireBimestre(student) {
+    if (!student) return null;
+    if (student.status !== 'Retirado' && student.status !== 'Ausente') return null;
+    if (student.retireBimestre) return parseInt(student.retireBimestre);
+    if (student.retireDate) {
+        try {
+            const parts = String(student.retireDate).split('-');
+            if (parts.length >= 2) {
+                const month = parseInt(parts[1], 10);
+                return getBimestreFromMonth(month);
+            }
+        } catch(e) {}
+    }
+    return 1;
+}
+window.getStudentRetireBimestre = getStudentRetireBimestre;
+
+function isStudentRetiredInBimestre(student, targetBimestre) {
     if (!student) return false;
+    if (student.status !== 'Retirado' && student.status !== 'Ausente') return false;
+    const retBim = getStudentRetireBimestre(student);
+    if (!retBim) return false;
+    if (targetBimestre === undefined || targetBimestre === null || targetBimestre === 'ALL') return true;
+    return parseInt(targetBimestre) >= retBim;
+}
+window.isStudentRetiredInBimestre = isStudentRetiredInBimestre;
+
+function isStudentRetiredAtDate(student, dateOrYear, month, day) {
+    if (!student) return false;
+    if (student.status !== 'Retirado' && student.status !== 'Ausente') return false;
+    if (!student.retireDate) return true;
+    try {
+        let compDateStr = '';
+        if (typeof dateOrYear === 'number' && month !== undefined && day !== undefined) {
+            const mStr = String(month).padStart(2, '0');
+            const dStr = String(day).padStart(2, '0');
+            compDateStr = `${dateOrYear}-${mStr}-${dStr}`;
+        } else if (dateOrYear instanceof Date) {
+            compDateStr = dateOrYear.toISOString().slice(0, 10);
+        } else if (typeof dateOrYear === 'string') {
+            compDateStr = dateOrYear.slice(0, 10);
+        }
+        if (compDateStr) {
+            return compDateStr >= String(student.retireDate).slice(0, 10);
+        }
+    } catch(e) {}
+    return true;
+}
+window.isStudentRetiredAtDate = isStudentRetiredAtDate;
+
+function isStudentExonerated(student, targetBimestre) {
+    if (!student) return false;
+    const effBim = (targetBimestre !== undefined && targetBimestre !== null) 
+        ? targetBimestre 
+        : (parseInt(STATE?.config?.activeBimestre) || 1);
+
     if (student.status === 'Exonerado' || student.isExonerated === true || student.exonerado === true) {
-        return true;
+        if (!effBim || effBim === 'ALL') return true;
+        if (!student.exoneratedBimestre || String(student.exoneratedBimestre).toUpperCase() === 'ALL') return true;
+        return parseInt(student.exoneratedBimestre) === parseInt(effBim);
     }
     const exons = (typeof getStudentExonerationsList === 'function')
         ? getStudentExonerationsList(student)
         : (student.academicExceptions || student.exoneraciones || []);
     if (Array.isArray(exons) && exons.length > 0) {
-        return exons.some(ex => !ex || ex.active !== false);
+        return exons.some(ex => {
+            if (!ex || ex.active === false) return false;
+            if (!effBim || effBim === 'ALL') return true;
+            const bStr = String(ex.bimestre || '').toUpperCase();
+            if (!ex.bimestre || bStr === 'ALL' || bStr === 'TODOS') return true;
+            return parseInt(ex.bimestre) === parseInt(effBim);
+        });
     }
     return false;
 }
@@ -18765,17 +18840,40 @@ function printStudentsOfficialList(targetGrade = null) {
     const dateStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const capDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
-    const rowsHtml = list.map((s, idx) => `
-        <tr>
+    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
+    const rowsHtml = list.map((s, idx) => {
+        const isRetBim = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
+        const isAusBim = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
+        const isExonBim = !isRetBim && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, activeBim) : false);
+
+        let displayStatus = 'Activo';
+        let statusColor = '#15803d';
+        if (isRetBim) {
+            displayStatus = 'Retirado';
+            statusColor = '#b91c1c';
+        } else if (isAusBim) {
+            displayStatus = 'Ausente';
+            statusColor = '#d97706';
+        } else if (isExonBim) {
+            displayStatus = `Exonerado (B${activeBim})`;
+            statusColor = '#0f766e';
+        } else {
+            displayStatus = s.status || 'Activo';
+            statusColor = (displayStatus === 'Activo' || displayStatus === 'Inscrito') ? '#15803d' : '#b91c1c';
+        }
+
+        return `
+        <tr style="${isRetBim ? 'background:#fee2e2;' : (isExonBim ? 'background:#f0fdfa;' : '')}">
             <td style="text-align:center; font-weight:bold; width:35px; border:1px solid #334155; padding:5px;">${idx + 1}</td>
             <td style="text-align:center; font-weight:bold; width:85px; border:1px solid #334155; padding:5px;">${s.carne || '-'}</td>
             <td style="text-align:center; width:110px; border:1px solid #334155; padding:5px;">${s.personalCode || s.cui || '-'}</td>
             <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:5px;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase())}</td>
             <td style="text-align:center; width:50px; font-weight:600; border:1px solid #334155; padding:5px;">${(s.gender || '').toLowerCase().startsWith('f') ? 'F' : 'M'}</td>
             <td style="width:140px; border:1px solid #334155; padding:5px; font-size:8.5pt;">${s.tutor || s.tutorName || 'No reg.'} (${s.tutorPhone || s.phone || 'Sin tel.'})</td>
-            <td style="text-align:center; width:75px; font-weight:bold; border:1px solid #334155; padding:5px; color:${s.status === 'Activo' || s.status === 'Inscrito' ? '#15803d' : '#b91c1c'};">${s.status || 'Activo'}</td>
+            <td style="text-align:center; width:75px; font-weight:bold; border:1px solid #334155; padding:5px; color:${statusColor};">${displayStatus}</td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
 
     const htmlContent = `
         <div style="border:2px solid #0369a1; border-radius:6px; overflow:hidden; margin-bottom:12px; font-family:'Segoe UI', Arial, sans-serif;">
@@ -27533,9 +27631,10 @@ function loadAttendanceList() {
         let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
         let cellsHtml = '';
         const studentFullName = formatStudentDisplayName(s, 'lastFirst');
-        const isAbsentStatus = (s.status === 'Ausente');
-        const isRetired = (s.status === 'Retirado' || s.status === 'Inactivo');
-        const isExonerated = !isRetired && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s) : false);
+        const attBim = (typeof getBimestreFromMonth === 'function') ? getBimestreFromMonth(month) : 1;
+        const isMonthRetired = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, attBim) : true);
+        const isMonthAusente = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, attBim) : true);
+        const isExonerated = !isMonthRetired && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, attBim) : false);
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dObj = new Date(year, month - 1, day);
@@ -27550,11 +27649,12 @@ function loadAttendanceList() {
                 ? STATE.attendanceRecords[genKey][s.id][day]
                 : '';
             const hasDataEntered = (val !== '') || !!permMeta || (genDayVal !== '');
+            const isDayRetired = isMonthRetired && (typeof isStudentRetiredAtDate === 'function' ? isStudentRetiredAtDate(s, year, month, day) : true);
 
             if (isWeekend && !hasDataEntered) {
                 cellsHtml += `<td class="att-cell ${weekendClass}" data-weekend="true" data-student-id="${s.id}" data-day="${day}" onclick="toggleAttendanceCell('${s.id}', ${day})" title="${studentFullName} — Fin de semana (Haga clic para registrar asistencia)">-</td>`;
-            } else if (isRetired) {
-                // 🛑 Alumno Retirado: Relleno distintivo suave, casillas bloqueadas con guión
+            } else if (isDayRetired) {
+                // 🛑 Alumno Retirado: Relleno distintivo suave, casillas bloqueadas con guión a partir de la fecha de retiro
                 cellsHtml += `
                     <td class="att-cell att-cell-locked att-cell-retired-readonly" 
                         data-student-id="${s.id}" 
@@ -27562,7 +27662,7 @@ function loadAttendanceList() {
                         data-val=""
                         data-readonly="true" aria-readonly="true"
                         disabled="disabled" aria-disabled="true"
-                        title="${studentFullName} — Alumno Retirado (Sin registro de asistencia)"
+                        title="${studentFullName} — Alumno Retirado a partir del ${escapeHtml(s.retireDate || 'retiro')}"
                         style="background:#fecaca !important; color:#991b1b !important; border-color:#fca5a5 !important; cursor:not-allowed; text-align:center; font-weight:800; font-size:0.85rem;">
                         —
                     </td>
@@ -27718,15 +27818,15 @@ function loadAttendanceList() {
         }
 
         let statusTag = '';
-        if (isRetired) {
+        if (isMonthRetired) {
             statusTag = `<span class="badge badge-danger" style="font-size:0.68rem; margin-left:5px; background:#fee2e2; color:#b91c1c; border:1px solid #f87171; font-weight:700;"><i class="fa-solid fa-user-slash"></i> Retirado</span>`;
         } else if (isExonerated) {
-            statusTag = `<span class="badge badge-exonerado" style="font-size:0.68rem; margin-left:5px; background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd; font-weight:700;"><i class="fa-solid fa-file-circle-check"></i> Exonerado</span>`;
-        } else if (isAbsentStatus) {
+            statusTag = `<span class="badge badge-exonerado" style="font-size:0.68rem; margin-left:5px; background:#dbeafe; color:#1d4ed8; border:1px solid #93c5fd; font-weight:700;"><i class="fa-solid fa-file-circle-check"></i> Exonerado (B${attBim})</span>`;
+        } else if (isMonthAusente) {
             statusTag = `<span class="badge" style="font-size:0.68rem; margin-left:5px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d;">Ausente</span>`;
         }
 
-        const pctColumnHtml = isRetired ? `
+        const pctColumnHtml = isMonthRetired ? `
             <td class="col-pct" id="pctCol_${s.id}" style="text-align:center; background:#fee2e2 !important;">
                 <span class="badge badge-danger" style="background:#dc2626; color:#ffffff; border:1px solid #b91c1c; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px; display:inline-block; box-shadow:0 1px 3px rgba(0,0,0,0.15);">
                     <i class="fa-solid fa-ban"></i> Retirado
@@ -27745,24 +27845,24 @@ function loadAttendanceList() {
             </td>
         `;
 
-        const rowClass = isRetired ? 'row-student-retired' : (isExonerated ? 'row-student-exonerado' : '');
-        const rowStyle = isRetired 
+        const rowClass = isMonthRetired ? 'row-student-retired' : (isExonerated ? 'row-student-exonerado' : '');
+        const rowStyle = isMonthRetired 
             ? 'background:#fee2e2 !important; color:#991b1b;' 
             : (isExonerated ? 'background:#eff6ff !important; color:#1e40af; border-left:4px solid #0284c7;' : '');
 
         tbodyHtml += `
             <tr data-student-id="${s.id}" class="${rowClass}" style="${rowStyle}">
-                <td class="col-num" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b; font-weight:bold;' : (isExonerated ? 'background:#e0f2fe !important; color:#0369a1; font-weight:bold; border-left:4px solid #0284c7;' : '')}">${idx + 1}</td>
-                <td class="col-carne" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : (isExonerated ? 'background:#f0f9ff !important; color:#0369a1;' : '')}"><code>${s.personalCode || s.cui || s.carne || 'S/C'}</code></td>
-                <td class="col-name" title="${studentFullName}${isExonerated ? ' (Estudiante Exonerado)' : ''}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : (isExonerated ? 'background:#f0f9ff !important; color:#0369a1; border-right:2px solid #38bdf8;' : '')}">
-                    <strong style="${isRetired ? 'color:#991b1b;' : (isExonerated ? 'color:#0369a1;' : '')}">${studentFullName}</strong>${statusTag}
+                <td class="col-num" style="${isMonthRetired ? 'background:#fee2e2 !important; color:#991b1b; font-weight:bold;' : (isExonerated ? 'background:#e0f2fe !important; color:#0369a1; font-weight:bold; border-left:4px solid #0284c7;' : '')}">${idx + 1}</td>
+                <td class="col-carne" style="${isMonthRetired ? 'background:#fee2e2 !important; color:#991b1b;' : (isExonerated ? 'background:#f0f9ff !important; color:#0369a1;' : '')}"><code>${s.personalCode || s.cui || s.carne || 'S/C'}</code></td>
+                <td class="col-name" title="${studentFullName}${isExonerated ? ' (Estudiante Exonerado Bimestre ' + attBim + ')' : ''}" style="${isMonthRetired ? 'background:#fee2e2 !important; color:#991b1b;' : (isExonerated ? 'background:#f0f9ff !important; color:#0369a1; border-right:2px solid #38bdf8;' : '')}">
+                    <strong style="${isMonthRetired ? 'color:#991b1b;' : (isExonerated ? 'color:#0369a1;' : '')}">${studentFullName}</strong>${statusTag}
                 </td>
                 ${cellsHtml}
-                <td class="col-stat col-stat-p" id="statP_${s.id}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isRetired ? '—' : pCount}</td>
-                <td class="col-stat col-stat-a" id="statA_${s.id}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isRetired ? '—' : aCount}</td>
-                <td class="col-stat col-stat-j" id="statJ_${s.id}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isRetired ? '—' : jCount}</td>
-                <td class="col-stat col-stat-t" id="statT_${s.id}" style="${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isRetired ? '—' : tCount}</td>
-                <td class="col-stat" id="statTot_${s.id}" style="font-weight:700; ${isRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isRetired ? '—' : totalLogged}</td>
+                <td class="col-stat col-stat-p" id="statP_${s.id}" style="${isMonthRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isMonthRetired ? '—' : pCount}</td>
+                <td class="col-stat col-stat-a" id="statA_${s.id}" style="${isMonthRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isMonthRetired ? '—' : aCount}</td>
+                <td class="col-stat col-stat-j" id="statJ_${s.id}" style="${isMonthRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isMonthRetired ? '—' : jCount}</td>
+                <td class="col-stat col-stat-t" id="statT_${s.id}" style="${isMonthRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isMonthRetired ? '—' : tCount}</td>
+                <td class="col-stat" id="statTot_${s.id}" style="font-weight:700; ${isMonthRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isMonthRetired ? '—' : totalLogged}</td>
                 ${pctColumnHtml}
             </tr>
         `;
