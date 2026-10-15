@@ -18951,8 +18951,8 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
 
     // 5. Filas con 10 casillas en blanco para calificación manual (ajustadas para Hoja Oficio de 8.5in x 13in)
     const rowsHtml = list.map((s, idx) => `
-        <tr style="height:22px;">
-            <td style="text-align:center; font-weight:bold; width:26px; border:1px solid #334155; padding:2px 1px; font-size:8pt;">${idx + 1}</td>
+        <tr style="height:22px; background:#ffffff;">
+            <td style="text-align:center; font-weight:bold; width:26px; border:1px solid #334155; padding:2px 1px; font-size:8pt; background:#ffffff;">${idx + 1}</td>
             <td style="text-align:center; font-weight:bold; width:78px; border:1px solid #334155; padding:2px 2px; font-size:7.5pt; font-family:monospace;">${escapeHtml(s.personalCode || s.cui || s.carne || '-')}</td>
             <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:2px 5px; font-size:8pt; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:215px;">
                 ${escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase())}
@@ -19052,7 +19052,7 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
             </div>
 
             <!-- TABLA CON 10 CASILLAS EN BLANCO -->
-            <table style="width:100%; border-collapse:collapse; font-size:7.5pt; font-family:'Segoe UI', Arial, sans-serif;">
+            <table style="width:100%; border-collapse:collapse; font-size:7.5pt; font-family:'Segoe UI', Arial, sans-serif; background:#ffffff;">
                 <thead>
                     <tr style="background:#15803d; color:#ffffff; font-weight:800; text-transform:uppercase; font-size:7pt; text-align:center;">
                         <th rowspan="2" style="padding:3px 1px; width:26px; border:1px solid #064e3b;">No.</th>
