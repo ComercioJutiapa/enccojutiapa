@@ -1348,6 +1348,14 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
 }
 window.getModulePermissionLevel = getModulePermissionLevel;
 
+function isStudentAuthorityRole(role = null) {
+    const targetRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || '').trim().toLowerCase();
+    if (!targetRole) return true;
+    return ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar'].includes(targetRole) ||
+           targetRole.startsWith('secretari') || targetRole.startsWith('direct') || targetRole.startsWith('admin');
+}
+window.isStudentAuthorityRole = isStudentAuthorityRole;
+
 function hasRolePermission(permKey, role = null) {
     // 🛡️ Principio de Menor Privilegio Defensivo
     const targetRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
@@ -6831,20 +6839,26 @@ function ensureSireOfficialStudents() {
         if (isDulce) {
             s.id = 'stu-sire-E195FVT';
             s.personalCode = 'E195FVT';
-            s.carne = '2026-QD-025';
-            s.firstName = 'DULCE MARÍA';
-            s.lastName = 'RAMOS FLORIÁN';
-            s.name = 'RAMOS FLORIÁN DULCE MARÍA';
-            s.grade = '5to Perito Contador';
-            s.gradeCode = '5to PC D';
-            s.gradeLabel = '5to Perito Contador (Sección D)';
-            s.section = 'Sección D';
-            s.career = 'Perito Contador';
-            s.careerCode = 'PC';
-            s.gender = 'FEMENINO';
-            s.status = 'Activo';
-            s.statusSire = 'INSCRITO';
-            s.active = true;
+            s.carne = s.carne || '2026-QD-025';
+            s.firstName = s.firstName || 'DULCE MARÍA';
+            s.lastName = s.lastName || 'RAMOS FLORIÁN';
+            s.name = s.name || 'RAMOS FLORIÁN DULCE MARÍA';
+            if (!s.editedByAuthority && (!s.grade || !s.section)) {
+                s.grade = '5to Perito Contador';
+                s.gradeCode = '5to PC D';
+                s.gradeLabel = '5to Perito Contador (Sección D)';
+                s.section = 'Sección D';
+            }
+            s.career = s.career || 'Perito Contador';
+            s.careerCode = s.careerCode || 'PC';
+            s.gender = s.gender || 'FEMENINO';
+            if (s.status !== 'Retirado' && s.status !== 'Ausente' && s.status !== 'Inactivo') {
+                s.status = 'Activo';
+                s.statusSire = s.statusSire || 'INSCRITO';
+                s.active = true;
+            } else {
+                s.active = false;
+            }
         }
 
         // 🛡️ Auto-sanación canónica para Alicia Carolina Ramos Florián (5to Perito Contador Sección A)
@@ -6854,20 +6868,26 @@ function ensureSireOfficialStudents() {
         if (isAlicia) {
             s.id = 'stu-sire-G482XGW';
             s.personalCode = 'G482XGW';
-            s.carne = '2026-QA-035';
-            s.firstName = 'ALICIA CAROLINA';
-            s.lastName = 'RAMOS FLORIÁN';
-            s.name = 'RAMOS FLORIÁN ALICIA CAROLINA';
-            s.grade = '5to Perito Contador';
-            s.gradeCode = '5to PC A';
-            s.gradeLabel = '5to Perito Contador (Sección A)';
-            s.section = 'Sección A';
-            s.career = 'Perito Contador';
-            s.careerCode = 'PC';
-            s.gender = 'FEMENINO';
-            s.status = 'Activo';
-            s.statusSire = 'INSCRITO';
-            s.active = true;
+            s.carne = s.carne || '2026-QA-035';
+            s.firstName = s.firstName || 'ALICIA CAROLINA';
+            s.lastName = s.lastName || 'RAMOS FLORIÁN';
+            s.name = s.name || 'RAMOS FLORIÁN ALICIA CAROLINA';
+            if (!s.editedByAuthority && (!s.grade || !s.section)) {
+                s.grade = '5to Perito Contador';
+                s.gradeCode = '5to PC A';
+                s.gradeLabel = '5to Perito Contador (Sección A)';
+                s.section = 'Sección A';
+            }
+            s.career = s.career || 'Perito Contador';
+            s.careerCode = s.careerCode || 'PC';
+            s.gender = s.gender || 'FEMENINO';
+            if (s.status !== 'Retirado' && s.status !== 'Ausente' && s.status !== 'Inactivo') {
+                s.status = 'Activo';
+                s.statusSire = s.statusSire || 'INSCRITO';
+                s.active = true;
+            } else {
+                s.active = false;
+            }
         }
 
         if (!s.status || s.status === 'Inscrito' || s.statusSire === 'INSCRITO') {
@@ -6876,7 +6896,11 @@ function ensureSireOfficialStudents() {
                 s.statusSire = s.statusSire || 'INSCRITO';
             }
         }
-        if (s.active === undefined) s.active = true;
+        if (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo') {
+            s.active = false;
+        } else if (s.active === undefined) {
+            s.active = true;
+        }
 
         if (!s.grade || s.grade === 'Sin asignar' || !s.section || s.section === 'Sin sección') {
             const assign = getStudentAssignment(s);
@@ -6943,20 +6967,26 @@ function ensureSireOfficialStudents() {
         if (aStudent) {
             aStudent.id = 'stu-sire-G482XGW';
             aStudent.personalCode = 'G482XGW';
-            aStudent.carne = '2026-QA-035';
-            aStudent.no = 35;
-            aStudent.name = 'RAMOS FLORIÁN ALICIA CAROLINA';
-            aStudent.lastName = 'RAMOS FLORIÁN';
-            aStudent.firstName = 'ALICIA CAROLINA';
-            aStudent.grade = '5to Perito Contador';
-            aStudent.gradeCode = '5to PC A';
-            aStudent.gradeLabel = '5to Perito Contador (Sección A)';
-            aStudent.section = 'Sección A';
-            aStudent.career = 'Perito Contador';
-            aStudent.careerCode = 'PC';
-            aStudent.status = 'Activo';
-            aStudent.statusSire = 'INSCRITO';
-            aStudent.active = true;
+            aStudent.carne = aStudent.carne || '2026-QA-035';
+            aStudent.no = aStudent.no || 35;
+            aStudent.name = aStudent.name || 'RAMOS FLORIÁN ALICIA CAROLINA';
+            aStudent.lastName = aStudent.lastName || 'RAMOS FLORIÁN';
+            aStudent.firstName = aStudent.firstName || 'ALICIA CAROLINA';
+            if (!aStudent.editedByAuthority && (!aStudent.grade || !aStudent.section)) {
+                aStudent.grade = '5to Perito Contador';
+                aStudent.gradeCode = '5to PC A';
+                aStudent.gradeLabel = '5to Perito Contador (Sección A)';
+                aStudent.section = 'Sección A';
+            }
+            aStudent.career = aStudent.career || 'Perito Contador';
+            aStudent.careerCode = aStudent.careerCode || 'PC';
+            if (aStudent.status !== 'Retirado' && aStudent.status !== 'Ausente' && aStudent.status !== 'Inactivo') {
+                aStudent.status = 'Activo';
+                aStudent.statusSire = aStudent.statusSire || 'INSCRITO';
+                aStudent.active = true;
+            } else {
+                aStudent.active = false;
+            }
             if (!aStudent.grades || Object.keys(aStudent.grades).length === 0) {
                 aStudent.grades = {
                     "Catalogación y Archivo": [94, 54, 75, 0],
@@ -7027,19 +7057,25 @@ function ensureSireOfficialStudents() {
         if (dStudent) {
             dStudent.id = 'stu-sire-E195FVT';
             dStudent.personalCode = 'E195FVT';
-            dStudent.carne = '2026-QD-025';
-            dStudent.name = 'RAMOS FLORIÁN DULCE MARÍA';
-            dStudent.lastName = 'RAMOS FLORIÁN';
-            dStudent.firstName = 'DULCE MARÍA';
-            dStudent.grade = '5to Perito Contador';
-            dStudent.gradeCode = '5to PC D';
-            dStudent.gradeLabel = '5to Perito Contador (Sección D)';
-            dStudent.section = 'Sección D';
-            dStudent.career = 'Perito Contador';
-            dStudent.careerCode = 'PC';
-            dStudent.status = 'Activo';
-            dStudent.statusSire = 'INSCRITO';
-            dStudent.active = true;
+            dStudent.carne = dStudent.carne || '2026-QD-025';
+            dStudent.name = dStudent.name || 'RAMOS FLORIÁN DULCE MARÍA';
+            dStudent.lastName = dStudent.lastName || 'RAMOS FLORIÁN';
+            dStudent.firstName = dStudent.firstName || 'DULCE MARÍA';
+            if (!dStudent.editedByAuthority && (!dStudent.grade || !dStudent.section)) {
+                dStudent.grade = '5to Perito Contador';
+                dStudent.gradeCode = '5to PC D';
+                dStudent.gradeLabel = '5to Perito Contador (Sección D)';
+                dStudent.section = 'Sección D';
+            }
+            dStudent.career = dStudent.career || 'Perito Contador';
+            dStudent.careerCode = dStudent.careerCode || 'PC';
+            if (dStudent.status !== 'Retirado' && dStudent.status !== 'Ausente' && dStudent.status !== 'Inactivo') {
+                dStudent.status = 'Activo';
+                dStudent.statusSire = dStudent.statusSire || 'INSCRITO';
+                dStudent.active = true;
+            } else {
+                dStudent.active = false;
+            }
             if (!Array.isArray(dStudent.academicExceptions) || dStudent.academicExceptions.length === 0) {
                 dStudent.academicExceptions = [
                     {
@@ -13191,9 +13227,17 @@ function stopWebcam() {
 function checkStudentDuplicateEnrollment(data, excludeId = null) {
     const { personalCode, cui, carne, firstName, lastName, birthDate, cycle } = data;
     const targetCycle = cycle || STATE.activeCycle;
+    const cleanExcludeId = excludeId ? String(excludeId).trim().toLowerCase() : null;
 
     return (STATE.students || []).find(s => {
-        if (excludeId && s.id === excludeId) return false;
+        if (!s) return false;
+
+        // Si es el mismo estudiante (por ID, Carné o Código Personal), ignorar
+        if (cleanExcludeId) {
+            if (String(s.id).toLowerCase() === cleanExcludeId) return false;
+            if (s.carne && String(s.carne).trim().toLowerCase() === cleanExcludeId) return false;
+            if (s.personalCode && String(s.personalCode).trim().toLowerCase() === cleanExcludeId) return false;
+        }
 
         const studentCycle = s.cycle || STATE.activeCycle;
         if (targetCycle && studentCycle && targetCycle !== studentCycle) {
@@ -13201,18 +13245,29 @@ function checkStudentDuplicateEnrollment(data, excludeId = null) {
         }
 
         // 1. Coincidencia por Código Personal MINEDUC
-        if (personalCode && s.personalCode && s.personalCode.trim().toLowerCase() === personalCode.trim().toLowerCase()) {
+        if (personalCode && personalCode.trim() && s.personalCode && s.personalCode.trim().toLowerCase() === personalCode.trim().toLowerCase()) {
             return true;
         }
 
-        // 2. Coincidencia por CUI (sin espacios)
-        if (cui && s.cui && s.cui.trim().replace(/\s+/g, '') === cui.trim().replace(/\s+/g, '')) {
+        // 2. Coincidencia por Carné
+        if (carne && carne.trim() && s.carne && s.carne.trim().toLowerCase() === carne.trim().toLowerCase()) {
             return true;
         }
 
-        // 3. Coincidencia por Carné
-        if (carne && s.carne && s.carne.trim().toLowerCase() === carne.trim().toLowerCase()) {
-            return true;
+        // 3. Coincidencia por CUI (requiere longitud válida y coincidencia de primer nombre para no bloquear hermanos con mismo apellido y CUI compartido/provisional)
+        const cleanCui = (cui || '').trim().replace(/\s+/g, '');
+        const sCui = (s.cui || '').trim().replace(/\s+/g, '');
+        if (cleanCui && sCui && cleanCui.length >= 10 && cleanCui === sCui) {
+            const sFirst = (s.firstName || '').trim().toLowerCase();
+            const qFirst = (firstName || '').trim().toLowerCase();
+            const sLast = (s.lastName || '').trim().toLowerCase();
+            const qLast = (lastName || '').trim().toLowerCase();
+            const matchFirst = qFirst && sFirst && (sFirst.includes(qFirst) || qFirst.includes(sFirst));
+            const matchLast = qLast && sLast && (sLast.includes(qLast) || qLast.includes(sLast));
+            const matchBirth = birthDate && s.birthDate && s.birthDate === birthDate;
+            if ((matchFirst && matchLast) || (matchFirst && matchBirth)) {
+                return true;
+            }
         }
 
         // 4. Coincidencia por Nombres y Apellidos idénticos
@@ -13370,11 +13425,16 @@ async function saveStudentForm(e) {
             personalCode, cui, carne, firstName, lastName, birthDate, cycle
         }, studentId);
 
-        if (duplicate) {
+        if (duplicate && (!studentId || (duplicate.id !== studentId && duplicate.carne !== carne && duplicate.personalCode !== personalCode))) {
             const dupGrade = duplicate.gradeLabel || duplicate.grade || 'otro grado';
             const dupCycle = duplicate.cycle || STATE.activeCycle || 'el ciclo lectivo actual';
-            showToast(`⚠️ No se puede duplicar la inscripción: El alumno "${formatStudentDisplayName(duplicate, 'lastFirst')}" ya está inscrito en ${dupGrade} para el ciclo ${dupCycle}.`, 'warning');
-            return;
+            const isAuth = typeof isStudentAuthorityRole === 'function' ? isStudentAuthorityRole(STATE.currentRole) : true;
+            if (!isAuth) {
+                showToast(`⚠️ No se puede duplicar la inscripción: El alumno "${formatStudentDisplayName(duplicate, 'lastFirst')}" ya está inscrito en ${dupGrade} para el ciclo ${dupCycle}.`, 'warning');
+                return;
+            } else {
+                console.log(`ℹ️ [Autoridad] Dirección/Secretaría autoriza la inscripción/actualización de estudiante: ${firstName} ${lastName}`);
+            }
         }
     }
 
@@ -13393,43 +13453,56 @@ async function saveStudentForm(e) {
 
     try {
         let studentObj = null;
+        let idx = -1;
         if (studentId) {
-            const idx = STATE.students.findIndex(s => s.id === studentId);
-            if (idx !== -1) {
-                STATE.students[idx] = {
-                    ...STATE.students[idx],
-                    carne, personalCode, cui, firstName, lastName,
-                    name: `${firstName} ${lastName}`.trim(),
-                    birthDate, age, gender, phone, email, address,
-                    grade: finalGrade,
-                    section: finalSection,
-                    gradeCode: finalGradeCode,
-                    gradeLabel: finalGradeLabel,
-                    career: matchedGrade?.career || STATE.students[idx].career || 'Perito Contador',
-                    cycle, shift,
-                    motherName: motherName || STATE.students[idx].motherName || '',
-                    motherDpi: motherDpi || STATE.students[idx].motherDpi || '',
-                    motherPhone1: motherPhone1 || STATE.students[idx].motherPhone1 || '',
-                    motherPhone2: motherPhone2 || STATE.students[idx].motherPhone2 || '',
-                    fatherName: fatherName || STATE.students[idx].fatherName || '',
-                    fatherDpi: fatherDpi || STATE.students[idx].fatherDpi || '',
-                    fatherPhone1: fatherPhone1 || STATE.students[idx].fatherPhone1 || '',
-                    fatherPhone2: fatherPhone2 || STATE.students[idx].fatherPhone2 || '',
-                    guardianName: guardianName || STATE.students[idx].guardianName || '',
-                    guardianDpi: guardianDpi || STATE.students[idx].guardianDpi || '',
-                    guardianPhone1: guardianPhone1 || STATE.students[idx].guardianPhone1 || '',
-                    guardianPhone2: guardianPhone2 || STATE.students[idx].guardianPhone2 || '',
-                    tutor: guardianName || STATE.students[idx].tutor || '',
-                    photo: photoUrl || STATE.students[idx].photo || '',
-                    lastModified: Date.now()
-                };
-                studentObj = STATE.students[idx];
-            } else {
-                throw new Error(`Estudiante con ID "${studentId}" no encontrado en memoria.`);
-            }
+            idx = STATE.students.findIndex(s => s && String(s.id) === String(studentId));
+        }
+        if (idx === -1 && carne) {
+            idx = STATE.students.findIndex(s => s && s.carne && String(s.carne).trim().toLowerCase() === String(carne).trim().toLowerCase());
+        }
+        if (idx === -1 && personalCode) {
+            idx = STATE.students.findIndex(s => s && s.personalCode && String(s.personalCode).trim().toLowerCase() === String(personalCode).trim().toLowerCase());
+        }
+
+        const authRoleName = STATE.currentRole || 'Secretaría';
+        const authUserName = (STATE.currentUser && (STATE.currentUser.name || STATE.currentUser.username)) || authRoleName;
+
+        if (idx !== -1) {
+            const existing = STATE.students[idx];
+            STATE.students[idx] = {
+                ...existing,
+                carne, personalCode, cui, firstName, lastName,
+                name: `${firstName} ${lastName}`.trim(),
+                birthDate, age, gender, phone, email, address,
+                grade: finalGrade,
+                section: finalSection,
+                gradeCode: finalGradeCode,
+                gradeLabel: finalGradeLabel,
+                career: matchedGrade?.career || existing.career || 'Perito Contador',
+                cycle, shift,
+                motherName: motherName || existing.motherName || '',
+                motherDpi: motherDpi || existing.motherDpi || '',
+                motherPhone1: motherPhone1 || existing.motherPhone1 || '',
+                motherPhone2: motherPhone2 || existing.motherPhone2 || '',
+                fatherName: fatherName || existing.fatherName || '',
+                fatherDpi: fatherDpi || existing.fatherDpi || '',
+                fatherPhone1: fatherPhone1 || existing.fatherPhone1 || '',
+                fatherPhone2: fatherPhone2 || existing.fatherPhone2 || '',
+                guardianName: guardianName || existing.guardianName || '',
+                guardianDpi: guardianDpi || existing.guardianDpi || '',
+                guardianPhone1: guardianPhone1 || existing.guardianPhone1 || '',
+                guardianPhone2: guardianPhone2 || existing.guardianPhone2 || '',
+                tutor: guardianName || existing.tutor || '',
+                photo: photoUrl || existing.photo || '',
+                editedByAuthority: true,
+                lastModifiedByRole: authRoleName,
+                lastModifiedBy: authUserName,
+                lastModified: Date.now()
+            };
+            studentObj = STATE.students[idx];
         } else {
             studentObj = {
-                id: 'stu-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+                id: studentId || ('stu-' + Date.now() + '-' + Math.floor(Math.random() * 1000)),
                 carne, personalCode, cui, firstName, lastName,
                 name: `${firstName} ${lastName}`.trim(),
                 birthDate, age, gender, phone, email, address,
@@ -13446,6 +13519,9 @@ async function saveStudentForm(e) {
                 tutor: guardianName || '',
                 photo: photoUrl || '',
                 enrolledAt: new Date().toISOString(),
+                editedByAuthority: true,
+                lastModifiedByRole: authRoleName,
+                lastModifiedBy: authUserName,
                 lastModified: Date.now()
             };
             STATE.students.push(studentObj);
@@ -16025,8 +16101,11 @@ async function saveStudentProfileForm(e) {
     if (!checkEnrolmentPermissions()) return;
 
     const student = (STATE.students || []).find(s => 
-        String(s.id) === String(STATE.selectedStudentId) || 
-        (s.carne && s.carne === STATE.selectedStudentId)
+        s && (
+            String(s.id) === String(STATE.selectedStudentId) || 
+            (s.carne && s.carne === STATE.selectedStudentId) ||
+            (s.personalCode && s.personalCode === STATE.selectedStudentId)
+        )
     );
     if (!student || !student.id) {
         console.error("Error: ID del estudiante no identificado.");
@@ -16128,6 +16207,10 @@ async function saveStudentProfileForm(e) {
     }
 
     try {
+        student.editedByAuthority = true;
+        student.lastModifiedByRole = STATE.currentRole || 'Secretaría';
+        student.lastModifiedBy = (STATE.currentUser && (STATE.currentUser.name || STATE.currentUser.username)) || STATE.currentRole || 'Secretaría';
+        student.active = (newStatus === 'Activo');
         student.lastModified = Date.now();
         // 🌟 A. Persistencia Atómica en Firestore (colección students con merge: true y sanitización anti-undefined)
         const modular = window.FirebaseModular;

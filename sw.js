@@ -6,7 +6,7 @@
  * Copyright (c) 2026 Escuela Nacional de Ciencias Comerciales - ENCCO
  * ======================================================================
  */
-const CACHE_NAME = 'encco-cache-v2026-10-15-v262-dulce-and-alicia-separated';
+const CACHE_NAME = 'encco-cache-v2026-10-15-v263-authority-overrides-optimized';
 const STATIC_ASSETS = [
     './',
     'index.html',
