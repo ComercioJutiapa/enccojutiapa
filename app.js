@@ -27694,6 +27694,7 @@ function loadAttendanceList() {
         const studentFullName = formatStudentDisplayName(s, 'lastFirst');
         const attBim = (typeof getBimestreFromMonth === 'function') ? getBimestreFromMonth(month) : 1;
         const isMonthRetired = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, attBim) : true);
+        const isRetired = !!isMonthRetired;
         const isMonthAusente = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, attBim) : true);
         const isExonerated = !isMonthRetired && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, attBim) : false);
 
