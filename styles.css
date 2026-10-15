@@ -2913,6 +2913,144 @@ body.theme-dark .attendance-excel-table thead th.col-name {
 }
 
 /* ==========================================================================
+   FIJACIÓN INTELIGENTE GLOBAL: ENCABEZADOS Y NOMBRES EN LIBRO DE NOTAS
+   ========================================================================== */
+#gradebookActivitiesTable,
+#gradebookSummaryTable,
+#gradebookAveragesTable {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+#gradebookActivitiesTable thead th,
+#gradebookSummaryTable thead th,
+#gradebookAveragesTable thead th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
+    background: #f8fafc !important;
+    border-bottom: 2px solid #cbd5e1 !important;
+}
+
+#gradebookActivitiesTable td:first-child,
+#gradebookSummaryTable td:first-child,
+#gradebookAveragesTable td:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    z-index: 10 !important;
+    background: #ffffff !important;
+    text-align: center !important;
+    border-right: 1px solid #e2e8f0 !important;
+}
+
+#gradebookActivitiesTable thead th:first-child,
+#gradebookSummaryTable thead th:first-child,
+#gradebookAveragesTable thead th:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    top: 0 !important;
+    z-index: 30 !important;
+    background: #0f172a !important;
+    color: #ffffff !important;
+    border-right: 1px solid #334155 !important;
+}
+
+#gradebookActivitiesTable td:nth-child(2),
+#gradebookSummaryTable td:nth-child(2),
+#gradebookAveragesTable td:nth-child(2) {
+    position: sticky !important;
+    left: 36px !important;
+    min-width: 220px !important;
+    max-width: 320px !important;
+    z-index: 10 !important;
+    background: #ffffff !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.10) !important;
+    border-right: 2px solid #cbd5e1 !important;
+}
+
+#gradebookActivitiesTable thead th:nth-child(2),
+#gradebookSummaryTable thead th:nth-child(2),
+#gradebookAveragesTable thead th:nth-child(2) {
+    position: sticky !important;
+    left: 36px !important;
+    top: 0 !important;
+    z-index: 30 !important;
+    background: #0f172a !important;
+    color: #ffffff !important;
+    box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.10) !important;
+    border-right: 2px solid #cbd5e1 !important;
+}
+
+#gradebookActivitiesTable tr:hover td:first-child,
+#gradebookActivitiesTable tr:hover td:nth-child(2),
+#gradebookSummaryTable tr:hover td:first-child,
+#gradebookSummaryTable tr:hover td:nth-child(2),
+#gradebookAveragesTable tr:hover td:first-child,
+#gradebookAveragesTable tr:hover td:nth-child(2) {
+    background: #f1f5f9 !important;
+}
+
+#gradebookActivitiesTable tr.gb-active-row td:first-child,
+#gradebookActivitiesTable tr.gb-active-row td:nth-child(2),
+#gradebookSummaryTable tr.gb-active-row td:first-child,
+#gradebookSummaryTable tr.gb-active-row td:nth-child(2) {
+    background: #ecfdf5 !important;
+}
+
+/* Modo oscuro para libro de notas */
+body.theme-dark #gradebookActivitiesTable thead th,
+body.theme-dark #gradebookSummaryTable thead th,
+body.theme-dark #gradebookAveragesTable thead th {
+    background: #0f172a !important;
+    color: #f8fafc !important;
+    border-bottom-color: #334155 !important;
+}
+
+body.theme-dark #gradebookActivitiesTable td:first-child,
+body.theme-dark #gradebookActivitiesTable td:nth-child(2),
+body.theme-dark #gradebookSummaryTable td:first-child,
+body.theme-dark #gradebookSummaryTable td:nth-child(2),
+body.theme-dark #gradebookAveragesTable td:first-child,
+body.theme-dark #gradebookAveragesTable td:nth-child(2) {
+    background: #1e293b !important;
+    color: #f8fafc !important;
+    border-color: #334155 !important;
+}
+
+body.theme-dark #gradebookActivitiesTable thead th:first-child,
+body.theme-dark #gradebookActivitiesTable thead th:nth-child(2),
+body.theme-dark #gradebookSummaryTable thead th:first-child,
+body.theme-dark #gradebookSummaryTable thead th:nth-child(2),
+body.theme-dark #gradebookAveragesTable thead th:first-child,
+body.theme-dark #gradebookAveragesTable thead th:nth-child(2) {
+    background: #020617 !important;
+    color: #ffffff !important;
+    border-color: #334155 !important;
+}
+
+body.theme-dark #gradebookActivitiesTable tr:hover td:first-child,
+body.theme-dark #gradebookActivitiesTable tr:hover td:nth-child(2),
+body.theme-dark #gradebookSummaryTable tr:hover td:first-child,
+body.theme-dark #gradebookSummaryTable tr:hover td:nth-child(2),
+body.theme-dark #gradebookAveragesTable tr:hover td:first-child,
+body.theme-dark #gradebookAveragesTable tr:hover td:nth-child(2) {
+    background: #0f172a !important;
+}
+
+body.theme-dark #gradebookActivitiesTable tr.gb-active-row td:first-child,
+body.theme-dark #gradebookActivitiesTable tr.gb-active-row td:nth-child(2),
+body.theme-dark #gradebookSummaryTable tr.gb-active-row td:first-child,
+body.theme-dark #gradebookSummaryTable tr.gb-active-row td:nth-child(2) {
+    background: #064e3b !important;
+}
+
+/* ==========================================================================
    POSICIONAMIENTO PERFECTO Y CENTRADO DE VENTANAS MODALES Y VISTAS
    ========================================================================== */
 .modal-backdrop,

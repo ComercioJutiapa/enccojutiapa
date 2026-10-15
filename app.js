@@ -25775,24 +25775,28 @@ function handleGradeInputFocus(input) {
         }
         tr.classList.add('gb-active-row');
     }
+
+    const selectText = () => {
+        try {
+            if (typeof input.select === 'function') {
+                input.select();
+            } else if (typeof input.setSelectionRange === 'function') {
+                input.setSelectionRange(0, (input.value || '').toString().length);
+            }
+        } catch (_) {}
+    };
+
+    selectText();
+    if (typeof window !== 'undefined' && window.requestAnimationFrame) {
+        window.requestAnimationFrame(selectText);
+    }
+    setTimeout(selectText, 15);
+
     input.addEventListener('blur', function onBlur() {
         input.classList.remove('gb-input-focused');
         if (tr) tr.classList.remove('gb-active-row');
         input.removeEventListener('blur', onBlur);
     });
-    setTimeout(() => {
-        try {
-            if (typeof input.select === 'function') {
-                input.select();
-            }
-        } catch (err) {
-            try {
-                if (typeof input.setSelectionRange === 'function') {
-                    input.setSelectionRange(0, (input.value || '').toString().length);
-                }
-            } catch (e2) {}
-        }
-    }, 15);
 }
 window.handleGradeInputFocus = handleGradeInputFocus;
 
@@ -25871,6 +25875,9 @@ function handleGradeGridKeyDown(e, input) {
     if (targetInput) {
         targetInput.focus();
         handleGradeInputFocus(targetInput);
+        try {
+            if (typeof targetInput.select === 'function') targetInput.select();
+        } catch (_) {}
     }
 }
 window.handleGradeGridKeyDown = handleGradeGridKeyDown;
@@ -25890,6 +25897,9 @@ function debounceStudentGradeSave(studentId, subjectName, unit, gradeData) {
                 console.warn("Aviso en autosave de calificación:", e);
             });
         }
+        if (typeof saveStateToLocalStorage === 'function') {
+            saveStateToLocalStorage();
+        }
     }, 300);
 }
 
@@ -25903,6 +25913,9 @@ function flushStudentGradeSave(studentId, subjectName, unit, gradeData) {
         saveStudentSubjectGradeAtomic(studentId, subjectName, unit, gradeData).catch(e => {
             console.warn("Aviso en autosave de calificación:", e);
         });
+    }
+    if (typeof saveStateToLocalStorage === 'function') {
+        saveStateToLocalStorage();
     }
 }
 
@@ -26045,18 +26058,16 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
     // Actualización quirúrgica inmediata en DOM (0ms) sin destruir tabla
     updateStudentGradeRowSummaryDOM(studentId, zonaSum, exam, total, student, subjectName, unit);
 
-    saveStateToLocalStorage();
-
-    if (typeof updateGradebookSaveStatus === 'function') {
-        updateGradebookSaveStatus(true);
-    }
-
     if (typeof updateDbSyncStatus === 'function') {
         updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
     }
 
-    // 🌟 Sincronización atómica asíncrona inmediata en Firebase
+    // 🌟 Sincronización atómica asíncrona inmediata en Firebase y respaldo local
     if (isCommit) {
+        saveStateToLocalStorage();
+        if (typeof updateGradebookSaveStatus === 'function') {
+            updateGradebookSaveStatus(true);
+        }
         flushStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
     } else {
         debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
@@ -26095,14 +26106,16 @@ function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = 
 
     updateStudentGradeRowSummaryDOM(studentId, valNum, exam, total, student, subjectName, unit);
 
-    saveStateToLocalStorage();
-
     if (typeof updateDbSyncStatus === 'function') {
         updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
     }
 
-    // 🌟 Sincronización atómica asíncrona inmediata en Firebase
+    // 🌟 Sincronización atómica asíncrona inmediata en Firebase y respaldo local
     if (isCommit) {
+        saveStateToLocalStorage();
+        if (typeof updateGradebookSaveStatus === 'function') {
+            updateGradebookSaveStatus(true);
+        }
         flushStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
     } else {
         debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
@@ -26150,18 +26163,16 @@ function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = f
 
     updateStudentGradeRowSummaryDOM(studentId, zonaSum, examVal, total, student, subjectName, unit);
 
-    saveStateToLocalStorage();
-
-    if (typeof updateGradebookSaveStatus === 'function') {
-        updateGradebookSaveStatus(true);
-    }
-
     if (typeof updateDbSyncStatus === 'function') {
         updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
     }
 
-    // 🌟 Sincronización atómica asíncrona inmediata en Firebase
+    // 🌟 Sincronización atómica asíncrona inmediata en Firebase y respaldo local
     if (isCommit) {
+        saveStateToLocalStorage();
+        if (typeof updateGradebookSaveStatus === 'function') {
+            updateGradebookSaveStatus(true);
+        }
         flushStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
     } else {
         debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
