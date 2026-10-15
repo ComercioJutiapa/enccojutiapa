@@ -31,3 +31,8 @@ El usuario ha establecido de forma permanente la política de **"Modo Silencioso
 6. **Funcionalidad Inquebrantable e Intuición Extrema para el Usuario Final**:
    - Preservar siempre la funcionalidad, fórmulas institucionales y reglas de negocio sin excepciones.
    - Diseñar pensando 100% en el usuario final (directores, secretaría, auxiliares y docentes): interfaces ultrasencillas, sin saturación visual ("cero ruido cognitivo"), flujos directos y elementos tan intuitivos y limpios que no requieran manuales ni provoquen dudas.
+
+7. **Dinamismo, Editabilidad Total y Cumplimiento Estricto de Reglas de Usuario (100% Obligatorio)**:
+   - **Cero Código Estático o Forzado (No Hardcoding)**: Todo componente, módulo, rol, permiso, catálogo, ponderación, encabezado y parámetro del sistema debe ser 100% dinámico y editable desde la interfaz por los usuarios autorizados. Queda terminantemente prohibido usar valores rígidos que sobreescriban o ignoren los cambios guardados por la administración.
+   - **Persistencia Dinámica Inquebrantable**: Todo cambio guardado por el usuario en roles, permisos, estudiantes, asignaturas o datos debe aplicarse de inmediato y mantenerse permanentemente en LocalStorage, Firestore y Realtime Database sin revertirse jamás tras recargas o normalizaciones.
+   - **Cumplimiento Riguroso de Reglas y Privilegios de Usuario**: El sistema debe respetar con exactitud milimétrica la matriz de permisos de cada rol (Control Total, Solo Consulta o Bloqueado). Si un módulo está bloqueado para un rol, debe permanecer oculto e inaccesible; si está habilitado o modificado, debe responder y reflejarse en tiempo real sin excepción.
