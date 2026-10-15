@@ -193,7 +193,7 @@
         }
     </script>
 
-    <link rel="stylesheet" href="styles.css?v=20261003_v6_clean_analytics">
+    <link rel="stylesheet" href="styles.css?v=20261014_v252_students_ui">
     <!-- ESTILOS PRIORITARIOS DEFINITIVOS: BOTÓN DE MENÚ SIEMPRE VISIBLE Y SIN CONFLICTO -->
     <style id="criticalSidebarStyles">
         /* Botón de Menú en la barra de roles superior */
@@ -1403,9 +1403,9 @@
 
                         <!-- FILA 2: BÚSQUEDA EN VIVO + ACCIONES Y REPORTES -->
                         <div class="students-actions-row">
-                            <div class="students-search-wrapper">
-                                <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:13px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.95rem; pointer-events:none;"></i>
-                                <input type="text" id="studentSearchInput" placeholder="Buscar por Nombre, CUI o Carné..." oninput="filterStudentsTable()" aria-label="Buscar estudiante por nombre, carné o código personal">
+                            <div class="students-search-wrapper" style="position:relative; flex:1 1 280px; max-width:440px;">
+                                <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.95rem; pointer-events:none; z-index:2;"></i>
+                                <input type="text" id="studentSearchInput" placeholder="Buscar por Nombre, CUI o Carné..." oninput="filterStudentsTable()" aria-label="Buscar estudiante por nombre, carné o código personal" style="padding-left:40px !important; width:100%; height:40px; border-radius:8px; border:1.5px solid #cbd5e1; font-size:0.86rem; font-weight:600; background:#f8fafc; box-sizing:border-box;">
                             </div>
 
                             <div class="students-buttons-group">
@@ -1426,25 +1426,25 @@
                     </div>
 
                     <!-- BANDA ESTADÍSTICA DINÁMICA DE MATRÍCULA POR GÉNERO Y SECCIÓN PARA DIRECCIÓN, SECRETARÍA Y DOCENTES -->
-                    <div id="studentsDemographicsKpiBar" class="role-restricted" data-allowed="admin,director,secretaria,docente,profesor_auxiliar" style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:8px 14px; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:0.82rem;">
-                        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-                            <span style="font-weight:800; color:#15803d; display:flex; align-items:center; gap:4px;"><i class="fa-solid fa-chart-pie"></i> Estadísticas de Matrícula:</span>
-                            <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-weight:700; font-size:0.8rem;" id="kpiStudentMaleCount">
+                    <div id="studentsDemographicsKpiBar" class="role-restricted" data-allowed="admin,director,secretaria,docente,profesor_auxiliar" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:8px 14px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; font-size:0.82rem;">
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <span style="font-weight:800; color:#0f2b5c; display:flex; align-items:center; gap:5px; font-size:0.82rem;"><i class="fa-solid fa-chart-pie" style="color:#0284c7;"></i> Resumen de Matrícula:</span>
+                            <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-weight:700; font-size:0.78rem; padding:3px 9px; border-radius:12px;" id="kpiStudentMaleCount">
                                 <i class="fa-solid fa-mars"></i> Hombres: <strong>0</strong>
                             </span>
-                            <span class="badge" style="background:#fce7f3; color:#be185d; border:1px solid #fbcfe8; font-weight:700; font-size:0.8rem;" id="kpiStudentFemaleCount">
+                            <span class="badge" style="background:#fce7f3; color:#be185d; border:1px solid #fbcfe8; font-weight:700; font-size:0.78rem; padding:3px 9px; border-radius:12px;" id="kpiStudentFemaleCount">
                                 <i class="fa-solid fa-venus"></i> Mujeres: <strong>0</strong>
                             </span>
-                            <span class="badge" style="background:#dcfce7; color:#166534; border:1px solid #86efac; font-weight:800; font-size:0.8rem;" id="kpiStudentTotalCount">
-                                <i class="fa-solid fa-user-graduate"></i> Matrícula Total: <strong>0</strong>
+                            <span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-weight:800; font-size:0.8rem; padding:3px 10px; border-radius:12px;" id="kpiStudentTotalCount">
+                                <i class="fa-solid fa-user-graduate"></i> Matrícula: <strong>0</strong>
                             </span>
                         </div>
-                        <button type="button" class="btn btn-xs btn-primary role-restricted" data-allowed="admin,director,secretaria,docente,profesor_auxiliar" onclick="printStudentDemographicsReport()" style="height:28px; font-size:0.78rem; font-weight:700;" title="Imprimir Informe Estadístico Oficial de Matrícula por Grado, Sección y Género">
-                            <i class="fa-solid fa-print"></i> Reporte Matrícula por Grado/Sección/Género
+                        <button type="button" class="btn btn-xs btn-outline-primary role-restricted" data-allowed="admin,director,secretaria,docente,profesor_auxiliar" onclick="printStudentDemographicsReport()" style="height:28px; font-size:0.76rem; font-weight:700; border-radius:6px; background:#ffffff; color:#0284c7; border:1px solid #bae6fd; display:inline-flex; align-items:center; gap:5px; padding:0 10px;" title="Imprimir Informe Estadístico Oficial de Matrícula por Grado, Sección y Género">
+                            <i class="fa-solid fa-print"></i> Reporte Matrícula
                         </button>
                     </div>
 
-                    <div id="studentsFilterSummary" style="margin-bottom:12px; font-size:0.88rem; font-weight:700; color:var(--brand-green-dark); display:none; justify-content:space-between; align-items:center; background:var(--bg-main); padding:8px 14px; border-radius:var(--radius-sm); border:1px solid var(--border-color);"></div>
+                    <div id="studentsFilterSummary" style="margin-bottom:10px; font-size:0.82rem; font-weight:700; color:#0f2b5c; display:none; justify-content:space-between; align-items:center; background:#ffffff; padding:7px 14px; border-radius:8px; border:1px solid #cbd5e1; box-shadow:0 1px 2px rgba(0,0,0,0.02);"></div>
 
                     <div class="table-card">
                         <div class="table-responsive">
@@ -6182,7 +6182,7 @@
         // Registro de Service Worker para PWA y disponibilidad fuera de línea
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js?v=20261014_v251').catch(function(err) {
+                navigator.serviceWorker.register('sw.js?v=20261014_v252').catch(function(err) {
                     console.debug('[SW] Registro omitido o no compatible:', err);
                 });
             });
@@ -6193,7 +6193,7 @@
     <script src="ui.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="sire.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="official_historical_patches.js?v=20261014_v1" defer charset="UTF-8"></script>
-    <script src="app.js?v=20261014_v251_fix_modal" charset="UTF-8"></script>
+    <script src="app.js?v=20261014_v252_students_ui" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20260925_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20260924_v234_modular_phase2" charset="UTF-8"></script>
     <script src="analytics.js?v=2026.09.21.v225_analytics_and_carnets" charset="UTF-8"></script>

@@ -12446,7 +12446,8 @@ function renderStudentsTable() {
     }
 
     tbody.innerHTML = list.map(s => {
-        const avg = calculateStudentAvg(s);
+        const rawAvg = calculateStudentAvg(s);
+        const formattedAvg = (typeof rawAvg === 'number') ? rawAvg.toFixed(1) : (!isNaN(parseFloat(rawAvg)) ? parseFloat(rawAvg).toFixed(1) : (rawAvg || '0'));
         let statusBadge = '';
         if (s.status === 'Retirado') {
             statusBadge = `<span class="badge badge-danger" style="font-weight:700;" title="Retirado: ${escapeHtml(s.retireReason || 'Sin motivo registrado')}"><i class="fa-solid fa-user-slash"></i> Retirado</span>`;
@@ -12470,34 +12471,61 @@ function renderStudentsTable() {
         // COLUMNA PROMEDIO: Los docentes ven indicador de que el consolidado es de Dirección/Secretaría
         const avgColumnContent = isDocente ? 
             `<span class="badge" style="background:#f1f5f9; color:#64748b; font-size:0.75rem; border:1px solid #cbd5e1;" title="El récord general de notas es de acceso reservado a Dirección y Secretaría"><i class="fa-solid fa-lock"></i> Dirección</span>` :
-            `<strong style="color:var(--brand-green-dark);">${avg} pts</strong>`;
+            `<strong style="color:var(--brand-green-dark); font-size:0.88rem;">${formattedAvg} pts</strong>`;
 
         const tutorTel = s.tutorPhone || s.phone;
 
+        // Cálculo de iniciales para avatar elegante sin imágenes rotas
+        const fName = (s.firstName || s.name || '').trim();
+        const lName = (s.lastName || '').trim();
+        let initials = '';
+        if (lName && fName) {
+            initials = (lName[0] + fName[0]).toUpperCase();
+        } else if (fName) {
+            const parts = fName.split(/\s+/);
+            initials = parts.length > 1 ? (parts[0][0] + parts[1][0]).toUpperCase() : parts[0].substring(0, 2).toUpperCase();
+        } else {
+            initials = 'ES';
+        }
+
+        const hasValidPhoto = s.photo && String(s.photo).trim() && !String(s.photo).includes('undefined') && !String(s.photo).includes('null') && s.photo.length > 10;
+        const avatarHtml = hasValidPhoto ? `
+            <div style="position:relative; width:38px; height:38px; margin:0 auto;">
+                <img src="${escapeHtml(s.photo)}" class="student-table-avatar" alt="" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" style="width:38px; height:38px; border-radius:50%; object-fit:cover; border:2px solid #059669; display:block;">
+                <div class="student-avatar-fallback" style="display:none; width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg, #059669, #0284c7); color:#ffffff; align-items:center; justify-content:center; font-weight:800; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; box-shadow:0 1px 3px rgba(0,0,0,0.12);">
+                    ${initials}
+                </div>
+            </div>
+        ` : `
+            <div class="student-avatar-fallback" style="width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg, #0f2b5c, #0284c7); color:#ffffff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.82rem; text-transform:uppercase; letter-spacing:0.5px; margin:0 auto; box-shadow:0 1px 3px rgba(0,0,0,0.12);">
+                ${initials}
+            </div>
+        `;
+
         return `
             <tr style="${(s.status === 'Retirado' || s.status === 'Ausente') ? 'background:#f8fafc;' : ''}">
-                <td><img src="${s.photo}" class="student-table-avatar" alt="Foto"></td>
-                <td>
-                    <code>${s.carne}</code>
-                    ${s.personalCode ? `<br><small style="color:var(--brand-green-dark); font-weight:700;" title="Código Personal MINEDUC"><i class="fa-solid fa-id-badge"></i> ${s.personalCode}</small>` : ''}
-                    ${s.cui ? `<br><small style="color:var(--text-muted);">CUI: ${s.cui}</small>` : ''}
+                <td style="text-align:center; padding:8px 6px;">${avatarHtml}</td>
+                <td style="padding:8px 10px;">
+                    <code style="font-weight:700; color:#0f2b5c; font-size:0.82rem;">${escapeHtml(s.carne || 'S/C')}</code>
+                    ${s.personalCode ? `<br><small style="color:var(--brand-green-dark); font-weight:700;" title="Código Personal MINEDUC"><i class="fa-solid fa-id-badge"></i> ${escapeHtml(s.personalCode)}</small>` : ''}
+                    ${s.cui ? `<br><small style="color:#64748b; font-size:0.75rem;">CUI: ${escapeHtml(s.cui)}</small>` : ''}
                 </td>
-                <td>
-                    <strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong>
+                <td style="padding:8px 10px;">
+                    <strong style="color:#0f172a; font-size:0.88rem;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong>
                     ${s.retireReason ? `<br><small style="color:#b45309; font-style:italic;" title="Motivo registrado por Secretaría"><i class="fa-solid fa-circle-info"></i> ${escapeHtml(s.retireReason)}</small>` : ''}
                 </td>
-                <td>
-                    <div style="font-weight:700; color:#0f172a; font-size:0.86rem; line-height:1.25;">
+                <td style="padding:8px 10px;">
+                    <div style="font-weight:700; color:#0f172a; font-size:0.84rem; line-height:1.2;">
                         <i class="fa-solid fa-graduation-cap" style="color:#0284c7; font-size:0.8rem; margin-right:3px;"></i>${escapeHtml(gradeName)}
                     </div>
-                    <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:800; font-size:0.75rem; margin-top:4px; display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:12px;">
+                    <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:800; font-size:0.74rem; margin-top:3px; display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:12px;">
                         <i class="fa-solid fa-users-rectangle"></i> ${escapeHtml(sectionName)}
                     </span>
                 </td>
-                <td>
-                    ${escapeHtml(s.tutor || 'No registrado')}<br>
-                    <div style="display:inline-flex; align-items:center; gap:6px; margin-top:2px;">
-                        <small style="color:var(--text-muted);"><i class="fa-solid fa-phone"></i> ${escapeHtml(tutorTel || 'Sin tel.')}</small>
+                <td style="padding:8px 10px;">
+                    <span style="font-size:0.82rem; color:#334155; font-weight:600;">${escapeHtml(s.tutor || 'No registrado')}</span><br>
+                    <div style="display:inline-flex; align-items:center; gap:5px; margin-top:2px;">
+                        <small style="color:#64748b; font-size:0.76rem;"><i class="fa-solid fa-phone"></i> ${escapeHtml(tutorTel || 'Sin tel.')}</small>
                         ${tutorTel ? `
                             <button type="button" class="btn btn-xs" onclick="openStudentWhatsAppChat('${s.id}')" title="Contactar al encargado vía WhatsApp" style="padding:1px 6px; font-size:0.72rem; background:#25D366; color:#fff; border:none; border-radius:4px; font-weight:700; display:inline-flex; align-items:center; gap:3px; cursor:pointer;">
                                 <i class="fa-brands fa-whatsapp"></i> Chat
@@ -12505,21 +12533,28 @@ function renderStudentsTable() {
                         ` : ''}
                     </div>
                 </td>
-                <td style="text-align:center;">${avgColumnContent}</td>
-                <td>${statusBadge}</td>
-                <td>
-                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                        <button class="btn ${isDocente ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="openStudentProfileModal('${s.id}')" title="Ver Ficha de Datos, Reportes y Expediente">
-                            <i class="fa-solid fa-id-card"></i> ${isDocente ? 'Ficha y Reportes' : 'Ficha de Datos'}
+                <td style="text-align:center; padding:8px 6px;">${avgColumnContent}</td>
+                <td style="text-align:center; padding:8px 6px;">${statusBadge}</td>
+                <td style="text-align:center; padding:8px 8px;">
+                    <div style="display:inline-flex; gap:4px; align-items:center; justify-content:center; white-space:nowrap;">
+                        <button type="button" class="btn ${isDocente ? 'btn-primary' : 'btn-outline-primary'} btn-sm" onclick="openStudentProfileModal('${s.id}')" title="Ver Expediente y Ficha de Datos" style="padding:4px 9px; font-size:0.76rem; font-weight:700; border-radius:6px; display:inline-flex; align-items:center; gap:4px; white-space:nowrap;">
+                            <i class="fa-solid fa-id-card"></i> ${isDocente ? 'Ficha' : 'Ficha'}
                         </button>
-                        ${tutorTel ? `
-                            <button type="button" class="btn btn-outline-success btn-sm" onclick="openStudentWhatsAppChat('${s.id}')" title="Contactar al encargado por WhatsApp" style="color:#15803d; border-color:#86efac; font-weight:600;">
-                                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                        ${canEdit ? `
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="openEditStudentModal('${s.id}')" title="Editar Estudiante" style="padding:4px 8px; font-size:0.76rem; font-weight:700; border-radius:6px; background:#f8fafc; border:1px solid #cbd5e1; color:#0369a1; white-space:nowrap;">
+                                <i class="fa-solid fa-pen-to-square"></i>
                             </button>
                         ` : ''}
-                        ${canEdit ? `<button class="btn btn-outline-primary btn-sm" onclick="openEditStudentModal('${s.id}')" title="Editar en Ventana de Inscripción"><i class="fa-solid fa-user-pen"></i> Editar</button>` : ''}
-                        ${canEdit ? `<button class="btn btn-outline-info btn-sm" onclick="openAcademicExonerationModal('${s.id}')" title="Consideración individual y exoneración de notas"><i class="fa-solid fa-user-shield"></i> Exoneraciones</button>` : ''}
-                        ${canDelete ? `<button class="btn btn-secondary btn-sm" style="color:var(--danger);" onclick="deleteStudent('${s.id}')" title="Eliminar Estudiante"><i class="fa-solid fa-trash"></i> Eliminar</button>` : ''}
+                        ${canEdit ? `
+                            <button type="button" class="btn btn-outline-info btn-sm" onclick="openAcademicExonerationModal('${s.id}')" title="Exoneraciones y Consideraciones Académicas" style="padding:4px 8px; font-size:0.76rem; font-weight:700; border-radius:6px; background:#f0fdfa; border:1px solid #99f6e4; color:#0f766e; white-space:nowrap;">
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </button>
+                        ` : ''}
+                        ${canDelete ? `
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="deleteStudent('${s.id}')" title="Eliminar Estudiante" style="padding:4px 8px; font-size:0.76rem; font-weight:700; border-radius:6px; background:#fff1f2; border:1px solid #fecdd3; color:#e11d48; white-space:nowrap;">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        ` : ''}
                     </div>
                 </td>
             </tr>
