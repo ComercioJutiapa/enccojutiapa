@@ -2490,7 +2490,7 @@ function loadRoleIntoPermissionsPanel(roleKey) {
     }
 
     // Adaptar controles y botones de guardado según facultades del usuario
-    const saveBtns = document.querySelectorAll('button[onclick="saveActiveRolePermissions()"]');
+    const saveBtns = document.querySelectorAll('button[onclick*="saveActiveRolePermissions"]');
     saveBtns.forEach(btn => {
         btn.style.display = canEdit ? 'inline-flex' : 'none';
     });
@@ -2509,11 +2509,21 @@ window.loadRoleIntoPermissionsPanel = loadRoleIntoPermissionsPanel;
 
 
 
-async function saveActiveRolePermissions() {
-    if (!isDirectorOrSuperAdmin()) {
-        showToast('Acceso Restringido: La edición y configuración de permisos está reservada exclusivamente a la Dirección General.', 'warning');
-        return;
+let _isSavingActiveRolePermissions = false;
+async function saveActiveRolePermissions(e) {
+    const evt = e || (typeof window !== 'undefined' ? window.event : null);
+    if (evt) {
+        if (evt._enccoHandled) return;
+        evt._enccoHandled = true;
     }
+    if (_isSavingActiveRolePermissions) return;
+    _isSavingActiveRolePermissions = true;
+
+    try {
+        if (!isDirectorOrSuperAdmin()) {
+            showToast('Acceso Restringido: La edición y configuración de permisos está reservada exclusivamente a la Dirección General.', 'warning');
+            return;
+        }
 
     const keyInput = document.getElementById('activeRoleKey');
     const nameInput = document.getElementById('activeRoleName');
@@ -2549,14 +2559,10 @@ async function saveActiveRolePermissions() {
             }
         }
     });
-
-    normalizeRolesConfig();
-
-    try {
-        const SYSTEM_ROLE_KEYS = (typeof window.SYSTEM_ROLE_KEYS !== 'undefined') 
-            ? window.SYSTEM_ROLE_KEYS 
-            : ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente', 'estudiante'];
-        const isSystemRole = (key === 'admin' || SYSTEM_ROLE_KEYS.includes(key));
+    const SYSTEM_ROLE_KEYS = (typeof window.SYSTEM_ROLE_KEYS !== 'undefined') 
+        ? window.SYSTEM_ROLE_KEYS 
+        : ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente', 'estudiante'];
+    const isSystemRole = (key === 'admin' || SYSTEM_ROLE_KEYS.includes(key));
 
         const existingIdx = STATE.rolesConfig.findIndex(r => r.key === key);
         if (existingIdx !== -1) {
@@ -2684,6 +2690,10 @@ async function saveActiveRolePermissions() {
     } catch(err) {
         console.error("❌ Error al guardar roles en Firebase:", err);
         showToast(`Error al guardar roles: ${err.message || err}`, 'danger');
+    } finally {
+        setTimeout(() => {
+            _isSavingActiveRolePermissions = false;
+        }, 800);
     }
 }
 window.saveActiveRolePermissions = saveActiveRolePermissions;
@@ -3155,11 +3165,6 @@ function normalizeRolesConfig() {
                     if (!roleObj.permissions.includes(p)) roleObj.permissions.push(p);
                 }
             });
-            // Garantizar que users esté disponible en modo consulta por defecto
-            if (roleObj.permissionLevels['users'] === 'none' && !roleObj.permissions.includes('users')) {
-                roleObj.permissionLevels['users'] = 'view';
-                roleObj.permissions.push('users', 'users_view');
-            }
         }
 
         // 🛡️ ACCESO TOTAL A BITÁCORA Y CENTRO DE CONTROL: Dirección, Auxiliatura y Secretaría (solo si no configurado)
@@ -3178,7 +3183,7 @@ function normalizeRolesConfig() {
                     roleObj.permissionLevels['exam-schedules'] = 'edit';
                     if (!roleObj.permissions.includes('exam-schedules')) roleObj.permissions.push('exam-schedules');
                 }
-                if (typeof roleObj.permissionLevels['users'] === 'undefined' || roleObj.permissionLevels['users'] === 'none') {
+                if (typeof roleObj.permissionLevels['users'] === 'undefined') {
                     roleObj.permissionLevels['users'] = 'view';
                     if (!roleObj.permissions.includes('users')) roleObj.permissions.push('users', 'users_view');
                 }
