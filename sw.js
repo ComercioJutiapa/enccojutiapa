@@ -6,7 +6,7 @@
  * Copyright (c) 2026 Escuela Nacional de Ciencias Comerciales - ENCCO
  * ======================================================================
  */
-const CACHE_NAME = 'encco-cache-v2026-10-14-v257-gradebook-opt';
+const CACHE_NAME = 'encco-cache-v2026-10-15-v258-inactivity-timers';
 const STATIC_ASSETS = [
     './',
     'index.html',

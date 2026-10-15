@@ -7366,17 +7366,21 @@ window.SecurityEngine = {
         return true;
     },
 
-    // Cierre de Sesión por Inactividad (30 min)
+    // Cierre de Sesión por Inactividad (Docentes: 30 min, Demás: 3 horas)
     inactivityTimer: null,
     initInactivityGuard() {
         const resetTimer = () => {
             if (this.inactivityTimer) clearTimeout(this.inactivityTimer);
+            const role = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || 'docente').toLowerCase().trim();
+            const isDocente = (role === 'docente');
+            const timeoutMs = isDocente ? (30 * 60 * 1000) : (3 * 60 * 60 * 1000);
             this.inactivityTimer = setTimeout(() => {
                 if (STATE.isLoggedIn) {
-                    showToast("Sesión suspendida por inactividad (30 min) para proteger sus datos.", "warning");
+                    const timeLabel = isDocente ? '30 min' : '3 horas';
+                    showToast(`Sesión suspendida por inactividad (${timeLabel}) para proteger sus datos.`, "warning");
                     if (typeof logoutUser === 'function') logoutUser();
                 }
-            }, 30 * 60 * 1000);
+            }, timeoutMs);
         };
 
         ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'].forEach(evt => {

@@ -647,14 +647,15 @@
         return true;
     }
 
-    // 6. GESTOR GLOBAL DE CIERRE AUTOMÁTICO POR INACTIVIDAD (20 MINUTOS = 1,200,000 MS)
-    const INACTIVITY_TIMEOUT_MS = 20 * 60 * 1000; // 1,200,000 ms (20 minutos)
+    // 6. GESTOR GLOBAL DE CIERRE AUTOMÁTICO POR INACTIVIDAD (DOCENTES: 30 MINUTOS, DEMÁS: 3 HORAS)
+    const DOCENTE_TIMEOUT_MS = 30 * 60 * 1000;      // 30 minutos (1,800,000 ms)
+    const STAFF_TIMEOUT_MS = 3 * 60 * 60 * 1000;    // 3 horas (10,800,000 ms)
     let _inactivityTimer = null;
     let _lastActivityTimestamp = Date.now();
     let _activityListenersAttached = false;
 
     const EnccoInactivityTimer = {
-        timeoutMs: INACTIVITY_TIMEOUT_MS,
+        timeoutMs: STAFF_TIMEOUT_MS,
         isActive: false,
 
         init(customTimeoutMs) {
@@ -673,15 +674,18 @@
                 return;
             }
 
-            // 🛡️ MODO CENTINELA AUXILIATURA: La sesión del Auxiliar NUNCA caduca por inactividad
-            // para garantizar la recepción y atención ininterrumpida de alertas de ausencias escolares
-            if (session.role === 'profesor_auxiliar') {
-                console.log("🛡️ [Modo Centinela] Sesión permanente activada para Auxiliatura. Monitoreo continuo de ausencias en tiempo real habilitado.");
-                this.isActive = false;
+            const role = (session.role || '').toLowerCase().trim();
+            const isDocente = (role === 'docente');
+
+            // 🛡️ MODO CENTINELA AUXILIATURA Y PERSONAL DIRECTIVO/ADMINISTRATIVO (3 HORAS / MONITOREO CONTINUO)
+            // Mantiene viva la sesión de Auxiliatura y roles administrativos para recepción ininterrumpida de alertas
+            if (session.role === 'profesor_auxiliar' || !isDocente) {
+                console.log("🛡️ [Modo Centinela] Sesión permanente activada para Auxiliatura y personal administrativo (3 horas).");
                 this.startAuxiliarHeartbeat();
-                return;
             }
 
+            // Temporizador dinámico: 30 minutos para docentes, 3 horas para los demás
+            this.timeoutMs = isDocente ? DOCENTE_TIMEOUT_MS : STAFF_TIMEOUT_MS;
             this.isActive = true;
             _lastActivityTimestamp = Date.now();
             if (_inactivityTimer) {
@@ -696,7 +700,7 @@
             if (this._heartbeatInterval) clearInterval(this._heartbeatInterval);
             this._heartbeatInterval = setInterval(() => {
                 const s = getUserSession();
-                if (s && s.user && s.role === 'profesor_auxiliar') {
+                if (s && s.user) {
                     // Refrescar timestamp de sesión local
                     try {
                         localStorage.setItem('ENCCO_AUTH_TIMESTAMP', Date.now().toString());
@@ -751,7 +755,10 @@
         },
 
         async onTimeout() {
-            console.warn("⏰ [Seguridad ENCCO] Cierre de sesión automático por inactividad (20 minutos transcurridos).");
+            const session = getUserSession();
+            const role = (session && session.role ? session.role : '').toLowerCase().trim();
+            const timeLabel = (role === 'docente') ? '30 minutos' : '3 horas';
+            console.warn(`⏰ [Seguridad ENCCO] Cierre de sesión automático por inactividad (${timeLabel} transcurridos).`);
             this.stop();
 
             // 1. Desconectar Firebase Auth de forma limpia si está disponible
