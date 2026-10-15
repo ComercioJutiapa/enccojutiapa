@@ -6,7 +6,7 @@
  * Copyright (c) 2026 Escuela Nacional de Ciencias Comerciales - ENCCO
  * ======================================================================
  */
-const CACHE_NAME = 'encco-cache-v2026-10-14-v255-dynamic-exonerations-retirements';
+const CACHE_NAME = 'encco-cache-v2026-10-14-v256-attendance-opt';
 const STATIC_ASSETS = [
     './',
     'index.html',

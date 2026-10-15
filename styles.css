@@ -2820,6 +2820,99 @@ body.theme-dark .att-global-pct-bar {
 }
 
 /* ==========================================================================
+   FIJACIÓN INTELIGENTE GLOBAL: ENCABEZADO Y NOMBRES EN TABLA DE ASISTENCIA
+   ========================================================================== */
+.attendance-excel-table {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+.attendance-excel-table thead th {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 20 !important;
+}
+
+.attendance-excel-table .col-num,
+.attendance-excel-table td.col-num {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 10 !important;
+    background: #ffffff !important;
+    border-right: 1px solid #e2e8f0 !important;
+}
+
+.attendance-excel-table thead th.col-num {
+    position: sticky !important;
+    left: 0 !important;
+    top: 0 !important;
+    z-index: 30 !important;
+    background: #0f172a !important;
+    color: #ffffff !important;
+}
+
+.attendance-excel-table .col-carne,
+.attendance-excel-table td.col-carne {
+    position: sticky !important;
+    left: 32px !important;
+    z-index: 10 !important;
+    background: #ffffff !important;
+    border-right: 1px solid #e2e8f0 !important;
+}
+
+.attendance-excel-table thead th.col-carne {
+    position: sticky !important;
+    left: 32px !important;
+    top: 0 !important;
+    z-index: 30 !important;
+    background: #0f172a !important;
+    color: #ffffff !important;
+}
+
+.attendance-excel-table .col-name,
+.attendance-excel-table td.col-name {
+    position: sticky !important;
+    left: 104px !important;
+    z-index: 10 !important;
+    background: #ffffff !important;
+    box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.10) !important;
+    border-right: 2px solid #cbd5e1 !important;
+}
+
+.attendance-excel-table thead th.col-name {
+    position: sticky !important;
+    left: 104px !important;
+    top: 0 !important;
+    z-index: 30 !important;
+    background: #0f172a !important;
+    color: #ffffff !important;
+    box-shadow: 3px 0 6px -2px rgba(0, 0, 0, 0.10) !important;
+    border-right: 2px solid #cbd5e1 !important;
+}
+
+.attendance-excel-table tr:hover td.col-num,
+.attendance-excel-table tr:hover td.col-carne,
+.attendance-excel-table tr:hover td.col-name {
+    background: #f8fafc !important;
+}
+
+body.theme-dark .attendance-excel-table .col-num,
+body.theme-dark .attendance-excel-table td.col-num,
+body.theme-dark .attendance-excel-table .col-carne,
+body.theme-dark .attendance-excel-table td.col-carne,
+body.theme-dark .attendance-excel-table .col-name,
+body.theme-dark .attendance-excel-table td.col-name {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+}
+
+body.theme-dark .attendance-excel-table thead th.col-num,
+body.theme-dark .attendance-excel-table thead th.col-carne,
+body.theme-dark .attendance-excel-table thead th.col-name {
+    background: #0f172a !important;
+}
+
+/* ==========================================================================
    POSICIONAMIENTO PERFECTO Y CENTRADO DE VENTANAS MODALES Y VISTAS
    ========================================================================== */
 .modal-backdrop,

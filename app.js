@@ -28722,27 +28722,29 @@ function saveAttendanceRecords(showToastMsg = true, e = null, recordKey = null) 
         } catch(e) {}
     }
 
-    // Si es un cambio rápido de celda (showToastMsg = false), aplicar debounce de 350ms para persistir en disco y sincronizar en segundo plano sin congelar la UI
+    // Persistencia ultrarrápida del backup exclusivo de asistencia en LocalStorage (<1ms)
+    try {
+        if (typeof localStorage !== 'undefined' && STATE.attendanceRecords && Object.keys(STATE.attendanceRecords).length > 0) {
+            localStorage.setItem('ENCCO_ATTENDANCE_MASTER_BACKUP', JSON.stringify(STATE.attendanceRecords));
+        }
+    } catch(e) {}
+
+    // Si es un cambio rápido de celda (showToastMsg = false), sincronizar en segundo plano y diferir el guardado pesado de todo el STATE
     if (!showToastMsg) {
         if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
         _attendanceSaveTimeout = setTimeout(() => {
-            try {
-                if (typeof localStorage !== 'undefined' && STATE.attendanceRecords && Object.keys(STATE.attendanceRecords).length > 0) {
-                    localStorage.setItem('ENCCO_ATTENDANCE_MASTER_BACKUP', JSON.stringify(STATE.attendanceRecords));
-                }
-            } catch(e) {}
-            saveStateToLocalStorage();
             if (typeof _syncAttendanceToFirebaseBackground === 'function') {
                 _syncAttendanceToFirebaseBackground(recordKey);
             }
         }, 350);
+
+        if (window._attendanceFullSaveTimeout) clearTimeout(window._attendanceFullSaveTimeout);
+        window._attendanceFullSaveTimeout = setTimeout(() => {
+            saveStateToLocalStorage();
+        }, 1800);
     } else {
         if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
-        try {
-            if (typeof localStorage !== 'undefined' && STATE.attendanceRecords && Object.keys(STATE.attendanceRecords).length > 0) {
-                localStorage.setItem('ENCCO_ATTENDANCE_MASTER_BACKUP', JSON.stringify(STATE.attendanceRecords));
-            }
-        } catch(e) {}
+        if (window._attendanceFullSaveTimeout) clearTimeout(window._attendanceFullSaveTimeout);
         saveStateToLocalStorage();
         if (typeof _syncAttendanceToFirebaseBackground === 'function') {
             _syncAttendanceToFirebaseBackground(recordKey);
