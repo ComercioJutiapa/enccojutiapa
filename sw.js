@@ -6,7 +6,7 @@
  * Copyright (c) 2026 Escuela Nacional de Ciencias Comerciales - ENCCO
  * ======================================================================
  */
-const CACHE_NAME = 'encco-cache-v2026-10-15-v260-attendance-rendering-fixed';
+const CACHE_NAME = 'encco-cache-v2026-10-15-v261-alicia-ramos-restored';
 const STATIC_ASSETS = [
     './',
     'index.html',

@@ -93,6 +93,15 @@ async function runTests() {
     assert.strictEqual(mendezJostin.name, 'MÉNDEZ MÉNDEZ JOSTIN ENILSON');
     assert.strictEqual(mendezJostin.gradeCode, '5to PC A');
     console.log(`  ✓ Jostin Enilson encontrado: ${mendezJostin.name} | ${mendezJostin.carne} | ${mendezJostin.gradeCode}`);
+
+    const ramosAlicia = liveStudents.find(s => s.personalCode === 'G482XGW' || s.carne === '2026-QA-035' || s.id === 'stu-sire-G482XGW');
+    assert(ramosAlicia, "RAMOS FLORIÁN ALICIA CAROLINA debe existir en la lista");
+    assert.strictEqual(ramosAlicia.name, 'RAMOS FLORIÁN ALICIA CAROLINA');
+    assert.strictEqual(ramosAlicia.gradeCode, '5to PC A');
+    assert.strictEqual(ramosAlicia.section, 'Sección A');
+    assert.strictEqual(ramosAlicia.grade, '5to Perito Contador');
+    assert(ramosAlicia.grades && Object.keys(ramosAlicia.grades).length >= 9, "Alicia debe tener al menos 9 materias con calificaciones");
+    console.log(`  ✓ Alicia Carolina encontrada: ${ramosAlicia.name} | ${ramosAlicia.carne} | ${ramosAlicia.gradeCode} (${Object.keys(ramosAlicia.grades).length} materias con calificaciones intactas)`);
     
     // 3. Verificar distribución por grados y secciones
     console.log("3. Verificando distribución por secciones...");

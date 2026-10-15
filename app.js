@@ -4973,6 +4973,7 @@ function initFirebaseRealtimeConnection() {
                             } else {
                                 STATE.students = deduplicateStudentsCollection(incomingList);
                             }
+                            if (typeof ensureSireOfficialStudents === 'function') ensureSireOfficialStudents();
                             if (typeof renderGradebookTable === 'function' && STATE.activeView === 'gradebook') renderGradebookTable();
                             if (typeof renderStudentsTable === 'function' && STATE.activeView === 'students') renderStudentsTable();
                             if (typeof renderTeacherGradeProgressTable === 'function' && STATE.activeView === 'teacher-progress') renderTeacherGradeProgressTable();
@@ -6879,6 +6880,95 @@ function ensureSireOfficialStudents() {
             if (!s.gradeLabel) s.gradeLabel = assign.fullLabel;
         }
     });
+
+    // 🛡️ Garantizar presencia inmutable de Ramos Florián, Alicia Carolina en la nómina oficial (5to Perito Contador Sección A)
+    const hasAlicia = (STATE.students || []).some(s => s && (
+        s.id === 'stu-sire-G482XGW' ||
+        s.personalCode === 'G482XGW' ||
+        (s.carne && s.carne.includes('2026-QA-035')) ||
+        (s.cui && s.cui === '2038166332201') ||
+        ((s.lastName && s.lastName.toUpperCase().includes('RAMOS FLORIÁN')) &&
+         ((s.firstName && s.firstName.toUpperCase().includes('ALICIA')) || (s.name && s.name.toUpperCase().includes('ALICIA'))))
+    ));
+    if (!hasAlicia) {
+        STATE.students.push({
+            id: 'stu-sire-G482XGW',
+            no: 35,
+            personalCode: 'G482XGW',
+            carne: '2026-QA-035',
+            cui: '2038166332201',
+            docNumber: '2038166332201',
+            docType: 'CUI',
+            nationality: 'Guatemalteca',
+            name: 'RAMOS FLORIÁN ALICIA CAROLINA',
+            lastName: 'RAMOS FLORIÁN',
+            firstName: 'ALICIA CAROLINA',
+            gender: 'FEMENINO',
+            birthDate: '2009-03-30',
+            grade: '5to Perito Contador',
+            gradeCode: '5to PC A',
+            gradeLabel: '5to Perito Contador (Sección A)',
+            section: 'Sección A',
+            career: 'Perito Contador',
+            careerCode: 'PC',
+            cycle: '2026',
+            status: 'Activo',
+            statusSire: 'INSCRITO',
+            active: true,
+            grades: {
+                "Catalogación y Archivo": [94, 54, 75, 0],
+                "Computación II": [92, 88, 100, 0],
+                "Contabilidad de Costos": [74, 90, 72, 0],
+                "Cálculo Mercantil y Financiero": [82, 62, 72, 0],
+                "Finanzas Públicas": [73, 74, 74, 0],
+                "Geografía Económica": [64, 90, 100, 0],
+                "Inglés Comercial II": [92, 85, 93, 0],
+                "Legislación Fiscal y Aduanera": [62, 61, 84, 0],
+                "Mecanografía": [51, 81, 71, 0]
+            }
+        });
+    } else {
+        const aStudent = (STATE.students || []).find(s => s && (
+            s.id === 'stu-sire-G482XGW' ||
+            s.personalCode === 'G482XGW' ||
+            (s.carne && s.carne.includes('2026-QA-035')) ||
+            (s.cui && s.cui === '2038166332201') ||
+            ((s.lastName && s.lastName.toUpperCase().includes('RAMOS FLORIÁN')) &&
+             ((s.firstName && s.firstName.toUpperCase().includes('ALICIA')) || (s.name && s.name.toUpperCase().includes('ALICIA'))))
+        ));
+        if (aStudent) {
+            aStudent.id = 'stu-sire-G482XGW';
+            aStudent.personalCode = 'G482XGW';
+            aStudent.carne = '2026-QA-035';
+            aStudent.cui = aStudent.cui || '2038166332201';
+            aStudent.no = 35;
+            aStudent.name = 'RAMOS FLORIÁN ALICIA CAROLINA';
+            aStudent.lastName = 'RAMOS FLORIÁN';
+            aStudent.firstName = 'ALICIA CAROLINA';
+            aStudent.grade = '5to Perito Contador';
+            aStudent.gradeCode = '5to PC A';
+            aStudent.gradeLabel = '5to Perito Contador (Sección A)';
+            aStudent.section = 'Sección A';
+            aStudent.career = 'Perito Contador';
+            aStudent.careerCode = 'PC';
+            aStudent.status = 'Activo';
+            aStudent.statusSire = 'INSCRITO';
+            aStudent.active = true;
+            if (!aStudent.grades || Object.keys(aStudent.grades).length === 0) {
+                aStudent.grades = {
+                    "Catalogación y Archivo": [94, 54, 75, 0],
+                    "Computación II": [92, 88, 100, 0],
+                    "Contabilidad de Costos": [74, 90, 72, 0],
+                    "Cálculo Mercantil y Financiero": [82, 62, 72, 0],
+                    "Finanzas Públicas": [73, 74, 74, 0],
+                    "Geografía Económica": [64, 90, 100, 0],
+                    "Inglés Comercial II": [92, 85, 93, 0],
+                    "Legislación Fiscal y Aduanera": [62, 61, 84, 0],
+                    "Mecanografía": [51, 81, 71, 0]
+                };
+            }
+        }
+    }
 
     // 🛡️ Garantizar presencia inmutable de Dulce María Ramos Florián en la nómina
     const hasDulce = (STATE.students || []).some(s => s && (s.id === 'stu-sire-E195FVT' || (s.carne && s.carne.includes('2026-QD-025'))));
@@ -9499,6 +9589,7 @@ function applyIncomingCloudState(incomingState, force = false) {
                 STATE.students = deduplicateStudentsCollection(incArr);
             }
         }
+        if (typeof ensureSireOfficialStudents === 'function') ensureSireOfficialStudents();
     }
 
     // 4. Asignación de Cátedras y Pensum (Blindaje estricto anti-sobreescritura por arreglos incompletos o vacíos)
