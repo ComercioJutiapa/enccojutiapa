@@ -6326,7 +6326,13 @@ window.formatStudentDisplayName = formatStudentDisplayName;
 
 // 🌟 RECUPERADOR ROBUSTO Y BLINDADO DE ESTUDIANTES PARA ASISTENCIA (ANTI-DESAPARICIÓN)
 function getAttendanceStudents(gradeCode, currentCourseObj = null) {
-    if (!gradeCode) return [];
+    if (!gradeCode) {
+        if (Array.isArray(STATE.gradesList) && STATE.gradesList.length > 0) {
+            gradeCode = STATE.gradesList[0].code || STATE.gradesList[0].id || STATE.gradesList[0].name;
+        } else {
+            return [];
+        }
+    }
     const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
     const rawQ = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''} ${currentCourseObj ? (currentCourseObj.grade + ' ' + currentCourseObj.section + ' ' + (currentCourseObj.gradeCode || '')) : ''}`.toUpperCase();
 
@@ -6337,12 +6343,11 @@ function getAttendanceStudents(gradeCode, currentCourseObj = null) {
 
     const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : (currentCourseObj ? (currentCourseObj.section || currentCourseObj.gradeCode) : gradeCode));
 
+    // 1. Filtrado principal: TODOS los estudiantes del grado y sección (sin exclusión por activo/inactivo)
     let students = (STATE.students || []).filter(s => {
         if (!s) return false;
-        if (s.active === false && s.status !== 'Retirado') return false;
-        if (s.status === 'Inactivo') return false;
 
-        // 1. Coincidencia directa por código exacto de grado
+        // Coincidencia directa por código exacto de grado
         if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
         if (qGradeObj && (s.grade === qGradeObj.code || s.gradeCode === qGradeObj.code || s.grade === qGradeObj.id || s.gradeCode === qGradeObj.id)) return true;
 
@@ -6360,15 +6365,25 @@ function getAttendanceStudents(gradeCode, currentCourseObj = null) {
         return (qGradeNum === sGradeNum) && (!qSec || !sSec || qSec === sSec);
     });
 
-    // Fallback de ultra-seguridad: si la nómina está vacía pero hay alumnos registrados en el sistema para ese grado
+    // 2. Fallback de ultra-seguridad: si la lista está vacía pero hay estudiantes en el sistema para ese grado
     if (students.length === 0 && Array.isArray(STATE.students) && STATE.students.length > 0 && qGradeNum > 0) {
         students = STATE.students.filter(s => {
-            if (!s || (s.active === false && s.status !== 'Retirado') || s.status === 'Inactivo') return false;
+            if (!s) return false;
             const text = `${s.grade || ''} ${s.gradeCode || ''} ${s.gradeLabel || ''} ${s.section || ''}`.toUpperCase();
             const hasNum = text.includes(String(qGradeNum)) || (qGradeNum === 4 && (text.includes('CUARTO') || text.includes('4TO'))) || (qGradeNum === 5 && (text.includes('QUINTO') || text.includes('5TO'))) || (qGradeNum === 6 && (text.includes('SEXTO') || text.includes('6TO')));
             const sSec = getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel || text);
             const hasSec = !qSec || sSec === qSec;
             return hasNum && hasSec;
+        });
+    }
+
+    // 3. Fallback de contingencia máxima: si aún está vacía, buscar cualquier coincidencia por nombre o código de grado
+    if (students.length === 0 && Array.isArray(STATE.students) && STATE.students.length > 0) {
+        students = STATE.students.filter(s => {
+            if (!s) return false;
+            const sGrade = (s.grade || s.gradeCode || s.gradeLabel || '').toLowerCase();
+            const target = String(gradeCode).toLowerCase();
+            return sGrade.includes(target) || (qGradeObj && qGradeObj.name && sGrade.includes(qGradeObj.name.toLowerCase()));
         });
     }
 
@@ -26448,8 +26463,7 @@ window.openQuickAttendanceModal = function() {
     const courseSelect = document.getElementById('attendanceCourseSelect');
     if (!gradeSelect) return;
 
-    const gradeCode = gradeSelect.value;
-    const courseId = courseSelect ? courseSelect.value : 'GENERAL';
+    let courseId = courseSelect ? courseSelect.value : 'GENERAL';
     const gradeText = gradeSelect.options[gradeSelect.selectedIndex]?.text || gradeCode;
 
     const today = new Date();
@@ -26464,11 +26478,17 @@ window.openQuickAttendanceModal = function() {
     if (isDocente && !isAuditRole) {
         const currentUser = STATE.currentUser || (STATE.users || [])[0];
         const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
-        if (!myClasses.some(p => p.id === courseId)) {
-            if (typeof showToast === 'function') {
-                showToast("🔒 Acceso Restringido: Solo puede tomar asistencia de sus cátedras asignadas.", "warning");
+        if (courseId !== 'GENERAL' && myClasses.length > 0 && !myClasses.some(p => p.id === courseId)) {
+            const matchingInGrade = myClasses.filter(p => {
+                const rawP = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
+                const pSec = getCleanSectionLetter(p.section || p.gradeCode || rawP);
+                const qSec = getCleanSectionLetter(gradeCode);
+                return (!qSec || !pSec || qSec === pSec);
+            });
+            if (matchingInGrade.length > 0) {
+                courseId = matchingInGrade[0].id;
+                if (courseSelect) courseSelect.value = courseId;
             }
-            return;
         }
     }
 
@@ -26852,8 +26872,23 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
                 gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
             });
             gradeOptionsHtml += `</optgroup>`;
+
+            const assignedCodes = new Set(uniqueGrades.keys());
+            const otherGrades = (STATE.gradesList || []).filter(g => !assignedCodes.has(g.code));
+            if (otherGrades.length > 0) {
+                gradeOptionsHtml += `<optgroup label="🏛️ Otros Grados Institucionales">`;
+                sortGrades(otherGrades).forEach(g => {
+                    gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
+                });
+                gradeOptionsHtml += `</optgroup>`;
+            }
         } else {
-            gradeOptionsHtml = `<option value="">-- No tiene grados ni clases asignadas --</option>`;
+            gradeOptionsHtml += `<optgroup label="⭐ Grados Institucionales (ENCO)">`;
+            const sortedGeneralGrades = sortGrades(STATE.gradesList || []);
+            sortedGeneralGrades.forEach(g => {
+                gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
+            });
+            gradeOptionsHtml += `</optgroup>`;
         }
     } else if (isAuthorityRole && activeTeacherObj) {
         // SUPERVISIÓN POR MAESTRO ESPECÍFICO
@@ -26989,12 +27024,9 @@ function updateAttendanceCoursesList() {
     else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
     const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : selGrade);
 
-    let coursesHtml = '';
-    if (isAuthorityRole) {
-        coursesHtml += `<option value="GENERAL">📑 Control General de Asistencia (Jornada Diaria)</option>`;
-    }
+    let coursesHtml = `<option value="GENERAL">📑 Control General de Asistencia (Jornada Diaria)</option>`;
     
-    let matchingPensum = (STATE.pensum || []).filter(p => {
+    const allGradePensum = (STATE.pensum || []).filter(p => {
         const rawP = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
         let pGradeNum = 0;
         if (rawP.includes('6') || rawP.includes('SEXTO') || rawP.includes('6TO')) pGradeNum = 6;
@@ -27007,10 +27039,11 @@ function updateAttendanceCoursesList() {
         return true;
     });
 
+    let matchingPensum = allGradePensum;
     if (isDocente && currentUser && !isAuthorityRole) {
-        matchingPensum = matchingPensum.filter(p => isCourseAssignedToTeacher(p, currentUser));
+        matchingPensum = allGradePensum.filter(p => isCourseAssignedToTeacher(p, currentUser));
     } else if (isAuthorityRole && activeTeacherObj) {
-        matchingPensum = matchingPensum.filter(p => 
+        matchingPensum = allGradePensum.filter(p => 
             p.teacherId === activeTeacherObj.id ||
             (typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, activeTeacherObj)) ||
             (p.teacher && activeTeacherObj.name && (
@@ -27032,8 +27065,25 @@ function updateAttendanceCoursesList() {
             coursesHtml += `<option value="${p.id}">📘 ${p.subject}${isAuthorityRole ? teacherLabel : ''}</option>`;
         });
         coursesHtml += `</optgroup>`;
-    } else if (isDocente && !isAuthorityRole) {
-        coursesHtml = `<option value="">-- Sin clases asignadas en este grado --</option>`;
+
+        // Si el docente no tiene todas las materias del grado, ofrecer las restantes en segundo plano
+        if (isDocente && !isAuthorityRole && allGradePensum.length > matchingPensum.length) {
+            const myIds = new Set(matchingPensum.map(p => p.id));
+            const otherPensum = allGradePensum.filter(p => !myIds.has(p.id));
+            if (otherPensum.length > 0) {
+                coursesHtml += `<optgroup label="📚 Otras Clases del Grado">`;
+                otherPensum.forEach(p => {
+                    coursesHtml += `<option value="${p.id}">📘 ${p.subject}${p.teacher ? ` (${p.teacher})` : ''}</option>`;
+                });
+                coursesHtml += `</optgroup>`;
+            }
+        }
+    } else if (allGradePensum.length > 0) {
+        coursesHtml += `<optgroup label="📚 Clases Registradas para este Grado">`;
+        allGradePensum.forEach(p => {
+            coursesHtml += `<option value="${p.id}">📘 ${p.subject}${p.teacher ? ` (${p.teacher})` : ''}</option>`;
+        });
+        coursesHtml += `</optgroup>`;
     }
 
     const prevSelectedCourse = courseSelect.value || STATE.attendanceSelectedCourse || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ENCCO_SELECTED_ATTENDANCE_COURSE') : null);
@@ -27477,11 +27527,11 @@ function loadAttendanceList() {
     const isDocente = (STATE.currentRole === 'docente');
     const currentUser = STATE.currentUser || (STATE.users || [])[0];
 
-    // 🔒 RESTRICCIÓN ESTRICTA DE VISIBILIDAD: Los docentes SOLO pueden ver sus clases asignadas
+    // 🔒 ASOCIACIÓN INTELIGENTE DE CÁTEDRA: Conectar automáticamente a la clase del docente o permitir control general
     if (isDocente && currentUser && !isAuditRole) {
         const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
         const currentCourseIsMine = myClasses.some(p => p.id === courseId);
-        if (!currentCourseIsMine) {
+        if (!currentCourseIsMine && courseId !== 'GENERAL') {
             const qGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
             const rawQ = `${gradeCode || ''} ${qGradeObj ? (qGradeObj.name + ' ' + qGradeObj.section) : ''}`.toUpperCase();
             let qGradeNum = 0;
@@ -27507,14 +27557,10 @@ function loadAttendanceList() {
                 courseId = matchingInGrade[0].id;
                 if (courseSelect) courseSelect.value = courseId;
             } else {
-                body.innerHTML = `<tr><td colspan="${daysInMonth + 8}" style="text-align:center; padding:35px; color:#64748b; font-size:0.95rem;">
-                    <i class="fa-solid fa-lock" style="font-size:2.2rem; color:#f59e0b; display:block; margin-bottom:10px;"></i>
-                    <strong style="color:#0f172a; font-size:1.05rem; display:block; margin-bottom:4px;">Acceso Restringido</strong>
-                    Usted solo puede consultar y registrar la asistencia de las cátedras a las que está asignado(a).
-                </td></tr>`;
-                if (foot) foot.innerHTML = '';
-                if (statsSummary) statsSummary.innerHTML = '';
-                return;
+                courseId = 'GENERAL';
+                if (courseSelect && Array.from(courseSelect.options || []).some(o => o.value === 'GENERAL')) {
+                    courseSelect.value = 'GENERAL';
+                }
             }
         }
     }
