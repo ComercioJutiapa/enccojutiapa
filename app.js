@@ -35848,24 +35848,48 @@ function movePensumSubjectOrderInGrade(subjectId, delta) {
 // ======================================================================
 
 function openPensumPrintModal(defaultGradeKey) {
-    const modal = document.getElementById('pensumPrintOptionsModal');
-    if (!modal) {
-        printPensumCurriculumReport(defaultGradeKey, false);
-        return;
-    }
     const gradeSelect = document.getElementById('pensumPrintGradeSelect');
     if (gradeSelect) {
         const activeTab = defaultGradeKey || (typeof currentPensumActiveGradeTab !== 'undefined' ? currentPensumActiveGradeTab : 'all');
         gradeSelect.value = (activeTab && ['4to', '5to', '6to'].includes(activeTab)) ? activeTab : 'all';
     }
-    selectPensumPrintMode('blank');
-    modal.style.setProperty('display', 'flex', 'important');
+    if (typeof selectPensumPrintMode === 'function') {
+        selectPensumPrintMode('blank');
+    }
+    if (typeof showModalById === 'function') {
+        showModalById('pensumPrintOptionsModal');
+    } else {
+        const modal = document.getElementById('pensumPrintOptionsModal');
+        if (modal) {
+            modal.classList.add('active');
+            modal.style.setProperty('display', 'flex', 'important');
+            modal.style.display = 'flex';
+            modal.style.visibility = 'visible';
+            modal.style.opacity = '1';
+            modal.style.pointerEvents = 'auto';
+        } else if (typeof printPensumCurriculumReport === 'function') {
+            printPensumCurriculumReport(defaultGradeKey, false);
+        }
+    }
 }
+window.openPensumPrintModal = openPensumPrintModal;
 
 function closePensumPrintModal() {
-    const modal = document.getElementById('pensumPrintOptionsModal');
-    if (modal) modal.style.setProperty('display', 'none', 'important');
+    if (typeof hideModalById === 'function') {
+        hideModalById('pensumPrintOptionsModal');
+    } else {
+        const modal = document.getElementById('pensumPrintOptionsModal');
+        if (modal) {
+            modal.classList.remove('active');
+            modal.style.setProperty('display', 'none', 'important');
+            modal.style.display = 'none';
+            modal.style.visibility = 'hidden';
+            modal.style.opacity = '0';
+            modal.style.pointerEvents = 'none';
+        }
+    }
 }
+window.closePensumPrintModal = closePensumPrintModal;
 
 function selectPensumPrintMode(mode) {
     const rBlank = document.getElementById('pensumPrintModeBlank');
@@ -35883,6 +35907,7 @@ function selectPensumPrintMode(mode) {
         if (lBlank) { lBlank.style.borderColor = '#e2e8f0'; lBlank.style.background = '#ffffff'; }
     }
 }
+window.selectPensumPrintMode = selectPensumPrintMode;
 
 function triggerPensumPrintFromModal(forceBlank) {
     const gradeSelect = document.getElementById('pensumPrintGradeSelect');
@@ -35902,6 +35927,7 @@ function triggerPensumPrintFromModal(forceBlank) {
     closePensumPrintModal();
     printPensumCurriculumReport(targetGrade, isBlank, { withSignatures });
 }
+window.triggerPensumPrintFromModal = triggerPensumPrintFromModal;
 
 function printPensumCurriculumReport(targetGrade, isBlank = false, options = {}) {
     let gradeKey = 'all';

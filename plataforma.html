@@ -1952,7 +1952,7 @@
                                 <button type="button" class="btn btn-outline-primary btn-sm role-restricted" data-allowed="admin,director,secretaria" onclick="openSirePensumImportModal()" style="font-size:0.78rem; font-weight:700; padding:6px 12px; border-radius:8px;">
                                     <i class="fa-solid fa-cloud-arrow-down"></i> Importar SIRE
                                 </button>
-                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="openPensumPrintModal()" style="font-size:0.78rem; font-weight:700; padding:6px 12px; border-radius:8px;" title="Opciones de impresión de pensum oficial o vacío">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="if(typeof openPensumPrintModal==='function'){openPensumPrintModal();}else if(typeof printPensumCurriculumReport==='function'){printPensumCurriculumReport();}" style="font-size:0.78rem; font-weight:700; padding:6px 12px; border-radius:8px;" title="Opciones de impresión de pensum oficial o vacío">
                                     <i class="fa-solid fa-print"></i> Imprimir Pensum
                                 </button>
                                 <button type="button" class="btn btn-primary btn-sm" onclick="openPensumSubjectModalForActiveGrade()" style="font-size:0.78rem; font-weight:800; padding:6px 14px; border-radius:8px;">
@@ -4467,6 +4467,53 @@
             </div>
         </div>
     </div>
+
+    <!-- SCRIPT DE INICIALIZACIÓN INMEDIATA DEL MODAL DE IMPRESIÓN DE PENSUM -->
+    <script>
+        function openPensumPrintModal(defaultGradeKey) {
+            var gradeSelect = document.getElementById('pensumPrintGradeSelect');
+            if (gradeSelect) {
+                var activeTab = defaultGradeKey || (typeof currentPensumActiveGradeTab !== 'undefined' ? currentPensumActiveGradeTab : 'all');
+                gradeSelect.value = (activeTab && ['4to', '5to', '6to'].includes(activeTab)) ? activeTab : 'all';
+            }
+            if (typeof selectPensumPrintMode === 'function') {
+                selectPensumPrintMode('blank');
+            }
+            if (typeof showModalById === 'function') {
+                showModalById('pensumPrintOptionsModal');
+            } else {
+                var modal = document.getElementById('pensumPrintOptionsModal');
+                if (modal) {
+                    modal.classList.add('active');
+                    modal.style.setProperty('display', 'flex', 'important');
+                    modal.style.display = 'flex';
+                    modal.style.visibility = 'visible';
+                    modal.style.opacity = '1';
+                    modal.style.pointerEvents = 'auto';
+                } else if (typeof printPensumCurriculumReport === 'function') {
+                    printPensumCurriculumReport(defaultGradeKey, false);
+                }
+            }
+        }
+        window.openPensumPrintModal = openPensumPrintModal;
+
+        function closePensumPrintModal() {
+            if (typeof hideModalById === 'function') {
+                hideModalById('pensumPrintOptionsModal');
+            } else {
+                var modal = document.getElementById('pensumPrintOptionsModal');
+                if (modal) {
+                    modal.classList.remove('active');
+                    modal.style.setProperty('display', 'none', 'important');
+                    modal.style.display = 'none';
+                    modal.style.visibility = 'hidden';
+                    modal.style.opacity = '0';
+                    modal.style.pointerEvents = 'none';
+                }
+            }
+        }
+        window.closePensumPrintModal = closePensumPrintModal;
+    </script>
         <!-- MODAL DE ASIGNACIÓN DE CLASES A DOCENTES (INTERACTIVO MULTI-SECCIÓN) -->
     <div class="modal-overlay" id="classAssignmentModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeClassAssignmentModal()">
         <div class="modal-container" style="max-width:580px;">
@@ -6135,7 +6182,7 @@
         // Registro de Service Worker para PWA y disponibilidad fuera de línea
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js?v=20261014_v250').catch(function(err) {
+                navigator.serviceWorker.register('sw.js?v=20261014_v251').catch(function(err) {
                     console.debug('[SW] Registro omitido o no compatible:', err);
                 });
             });
@@ -6146,7 +6193,7 @@
     <script src="ui.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="sire.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="official_historical_patches.js?v=20261014_v1" defer charset="UTF-8"></script>
-    <script src="app.js?v=20261014_v250_pensum_blank_full" charset="UTF-8"></script>
+    <script src="app.js?v=20261014_v251_fix_modal" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20260925_v1" charset="UTF-8"></script>
     <script src="grade_stats.js?v=20260924_v234_modular_phase2" charset="UTF-8"></script>
     <script src="analytics.js?v=2026.09.21.v225_analytics_and_carnets" charset="UTF-8"></script>
