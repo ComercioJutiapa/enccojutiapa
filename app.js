@@ -6825,7 +6825,10 @@ function ensureSireOfficialStudents() {
     (STATE.students || []).forEach(s => {
         if (!s) return;
         // 🛡️ Auto-sanación canónica para Dulce María Ramos Florián (5to Perito Contador Sección D)
-        if (s.id === 'stu-sire-E195FVT' || s.personalCode === 'E195FVT' || (s.carne && s.carne.includes('2026-QD-025')) || (s.gradeCode === '5to PC D' && s.lastName && s.lastName.includes('RAMOS FLORIÁN'))) {
+        const isDulce = s.id === 'stu-sire-E195FVT' || s.personalCode === 'E195FVT' || (s.carne && s.carne.includes('2026-QD-025')) ||
+            (((s.lastName || '').toUpperCase().includes('RAMOS FLORIÁN') || (s.name || '').toUpperCase().includes('RAMOS FLORIÁN')) &&
+             ((s.firstName || '').toUpperCase().includes('DULCE') || (s.name || '').toUpperCase().includes('DULCE')));
+        if (isDulce) {
             s.id = 'stu-sire-E195FVT';
             s.personalCode = 'E195FVT';
             s.carne = '2026-QD-025';
@@ -6845,7 +6848,10 @@ function ensureSireOfficialStudents() {
         }
 
         // 🛡️ Auto-sanación canónica para Alicia Carolina Ramos Florián (5to Perito Contador Sección A)
-        if (s.id === 'stu-sire-G482XGW' || s.personalCode === 'G482XGW' || (s.carne && s.carne.includes('2026-QA-035')) || (s.gradeCode === '5to PC A' && s.lastName && s.lastName.includes('RAMOS FLORIÁN'))) {
+        const isAlicia = s.id === 'stu-sire-G482XGW' || s.personalCode === 'G482XGW' || (s.carne && s.carne.includes('2026-QA-035')) ||
+            (((s.lastName || '').toUpperCase().includes('RAMOS FLORIÁN') || (s.name || '').toUpperCase().includes('RAMOS FLORIÁN')) &&
+             ((s.firstName || '').toUpperCase().includes('ALICIA') || (s.name || '').toUpperCase().includes('ALICIA')));
+        if (isAlicia) {
             s.id = 'stu-sire-G482XGW';
             s.personalCode = 'G482XGW';
             s.carne = '2026-QA-035';
@@ -6886,9 +6892,8 @@ function ensureSireOfficialStudents() {
         s.id === 'stu-sire-G482XGW' ||
         s.personalCode === 'G482XGW' ||
         (s.carne && s.carne.includes('2026-QA-035')) ||
-        (s.cui && s.cui === '2038166332201') ||
-        ((s.lastName && s.lastName.toUpperCase().includes('RAMOS FLORIÁN')) &&
-         ((s.firstName && s.firstName.toUpperCase().includes('ALICIA')) || (s.name && s.name.toUpperCase().includes('ALICIA'))))
+        (((s.name || '').toUpperCase().includes('RAMOS FLORIÁN') || (s.lastName || '').toUpperCase().includes('RAMOS FLORIÁN')) &&
+         ((s.name || '').toUpperCase().includes('ALICIA') || (s.firstName || '').toUpperCase().includes('ALICIA')))
     ));
     if (!hasAlicia) {
         STATE.students.push({
@@ -6932,15 +6937,13 @@ function ensureSireOfficialStudents() {
             s.id === 'stu-sire-G482XGW' ||
             s.personalCode === 'G482XGW' ||
             (s.carne && s.carne.includes('2026-QA-035')) ||
-            (s.cui && s.cui === '2038166332201') ||
-            ((s.lastName && s.lastName.toUpperCase().includes('RAMOS FLORIÁN')) &&
-             ((s.firstName && s.firstName.toUpperCase().includes('ALICIA')) || (s.name && s.name.toUpperCase().includes('ALICIA'))))
+            (((s.name || '').toUpperCase().includes('RAMOS FLORIÁN') || (s.lastName || '').toUpperCase().includes('RAMOS FLORIÁN')) &&
+             ((s.name || '').toUpperCase().includes('ALICIA') || (s.firstName || '').toUpperCase().includes('ALICIA')))
         ));
         if (aStudent) {
             aStudent.id = 'stu-sire-G482XGW';
             aStudent.personalCode = 'G482XGW';
             aStudent.carne = '2026-QA-035';
-            aStudent.cui = aStudent.cui || '2038166332201';
             aStudent.no = 35;
             aStudent.name = 'RAMOS FLORIÁN ALICIA CAROLINA';
             aStudent.lastName = 'RAMOS FLORIÁN';
@@ -6970,13 +6973,23 @@ function ensureSireOfficialStudents() {
         }
     }
 
-    // 🛡️ Garantizar presencia inmutable de Dulce María Ramos Florián en la nómina
-    const hasDulce = (STATE.students || []).some(s => s && (s.id === 'stu-sire-E195FVT' || (s.carne && s.carne.includes('2026-QD-025'))));
+    // 🛡️ Garantizar presencia inmutable de Ramos Florián, Dulce María en la nómina oficial (5to Perito Contador Sección D)
+    const hasDulce = (STATE.students || []).some(s => s && (
+        s.id === 'stu-sire-E195FVT' ||
+        s.personalCode === 'E195FVT' ||
+        (s.carne && s.carne.includes('2026-QD-025')) ||
+        (((s.name || '').toUpperCase().includes('RAMOS FLORIÁN') || (s.lastName || '').toUpperCase().includes('RAMOS FLORIÁN')) &&
+         ((s.name || '').toUpperCase().includes('DULCE') || (s.firstName || '').toUpperCase().includes('DULCE')))
+    ));
     if (!hasDulce) {
         STATE.students.push({
             id: 'stu-sire-E195FVT',
             personalCode: 'E195FVT',
             carne: '2026-QD-025',
+            cui: '2038166332201',
+            docNumber: '2038166332201',
+            docType: 'CUI',
+            nationality: 'Guatemalteca',
             firstName: 'DULCE MARÍA',
             lastName: 'RAMOS FLORIÁN',
             name: 'RAMOS FLORIÁN DULCE MARÍA',
@@ -7003,6 +7016,44 @@ function ensureSireOfficialStudents() {
                 }
             ]
         });
+    } else {
+        const dStudent = (STATE.students || []).find(s => s && (
+            s.id === 'stu-sire-E195FVT' ||
+            s.personalCode === 'E195FVT' ||
+            (s.carne && s.carne.includes('2026-QD-025')) ||
+            (((s.name || '').toUpperCase().includes('RAMOS FLORIÁN') || (s.lastName || '').toUpperCase().includes('RAMOS FLORIÁN')) &&
+             ((s.name || '').toUpperCase().includes('DULCE') || (s.firstName || '').toUpperCase().includes('DULCE')))
+        ));
+        if (dStudent) {
+            dStudent.id = 'stu-sire-E195FVT';
+            dStudent.personalCode = 'E195FVT';
+            dStudent.carne = '2026-QD-025';
+            dStudent.name = 'RAMOS FLORIÁN DULCE MARÍA';
+            dStudent.lastName = 'RAMOS FLORIÁN';
+            dStudent.firstName = 'DULCE MARÍA';
+            dStudent.grade = '5to Perito Contador';
+            dStudent.gradeCode = '5to PC D';
+            dStudent.gradeLabel = '5to Perito Contador (Sección D)';
+            dStudent.section = 'Sección D';
+            dStudent.career = 'Perito Contador';
+            dStudent.careerCode = 'PC';
+            dStudent.status = 'Activo';
+            dStudent.statusSire = 'INSCRITO';
+            dStudent.active = true;
+            if (!Array.isArray(dStudent.academicExceptions) || dStudent.academicExceptions.length === 0) {
+                dStudent.academicExceptions = [
+                    {
+                        id: 'exon-1790266085890',
+                        subject: 'ALL',
+                        bimestre: '2',
+                        type: 'EXONERADO',
+                        reason: 'Embarazo',
+                        date: '24/9/2026',
+                        authorizedBy: 'Francisca Alcira González Zepeda'
+                    }
+                ];
+            }
+        }
     }
 
     // 🛡️ Garantizar presencia inmutable de Arévalo Morán, Katerin Mishel en la nómina oficial (4to Perito Contador Sección B)
