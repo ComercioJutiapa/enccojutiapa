@@ -175,55 +175,67 @@
             return `
                 <div class="encco-carnet-card encco-carnet-student encco-carnet-front" style="width:336px; height:212px; background:#ffffff; border-radius:12px; border:1.5px solid #cbd5e1; box-shadow:0 6px 18px rgba(0,0,0,0.12); overflow:hidden; position:relative; font-family:'Plus Jakarta Sans', sans-serif; box-sizing:border-box; text-align:left; user-select:none;">
                     
-                    <!-- MARCA DE AGUA EDIFICIO INSTITUCIONAL SUTIL DE FONDO -->
-                    <div style="position:absolute; right:10px; top:45px; width:200px; height:110px; opacity:0.045; pointer-events:none; z-index:0; background:radial-gradient(circle, rgba(0,64,152,0.15) 0%, rgba(255,255,255,0) 70%);">
-                        <svg viewBox="0 0 200 110" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="10" y="30" width="180" height="60" rx="3" fill="#004098" opacity="0.3" />
-                            <rect x="25" y="45" width="20" height="25" fill="#ffffff" />
-                            <rect x="55" y="45" width="20" height="25" fill="#ffffff" />
-                            <rect x="85" y="45" width="20" height="25" fill="#ffffff" />
-                            <rect x="115" y="45" width="20" height="25" fill="#ffffff" />
-                            <rect x="145" y="45" width="20" height="25" fill="#ffffff" />
+                    <!-- FONDO DE SEGURIDAD GUILLOCHÉ VECTORIAL Y MARCA DE AGUA INSTITUCIONAL -->
+                    <div style="position:absolute; inset:0; pointer-events:none; z-index:0; overflow:hidden; opacity:0.065;">
+                        <svg width="100%" height="100%" viewBox="0 0 336 212" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <pattern id="guillocheStudent_${student.id || 'def'}" width="40" height="40" patternUnits="userSpaceOnUse">
+                                    <path d="M 0,20 Q 10,0 20,20 T 40,20" fill="none" stroke="#003882" stroke-width="0.6"/>
+                                    <path d="M 0,20 Q 10,40 20,20 T 40,20" fill="none" stroke="#007a3d" stroke-width="0.6"/>
+                                    <circle cx="20" cy="20" r="14" fill="none" stroke="#ea580c" stroke-width="0.4" stroke-dasharray="2,2"/>
+                                </pattern>
+                            </defs>
+                            <rect width="100%" height="100%" fill="url(#guillocheStudent_${student.id || 'def'})"/>
+                            <!-- Silueta arquitectónica de la ENCCO -->
+                            <g transform="translate(180, 40) scale(0.65)" opacity="0.4">
+                                <rect x="0" y="20" width="160" height="70" rx="3" fill="#003882"/>
+                                <rect x="15" y="35" width="20" height="28" fill="#ffffff"/>
+                                <rect x="45" y="35" width="20" height="28" fill="#ffffff"/>
+                                <rect x="75" y="35" width="20" height="28" fill="#ffffff"/>
+                                <rect x="105" y="35" width="20" height="28" fill="#ffffff"/>
+                                <polygon points="80,0 0,20 160,20" fill="#007a3d"/>
+                            </g>
                         </svg>
                     </div>
 
-                    <!-- FORMA GEOMÉTRICA SUPERIOR IZQUIERDA (AZUL, VERDE Y NARANJA) -->
-                    <svg style="position:absolute; top:0; left:0; width:90px; height:80px; pointer-events:none; z-index:1;" viewBox="0 0 90 80">
-                        <path d="M 0,0 L 72,0 C 70,22 56,50 0,64 Z" fill="#004098" />
-                        <path d="M 72,0 C 70,22 56,50 0,64 L 0,71 C 58,56 74,25 78,0 Z" fill="#007a3d" />
-                        <path d="M 78,0 C 76,25 60,56 0,71 L 0,74 C 62,59 79,26 82,0 Z" fill="#ea580c" />
+                    <!-- CINTAS POLIGONALES VECTORIALES MODERNAS (AZUL, VERDE, PLATEADO Y NARANJA) -->
+                    <svg style="position:absolute; top:0; left:0; width:110px; height:85px; pointer-events:none; z-index:1;" viewBox="0 0 110 85">
+                        <path d="M 0,0 L 88,0 C 84,26 66,56 0,70 Z" fill="#003882" />
+                        <path d="M 88,0 C 84,26 66,56 0,70 L 0,75 C 70,61 88,28 93,0 Z" fill="#007a3d" />
+                        <path d="M 93,0 C 88,28 70,61 0,75 L 0,79 C 74,65 92,30 98,0 Z" fill="#cbd5e1" />
+                        <path d="M 98,0 C 92,30 74,65 0,79 L 0,83 C 78,68 96,32 103,0 Z" fill="#ea580c" />
                     </svg>
 
                     <!-- ESCUDO OFICIAL ENCCO SUPERIOR IZQUIERDO -->
-                    <div style="position:absolute; top:6px; left:8px; width:34px; height:40px; z-index:4; filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));">
+                    <div style="position:absolute; top:6px; left:8px; width:34px; height:40px; z-index:4; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35));">
                         <img src="logo.png" style="width:100%; height:100%; object-fit:contain; display:block;" alt="Escudo ENCCO">
                     </div>
 
                     <!-- ENCABEZADO INSTITUCIONAL DERECHA DEL ESCUDO -->
-                    <div style="margin-left:60px; padding:6px 6px 0 0; text-align:center; position:relative; z-index:2;">
-                        <div style="font-family:'Outfit', sans-serif; font-size:0.62rem; font-weight:900; color:#006837; letter-spacing:0.25px; line-height:1.15; text-transform:uppercase;">
+                    <div style="margin-left:58px; padding:5px 6px 0 0; text-align:center; position:relative; z-index:2;">
+                        <div style="font-family:'Outfit', sans-serif; font-size:0.62rem; font-weight:900; color:#003882; letter-spacing:0.3px; line-height:1.15; text-transform:uppercase;">
                             ESCUELA NACIONAL DE CIENCIAS COMERCIALES
                         </div>
-                        <div style="font-family:'Outfit', sans-serif; font-size:0.54rem; font-weight:900; color:#006837; letter-spacing:0.8px; line-height:1.15; margin-top:1px;">
-                            JUTIAPA 1970
+                        <div style="font-family:'Outfit', sans-serif; font-size:0.52rem; font-weight:800; color:#007a3d; letter-spacing:0.8px; line-height:1.15; margin-top:1px;">
+                            JUTIAPA 1970 <span style="color:#ea580c;">•</span> GUATEMALA
                         </div>
                         <div style="display:flex; align-items:center; justify-content:center; gap:3px; margin-top:2px;">
-                            <span style="flex:1; height:1.2px; background:#006837; max-width:32px;"></span>
+                            <span style="flex:1; height:1.2px; background:linear-gradient(90deg, rgba(0,56,130,0), #003882); max-width:32px;"></span>
                             <span style="color:#ea580c; font-size:0.36rem; line-height:1;">◆</span>
                             <span style="color:#007a3d; font-size:0.36rem; line-height:1;">◆</span>
-                            <span style="color:#ea580c; font-size:0.36rem; line-height:1;">◆</span>
-                            <span style="color:#007a3d; font-size:0.36rem; line-height:1;">◆</span>
-                            <span style="color:#ea580c; font-size:0.36rem; line-height:1;">◆</span>
-                            <span style="flex:1; height:1.2px; background:#006837; max-width:32px;"></span>
+                            <span style="color:#cbd5e1; font-size:0.36rem; line-height:1;">◆</span>
+                            <span style="color:#003882; font-size:0.36rem; line-height:1;">◆</span>
+                            <span style="flex:1; height:1.2px; background:linear-gradient(90deg, #003882, rgba(0,56,130,0)); max-width:32px;"></span>
                         </div>
                     </div>
 
-                    <!-- CINTA AZUL REAL HORIZONTAL CARNET ESTUDIANTIL -->
-                    <div style="position:relative; z-index:2; background:#004098; color:#ffffff; font-family:'Outfit', sans-serif; font-size:0.74rem; font-weight:900; letter-spacing:1.5px; text-transform:uppercase; padding:3.5px 10px 3.5px 92px; margin-top:4px; box-shadow:0 2px 4px rgba(0,64,152,0.25);">
-                        CARNET ESTUDIANTIL
+                    <!-- CINTA HORIZONTAL MODERNA: CARNET ESTUDIANTIL -->
+                    <div style="position:relative; z-index:2; background:linear-gradient(90deg, #003882 0%, #004fb0 65%, #007a3d 100%); color:#ffffff; font-family:'Outfit', sans-serif; font-size:0.74rem; font-weight:900; letter-spacing:1.6px; text-transform:uppercase; padding:3px 12px 3px 94px; margin-top:4px; box-shadow:0 2px 5px rgba(0,56,130,0.25); display:flex; align-items:center; justify-content:space-between;">
+                        <span>CARNET ESTUDIANTIL</span>
+                        <span style="font-size:0.46rem; background:#ea580c; color:#ffffff; font-weight:900; padding:1px 6px; border-radius:3px; letter-spacing:0.8px;">OFICIAL</span>
                     </div>
 
-                    <!-- FOTO CON MARCO DORADO BISELADO (NOTCHED CORNERS) -->
+                    <!-- FOTO CON MARCO PLATEADO PLATINO BISELADO (NOTCHED CORNERS) -->
                     <div style="position:absolute; left:12px; top:46px; width:74px; height:94px; z-index:4; cursor:pointer;" onclick="EnccoCarnets.openPhotoModal('${student.id}', 'student')" title="Haga clic para tomar o cambiar la fotografía">
                         <div class="encco-gold-frame-outer" style="width:100%; height:100%;">
                             <div class="encco-gold-frame-middle">
@@ -234,31 +246,45 @@
                         </div>
                     </div>
 
-                    <!-- BLOQUE DE DATOS DEL ALUMNO -->
-                    <div style="position:absolute; left:96px; top:62px; right:12px; z-index:3; line-height:1.2;">
-                        <div style="font-size:0.50rem; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.4px;">NOMBRE COMPLETO:</div>
-                        <div style="font-size:0.68rem; font-weight:900; color:#000000; text-transform:uppercase; line-height:1.15; max-height:2.3em; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; margin-bottom:2px;" title="${name}">
+                    <!-- CHIP ELECTRÓNICO SIMULADO EN TONOS PLATEADOS -->
+                    <div style="position:absolute; left:88px; top:52px; width:18px; height:14px; z-index:2; border-radius:3px; background:linear-gradient(135deg, #f8fafc, #cbd5e1); border:0.8px solid #94a3b8; display:flex; align-items:center; justify-content:center; opacity:0.85;" title="Chip Electrónico de Seguridad">
+                        <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
+                            <rect x="1" y="1" width="12" height="8" rx="1.5" stroke="#64748b" stroke-width="0.5"/>
+                            <line x1="1" y1="5" x2="13" y2="5" stroke="#64748b" stroke-width="0.5"/>
+                            <line x1="5" y1="1" x2="5" y2="9" stroke="#64748b" stroke-width="0.5"/>
+                            <line x1="9" y1="1" x2="9" y2="9" stroke="#64748b" stroke-width="0.5"/>
+                        </svg>
+                    </div>
+
+                    <!-- BLOQUE DE DATOS DEL ALUMNO DE ALTA PRECISIÓN -->
+                    <div style="position:absolute; left:96px; top:65px; right:12px; z-index:3; line-height:1.2;">
+                        <div style="font-size:0.48rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.5px;">ESTUDIANTE / NOMBRE:</div>
+                        <div style="font-size:0.68rem; font-weight:900; color:#0f172a; text-transform:uppercase; line-height:1.15; max-height:2.3em; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; margin-bottom:2px;" title="${name}">
                             ${name}
                         </div>
                         
-                        <div style="font-size:0.50rem; font-weight:800; color:#0f172a; text-transform:uppercase;">CARNÉ NO:</div>
-                        <div style="font-size:0.64rem; font-weight:900; color:#004098; margin-bottom:2px;">
-                            ${carne}
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                            <div>
+                                <span style="font-size:0.48rem; font-weight:800; color:#64748b; text-transform:uppercase;">CARNÉ NO:</span>
+                                <span style="font-size:0.64rem; font-weight:900; color:#003882; font-family:'Outfit',monospace; margin-left:3px;">${carne}</span>
+                            </div>
+                            <div style="font-size:0.46rem; font-weight:800; color:#007a3d; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:3px; padding:1px 5px;">
+                                CICLO [${cycle}]
+                            </div>
                         </div>
                         
-                        <div style="display:flex; justify-content:space-between; align-items:baseline;">
-                            <div>
-                                <span style="font-size:0.52rem; font-weight:800; color:#0f172a;">CICLO:</span> 
-                                <strong style="font-size:0.62rem; font-weight:900; color:#000000;">[${cycle}]</strong>
+                        <div style="display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:4px; padding:2px 6px;">
+                            <div style="font-size:0.52rem; font-weight:700; color:#334155; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:140px;">
+                                <span style="color:#007a3d; font-weight:800;">GRADO:</span> ${grade} "${section}"
                             </div>
-                            <div>
-                                <strong style="font-size:0.58rem; font-weight:900; color:#004098; text-transform:uppercase; letter-spacing:0.4px;">ESTUDIANTE</strong>
+                            <div style="font-size:0.54rem; font-weight:900; color:#ea580c; text-transform:uppercase; letter-spacing:0.5px;">
+                                ESTUDIANTE
                             </div>
                         </div>
                     </div>
 
-                    <!-- CONTENEDOR INFERIOR BLANCO RESERVADO (CÓDIGO DE BARRAS + QR) -->
-                    <div style="position:absolute; left:10px; right:10px; bottom:10px; height:42px; background:#ffffff; border:1.2px solid #cbd5e1; border-radius:8px; padding:2px 8px; display:flex; align-items:center; justify-content:space-between; gap:6px; box-shadow:0 1px 3px rgba(0,0,0,0.05); z-index:3;">
+                    <!-- CONTENEDOR INFERIOR BLANCO RESERVADO (CÓDIGO DE BARRAS + QR + MARCO PLATEADO) -->
+                    <div style="position:absolute; left:10px; right:10px; bottom:9px; height:42px; background:#ffffff; border:1.2px solid #cbd5e1; border-radius:8px; padding:2px 8px; display:flex; align-items:center; justify-content:space-between; gap:6px; box-shadow:0 2px 6px rgba(0,0,0,0.06); z-index:3;">
                         <div style="flex:1; text-align:center; overflow:hidden;">
                             <div style="width:92%; margin:0 auto;">
                                 ${barcodeSvg}
@@ -267,16 +293,18 @@
                                 ${carne}
                             </div>
                         </div>
-                        <div style="flex-shrink:0; border-left:1px solid #e2e8f0; padding-left:6px; display:flex; align-items:center; justify-content:center;" title="Escanear con Celular">
+                        <div style="flex-shrink:0; border-left:1.2px solid #e2e8f0; padding-left:6px; display:flex; flex-direction:column; align-items:center; justify-content:center;" title="Escanear con Celular para Validar">
                             ${qrSvg}
+                            <span style="font-size:0.36rem; color:#64748b; font-weight:800; letter-spacing:0.5px; margin-top:1px;">VALIDAR</span>
                         </div>
                     </div>
 
-                    <!-- REMATE INFERIOR DIAGONAL (AZUL, VERDE Y NARANJA) -->
-                    <svg style="position:absolute; bottom:0; left:0; width:100%; height:8px; pointer-events:none; z-index:1;" viewBox="0 0 336 8" preserveAspectRatio="none">
-                        <polygon points="0,0 165,0 155,8 0,8" fill="#004098" />
-                        <polygon points="158,0 215,0 205,8 148,8" fill="#007a3d" />
-                        <polygon points="218,0 240,0 230,8 208,8" fill="#ea580c" />
+                    <!-- REMATE INFERIOR DIAGONAL MULTICOLOR (AZUL, VERDE, PLATEADO Y NARANJA) -->
+                    <svg style="position:absolute; bottom:0; left:0; width:100%; height:7px; pointer-events:none; z-index:1;" viewBox="0 0 336 7" preserveAspectRatio="none">
+                        <polygon points="0,0 150,0 142,7 0,7" fill="#003882" />
+                        <polygon points="144,0 205,0 197,7 136,7" fill="#007a3d" />
+                        <polygon points="200,0 230,0 222,7 192,7" fill="#cbd5e1" />
+                        <polygon points="225,0 260,0 252,7 217,7" fill="#ea580c" />
                     </svg>
 
                 </div>
@@ -374,37 +402,44 @@
             return `
                 <div class="encco-carnet-card encco-carnet-student encco-carnet-back" style="width:336px; height:212px; background:#ffffff; border-radius:12px; border:1.5px solid #cbd5e1; box-shadow:0 6px 18px rgba(0,0,0,0.12); overflow:hidden; position:relative; font-family:'Plus Jakarta Sans', sans-serif; display:flex; flex-direction:column; box-sizing:border-box; padding:8px 12px; justify-content:space-between; text-align:left; user-select:none;">
                     
+                    <!-- LÍNEA SUPERIOR DECORATIVA TRICOLOR Y PLATEADA -->
+                    <div style="position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg, #003882 0%, #007a3d 35%, #cbd5e1 65%, #ea580c 100%);"></div>
+
                     <!-- ENCABEZADO MINEDUC REVERSO -->
-                    <div style="border-bottom:1.5px solid #006837; padding-bottom:3px; text-align:center;">
-                        <span style="font-family:'Outfit', sans-serif; font-size:0.64rem; font-weight:900; color:#006837; text-transform:uppercase; letter-spacing:0.3px; display:block;">
+                    <div style="border-bottom:1.5px solid #007a3d; padding-bottom:3px; text-align:center; margin-top:2px;">
+                        <span style="font-family:'Outfit', sans-serif; font-size:0.64rem; font-weight:900; color:#003882; text-transform:uppercase; letter-spacing:0.4px; display:block;">
                             ESCUELA NACIONAL DE CIENCIAS COMERCIALES
                         </span>
-                        <span style="font-size:0.50rem; color:#475569; font-weight:700;">
-                            Jutiapa, Guatemala | Código MINEDUC: <strong style="color:#0f172a;">22-01-0014-46</strong> | Ciclo ${cycle}
-                        </span>
+                        <div style="font-size:0.48rem; color:#475569; font-weight:700; display:flex; align-items:center; justify-content:center; gap:4px; margin-top:1px;">
+                            <span>Jutiapa, Guatemala</span>
+                            <span style="color:#cbd5e1;">|</span>
+                            <span>Código MINEDUC: <strong style="color:#003882; background:#e0f2fe; padding:0.5px 5px; border-radius:3px; border:0.8px solid #bae6fd;">22-01-0014-46</strong></span>
+                            <span style="color:#cbd5e1;">|</span>
+                            <span style="color:#007a3d; font-weight:800;">Ciclo ${cycle}</span>
+                        </div>
                     </div>
 
                     <!-- TABLA DE DATOS DEL ALUMNO DE ALTA LEGIBILIDAD -->
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:0.54rem; color:#0f172a; line-height:1.28; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:4px 8px;">
                         <div>
-                            <div><strong style="color:#006837;">Cód. Personal:</strong> <span style="font-weight:800;">${personalCode}</span></div>
-                            <div><strong style="color:#006837;">CUI / DPI:</strong> <span style="font-weight:700;">${cui}</span></div>
-                            <div><strong style="color:#006837;">Jornada:</strong> <span>${shift}</span></div>
-                            <div><strong style="color:#006837;">Nacimiento:</strong> <span>${birthDate || 'No reg.'}</span></div>
+                            <div><strong style="color:#003882;">Cód. Personal:</strong> <span style="font-weight:800; color:#0f172a;">${personalCode}</span></div>
+                            <div><strong style="color:#007a3d;">CUI / DPI:</strong> <span style="font-weight:700;">${cui}</span></div>
+                            <div><strong style="color:#007a3d;">Jornada:</strong> <span>${shift}</span></div>
+                            <div><strong style="color:#007a3d;">Nacimiento:</strong> <span>${birthDate || 'No reg.'}</span></div>
                         </div>
                         <div>
-                            <div><strong style="color:#006837;">Grado:</strong> <span style="font-weight:700;">${grade} "${section}"</span></div>
-                            <div><strong style="color:#006837;">Carrera:</strong> <span>${career}</span></div>
-                            <div><strong style="color:#006837;">Encargado:</strong> <span style="font-weight:700;">${guardian}</span></div>
-                            <div><strong style="color:#006837;">Emergencia:</strong> <span style="font-weight:800; color:#b91c1c;">${guardianPhone}</span></div>
+                            <div><strong style="color:#007a3d;">Grado:</strong> <span style="font-weight:700;">${grade} "${section}"</span></div>
+                            <div><strong style="color:#007a3d;">Carrera:</strong> <span>${career}</span></div>
+                            <div><strong style="color:#007a3d;">Encargado:</strong> <span style="font-weight:700;">${guardian}</span></div>
+                            <div><strong style="color:#ea580c;">Emergencia:</strong> <span style="font-weight:800; color:#ea580c; background:#fff7ed; padding:0 4px; border-radius:3px;">${guardianPhone}</span></div>
                         </div>
                     </div>
 
                     <!-- NORMATIVA INSTITUCIONAL OFICIAL -->
-                    <div style="font-size:0.48rem; color:#475569; line-height:1.22;">
+                    <div style="font-size:0.46rem; color:#475569; line-height:1.22; background:#ffffff; border-left:2.5px solid #003882; padding-left:5px;">
                         • <strong>Identificación Oficial:</strong> Acredita al portador como alumno regular formalmente inscrito.<br>
                         • <strong>Uso:</strong> Obligatorio para ingreso a instalaciones, biblioteca, gestiones y evaluaciones.<br>
-                        • <strong>Extravío:</strong> Reportar inmediatamente en Dirección. Este documento es personal e intransferible.
+                        • <strong>Extravío:</strong> Reportar inmediatamente en Dirección. Documento personal e intransferible.
                     </div>
 
                     <!-- FIRMA DE DIRECCIÓN, SELLO Y QR DE VERIFICACIÓN -->
@@ -418,8 +453,9 @@
                         <div style="display:flex; align-items:center; gap:6px;">
                             <div style="text-align:right;">
                                 <div style="font-size:0.48rem; color:#64748b; font-weight:700;">Vigencia: Ciclo ${cycle}</div>
+                                <div style="font-size:0.40rem; color:#007a3d; font-weight:800;">VERIFICADO MINEDUC</div>
                             </div>
-                            <div style="width:30px; height:30px;" title="QR de Verificación">
+                            <div style="width:30px; height:30px; border:1px solid #cbd5e1; border-radius:4px; padding:1px; background:#ffffff;" title="QR de Verificación">
                                 ${qrSvgBack}
                             </div>
                         </div>
@@ -464,45 +500,52 @@
             return `
                 <div class="encco-carnet-card encco-carnet-teacher encco-carnet-front" style="width:214px; height:336px; background:#ffffff; border-radius:14px; border:1.5px solid #cbd5e1; box-shadow:0 6px 18px rgba(0,0,0,0.12); overflow:hidden; position:relative; font-family:'Plus Jakarta Sans', sans-serif; box-sizing:border-box; text-align:center; user-select:none;">
                     
-                    <!-- MARCA DE AGUA EDIFICIO INSTITUCIONAL SUTIL DE FONDO -->
-                    <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:170px; height:170px; opacity:0.04; pointer-events:none; z-index:0; background:radial-gradient(circle, rgba(0,64,152,0.15) 0%, rgba(255,255,255,0) 70%);">
-                        <svg viewBox="0 0 170 170" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="15" y="45" width="140" height="80" rx="3" fill="#004098" opacity="0.3" />
-                            <rect x="30" y="60" width="20" height="25" fill="#ffffff" />
-                            <rect x="60" y="60" width="20" height="25" fill="#ffffff" />
-                            <rect x="90" y="60" width="20" height="25" fill="#ffffff" />
-                            <rect x="120" y="60" width="20" height="25" fill="#ffffff" />
+                    <!-- FONDO DE SEGURIDAD GUILLOCHÉ SUTIL -->
+                    <div style="position:absolute; inset:0; pointer-events:none; z-index:0; overflow:hidden; opacity:0.06;">
+                        <svg width="100%" height="100%" viewBox="0 0 214 336" xmlns="http://www.w3.org/2000/svg">
+                            <defs>
+                                <pattern id="guillocheTeacher_${teacher.id || 'def'}" width="30" height="30" patternUnits="userSpaceOnUse">
+                                    <circle cx="15" cy="15" r="12" fill="none" stroke="#003882" stroke-width="0.5"/>
+                                    <path d="M 0,15 Q 7.5,0 15,15 T 30,15" fill="none" stroke="#007a3d" stroke-width="0.5"/>
+                                    <path d="M 15,0 Q 30,7.5 15,15 T 15,30" fill="none" stroke="#ea580c" stroke-width="0.3"/>
+                                </pattern>
+                            </defs>
+                            <rect width="100%" height="100%" fill="url(#guillocheTeacher_${teacher.id || 'def'})"/>
                         </svg>
                     </div>
 
-                    <!-- CÚPULA ARQUEADA AZUL REAL Y CURVA VERDE SUPERIOR -->
-                    <svg style="position:absolute; top:0; left:0; width:214px; height:74px; pointer-events:none; z-index:1;" viewBox="0 0 214 74">
-                        <path d="M 0,0 L 214,0 L 214,44 C 160,56 54,56 0,44 Z" fill="#004098" />
-                        <path d="M 0,44 C 54,56 160,56 214,44 L 214,50 C 160,62 54,62 0,50 Z" fill="#007a3d" />
+                    <!-- CÚPULA ARQUEADA MULTICOLOR Y PLATEADA SUPERIOR -->
+                    <svg style="position:absolute; top:0; left:0; width:214px; height:78px; pointer-events:none; z-index:1;" viewBox="0 0 214 78">
+                        <path d="M 0,0 L 214,0 L 214,46 C 160,58 54,58 0,46 Z" fill="#003882" />
+                        <path d="M 0,46 C 54,58 160,58 214,46 L 214,52 C 160,64 54,64 0,52 Z" fill="#007a3d" />
+                        <path d="M 0,52 C 54,64 160,64 214,52 L 214,55 C 160,67 54,67 0,55 Z" fill="#cbd5e1" />
+                        <path d="M 0,55 C 54,67 160,67 214,55 L 214,58 C 160,70 54,70 0,58 Z" fill="#ea580c" />
                     </svg>
 
                     <!-- ESCUDO OFICIAL ENCCO SUPERIOR CENTRADO -->
-                    <div style="position:absolute; top:6px; left:50%; transform:translateX(-50%); width:42px; height:48px; z-index:4; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35));">
+                    <div style="position:absolute; top:6px; left:50%; transform:translateX(-50%); width:40px; height:46px; z-index:4; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.35));">
                         <img src="logo.png" style="width:100%; height:100%; object-fit:contain; display:block;" alt="Escudo ENCCO">
                     </div>
 
-                    <!-- TÍTULO OFICIAL CARNET DOCENTE (NARANJA PROMINENTE) -->
-                    <div style="position:absolute; top:54px; left:0; right:0; text-align:center; font-family:'Outfit', sans-serif; font-size:0.86rem; font-weight:900; color:#ea580c; letter-spacing:1.6px; text-transform:uppercase; z-index:2;">
+                    <!-- TÍTULO OFICIAL CARNET DOCENTE -->
+                    <div style="position:absolute; top:58px; left:0; right:0; text-align:center; font-family:'Outfit', sans-serif; font-size:0.86rem; font-weight:900; color:#ea580c; letter-spacing:1.6px; text-transform:uppercase; z-index:2; text-shadow:0 1px 2px rgba(255,255,255,0.8);">
                         CARNET DOCENTE
                     </div>
 
-                    <!-- CHEVRONS / BRACKETS GEOMÉTRICOS LATERALES (AZUL Y VERDE) -->
-                    <svg style="position:absolute; left:0; top:94px; width:10px; height:68px; pointer-events:none; z-index:1;" viewBox="0 0 10 68">
-                        <polygon points="0,0 7,10 7,58 0,68" fill="#004098" />
-                        <polygon points="7,10 10,14 10,54 7,58" fill="#007a3d" />
+                    <!-- CHEVRONS GEOMÉTRICOS LATERALES MODERNOS (AZUL, VERDE, NARANJA Y PLATEADO) -->
+                    <svg style="position:absolute; left:0; top:98px; width:12px; height:68px; pointer-events:none; z-index:1;" viewBox="0 0 12 68">
+                        <polygon points="0,0 8,10 8,58 0,68" fill="#003882" />
+                        <polygon points="8,10 10,13 10,55 8,58" fill="#007a3d" />
+                        <polygon points="10,13 12,16 12,52 10,55" fill="#ea580c" />
                     </svg>
-                    <svg style="position:absolute; right:0; top:94px; width:10px; height:68px; pointer-events:none; z-index:1;" viewBox="0 0 10 68">
-                        <polygon points="10,0 3,10 3,58 10,68" fill="#004098" />
-                        <polygon points="3,10 0,14 0,54 3,58" fill="#007a3d" />
+                    <svg style="position:absolute; right:0; top:98px; width:12px; height:68px; pointer-events:none; z-index:1;" viewBox="0 0 12 68">
+                        <polygon points="12,0 4,10 4,58 12,68" fill="#003882" />
+                        <polygon points="4,10 2,13 2,55 4,58" fill="#007a3d" />
+                        <polygon points="2,13 0,16 0,52 2,55" fill="#ea580c" />
                     </svg>
 
-                    <!-- FOTO CENTRAL CON MARCO DORADO BISELADO (NOTCHED CORNERS) -->
-                    <div style="position:absolute; top:80px; left:50%; transform:translateX(-50%); width:80px; height:100px; z-index:4; cursor:pointer;" onclick="EnccoCarnets.openPhotoModal('${teacher.id}', 'teacher')" title="Haga clic para tomar o cambiar la fotografía">
+                    <!-- FOTO CENTRAL CON MARCO PLATEADO PLATINO BISELADO (NOTCHED CORNERS) -->
+                    <div style="position:absolute; top:82px; left:50%; transform:translateX(-50%); width:80px; height:100px; z-index:4; cursor:pointer;" onclick="EnccoCarnets.openPhotoModal('${teacher.id}', 'teacher')" title="Haga clic para tomar o cambiar la fotografía">
                         <div class="encco-gold-frame-outer" style="width:100%; height:100%;">
                             <div class="encco-gold-frame-middle">
                                 <div class="encco-gold-frame-inner" id="carnetPhotoFrame_${teacher.id}">
@@ -513,28 +556,29 @@
                     </div>
 
                     <!-- BLOQUE DE DATOS CENTRADO DEL DOCENTE -->
-                    <div style="position:absolute; top:186px; left:8px; right:8px; text-align:center; z-index:3; line-height:1.2;">
-                        <div style="font-size:0.46rem; font-weight:800; color:#0f172a; text-transform:uppercase; letter-spacing:0.4px;">NOMBRE:</div>
-                        <div style="font-size:0.64rem; font-weight:900; color:#000000; text-transform:uppercase; max-height:2.3em; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; margin-bottom:2px; padding:0 4px;" title="${name}">
+                    <div style="position:absolute; top:188px; left:8px; right:8px; text-align:center; z-index:3; line-height:1.2;">
+                        <div style="font-size:0.46rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.4px;">NOMBRE:</div>
+                        <div style="font-size:0.64rem; font-weight:900; color:#0f172a; text-transform:uppercase; max-height:2.3em; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; margin-bottom:2px; padding:0 4px;" title="${name}">
                             ${name}
                         </div>
                         
-                        <div style="font-size:0.44rem; font-weight:800; color:#0f172a; text-transform:uppercase;">NÚMERO DE IDENTIFICACIÓN:</div>
-                        <div style="font-size:0.58rem; font-weight:900; color:#004098; margin-bottom:2px;">
+                        <div style="font-size:0.44rem; font-weight:800; color:#64748b; text-transform:uppercase;">NÚMERO DE IDENTIFICACIÓN:</div>
+                        <div style="font-size:0.58rem; font-weight:900; color:#003882; font-family:'Outfit',monospace; margin-bottom:2px;">
                             ${dpi}
                         </div>
                         
-                        <div style="font-size:0.44rem; font-weight:800; color:#0f172a; text-transform:uppercase;">ÁREA:</div>
-                        <div style="font-size:0.54rem; font-weight:800; color:#007a3d; margin-bottom:2px; max-height:1.8em; overflow:hidden; text-overflow:ellipsis; padding:0 4px;" title="${teacherArea}">
+                        <div style="font-size:0.44rem; font-weight:800; color:#64748b; text-transform:uppercase;">ÁREA:</div>
+                        <div style="font-size:0.54rem; font-weight:800; color:#007a3d; margin-bottom:3px; max-height:1.8em; overflow:hidden; text-overflow:ellipsis; padding:0 4px;" title="${teacherArea}">
                             ${teacherArea}
                         </div>
                         
-                        <div style="font-size:0.52rem; font-weight:900; color:#004098; text-transform:uppercase; letter-spacing:0.4px;">
-                            DOCENTE <span style="font-size:0.44rem; color:#ea580c; font-weight:800;">[${renglon}]</span>
+                        <div style="display:inline-block; background:linear-gradient(90deg, #eff6ff 0%, #f0fdf4 100%); border:1px solid #cbd5e1; border-radius:5px; padding:1.5px 8px;">
+                            <span style="font-size:0.52rem; font-weight:900; color:#003882; text-transform:uppercase; letter-spacing:0.5px;">DOCENTE</span>
+                            <span style="font-size:0.46rem; color:#ea580c; font-weight:800; margin-left:3px;">[${renglon}]</span>
                         </div>
                     </div>
 
-                    <!-- CONTENEDOR INFERIOR BLANCO RESERVADO (CÓDIGO DE BARRAS + QR) -->
+                    <!-- CONTENEDOR INFERIOR BLANCO RESERVADO (CÓDIGO DE BARRAS + QR + MARCO PLATEADO) -->
                     <div style="position:absolute; left:8px; right:8px; bottom:12px; height:40px; background:#ffffff; border:1.2px solid #cbd5e1; border-radius:8px; padding:2px 6px; display:flex; align-items:center; justify-content:space-between; gap:4px; box-shadow:0 1px 3px rgba(0,0,0,0.05); z-index:3;">
                         <div style="flex:1; text-align:center; overflow:hidden;">
                             <div style="width:88%; margin:0 auto;">
@@ -549,11 +593,12 @@
                         </div>
                     </div>
 
-                    <!-- BASE INFERIOR VERDE ESMERALDA CON REMATES AZULES -->
+                    <!-- BASE INFERIOR MULTICOLOR (AZUL, VERDE, PLATEADO Y NARANJA) -->
                     <svg style="position:absolute; bottom:0; left:0; width:100%; height:9px; pointer-events:none; z-index:1;" viewBox="0 0 214 9" preserveAspectRatio="none">
+                        <polygon points="0,0 214,0 214,2 0,2" fill="#cbd5e1" />
                         <path d="M 0,2 L 214,2 L 214,5 C 214,8 210,9 204,9 L 10,9 C 4,9 0,8 0,5 Z" fill="#007a3d" />
-                        <polygon points="0,0 8,0 0,9" fill="#004098" />
-                        <polygon points="214,0 206,0 214,9" fill="#004098" />
+                        <polygon points="0,0 8,0 0,9" fill="#003882" />
+                        <polygon points="214,0 206,0 214,9" fill="#ea580c" />
                     </svg>
 
                 </div>
@@ -589,35 +634,38 @@
             return `
                 <div class="encco-carnet-card encco-carnet-teacher encco-carnet-back" style="width:214px; height:336px; background:#ffffff; border-radius:14px; border:1.5px solid #cbd5e1; box-shadow:0 6px 18px rgba(0,0,0,0.12); overflow:hidden; position:relative; font-family:'Plus Jakarta Sans', sans-serif; display:flex; flex-direction:column; box-sizing:border-box; padding:10px 12px; justify-content:space-between; text-align:center; user-select:none;">
                     
+                    <!-- LÍNEA SUPERIOR DECORATIVA TRICOLOR Y PLATEADA -->
+                    <div style="position:absolute; top:0; left:0; width:100%; height:3px; background:linear-gradient(90deg, #003882 0%, #007a3d 35%, #cbd5e1 65%, #ea580c 100%);"></div>
+
                     <!-- ENCABEZADO INSTITUCIONAL VERTICAL -->
-                    <div style="border-bottom:1.5px solid #006837; padding-bottom:4px;">
-                        <span style="font-family:'Outfit', sans-serif; font-size:0.60rem; font-weight:900; color:#006837; text-transform:uppercase; letter-spacing:0.3px; display:block;">
+                    <div style="border-bottom:1.5px solid #007a3d; padding-bottom:4px; margin-top:2px;">
+                        <span style="font-family:'Outfit', sans-serif; font-size:0.60rem; font-weight:900; color:#003882; text-transform:uppercase; letter-spacing:0.3px; display:block;">
                             REPÚBLICA DE GUATEMALA
                         </span>
                         <span style="font-family:'Outfit', sans-serif; font-size:0.54rem; font-weight:800; color:#007a3d; text-transform:uppercase; display:block;">
                             MINISTERIO DE EDUCACIÓN
                         </span>
                         <span style="font-size:0.48rem; color:#475569; font-weight:600; display:block;">
-                            ENCCO Jutiapa 1970 | Código: <strong style="color:#0f172a;">22-01-0014-46</strong>
+                            ENCCO Jutiapa 1970 | Código: <strong style="color:#003882; background:#e0f2fe; padding:0.5px 4px; border-radius:3px;">22-01-0014-46</strong>
                         </span>
-                        <span style="font-size:0.48rem; color:#004098; font-weight:800; background:#eff6ff; padding:1px 6px; border-radius:3px; display:inline-block; margin-top:2px;">
+                        <span style="font-size:0.48rem; color:#003882; font-weight:800; background:linear-gradient(90deg, #eff6ff, #f8fafc); border:0.8px solid #cbd5e1; padding:1.5px 8px; border-radius:3px; display:inline-block; margin-top:2px; letter-spacing:0.3px;">
                             ACREDITACIÓN DOCENTE OFICIAL
                         </span>
                     </div>
 
                     <!-- FICHA DE DATOS DEL CATEDRÁTICO -->
                     <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:6px; font-size:0.52rem; color:#0f172a; text-align:left; line-height:1.3;">
-                        <div><strong style="color:#006837;">Catedrático:</strong> <span style="font-weight:700;">${name}</span></div>
-                        <div><strong style="color:#006837;">DPI / ID:</strong> <span>${dpi}</span></div>
-                        <div><strong style="color:#006837;">Renglón:</strong> <span>${renglon}</span></div>
-                        <div><strong style="color:#006837;">Título:</strong> <span>${title}</span></div>
-                        <div><strong style="color:#006837;">Asignaturas:</strong> <span style="font-weight:600; color:#0f172a;">${teacherSubjects}</span></div>
-                        <div><strong style="color:#006837;">Correo:</strong> <span>${email}</span></div>
-                        <div><strong style="color:#006837;">Vigencia:</strong> <span style="font-weight:800; color:#007a3d;">Ciclo Escolar ${cycle}</span></div>
+                        <div><strong style="color:#003882;">Catedrático:</strong> <span style="font-weight:700;">${name}</span></div>
+                        <div><strong style="color:#007a3d;">DPI / ID:</strong> <span>${dpi}</span></div>
+                        <div><strong style="color:#007a3d;">Renglón:</strong> <span>${renglon}</span></div>
+                        <div><strong style="color:#007a3d;">Título:</strong> <span>${title}</span></div>
+                        <div><strong style="color:#007a3d;">Asignaturas:</strong> <span style="font-weight:600; color:#0f172a;">${teacherSubjects}</span></div>
+                        <div><strong style="color:#007a3d;">Correo:</strong> <span>${email}</span></div>
+                        <div><strong style="color:#ea580c;">Vigencia:</strong> <span style="font-weight:800; color:#007a3d;">Ciclo Escolar ${cycle}</span></div>
                     </div>
 
                     <!-- CLÁUSULA DE VALIDEZ -->
-                    <div style="font-size:0.46rem; color:#64748b; line-height:1.2; text-align:justify; padding:0 2px;">
+                    <div style="font-size:0.46rem; color:#64748b; line-height:1.2; text-align:justify; padding:0 2px; border-left:2px solid #003882; padding-left:4px;">
                         El titular de este documento es miembro acreditado del Claustro Docente de la Escuela Nacional de Ciencias Comerciales ENCCO Jutiapa. Válido para trámites oficiales, supervisiones y control de acceso.
                     </div>
 
@@ -630,10 +678,10 @@
                             </div>
                         </div>
                         <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
-                            <div style="width:30px; height:30px;" title="QR de Validación">
+                            <div style="width:30px; height:30px; border:1px solid #cbd5e1; border-radius:4px; padding:1px; background:#ffffff;" title="QR de Validación">
                                 ${qrSvgBack}
                             </div>
-                            <span style="font-size:0.40rem; color:#64748b; font-weight:700;">VERIFICACIÓN</span>
+                            <span style="font-size:0.40rem; color:#007a3d; font-weight:800; letter-spacing:0.5px;">VERIFICACIÓN</span>
                         </div>
                     </div>
 
@@ -1580,7 +1628,7 @@
                             body { font-family: 'Plus Jakarta Sans', sans-serif; padding: 25px; display:flex; gap:20px; align-items:center; justify-content:center; background:#f8fafc; }
                             .encco-carnet-card { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box !important; }
                             .encco-gold-frame-outer {
-                                background: linear-gradient(135deg, #fce881 0%, #d4af37 25%, #8a6508 50%, #f3e5ab 75%, #b8860b 100%) !important;
+                                background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 25%, #94a3b8 50%, #f1f5f9 75%, #64748b 100%) !important;
                                 clip-path: polygon(7px 0%, calc(100% - 7px) 0%, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0% calc(100% - 7px), 0% 7px) !important;
                                 padding: 2.5px !important;
                                 box-sizing: border-box !important;
@@ -1591,7 +1639,7 @@
                             .encco-gold-frame-middle {
                                 width: 100% !important;
                                 height: 100% !important;
-                                background: #ffffff !important;
+                                background: linear-gradient(135deg, #003882 0%, #007a3d 50%, #ea580c 100%) !important;
                                 clip-path: polygon(5.5px 0%, calc(100% - 5.5px) 0%, 100% 5.5px, 100% calc(100% - 5.5px), calc(100% - 5.5px) 100%, 5.5px 100%, 0% calc(100% - 5.5px), 0% 5.5px) !important;
                                 padding: 1.5px !important;
                                 box-sizing: border-box !important;
@@ -1747,7 +1795,7 @@
                             }
                             .encco-carnet-card { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box !important; }
                             .encco-gold-frame-outer {
-                                background: linear-gradient(135deg, #fce881 0%, #d4af37 25%, #8a6508 50%, #f3e5ab 75%, #b8860b 100%) !important;
+                                background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 25%, #94a3b8 50%, #f1f5f9 75%, #64748b 100%) !important;
                                 clip-path: polygon(7px 0%, calc(100% - 7px) 0%, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0% calc(100% - 7px), 0% 7px) !important;
                                 padding: 2.5px !important;
                                 box-sizing: border-box !important;
@@ -1758,7 +1806,7 @@
                             .encco-gold-frame-middle {
                                 width: 100% !important;
                                 height: 100% !important;
-                                background: #ffffff !important;
+                                background: linear-gradient(135deg, #003882 0%, #007a3d 50%, #ea580c 100%) !important;
                                 clip-path: polygon(5.5px 0%, calc(100% - 5.5px) 0%, 100% 5.5px, 100% calc(100% - 5.5px), calc(100% - 5.5px) 100%, 5.5px 100%, 0% calc(100% - 5.5px), 0% 5.5px) !important;
                                 padding: 1.5px !important;
                                 box-sizing: border-box !important;
