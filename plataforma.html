@@ -3660,16 +3660,19 @@
                                 <div>
                                     <label style="font-size:0.75rem; font-weight:700; color:#64748b; margin-bottom:2px; display:block;">Grado:</label>
                                     <select id="gradeStatsGradeFilter" class="form-control form-control-sm" onchange="onGradeStatsGradeChange()" style="min-width:180px; font-weight:700; padding:6px 10px; height:auto; border-color:#cbd5e1;">
-                                        <option value="" disabled selected>-- Seleccione un Grado --</option>
-                                        <option value="6">6to Perito Contador</option>
+                                        <option value="4" selected>4to Perito Contador</option>
                                         <option value="5">5to Perito Contador</option>
-                                        <option value="4">4to Perito Contador</option>
+                                        <option value="6">6to Perito Contador</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label style="font-size:0.75rem; font-weight:700; color:#64748b; margin-bottom:2px; display:block;">Sección:</label>
                                     <select id="gradeStatsSectionFilter" class="form-control form-control-sm" onchange="renderGradeStatsView()" style="min-width:180px; font-weight:700; padding:6px 10px; height:auto; border-color:#cbd5e1;">
-                                        <option value="" disabled selected>-- Seleccione una Sección --</option>
+                                        <option value="ALL" selected>Todas las Secciones (Consolidado)</option>
+                                        <option value="A">Sección A</option>
+                                        <option value="B">Sección B</option>
+                                        <option value="C">Sección C</option>
+                                        <option value="D">Sección D</option>
                                     </select>
                                 </div>
                             </div>
@@ -6182,7 +6185,7 @@
         // Registro de Service Worker para PWA y disponibilidad fuera de línea
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js?v=20261015_v263_authority_overrides_optimized').catch(function(err) {
+                navigator.serviceWorker.register('sw.js?v=20261015_v264_stats_and_import_fixed').catch(function(err) {
                     console.debug('[SW] Registro omitido o no compatible:', err);
                 });
             });
@@ -6193,10 +6196,10 @@
     <script src="ui.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="sire.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
     <script src="official_historical_patches.js?v=20261014_v1" defer charset="UTF-8"></script>
-    <script src="app.js?v=20261015_v263_authority_overrides_optimized" charset="UTF-8"></script>
+    <script src="app.js?v=20261015_v264_stats_and_import_fixed" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20260925_v1" charset="UTF-8"></script>
-    <script src="grade_stats.js?v=20260924_v234_modular_phase2" charset="UTF-8"></script>
-    <script src="analytics.js?v=2026.09.21.v225_analytics_and_carnets" charset="UTF-8"></script>
+    <script src="grade_stats.js?v=20261015_v264_stats_and_import_fixed" charset="UTF-8"></script>
+    <script src="analytics.js?v=20261015_v264_stats_and_import_fixed" charset="UTF-8"></script>
     <script src="qrcode.min.js" defer charset="UTF-8"></script>
     <script src="carnets.js?v=2026.09.21.v226_carnets_horizontal_vertical" charset="UTF-8"></script>
     <script src="auxiliatura_center.js?v=20261003_v1" charset="UTF-8"></script>

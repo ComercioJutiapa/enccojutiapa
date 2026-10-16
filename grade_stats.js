@@ -9,21 +9,11 @@
 // ==========================================================================
 window._lastGradeStatsReportData = null;
 
-function onGradeStatsGradeChange() {
-    const gradeSelect = document.getElementById('gradeStatsGradeFilter');
+function populateGradeStatsSectionsForGrade(gVal, preferredSec = 'ALL') {
     const secSelect = document.getElementById('gradeStatsSectionFilter');
-    if (!gradeSelect || !secSelect) return;
-
-    const gVal = gradeSelect.value;
-    if (!gVal) {
-        secSelect.innerHTML = '<option value="" disabled selected>-- Seleccione una Sección --</option>';
-        renderGradeStatsView();
-        return;
-    }
+    if (!secSelect) return 'ALL';
 
     const students = STATE.students || [];
-
-    // Buscar secciones existentes para este grado
     const gStudents = students.filter(s => {
         const g = String(s.grade || s.gradeLevel || '').toLowerCase();
         return g.includes(`${gVal}to`) || (gVal === '6' && (g.includes('6to') || g.includes('sexto'))) ||
@@ -37,19 +27,33 @@ function onGradeStatsGradeChange() {
         if (rawSec) uniqueSecs.add(rawSec);
     });
 
-    // Si no se detectaron secciones específicas, proveer al menos A, B, C, D
     if (uniqueSecs.size === 0) {
         ['A', 'B', 'C', 'D'].forEach(s => uniqueSecs.add(s));
     }
 
     const sortedSecs = Array.from(uniqueSecs).sort();
-    let optHtml = '<option value="" disabled selected>-- Seleccione una Sección --</option>';
-    optHtml += '<option value="ALL">Todas las Secciones (Consolidado)</option>';
+    const targetSec = (preferredSec && (preferredSec === 'ALL' || sortedSecs.includes(preferredSec))) ? preferredSec : 'ALL';
+
+    let optHtml = `<option value="ALL" ${targetSec === 'ALL' ? 'selected' : ''}>Todas las Secciones (Consolidado)</option>`;
     sortedSecs.forEach(sec => {
-        optHtml += `<option value="${sec}">Sección ${sec}</option>`;
+        optHtml += `<option value="${sec}" ${targetSec === sec ? 'selected' : ''}>Sección ${sec}</option>`;
     });
     secSelect.innerHTML = optHtml;
+    secSelect.value = targetSec;
+    return targetSec;
+}
 
+function onGradeStatsGradeChange() {
+    const gradeSelect = document.getElementById('gradeStatsGradeFilter');
+    const secSelect = document.getElementById('gradeStatsSectionFilter');
+    if (!gradeSelect || !secSelect) return;
+
+    const gVal = gradeSelect.value;
+    if (!gVal) {
+        gradeSelect.value = '4';
+    }
+    const prevSec = secSelect.value || 'ALL';
+    populateGradeStatsSectionsForGrade(gradeSelect.value || '4', prevSec);
     renderGradeStatsView();
 }
 window.onGradeStatsGradeChange = onGradeStatsGradeChange;
@@ -64,27 +68,19 @@ function renderGradeStatsView() {
     const gradeSelect = document.getElementById('gradeStatsGradeFilter');
     const secSelect = document.getElementById('gradeStatsSectionFilter');
 
-    const period = bimSelect ? bimSelect.value : 'FINAL';
-    const gradeVal = gradeSelect ? gradeSelect.value : '';
-    const selectedSection = secSelect ? secSelect.value : '';
+    const period = bimSelect ? (bimSelect.value || 'FINAL') : 'FINAL';
+    let gradeVal = gradeSelect ? gradeSelect.value : '';
+    let selectedSection = secSelect ? secSelect.value : '';
 
-    // REGLA CLAVE: No mostrar datos a menos que se seleccione Grado y Sección
-    if (!gradeVal || !selectedSection) {
-        let promptMsg = 'Por favor seleccione un <strong>Grado</strong> y una <strong>Sección</strong> en los filtros superiores para generar dinámicamente las actas oficiales de promedios.';
-        if (gradeVal && !selectedSection) {
-            promptMsg = `Grado <strong>${gradeVal}to Perito Contador</strong> seleccionado. Ahora elija una <strong>Sección</strong> para visualizar el documento.`;
-        }
-        container.innerHTML = `
-            <div class="no-print" style="text-align:center; padding:55px 20px; background:#ffffff; border-radius:10px; border:2px dashed #cbd5e1; width:100%; max-width:100%; box-sizing:border-box; margin:16px 0; color:#64748b;">
-                <i class="fa-solid fa-file-invoice" style="font-size:3.2rem; color:#0284c7; margin-bottom:14px; display:block;"></i>
-                <h3 style="font-size:1.18rem; font-weight:800; color:#1e293b; margin-bottom:8px;">Seleccione los Parámetros del Reporte</h3>
-                <p style="font-size:0.92rem; margin:0 auto; color:#64748b; max-width:440px; line-height:1.5;">
-                    ${promptMsg}
-                </p>
-            </div>
-        `;
-        window._lastGradeStatsReportData = null;
-        return;
+    // 🌟 A.1: Carga inmediata al entrar — Si no hay grado o sección seleccionada, preseleccionar automáticamente
+    if (!gradeVal && gradeSelect) {
+        gradeVal = '4';
+        gradeSelect.value = '4';
+    }
+    if (!selectedSection && secSelect && gradeVal) {
+        selectedSection = populateGradeStatsSectionsForGrade(gradeVal, 'ALL');
+    } else if (secSelect && secSelect.options.length <= 1 && gradeVal) {
+        selectedSection = populateGradeStatsSectionsForGrade(gradeVal, selectedSection || 'ALL');
     }
 
     const gradeLabelMap = { '6': '6to Perito Contador', '5': '5to Perito Contador', '4': '4to Perito Contador' };
@@ -197,9 +193,17 @@ function renderGradeStatsView() {
 
         function matchKey(dict) {
             if (!dict || typeof dict !== 'object') return null;
-            for (const k of Object.keys(dict)) {
+            const keys = Object.keys(dict);
+            for (const k of keys) {
+                if (cleanStr(k) === cleanTarget) return k;
+            }
+            for (const k of keys) {
                 const cK = cleanStr(k);
-                if (cK.includes(cleanTarget) || cleanTarget.includes(cK) ||
+                if (!cK) continue;
+                const numT = (cleanTarget.match(/\d+|[ivx]+$/) || [''])[0];
+                const numK = (cK.match(/\d+|[ivx]+$/) || [''])[0];
+                const sameNum = (!numT && !numK) || (numT === numK);
+                if ((sameNum && (cK.includes(cleanTarget) || cleanTarget.includes(cK))) ||
                     (cleanTarget.includes('gubernamental') && cK.includes('gubernamental')) ||
                     (cleanTarget.includes('organizacion') && cK.includes('organizacion')) ||
                     (cleanTarget.includes('derecho') && cK.includes('derecho')) ||
@@ -209,7 +213,6 @@ function renderGradeStatsView() {
                     (cleanTarget.includes('etica') && cK.includes('etica')) ||
                     (cleanTarget.includes('estadistica') && cK.includes('estadistica')) ||
                     (cleanTarget.includes('bancaria') && cK.includes('bancaria')) ||
-                    (cleanTarget.includes('computacion') && cK.includes('computacion')) ||
                     (cleanTarget.includes('costos') && cK.includes('costos')) ||
                     (cleanTarget.includes('sociedades') && cK.includes('sociedades')) ||
                     (cleanTarget.includes('mecanografia') && cK.includes('mecanografia')) ||
@@ -217,7 +220,6 @@ function renderGradeStatsView() {
                     (cleanTarget.includes('fiscal') && cK.includes('fiscal')) ||
                     (cleanTarget.includes('finanzas') && cK.includes('finanzas')) ||
                     (cleanTarget.includes('geografia') && cK.includes('geografia')) ||
-                    (cleanTarget.includes('ingles') && cK.includes('ingles')) ||
                     (cleanTarget.includes('redaccion') && cK.includes('redaccion')) ||
                     (cleanTarget.includes('caligrafia') && (cK.includes('caligrafia') || cK.includes('ortografia'))) ||
                     (cleanTarget.includes('ortografia') && (cK.includes('ortografia') || cK.includes('caligrafia'))) ||
@@ -251,7 +253,7 @@ function renderGradeStatsView() {
         // 🌟 REGLA INSTITUCIONAL: Promedios oficiales para 4to/5to (4 unidades), 6to (3 unidades),
         // y materias especiales de graduación (Seminario y Práctica: nota única en B4, sin promedio).
         if (typeof window !== 'undefined' && typeof window.getReportCardSubjectGrades === 'function') {
-            const r = window.getReportCardSubjectGrades(student, targetSubject);
+            const r = window.getReportCardSubjectGrades(student, matchedKey || targetSubject);
             if (per === 'FINAL') {
                 if (r.isSpecialUnique) {
                     const sc = r.b4 > 0 ? r.b4 : null;
@@ -663,11 +665,55 @@ function renderGradeStatsView() {
 
     container.innerHTML = html;
 
-    // Guardar referencia en memoria para exportar a Excel
+    // Construir filas de resumen para compatibilidad con printGradeStatsReport
+    const sectionRows = [];
+    let sumAllAvgs = 0;
+    let countAllAvgs = 0;
+    sectionCols.forEach(sec => {
+        const sInf = sectionData[sec] || { total: 0, aprobados: 0, recuperacion: 0, reprobados: 0, retirados: 0, students: [] };
+        const activeList = (sInf.students || []).filter(x => !x.isRetirado && x.average > 0);
+        const secAvg = activeList.length > 0
+            ? Number((activeList.reduce((a, b) => a + b.average, 0) / activeList.length).toFixed(2))
+            : 0;
+        activeList.forEach(x => { sumAllAvgs += x.average; countAllAvgs++; });
+        const evalTotal = Math.max(1, sInf.total - sInf.retirados);
+        const failedTotalSec = sInf.recuperacion + sInf.reprobados;
+        sectionRows.push({
+            grade: gradeTitle,
+            section: sec,
+            total: sInf.total,
+            avg: secAvg.toFixed(2),
+            approved: sInf.aprobados,
+            pctApproved: sInf.total > 0 ? Math.round((sInf.aprobados / evalTotal) * 100) : 0,
+            failed: failedTotalSec,
+            pctFailed: sInf.total > 0 ? Math.round((failedTotalSec / evalTotal) * 100) : 0
+        });
+    });
+
+    const schoolAvgNum = countAllAvgs > 0 ? Number((sumAllAvgs / countAllAvgs).toFixed(2)) : 0;
+    const evalGrandTotal = Math.max(1, totTotal - totRetir);
+    const totalFailedCombined = totRecup + totReprob;
+    const totalPctApproved = totTotal > 0 ? Math.round((totAprobados / evalGrandTotal) * 100) : 0;
+    const totalPctFailed = totTotal > 0 ? Math.round((totalFailedCombined / evalGrandTotal) * 100) : 0;
+
+    const gradeRows = [{
+        grade: gradeTitle,
+        sections: sectionCols.join(', '),
+        total: totTotal,
+        avg: schoolAvgNum.toFixed(2),
+        approved: totAprobados,
+        pctApproved: totalPctApproved,
+        failed: totalFailedCombined,
+        pctFailed: totalPctFailed
+    }];
+
+    // Guardar referencia en memoria para exportar a Excel e Imprimir
     window._lastGradeStatsReportData = {
         gradeVal,
         gradeTitle,
         period,
+        bimLabel: periodTitle,
+        gradeFilterLabel: selectedSection === 'ALL' ? `${gradeTitle} (Todas las Secciones)` : `${gradeTitle} - Sección ${selectedSection}`,
         selectedSection,
         sectionCols,
         officialSubjects,
@@ -678,6 +724,14 @@ function renderGradeStatsView() {
         totReprob,
         totRetir,
         totTotal,
+        totalStudents: totTotal,
+        schoolAvg: schoolAvgNum.toFixed(2),
+        totalApproved: totAprobados,
+        totalPctApproved,
+        totalFailed: totalFailedCombined,
+        totalPctFailed,
+        sectionRows,
+        gradeRows,
         dateFormattedLong
     };
 }

@@ -32,21 +32,32 @@
             const stCareer = (student.career || '').trim();
             const stCycle = (student.academicCycle || (window.STATE && window.STATE.activeCycle) || '2026').toString();
 
-            // Obtener pensum del estudiante
-            const pensumList = (window.STATE && Array.isArray(window.STATE.pensum)) ? window.STATE.pensum : [];
-            const studentCourses = pensumList.filter(p => {
-                if (!p) return false;
-                const pGrade = (p.grade || '').trim();
-                const pSec = (p.section || '').trim();
-                const pCar = (p.career || '').trim();
+            // Obtener pensum del estudiante (priorizando getReportCardSubjects y catálogo oficial)
+            let officialSubjects = [];
+            if (typeof window.getReportCardSubjects === 'function') {
+                try {
+                    officialSubjects = window.getReportCardSubjects(student) || [];
+                } catch (e) {}
+            }
 
-                const gradeMatch = !pGrade || !stGrade || pGrade.toLowerCase() === stGrade.toLowerCase();
-                const secMatch = !pSec || !stSection || pSec.toLowerCase() === stSection.toLowerCase();
-                const carMatch = !pCar || !stCareer || pCar.toLowerCase() === stCareer.toLowerCase();
-                return gradeMatch && secMatch && carMatch;
-            });
+            if (officialSubjects.length === 0) {
+                const pensumList = (window.STATE && Array.isArray(window.STATE.pensum)) ? window.STATE.pensum : [];
+                const gNumSt = (stGrade.match(/\d+/) || [''])[0];
+                const studentCourses = pensumList.filter(p => {
+                    if (!p) return false;
+                    const pGrade = (p.grade || '').trim();
+                    const pSec = (p.section || '').trim();
+                    const gNumP = (pGrade.match(/\d+/) || [''])[0];
+                    const gradeMatch = !pGrade || !stGrade || (gNumSt && gNumP ? gNumSt === gNumP : pGrade.toLowerCase().includes(stGrade.toLowerCase()));
+                    const secCleanP = pSec.replace(/^secci[oó]n\s*/i, '').trim().toLowerCase();
+                    const secCleanSt = stSection.replace(/^secci[oó]n\s*/i, '').trim().toLowerCase();
+                    const secMatch = !secCleanP || !secCleanSt || secCleanP === secCleanSt;
+                    return gradeMatch && secMatch;
+                });
+                officialSubjects = studentCourses.map(c => c.subject).filter(Boolean);
+            }
 
-            // Evaluar calificaciones
+            // Evaluar calificaciones desde getReportCardSubjectGrades, gradebookDetails y student.grades
             const gradesObj = student.grades || {};
             const gradebookDetails = student.gradebookDetails || {};
             let totalEvaluatedSubjects = 0;
@@ -55,30 +66,52 @@
             const failedSubjectsList = [];
             const coursePerformances = [];
 
-            // Si hay cursos en pensum para este grado, iterar sobre ellos
-            const subjectsToEvaluate = studentCourses.length > 0 
-                ? studentCourses.map(c => c.subject) 
-                : Object.keys(gradesObj);
+            const subjectsToEvaluate = officialSubjects.length > 0
+                ? officialSubjects
+                : [...Object.keys(gradebookDetails), ...Object.keys(gradesObj)];
 
-            // Eliminar duplicados
             const uniqueSubjects = [...new Set(subjectsToEvaluate)].filter(Boolean);
 
             uniqueSubjects.forEach(subjectName => {
-                let uArr = gradesObj[subjectName];
-                if (!uArr) {
-                    // Búsqueda insensible a mayúsculas/minúsculas
-                    const sLower = subjectName.toLowerCase();
-                    const foundKey = Object.keys(gradesObj).find(k => k.toLowerCase() === sLower);
-                    if (foundKey) uArr = gradesObj[foundKey];
-                }
-
                 let evaluatedUnits = [];
-                if (Array.isArray(uArr)) {
-                    evaluatedUnits = uArr.filter(n => typeof n === 'number' && !isNaN(n) && n > 0);
-                } else if (typeof uArr === 'number' && !isNaN(uArr) && uArr > 0) {
-                    evaluatedUnits = [uArr];
-                } else if (uArr && typeof uArr === 'object') {
-                    evaluatedUnits = Object.values(uArr).filter(n => typeof n === 'number' && !isNaN(n) && n > 0);
+
+                if (typeof window.getReportCardSubjectGrades === 'function') {
+                    const r = window.getReportCardSubjectGrades(student, subjectName);
+                    if (r && r.isFullyExon) return;
+                    if (r && r.isSpecialUnique) {
+                        if (r.b4 > 0) evaluatedUnits = [Number(r.b4)];
+                    } else if (r) {
+                        const is6to = stGrade.includes('6') || stGrade.toLowerCase().includes('sexto');
+                        const maxU = is6to ? 3 : 4;
+                        for (let b = 1; b <= maxU; b++) {
+                            if (r[`isExon${b}`]) continue;
+                            const val = Number(r[`b${b}`] || 0);
+                            if (val > 0) evaluatedUnits.push(val);
+                        }
+                    }
+                } else {
+                    const sLower = subjectName.toLowerCase();
+                    const detKey = Object.keys(gradebookDetails).find(k => k.toLowerCase() === sLower);
+                    if (detKey && gradebookDetails[detKey]) {
+                        for (let b = 1; b <= 4; b++) {
+                            const uObj = gradebookDetails[detKey][b] || gradebookDetails[detKey][String(b)];
+                            if (uObj) {
+                                const sc = Number(uObj.total !== undefined ? uObj.total : ((Number(uObj.zona) || 0) + (Number(uObj.exam) || 0)));
+                                if (sc > 0) evaluatedUnits.push(sc);
+                            }
+                        }
+                    }
+                    if (evaluatedUnits.length === 0) {
+                        const foundKey = Object.keys(gradesObj).find(k => k.toLowerCase() === sLower);
+                        const uArr = foundKey ? gradesObj[foundKey] : gradesObj[subjectName];
+                        if (Array.isArray(uArr)) {
+                            evaluatedUnits = uArr.map(Number).filter(n => !isNaN(n) && n > 0);
+                        } else if (typeof uArr === 'number' && !isNaN(uArr) && uArr > 0) {
+                            evaluatedUnits = [uArr];
+                        } else if (uArr && typeof uArr === 'object') {
+                            evaluatedUnits = Object.values(uArr).map(Number).filter(n => !isNaN(n) && n > 0);
+                        }
+                    }
                 }
 
                 if (evaluatedUnits.length > 0) {
@@ -90,7 +123,7 @@
                     coursePerformances.push({
                         subject: subjectName,
                         average: avg,
-                        units: Array.isArray(uArr) ? uArr : evaluatedUnits,
+                        units: evaluatedUnits,
                         evaluatedCount: evaluatedUnits.length,
                         isFailed: avg < 60
                     });
@@ -146,7 +179,9 @@
 
             return {
                 studentId: student.id,
-                studentName: student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim(),
+                studentName: (typeof window.formatStudentDisplayName === 'function')
+                    ? window.formatStudentDisplayName(student, 'lastFirst')
+                    : (student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim()),
                 carne: student.carne || student.personalCode || 'S/C',
                 personalCode: student.personalCode || '',
                 grade: stGrade,
@@ -171,16 +206,22 @@
             const allStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
             const activeCycle = (window.STATE && window.STATE.activeCycle) || '2026';
 
-            // Filtrar estudiantes
+            // Filtrar estudiantes activos (excluyendo retirados) con coincidencia flexible de Grado/Sección/Carrera
             const filtered = allStudents.filter(st => {
-                if (!st) return false;
-                const stCar = (st.career || '').trim();
-                const stGrd = (st.grade || '').trim();
-                const stSec = (st.section || '').trim();
+                if (!st || st.status === 'Retirado' || st.status === 'Inactivo') return false;
+                const stCar = (st.career || '').trim().toLowerCase();
+                const stGrd = (st.grade || st.gradeLevel || '').trim().toLowerCase();
+                const stSec = (st.section || '').replace(/^secci[oó]n\s*/i, '').trim().toLowerCase();
 
-                const carMatch = (filterCareer === 'ALL' || !filterCareer || stCar.toLowerCase() === filterCareer.toLowerCase());
-                const grdMatch = (filterGrade === 'ALL' || !filterGrade || stGrd.toLowerCase() === filterGrade.toLowerCase());
-                const secMatch = (filterSection === 'ALL' || !filterSection || stSec.toLowerCase() === filterSection.toLowerCase());
+                const fCar = (filterCareer || '').trim().toLowerCase();
+                const fGrd = (filterGrade || '').trim().toLowerCase();
+                const fSec = (filterSection || '').replace(/^secci[oó]n\s*/i, '').trim().toLowerCase();
+
+                const carMatch = (filterCareer === 'ALL' || !fCar || stCar === fCar || stCar.includes(fCar) || fCar.includes(stCar));
+                const gNumSt = (stGrd.match(/\d+/) || [''])[0];
+                const gNumF = (fGrd.match(/\d+/) || [''])[0];
+                const grdMatch = (filterGrade === 'ALL' || !fGrd || (gNumSt && gNumF ? gNumSt === gNumF : (stGrd === fGrd || stGrd.includes(fGrd) || fGrd.includes(stGrd))));
+                const secMatch = (filterSection === 'ALL' || !fSec || stSec === fSec);
                 return carMatch && grdMatch && secMatch;
             });
 

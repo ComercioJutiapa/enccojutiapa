@@ -22460,18 +22460,86 @@ function getReportCardSubjectGrades(student, subject) {
         .replace(/[^a-z0-9]/g, '');
     const cleanTarget = cleanStr(subject);
 
-    // 1. Lectura prioritaria desde gradebookDetails (notas y actividades actualizadas en tiempo real)
-    if (student.gradebookDetails && typeof student.gradebookDetails === 'object') {
-        let details = student.gradebookDetails[subject];
-        if (!details) {
-            for (const k of Object.keys(student.gradebookDetails)) {
-                const cK = cleanStr(k);
-                if (cK === cleanTarget) {
-                    details = student.gradebookDetails[k];
-                    break;
+    function findMatchingSubjectEntry(dict) {
+        if (!dict || typeof dict !== 'object') return null;
+        if (dict[subject] !== undefined) return dict[subject];
+        const keys = Object.keys(dict);
+        // 1. Coincidencia exacta normalizada
+        for (const k of keys) {
+            if (cleanStr(k) === cleanTarget) return dict[k];
+        }
+        // 2. Coincidencia mediante diccionario oficial CNB de alias (si está disponible)
+        if (typeof OFFICIAL_CNB_PENSUM_ORDER === 'object' && OFFICIAL_CNB_PENSUM_ORDER) {
+            for (const list of Object.values(OFFICIAL_CNB_PENSUM_ORDER)) {
+                for (const item of list) {
+                    const itemClean = cleanStr(item.name);
+                    const aliasesClean = (item.aliases || []).map(a => cleanStr(a));
+                    if (itemClean === cleanTarget || aliasesClean.includes(cleanTarget)) {
+                        for (const k of keys) {
+                            const cK = cleanStr(k);
+                            if (cK === itemClean || aliasesClean.includes(cK)) {
+                                return dict[k];
+                            }
+                        }
+                    }
                 }
             }
         }
+        // 3. Coincidencia flexible segura (respetando números romanos/arábigos y separación de Dos Ramos en 4to)
+        const extractCourseSuffix = str => {
+            const s = (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            const m = s.match(/\b(iii|ii|i|1|2|3)\b$/);
+            if (!m) return '';
+            const map = { 'i': '1', 'ii': '2', 'iii': '3', '1': '1', '2': '2', '3': '3' };
+            return map[m[1]] || '';
+        };
+        const sufTarget = extractCourseSuffix(subject);
+        for (const k of keys) {
+            const cK = cleanStr(k);
+            if (!cK) continue;
+            const sufK = extractCourseSuffix(k);
+            if (sufTarget !== sufK) continue;
+
+            // Respetar separación estricta de Dos Ramos (Caligrafía vs Redacción, Catalogación vs Administración)
+            const isCaligT = cleanTarget.includes('caligrafia') || cleanTarget.includes('ortografia');
+            const isRedacT = cleanTarget.includes('redaccion') || cleanTarget.includes('correspondencia');
+            const isCatT = cleanTarget.includes('catalogacion') || cleanTarget.includes('archivo');
+            const isAdminT = cleanTarget.includes('administracion') || cleanTarget.includes('organizacion');
+
+            const isCaligK = cK.includes('caligrafia') || cK.includes('ortografia');
+            const isRedacK = cK.includes('redaccion') || cK.includes('correspondencia');
+            const isCatK = cK.includes('catalogacion') || cK.includes('archivo');
+            const isAdminK = cK.includes('administracion') || cK.includes('organizacion');
+
+            if ((isCaligT && isRedacK) || (isRedacT && isCaligK) || (isCatT && isAdminK) || (isAdminT && isCatK)) {
+                continue;
+            }
+
+            if ((cleanTarget.length >= 6 && cK.length >= 6 && (cK.includes(cleanTarget) || cleanTarget.includes(cK))) ||
+                (cleanTarget.includes('gubernamental') && cK.includes('gubernamental')) ||
+                (cleanTarget.includes('seminario') && cK.includes('seminario')) ||
+                (cleanTarget.includes('practica') && cK.includes('practica')) ||
+                (cleanTarget.includes('auditoria') && cK.includes('auditoria')) ||
+                (cleanTarget.includes('etica') && cK.includes('etica')) ||
+                (cleanTarget.includes('estadistica') && cK.includes('estadistica')) ||
+                (cleanTarget.includes('bancaria') && cK.includes('bancaria')) ||
+                (cleanTarget.includes('costos') && cK.includes('costos')) ||
+                (cleanTarget.includes('sociedades') && cK.includes('sociedades')) ||
+                (cleanTarget.includes('mecanografia') && cK.includes('mecanografia')) ||
+                (cleanTarget.includes('fiscal') && cK.includes('fiscal')) ||
+                (cleanTarget.includes('finanzas') && cK.includes('finanzas')) ||
+                (cleanTarget.includes('geografia') && cK.includes('geografia')) ||
+                (cleanTarget.includes('economia') && cK.includes('economia')) ||
+                (cleanTarget.includes('matematica') && cK.includes('matematica'))) {
+                return dict[k];
+            }
+        }
+        return null;
+    }
+
+    // 1. Lectura prioritaria desde gradebookDetails (notas y actividades actualizadas en tiempo real)
+    if (student.gradebookDetails && typeof student.gradebookDetails === 'object') {
+        const details = findMatchingSubjectEntry(student.gradebookDetails);
         if (details && typeof details === 'object') {
             for (let b = 1; b <= 4; b++) {
                 const uObj = details[String(b)] || details[b];
@@ -22492,21 +22560,17 @@ function getReportCardSubjectGrades(student, subject) {
 
     // 2. Lectura complementaria desde student.grades
     if (student.grades && typeof student.grades === 'object') {
-        let gArr = student.grades[subject];
-        if (!gArr) {
-            for (const k of Object.keys(student.grades)) {
-                const cK = cleanStr(k);
-                if (cK === cleanTarget) {
-                    gArr = student.grades[k];
-                    break;
-                }
-            }
-        }
+        const gArr = findMatchingSubjectEntry(student.grades);
         if (Array.isArray(gArr)) {
             if (b1 === 0 && gArr[0]) b1 = parseInt(gArr[0]) || 0;
             if (b2 === 0 && gArr[1]) b2 = parseInt(gArr[1]) || 0;
             if (b3 === 0 && gArr[2]) b3 = parseInt(gArr[2]) || 0;
             if (b4 === 0 && gArr[3]) b4 = parseInt(gArr[3]) || 0;
+        } else if (gArr && typeof gArr === 'object') {
+            if (b1 === 0 && (gArr.b1 || gArr[1] || gArr['1'])) b1 = parseInt(gArr.b1 || gArr[1] || gArr['1']) || 0;
+            if (b2 === 0 && (gArr.b2 || gArr[2] || gArr['2'])) b2 = parseInt(gArr.b2 || gArr[2] || gArr['2']) || 0;
+            if (b3 === 0 && (gArr.b3 || gArr[3] || gArr['3'])) b3 = parseInt(gArr.b3 || gArr[3] || gArr['3']) || 0;
+            if (b4 === 0 && (gArr.b4 || gArr[4] || gArr['4'])) b4 = parseInt(gArr.b4 || gArr[4] || gArr['4']) || 0;
         }
     }
 
@@ -33707,7 +33771,18 @@ function parseCsvLine(textLine) {
 function fallbackTextGradebookRead(file, targetPensum, currentUnit) {
     const reader = new FileReader();
     reader.onload = function(evt) {
-        const text = evt.target.result;
+        const text = evt.target.result || '';
+        if (/<table[\s>]/i.test(text) && /<tr[\s>]/i.test(text) && typeof DOMParser !== 'undefined') {
+            try {
+                const doc = new DOMParser().parseFromString(text, 'text/html');
+                const trs = Array.from(doc.querySelectorAll('tr'));
+                const htmlRows = trs.map(tr => Array.from(tr.querySelectorAll('th, td')).map(cell => (cell.textContent || '').trim()));
+                if (htmlRows.length > 0) {
+                    processGradebookImportRows(htmlRows, targetPensum, currentUnit, file ? file.name : '');
+                    return;
+                }
+            } catch (e) {}
+        }
         const rawLines = parseImportFileRows(text);
         const rawRows = rawLines.map(line => parseCsvLine(line));
         processGradebookImportRows(rawRows, targetPensum, currentUnit, file ? file.name : '');
@@ -33737,42 +33812,78 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     let zonaValInHeader = 0;
     let examValInHeader = 0;
 
+    // Helper universal para extraer metadatos tanto en celdas contiguas ("Cátedra:", "Contabilidad")
+    // como dentro de la misma celda ("ASIGNATURA / MATERIA: Contabilidad", "GRADO Y SECCIÓN: 5to (Sección A)")
+    const extractMetaField = (row, labelRegex) => {
+        for (let i = 0; i < row.length; i++) {
+            const cellStr = String(row[i] !== undefined && row[i] !== null ? row[i] : '').trim();
+            if (!cellStr) continue;
+            if (labelRegex.test(cellStr)) {
+                const colonIdx = cellStr.indexOf(':');
+                if (colonIdx !== -1) {
+                    const afterColon = cellStr.slice(colonIdx + 1).trim();
+                    if (afterColon) return afterColon;
+                }
+                for (let j = i + 1; j < Math.min(row.length, i + 4); j++) {
+                    const nextVal = String(row[j] !== undefined && row[j] !== null ? row[j] : '').trim();
+                    if (nextVal && !nextVal.endsWith(':')) return nextVal;
+                }
+            }
+        }
+        return '';
+    };
+
     // 1. Escaneo inteligente de metadatos en las primeras 12 filas
     for (let r = 0; r < Math.min(rawRows.length, 12); r++) {
         const row = rawRows[r] || [];
         if (!Array.isArray(row)) continue;
-        const rowStr = row.map(c => String(c).toLowerCase()).join(' ');
+        const rowStr = row.map(c => String(c !== undefined && c !== null ? c : '').toLowerCase()).join(' ');
 
-        // Reconocimiento de Modelo A: Plantilla Oficial ENCCO
-        if (rowStr.includes('cuadro oficial') || rowStr.includes('catedra:') || rowStr.includes('cátedra:')) {
+        // Reconocimiento de formatos oficiales de la plataforma ENCCO
+        if (rowStr.includes('cuadro oficial') || rowStr.includes('catedra:') || rowStr.includes('cátedra:') || rowStr.includes('asignatura / materia:') || rowStr.includes('lista de cotejo')) {
             detectedFormat = 'Plantilla Oficial ENCCO';
         }
 
-        if (rowStr.includes('catedra:') || rowStr.includes('cátedra:')) {
-            const idxC = row.findIndex(c => String(c).toLowerCase().includes('catedra'));
-            if (idxC !== -1 && row[idxC + 1]) detectedSubject = String(row[idxC + 1]).trim();
+        const subjCand = extractMetaField(row, /(?:c[aá]tedra|asignatura\s*\/?\s*materia|asignatura|materia)\s*:/i);
+        if (subjCand && !detectedSubject) {
+            const cleanSubjCand = cleanStr(subjCand);
+            if (cleanSubjCand !== 'nominageneral' && cleanSubjCand !== 'general') {
+                detectedSubject = subjCand;
+            }
         }
 
-        if (rowStr.includes('catedratico:') || rowStr.includes('catedrático:')) {
-            const idxT = row.findIndex(c => String(c).toLowerCase().includes('catedratico') || String(c).toLowerCase().includes('catedrático'));
-            if (idxT !== -1 && row[idxT + 1]) detectedTeacher = String(row[idxT + 1]).trim();
+        const teacherCand = extractMetaField(row, /catedr[aá]tico(?:\(a\))?\s*:/i);
+        if (teacherCand && !detectedTeacher) {
+            detectedTeacher = teacherCand;
         }
 
-        if (rowStr.includes('grado:')) {
-            const idxG = row.findIndex(c => String(c).toLowerCase().includes('grado:'));
-            if (idxG !== -1 && row[idxG + 1]) detectedGrade = String(row[idxG + 1]).trim();
+        const gradeSecCand = extractMetaField(row, /grado\s*y\s*secci[oó]n\s*:/i);
+        if (gradeSecCand) {
+            const secMatch = gradeSecCand.match(/(?:secci[oó]n\s*|["(])([A-D])(?:[")]|\b)/i) || gradeSecCand.match(/\b([A-D])\s*$/i);
+            if (secMatch && !detectedSection) {
+                detectedSection = secMatch[1].toUpperCase();
+            }
+            const cleanGrdPart = gradeSecCand.replace(/\(\s*secci[oó]n\s*[A-D]\s*\)/i, '').replace(/["'][A-D]["']/i, '').trim();
+            if (cleanGrdPart && !detectedGrade) {
+                detectedGrade = cleanGrdPart;
+            }
         }
 
-        if (rowStr.includes('seccion:') || rowStr.includes('sección:')) {
-            const idxS = row.findIndex(c => String(c).toLowerCase().includes('seccion:') || String(c).toLowerCase().includes('sección:'));
-            if (idxS !== -1 && row[idxS + 1]) detectedSection = String(row[idxS + 1]).trim();
+        const gradeCand = extractMetaField(row, /^grado\s*:/i);
+        if (gradeCand && !detectedGrade) {
+            detectedGrade = gradeCand;
+        }
+
+        const secCand = extractMetaField(row, /^secci[oó]n\s*:/i);
+        if (secCand && !detectedSection) {
+            detectedSection = secCand;
         }
 
         // Reconocimiento de Modelo B: Modelo de Cuadro Docente (Fila 1: Materia en B2, Grado en G2, Sección en I2, Bimestre en K2)
-        if (r === 1 && row[1] && !rowStr.includes('catedra:')) {
+        if (r === 1 && row[1] && !rowStr.includes('catedra:') && !rowStr.includes('cátedra:')) {
             const candidateSubj = String(row[1]).trim();
             const cleanCand = cleanStr(candidateSubj);
-            const foundInPensum = (STATE.pensum || []).find(p => cleanStr(p.subject) === cleanCand || cleanCand.includes(cleanStr(p.subject)) || cleanStr(p.subject).includes(cleanCand));
+            const foundInPensum = (STATE.pensum || []).find(p => cleanStr(p.subject) === cleanCand || (cleanCand.length >= 5 && (cleanCand.includes(cleanStr(p.subject)) || cleanStr(p.subject).includes(cleanCand))));
             if (foundInPensum) {
                 detectedSubject = foundInPensum.subject;
                 detectedFormat = 'Modelo de Cuadro Docente';
@@ -33798,7 +33909,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
 
         if (r === 2 && row[1] && !detectedTeacher) {
             const candidateTeacher = String(row[1]).trim();
-            if (candidateTeacher && !candidateTeacher.toLowerCase().includes('grado') && !candidateTeacher.toLowerCase().includes('seccion') && !candidateTeacher.toLowerCase().includes('bimestre') && !candidateTeacher.toLowerCase().includes('catedra')) {
+            if (candidateTeacher && !candidateTeacher.toLowerCase().includes('grado') && !candidateTeacher.toLowerCase().includes('seccion') && !candidateTeacher.toLowerCase().includes('bimestre') && !candidateTeacher.toLowerCase().includes('catedra') && !candidateTeacher.toLowerCase().includes('ciclo')) {
                 detectedTeacher = candidateTeacher;
             }
         }
@@ -33807,14 +33918,27 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             examValInHeader = parseInt(row[14]) || 0;
         }
 
-        const bimMatch = rowStr.match(/(\d+)\s*(?:o\.|o|er|do|to|er\.)?\s*bimestre/i);
+        const bimMatch = rowStr.match(/(\d+)\s*(?:o\.|o|º|°|er|do|to|er\.)?\s*(?:bimestre|unidad)/i) ||
+                         rowStr.match(/bimestre\s*:?\s*(\d+)/i);
         if (bimMatch) {
-            detectedUnit = parseInt(bimMatch[1]);
-            hasExplicitUnit = true;
+            const bParsed = parseInt(bimMatch[1]);
+            if (bParsed >= 1 && bParsed <= 4) {
+                detectedUnit = bParsed;
+                hasExplicitUnit = true;
+            }
         }
 
-        if (rowStr.includes('clave') || rowStr.includes('no.') || (rowStr.includes('codigo') && rowStr.includes('estudiante')) || rowStr.includes('apellidos y nombres')) {
-            headerRowIdx = r;
+        if (headerRowIdx === -1) {
+            const hasNoOrClave = row.some(c => {
+                const sc = cleanStr(c);
+                return sc === 'no' || sc === 'clave' || sc === 'num';
+            });
+            const hasStudentCol = rowStr.includes('apellidos y nombres') || rowStr.includes('estudiante') || rowStr.includes('alumno') || (rowStr.includes('codigo') && rowStr.includes('nombre'));
+            if (hasNoOrClave && hasStudentCol) {
+                headerRowIdx = r;
+            } else if (rowStr.includes('apellidos y nombres') || (rowStr.includes('codigo personal') && rowStr.includes('cui'))) {
+                headerRowIdx = r;
+            }
         }
     }
 
@@ -33827,17 +33951,17 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             else if (fNorm.includes('6a') || fNorm.includes('6b') || fNorm.includes('6c') || fNorm.includes('6d') || fNorm.includes('6to')) detectedGrade = '6to Perito Contador';
         }
         if (!detectedSection) {
-            if (fNorm.includes('5a') || fNorm.includes('6a') || fNorm.includes('4a')) detectedSection = 'Sección A';
-            else if (fNorm.includes('5b') || fNorm.includes('6b') || fNorm.includes('4b')) detectedSection = 'Sección B';
-            else if (fNorm.includes('5c') || fNorm.includes('6c') || fNorm.includes('4c')) detectedSection = 'Sección C';
-            else if (fNorm.includes('5d') || fNorm.includes('6d') || fNorm.includes('4d')) detectedSection = 'Sección D';
+            if (fNorm.includes('5a') || fNorm.includes('6a') || fNorm.includes('4a') || fNorm.includes('secciona')) detectedSection = 'Sección A';
+            else if (fNorm.includes('5b') || fNorm.includes('6b') || fNorm.includes('4b') || fNorm.includes('seccionb')) detectedSection = 'Sección B';
+            else if (fNorm.includes('5c') || fNorm.includes('6c') || fNorm.includes('4c') || fNorm.includes('seccionc')) detectedSection = 'Sección C';
+            else if (fNorm.includes('5d') || fNorm.includes('6d') || fNorm.includes('4d') || fNorm.includes('secciond')) detectedSection = 'Sección D';
         }
         if (!detectedSubject) {
             if (fNorm.includes('compu2')) detectedSubject = 'Computación II';
             else if (fNorm.includes('compu3')) detectedSubject = 'Computación III';
             else if (fNorm.includes('calculo')) detectedSubject = 'Cálculo Mercantil y Financiero';
         }
-        const bimFMatch = fNorm.match(/(\d+)(?:o|er|do|to)?bim/);
+        const bimFMatch = fNorm.match(/(\d+)(?:o|º|°|er|do|to)?bim/) || fNorm.match(/bim(?:estre)?(\d+)/);
         if (bimFMatch && !hasExplicitUnit) {
             detectedUnit = parseInt(bimFMatch[1]);
             hasExplicitUnit = true;
@@ -33866,7 +33990,8 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     if (detectedSubject || detectedGrade || detectedSection || detectedTeacher) {
         const cleanDetSubj = cleanStr(detectedSubject || '');
         const gNumFile = (detectedGrade || fileName || '').toString().match(/(\d+)/)?.[1] || '';
-        const secFile = cleanStr(detectedSection || fileName || '').replace(/^seccion/, '').match(/([a-d])/i)?.[1]?.toLowerCase() || '';
+        const secFile = cleanStr(detectedSection || fileName || '').replace(/^seccion/, '').match(/^([a-d])$/i)?.[1]?.toLowerCase() ||
+                        cleanStr(detectedSection || '').replace(/^seccion/, '').match(/([a-d])/i)?.[1]?.toLowerCase() || '';
 
         const teacherPensumList = (STATE.pensum || []).filter(p => {
             if (!p) return false;
@@ -33904,7 +34029,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
                 const cleanFn = cleanStr(fileName);
                 autoPensum = candidates.find(p => cleanFn.includes(cleanStr(p.subject || '')));
             }
-            if (!autoPensum && candidates.length === 1 && (gNumFile || secFile)) {
+            if (!autoPensum && candidates.length === 1 && (gNumFile && secFile)) {
                 autoPensum = candidates[0];
             }
         }
@@ -34016,7 +34141,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
                 .replace(/[^a-z0-9\s]/g, ' ')
                 .split(/\s+/)
-                .filter(t => t.length > 2 && !['pem', 'lic', 'prof', 'profe', 'docente', 'catedratico', 'catedratica', 'del', 'las', 'los', 'san', 'santa'].includes(t));
+                .filter(t => t.length > 2 && !['pem', 'lic', 'prof', 'profe', 'docente', 'catedratico', 'catedratica', 'del', 'las', 'los', 'san', 'santa', 'asignado'].includes(t));
 
             const tTokens = tokenize(detectedTeacher);
             const pensumTeacherTokens = tokenize(activePensum.teacher || '');
@@ -34063,7 +34188,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         // En otros formatos, verificar si la fila siguiente a encabezados contiene subtítulos de actividades en vez de alumnos
         const nextRow = rawRows[headerRowIdx + 1] || [];
         const nextRowIsStudent = nextRow.some((cell, cIdx) => {
-            if (cIdx === 0 && typeof cell === 'number' && cell >= 1 && cell <= 100) return true;
+            if (cIdx === 0 && (typeof cell === 'number' || /^\d+$/.test(String(cell).trim())) && Number(cell) >= 1 && Number(cell) <= 100) return true;
             if (typeof cell === 'string' && (cell.match(/\b\d{4}-\d{4}-[A-Z0-9]+\b/i) || cell.replace(/[^0-9]/g, '').length === 13)) return true;
             return false;
         });
@@ -34079,11 +34204,12 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     const hdrRow = (rawRows[headerRowIdx] || []).map(c => String(c !== undefined && c !== null ? c : '').trim());
 
     // A. Identificar columnas de resumen buscando de DERECHA a IZQUIERDA (evita falsos positivos en actividades a la izquierda)
-    // 1. Total Final / Total Bimestre
+    // 1. Total Final / Total Bimestre (NUNCA confundir con 'Resultado', 'Nivel de Logro' u 'Observaciones')
     for (let c = hdrRow.length - 1; c >= 0; c--) {
         const h = cleanStr(hdrRow[c]);
         if (!h) continue;
-        if ((h.includes('total') && !h.includes('zona')) || h.includes('notafinal') || h.includes('promediobimestre') || h === 'resultado') {
+        if (h.includes('resultado') || h.includes('logro') || h.includes('observacion') || h.includes('estado')) continue;
+        if ((h.includes('total') && !h.includes('zona')) || h.includes('notafinal') || h.includes('promediobimestre')) {
             colIdxTotal = c;
             break;
         }
@@ -34094,6 +34220,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     for (let c = examSearchLimit; c >= 0; c--) {
         const h = cleanStr(hdrRow[c]);
         if (!h) continue;
+        if (h.includes('resultado') || h.includes('logro') || h.includes('observacion')) continue;
         if (h.includes('examen') || h.includes('prueba') || h.includes('evaluacion') || h.includes('eval') || h.includes('bimestral')) {
             colIdxExam = c;
             break;
@@ -34146,21 +34273,28 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     for (let c = startActCol; c < endActCol; c++) {
         if (c === colIdxClave || c === colIdxCode || c === colIdxCui || c === colIdxName || c === colIdxZona || c === colIdxExam || c === colIdxTotal) continue;
 
-        let actTitle = '';
-        if (actsRow && actsRow[c] !== undefined && String(actsRow[c]).trim()) {
-            actTitle = String(actsRow[c]).trim();
-        } else if (hdrRow[c] !== undefined && String(hdrRow[c]).trim()) {
-            actTitle = String(hdrRow[c]).trim();
+        const hdrCell = hdrRow[c] !== undefined ? String(hdrRow[c]).trim() : '';
+        const subCell = (actsRow && actsRow[c] !== undefined) ? String(actsRow[c]).trim() : '';
+        let actTitle = subCell || hdrCell;
+
+        // Si la subfila solo indica el punteo (ej. "4p" en Lista de Cotejo) y el encabezado tiene el número/nombre de actividad
+        if (subCell && /^\d+\s*(?:p|pts|puntos)?$/i.test(subCell) && hdrCell) {
+            actTitle = `${hdrCell} (${subCell})`;
         }
 
         const cH = cleanStr(actTitle);
-        if (cH.includes('observacion') || cH.includes('resultado') || cH.includes('estado') || cH.includes('promedio')) continue;
+        if (cH.includes('observacion') || cH.includes('resultado') || cH.includes('logro') || cH.includes('estado') || cH.includes('promedio')) continue;
 
         if (actColumns.length < 10) {
-            const ptsMatch = actTitle.match(/\((\d+)\s*(?:pts|puntos)?\)/i) || actTitle.match(/(\d+)\s*(?:pts|puntos)?\s*$/i) || actTitle.match(/(\d+)/);
+            const ptsMatch = actTitle.match(/\((\d+)\s*(?:pts|puntos|p)?\)/i) ||
+                             subCell.match(/^(\d+)\s*(?:pts|puntos|p)?$/i) ||
+                             actTitle.match(/(\d+)\s*(?:pts|puntos|p)\s*$/i);
             const maxPts = ptsMatch ? parseInt(ptsMatch[1]) : 0;
-            let cleanName = actTitle.replace(/^Act(?:ividad)?\s*\d+[\s:\-–.]*/i, '').replace(/\s*\(\s*\d+\s*(?:pts|puntos)?\s*\)\s*$/i, '').trim();
-            if (!cleanName) cleanName = actTitle.trim() || `Actividad ${actColumns.length + 1}`;
+            let cleanName = actTitle
+                .replace(/^Act(?:ividad)?\s*\d+[\s:\-–.]*/i, '')
+                .replace(/\s*\(\s*\d+\s*(?:pts|puntos|p)?\s*\)\s*$/i, '')
+                .trim();
+            if (!cleanName || /^\d+$/.test(cleanName)) cleanName = `Actividad ${actColumns.length + 1}`;
             actColumns.push({ colIdx: c, name: cleanName, rawHeader: actTitle, max: maxPts, maxPoints: maxPts });
         }
     }
@@ -34172,14 +34306,14 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             if (!h) continue;
             const cH = cleanStr(h);
             if (c === colIdxClave || c === colIdxCode || c === colIdxCui || c === colIdxName || c === colIdxZona || c === colIdxExam || c === colIdxTotal) continue;
-            if (cH.includes('resultado') || cH.includes('observaci') || cH.includes('promedio') || cH.includes('estado')) continue;
+            if (cH.includes('resultado') || cH.includes('logro') || cH.includes('observaci') || cH.includes('promedio') || cH.includes('estado')) continue;
 
             const isActKeyword = cH.startsWith('act') || cH.startsWith('tarea') || cH.startsWith('ejercicio') || cH.startsWith('laboratorio') || cH.startsWith('folder') || cH.startsWith('proyecto') || cH.startsWith('investig') || cH.startsWith('taller') || cH.startsWith('guia') || cH.startsWith('practica') || cH.startsWith('cuestionario') || cH.startsWith('ensayo') || cH.startsWith('glosario') || cH.startsWith('exposic') || cH.startsWith('evaluac');
             if (isActKeyword && actColumns.length < 10) {
-                const ptsMatch = h.match(/\((\d+)\s*(?:pts|puntos)?\)/i) || h.match(/(\d+)\s*(?:pts|puntos)?\s*$/i) || h.match(/(\d+)/);
+                const ptsMatch = h.match(/\((\d+)\s*(?:pts|puntos|p)?\)/i) || h.match(/(\d+)\s*(?:pts|puntos|p)\s*$/i);
                 const maxPts = ptsMatch ? parseInt(ptsMatch[1]) : 0;
-                let cleanName = h.replace(/^Act(?:ividad)?\s*\d+[\s:\-–.]*/i, '').replace(/\s*\(\s*\d+\s*(?:pts|puntos)?\s*\)\s*$/i, '').trim();
-                if (!cleanName) cleanName = h.trim() || `Actividad ${actColumns.length + 1}`;
+                let cleanName = h.replace(/^Act(?:ividad)?\s*\d+[\s:\-–.]*/i, '').replace(/\s*\(\s*\d+\s*(?:pts|puntos|p)?\s*\)\s*$/i, '').trim();
+                if (!cleanName || /^\d+$/.test(cleanName)) cleanName = `Actividad ${actColumns.length + 1}`;
                 actColumns.push({ colIdx: c, name: cleanName, rawHeader: h, max: maxPts, maxPoints: maxPts });
             }
         }
@@ -34276,6 +34410,18 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         return common.length >= 2 && (common.length / minTokens >= 0.60);
     };
 
+    // Parser seguro para celdas numéricas (soporta números, textos con decimales o sufijos como "35 pts" e ignora textos como "APROBADO")
+    const parseNumericScore = (val) => {
+        if (val === undefined || val === null || val === '') return null;
+        if (typeof val === 'number') return isNaN(val) ? null : val;
+        const str = String(val).trim();
+        if (!str || /^[a-zA-Z\u00C0-\u017F\s—\-]+$/.test(str)) return null;
+        const cleaned = str.replace(/,/g, '.').replace(/[^0-9.\-]/g, '');
+        if (!cleaned) return null;
+        const num = Number(cleaned);
+        return isNaN(num) ? null : num;
+    };
+
     let updatedCount = 0;
     let omittedCount = 0;
     const actuallyUpdatedStudents = [];
@@ -34347,42 +34493,54 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         ensureStudentGradebookStructure(matched, effectiveSubject);
         const gDetail = matched.gradebookDetails[effectiveSubject][effectiveUnit];
 
-        // Extracción de actividades
+        // Extracción de actividades (B.2)
         let sumZona = 0;
         let hasActValues = false;
         const newActs = [0,0,0,0,0,0,0,0,0,0];
 
         actColumns.forEach((act, actIdx) => {
-            if (actIdx < 10 && act.colIdx !== -1 && row[act.colIdx] !== undefined && row[act.colIdx] !== '' && !isNaN(row[act.colIdx])) {
-                const score = Math.max(0, Number(row[act.colIdx]));
-                newActs[actIdx] = score;
-                sumZona += score;
-                hasActValues = true;
+            if (actIdx < 10 && act.colIdx !== -1) {
+                const parsedScore = parseNumericScore(row[act.colIdx]);
+                if (parsedScore !== null) {
+                    const score = Math.max(0, parsedScore);
+                    newActs[actIdx] = score;
+                    sumZona += score;
+                    if (score > 0) hasActValues = true;
+                }
             }
         });
 
-        let examScore = 0;
-        if (colIdxExam !== -1 && row[colIdxExam] !== undefined && row[colIdxExam] !== '' && !isNaN(row[colIdxExam])) {
-            examScore = Math.max(0, Number(row[colIdxExam]));
+        // Si el formato tiene columna de Examen, leerla; si es Lista de Cotejo (sin columna de Examen), preservar el examen existente
+        let examScore = (colIdxExam === -1) ? (Number(gDetail.exam) || 0) : 0;
+        if (colIdxExam !== -1) {
+            const parsedExam = parseNumericScore(row[colIdxExam]);
+            if (parsedExam !== null) {
+                examScore = Math.max(0, parsedExam);
+            }
         }
 
         let finalZona = sumZona;
-        if (colIdxZona !== -1 && row[colIdxZona] !== undefined && row[colIdxZona] !== '' && !isNaN(row[colIdxZona])) {
-            const directColZona = Math.max(0, Number(row[colIdxZona]));
-            if (!hasActValues) {
-                finalZona = directColZona;
-                if (newActs.every(v => v === 0)) {
-                    newActs[0] = finalZona;
+        if (colIdxZona !== -1) {
+            const parsedZona = parseNumericScore(row[colIdxZona]);
+            if (parsedZona !== null) {
+                const directColZona = Math.max(0, parsedZona);
+                if (!hasActValues && directColZona > 0) {
+                    finalZona = directColZona;
+                    if (newActs.every(v => v === 0)) {
+                        newActs[0] = finalZona;
+                    }
+                } else if (hasActValues) {
+                    finalZona = sumZona;
                 }
-            } else if (directColZona > sumZona) {
-                finalZona = directColZona;
             }
         }
 
         let finalTotal = finalZona + examScore;
-        if (colIdxTotal !== -1 && row[colIdxTotal] !== undefined && row[colIdxTotal] !== '' && !isNaN(row[colIdxTotal])) {
-            const tVal = Number(row[colIdxTotal]);
-            if (tVal > 0) finalTotal = tVal;
+        if (colIdxTotal !== -1) {
+            const parsedTotal = parseNumericScore(row[colIdxTotal]);
+            if (parsedTotal !== null && parsedTotal > 0 && finalZona === 0 && examScore === 0) {
+                finalTotal = Math.max(0, parsedTotal);
+            }
         }
 
         gDetail.activities = newActs;
