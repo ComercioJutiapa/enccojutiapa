@@ -144,7 +144,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '2026.09.22.v219_boletin_media_oficio_margenes_seguros';
+const ENCCO_BUILD_VERSION = '20261015_v265_no_cache_revert';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 const withTimeout = (promise, ms = 8000, errorMsg = 'Tiempo de espera agotado al conectar con Firebase.') => {
     return Promise.race([
@@ -351,9 +351,12 @@ const EnccoCacheManager = {
             if (typeof indexedDB !== 'undefined') {
                 try { indexedDB.deleteDatabase('ENCCO_SUPERUSER_BACKUP_DB'); } catch(e) {}
             }
-            // [v189] Limpiar CacheStorage del navegador
-            if (typeof caches !== 'undefined') {
-                caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
+            // Limpiar únicamente CacheStorage de versiones anteriores sin destruir la versión activa
+            const prevBuildVer = localStorage.getItem('ENCCO_BUILD_VERSION');
+            if (prevBuildVer !== this.version && typeof caches !== 'undefined') {
+                caches.keys().then(keys => keys.forEach(k => {
+                    if (!k.includes('v265')) caches.delete(k);
+                })).catch(() => {});
             }
             localStorage.setItem('ENCCO_BUILD_VERSION', this.version);
         } catch(e) {

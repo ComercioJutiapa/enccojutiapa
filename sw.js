@@ -6,7 +6,7 @@
  * Copyright (c) 2026 Escuela Nacional de Ciencias Comerciales - ENCCO
  * ======================================================================
  */
-const CACHE_NAME = 'encco-cache-v2026-10-15-v264-stats-and-import-fixed';
+const CACHE_NAME = 'encco-cache-v2026-10-15-v265-no-cache-revert';
 const STATIC_ASSETS = [
     './',
     'index.html',
@@ -75,9 +75,9 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // 🚀 3. Recursos de la plataforma: Network-First con respaldo inmediato en caché
+    // 🚀 3. Recursos propios (.html, .js, .css): Network-First con cache: 'no-cache' para evitar servir archivos viejos del disco
     event.respondWith(
-        fetch(event.request)
+        fetch(event.request, { cache: 'no-cache' })
             .then(networkResponse => {
                 if (networkResponse && networkResponse.status === 200) {
                     const responseClone = networkResponse.clone();

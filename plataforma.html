@@ -15,12 +15,19 @@
             <!-- GUARDIA DE SESIÓN ESTRICTA Y CONTROL DE NAVEGACIÓN CRIPTOGRÁFICA (browserSessionPersistence) -->
     <script>
         (function() {
+            function clearAuthSessionOnly() {
+                var authKeys = ['ENCCO_AUTH_USER', 'ENCCO_AUTH_ROLE', 'ENCCO_AUTH_TOKEN', 'ENCCO_AUTH_BRIDGE', 'ENCCO_AUTH_TIMESTAMP', 'ENCCO_AUTH_REMEMBER'];
+                authKeys.forEach(function(k) {
+                    try { sessionStorage.removeItem(k); } catch(e) {}
+                    try { localStorage.removeItem(k); } catch(e) {}
+                });
+            }
             function verifySession() {
                 try {
                     var authUser = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
                     var authToken = sessionStorage.getItem('ENCCO_AUTH_TOKEN') || localStorage.getItem('ENCCO_AUTH_TOKEN');
                     if (!authUser) {
-                        try { sessionStorage.clear(); localStorage.clear(); } catch(e) {}
+                        clearAuthSessionOnly();
                         window.location.replace('index.html');
                         return false;
                     }
@@ -28,7 +35,7 @@
                     if (authToken && typeof authToken === 'string') {
                         var parts = authToken.split('.');
                         if (parts.length !== 2 || !parts[0] || !parts[1] || parts[1].length !== 64) {
-                            try { sessionStorage.clear(); localStorage.clear(); } catch(e) {}
+                            clearAuthSessionOnly();
                             window.location.replace('index.html');
                             return false;
                         }
@@ -48,7 +55,7 @@
                     } catch(storeErr) {}
                     return true;
                 } catch(e) {
-                    try { sessionStorage.clear(); localStorage.clear(); } catch(err) {}
+                    clearAuthSessionOnly();
                     window.location.replace('index.html');
                     return false;
                 }
@@ -6185,21 +6192,21 @@
         // Registro de Service Worker para PWA y disponibilidad fuera de línea
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js?v=20261015_v264_stats_and_import_fixed').catch(function(err) {
+                navigator.serviceWorker.register('sw.js?v=20261015_v265_no_cache_revert').catch(function(err) {
                     console.debug('[SW] Registro omitido o no compatible:', err);
                 });
             });
         }
     </script>
-    <script src="auth.js?v=20261015_v258_inactivity_timers" charset="UTF-8"></script>
-    <script src="db.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
-    <script src="ui.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
-    <script src="sire.js?v=2026.09.21.v224_signed_session_and_security_shield" charset="UTF-8"></script>
+    <script src="auth.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
+    <script src="db.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
+    <script src="ui.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
+    <script src="sire.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
     <script src="official_historical_patches.js?v=20261014_v1" defer charset="UTF-8"></script>
-    <script src="app.js?v=20261015_v264_stats_and_import_fixed" charset="UTF-8"></script>
+    <script src="app.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20260925_v1" charset="UTF-8"></script>
-    <script src="grade_stats.js?v=20261015_v264_stats_and_import_fixed" charset="UTF-8"></script>
-    <script src="analytics.js?v=20261015_v264_stats_and_import_fixed" charset="UTF-8"></script>
+    <script src="grade_stats.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
+    <script src="analytics.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
     <script src="qrcode.min.js" defer charset="UTF-8"></script>
     <script src="carnets.js?v=2026.09.21.v226_carnets_horizontal_vertical" charset="UTF-8"></script>
     <script src="auxiliatura_center.js?v=20261003_v1" charset="UTF-8"></script>
