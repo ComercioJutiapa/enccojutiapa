@@ -144,7 +144,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '20261015_v265_no_cache_revert';
+const ENCCO_BUILD_VERSION = '20261016_v269_exoneracion_and_import';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 const withTimeout = (promise, ms = 8000, errorMsg = 'Tiempo de espera agotado al conectar con Firebase.') => {
     return Promise.race([
@@ -1425,6 +1425,23 @@ function isDirectorOrSuperAdmin() {
     return valid.includes(rLower) || valid.includes(userRole);
 }
 window.isDirectorOrSuperAdmin = isDirectorOrSuperAdmin;
+
+// 📲 REGLA INSTITUCIONAL: ACCESO EXCLUSIVO A WHATSAPP
+// Restringido estrictamente a Dirección, Auxiliatura y Secretaría
+function canRoleUseWhatsApp(role = null) {
+    const curRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
+    const userRole = (window.STATE && STATE.currentUser && STATE.currentUser.role) ? String(STATE.currentUser.role).trim().toLowerCase() : '';
+    const rLower = curRole || userRole;
+    if (!rLower || rLower === 'guest') return false;
+
+    const allowed = [
+        'director', 'direccion', 'admin', 'super_usuario', // Dirección
+        'profesor_auxiliar', 'auxiliar', 'auxiliatura',    // Auxiliatura
+        'secretaria', 'secretario'                         // Secretaría
+    ];
+    return allowed.includes(rLower) || allowed.includes(userRole);
+}
+window.canRoleUseWhatsApp = canRoleUseWhatsApp;
 
 function renderActiveRolePermissionsGrid(activePerms = []) {
     const container = document.getElementById('activeRolePermissionsContainer');
@@ -7702,7 +7719,7 @@ function ensureOfficialPensumAssignments() {
     if (Array.isArray(STATE.pensum) && STATE.pensum.length >= 28) {
         const seen = new Set();
         STATE.pensum = STATE.pensum.filter(p => {
-            if (!p) return false;
+            if (!p || (!p.subject && !p.name) || (!p.grade && !p.gradeCode)) return false;
             const normSubj = (p.subject || p.name || "").trim().toLowerCase();
             const key = `${p.grade || p.gradeCode}_${p.section}_${normSubj}`;
             if (seen.has(key)) return false;
@@ -7748,8 +7765,8 @@ async function loadPensumFromCloudFallback() {
             try {
                 const res = await fetch(ep);
                 if (res.ok) {
-                    const data = await res.json();
-                    const items = Array.isArray(data) ? data : (data && typeof data === 'object' ? Object.values(data) : []);
+                    const rawItems = Array.isArray(data) ? data : (data && typeof data === 'object' ? Object.values(data) : []);
+                    const items = rawItems.filter(p => p && (p.subject || p.name) && (p.grade || p.gradeCode));
                     if (items.length >= 28) {
                         STATE.pensum = items;
                         try {
@@ -9726,16 +9743,36 @@ function applyIncomingCloudState(incomingState, force = false) {
     }
     if (Array.isArray(incomingState.careers) && (incomingState.careers.length > 0 || !STATE.careers || STATE.careers.length === 0)) STATE.careers = incomingState.careers;
 
-    // 5. Asistencia y Disciplina (Fusión protegida anti-sobrescritura multidimensional)
+    // 5. Asistencia y Disciplina (Fusión protegida anti-sobrescritura multidimensional y anti-regresión en clics)
+    const isActivelyClickingAttendance = Boolean(window._lastLocalAttendanceClickTime && (Date.now() - window._lastLocalAttendanceClickTime < 4500));
     if (incomingState.attendanceRecords && typeof incomingState.attendanceRecords === 'object') {
         if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+        const dirtyCells = window._localDirtyAttendanceCells || {};
+        const nowTs = Date.now();
         for (const [recKey, studentsMap] of Object.entries(incomingState.attendanceRecords)) {
             if (!studentsMap || typeof studentsMap !== 'object') continue;
             if (!STATE.attendanceRecords[recKey]) STATE.attendanceRecords[recKey] = {};
             for (const [sId, daysMap] of Object.entries(studentsMap)) {
                 if (!daysMap || typeof daysMap !== 'object') continue;
                 if (!STATE.attendanceRecords[recKey][sId]) STATE.attendanceRecords[recKey][sId] = {};
-                Object.assign(STATE.attendanceRecords[recKey][sId], daysMap);
+                for (const [dayKey, dayVal] of Object.entries(daysMap)) {
+                    const dirtyExact = dirtyCells[`${recKey}_${sId}_${dayKey}`];
+                    const dirtyAny = dirtyCells[`ANY_${sId}_${dayKey}`];
+                    const activeDirty = (dirtyExact && (nowTs - dirtyExact.ts < 8000)) ? dirtyExact : ((dirtyAny && (nowTs - dirtyAny.ts < 8000)) ? dirtyAny : null);
+                    if (activeDirty) {
+                        if (activeDirty.val) {
+                            STATE.attendanceRecords[recKey][sId][dayKey] = activeDirty.val;
+                        } else {
+                            delete STATE.attendanceRecords[recKey][sId][dayKey];
+                        }
+                        continue;
+                    }
+                    if (dayVal === null || dayVal === '') {
+                        delete STATE.attendanceRecords[recKey][sId][dayKey];
+                    } else {
+                        STATE.attendanceRecords[recKey][sId][dayKey] = dayVal;
+                    }
+                }
             }
         }
     }
@@ -9774,13 +9811,29 @@ function applyIncomingCloudState(incomingState, force = false) {
         if (STATE.activeView === 'permissions-history' && typeof renderPermissionsHistoryView === 'function') {
             renderPermissionsHistoryView();
         }
-        if (STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') {
+        if (STATE.activeView === 'attendance' && !isActivelyClickingAttendance && typeof loadAttendanceList === 'function') {
             loadAttendanceList();
         }
     }
     if (incomingState.attendancePermissionsMeta && typeof incomingState.attendancePermissionsMeta === 'object') {
-        STATE.attendancePermissionsMeta = { ...(STATE.attendancePermissionsMeta || {}), ...incomingState.attendancePermissionsMeta };
-        if (STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') {
+        if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
+        const dirtyCells = window._localDirtyAttendanceCells || {};
+        const nowTs = Date.now();
+        for (const [mKey, mVal] of Object.entries(incomingState.attendancePermissionsMeta)) {
+            const parts = mKey.split('_');
+            const sId = parts[0];
+            const dKey = parts[2];
+            const dirtyAny = (sId && dKey) ? dirtyCells[`ANY_${sId}_${dKey}`] : null;
+            if (dirtyAny && (nowTs - dirtyAny.ts < 8000) && dirtyAny.val !== 'J') {
+                continue;
+            }
+            if (mVal === null) {
+                delete STATE.attendancePermissionsMeta[mKey];
+            } else {
+                STATE.attendancePermissionsMeta[mKey] = mVal;
+            }
+        }
+        if (STATE.activeView === 'attendance' && !isActivelyClickingAttendance && typeof loadAttendanceList === 'function') {
             loadAttendanceList();
         }
     }
@@ -9794,7 +9847,7 @@ function applyIncomingCloudState(incomingState, force = false) {
         cloudAnnots.forEach(a => {
             if (a && a.id) annotMap.set(a.id, { ...(annotMap.get(a.id) || {}), ...a });
         });
-        STATE.studentAnnotations = Array.from(annotMap.values()).sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
+        STATE.studentAnnotations = Array.from(annotMap.values()).sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(b.createdAt || a.date || 0));
     }
 
     // 5b. Solicitudes de Habilitación de Edición de Notas (Bimestres Cerrados)
@@ -9825,9 +9878,11 @@ function applyIncomingCloudState(incomingState, force = false) {
 
     // 🔒 [Persistencia Única] No se guarda base local redundante en localStorage
 
-    // Refrescar vistas activas en tiempo real
+    // Refrescar vistas activas en tiempo real (evitando interrumpir clics rápidos en asistencia)
     try {
-        if (typeof renderCurrentView === 'function') renderCurrentView();
+        if (typeof renderCurrentView === 'function' && !(STATE.activeView === 'attendance' && isActivelyClickingAttendance)) {
+            renderCurrentView();
+        }
         if (typeof populateGradebookBimestreSelect === 'function') populateGradebookBimestreSelect();
         if (typeof renderAssignmentsTable === "function" && document.getElementById("assignmentsTableBody")) renderAssignmentsTable();
         if (typeof renderUsersTable === "function" && document.getElementById("usersTableBody")) renderUsersTable();
@@ -11157,7 +11212,7 @@ function renderDashboard() {
                                         </td>
                                         <td style="text-align:center;">
                                             <div style="display:inline-flex; gap:6px;">
-                                                ${tel ? `
+                                                ${(tel && canRoleUseWhatsApp()) ? `
                                                     <button type="button" class="btn btn-xs" onclick="openStudentWhatsAppChat('${st.id}')" title="Avisar a encargado por WhatsApp" style="background:#25D366; color:#fff; border:none; padding:3px 8px; font-weight:700; border-radius:4px;">
                                                         <i class="fa-brands fa-whatsapp"></i> WhatsApp
                                                     </button>
@@ -12370,7 +12425,14 @@ function resetStudentFilters() {
 window.resetStudentFilters = resetStudentFilters;
 
 // 📲 CONTACTO DIRECTO POR WHATSAPP CON EL ENCARGADO DEL ESTUDIANTE
+// Restringido estrictamente a Dirección, Auxiliatura y Secretaría
 function openStudentWhatsAppChat(studentId) {
+    if (!canRoleUseWhatsApp()) {
+        if (typeof showToast === 'function') {
+            showToast('El contacto vía WhatsApp está restringido exclusivamente a Dirección, Auxiliatura y Secretaría.', 'warning');
+        }
+        return;
+    }
     const student = (STATE.students || []).find(s => String(s.id) === String(studentId));
     if (!student) return;
     const phone = student.tutorPhone || student.guardianPhone || student.phone || student.motherPhone || student.fatherPhone || '';
@@ -12386,7 +12448,7 @@ function openStudentWhatsAppChat(studentId) {
     }
     
     const formattedPhone = cleanPhone.length === 8 ? `502${cleanPhone}` : cleanPhone;
-    const msg = `Estimado(a) padre/madre de familia o encargado de ${sName} (${gradeLabel}): Le saluda el personal docente de la Escuela Nacional de Ciencias Comerciales (ENCCO Jutiapa) para tratar asuntos académicos del estudiante.`;
+    const msg = `Estimado(a) padre/madre de familia o encargado de ${sName} (${gradeLabel}): Le saluda la Dirección / Auxiliatura / Secretaría de la Escuela Nacional de Ciencias Comerciales (ENCCO Jutiapa) para tratar asuntos del estudiante.`;
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 window.openStudentWhatsAppChat = openStudentWhatsAppChat;
@@ -12730,7 +12792,7 @@ function renderStudentsTable() {
                     <span style="font-size:0.82rem; color:#334155; font-weight:600;">${escapeHtml(s.tutor || 'No registrado')}</span><br>
                     <div style="display:inline-flex; align-items:center; gap:5px; margin-top:2px;">
                         <small style="color:#64748b; font-size:0.76rem;"><i class="fa-solid fa-phone"></i> ${escapeHtml(tutorTel || 'Sin tel.')}</small>
-                        ${tutorTel ? `
+                        ${(tutorTel && canRoleUseWhatsApp()) ? `
                             <button type="button" class="btn btn-xs" onclick="openStudentWhatsAppChat('${s.id}')" title="Contactar al encargado vía WhatsApp" style="padding:1px 6px; font-size:0.72rem; background:#25D366; color:#fff; border:none; border-radius:4px; font-weight:700; display:inline-flex; align-items:center; gap:3px; cursor:pointer;">
                                 <i class="fa-brands fa-whatsapp"></i> Chat
                             </button>
@@ -14425,11 +14487,89 @@ function getStudentAcademicInfo(student, periodOverride = null) {
 }
 
 
-function openAcademicExonerationModal(studentId) {
-    const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
-    const curRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || (window.STATE && window.STATE.currentRole) || (typeof window.EnccoAuthStore !== 'undefined' && window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
-    if (!allowedRoles.includes(curRole)) {
-        showToast("Acceso Restringido: La exoneración de estudiantes es facultad única y exclusiva de Dirección, Secretaría o Auxiliatura.", "warning");
+function populateExonGradeFilter() {
+    const filterEl = document.getElementById('exonStudentGradeFilter');
+    if (!filterEl) return;
+    const gradesSet = new Set();
+    let studentsList = STATE.students || [];
+    if (!Array.isArray(studentsList) && typeof studentsList === 'object') {
+        studentsList = Object.values(studentsList);
+    }
+    studentsList.forEach(s => {
+        if (!s || s.active === false) return;
+        const assign = (typeof getStudentAssignment === 'function') ? getStudentAssignment(s) : { fullLabel: s.grade || '' };
+        if (assign.fullLabel) gradesSet.add(assign.fullLabel);
+        else if (s.grade) gradesSet.add(s.grade);
+    });
+    const sortedGrades = Array.from(gradesSet).sort();
+    let opts = '<option value="">-- Todos los Grados y Secciones --</option>';
+    sortedGrades.forEach(g => {
+        opts += `<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`;
+    });
+    filterEl.innerHTML = opts;
+}
+
+function filterExonStudentDropdown(selectedStudentId = null) {
+    const gradeFilter = document.getElementById('exonStudentGradeFilter')?.value || '';
+    const searchVal = (document.getElementById('exonStudentSearchInput')?.value || '').trim().toLowerCase();
+    const selectEl = document.getElementById('exonStudentSelect');
+    const countBadge = document.getElementById('exonStudentCountBadge');
+    if (!selectEl) return;
+
+    let studentsList = STATE.students || [];
+    if (!Array.isArray(studentsList) && typeof studentsList === 'object') {
+        studentsList = Object.values(studentsList);
+    }
+
+    const filtered = (studentsList || []).filter(s => {
+        if (!s || s.active === false) return false;
+        const assign = (typeof getStudentAssignment === 'function') ? getStudentAssignment(s) : { fullLabel: s.grade || '' };
+        if (gradeFilter && assign.fullLabel !== gradeFilter && s.grade !== gradeFilter && s.gradeLabel !== gradeFilter) {
+            return false;
+        }
+        if (searchVal) {
+            const carne = (s.carne || '').toLowerCase();
+            const code = (s.personalCode || '').toLowerCase();
+            const name = (typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(s, 'lastFirst') : (s.name || '')).toLowerCase();
+            if (!carne.includes(searchVal) && !code.includes(searchVal) && !name.includes(searchVal)) {
+                return false;
+            }
+        }
+        return true;
+    }).sort((a, b) => {
+        const nameA = typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(a, 'lastFirst') : (a.name || '');
+        const nameB = typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(b, 'lastFirst') : (b.name || '');
+        return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+    });
+
+    if (countBadge) {
+        countBadge.textContent = `${filtered.length} estudiante(s) disponible(s)`;
+    }
+
+    let opts = '<option value="">-- Seleccione un estudiante de la lista --</option>';
+    filtered.forEach(s => {
+        const displayName = typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(s, 'lastFirst') : (s.name || 'Estudiante');
+        const gradeSec = typeof formatStudentGradeAndSection === 'function' ? formatStudentGradeAndSection(s) : (s.grade || '');
+        const carnePart = s.carne ? ` (${s.carne})` : (s.personalCode ? ` (${s.personalCode})` : '');
+        const isSel = (selectedStudentId && String(s.id) === String(selectedStudentId)) ? 'selected' : '';
+        opts += `<option value="${s.id}" ${isSel}>${escapeHtml(displayName)} — ${escapeHtml(gradeSec)}${escapeHtml(carnePart)}</option>`;
+    });
+    selectEl.innerHTML = opts;
+
+    if (selectedStudentId && filtered.some(s => String(s.id) === String(selectedStudentId))) {
+        selectEl.value = String(selectedStudentId);
+    }
+}
+
+function onExonStudentSelected(studentId) {
+    if (!studentId) {
+        STATE.exonerationStudentId = null;
+        const infoBox = document.getElementById('exonStudentInfoBox');
+        if (infoBox) infoBox.style.display = 'none';
+        const subjSelect = document.getElementById('exonFormSubject');
+        if (subjSelect) subjSelect.innerHTML = '<option value="ALL">🌟 Todas las Asignaturas (Bimestre Completo)</option>';
+        const container = document.getElementById('exonListContainer');
+        if (container) container.innerHTML = '';
         return;
     }
 
@@ -14437,21 +14577,26 @@ function openAcademicExonerationModal(studentId) {
     if (!Array.isArray(studentsList) && typeof studentsList === 'object') {
         studentsList = Object.values(studentsList);
     }
-    const student = (studentsList || []).find(s => s && (s.id === studentId || s.personalCode === studentId || s.carne === studentId));
-    if (!student) {
-        showToast("No se encontró el expediente del estudiante.", "warning");
-        return;
+    const student = (studentsList || []).find(s => s && (String(s.id) === String(studentId) || s.personalCode === studentId || s.carne === studentId));
+    if (!student) return;
+
+    STATE.exonerationStudentId = student.id;
+
+    const selectEl = document.getElementById('exonStudentSelect');
+    if (selectEl && selectEl.value !== String(student.id)) {
+        selectEl.value = String(student.id);
     }
 
-    STATE.exonerationStudentId = studentId;
+    const infoBox = document.getElementById('exonStudentInfoBox');
+    if (infoBox) infoBox.style.display = 'block';
 
     const nameEl = document.getElementById('exonModalStudentName');
     const metaEl = document.getElementById('exonModalStudentMeta');
     const badgeEl = document.getElementById('exonModalStatusBadge');
     const subjSelect = document.getElementById('exonFormSubject');
 
-    if (nameEl) nameEl.textContent = `Estudiante: ${formatStudentDisplayName(student, 'lastFirst')}`;
-    if (metaEl) metaEl.textContent = `Carné: ${student.carne || '—'} | Cód. Personal: ${student.personalCode || '—'} | Grado y Sección: ${formatStudentGradeAndSection(student)}`;
+    if (nameEl) nameEl.textContent = `Estudiante: ${typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(student, 'lastFirst') : student.name}`;
+    if (metaEl) metaEl.textContent = `Carné: ${student.carne || '—'} | Cód. Personal: ${student.personalCode || '—'} | Grado y Sección: ${typeof formatStudentGradeAndSection === 'function' ? formatStudentGradeAndSection(student) : student.grade}`;
 
     const exceptions = student.academicExceptions || [];
     if (badgeEl) {
@@ -14460,13 +14605,12 @@ function openAcademicExonerationModal(studentId) {
             badgeEl.style.background = '#fef3c7';
             badgeEl.style.color = '#92400e';
         } else {
-            badgeEl.textContent = 'Sin Exoneraciones';
+            badgeEl.textContent = 'Expediente Regular';
             badgeEl.style.background = '#ccfbf1';
             badgeEl.style.color = '#115e59';
         }
     }
 
-    // Poblar selector de materias con las materias del pensum del grado del estudiante
     if (subjSelect) {
         let opts = `<option value="ALL">🌟 Todas las Asignaturas (Bimestre Completo)</option>`;
         const courseNames = student.grades ? Object.keys(student.grades) : [];
@@ -14475,7 +14619,6 @@ function openAcademicExonerationModal(studentId) {
                 opts += `<option value="${escapeHtml(cn)}">📚 ${escapeHtml(cn)}</option>`;
             });
         } else {
-            // Asignaturas por defecto del pensum
             (STATE.pensum || []).filter(p => p.gradeCode === student.grade || p.grade === student.grade).forEach(p => {
                 opts += `<option value="${escapeHtml(p.subject)}">📚 ${escapeHtml(p.subject)}</option>`;
             });
@@ -14483,10 +14626,47 @@ function openAcademicExonerationModal(studentId) {
         subjSelect.innerHTML = opts;
     }
 
-    renderAcademicExonerationsList(student);
+    if (typeof renderAcademicExonerationsList === 'function') {
+        renderAcademicExonerationsList(student);
+    }
+}
+window.populateExonGradeFilter = populateExonGradeFilter;
+window.filterExonStudentDropdown = filterExonStudentDropdown;
+window.onExonStudentSelected = onExonStudentSelected;
+
+function openAcademicExonerationModal(studentId = null) {
+    const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
+    const curRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || (window.STATE && window.STATE.currentRole) || (typeof window.EnccoAuthStore !== 'undefined' && window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
+    if (!allowedRoles.includes(curRole)) {
+        showToast("Acceso Restringido: La exoneración de estudiantes es facultad única y exclusiva de Dirección, Secretaría o Auxiliatura.", "warning");
+        return;
+    }
+
+    populateExonGradeFilter();
+    filterExonStudentDropdown(studentId);
+
+    const form = document.getElementById('academicExonerationForm');
+    if (form) form.reset();
+
+    if (studentId) {
+        onExonStudentSelected(studentId);
+    } else {
+        STATE.exonerationStudentId = null;
+        const infoBox = document.getElementById('exonStudentInfoBox');
+        if (infoBox) infoBox.style.display = 'none';
+        const subjSelect = document.getElementById('exonFormSubject');
+        if (subjSelect) subjSelect.innerHTML = '<option value="ALL">🌟 Todas las Asignaturas (Bimestre Completo)</option>';
+        const container = document.getElementById('exonListContainer');
+        if (container) container.innerHTML = '';
+        setTimeout(() => {
+            const searchInput = document.getElementById('exonStudentSearchInput');
+            if (searchInput) searchInput.focus();
+        }, 150);
+    }
 
     showModalById('academicExonerationModal');
 }
+window.openAcademicExonerationModal = openAcademicExonerationModal;
 
 function closeAcademicExonerationModal() {
     const modal = document.getElementById('academicExonerationModal');
@@ -14494,7 +14674,9 @@ function closeAcademicExonerationModal() {
         modal.classList.remove('active');
         modal.style.setProperty('display', 'none', 'important');
     }
+    STATE.exonerationStudentId = null;
 }
+window.closeAcademicExonerationModal = closeAcademicExonerationModal;
 
 function renderAcademicExonerationsList(student) {
     const badgeEl = document.getElementById('exonModalStatusBadge');
@@ -14571,10 +14753,12 @@ async function saveAcademicExoneration(e) {
         return;
     }
 
-    const studentId = payload ? (payload.studentId || payload.id || payload.personalCode) : (STATE.exonerationStudentId || (window._activeExonStudent ? window._activeExonStudent.id : null));
+    const studentId = payload ? (payload.studentId || payload.id || payload.personalCode) : (STATE.exonerationStudentId || document.getElementById('exonStudentSelect')?.value || (window._activeExonStudent ? window._activeExonStudent.id : null));
     if (!studentId || studentId === 'undefined' || studentId === 'null') {
         console.error("Error: ID del estudiante no encontrado o indefinido.");
-        showToast("Error: Estudiante no seleccionado.", "danger");
+        showToast("Por favor seleccione un estudiante de la lista antes de guardar.", "warning");
+        const selEl = document.getElementById('exonStudentSelect');
+        if (selEl) selEl.focus();
         return;
     }
 
@@ -16857,11 +17041,11 @@ function generateOfficialPrintList(opts = null) {
         }
     }
 
-    // Obtener estudiantes de la cátedra
+    // Obtener estudiantes de la cátedra (incluyendo Retirados, Ausentes y Exonerados del bimestre correspondiente)
     let students = (typeof getSortedGradebookStudents === 'function') ? getSortedGradebookStudents(gradeCode, targetPensum) : [];
     if (!students || students.length === 0) {
         students = (STATE.students || []).filter(s => {
-            if (s.active === false) return false;
+            if (s.active === false && s.status !== 'Retirado' && s.status !== 'Ausente' && s.status !== 'Inactivo') return false;
             if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
             const sg = `${s.grade || ''} ${s.section || ''}`.toLowerCase();
             const tg = `${rawGradeName} ${rawSection}`.toLowerCase();
@@ -16980,15 +17164,20 @@ function generateOfficialPrintList(opts = null) {
 
             if (modelType === 'NOMINA_OFICIAL') {
                 const rowsHtml = pageStudents.map((s, idx) => {
-                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isExon = !isRet && ((finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
+                    const tagHtml = isRet ? ' <span style="color:#b91c1c; font-weight:800;">[RETIRADO]</span>' : (isAus ? ' <span style="color:#b45309; font-weight:800;">[AUSENTE]</span>' : (isExon ? ` <span style="color:#0284c7; font-weight:800;">[EXONERADO B${bNum}]</span>` : ''));
+                    const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
                     const claveVal = s.clave || (startNo + idx + 1);
                     const genderShort = (s.gender === 'Femenino' || s.genero === 'Femenino') ? 'F' : 'M';
                     const guardianName = isVacio ? '' : (s.guardianName || s.tutor || s.fatherName || s.motherName || 'No registrado');
                     const guardianDpi = isVacio ? '' : (s.guardianDpi || s.tutorDpi || s.fatherDpi || s.motherDpi || '-');
-                    const statusText = isVacio ? '' : (s.status || 'Inscrito').toUpperCase();
+                    const statusText = isVacio ? '' : (isRet ? 'RETIRADO' : (isAus ? 'AUSENTE' : (isExon ? `EXONERADO B${bNum}` : (s.status || 'Inscrito').toUpperCase())));
+                    const statusColor = isRet ? '#b91c1c' : (isAus ? '#b45309' : (isExon ? '#0284c7' : '#15803d'));
 
                     return `
-                    <tr style="height:${rowHeight};">
+                    <tr style="height:${rowHeight}; ${isRet ? 'background:#fef2f2;' : (isExon ? 'background:#f0f9ff;' : '')}">
                         <td style="text-align:center; font-weight:700; width:28px; padding:${cellPadding}; font-size:${rowFontSize};">${claveVal}</td>
                         <td style="text-align:center; font-family:monospace; width:72px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
                         <td style="text-align:center; font-family:monospace; width:88px; padding:${cellPadding}; font-size:${rowFontSize};">${s.cui || s.dpi || '-'}</td>
@@ -16996,7 +17185,7 @@ function generateOfficialPrintList(opts = null) {
                         <td style="text-align:center; font-weight:700; width:26px; padding:${cellPadding}; font-size:${rowFontSize};">${genderShort}</td>
                         <td style="text-align:left; padding-left:4px; width:135px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${guardianName}</td>
                         <td style="text-align:center; font-family:monospace; width:82px; padding:${cellPadding}; font-size:${rowFontSize};">${guardianDpi}</td>
-                        <td style="text-align:center; width:52px; padding:${cellPadding}; font-size:6.8px; font-weight:700; color:#15803d;">${statusText}</td>
+                        <td style="text-align:center; width:52px; padding:${cellPadding}; font-size:6.8px; font-weight:700; color:${statusColor};">${statusText}</td>
                         <td style="width:90px; padding:${cellPadding}; border-bottom:1px solid #94a3b8;"></td>
                     </tr>`;
                 }).join('');
@@ -17037,22 +17226,26 @@ function generateOfficialPrintList(opts = null) {
                 `).join('');
 
                 const rowsHtml = pageStudents.map((s, idx) => {
-                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isExon = !isRet && ((finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
+                    const tagHtml = isRet ? ' <span style="color:#b91c1c; font-weight:800;">[RETIRADO]</span>' : (isAus ? ' <span style="color:#b45309; font-weight:800;">[AUSENTE]</span>' : (isExon ? ` <span style="color:#0284c7; font-weight:800;">[EXON. B${bNum}]</span>` : ''));
+                    const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
                     const daysCells = daysInfo.map(d => {
-                        const bgStyle = d.isWeekend ? 'background:#f1f5f9;' : '';
-                        return `<td style="width:16px; padding:0; text-align:center; font-size:7px; border:1px solid #94a3b8; ${bgStyle}"></td>`;
+                        const bgStyle = d.isWeekend ? 'background:#f1f5f9;' : (isRet ? 'background:#fef2f2; color:#94a3b8;' : '');
+                        return `<td style="width:16px; padding:0; text-align:center; font-size:7px; border:1px solid #94a3b8; ${bgStyle}">${(!isVacio && isRet && !d.isWeekend) ? '—' : ''}</td>`;
                     }).join('');
 
                     return `
-                    <tr style="height:18px;">
+                    <tr style="height:18px; ${isRet ? 'background:#fef2f2;' : (isExon ? 'background:#f0f9ff;' : '')}">
                         <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
                         <td style="text-align:center; font-family:monospace; width:70px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
                         <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:180px; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
                         ${daysCells}
-                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};"></td>
-                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};"></td>
-                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};"></td>
-                        <td style="width:30px; text-align:center; font-weight:800; background:#f1f5f9; font-size:${rowFontSize};"></td>
+                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};">${(!isVacio && isRet) ? '—' : ''}</td>
+                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};">${(!isVacio && isRet) ? '—' : ''}</td>
+                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};">${(!isVacio && isRet) ? '—' : ''}</td>
+                        <td style="width:30px; text-align:center; font-weight:800; background:#f1f5f9; font-size:${rowFontSize};">${(!isVacio && isRet) ? '<span style="color:#b91c1c; font-size:5.5px;">RET.</span>' : ''}</td>
                     </tr>`;
                 }).join('');
 
@@ -17079,17 +17272,25 @@ function generateOfficialPrintList(opts = null) {
 
             } else if (modelType === 'LISTA_COTEJO') {
                 const rowsHtml = pageStudents.map((s, idx) => {
-                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isInactive = isRet || isAus;
+                    const isExon = !isRet && ((finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
+                    const tagHtml = isRet ? ' <span style="color:#b91c1c; font-weight:800;">[RETIRADO]</span>' : (isAus ? ' <span style="color:#b45309; font-weight:800;">[AUSENTE]</span>' : (isExon ? ` <span style="color:#0284c7; font-weight:800;">[EXONERADO B${bNum}]</span>` : ''));
+                    const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
                     const uData = (s.gradebookDetails && s.gradebookDetails[finalSubjectName] && s.gradebookDetails[finalSubjectName][bNum])
                         ? s.gradebookDetails[finalSubjectName][bNum]
                         : null;
 
                     let sumZona = 0;
                     let hasAnyAct = false;
-                    const acts = (!isVacio && uData) ? (uData.activities || []) : [];
+                    const acts = (!isVacio && !isInactive && !isExon && uData) ? (uData.activities || []) : [];
 
                     const actCells = activitiesList.map((a, actIdx) => {
                         if (!isVacio) {
+                            if (isInactive || isExon) {
+                                return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; color:#94a3b8;">—</td>`;
+                            }
                             const score = acts[actIdx];
                             if (score !== undefined && score !== null && score !== '' && !isNaN(score)) {
                                 const numScore = parseFloat(score);
@@ -17101,9 +17302,15 @@ function generateOfficialPrintList(opts = null) {
                         return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; color:#94a3b8;"></td>`;
                     }).join('');
 
-                    const zonaText = (!isVacio && (hasAnyAct || sumZona > 0)) ? sumZona : '';
+                    const zonaText = (!isVacio && (isInactive || isExon)) ? '—' : ((!isVacio && (hasAnyAct || sumZona > 0)) ? sumZona : '');
                     let complianceBadge = '';
-                    if (!isVacio && hasAnyAct) {
+                    if (!isVacio && isRet) {
+                        complianceBadge = `<strong style="color:#b91c1c; font-size:6.8px;">RETIRADO</strong>`;
+                    } else if (!isVacio && isAus) {
+                        complianceBadge = `<strong style="color:#b45309; font-size:6.8px;">AUSENTE</strong>`;
+                    } else if (!isVacio && isExon) {
+                        complianceBadge = `<strong style="color:#0284c7; font-size:6.8px;">EXONERADO</strong>`;
+                    } else if (!isVacio && hasAnyAct) {
                         const percentCompliance = cfgZonaMax > 0 ? Math.round((sumZona / cfgZonaMax) * 100) : 0;
                         complianceBadge = percentCompliance >= 75
                             ? `<strong style="color:#15803d; font-size:6.8px;">${percentCompliance}% (ALTO)</strong>`
@@ -17112,7 +17319,7 @@ function generateOfficialPrintList(opts = null) {
                     }
 
                     return `
-                    <tr style="height:${rowHeight};">
+                    <tr style="height:${rowHeight}; ${isRet ? 'background:#fef2f2;' : (isExon ? 'background:#f0f9ff;' : '')}">
                         <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
                         <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
                         <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
@@ -17149,8 +17356,10 @@ function generateOfficialPrintList(opts = null) {
                         ? s.gradebookDetails[finalSubjectName][bNum]
                         : null;
 
-                    const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
-                    const isExonerated = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, finalSubjectName, bNum);
+                    const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isInactive = isRet || isAus;
+                    const isExonerated = !isRet && ((typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
 
                     let actCells = '';
                     let zonaVal = '';
@@ -17167,7 +17376,7 @@ function generateOfficialPrintList(opts = null) {
                         actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#94a3b8; font-size:${rowFontSize};">-</td>`).join('');
                         zonaVal = '-';
                         examVal = '-';
-                        totalVal = `<span style="color:#94a3b8; font-size:6.5px; font-weight:700;">${s.status.toUpperCase()}</span>`;
+                        totalVal = `<span style="color:${isRet ? '#b91c1c' : '#b45309'}; font-size:6.5px; font-weight:700;">${isRet ? 'RETIRADO' : 'AUSENTE'}</span>`;
                     } else if (isExonerated) {
                         actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#0284c7; font-size:${rowFontSize};">-</td>`).join('');
                         zonaVal = '-';
@@ -17219,10 +17428,11 @@ function generateOfficialPrintList(opts = null) {
                         }
                     }
 
-                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const tagHtml = isRet ? ' <span style="color:#b91c1c; font-weight:800;">[RETIRADO]</span>' : (isAus ? ' <span style="color:#b45309; font-weight:800;">[AUSENTE]</span>' : (isExonerated ? ` <span style="color:#0284c7; font-weight:800;">[EXON. B${bNum}]</span>` : ''));
+                    const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
 
                     return `
-                    <tr style="height:${rowHeight};">
+                    <tr style="height:${rowHeight}; ${isRet ? 'background:#fef2f2;' : (isExonerated ? 'background:#f0f9ff;' : '')}">
                         <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
                         <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
                         <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
@@ -17637,7 +17847,7 @@ function generateOfficialExcelList(opts = null) {
     let students = (typeof getSortedGradebookStudents === 'function') ? getSortedGradebookStudents(gradeCode, targetPensum) : [];
     if (!students || students.length === 0) {
         students = (STATE.students || []).filter(s => {
-            if (s.active === false) return false;
+            if (s.active === false && s.status !== 'Retirado' && s.status !== 'Ausente' && s.status !== 'Inactivo') return false;
             if (s.grade === gradeCode || s.gradeCode === gradeCode) return true;
             const sg = `${s.grade || ''} ${s.section || ''}`.toLowerCase();
             const tg = `${rawGradeName} ${rawSection}`.toLowerCase();
@@ -17773,12 +17983,16 @@ function generateOfficialExcelList(opts = null) {
                 aoa.push(headers);
 
                 students.forEach((s, idx) => {
-                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isExon = !isRet && ((finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
+                    const tagTxt = isRet ? ' [RETIRADO]' : (isAus ? ' [AUSENTE]' : (isExon ? ` [EXONERADO B${bNum}]` : ''));
+                    const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagTxt}`;
                     const claveVal = s.clave || (idx + 1);
                     const genderShort = (s.gender === 'Femenino' || s.genero === 'Femenino') ? 'F' : 'M';
                     const guardianName = isVacio ? '' : (s.guardianName || s.tutor || s.fatherName || s.motherName || 'No registrado');
                     const guardianDpi = isVacio ? '' : (s.guardianDpi || s.tutorDpi || s.fatherDpi || s.motherDpi || '-');
-                    const statusText = isVacio ? '' : (s.status || 'Inscrito').toUpperCase();
+                    const statusText = isVacio ? '' : (isRet ? 'RETIRADO' : (isAus ? 'AUSENTE' : (isExon ? `EXONERADO B${bNum}` : (s.status || 'Inscrito').toUpperCase())));
 
                     aoa.push([
                         claveVal,
@@ -17806,7 +18020,11 @@ function generateOfficialExcelList(opts = null) {
 
                 const dataStartRow = aoa.length; // 1-indexed next row
                 students.forEach((s, idx) => {
-                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isExon = !isRet && ((finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
+                    const tagTxt = isRet ? ' [RETIRADO]' : (isAus ? ' [AUSENTE]' : (isExon ? ` [EXONERADO B${bNum}]` : ''));
+                    const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagTxt}`;
                     const claveVal = s.clave || (idx + 1);
                     const rowIdx = dataStartRow + idx + 1; // Excel row
                     const dayColStart = 'E';
@@ -17821,11 +18039,15 @@ function generateOfficialExcelList(opts = null) {
                         { t: 's', v: s.personalCode || s.carne || '' },
                         fullNameDisplay
                     ];
-                    for (let d = 1; d <= 31; d++) row.push('');
-                    row.push({ f: `COUNTIF(${dayColStart}${rowIdx}:${dayColEnd}${rowIdx}, "P")` });
-                    row.push({ f: `COUNTIF(${dayColStart}${rowIdx}:${dayColEnd}${rowIdx}, "A")` });
-                    row.push({ f: `COUNTIF(${dayColStart}${rowIdx}:${dayColEnd}${rowIdx}, "J")` });
-                    row.push({ f: `IF((${pCol}${rowIdx}+${aCol}${rowIdx}+${jCol}${rowIdx})>0, ROUND((${pCol}${rowIdx}/(${pCol}${rowIdx}+${aCol}${rowIdx}+${jCol}${rowIdx}))*100, 0), "")` });
+                    for (let d = 1; d <= 31; d++) row.push((!isVacio && isRet) ? '—' : '');
+                    if (!isVacio && isRet) {
+                        row.push('—', '—', '—', 'RETIRADO');
+                    } else {
+                        row.push({ f: `COUNTIF(${dayColStart}${rowIdx}:${dayColEnd}${rowIdx}, "P")` });
+                        row.push({ f: `COUNTIF(${dayColStart}${rowIdx}:${dayColEnd}${rowIdx}, "A")` });
+                        row.push({ f: `COUNTIF(${dayColStart}${rowIdx}:${dayColEnd}${rowIdx}, "J")` });
+                        row.push({ f: `IF((${pCol}${rowIdx}+${aCol}${rowIdx}+${jCol}${rowIdx})>0, ROUND((${pCol}${rowIdx}/(${pCol}${rowIdx}+${aCol}${rowIdx}+${jCol}${rowIdx}))*100, 0), "")` });
+                    }
                     aoa.push(row);
                 });
 
@@ -17848,13 +18070,18 @@ function generateOfficialExcelList(opts = null) {
                 const totalZonaLetter = XLSX.utils.encode_col(actEndColIdx + 1);
 
                 students.forEach((s, idx) => {
-                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isInactive = isRet || isAus;
+                    const isExon = !isRet && ((finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
+                    const tagTxt = isRet ? ' [RETIRADO]' : (isAus ? ' [AUSENTE]' : (isExon ? ` [EXONERADO B${bNum}]` : ''));
+                    const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagTxt}`;
                     const claveVal = s.clave || (idx + 1);
                     const excelRow = dataStartRow + idx + 1;
                     const uData = (s.gradebookDetails && s.gradebookDetails[finalSubjectName] && s.gradebookDetails[finalSubjectName][bNum])
                         ? s.gradebookDetails[finalSubjectName][bNum]
                         : null;
-                    const acts = (!isVacio && uData) ? (uData.activities || []) : [];
+                    const acts = (!isVacio && !isInactive && !isExon && uData) ? (uData.activities || []) : [];
 
                     const row = [
                         idx + 1,
@@ -17864,13 +18091,17 @@ function generateOfficialExcelList(opts = null) {
                     ];
 
                     activitiesList.forEach((_, aIdx) => {
-                        const score = (!isVacio && acts[aIdx] !== undefined && acts[aIdx] !== null && acts[aIdx] !== '') ? parseFloat(acts[aIdx]) : '';
+                        const score = (!isVacio && !isInactive && !isExon && acts[aIdx] !== undefined && acts[aIdx] !== null && acts[aIdx] !== '') ? parseFloat(acts[aIdx]) : '';
                         row.push(score);
                     });
 
                     row.push({ f: `SUM(${actStartLetter}${excelRow}:${actEndLetter}${excelRow})` });
-                    row.push({ f: `IF(${totalZonaLetter}${excelRow}>=30,"ALTO",IF(${totalZonaLetter}${excelRow}>=20,"MEDIO","BAJO"))` });
-                    row.push('');
+                    if (!isVacio && (isRet || isAus || isExon)) {
+                        row.push(isRet ? 'RETIRADO' : (isAus ? 'AUSENTE' : 'EXONERADO'));
+                    } else {
+                        row.push({ f: `IF(${totalZonaLetter}${excelRow}>=30,"ALTO",IF(${totalZonaLetter}${excelRow}>=20,"MEDIO","BAJO"))` });
+                    }
+                    row.push((!isVacio && (isRet || isAus || isExon)) ? (isRet ? 'Alumno Retirado' : (isAus ? 'Alumno Ausente' : `Exonerado Bimestre ${bNum}`)) : '');
                     aoa.push(row);
                 });
 
@@ -17896,14 +18127,19 @@ function generateOfficialExcelList(opts = null) {
                 const totalLetter = XLSX.utils.encode_col(actEndColIdx + 3);
 
                 students.forEach((s, idx) => {
-                    const fullNameDisplay = formatStudentDisplayName(s, 'lastFirst');
+                    const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const isInactive = isRet || isAus;
+                    const isExon = !isRet && ((finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
+                    const tagTxt = isRet ? ' [RETIRADO]' : (isAus ? ' [AUSENTE]' : (isExon ? ` [EXONERADO B${bNum}]` : ''));
+                    const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagTxt}`;
                     const claveVal = s.clave || (idx + 1);
                     const excelRow = dataStartRow + idx + 1;
                     const uData = (s.gradebookDetails && s.gradebookDetails[finalSubjectName] && s.gradebookDetails[finalSubjectName][bNum])
                         ? s.gradebookDetails[finalSubjectName][bNum]
                         : null;
-                    const acts = (!isVacio && uData) ? (uData.activities || []) : [];
-                    const examVal = (!isVacio && uData && uData.exam !== undefined && uData.exam !== null && uData.exam !== '') ? parseFloat(uData.exam) : '';
+                    const acts = (!isVacio && !isInactive && !isExon && uData) ? (uData.activities || []) : [];
+                    const examVal = (!isVacio && !isInactive && !isExon && uData && uData.exam !== undefined && uData.exam !== null && uData.exam !== '') ? parseFloat(uData.exam) : '';
 
                     const row = [
                         idx + 1,
@@ -17913,14 +18149,18 @@ function generateOfficialExcelList(opts = null) {
                     ];
 
                     activitiesList.forEach((_, aIdx) => {
-                        const score = (!isVacio && acts[aIdx] !== undefined && acts[aIdx] !== null && acts[aIdx] !== '') ? parseFloat(acts[aIdx]) : '';
+                        const score = (!isVacio && !isInactive && !isExon && acts[aIdx] !== undefined && acts[aIdx] !== null && acts[aIdx] !== '') ? parseFloat(acts[aIdx]) : '';
                         row.push(score);
                     });
 
                     row.push({ f: `SUM(${actStartLetter}${excelRow}:${actEndLetter}${excelRow})` });
                     row.push(examVal);
                     row.push({ f: `${totalZonaLetter}${excelRow}+${examLetter}${excelRow}` });
-                    row.push({ f: `IF(${totalLetter}${excelRow}>=60,"APROBADO","REPROBADO")` });
+                    if (!isVacio && (isRet || isAus || isExon)) {
+                        row.push(isRet ? 'RETIRADO' : (isAus ? 'AUSENTE' : `EXONERADO B${bNum}`));
+                    } else {
+                        row.push({ f: `IF(${totalLetter}${excelRow}>=60,"APROBADO","REPROBADO")` });
+                    }
                     aoa.push(row);
                 });
             }
@@ -20840,6 +21080,12 @@ function getStudentsAtAttendanceRisk(filterGradeCodes = null) {
 window.getStudentsAtAttendanceRisk = getStudentsAtAttendanceRisk;
 
 function openAttendanceWhatsAppContact(studentId, absencesCount) {
+    if (!canRoleUseWhatsApp()) {
+        if (typeof showToast === 'function') {
+            showToast('El contacto vía WhatsApp está restringido exclusivamente a Dirección, Auxiliatura y Secretaría.', 'warning');
+        }
+        return;
+    }
     const student = (STATE.students || []).find(s => String(s.id) === String(studentId));
     if (!student) return;
     const phone = student.tutorPhone || student.guardianPhone || student.phone || student.motherPhone || student.fatherPhone || '';
@@ -24372,6 +24618,32 @@ async function getRtdbStudentIndex(studentId) {
 }
 window.getRtdbStudentIndex = getRtdbStudentIndex;
 
+function getStudentBimestreStatusInfo(s, bimestreNum = 1, subjectName = null) {
+    if (!s) return { isRetired: false, isAusente: false, isInactive: false, isExon: false, statusLabel: 'Activo', badgeHtml: '' };
+    const bNum = Math.max(1, Math.min(4, parseInt(bimestreNum, 10) || 1));
+    const isRetired = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+    const isAusente = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+    const isInactive = isRetired || isAusente;
+    const isExon = !isRetired && (
+        (subjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, subjectName, bNum)) ||
+        (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum))
+    );
+    let statusLabel = 'Activo';
+    let badgeHtml = '';
+    if (isRetired) {
+        statusLabel = s.status === 'Inactivo' ? 'Inactivo' : 'Retirado';
+        badgeHtml = `<span class="badge badge-danger" style="font-size:0.7rem; margin-left:6px; font-weight:700;" title="Retirado en Bimestre ${bNum}: ${escapeHtml(s.retireReason || 'Sin motivo registrado')}"><i class="fa-solid fa-user-slash"></i> ${statusLabel}</span>`;
+    } else if (isAusente) {
+        statusLabel = 'Ausente';
+        badgeHtml = `<span class="badge" style="font-size:0.7rem; margin-left:6px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-weight:700;" title="Ausente en Bimestre ${bNum}: ${escapeHtml(s.retireReason || 'Inasistencia prolongada')}"><i class="fa-solid fa-user-xmark"></i> Ausente</span>`;
+    } else if (isExon) {
+        statusLabel = `Exonerado (B${bNum})`;
+        badgeHtml = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.7rem; margin-left:6px; font-weight:800;"><i class="fa-solid fa-file-shield"></i> Exonerado (B${bNum})</span>`;
+    }
+    return { isRetired, isAusente, isInactive, isExon, statusLabel, badgeHtml };
+}
+window.getStudentBimestreStatusInfo = getStudentBimestreStatusInfo;
+
 async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifier, unit, gradeData) {
     if (window.STATE && window.STATE.isLocalReadOnlyMode) {
         if (typeof showToast === 'function') {
@@ -24401,9 +24673,14 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
         return false;
     }
 
-    // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les coloca nota
-    if (student.status === 'Retirado' || student.status === 'Inactivo') {
-        console.warn(`Estudiante ${student.name || studentIdentifier} está ${student.status}: No se permite ingreso de calificaciones.`);
+    const uNum = Math.max(1, Math.min(4, parseInt(unit) || 1));
+    const uStr = String(uNum);
+
+    // 🛡️ REGLA INSTITUCIONAL POR BIMESTRE: A los alumnos marcados como retirados en este bimestre NO se les coloca nota
+    const isRetiredInUnit = (student.status === 'Retirado' || student.status === 'Inactivo') &&
+        (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(student, uNum) : true);
+    if (isRetiredInUnit) {
+        console.warn(`Estudiante ${student.name || studentIdentifier} está ${student.status} en el Bimestre ${uNum}: No se permite ingreso de calificaciones.`);
         return false;
     }
 
@@ -24413,9 +24690,6 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
         console.warn("Materia no identificada para guardado atómico:", subjectIdentifier);
         return false;
     }
-
-    const uNum = Math.max(1, Math.min(4, parseInt(unit) || 1));
-    const uStr = String(uNum);
 
     if (!student.grades) student.grades = {};
     if (!student.gradebookDetails) student.gradebookDetails = {};
@@ -25605,22 +25879,23 @@ function loadTeacherGradebook() {
         tbodyActivities.innerHTML = students.map((s, idx) => {
             const uData = s.gradebookDetails[subjectName][currentUnit];
             const acts = uData.activities || [0,0,0,0,0,0,0,0,0,0];
-            const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
-            const isExon = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, currentUnit);
+            const isBimRetiredOrAusente = (typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(s, currentUnit) : true;
+            const isRetiradoBim = (s.status === 'Retirado' || s.status === 'Inactivo') && isBimRetiredOrAusente;
+            const isAusenteBim = (s.status === 'Ausente') && isBimRetiredOrAusente;
+            const isInactive = isRetiradoBim || isAusenteBim;
+            const isExon = !isInactive && (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, currentUnit);
             const zonaSum = (isInactive || isExon) ? 0 : acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
             if (!isInactive && !isExon && zonaSum > cfg.zonaMax) hasOverLimit = true;
 
             const studentFullName = escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase());
 
             let statusTag = '';
-            if (s.status === 'Retirado') {
-                statusTag = `<span class="badge badge-danger" style="font-size:0.7rem; margin-left:6px; font-weight:700;" title="Retirado formalmente: ${escapeHtml(s.retireReason || 'Sin motivo registrado')}"><i class="fa-solid fa-user-slash"></i> Retirado</span>`;
-            } else if (s.status === 'Ausente') {
-                statusTag = `<span class="badge" style="font-size:0.7rem; margin-left:6px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-weight:700;" title="Ausente / Desertor: ${escapeHtml(s.retireReason || 'Inasistencia prolongada')}"><i class="fa-solid fa-user-xmark"></i> Ausente</span>`;
-            } else if (s.status === 'Inactivo') {
-                statusTag = `<span class="badge badge-secondary" style="font-size:0.7rem; margin-left:6px;">Inactivo</span>`;
+            if (isRetiradoBim) {
+                statusTag = `<span class="badge badge-danger" style="font-size:0.7rem; margin-left:6px; font-weight:700;" title="Retirado formalmente en Bimestre ${currentUnit}: ${escapeHtml(s.retireReason || 'Sin motivo registrado')}"><i class="fa-solid fa-user-slash"></i> ${s.status === 'Inactivo' ? 'Inactivo' : 'Retirado'}</span>`;
+            } else if (isAusenteBim) {
+                statusTag = `<span class="badge" style="font-size:0.7rem; margin-left:6px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-weight:700;" title="Ausente / Desertor en Bimestre ${currentUnit}: ${escapeHtml(s.retireReason || 'Inasistencia prolongada')}"><i class="fa-solid fa-user-xmark"></i> Ausente</span>`;
             } else if (isExon) {
-                statusTag = `<span class="badge" onclick="openExonerationDetailModal('${s.id}', '${escapeHtml(subjectName)}', ${currentUnit})" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.7rem; margin-left:6px; font-weight:800; cursor:pointer;" title="Haga clic para ver el motivo oficial de la exoneración"><i class="fa-solid fa-file-shield"></i> Exonerado ℹ️</span>`;
+                statusTag = `<span class="badge" onclick="openExonerationDetailModal('${s.id}', '${escapeHtml(subjectName)}', ${currentUnit})" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.7rem; margin-left:6px; font-weight:800; cursor:pointer;" title="Haga clic para ver el motivo oficial de la exoneración"><i class="fa-solid fa-file-shield"></i> Exonerado (B${currentUnit}) ℹ️</span>`;
             }
 
             if (isExon) {
@@ -25651,7 +25926,7 @@ function loadTeacherGradebook() {
                         <td style="text-align:center; padding:4px;">
                             <input type="text" class="grade-box-input" value="—" disabled readonly 
                                 style="background:#f1f5f9; color:#94a3b8; border:1px dashed #cbd5e1; cursor:not-allowed;" 
-                                title="Estudiante ${s.status}: No permite ingreso de calificaciones">
+                                title="Estudiante ${s.status} en Bimestre ${currentUnit}: No permite ingreso de calificaciones">
                         </td>
                     `;
                 }
@@ -25684,7 +25959,7 @@ function loadTeacherGradebook() {
                     <td style="text-align:center;"><input type="checkbox" ${isInactive ? 'disabled' : ''}></td>
                     <td><strong>${idx + 1}. ${studentFullName}</strong>${statusTag}</td>
                     <td style="text-align:center; background:${isInactive ? '#f1f5f9' : (isLowZone ? 'rgba(254,243,199,0.35)' : 'rgba(34,197,94,0.08)')}; font-weight:800; font-size:0.95rem; ${zonaColorStyle}" class="zona-sum-cell" id="zonaSum_${s.id}">
-                        ${isInactive ? '<span style="color:#94a3b8; font-size:0.8rem;">Bloqueado</span>' : `&Sigma; ${zonaSum} ${lowZoneBadge}`}
+                        ${isInactive ? `<span style="color:#94a3b8; font-size:0.8rem;">${isAusenteBim ? 'Ausente' : 'Retirado'}</span>` : `&Sigma; ${zonaSum} ${lowZoneBadge}`}
                     </td>
                     ${actInputs}
                 </tr>
@@ -25698,8 +25973,11 @@ function loadTeacherGradebook() {
         tbodySummary.innerHTML = students.map((s, idx) => {
             const uData = s.gradebookDetails[subjectName][currentUnit];
             const acts = uData.activities || [0,0,0,0,0,0,0,0,0,0];
-            const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
-            const isExon = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, currentUnit);
+            const isBimRetiredOrAusente = (typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(s, currentUnit) : true;
+            const isRetiradoBim = (s.status === 'Retirado' || s.status === 'Inactivo') && isBimRetiredOrAusente;
+            const isAusenteBim = (s.status === 'Ausente') && isBimRetiredOrAusente;
+            const isInactive = isRetiradoBim || isAusenteBim;
+            const isExon = !isInactive && (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, currentUnit);
             const zonaSum = (isInactive || isExon) ? 0 : acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
             const exam = (isInactive || isExon) ? 0 : (parseInt(uData.exam) || 0);
             const total = zonaSum + exam;
@@ -25708,14 +25986,12 @@ function loadTeacherGradebook() {
             const studentFullName = escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase());
 
             let statusTag = '';
-            if (s.status === 'Retirado') {
-                statusTag = `<span class="badge badge-danger" style="font-size:0.7rem; margin-left:6px; font-weight:700;"><i class="fa-solid fa-user-slash"></i> Retirado</span>`;
-            } else if (s.status === 'Ausente') {
+            if (isRetiradoBim) {
+                statusTag = `<span class="badge badge-danger" style="font-size:0.7rem; margin-left:6px; font-weight:700;"><i class="fa-solid fa-user-slash"></i> ${s.status === 'Inactivo' ? 'Inactivo' : 'Retirado'}</span>`;
+            } else if (isAusenteBim) {
                 statusTag = `<span class="badge" style="font-size:0.7rem; margin-left:6px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-weight:700;"><i class="fa-solid fa-user-xmark"></i> Ausente</span>`;
-            } else if (s.status === 'Inactivo') {
-                statusTag = `<span class="badge badge-secondary" style="font-size:0.7rem; margin-left:6px;">Inactivo</span>`;
             } else if (isExon) {
-                statusTag = `<span class="badge" onclick="openExonerationDetailModal('${s.id}', '${escapeHtml(subjectName)}', ${currentUnit})" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.7rem; margin-left:6px; font-weight:800; cursor:pointer;" title="Haga clic para ver el motivo oficial de la exoneración"><i class="fa-solid fa-file-shield"></i> Exonerado ℹ️</span>`;
+                statusTag = `<span class="badge" onclick="openExonerationDetailModal('${s.id}', '${escapeHtml(subjectName)}', ${currentUnit})" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.7rem; margin-left:6px; font-weight:800; cursor:pointer;" title="Haga clic para ver el motivo oficial de la exoneración"><i class="fa-solid fa-file-shield"></i> Exonerado (B${currentUnit}) ℹ️</span>`;
             }
 
             if (isExon) {
@@ -25811,7 +26087,11 @@ function loadTeacherGradebook() {
     if (tbodyAverages) {
         tbodyAverages.innerHTML = students.map((s, idx) => {
             const studentFullName = escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase());
-            const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
+            const isBimRetiredOrAusente = (typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(s, currentUnit) : true;
+            const isRetiradoCur = (s.status === 'Retirado' || s.status === 'Inactivo') && isBimRetiredOrAusente;
+            const isAusenteCur = (s.status === 'Ausente') && isBimRetiredOrAusente;
+            const isInactive = isRetiradoCur || isAusenteCur;
+            const isExonCur = !isInactive && (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, currentUnit);
             const subGrades = (typeof getReportCardSubjectGrades === 'function')
                 ? getReportCardSubjectGrades(s, subjectName)
                 : null;
@@ -25830,14 +26110,21 @@ function loadTeacherGradebook() {
             const isEx3 = subGrades ? subGrades.isExon3 : ((typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 3));
             const isEx4 = subGrades ? subGrades.isExon4 : ((typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, 4));
 
-            const renderAvgCell = (n, isEx, isSpecialUnset) => {
+            const isRetU1 = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo') && ((typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(s, 1) : true);
+            const isRetU2 = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo') && ((typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(s, 2) : true);
+            const isRetU3 = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo') && ((typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(s, 3) : true);
+            const isRetU4 = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo') && ((typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(s, 4) : true);
+
+            const renderAvgCell = (n, isEx, isSpecialUnset, isRetUnit) => {
                 if (isSpecialUnset) {
                     return '<span style="color:#94a3b8;">—</span>';
+                }
+                if (isRetUnit) {
+                    return `<span style="color:#94a3b8; font-weight:700;" title="${escapeHtml(s.status || 'Retirado')} en este bimestre">—</span>`;
                 }
                 if (isEx) {
                     return `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; padding:2px 6px; border-radius:4px;" title="Bimestre Exonerado"><i class="fa-solid fa-shield-check"></i> Exon.</span>`;
                 }
-                if (isInactive) return '—';
                 return n > 0 ? n : '—';
             };
 
@@ -25845,12 +26132,12 @@ function loadTeacherGradebook() {
             const notaFinal = subGrades ? subGrades.avg : (isSpecial ? n4 : 0);
 
             let statusTag = '';
-            if (s.status === 'Retirado') {
-                statusTag = `<span class="badge badge-danger" style="font-size:0.7rem; margin-left:6px; font-weight:700;"><i class="fa-solid fa-user-slash"></i> Retirado</span>`;
-            } else if (s.status === 'Ausente') {
+            if (isRetiradoCur) {
+                statusTag = `<span class="badge badge-danger" style="font-size:0.7rem; margin-left:6px; font-weight:700;"><i class="fa-solid fa-user-slash"></i> ${s.status === 'Inactivo' ? 'Inactivo' : 'Retirado'}</span>`;
+            } else if (isAusenteCur) {
                 statusTag = `<span class="badge" style="font-size:0.7rem; margin-left:6px; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; font-weight:700;"><i class="fa-solid fa-user-xmark"></i> Ausente</span>`;
-            } else if (s.status === 'Inactivo') {
-                statusTag = `<span class="badge badge-secondary" style="font-size:0.7rem; margin-left:6px;">Inactivo</span>`;
+            } else if (isExonCur) {
+                statusTag = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.7rem; margin-left:6px; font-weight:800;"><i class="fa-solid fa-file-shield"></i> Exonerado (B${currentUnit})</span>`;
             }
 
             const promTitle = isSpecial 
@@ -25861,10 +26148,10 @@ function loadTeacherGradebook() {
                 <tr data-student-id="${s.id}" style="${isInactive ? 'background:rgba(241,245,249,0.6); opacity:0.85;' : ''}">
                     <td style="text-align:center;"><input type="checkbox" ${isInactive ? 'disabled' : ''}></td>
                     <td><strong>${idx + 1}. ${studentFullName}</strong>${statusTag}</td>
-                    <td style="text-align:center;" class="${isInactive || isEx1 || isSpecial ? '' : (n1 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n1, isEx1, isSpecial)}</td>
-                    <td style="text-align:center;" class="${isInactive || isEx2 || isSpecial ? '' : (n2 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n2, isEx2, isSpecial)}</td>
-                    <td style="text-align:center;" class="${isInactive || isEx3 || isSpecial ? '' : (n3 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n3, isEx3, isSpecial)}</td>
-                    <td style="text-align:center;" class="${isInactive || isEx4 ? '' : (n4 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n4, isEx4, false)}</td>
+                    <td style="text-align:center;" class="${isRetU1 || isEx1 || isSpecial ? '' : (n1 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n1, isEx1, isSpecial, isRetU1)}</td>
+                    <td style="text-align:center;" class="${isRetU2 || isEx2 || isSpecial ? '' : (n2 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n2, isEx2, isSpecial, isRetU2)}</td>
+                    <td style="text-align:center;" class="${isRetU3 || isEx3 || isSpecial ? '' : (n3 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n3, isEx3, isSpecial, isRetU3)}</td>
+                    <td style="text-align:center;" class="${isRetU4 || isEx4 ? '' : (n4 < 60 ? 'grade-score-fail' : 'grade-score-pass')}">${renderAvgCell(n4, isEx4, false, isRetU4)}</td>
                     <td style="text-align:center; font-weight:800; font-size:1.05rem; background:${isInactive ? '#f1f5f9' : 'rgba(34,197,94,0.06)'};" class="${isInactive || isFullyExon ? '' : (notaFinal < 60 ? 'grade-score-fail' : 'grade-score-pass')}" title="${promTitle}">
                         ${isInactive ? `<span class="badge ${s.status === 'Retirado' ? 'badge-danger' : 'badge-warning'}" style="font-size:0.75rem;">${s.status}</span>` : (isFullyExon ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem;">Exon.</span>` : (notaFinal > 0 ? notaFinal : '—'))}
                     </td>
@@ -26641,7 +26928,10 @@ function renderTeacherCourseCards() {
             ? getSortedGradebookStudents(gradeCode, p)
             : (STATE.students || []).filter(s => s.grade === gradeCode || (s.gradeLabel && s.gradeLabel.includes(p.grade)));
 
-        const activeStudents = students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo');
+        const activeStudents = students.filter(s => {
+            const isRetInUnit = (s.status === 'Retirado' || s.status === 'Inactivo' || s.status === 'Ausente') && ((typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(s, currentUnit) : true);
+            return !isRetInUnit;
+        });
         let gradedCount = 0;
 
         activeStudents.forEach(s => {
@@ -26847,19 +27137,23 @@ window.renderQuickAttendanceList = function() {
         : (STATE.students || []).filter(s => (typeof isStudentActive === 'function' ? isStudentActive(s) : true));
 
     let countP = 0, countA = 0, countT = 0, countJ = 0;
+    const todayBim = (typeof getBimestreFromMonth === 'function') ? getBimestreFromMonth(data.todayMonth) : 1;
 
     const html = students.map((s, idx) => {
         if (!s) return '';
-        const isRetired = (s.status === 'Retirado' || s.status === 'Inactivo');
+        const isRetired = (s.status === 'Retirado' || s.status === 'Inactivo') && ((typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(s, todayBim) : true);
+        const isAusente = (s.status === 'Ausente') && ((typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(s, todayBim) : true);
+        const isExon = !isRetired && !isAusente && ((typeof isStudentExonerated === 'function') ? isStudentExonerated(s, todayBim) : false);
+
         const permObj = (typeof getStudentPermissionForDay === 'function')
             ? getStudentPermissionForDay(s.id, data.todayYear, data.todayMonth, data.todayDay)
             : null;
         const hasPermit = !!permObj;
         const isUnjustPermit = hasPermit && isUnjustifiedPermission(permObj);
 
-        const currentVal = isRetired ? '—' : (hasPermit ? (isUnjustPermit ? 'A' : 'J') : (data.records[s.id] || 'P'));
+        const currentVal = (isRetired || isAusente) ? '—' : (hasPermit ? (isUnjustPermit ? 'A' : 'J') : (data.records[s.id] || 'P'));
 
-        if (!isRetired) {
+        if (!isRetired && !isAusente) {
             if (currentVal === 'P') countP++;
             else if (currentVal === 'A') countA++;
             else if (currentVal === 'T') countT++;
@@ -26868,13 +27162,13 @@ window.renderQuickAttendanceList = function() {
 
         const fullName = escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase());
 
-        if (isRetired) {
+        if (isRetired || isAusente) {
             return `
                 <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#f1f5f9; border-radius:8px; margin-bottom:8px; opacity:0.65;">
                     <div style="font-size:0.86rem; color:#64748b; font-weight:700;">
                         <span style="display:inline-block; width:26px;">${idx + 1}.</span> ${fullName}
                     </div>
-                    <span class="badge badge-danger" style="font-size:0.75rem;">Retirado</span>
+                    <span class="badge ${isRetired ? 'badge-danger' : 'badge-warning'}" style="font-size:0.75rem;">${isRetired ? 'Retirado' : 'Ausente'}</span>
                 </div>
             `;
         }
@@ -26883,7 +27177,7 @@ window.renderQuickAttendanceList = function() {
             return `
                 <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; margin-bottom:8px;">
                     <div style="font-size:0.88rem; color:#0f172a; font-weight:800;">
-                        <span style="display:inline-block; width:26px; color:#64748b;">${idx + 1}.</span> ${fullName}
+                        <span style="display:inline-block; width:26px; color:#64748b;">${idx + 1}.</span> ${fullName}${isExon ? ` <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.72rem; margin-left:4px;">Exon. B${todayBim}</span>` : ''}
                     </div>
                     <span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:800; font-size:0.82rem; padding:6px 12px; border-radius:6px; border:1px solid #f87171; display:inline-flex; align-items:center; gap:5px;" title="Ausencia Injustificada Blindada — Nadie puede cambiar esta A">
                         <i class="fa-solid fa-lock"></i> A (Injustificada Blindada)
@@ -26896,7 +27190,7 @@ window.renderQuickAttendanceList = function() {
             return `
                 <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; margin-bottom:8px;">
                     <div style="font-size:0.88rem; color:#0f172a; font-weight:800;">
-                        <span style="display:inline-block; width:26px; color:#64748b;">${idx + 1}.</span> ${fullName}
+                        <span style="display:inline-block; width:26px; color:#64748b;">${idx + 1}.</span> ${fullName}${isExon ? ` <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.72rem; margin-left:4px;">Exon. B${todayBim}</span>` : ''}
                     </div>
                     <span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.82rem; padding:6px 12px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;" title="Permiso de ausencia registrado en Auxiliatura">
                         <i class="fa-solid fa-lock"></i> J (Justificado)
@@ -26912,7 +27206,7 @@ window.renderQuickAttendanceList = function() {
         return `
             <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 14px; background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:8px; box-shadow:0 1px 3px rgba(0,0,0,0.03); flex-wrap:wrap; gap:8px;">
                 <div style="font-size:0.88rem; color:#0f172a; font-weight:700; flex:1; min-width:200px;">
-                    <span style="display:inline-block; width:26px; color:#64748b; font-weight:800;">${idx + 1}.</span> ${fullName}
+                    <span style="display:inline-block; width:26px; color:#64748b; font-weight:800;">${idx + 1}.</span> ${fullName}${isExon ? ` <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.72rem; margin-left:4px;">Exon. B${todayBim}</span>` : ''}
                 </div>
                 <div style="display:inline-flex; gap:6px; align-items:center;">
                     <button type="button" onclick="window.setQuickAttStatus('${s.id}', 'P')" 
@@ -26927,7 +27221,7 @@ window.renderQuickAttendanceList = function() {
                             style="min-width:54px; height:36px; border-radius:6px; font-weight:800; font-size:0.88rem; border:none; cursor:pointer; transition:all 0.15s; background:${isT ? '#0284c7' : '#f1f5f9'}; color:${isT ? '#ffffff' : '#475569'}; box-shadow:${isT ? '0 2px 6px rgba(2,132,199,0.3)' : 'none'};">
                         T
                     </button>
-                    ${(isA || isT) ? `
+                    ${((isA || isT) && canRoleUseWhatsApp()) ? `
                         <button type="button" class="btn btn-xs btn-outline-success" onclick="event.stopPropagation(); promptIncidentWhatsAppNotification({ studentId: '${s.id}', type: '${isA ? 'inasistencia' : 'tardanza'}', reason: '${isA ? 'Inasistencia reportada en pase de lista de hoy' : 'Llegada tarde reportada en pase de lista de hoy'}', courseName: '${(window._quickAttendanceData && window._quickAttendanceData.courseName) ? window._quickAttendanceData.courseName : ''}' })" title="Notificar a encargado por WhatsApp" style="height:36px; padding:0 8px; border-radius:6px; font-size:1rem; border-color:#22c55e; color:#15803d; background:#f0fdf4; display:inline-flex; align-items:center; justify-content:center;">
                             <i class="fa-brands fa-whatsapp"></i>
                         </button>
@@ -26971,9 +27265,12 @@ window.markAllPresentInQuickModal = function() {
     const students = (typeof getAttendanceStudents === 'function')
         ? getAttendanceStudents(data.gradeCode, currentCourseObj)
         : (STATE.students || []).filter(s => (typeof isStudentActive === 'function' ? isStudentActive(s) : true));
+    const todayBim = (typeof getBimestreFromMonth === 'function') ? getBimestreFromMonth(data.todayMonth) : 1;
 
     students.forEach(s => {
-        if (!s || s.status === 'Retirado' || s.status === 'Inactivo') return;
+        if (!s) return;
+        const isRetInUnit = (s.status === 'Retirado' || s.status === 'Inactivo' || s.status === 'Ausente') && ((typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(s, todayBim) : true);
+        if (isRetInUnit) return;
         const permObj = (typeof getStudentPermissionForDay === 'function')
             ? getStudentPermissionForDay(s.id, data.todayYear, data.todayMonth, data.todayDay)
             : null;
@@ -27671,6 +27968,39 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
                 }
             }
         });
+
+        // ⚡ Aplicar anulaciones locales recientes (últimos 8s) para que los clics del usuario tengan precedencia inmediata absoluta
+        if (window._localDirtyAttendanceCells && typeof window._localDirtyAttendanceCells === 'object') {
+            const nowTs = Date.now();
+            for (const [cellKey, dirty] of Object.entries(window._localDirtyAttendanceCells)) {
+                if (!dirty || (nowTs - dirty.ts > 8000)) continue;
+                const parts = cellKey.split('_');
+                if (parts.length >= 2) {
+                    const dirtyDay = parseInt(parts[parts.length - 1], 10);
+                    const dirtyStuId = parts[parts.length - 2];
+                    if (dirtyStuId && dirtyDay > 0 && dirtyDay <= 31) {
+                        const targetVal = dirty.val || '';
+                        const sObj = (STATE.students || []).find(st => st && (st.id === dirtyStuId || st.carne === dirtyStuId || st.personalCode === dirtyStuId || st.codigoPersonal === dirtyStuId));
+                        const idList = [dirtyStuId];
+                        if (sObj) {
+                            if (sObj.id) idList.push(sObj.id);
+                            if (sObj.carne) idList.push(sObj.carne);
+                            if (sObj.personalCode) idList.push(sObj.personalCode);
+                            if (sObj.codigoPersonal) idList.push(sObj.codigoPersonal);
+                            if (sObj.cui) idList.push(sObj.cui);
+                        }
+                        idList.forEach(id => {
+                            if (!monthData[id]) monthData[id] = {};
+                            if (targetVal) {
+                                monthData[id][dirtyDay] = targetVal;
+                            } else {
+                                delete monthData[id][dirtyDay];
+                            }
+                        });
+                    }
+                }
+            }
+        }
     }
 
     return monthData;
@@ -28085,7 +28415,7 @@ function loadAttendanceList() {
                             cellTitle += ' — 🔒 REGISTRO OFICIAL BLOQUEADO: Justificado por Auxiliatura / Dirección / Secretaría. Haga clic para ver detalles.';
                             cellInnerHtml = `<span onclick="event.stopPropagation(); if(typeof showJustificationDetailModal==='function') showJustificationDetailModal('${s.id}', ${day}, '${month}');" style="display:inline-flex; align-items:center; justify-content:center; gap:2px; cursor:pointer;" title="Clic para consultar quién autorizó esta inasistencia"><i class="fa-solid fa-lock" style="font-size:0.60rem; opacity:0.85; color:#c2410c;"></i>J</span>`;
                         } else {
-                            cellInnerHtml = `<span onclick="event.stopPropagation(); if(typeof showJustificationDetailModal==='function') showJustificationDetailModal('${s.id}', ${day}, '${month}');" style="display:inline-flex; align-items:center; justify-content:center; gap:2px; cursor:pointer;" title="Clic para consultar detalle oficial de la inasistencia"><i class="fa-solid fa-shield-halved" style="font-size:0.62rem; color:#ea580c;"></i>J</span>`;
+                            cellInnerHtml = `<span style="display:inline-flex; align-items:center; justify-content:center; gap:2px; pointer-events:none;"><i class="fa-solid fa-shield-halved" style="font-size:0.62rem; color:#ea580c; pointer-events:auto; cursor:pointer;" onclick="event.stopPropagation(); if(typeof showJustificationDetailModal==='function') showJustificationDetailModal('${s.id}', ${day}, '${month}');" title="Clic para consultar detalle oficial de la inasistencia"></i>J</span>`;
                         }
                     } else {
                         // J COLOCADA DIRECTAMENTE POR EL DOCENTE (Editable libremente)
@@ -28413,13 +28743,6 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     if (!window._localDirtyAttendanceCells) window._localDirtyAttendanceCells = {};
 
     const targetStudent = (STATE.students || []).find(s => String(s.id) === String(studentId));
-    if (targetStudent && (targetStudent.status === 'Retirado' || targetStudent.status === 'Inactivo')) {
-        const sName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(targetStudent, 'lastFirst') : `${targetStudent.firstName || ''} ${targetStudent.lastName || ''}`;
-        if (typeof showToast === 'function') {
-            showToast(`⚠️ Alumno Retirado: No se puede tomar ni registrar asistencia para "${sName}" debido a su estado institucional de Retirado.`, 'warning');
-        }
-        return;
-    }
 
     const gradeSelect = document.getElementById('attendanceGradeSelect');
     const monthSelect = document.getElementById('attendanceMonthSelect');
@@ -28436,6 +28759,18 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     const todayYear = now.getFullYear();
     const todayMonth = now.getMonth() + 1;
     const todayDay = now.getDate();
+
+    // 🛑 Alumno Retirado: verificar según el bimestre y fecha de retiro correspondiente
+    const attBim = (typeof getBimestreFromMonth === 'function') ? getBimestreFromMonth(month) : 1;
+    const isRetiredInBim = targetStudent && (targetStudent.status === 'Retirado' || targetStudent.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(targetStudent, attBim) : true);
+    const isDayRetired = isRetiredInBim && (typeof isStudentRetiredAtDate === 'function' ? isStudentRetiredAtDate(targetStudent, cycleYear, month, day) : true);
+    if (isDayRetired) {
+        const sName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(targetStudent, 'lastFirst') : `${targetStudent.firstName || ''} ${targetStudent.lastName || ''}`;
+        if (typeof showToast === 'function') {
+            showToast(`⚠️ Alumno Retirado: No se puede tomar ni registrar asistencia para "${sName}" debido a que se encuentra retirado a partir de dicha fecha.`, 'warning');
+        }
+        return;
+    }
 
     const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
     const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
@@ -28516,26 +28851,19 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     const isOfficialJustified = (courseId === 'GENERAL' && genVal === 'J' && permOriginRole !== 'docente') || 
                                 (!!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente');
 
-    if (isOfficialJustified) {
+    if (isOfficialJustified && !isAuditRole) {
         const studentObj = targetStudent || (STATE.students || []).find(s => s.id === studentId);
         const sName = studentObj ? formatStudentDisplayName(studentObj, 'lastFirst') : 'El estudiante';
         const authBy = permMeta ? (permMeta.authorizedBy || 'Auxiliatura') : 'Auxiliatura / Dirección / Secretaría';
         const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Justificación / Permiso Oficial Autorizado';
 
-        if (!isAuditRole) {
-            if (typeof showToast === 'function') {
-                showToast(`🔒 Registro Bloqueado: ${sName} cuenta con inasistencia justificada autorizada por ${authBy} (${reason}). Este registro es de solo lectura y no puede ser modificado por docentes.`, 'warning', 6000);
-            }
-            return;
+        if (typeof showToast === 'function') {
+            showToast(`🔒 Registro Bloqueado: ${sName} cuenta con inasistencia justificada autorizada por ${authBy} (${reason}). Este registro es de solo lectura y no puede ser modificado por docentes.`, 'warning', 6000);
         }
-
-        const confirmChange = confirm(`📋 AVISO OFICIAL DE AUTORIZACIÓN:\n\n${sName} tiene una inasistencia justificada por las autoridades:\n• Motivo: ${reason}\n• Autorizado por: ${authBy}\n\n¿Está seguro de que desea alterar manualmente este registro justificado?`);
-        if (!confirmChange) {
-            return;
-        }
+        return;
     }
 
-    // ⚡ Ciclo dinámico instantáneo: '' -> 'P' -> 'A' -> 'J' -> 'T' -> ''
+    // ⚡ Ciclo dinámico instantáneo con un solo clic: '' -> 'P' -> 'A' -> 'J' -> 'T' -> ''
     let next = 'P';
     if (forcedValue !== null && forcedValue !== undefined) {
         next = forcedValue;
@@ -28552,8 +28880,26 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         delete STATE.attendanceRecords[recordKey][studentId][day];
     }
 
-    // Proteger esta celda contra ecos de red durante 5 segundos
+    if (courseId === 'GENERAL') {
+        Object.keys(STATE.attendanceRecords || {}).forEach(k => {
+            if (isMatchingMonth(k, month) && (k.includes('GENERAL') || k === recordKey)) {
+                if (STATE.attendanceRecords[k] && STATE.attendanceRecords[k][studentId]) {
+                    if (next) {
+                        STATE.attendanceRecords[k][studentId][day] = next;
+                    } else {
+                        delete STATE.attendanceRecords[k][studentId][day];
+                    }
+                }
+            }
+        });
+    }
+
+    // Proteger esta celda contra ecos de red durante 8 segundos
     window._localDirtyAttendanceCells[`${recordKey}_${studentId}_${day}`] = {
+        val: next || '',
+        ts: Date.now()
+    };
+    window._localDirtyAttendanceCells[`ANY_${studentId}_${day}`] = {
         val: next || '',
         ts: Date.now()
     };
@@ -29137,22 +29483,37 @@ async function _syncAttendanceToFirebaseBackground(targetRecordKey = null) {
     }
 
     try {
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
-            if (targetRecordKey && STATE.attendanceRecords && STATE.attendanceRecords[targetRecordKey]) {
-                EnccoCloudSync.patchNode(`attendanceRecords/${targetRecordKey}`, STATE.attendanceRecords[targetRecordKey]).catch(rtErr => {
-                    console.warn("Aviso en Realtime Database al guardar nodo asistencia:", rtErr);
+        if (typeof EnccoCloudSync !== 'undefined') {
+            if (EnccoCloudSync.syncNode) {
+                if (targetRecordKey) {
+                    EnccoCloudSync.syncNode(`attendanceRecords/${targetRecordKey}`, (STATE.attendanceRecords && STATE.attendanceRecords[targetRecordKey]) || {}).catch(rtErr => {
+                        console.warn("Aviso en Realtime Database al guardar nodo asistencia:", rtErr);
+                    });
+                } else {
+                    EnccoCloudSync.syncNode('attendanceRecords', STATE.attendanceRecords || {}).catch(rtErr => {
+                        console.warn("Aviso en Realtime Database al guardar asistencia:", rtErr);
+                    });
+                }
+                EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta || {}).catch(rtErr => {
+                    console.warn("Aviso en Realtime Database al guardar attendancePermissionsMeta:", rtErr);
                 });
-            } else {
-                EnccoCloudSync.patchNode('attendanceRecords', STATE.attendanceRecords || {}).catch(rtErr => {
-                    console.warn("Aviso en Realtime Database al guardar asistencia:", rtErr);
+            } else if (EnccoCloudSync.patchNode) {
+                if (targetRecordKey && STATE.attendanceRecords && STATE.attendanceRecords[targetRecordKey]) {
+                    EnccoCloudSync.patchNode(`attendanceRecords/${targetRecordKey}`, STATE.attendanceRecords[targetRecordKey]).catch(rtErr => {
+                        console.warn("Aviso en Realtime Database al guardar nodo asistencia:", rtErr);
+                    });
+                } else {
+                    EnccoCloudSync.patchNode('attendanceRecords', STATE.attendanceRecords || {}).catch(rtErr => {
+                        console.warn("Aviso en Realtime Database al guardar asistencia:", rtErr);
+                    });
+                }
+                EnccoCloudSync.patchNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta || {}).catch(rtErr => {
+                    console.warn("Aviso en Realtime Database al guardar attendancePermissionsMeta:", rtErr);
                 });
             }
-            EnccoCloudSync.patchNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta || {}).catch(rtErr => {
-                console.warn("Aviso en Realtime Database al guardar attendancePermissionsMeta:", rtErr);
-            });
-        }
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode && Array.isArray(STATE.studentPermissions)) {
-            EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
+            if (EnccoCloudSync.syncNode && Array.isArray(STATE.studentPermissions)) {
+                EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
+            }
         }
     } catch(err) {
         console.warn("Error background RTDB asistencia:", err);
@@ -29748,7 +30109,10 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
         const sRecords = monthData[s.id] || {};
         let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
         let dayCells = '';
-        const isRet = (s.status === 'Retirado' || s.status === 'Inactivo');
+        const attBim = (typeof getBimestreFromMonth === 'function') ? getBimestreFromMonth(month) : 1;
+        const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, attBim) : true);
+        const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, attBim) : true);
+        const isExon = !isRet && !isAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, attBim) : false);
         const studentFullName = formatStudentDisplayName(s, 'lastFirst').toUpperCase();
 
         for (let day = 1; day <= daysInMonth; day++) {
@@ -29776,23 +30140,23 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
 
         const totalLogged = isRet ? 0 : (pCount + aCount + jCount + tCount);
         const pct = (!isRet && totalLogged > 0) ? Math.round(((pCount + jCount + (tCount * 0.5)) / totalLogged) * 100) : 100;
-        const isExon = !isRet && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s) : false);
         const retTag = isRet ? ' <span style="color:#b91c1c; font-weight:900; font-size:7.5pt;">[RETIRADO]</span>' : '';
-        const exonTag = isExon ? ' <span style="color:#0284c7; font-weight:900; font-size:7.5pt;">[EXONERADO]</span>' : '';
+        const ausTag = isAus ? ' <span style="color:#d97706; font-weight:900; font-size:7.5pt;">[AUSENTE]</span>' : '';
+        const exonTag = isExon ? ` <span style="color:#0284c7; font-weight:900; font-size:7.5pt;">[EXONERADO B${attBim}]</span>` : '';
 
-        const printRowBg = isRet ? 'background-color:#fef2f2; color:#64748b;' : (isExon ? 'background-color:#eff6ff; color:#0369a1;' : (idx % 2 === 1 ? 'background-color:#f8fafc;' : ''));
+        const printRowBg = isRet ? 'background-color:#fef2f2; color:#64748b;' : (isAus ? 'background-color:#fffbeb; color:#92400e;' : (isExon ? 'background-color:#eff6ff; color:#0369a1;' : (idx % 2 === 1 ? 'background-color:#f8fafc;' : '')));
 
         tbodyRows += `
             <tr style="${printRowBg}">
                 <td style="text-align:center; font-weight:bold; border:1px solid #64748b; padding:4px 2px;">${idx + 1}</td>
                 <td style="font-family:monospace; font-weight:bold; border:1px solid #64748b; padding:4px 4px; font-size:7.8pt;">${s.personalCode || s.cui || s.carne || 'S/C'}</td>
-                <td style="font-weight:bold; border:1px solid #64748b; padding:4px 6px; white-space:nowrap; font-size:8.2pt;">${studentFullName}${retTag}${exonTag}</td>
+                <td style="font-weight:bold; border:1px solid #64748b; padding:4px 6px; white-space:nowrap; font-size:8.2pt;">${studentFullName}${retTag}${ausTag}${exonTag}</td>
                 ${dayCells}
                 <td style="text-align:center; font-weight:bold; color:#15803d; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : pCount}</td>
                 <td style="text-align:center; font-weight:bold; color:#b91c1c; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : aCount}</td>
                 <td style="text-align:center; font-weight:bold; color:#c2410c; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : jCount}</td>
                 <td style="text-align:center; font-weight:bold; color:#0369a1; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : tCount}</td>
-                <td style="text-align:center; font-weight:bold; background:${isRet ? '#fee2e2' : '#f1f5f9'}; border:1px solid #64748b; font-size:8.5pt;">${isRet ? '<span style="color:#b91c1c; font-weight:800; font-size:7.5pt;">RETIRADO</span>' : pct + '%'}</td>
+                <td style="text-align:center; font-weight:bold; background:${isRet ? '#fee2e2' : (isAus ? '#fef3c7' : '#f1f5f9')}; border:1px solid #64748b; font-size:8.5pt;">${isRet ? '<span style="color:#b91c1c; font-weight:800; font-size:7.5pt;">RETIRADO</span>' : (isAus ? '<span style="color:#d97706; font-weight:800; font-size:7.5pt;">AUSENTE</span>' : pct + '%')}</td>
             </tr>
         `;
     });
@@ -29948,10 +30312,20 @@ function exportAttendanceOfficialExcel() {
     for (let d = 1; d <= daysInMonth; d++) csv += `Dia_${d},`;
     csv += `Total_P,Total_A,Total_J,Total_T,Porcentaje_Asistencia\n`;
 
+    const attBim = (typeof getBimestreFromMonth === 'function') ? getBimestreFromMonth(month) : 1;
+
     students.forEach((s, idx) => {
         const sRecords = monthData[s.id] || {};
         let p = 0, a = 0, j = 0, t = 0;
-        let line = `${idx + 1},"${s.personalCode || s.cui || s.carne || ''}","${formatStudentDisplayName(s, 'lastFirst')}",`;
+        const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, attBim) : true);
+        const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, attBim) : true);
+        const isExon = !isRet && !isAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, attBim) : false);
+        let sName = formatStudentDisplayName(s, 'lastFirst');
+        if (isRet) sName += ' [RETIRADO]';
+        else if (isAus) sName += ' [AUSENTE]';
+        else if (isExon) sName += ` [EXONERADO B${attBim}]`;
+
+        let line = `${idx + 1},"${s.personalCode || s.cui || s.carne || ''}","${sName}",`;
 
         for (let d = 1; d <= daysInMonth; d++) {
             const dObj = new Date(year, month - 1, d);
@@ -32393,7 +32767,7 @@ async function saveDisciplineForm(e) {
     showToast(`Reporte disciplinario registrado correctamente. Ha sido canalizado al Profesor Auxiliar para su resolución y dictamen.`, 'success');
 
     // Notificación opcional inmediata por WhatsApp al padre/encargado
-    if (typeof promptIncidentWhatsAppNotification === 'function') {
+    if (canRoleUseWhatsApp() && typeof promptIncidentWhatsAppNotification === 'function') {
         promptIncidentWhatsAppNotification({
             studentId: stuId,
             type: 'disciplina',
@@ -33520,13 +33894,19 @@ function exportGradebookOfficialExcel() {
             students.forEach((s, idx) => {
                 const rowNum = startRowIdx + idx + 1;
                 const fullName = formatStudentDisplayName(s, 'lastFirst');
-                const isInactive = (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo');
+                const isBimRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, currentUnit) : true);
+                const isBimAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, currentUnit) : true);
+                const isBimExon = !isBimRet && !isBimAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, currentUnit) : false);
+                let displayName = fullName;
+                if (isBimRet) displayName += ' [RETIRADO]';
+                else if (isBimAus) displayName += ' [AUSENTE]';
+                else if (isBimExon) displayName += ` [EXONERADO B${currentUnit}]`;
 
                 const row = [
                     s.clave || (idx + 1),
                     s.personalCode || '',
                     s.cui || '',
-                    fullName
+                    displayName
                 ];
 
                 const uData = (s.gradebookDetails && s.gradebookDetails[targetPensum.subject] && s.gradebookDetails[targetPensum.subject][currentUnit])
@@ -33803,6 +34183,65 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]/g, '');
 
+    const extractSectionLetter = (val) => {
+        if (!val) return '';
+        const s = String(val).trim();
+        const mSec = s.match(/(?:secci[oó]n|sec\.?)\s*([A-D])\b/i);
+        if (mSec) return mSec[1].toUpperCase();
+        const mIso = s.match(/(?:^|[\s\-_"'(])([A-D])(?:$|[\s\-_"')])/i);
+        if (mIso) return mIso[1].toUpperCase();
+        const mNumSec = s.match(/\b\d\s*([A-D])\b/i);
+        if (mNumSec) return mNumSec[1].toUpperCase();
+        return '';
+    };
+
+    const extractGradeNumber = (val) => {
+        if (!val) return '';
+        const m = String(val).match(/(\d+)/);
+        return m ? m[1] : '';
+    };
+
+    const normalizeSubject = (str) => {
+        if (!str) return '';
+        return String(str).toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/\biii\b/g, '3')
+            .replace(/\bii\b/g, '2')
+            .replace(/\bi\b/g, '1')
+            .replace(/[^a-z0-9]/g, '');
+    };
+
+    const isSubjectMatching = (subjA, subjB, gradeNum = null) => {
+        if (!subjA || !subjB) return false;
+        const nA = normalizeSubject(subjA);
+        const nB = normalizeSubject(subjB);
+        if (nA === nB) return true;
+        if (typeof resolveOfficialCanonicalSubject === 'function') {
+            const cA = resolveOfficialCanonicalSubject(subjA, gradeNum || 5);
+            const cB = resolveOfficialCanonicalSubject(subjB, gradeNum || 5);
+            if (cA && cB && cleanStr(cA) === cleanStr(cB)) return true;
+        }
+        const numA = nA.match(/\d+/)?.[0] || '';
+        const numB = nB.match(/\d+/)?.[0] || '';
+        if (numA === numB && (nA.length >= 4 || nB.length >= 4)) {
+            if (nA.includes(nB) || nB.includes(nA)) return true;
+            const stemA = nA.replace(/\d+/g, '');
+            const stemB = nB.replace(/\d+/g, '');
+            if (stemA.length >= 4 && stemB.length >= 4) {
+                if (stemA.includes(stemB) || stemB.includes(stemA)) return true;
+            }
+        }
+        return false;
+    };
+
+    const tokenizeTeacher = (str) => {
+        return (str || '').toString().toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9\s]/g, ' ')
+            .split(/\s+/)
+            .filter(t => t.length > 2 && !['pem', 'lic', 'licda', 'prof', 'profe', 'profa', 'profesor', 'profesora', 'docente', 'catedratico', 'catedratica', 'mepu', 'ing', 'dra', 'dr', 'br', 'del', 'de', 'la', 'las', 'los', 'san', 'santa', 'y', 'asignado', 'titular'].includes(t));
+    };
+
     let detectedSubject = '';
     let detectedGrade = '';
     let detectedSection = '';
@@ -33883,12 +34322,12 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         }
 
         // Reconocimiento de Modelo B: Modelo de Cuadro Docente (Fila 1: Materia en B2, Grado en G2, Sección en I2, Bimestre en K2)
-        if (r === 1 && row[1] && !rowStr.includes('catedra:') && !rowStr.includes('cátedra:')) {
+        if ((r === 1 || r === 2) && row[1] && !rowStr.includes('catedra:') && !rowStr.includes('cátedra:') && !detectedSubject) {
             const candidateSubj = String(row[1]).trim();
-            const cleanCand = cleanStr(candidateSubj);
-            const foundInPensum = (STATE.pensum || []).find(p => cleanStr(p.subject) === cleanCand || (cleanCand.length >= 5 && (cleanCand.includes(cleanStr(p.subject)) || cleanStr(p.subject).includes(cleanCand))));
-            if (foundInPensum) {
-                detectedSubject = foundInPensum.subject;
+            const gNumInRow = extractGradeNumber(row[6]) || 5;
+            const foundInPensum = (STATE.pensum || []).find(p => isSubjectMatching(p.subject, candidateSubj, gNumInRow));
+            if (foundInPensum || (typeof resolveOfficialCanonicalSubject === 'function' && resolveOfficialCanonicalSubject(candidateSubj, gNumInRow))) {
+                detectedSubject = foundInPensum ? foundInPensum.subject : (resolveOfficialCanonicalSubject(candidateSubj, gNumInRow) || candidateSubj);
                 detectedFormat = 'Modelo de Cuadro Docente';
                 if (row[6] !== undefined && row[6] !== '') {
                     const gNum = parseInt(row[6]);
@@ -33897,7 +34336,8 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
                     else if (gNum === 6) detectedGrade = '6to Perito Contador';
                 }
                 if (row[8]) {
-                    detectedSection = `Sección ${String(row[8]).trim()}`;
+                    const sLet = extractSectionLetter(row[8]);
+                    detectedSection = sLet ? `Sección ${sLet}` : String(row[8]).trim();
                 }
                 if (row[10]) {
                     const bNum = parseInt(row[10]);
@@ -33910,14 +34350,14 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             }
         }
 
-        if (r === 2 && row[1] && !detectedTeacher) {
+        if ((r === 2 || r === 3) && row[1] && !detectedTeacher) {
             const candidateTeacher = String(row[1]).trim();
-            if (candidateTeacher && !candidateTeacher.toLowerCase().includes('grado') && !candidateTeacher.toLowerCase().includes('seccion') && !candidateTeacher.toLowerCase().includes('bimestre') && !candidateTeacher.toLowerCase().includes('catedra') && !candidateTeacher.toLowerCase().includes('ciclo')) {
+            if (candidateTeacher && !candidateTeacher.toLowerCase().includes('grado') && !candidateTeacher.toLowerCase().includes('seccion') && !candidateTeacher.toLowerCase().includes('bimestre') && !candidateTeacher.toLowerCase().includes('catedra') && !candidateTeacher.toLowerCase().includes('ciclo') && !/^\d+$/.test(candidateTeacher)) {
                 detectedTeacher = candidateTeacher;
             }
         }
 
-        if (r === 2 && row[14] && detectedFormat === 'Modelo de Cuadro Docente') {
+        if ((r === 2 || r === 3) && row[14] && detectedFormat === 'Modelo de Cuadro Docente') {
             examValInHeader = parseInt(row[14]) || 0;
         }
 
@@ -33954,13 +34394,13 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             else if (fNorm.includes('6a') || fNorm.includes('6b') || fNorm.includes('6c') || fNorm.includes('6d') || fNorm.includes('6to')) detectedGrade = '6to Perito Contador';
         }
         if (!detectedSection) {
-            if (fNorm.includes('5a') || fNorm.includes('6a') || fNorm.includes('4a') || fNorm.includes('secciona')) detectedSection = 'Sección A';
-            else if (fNorm.includes('5b') || fNorm.includes('6b') || fNorm.includes('4b') || fNorm.includes('seccionb')) detectedSection = 'Sección B';
-            else if (fNorm.includes('5c') || fNorm.includes('6c') || fNorm.includes('4c') || fNorm.includes('seccionc')) detectedSection = 'Sección C';
-            else if (fNorm.includes('5d') || fNorm.includes('6d') || fNorm.includes('4d') || fNorm.includes('secciond')) detectedSection = 'Sección D';
+            const sFromFn = extractSectionLetter(fileName);
+            if (sFromFn) detectedSection = `Sección ${sFromFn}`;
         }
         if (!detectedSubject) {
-            if (fNorm.includes('compu2')) detectedSubject = 'Computación II';
+            const foundSubj = (STATE.pensum || []).find(p => p && p.subject && isSubjectMatching(p.subject, fileName));
+            if (foundSubj) detectedSubject = foundSubj.subject;
+            else if (fNorm.includes('compu2')) detectedSubject = 'Computación II';
             else if (fNorm.includes('compu3')) detectedSubject = 'Computación III';
             else if (fNorm.includes('calculo')) detectedSubject = 'Cálculo Mercantil y Financiero';
         }
@@ -33982,58 +34422,100 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
 
     // REGLA 2 y 5: Verificación estricta de Cátedra/Clase
     if (!detectedSubject && fileName) {
-        const fNorm = cleanStr(fileName);
-        const pFound = (STATE.pensum || []).find(p => p && p.subject && fNorm.includes(cleanStr(p.subject)));
+        const pFound = (STATE.pensum || []).find(p => p && p.subject && isSubjectMatching(p.subject, fileName));
         if (pFound) detectedSubject = pFound.subject;
     }
 
-    // 🚀 AUTO-ENRUTAMIENTO INTELIGENTE: Si el archivo define su propia materia, grado, sección y/o docente,
-    // sincronizar y seleccionar automáticamente la cátedra y bimestre asignados correctos del docente
-    // para que la importación funcione inmediatamente en el primer intento sin obligar a cambiar selectores a mano.
+    // Función de coincidencia de docente
+    const doesTeacherMatch = (pensumTeacher, fileTeacher) => {
+        if (!pensumTeacher || !fileTeacher) return false;
+        const tokensP = tokenizeTeacher(pensumTeacher);
+        const tokensF = tokenizeTeacher(fileTeacher);
+        if (tokensP.length === 0 || tokensF.length === 0) return false;
+        const minM = Math.min(tokensP.length, tokensF.length) >= 2 ? 2 : 1;
+        const common = tokensF.filter(t => tokensP.includes(t));
+        return common.length >= minM;
+    };
+
+    // 🚀 AUTO-ENRUTAMIENTO INTELIGENTE: Búsqueda exhaustiva por DOCENTE + CLASE + SECCIÓN + GRADO
     if (detectedSubject || detectedGrade || detectedSection || detectedTeacher) {
-        const cleanDetSubj = cleanStr(detectedSubject || '');
-        const gNumFile = (detectedGrade || fileName || '').toString().match(/(\d+)/)?.[1] || '';
-        const secFile = cleanStr(detectedSection || fileName || '').replace(/^seccion/, '').match(/^([a-d])$/i)?.[1]?.toLowerCase() ||
-                        cleanStr(detectedSection || '').replace(/^seccion/, '').match(/([a-d])/i)?.[1]?.toLowerCase() || '';
+        const gNumFile = extractGradeNumber(detectedGrade) || extractGradeNumber(fileName);
+        const secFile = extractSectionLetter(detectedSection) || extractSectionLetter(fileName);
 
-        const teacherPensumList = (STATE.pensum || []).filter(p => {
-            if (!p) return false;
-            if (isDocente && currentUser && typeof isCourseAssignedToTeacher === 'function') {
-                return isCourseAssignedToTeacher(p, currentUser);
-            }
-            return true;
-        });
-
-        // Búsqueda exhaustiva por Grado + Sección + Materia (primero en asignadas al docente, luego en todo el pensum)
+        const allPensum = STATE.pensum || [];
         let autoPensum = null;
-        const candidatePools = [teacherPensumList, STATE.pensum || []];
+
+        // Si el usuario es docente y tiene asignaciones, priorizar las asignadas a este docente
+        const teacherAssignedList = (isDocente && currentUser && typeof isCourseAssignedToTeacher === 'function')
+            ? allPensum.filter(p => isCourseAssignedToTeacher(p, currentUser))
+            : allPensum;
+
+        const candidatePools = [teacherAssignedList, allPensum];
 
         for (const pool of candidatePools) {
             if (autoPensum) break;
-            const candidates = pool.filter(p => {
-                if (gNumFile) {
-                    const gNumP = (p.grade || p.gradeCode || '').toString().match(/(\d+)/)?.[1] || '';
-                    if (gNumP && gNumP !== gNumFile) return false;
-                }
-                if (secFile) {
-                    const secP = cleanStr(p.section || p.gradeCode || '').replace(/^seccion/, '').match(/([a-d])/i)?.[1]?.toLowerCase() || '';
-                    if (secP && secP !== secFile) return false;
-                }
-                return true;
-            });
 
-            if (cleanDetSubj) {
-                autoPensum = candidates.find(p => {
-                    const cleanP = cleanStr(p.subject || '');
-                    return cleanP === cleanDetSubj || cleanP.includes(cleanDetSubj) || cleanDetSubj.includes(cleanP);
-                });
+            // 1. Coincidencia completa: DOCENTE + CLASE + SECCIÓN + GRADO
+            if (detectedTeacher && detectedSubject && secFile && gNumFile) {
+                autoPensum = pool.find(p => 
+                    doesTeacherMatch(p.teacher, detectedTeacher) &&
+                    isSubjectMatching(p.subject, detectedSubject, parseInt(gNumFile) || 5) &&
+                    (extractSectionLetter(p.section) === secFile || extractSectionLetter(p.gradeCode) === secFile) &&
+                    (extractGradeNumber(p.grade || p.gradeCode) === gNumFile)
+                );
             }
+
+            // 2. Coincidencia: DOCENTE + CLASE + SECCIÓN
+            if (!autoPensum && detectedTeacher && detectedSubject && secFile) {
+                autoPensum = pool.find(p => 
+                    doesTeacherMatch(p.teacher, detectedTeacher) &&
+                    isSubjectMatching(p.subject, detectedSubject, parseInt(gNumFile) || 5) &&
+                    (extractSectionLetter(p.section) === secFile || extractSectionLetter(p.gradeCode) === secFile)
+                );
+            }
+
+            // 3. Coincidencia: DOCENTE + CLASE (si el docente solo tiene esa sección)
+            if (!autoPensum && detectedTeacher && detectedSubject) {
+                const byTeachSubj = pool.filter(p => 
+                    doesTeacherMatch(p.teacher, detectedTeacher) &&
+                    isSubjectMatching(p.subject, detectedSubject, parseInt(gNumFile) || 5)
+                );
+                if (byTeachSubj.length === 1) {
+                    autoPensum = byTeachSubj[0];
+                }
+            }
+
+            // 4. Coincidencia: CLASE + SECCIÓN + GRADO
+            if (!autoPensum && detectedSubject && secFile && gNumFile) {
+                autoPensum = pool.find(p => 
+                    isSubjectMatching(p.subject, detectedSubject, parseInt(gNumFile) || 5) &&
+                    (extractSectionLetter(p.section) === secFile || extractSectionLetter(p.gradeCode) === secFile) &&
+                    (extractGradeNumber(p.grade || p.gradeCode) === gNumFile)
+                );
+            }
+
+            // 5. Coincidencia: CLASE + SECCIÓN
+            if (!autoPensum && detectedSubject && secFile) {
+                autoPensum = pool.find(p => 
+                    isSubjectMatching(p.subject, detectedSubject, parseInt(gNumFile) || 5) &&
+                    (extractSectionLetter(p.section) === secFile || extractSectionLetter(p.gradeCode) === secFile)
+                );
+            }
+
+            // 6. Coincidencia: CLASE + GRADO
+            if (!autoPensum && detectedSubject && gNumFile) {
+                autoPensum = pool.find(p => 
+                    isSubjectMatching(p.subject, detectedSubject, parseInt(gNumFile) || 5) &&
+                    (extractGradeNumber(p.grade || p.gradeCode) === gNumFile)
+                );
+            }
+
+            // 7. Respaldo por nombre de archivo si la materia venía en el archivo
             if (!autoPensum && fileName) {
-                const cleanFn = cleanStr(fileName);
-                autoPensum = candidates.find(p => cleanFn.includes(cleanStr(p.subject || '')));
-            }
-            if (!autoPensum && candidates.length === 1 && (gNumFile && secFile)) {
-                autoPensum = candidates[0];
+                autoPensum = pool.find(p => 
+                    isSubjectMatching(p.subject, fileName, parseInt(gNumFile) || 5) &&
+                    (!secFile || extractSectionLetter(p.section) === secFile || extractSectionLetter(p.gradeCode) === secFile)
+                );
             }
         }
 
@@ -34087,17 +34569,10 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         } catch(e) {}
     }
 
+    // REGLA 2 y 5: Verificación estricta de Cátedra/Clase
     if (detectedSubject && activePensum && activePensum.subject) {
-        const cleanDetSubj = cleanStr(detectedSubject);
-        const cleanActSubj = cleanStr(activePensum.subject);
-        
-        // Evitar confusión entre materias homónimas (ej. Computación I vs II, Contabilidad de Costos vs General)
-        const exactMatch = (cleanDetSubj === cleanActSubj);
-        const numDet = cleanDetSubj.match(/\d+/)?.[0] || '';
-        const numAct = cleanActSubj.match(/\d+/)?.[0] || '';
-        const numbersMatch = (!numDet && !numAct) || (numDet === numAct);
-
-        const subjectMatches = exactMatch || (numbersMatch && (cleanActSubj.includes(cleanDetSubj) || cleanDetSubj.includes(cleanActSubj)));
+        const curGNum = extractGradeNumber(activePensum.grade || detectedGrade || 5);
+        const subjectMatches = isSubjectMatching(detectedSubject, activePensum.subject, parseInt(curGNum) || 5);
         if (!subjectMatches) {
             showToast(`¡Cuadro Erróneo! El archivo cargado corresponde a "${detectedSubject}", pero la clase activa seleccionada es "${activePensum.subject}". Importación cancelada para proteger sus calificaciones.`, "danger");
             return;
@@ -34107,18 +34582,18 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     // REGLA 7: Verificación estricta de Grado y Sección
     if (activePensum) {
         if (detectedGrade) {
-            const gNumFile = (detectedGrade || '').toString().match(/(\d+)/)?.[1] || '';
-            const gNumActive = (activePensum.grade || '').toString().match(/(\d+)/)?.[1] || '';
+            const gNumFile = extractGradeNumber(detectedGrade);
+            const gNumActive = extractGradeNumber(activePensum.grade || activePensum.gradeCode);
             if (gNumFile && gNumActive && gNumFile !== gNumActive) {
                 showToast(`¡Grado Incorrecto! El archivo cargado corresponde a "${detectedGrade}", pero la clase activa seleccionada es "${activePensum.grade}".`, "danger");
                 return;
             }
         }
         if (detectedSection) {
-            const secFile = cleanStr(detectedSection).replace(/^seccion/, '');
-            const secActive = cleanStr(activePensum.section).replace(/^seccion/, '');
+            const secFile = extractSectionLetter(detectedSection);
+            const secActive = extractSectionLetter(activePensum.section) || extractSectionLetter(activePensum.gradeCode);
             if (secFile && secActive && secFile !== secActive) {
-                showToast(`¡Sección Incorrecta! El archivo cargado corresponde a "${detectedSection}", pero actualmente tiene seleccionada la "${activePensum.section}". Seleccione la sección correspondiente en el libro de notas antes de importar.`, "danger");
+                showToast(`¡Sección Incorrecta! El archivo cargado corresponde a "Sección ${secFile}", pero actualmente tiene seleccionada la "Sección ${secActive}". Seleccione la sección correspondiente en el libro de notas antes de importar.`, "danger");
                 return;
             }
         }
@@ -34140,26 +34615,21 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         }
 
         if (detectedTeacher) {
-            const tokenize = str => (str || '').toString().toLowerCase()
-                .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-                .replace(/[^a-z0-9\s]/g, ' ')
-                .split(/\s+/)
-                .filter(t => t.length > 2 && !['pem', 'lic', 'prof', 'profe', 'docente', 'catedratico', 'catedratica', 'del', 'las', 'los', 'san', 'santa', 'asignado'].includes(t));
-
-            const tTokens = tokenize(detectedTeacher);
-            const pensumTeacherTokens = tokenize(activePensum.teacher || '');
-            const userTokens = (currentUser && currentUser.name) ? tokenize(currentUser.name) : [];
+            const tTokens = tokenizeTeacher(detectedTeacher);
+            const pensumTeacherTokens = tokenizeTeacher(activePensum.teacher || '');
+            const userTokens = (currentUser && currentUser.name) ? tokenizeTeacher(currentUser.name) : [];
 
             const minRequiredMatches = tTokens.length >= 2 ? 2 : 1;
-            const matchesPensum = tTokens.filter(t => pensumTeacherTokens.includes(t)).length >= minRequiredMatches;
+            const matchesPensum = pensumTeacherTokens.length > 0 && tTokens.filter(t => pensumTeacherTokens.includes(t)).length >= minRequiredMatches;
             const matchesUser = userTokens.length > 0 && tTokens.filter(t => userTokens.includes(t)).length >= minRequiredMatches;
 
-            if (tTokens.length >= 1 && !matchesPensum && !matchesUser) {
-                if (isDocente) {
+            if (tTokens.length >= 1) {
+                if (isDocente && !matchesPensum && !matchesUser) {
                     showToast(`¡Cátedra de Otro Docente! El cuadro indica como catedrático a "${detectedTeacher}", pero la clase está asignada a "${activePensum.teacher || (currentUser ? currentUser.name : '')}". Importación rechazada.`, "danger");
                     return;
-                } else {
-                    console.warn(`[Importación Docente] Aviso: El archivo menciona a "${detectedTeacher}" y el pensum a "${activePensum.teacher}".`);
+                } else if (!isDocente && pensumTeacherTokens.length > 0 && !matchesPensum) {
+                    showToast(`¡Docente no Coincide! El cuadro indica como catedrático a "${detectedTeacher}", pero la cátedra seleccionada en el sistema está asignada a "${activePensum.teacher}". Verifique que el archivo corresponda a esta cátedra.`, "danger");
+                    return;
                 }
             }
         }
@@ -34278,6 +34748,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
 
         const hdrCell = hdrRow[c] !== undefined ? String(hdrRow[c]).trim() : '';
         const subCell = (actsRow && actsRow[c] !== undefined) ? String(actsRow[c]).trim() : '';
+        if (!hdrCell && !subCell) continue;
         let actTitle = subCell || hdrCell;
 
         // Si la subfila solo indica el punteo (ej. "4p" en Lista de Cotejo) y el encabezado tiene el número/nombre de actividad
@@ -34379,17 +34850,25 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     }
 
     // 7. Filtrado estricto de alumnos de la sección para evitar colisiones entre secciones
-    const pGradeNum = (targetPensum.grade || targetPensum.gradeCode || '').match(/(\d+)/)?.[1] || '';
-    const pSecLet = (targetPensum.gradeCode || targetPensum.section || '').replace(/secci[oó]n/i, '').match(/([A-D])/i)?.[1]?.toUpperCase() || '';
+    let courseStudents = [];
+    if (typeof getSortedGradebookStudents === 'function') {
+        courseStudents = getSortedGradebookStudents(targetPensum.gradeCode || targetPensum.grade, targetPensum);
+    }
+    if (!courseStudents || courseStudents.length === 0) {
+        const pGradeNum = extractGradeNumber(targetPensum.grade || targetPensum.gradeCode || '');
+        const pSecLet = extractSectionLetter(targetPensum.section) || extractSectionLetter(targetPensum.gradeCode) || (typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(targetPensum.section || targetPensum.gradeCode) : '');
 
-    const courseStudents = (STATE.students || []).filter(s => {
-        if (!s) return false;
-        const sGradeNum = (s.grade || s.gradeLabel || s.gradeCode || '').match(/(\d+)/)?.[1] || '';
-        const sSecLet = (s.gradeCode || s.section || '').replace(/secci[oó]n/i, '').match(/([A-D])/i)?.[1]?.toUpperCase() || '';
-        const gMatch = (pGradeNum && sGradeNum) ? (pGradeNum === sGradeNum) : (s.grade === targetPensum.grade || (s.gradeLabel && s.gradeLabel.includes(targetPensum.grade.split(' ')[0])));
-        const sMatch = (pSecLet && sSecLet) ? (pSecLet === sSecLet) : (s.section === targetPensum.section || (s.section && s.section.includes(targetPensum.section.replace('Sección ', ''))));
-        return gMatch && sMatch;
-    });
+        courseStudents = (STATE.students || []).filter(s => {
+            if (!s || s.active === false) return false;
+            const assign = (typeof getStudentAssignment === 'function') ? getStudentAssignment(s) : { grade: s.grade || '', section: s.section || '' };
+            const sGradeNum = extractGradeNumber(assign.grade) || extractGradeNumber(s.grade) || extractGradeNumber(s.gradeLabel) || extractGradeNumber(s.gradeCode);
+            const sSecLet = extractSectionLetter(assign.section) || extractSectionLetter(s.section) || extractSectionLetter(s.gradeCode) || (typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(s.section || s.gradeCode || s.gradeLabel) : '');
+
+            const gMatch = (pGradeNum && sGradeNum) ? (pGradeNum === sGradeNum) : true;
+            const sMatch = (pSecLet && sSecLet) ? (pSecLet === sSecLet) : true;
+            return gMatch && sMatch;
+        });
+    }
 
     // Función de coincidencia estricta de nombres para no colocar nada si no coincide el nombre
     const normalizeTokens = str => (str || '').toLowerCase()
@@ -34408,9 +34887,9 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         const common = tokensRow.filter(t => tokensTarget.includes(t));
         const minTokens = Math.min(tokensRow.length, tokensTarget.length);
         if (minTokens <= 2) {
-            return common.length === minTokens;
+            return common.length >= Math.min(2, minTokens);
         }
-        return common.length >= 2 && (common.length / minTokens >= 0.60);
+        return common.length >= 2 && (common.length / minTokens >= 0.50);
     };
 
     // Parser seguro para celdas numéricas (soporta números, textos con decimales o sufijos como "35 pts" e ignora textos como "APROBADO")
@@ -34447,16 +34926,22 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         let matched = null;
 
         // Si no se proporciona un nombre válido en la fila, no colocar nada
-        if (!nameVal || nameVal.replace(/[^a-zA-Z]/g, '').length < 3) {
+        if (!nameVal || nameVal.replace(/[^a-zA-Z\u00C0-\u017F]/g, '').length < 3) {
             omittedCount++;
             continue;
         }
 
-        // 1. Por No. de lista SIRE / Clave CON verificación obligatoria de nombre coincidente
+        // 1. Por No. de lista SIRE / Clave CON verificación de coincidencia de identidad
         if (claveVal !== null && claveVal !== undefined && claveVal !== '') {
             const byClave = courseStudents.find(s => Number(s.no !== undefined ? s.no : s.clave) === Number(claveVal));
-            if (byClave && areNamesMatching(nameVal, byClave)) {
-                matched = byClave;
+            if (byClave) {
+                const fullTarget = `${byClave.lastName || ''} ${byClave.firstName || ''} ${byClave.name || ''}`;
+                const tRow = normalizeTokens(nameVal);
+                const tTarget = normalizeTokens(fullTarget);
+                const hasOverlap = tRow.some(t => tTarget.includes(t));
+                if (hasOverlap || areNamesMatching(nameVal, byClave)) {
+                    matched = byClave;
+                }
             }
         }
 
@@ -34468,7 +34953,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         // 3. Por CUI / DPI verificando también coincidencia estricta de nombre
         if (!matched && cuiVal) {
             const byCui = courseStudents.find(s => s.cui && s.cui.replace(/[^0-9]/g, '') === cuiVal);
-            if (byCui && areNamesMatching(nameVal, byCui)) {
+            if (byCui) {
                 matched = byCui;
             }
         }
@@ -34476,7 +34961,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         // 4. Por Código Personal / Carné verificando también coincidencia estricta de nombre
         if (!matched && codeVal) {
             const byCode = courseStudents.find(s => (s.personalCode && cleanStr(s.personalCode) === cleanStr(codeVal)) || (s.carne && cleanStr(s.carne) === cleanStr(codeVal)));
-            if (byCode && areNamesMatching(nameVal, byCode)) {
+            if (byCode) {
                 matched = byCode;
             }
         }
@@ -38769,7 +39254,7 @@ function getCnbAreaInfo(subjectName = '') {
 window.getCnbAreaInfo = getCnbAreaInfo;
 
 function isAssignmentUnassigned(a) {
-    if (!a) return true;
+    if (!a || (!a.subject && !a.name) || (!a.grade && !a.gradeCode)) return false;
     const t = (a.teacher || a.teacherName || '').trim().toLowerCase();
     if (!t) return true;
     if (t === 'sin asignar' || t === 'sin catedratico' || t === 'sin catedrático' || t === 'pendiente' || t === 'no asignado') return true;
@@ -39515,7 +40000,7 @@ function renderAssignmentsByGradeMatrix(list) {
     // Ordenar secciones: 4to, 5to, 6to
     const sortedKeys = Object.keys(groups).sort((x, y) => x.localeCompare(y, 'es', { numeric: true }));
 
-    const unassignedInView = list.filter(c => isAssignmentUnassigned(c));
+    const unassignedInView = list.filter(c => c && (c.subject || c.name) && (c.grade || c.gradeCode) && isAssignmentUnassigned(c));
     let topUnassignedBanner = '';
     if (unassignedInView.length > 0) {
         topUnassignedBanner = `
@@ -42570,6 +43055,12 @@ function getStudentMonthAbsenceDays(studentId, month) {
 }
 
 function openWhatsAppPrompt(studentName, guardianPhone, gradeLabel, accumulatedAbsences) {
+    if (!canRoleUseWhatsApp()) {
+        if (typeof showToast === 'function') {
+            showToast('El envío de mensajes por WhatsApp está restringido a Dirección, Auxiliatura y Secretaría.', 'warning');
+        }
+        return;
+    }
     const cleanPhone = (guardianPhone || '').replace(/\D/g, '');
     if (!cleanPhone) {
         showToast("No hay número telefónico registrado para este encargado.", "warning");
@@ -42702,14 +43193,17 @@ function renderAuxiliaturaLogView() {
 
         let phoneHtml = `<span style="color:#94a3b8; font-size:0.8rem;">Sin teléfono</span>`;
         if (cleanPhone) {
+            const waBtnHtml = canRoleUseWhatsApp() ? `
+                    <button type="button" class="btn btn-xs btn-outline-success" onclick="openWhatsAppPrompt('${escapeHtml(a.studentName)}', '${escapeHtml(a.guardianPhone)}', '${escapeHtml(a.gradeLabel)}', ${accumulatedDays})" style="padding:2px 6px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px; color:#15803d; border-color:#86efac; background:#f0fdf4; font-weight:700;">
+                        <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                    </button>
+            ` : '';
             phoneHtml = `
                 <div style="display:flex; flex-direction:column; gap:4px; margin-top:2px;">
                     <a href="tel:${cleanPhone}" class="btn btn-xs btn-outline-primary" style="padding:2px 6px; font-size:0.75rem; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
                         <i class="fa-solid fa-phone"></i> ${escapeHtml(a.guardianPhone)}
                     </a>
-                    <button type="button" class="btn btn-xs btn-outline-success" onclick="openWhatsAppPrompt('${escapeHtml(a.studentName)}', '${escapeHtml(a.guardianPhone)}', '${escapeHtml(a.gradeLabel)}', ${accumulatedDays})" style="padding:2px 6px; font-size:0.75rem; display:inline-flex; align-items:center; gap:4px; color:#15803d; border-color:#86efac; background:#f0fdf4; font-weight:700;">
-                        <i class="fa-brands fa-whatsapp"></i> WhatsApp
-                    </button>
+                    ${waBtnHtml}
                 </div>
             `;
         }
@@ -43667,6 +44161,18 @@ function openStudentAnnotationModal(studentId = null, defaultDate = null, alertI
 
     renderStudentAnnotationsList(studentId);
 
+    const waWrap = document.getElementById('annotSendWhatsAppWrapper');
+    const waCheck = document.getElementById('annotSendWhatsAppCheckbox');
+    if (waWrap) {
+        if (canRoleUseWhatsApp()) {
+            waWrap.style.display = 'flex';
+            if (waCheck) waCheck.checked = true;
+        } else {
+            waWrap.style.display = 'none';
+            if (waCheck) waCheck.checked = false;
+        }
+    }
+
     modal.classList.add('active');
     modal.style.setProperty('display', 'flex', 'important');
 }
@@ -43773,7 +44279,7 @@ function saveQuickAnnotation() {
 
     // Notificación opcional inmediata por WhatsApp al padre / encargado
     const sendWhatsApp = document.getElementById('annotSendWhatsAppCheckbox')?.checked;
-    if (sendWhatsApp || category === 'asistencia' || category === 'conducta' || category === 'llamada') {
+    if (canRoleUseWhatsApp() && (sendWhatsApp || category === 'asistencia' || category === 'conducta' || category === 'llamada')) {
         if (typeof promptIncidentWhatsAppNotification === 'function') {
             promptIncidentWhatsAppNotification({
                 studentId,
@@ -44085,11 +44591,11 @@ function renderStudentProfileAnnotations(studentId) {
             </button>
         ` : '';
 
-        const whatsAppBtn = `
+        const whatsAppBtn = canRoleUseWhatsApp() ? `
             <button type="button" class="btn btn-xs btn-outline-success" onclick="promptIncidentWhatsAppNotification({ studentId: '${studentId}', type: '${item.category === 'tardanza' ? 'tardanza' : (item.originType === 'disciplina' ? 'disciplina' : (item.category === 'asistencia' ? 'inasistencia' : 'anotacion_negativa'))}', reason: '${escapeHtml(item.title)}', notes: '${escapeHtml(item.text)}', date: '${item.date}', time: '${item.time || ''}', courseName: '${escapeHtml(item.courseName || '')}', authorName: '${escapeHtml(item.authorName || '')}', authorRole: '${escapeHtml(item.authorRole || '')}' })" title="Enviar o reenviar notificación al WhatsApp del encargado" style="font-size:0.73rem; font-weight:700; padding:2px 8px; border-radius:4px; display:inline-flex; align-items:center; gap:4px; border-color:#22c55e; color:#15803d; background:#f0fdf4;">
                 <i class="fa-brands fa-whatsapp" style="font-size:0.85rem;"></i> WhatsApp Encargado
             </button>
-        `;
+        ` : '';
 
         return `
             <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
@@ -44135,6 +44641,12 @@ window.renderStudentProfileAnnotations = renderStudentProfileAnnotations;
 // ==========================================================================
 
 function promptIncidentWhatsAppNotification(options) {
+    if (!canRoleUseWhatsApp()) {
+        if (typeof showToast === 'function') {
+            showToast('El envío de notificaciones por WhatsApp está restringido a Dirección, Auxiliatura y Secretaría.', 'warning');
+        }
+        return;
+    }
     if (!options) return;
     const studentId = options.studentId || (options.student && options.student.id) || STATE.selectedStudentId;
     const student = (STATE.students || []).find(s => s && (s.id === studentId || s.carne === studentId));
@@ -44241,6 +44753,13 @@ function promptIncidentWhatsAppNotification(options) {
 window.promptIncidentWhatsAppNotification = promptIncidentWhatsAppNotification;
 
 function executeWhatsAppSend() {
+    if (!canRoleUseWhatsApp()) {
+        if (typeof showToast === 'function') {
+            showToast('El envío de notificaciones por WhatsApp está restringido a Dirección, Auxiliatura y Secretaría.', 'warning');
+        }
+        if (typeof closeWhatsAppIncidentModal === 'function') closeWhatsAppIncidentModal();
+        return;
+    }
     const phoneInput = document.getElementById('waModalPhoneInput');
     const msgInput = document.getElementById('waModalMessagePreview');
     const rawVal = phoneInput ? phoneInput.value.trim() : '';
@@ -44267,7 +44786,7 @@ function executeWhatsAppSend() {
 
     const waUrl = `https://wa.me/${clean}?text=${encodeURIComponent(messageText)}`;
     window.open(waUrl, '_blank');
-    closeWhatsAppIncidentModal();
+    if (typeof closeWhatsAppIncidentModal === 'function') closeWhatsAppIncidentModal();
     if (typeof showToast === 'function') showToast("Abriendo WhatsApp para enviar la notificación oficial...", "success");
 }
 window.executeWhatsAppSend = executeWhatsAppSend;
@@ -44346,47 +44865,17 @@ function closeExonerationDetailDocenteModal() {
     if (modal) modal.style.setProperty('display', 'none', 'important');
 }
 
-function openNewExonerationDialog() {
+function openNewExonerationDialog(studentId = null) {
     const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
     const canManageExon = ['director', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
     if (!canManageExon) {
         showToast("Acceso Restringido: La creación de exoneraciones es competencia exclusiva de Dirección, Secretaría o Auxiliatura.", "warning");
         return;
     }
-    const input = prompt("📋 REGISTRO DE NUEVA EXONERACIÓN ACADÉMICA\n\nIngrese el Carné, Código Personal o Apellido del estudiante a exonerar:");
-    if (!input || !input.trim()) return;
-
-    const query = input.trim().toLowerCase();
-    const matches = (STATE.students || []).filter(s => {
-        const carne = (s.carne || '').toLowerCase();
-        const code = (s.personalCode || '').toLowerCase();
-        const name = formatStudentDisplayName(s, 'lastFirst').toLowerCase();
-        return carne.includes(query) || code.includes(query) || name.includes(query);
-    });
-
-    if (matches.length === 0) {
-        showToast("No se encontró ningún estudiante con ese criterio.", "warning");
-        return;
-    }
-
-    if (matches.length === 1) {
-        if (typeof openAcademicExonerationModal === 'function') {
-            openAcademicExonerationModal(matches[0].id);
-        } else {
-            showToast("Módulo de exoneración no disponible.", "warning");
-        }
+    if (typeof openAcademicExonerationModal === 'function') {
+        openAcademicExonerationModal(studentId);
     } else {
-        let msg = `Se encontraron ${matches.length} estudiantes coincidentes. Escriba el número del alumno deseado:\n\n`;
-        matches.slice(0, 10).forEach((m, idx) => {
-            msg += `${idx + 1}. ${formatStudentDisplayName(m, 'lastFirst')} (${m.carne || 'Sin carné'}) - ${formatStudentGradeAndSection(m)}\n`;
-        });
-        const choice = prompt(msg);
-        const selIdx = parseInt(choice) - 1;
-        if (!isNaN(selIdx) && matches[selIdx]) {
-            if (typeof openAcademicExonerationModal === 'function') {
-                openAcademicExonerationModal(matches[selIdx].id);
-            }
-        }
+        showToast("Módulo de exoneración no disponible.", "warning");
     }
 }
 

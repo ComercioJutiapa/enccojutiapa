@@ -609,9 +609,11 @@
                             <a href="tel:${cleanPhone}" class="btn btn-xs btn-outline-secondary" style="font-size:0.75rem; padding:2px 6px; text-decoration:none;" title="Llamar a Encargado">
                                 <i class="fa-solid fa-phone" style="color:#0284c7;"></i> ${cleanPhone}
                             </a>
+                            ${(typeof canRoleUseWhatsApp === 'function' && canRoleUseWhatsApp()) ? `
                             <button type="button" class="btn btn-xs btn-outline-success" onclick="if(typeof openWhatsAppPrompt==='function') openWhatsAppPrompt('${safeNameJs}', '${cleanPhone}', '${safeGradeJs}', ${monthAbsences}); else window.open('https://wa.me/502${cleanPhone}', '_blank');" style="font-size:0.75rem; padding:2px 6px; color:#16a34a; border-color:#86efac; font-weight:600;" title="Enviar WhatsApp a Encargado">
                                 <i class="fa-brands fa-whatsapp"></i> WhatsApp
                             </button>
+                            ` : ''}
                         </div>
                     ` : `<span style="font-size:0.75rem; color:#94a3b8; font-style:italic;">Sin teléfono registrado</span>`}
                 </td>
@@ -717,15 +719,45 @@
     }
 
     // Pestaña: Monitoreo en Vivo por Secciones
+    // Pestaña: Monitoreo en Vivo por Secciones
     function renderAuxSectionsTab(container) {
         const grades = window.STATE ? (window.STATE.gradesList || []) : [];
         const students = window.STATE ? (window.STATE.students || []) : [];
         const disciplineReports = window.STATE ? (window.STATE.disciplineReports || window.STATE.discipline || []) : [];
+        const activeBim = parseInt(window._auxSelectedBimestre || (window.STATE?.currentBimestre || 4));
 
         container.innerHTML = `
-            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <strong style="color:#0f172a; font-size:1.05rem;">
+                        <i class="fa-solid fa-layer-group" style="color:#0284c7; margin-right:6px;"></i> Monitoreo General por Grado y Sección
+                    </strong>
+                    <div style="font-size:0.8rem; color:#64748b;">
+                        Listas completas de alumnos con estado activo, retirado, ausente y exonerado según el bimestre correspondiente.
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <label style="font-size:0.82rem; font-weight:700; color:#334155;">Bimestre:</label>
+                    <select id="auxSectionsBimSelect" onchange="window._auxSelectedBimestre = this.value; renderAuxSectionsTab(document.getElementById('auxCenterTabContent'));"
+                        style="padding:6px 10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.82rem; font-weight:700; background:#fff; color:#0f172a;">
+                        <option value="1" ${activeBim === 1 ? 'selected' : ''}>1º Bimestre</option>
+                        <option value="2" ${activeBim === 2 ? 'selected' : ''}>2º Bimestre</option>
+                        <option value="3" ${activeBim === 3 ? 'selected' : ''}>3º Bimestre</option>
+                        <option value="4" ${activeBim === 4 ? 'selected' : ''}>4º Bimestre</option>
+                    </select>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:12px;">
                 ${grades.map(g => {
-                    const secStudents = students.filter(s => (s.gradeCode === g.code || s.gradeCode === g.name || `${s.grade} (${s.section})` === `${g.name} (${g.section})`) && s.status !== 'Retirado');
+                    const secStudents = students.filter(s => (s.gradeCode === g.code || s.gradeCode === g.name || `${s.grade} (${s.section})` === `${g.name} (${g.section})`));
+                    const totalCount = secStudents.length;
+                    
+                    const retCount = secStudents.filter(s => (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true)).length;
+                    const ausCount = secStudents.filter(s => (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true)).length;
+                    const exonCount = secStudents.filter(s => (s.status !== 'Retirado' && s.status !== 'Inactivo' && s.status !== 'Ausente') && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, activeBim) : false)).length;
+                    const actCount = totalCount - retCount - ausCount;
+                    
                     const secIssues = disciplineReports.filter(d => (d.grade && d.grade.includes(g.section) && d.grade.includes(g.name.substring(0,3))) && d.status !== 'Resuelto');
 
                     return `
@@ -734,17 +766,23 @@
                             <strong style="color:#0f172a; font-size:0.95rem;">${g.name} (${g.section})</strong>
                             <span class="badge" style="background:#0284c7; color:#fff; font-weight:800; font-size:0.75rem;">${g.code}</span>
                         </div>
-                        <div style="display:flex; justify-content:space-between; font-size:0.82rem; color:#64748b; margin-bottom:10px;">
-                            <span><i class="fa-solid fa-users"></i> ${secStudents.length} alumnos</span>
+                        <div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; font-size:0.75rem;">
+                            <span class="badge" style="background:#f1f5f9; color:#0f172a; border:1px solid #cbd5e1;"><i class="fa-solid fa-users"></i> ${totalCount} Total</span>
+                            <span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;">${actCount} Activos</span>
+                            ${retCount > 0 ? `<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca;">${retCount} Retirados</span>` : ''}
+                            ${ausCount > 0 ? `<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a;">${ausCount} Ausentes</span>` : ''}
+                            ${exonCount > 0 ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;">${exonCount} Exonerados</span>` : ''}
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#64748b; margin-bottom:10px;">
                             <span style="${secIssues.length > 0 ? 'color:#ea580c; font-weight:700;' : 'color:#16a34a;'}">
-                                <i class="fa-solid fa-triangle-exclamation"></i> ${secIssues.length} casos pendientes
+                                <i class="fa-solid fa-triangle-exclamation"></i> ${secIssues.length} casos disciplinarios
                             </span>
                         </div>
                         <div style="display:flex; gap:6px;">
-                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="filterAuxByGradeCode('${g.code}')" style="flex:1; font-size:0.78rem; font-weight:700;">
-                                <i class="fa-solid fa-list-check"></i> Ver Alumnos
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="filterAuxByGradeCode('${g.code}', ${activeBim})" style="flex:1; font-size:0.78rem; font-weight:700;">
+                                <i class="fa-solid fa-list-check"></i> Ver Lista (${totalCount})
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="printSectionAttendanceSheet('${g.code}')" style="font-size:0.78rem;" title="Imprimir lista">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="printSectionAttendanceSheet('${g.code}', ${activeBim})" style="font-size:0.78rem;" title="Imprimir lista oficial">
                                 <i class="fa-solid fa-print"></i>
                             </button>
                         </div>
@@ -754,6 +792,114 @@
             </div>
         `;
     }
+    window.renderAuxSectionsTab = renderAuxSectionsTab;
+
+    // Modal con Lista Oficial Completa por Grado y Sección (Incluye Retirados, Ausentes y Exonerados)
+    function filterAuxByGradeCode(gradeCode, bNum = 4) {
+        const grades = window.STATE ? (window.STATE.gradesList || []) : [];
+        const students = window.STATE ? (window.STATE.students || []) : [];
+        const g = grades.find(x => x.code === gradeCode || x.id === gradeCode || x.name === gradeCode) || { name: gradeCode, section: '', code: gradeCode };
+
+        const secStudents = students.filter(s => (s.gradeCode === g.code || s.gradeCode === g.name || `${s.grade} (${s.section})` === `${g.name} (${g.section})`));
+        secStudents.sort((a, b) => {
+            const nameA = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(a, 'lastFirst') : (a.name || '');
+            const nameB = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(b, 'lastFirst') : (b.name || '');
+            return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
+        });
+
+        const existing = document.getElementById('auxSectionStudentsModal');
+        if (existing) existing.remove();
+
+        const modal = document.createElement('div');
+        modal.id = 'auxSectionStudentsModal';
+        modal.className = 'modal-overlay';
+        modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.65); backdrop-filter:blur(3px); z-index:100000; display:flex; justify-content:center; align-items:center; padding:15px;';
+        modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+
+        modal.innerHTML = `
+            <div style="background:#ffffff; border-radius:12px; width:100%; max-width:850px; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 20px 30px rgba(0,0,0,0.25); overflow:hidden; border:1px solid #cbd5e1;">
+                <div style="background:#0f172a; color:#fff; padding:14px 18px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <strong style="font-size:1.05rem;"><i class="fa-solid fa-users"></i> Lista de Alumnos: ${g.name} (${g.section || 'A'})</strong>
+                        <div style="font-size:0.78rem; color:#94a3b8; margin-top:2px;">Bimestre Evaluado: <strong>${bNum}º Bimestre</strong> &bull; Total: <strong>${secStudents.length} estudiantes</strong></div>
+                    </div>
+                    <button type="button" onclick="document.getElementById('auxSectionStudentsModal').remove()" style="background:none; border:none; color:#fff; font-size:1.3rem; cursor:pointer;">&times;</button>
+                </div>
+                <div style="padding:14px 18px; overflow-y:auto; flex:1;">
+                    <table class="custom-table" style="font-size:0.83rem; width:100%; border-collapse:collapse;">
+                        <thead>
+                            <tr style="background:#f1f5f9; text-align:left;">
+                                <th style="padding:6px 8px; width:40px; text-align:center;">No.</th>
+                                <th style="padding:6px 8px; width:110px;">Código / Carné</th>
+                                <th style="padding:6px 8px;">Apellidos y Nombres</th>
+                                <th style="padding:6px 8px; width:140px; text-align:center;">Estado B${bNum}</th>
+                                <th style="padding:6px 8px; width:120px; text-align:center;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${secStudents.map((s, idx) => {
+                                const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                                const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                                const isExon = !isRet && !isAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, bNum) : false);
+
+                                let statusBadge = `<span class="badge" style="background:#dcfce7; color:#15803d; border:1px solid #bbf7d0;">Activo</span>`;
+                                if (isRet) {
+                                    statusBadge = `<span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; font-weight:800;">[RETIRADO]</span>`;
+                                } else if (isAus) {
+                                    statusBadge = `<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-weight:800;">[AUSENTE]</span>`;
+                                } else if (isExon) {
+                                    statusBadge = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:800;">[EXONERADO]</span>`;
+                                }
+
+                                const sName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(s, 'lastFirst') : (s.name || 'Estudiante');
+
+                                return `
+                                <tr style="${isRet ? 'background:#fef2f2;' : (isAus ? 'background:#fffbeb;' : (isExon ? 'background:#f0f9ff;' : ''))}">
+                                    <td style="padding:6px 8px; text-align:center; font-weight:700;">${idx + 1}</td>
+                                    <td style="padding:6px 8px; font-family:monospace;">${s.personalCode || s.carne || s.cui || '—'}</td>
+                                    <td style="padding:6px 8px;">
+                                        <strong style="color:#0f172a; cursor:pointer;" onclick="document.getElementById('auxSectionStudentsModal').remove(); openStudent360Drawer('${s.id}');">
+                                            ${sName}
+                                        </strong>
+                                    </td>
+                                    <td style="padding:6px 8px; text-align:center;">${statusBadge}</td>
+                                    <td style="padding:6px 8px; text-align:center;">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="document.getElementById('auxSectionStudentsModal').remove(); openStudent360Drawer('${s.id}');" style="padding:2px 6px; font-size:0.75rem;" title="Ficha 360°">
+                                            <i class="fa-solid fa-folder-open"></i> Ficha
+                                        </button>
+                                    </td>
+                                </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="background:#f8fafc; border-top:1px solid #e2e8f0; padding:10px 18px; display:flex; justify-content:space-between; align-items:center;">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="printSectionAttendanceSheet('${g.code}', ${bNum})">
+                        <i class="fa-solid fa-print"></i> Imprimir Planilla Oficial
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="document.getElementById('auxSectionStudentsModal').remove()">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    window.filterAuxByGradeCode = filterAuxByGradeCode;
+
+    // Imprimir planilla de asistencia desde auxiliatura
+    function printSectionAttendanceSheet(gradeCode, bNum = 4) {
+        const gradeSelect = document.getElementById('attendanceGradeSelect');
+        const monthSelect = document.getElementById('attendanceMonthSelect');
+        if (gradeSelect) gradeSelect.value = gradeCode;
+        if (typeof printAttendanceOfficialSheet === 'function') {
+            printAttendanceOfficialSheet();
+        } else if (typeof printStudentList === 'function') {
+            printStudentList();
+        }
+    }
+    window.printSectionAttendanceSheet = printSectionAttendanceSheet;
 
     // Pestaña: Disciplina y Actas
     function renderAuxDisciplineTab(container) {
@@ -898,7 +1044,19 @@
                 Resultados encontrados (${matches.length}) — Haga clic en un estudiante para abrir su Ficha 360°:
             </div>
             <div style="display:flex; flex-direction:column; gap:4px;">
-                ${matches.map(s => `
+                ${matches.map(s => {
+                    const curBim = window.STATE?.currentBimestre || 4;
+                    const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, curBim) : true);
+                    const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, curBim) : true);
+                    const isExon = !isRet && !isAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, curBim) : false);
+
+                    let badgeClass = 'badge-success';
+                    let statusLabel = s.status || 'Activo';
+                    if (isRet) { badgeClass = 'badge-danger'; statusLabel = 'Retirado'; }
+                    else if (isAus) { badgeClass = 'badge-warning'; statusLabel = 'Ausente'; }
+                    else if (isExon) { badgeClass = 'badge-info'; statusLabel = `Exonerado B${curBim}`; }
+
+                    return `
                     <div onclick="openStudent360Drawer('${s.id}')" 
                         style="background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:8px 12px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; transition:background 0.15s;"
                         onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#ffffff'">
@@ -914,11 +1072,12 @@
                                 </div>
                             </div>
                         </div>
-                        <span class="badge ${s.status === 'Retirado' ? 'badge-danger' : 'badge-success'}" style="font-size:0.72rem;">
-                            ${s.status || 'Activo'}
+                        <span class="badge ${badgeClass}" style="font-size:0.72rem; font-weight:800;">
+                            ${statusLabel}
                         </span>
                     </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         `;
     }
@@ -945,7 +1104,8 @@
         // Teléfono del tutor / encargado para WhatsApp
         const tutorPhone = student.tutorPhone || student.guardianPhone || student.encargadoPhone || student.phone || '';
         const cleanPhone = String(tutorPhone).replace(/\D/g, '');
-        const waLink = cleanPhone ? `https://wa.me/502${cleanPhone}?text=Estimado(a)%20padre/madre%20de%20familia%20de%20${encodeURIComponent(student.name)}:%20Le%20saludamos%20de%20Auxiliatura/Secretar%C3%ADa%20ENCCO%20Jutiapa.` : '';
+        const canUseWA = (typeof canRoleUseWhatsApp === 'function' ? canRoleUseWhatsApp() : false);
+        const waLink = (cleanPhone && canUseWA) ? `https://wa.me/502${cleanPhone}?text=Estimado(a)%20padre/madre%20de%20familia%20de%20${encodeURIComponent(student.name)}:%20Le%20saludamos%20de%20Auxiliatura/Secretar%C3%ADa%20ENCCO%20Jutiapa.` : '';
 
         const monthAbsences = (typeof getStudentMonthAbsenceDays === 'function') 
             ? getStudentMonthAbsenceDays(student.id, new Date().getMonth() + 1) 
@@ -983,6 +1143,16 @@
                                 <span>Carné: <strong style="color:#38bdf8;">${student.carne || '—'}</strong></span> &bull; 
                                 <span>Código: <strong>${student.personalCode || '—'}</strong></span> &bull; 
                                 <span>${student.grade || student.gradeCode} (${student.section || 'A'})</span>
+                                ${(() => {
+                                    const curBim = window.STATE?.currentBimestre || 4;
+                                    const isRet = (student.status === 'Retirado' || student.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(student, curBim) : true);
+                                    const isAus = (student.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(student, curBim) : true);
+                                    const isExon = !isRet && !isAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(student, curBim) : false);
+                                    if (isRet) return `<span style="font-size:0.75rem; background:#fee2e2; color:#b91c1c; border:1px solid #fecaca; border-radius:4px; padding:2px 7px; font-weight:800;">[RETIRADO B${curBim}]</span>`;
+                                    if (isAus) return `<span style="font-size:0.75rem; background:#fef3c7; color:#b45309; border:1px solid #fde68a; border-radius:4px; padding:2px 7px; font-weight:800;">[AUSENTE B${curBim}]</span>`;
+                                    if (isExon) return `<span style="font-size:0.75rem; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; border-radius:4px; padding:2px 7px; font-weight:800;">[EXONERADO B${curBim}]</span>`;
+                                    return `<span style="font-size:0.75rem; background:#dcfce7; color:#15803d; border:1px solid #bbf7d0; border-radius:4px; padding:2px 7px; font-weight:800;">Activo</span>`;
+                                })()}
                                 ${stu360AbsenceBadge}
                             </div>
                         </div>
@@ -1212,11 +1382,21 @@
                         <label style="font-size:0.8rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">2. Estudiante:</label>
                         <select id="quickActionStudentSelect" required style="width:100%; padding:9px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:0.88rem; background:#fff;">
                             <option value="">-- Seleccionar Estudiante --</option>
-                            ${students.map(s => `
+                            ${students.map(s => {
+                                const curBim = window.STATE?.currentBimestre || 4;
+                                const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, curBim) : true);
+                                const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, curBim) : true);
+                                const isExon = !isRet && !isAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, curBim) : false);
+                                let tag = '';
+                                if (isRet) tag = ' [RETIRADO]';
+                                else if (isAus) tag = ' [AUSENTE]';
+                                else if (isExon) tag = ` [EXONERADO B${curBim}]`;
+                                return `
                                 <option value="${s.id}" ${s.id === preselectedStudentId ? 'selected' : ''}>
-                                    ${s.name} (${s.gradeCode || s.grade} ${s.section || ''})
+                                    ${s.name}${tag} (${s.gradeCode || s.grade} ${s.section || ''})
                                 </option>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </select>
                     </div>
 

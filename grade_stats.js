@@ -252,6 +252,9 @@ function renderGradeStatsView() {
 
         // 🌟 REGLA INSTITUCIONAL: Promedios oficiales para 4to/5to (4 unidades), 6to (3 unidades),
         // y materias especiales de graduación (Seminario y Práctica: nota única en B4, sin promedio).
+        const rawGradeStr = String(student.grade || student.gradeLevel || gradeVal || '').toUpperCase();
+        const is6to = rawGradeStr.includes('6') || rawGradeStr.includes('SEXTO') || rawGradeStr.includes('6TO');
+
         if (typeof window !== 'undefined' && typeof window.getReportCardSubjectGrades === 'function') {
             const r = window.getReportCardSubjectGrades(student, matchedKey || targetSubject);
             if (per === 'FINAL') {
@@ -276,15 +279,18 @@ function renderGradeStatsView() {
                 if (r[`isExon${u}`]) {
                     return { score: null, evaluated: false, isExonerated: true };
                 }
-                const sc = r[`b${u}`];
+                let sc = r[`b${u}`];
+                // 🌟 REGLA INSTITUCIONAL DE 6TO: En 6to grado, las 8 materias ordinarias solo se cursan en B1, B2 y B3.
+                // En el 4to Bimestre (cierre y sábanas de notas), deben mostrar su PROMEDIO acumulado (r.avg)
+                if (is6to && u === 4 && (!sc || sc <= 0) && r.avg > 0) {
+                    sc = r.avg;
+                }
                 return { score: sc > 0 ? sc : null, evaluated: sc > 0 };
             }
         }
 
         const cleanSub = (targetSubject || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
         const isSpecialGrad = cleanSub.includes('seminario') || cleanSub.includes('practica');
-        const rawGradeStr = String(student.grade || student.gradeLevel || gradeVal || '').toUpperCase();
-        const is6to = rawGradeStr.includes('6') || rawGradeStr.includes('SEXTO') || rawGradeStr.includes('6TO');
 
         if (per === 'FINAL') {
             if (isSpecialGrad) {
@@ -321,7 +327,17 @@ function renderGradeStatsView() {
             const isEx = (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, targetSubject, u)) ||
                          (typeof window !== 'undefined' && window.isSubjectBimestreExonerated && window.isSubjectBimestreExonerated(student, targetSubject, u));
             if (isEx) return { score: null, evaluated: false, isExonerated: true };
-            const sVal = getUnitVal(u);
+            let sVal = getUnitVal(u);
+            if (is6to && u === 4 && (sVal === null || sVal <= 0)) {
+                const uScores = [];
+                for (let b = 1; b <= 3; b++) {
+                    const v = getUnitVal(b);
+                    if (v !== null && v > 0) uScores.push(v);
+                }
+                if (uScores.length > 0) {
+                    sVal = Math.round(uScores.reduce((a, b) => a + b, 0) / uScores.length);
+                }
+            }
             if (sVal !== null) return { score: sVal, evaluated: true };
             return { score: null, evaluated: false };
         }
@@ -334,6 +350,8 @@ function renderGradeStatsView() {
         failedByClass[s] = { Total: 0 };
         sectionCols.forEach(sec => failedByClass[s][sec] = 0);
     });
+
+    const bNum = (period === 'FINAL' || !parseInt(period)) ? 4 : parseInt(period);
 
     sectionCols.forEach(sec => {
         const secStudents = students.filter(s => {
@@ -354,7 +372,11 @@ function renderGradeStatsView() {
         const processedStudents = [];
 
         secStudents.forEach((st, idx) => {
-            const isRetirado = (st.status === 'Retirado' || st.status === 'Inactivo' || st.status === 'Ausente');
+            const isBimRetired = (st.status === 'Retirado' || st.status === 'Inactivo') && ((typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(st, bNum) : true);
+            const isBimAusente = (st.status === 'Ausente') && ((typeof isStudentRetiredInBimestre === 'function') ? isStudentRetiredInBimestre(st, bNum) : true);
+            const isRetirado = isBimRetired || isBimAusente;
+            const isExonStudent = !isRetirado && ((typeof isStudentExonerated === 'function') ? isStudentExonerated(st, bNum) : false);
+
             if (isRetirado) {
                 retirados++;
             }
@@ -387,6 +409,15 @@ function renderGradeStatsView() {
                 }
             }
 
+            let statusTag = '';
+            if (isBimRetired) {
+                statusTag = ` <span style="font-size:0.68rem; color:#b91c1c; font-weight:bold;">[RETIRADO]</span>`;
+            } else if (isBimAusente) {
+                statusTag = ` <span style="font-size:0.68rem; color:#b45309; font-weight:bold;">[AUSENTE]</span>`;
+            } else if (isExonStudent) {
+                statusTag = ` <span style="font-size:0.68rem; color:#0369a1; font-weight:bold;">[EXONERADO B${bNum}]</span>`;
+            }
+
             processedStudents.push({
                 clave: idx + 1,
                 student: st,
@@ -394,7 +425,8 @@ function renderGradeStatsView() {
                 scores: subjectScores,
                 average: genAvg,
                 lostCount: lostCount,
-                isRetirado: isRetirado
+                isRetirado: isRetirado,
+                statusTag: statusTag
             });
         });
 
@@ -568,8 +600,7 @@ function renderGradeStatsView() {
                 <tr style="${rowStyle}">
                     <td style="text-align:center; font-weight:bold; font-size:0.72rem;">${item.clave}</td>
                     <td style="font-weight:bold; font-size:0.72rem; padding-left:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#000;">
-                        ${escapeHtml(item.name)}
-                        ${item.isRetirado ? ' <span style="font-size:0.68rem; color:#b91c1c; font-weight:bold;">(RETIRADO)</span>' : ''}
+                        ${escapeHtml(item.name)}${item.statusTag || ''}
                     </td>
                     ${item.scores.map((sObj, cIdx) => {
                         const colTheme = CLASS_COLUMN_PALETTE[cIdx % CLASS_COLUMN_PALETTE.length];
@@ -653,6 +684,29 @@ function renderGradeStatsView() {
                 <tbody>
                     ${rowsHtml}
                 </tbody>
+                <tfoot>
+                    <tr style="background:#f1f5f9; font-weight:900; border-top:2px solid #0f172a;">
+                        <td colspan="2" style="text-align:right; padding-right:8px; font-weight:900; font-size:0.74rem; background:#f8fafc;">
+                            PROMEDIO DE LA CLASE:
+                        </td>
+                        ${officialSubjects.map((s, cIdx) => {
+                            const colTheme = CLASS_COLUMN_PALETTE[cIdx % CLASS_COLUMN_PALETTE.length];
+                            const colScores = stList.map(item => item.scores[cIdx]).filter(sc => sc && sc.evaluated && sc.score !== null);
+                            const cAvg = colScores.length > 0 ? (colScores.reduce((a, b) => a + b.score, 0) / colScores.length) : null;
+                            const isFailAvg = cAvg !== null && cAvg < 60;
+                            return `<td style="text-align:center; font-weight:900; font-size:0.74rem; background-color:${colTheme.headerBg}; border-left:1px solid ${colTheme.border}; border-right:1px solid ${colTheme.border}; color:${isFailAvg ? '#b91c1c' : '#0f172a'};">${cAvg !== null ? cAvg.toFixed(2) : '—'}</td>`;
+                        }).join('')}
+                        <td class="encco-td-pink" style="text-align:center; font-weight:900; font-size:0.74rem;">
+                            ${(() => {
+                                const activeSt = stList.filter(item => !item.isRetirado && item.average > 0);
+                                return activeSt.length > 0 ? (activeSt.reduce((a, b) => a + b.average, 0) / activeSt.length).toFixed(2) : '0.00';
+                            })()}
+                        </td>
+                        <td class="encco-td-pink" style="text-align:center; font-weight:900; font-size:0.74rem;">
+                            ${stList.reduce((acc, item) => acc + (item.lostCount || 0), 0)}
+                        </td>
+                    </tr>
+                </tfoot>
             </table>
             </div>
 
@@ -843,14 +897,31 @@ function exportGradeStatsOfficialExcel() {
             excelContent += `
                 <tr>
                     <td style="text-align:center;">${item.clave}</td>
-                    <td>${escapeHtml(item.name)}</td>
+                    <td>${escapeHtml(item.name)}${item.statusTag ? ' ' + item.statusTag.replace(/<[^>]+>/g, '') : ''}</td>
                     ${item.scores.map(sc => `<td style="text-align:center; ${sc.evaluated && sc.score < 60 ? 'color:#dc2626; font-weight:bold;' : ''}">${sc.evaluated && sc.score !== null ? sc.score : ''}</td>`).join('')}
                     <td class="pink">${item.average.toFixed(2)}</td>
                     <td class="pink ${item.lostCount > 0 ? 'red' : ''}">${item.lostCount}</td>
                 </tr>
             `;
         });
-        excelContent += `<tr></tr>`;
+
+        // Fila de promedios de la clase por cátedra en Excel
+        excelContent += `
+            <tr style="background:#f1f5f9; font-weight:bold;">
+                <td colspan="2" style="text-align:right; font-weight:bold;">PROMEDIO DE LA CLASE:</td>
+                ${d.officialSubjects.map((s, cIdx) => {
+                    const cScores = sInfo.students.map(item => item.scores[cIdx]).filter(sc => sc && sc.evaluated && sc.score !== null);
+                    const cAvg = cScores.length > 0 ? (cScores.reduce((a, b) => a + b.score, 0) / cScores.length).toFixed(2) : '—';
+                    return `<td style="text-align:center; font-weight:bold;">${cAvg}</td>`;
+                }).join('')}
+                <td class="pink">${(() => {
+                    const activeSt = sInfo.students.filter(item => !item.isRetirado && item.average > 0);
+                    return activeSt.length > 0 ? (activeSt.reduce((a, b) => a + b.average, 0) / activeSt.length).toFixed(2) : '0.00';
+                })()}</td>
+                <td class="pink">${sInfo.students.reduce((acc, item) => acc + (item.lostCount || 0), 0)}</td>
+            </tr>
+            <tr></tr>
+        `;
     });
 
     excelContent += `

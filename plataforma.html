@@ -5286,11 +5286,35 @@
                 <button type="button" class="modal-close" onclick="closeAcademicExonerationModal()" style="color:#ffffff;">&times;</button>
             </div>
             <div class="modal-body" style="max-height:calc(85vh - 130px); overflow-y:auto;">
-                <div style="background:#f0fdfa; border:1px solid #99f6e4; border-radius:6px; padding:12px; margin-bottom:14px;">
+                <!-- SELECTOR DE ESTUDIANTE A EXONERAR -->
+                <div id="exonStudentSelectBox" style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:6px; padding:12px; margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <label style="font-weight:700; color:#0f766e; margin:0;">
+                            <i class="fa-solid fa-user-graduate"></i> Seleccionar Estudiante a Exonerar *
+                        </label>
+                        <span id="exonStudentCountBadge" style="font-size:0.75rem; color:#64748b; font-weight:600;"></span>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                        <div style="flex:1; min-width:180px;">
+                            <select id="exonStudentGradeFilter" class="form-control" style="font-weight:600; font-size:0.85rem;" onchange="filterExonStudentDropdown()">
+                                <option value="">-- Todos los Grados y Secciones --</option>
+                            </select>
+                        </div>
+                        <div style="flex:1.5; min-width:220px;">
+                            <input type="text" id="exonStudentSearchInput" class="form-control" style="font-size:0.85rem;" placeholder="🔍 Buscar por apellido, nombre o carné..." oninput="filterExonStudentDropdown()">
+                        </div>
+                    </div>
+                    <select id="exonStudentSelect" class="form-control" style="font-weight:700; font-size:0.9rem; color:#0f172a;" onchange="onExonStudentSelected(this.value)">
+                        <option value="">-- Seleccione un estudiante de la lista --</option>
+                    </select>
+                </div>
+
+                <!-- DETALLE DEL EXPEDIENTE DEL ESTUDIANTE SELECCIONADO -->
+                <div id="exonStudentInfoBox" style="background:#f0fdfa; border:1px solid #99f6e4; border-radius:6px; padding:12px; margin-bottom:14px; display:none;">
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                         <div>
-                            <strong style="color:#0f766e; font-size:1rem;" id="exonModalStudentName">Estudiante: Ana Lucía García Pérez</strong>
-                            <div style="font-size:0.82rem; color:#475569;" id="exonModalStudentMeta">Carné: ENCCO-2026-001 | Grado: 4to Perito Contador "A"</div>
+                            <strong style="color:#0f766e; font-size:1rem;" id="exonModalStudentName">Estudiante: —</strong>
+                            <div style="font-size:0.82rem; color:#475569;" id="exonModalStudentMeta">Carné: — | Grado: —</div>
                         </div>
                         <span class="badge" style="background:#ccfbf1; color:#115e59; font-weight:800; font-size:0.85rem;" id="exonModalStatusBadge">Expediente Regular</span>
                     </div>
@@ -5474,7 +5498,7 @@
                         <textarea id="annotText" class="form-control" rows="3" placeholder="Escriba aquí la observación, motivo de tardanza, acuerdo con el encargado o seguimiento..." style="font-size:0.85rem;"></textarea>
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                        <label style="margin:0; font-size:0.80rem; font-weight:700; color:#15803d; display:flex; align-items:center; gap:6px; cursor:pointer;" title="Al guardar, abrirá la ventana para enviar notificación oficial por WhatsApp al padre de familia">
+                        <label id="annotSendWhatsAppWrapper" style="margin:0; font-size:0.80rem; font-weight:700; color:#15803d; display:flex; align-items:center; gap:6px; cursor:pointer;" title="Al guardar, abrirá la ventana para enviar notificación oficial por WhatsApp al padre de familia">
                             <input type="checkbox" id="annotSendWhatsAppCheckbox" checked style="width:16px; height:16px; accent-color:#16a34a; cursor:pointer;">
                             <span><i class="fa-brands fa-whatsapp" style="font-size:0.95rem;"></i> Notificar a encargado por WhatsApp</span>
                         </label>
@@ -6192,24 +6216,24 @@
         // Registro de Service Worker para PWA y disponibilidad fuera de línea
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js?v=20261015_v265_no_cache_revert').catch(function(err) {
+                navigator.serviceWorker.register('sw.js?v=20261016_v269_exoneracion_and_import').catch(function(err) {
                     console.debug('[SW] Registro omitido o no compatible:', err);
                 });
             });
         }
     </script>
-    <script src="auth.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
-    <script src="db.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
-    <script src="ui.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
-    <script src="sire.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
+    <script src="auth.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
+    <script src="db.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
+    <script src="ui.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
+    <script src="sire.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
     <script src="official_historical_patches.js?v=20261014_v1" defer charset="UTF-8"></script>
-    <script src="app.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
+    <script src="app.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20260925_v1" charset="UTF-8"></script>
-    <script src="grade_stats.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
-    <script src="analytics.js?v=20261015_v265_no_cache_revert" charset="UTF-8"></script>
+    <script src="grade_stats.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
+    <script src="analytics.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
     <script src="qrcode.min.js" defer charset="UTF-8"></script>
     <script src="carnets.js?v=2026.09.21.v226_carnets_horizontal_vertical" charset="UTF-8"></script>
-    <script src="auxiliatura_center.js?v=20261003_v1" charset="UTF-8"></script>
+    <script src="auxiliatura_center.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
     <script src="db_repository.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="modal_manager.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="exam_schedules_module.js?v=20261014_v248_opt_performance" charset="UTF-8"></script>
