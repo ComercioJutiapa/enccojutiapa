@@ -15,7 +15,7 @@ assert(appCode.includes("sValLower === 'retirado' || sValLower === 'ausente' || 
 console.log('  ✅ Test 1 Superado: isSpecialStatusFilter configurado para desbloquear la tabla.');
 
 // 2. Verificar que el guard de grado/búsqueda no bloquee cuando isSpecialStatusFilter está activo
-assert(appCode.includes('if (!gradeVal && !searchVal && !isSpecialStatusFilter)'), 
+assert(appCode.includes('if (!gradeVal && !searchVal && !isSpecialStatusFilter'), 
   'app.js no debe bloquear si el usuario selecciona Retirado o Ausente');
 console.log('  ✅ Test 2 Superado: Bloqueo omitido al filtrar por Retirado o Ausente.');
 

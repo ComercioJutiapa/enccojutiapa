@@ -12005,21 +12005,49 @@ function printCourseStudentList(courseId) {
     const rawSec = targetCourse.section || 'A';
     const secClean = (rawSec || '').toLowerCase().startsWith('secci') ? rawSec : `Sección ${rawSec || 'A'}`;
 
+    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
     const rowsHtml = students.length === 0 ? `
         <tr><td colspan="9" style="text-align:center; padding:20px; font-weight:bold; color:#666;">No hay estudiantes inscritos en esta sección.</td></tr>
-    ` : students.map((s, idx) => `
-        <tr style="height:22px;">
-            <td style="border:1px solid #333; padding:4px 4px; text-align:center; font-weight:bold; width:30px;">${idx + 1}</td>
+    ` : students.map((s, idx) => {
+        const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
+        const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
+        const isExon = !isRet && ((targetCourse.subject && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, targetCourse.subject, activeBim)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, activeBim)));
+
+        let rowBg = '#ffffff';
+        let nameTag = '';
+        let cellFiller = '';
+        let obsFiller = '';
+
+        if (isRet) {
+            rowBg = '#fef2f2';
+            nameTag = ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px;">RETIRADO</span>';
+            cellFiller = '<span style="color:#94a3b8; font-weight:bold;">—</span>';
+            obsFiller = '<span style="color:#b91c1c; font-weight:800; font-size:6.5pt; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px;">RETIRADO</span>';
+        } else if (isAus) {
+            rowBg = '#fffbeb';
+            nameTag = ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; margin-left:4px;">AUSENTE</span>';
+            cellFiller = '<span style="color:#94a3b8; font-weight:bold;">—</span>';
+            obsFiller = '<span style="color:#b45309; font-weight:800; font-size:6.5pt; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px;">AUSENTE</span>';
+        } else if (isExon) {
+            rowBg = '#f0f9ff';
+            nameTag = ` <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#0369a1; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; margin-left:4px;">EXONERADO (B${activeBim})</span>`;
+            cellFiller = '<span style="color:#0284c7; font-weight:bold;">—</span>';
+            obsFiller = '<span style="color:#0284c7; font-weight:800; font-size:6.5pt; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px;">EXONERADO</span>';
+        }
+
+        return `
+        <tr style="height:22px; background:${rowBg};">
+            <td style="border:1px solid #333; padding:4px 4px; text-align:center; font-weight:bold; width:30px; background:${rowBg};">${idx + 1}</td>
             <td style="border:1px solid #333; padding:4px 4px; text-align:center; font-family:monospace; font-weight:700; width:95px;">${s.personalCode || s.carne || '---'}</td>
-            <td style="border:1px solid #333; padding:4px 8px; font-weight:bold; text-transform:uppercase;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst')).toUpperCase()}</td>
-            <td style="border:1px solid #333; width:44px; text-align:center;"></td>
-            <td style="border:1px solid #333; width:44px; text-align:center;"></td>
-            <td style="border:1px solid #333; width:44px; text-align:center;"></td>
-            <td style="border:1px solid #333; width:44px; text-align:center;"></td>
-            <td style="border:1px solid #333; width:44px; text-align:center;"></td>
-            <td style="border:1px solid #333; width:130px;"></td>
-        </tr>
-    `).join('');
+            <td style="border:1px solid #333; padding:4px 8px; font-weight:bold; text-transform:uppercase;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst')).toUpperCase()}${nameTag}</td>
+            <td style="border:1px solid #333; width:44px; text-align:center;">${cellFiller}</td>
+            <td style="border:1px solid #333; width:44px; text-align:center;">${cellFiller}</td>
+            <td style="border:1px solid #333; width:44px; text-align:center;">${cellFiller}</td>
+            <td style="border:1px solid #333; width:44px; text-align:center;">${cellFiller}</td>
+            <td style="border:1px solid #333; width:44px; text-align:center;">${cellFiller}</td>
+            <td style="border:1px solid #333; width:130px; text-align:center;">${obsFiller}</td>
+        </tr>`;
+    }).join('');
 
     const fullHtml = `<!DOCTYPE html>
 <html lang="es">
@@ -12282,7 +12310,11 @@ function printCourseAttendanceSheet(courseId, monthNum = null) {
     const rowsHtml = students.length === 0 ? `
         <tr><td colspan="${daysInMonth + 5}" style="text-align:center; padding:18px; font-weight:bold; color:#64748b;">No hay estudiantes registrados en esta sección.</td></tr>
     ` : students.map((s, idx) => {
-        const isRet = (s.status === 'Retirado' || s.status === 'Inactivo');
+        const bNum = (month <= 3) ? 1 : (month <= 5 ? 2 : (month <= 8 ? 3 : 4));
+        const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+        const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+        const isExon = !isRet && ((targetCourse.subject && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, targetCourse.subject, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
+
         const sAtt = attMonthData[s.id] || (s.carne ? attMonthData[s.carne] : null) || (s.personalCode ? attMonthData[s.personalCode] : null) || {};
         let dayCells = '';
         let countP = 0, countA = 0;
@@ -12291,11 +12323,13 @@ function printCourseAttendanceSheet(courseId, monthNum = null) {
             const dateObj = new Date(year, month - 1, d);
             const dayOfWeek = dateObj.getDay();
             const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-            const bg = isRet ? '#f8fafc' : (isWeekend ? '#f1f5f9' : '#ffffff');
+            const bg = isWeekend ? '#f1f5f9' : (isRet ? '#fef2f2' : (isAus ? '#fffbeb' : (isExon ? '#f0f9ff' : '#ffffff')));
             let cellText = '';
 
-            if (isRet) {
+            if (isRet || isAus) {
                 cellText = '<span style="color:#94a3b8; font-weight:bold; font-size:7.5px;">—</span>';
+            } else if (isExon) {
+                cellText = '<span style="color:#0284c7; font-weight:bold; font-size:7.5px;">—</span>';
             } else if (!isWeekend) {
                 const mark = (sAtt[d] || sAtt[String(d)] || '').toString().toUpperCase().trim();
                 if (mark === 'P') {
@@ -12315,15 +12349,16 @@ function printCourseAttendanceSheet(courseId, monthNum = null) {
             dayCells += `<td style="background:${bg}; border:1px solid #64748b; padding:0; height:18px; text-align:center;">${cellText}</td>`;
         }
 
-        const retTag = isRet ? ' <span style="color:#dc2626; font-weight:800; font-size:6.5px;">[RETIRADO]</span>' : '';
-        const totAsist = isRet ? '—' : (countP > 0 ? countP : '');
-        const totFaltas = isRet ? '—' : (countA > 0 ? countA : '');
+        const tagBadge = isRet ? ' <span style="display:inline-block; font-size:6.5px; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 3px; border-radius:2px; margin-left:3px;">RETIRADO</span>' : (isAus ? ' <span style="display:inline-block; font-size:6.5px; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 3px; border-radius:2px; margin-left:3px;">AUSENTE</span>' : (isExon ? ` <span style="display:inline-block; font-size:6.5px; font-weight:900; color:#0284c7; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 3px; border-radius:2px; margin-left:3px;">EXON. B${bNum}</span>` : ''));
+        const totAsist = (isRet || isAus || isExon) ? '—' : (countP > 0 ? countP : '');
+        const totFaltas = (isRet || isAus || isExon) ? '—' : (countA > 0 ? countA : '');
+        const rowBg = isRet ? 'background:#fef2f2;' : (isAus ? 'background:#fffbeb;' : (isExon ? 'background:#f0f9ff;' : ''));
 
         return `
-            <tr style="${isRet ? 'background:#fef2f2; color:#64748b;' : ''}">
+            <tr style="${rowBg}">
                 <td style="border:1px solid #333; text-align:center; font-weight:bold; font-size:7.5px; padding:2px;">${idx + 1}</td>
                 <td style="border:1px solid #333; font-family:monospace; font-size:7.5px; text-align:center; padding:2px;">${s.personalCode || s.carne || ''}</td>
-                <td style="border:1px solid #333; font-weight:600; font-size:7.5px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:2px 4px;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst')).toUpperCase()}${retTag}</td>
+                <td style="border:1px solid #333; font-weight:600; font-size:7.5px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:2px 4px;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst')).toUpperCase()}${tagBadge}</td>
                 ${dayCells}
                 <td style="border:1px solid #333; width:22px; text-align:center; font-size:7px; font-weight:700; background:#f8fafc;">${totAsist}</td>
                 <td style="border:1px solid #333; width:22px; text-align:center; font-size:7px; font-weight:700; background:#f8fafc; color:#dc2626;">${totFaltas}</td>
@@ -13224,8 +13259,10 @@ function renderStudentsTable() {
             </div>
         `;
 
+        const tableRowBg = isRetBim ? 'background:#fef2f2;' : (isAusBim ? 'background:#fffbeb;' : (hasExon ? 'background:#f0f9ff;' : ''));
+
         return `
-            <tr style="${(s.status === 'Retirado' || s.status === 'Ausente') ? 'background:#f8fafc;' : ''}">
+            <tr style="${tableRowBg}">
                 <td style="text-align:center; padding:8px 6px;">${avatarHtml}</td>
                 <td style="padding:6px 6px; line-height:1.2;">
                     <div style="font-weight:800; color:#0f2b5c; font-size:0.79rem; letter-spacing:0.2px;">${escapeHtml(s.carne || 'S/C')}</div>
@@ -17399,7 +17436,11 @@ function onPrintModelSubjectChange(subjectName) {
 
 function generateOfficialPrintList(opts = null) {
     let career = opts?.career || document.getElementById('printModelCareerSelect')?.value;
-    let gradeCode = opts?.gradeCode || document.getElementById('printModelGradeSelect')?.value;
+    let gradeCode = opts?.gradeCode || opts?.gradeVal || document.getElementById('printModelGradeSelect')?.value;
+    if (!career && gradeCode) {
+        const matchedGrade = (STATE.gradesList || []).find(g => g.code === gradeCode);
+        if (matchedGrade && matchedGrade.career) career = matchedGrade.career;
+    }
     let modelType = opts?.modelType || document.getElementById('printModelTypeSelect')?.value || 'CUADRO_CALIFICACIONES_EXCEL';
     const fillMode = opts?.fillMode || document.getElementById('printModelFillModeSelect')?.value || 'lleno';
     const isVacio = (fillMode === 'vacio');
@@ -17678,17 +17719,16 @@ function generateOfficialPrintList(opts = null) {
                     const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
                     const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
                     const isExon = !isRet && ((finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
-                    const tagHtml = isRet ? ' <span style="color:#b91c1c; font-weight:800;">[RETIRADO]</span>' : (isAus ? ' <span style="color:#b45309; font-weight:800;">[AUSENTE]</span>' : (isExon ? ` <span style="color:#0284c7; font-weight:800;">[EXONERADO B${bNum}]</span>` : ''));
+                    const tagHtml = isRet ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px;">RETIRADO</span>' : (isAus ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; margin-left:4px;">AUSENTE</span>' : (isExon ? ` <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#0284c7; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; margin-left:4px;">EXONERADO (B${bNum})</span>` : ''));
                     const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
                     const claveVal = s.clave || (startNo + idx + 1);
                     const genderShort = (s.gender === 'Femenino' || s.genero === 'Femenino') ? 'F' : 'M';
                     const guardianName = isVacio ? '' : (s.guardianName || s.tutor || s.fatherName || s.motherName || 'No registrado');
                     const guardianDpi = isVacio ? '' : (s.guardianDpi || s.tutorDpi || s.fatherDpi || s.motherDpi || '-');
-                    const statusText = isVacio ? '' : (isRet ? 'RETIRADO' : (isAus ? 'AUSENTE' : (isExon ? `EXONERADO B${bNum}` : (s.status || 'Inscrito').toUpperCase())));
-                    const statusColor = isRet ? '#b91c1c' : (isAus ? '#b45309' : (isExon ? '#0284c7' : '#15803d'));
+                    const statusText = isVacio ? '' : (isRet ? '<span style="color:#b91c1c; font-weight:800; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; font-size:6.8px;">RETIRADO</span>' : (isAus ? '<span style="color:#b45309; font-weight:800; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; font-size:6.8px;">AUSENTE</span>' : (isExon ? `<span style="color:#0284c7; font-weight:800; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; font-size:6.8px;">EXONERADO B${bNum}</span>` : `<span style="color:#15803d; font-weight:700; font-size:6.8px;">${(s.status || 'Inscrito').toUpperCase()}</span>`)));
 
                     return `
-                    <tr style="height:${rowHeight}; ${isRet ? 'background:#fef2f2;' : (isExon ? 'background:#f0f9ff;' : '')}">
+                    <tr style="height:${rowHeight}; ${isRet ? 'background:#fef2f2;' : (isAus ? 'background:#fffbeb;' : (isExon ? 'background:#f0f9ff;' : ''))}">
                         <td style="text-align:center; font-weight:700; width:28px; padding:${cellPadding}; font-size:${rowFontSize};">${claveVal}</td>
                         <td style="text-align:center; font-family:monospace; width:72px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
                         <td style="text-align:center; font-family:monospace; width:88px; padding:${cellPadding}; font-size:${rowFontSize};">${s.cui || s.dpi || '-'}</td>
@@ -17696,7 +17736,7 @@ function generateOfficialPrintList(opts = null) {
                         <td style="text-align:center; font-weight:700; width:26px; padding:${cellPadding}; font-size:${rowFontSize};">${genderShort}</td>
                         <td style="text-align:left; padding-left:4px; width:135px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${guardianName}</td>
                         <td style="text-align:center; font-family:monospace; width:82px; padding:${cellPadding}; font-size:${rowFontSize};">${guardianDpi}</td>
-                        <td style="text-align:center; width:52px; padding:${cellPadding}; font-size:6.8px; font-weight:700; color:${statusColor};">${statusText}</td>
+                        <td style="text-align:center; width:52px; padding:${cellPadding}; font-size:6.8px;">${statusText}</td>
                         <td style="width:90px; padding:${cellPadding}; border-bottom:1px solid #94a3b8;"></td>
                     </tr>`;
                 }).join('');
@@ -17740,23 +17780,24 @@ function generateOfficialPrintList(opts = null) {
                     const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
                     const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
                     const isExon = !isRet && ((finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
-                    const tagHtml = isRet ? ' <span style="color:#b91c1c; font-weight:800;">[RETIRADO]</span>' : (isAus ? ' <span style="color:#b45309; font-weight:800;">[AUSENTE]</span>' : (isExon ? ` <span style="color:#0284c7; font-weight:800;">[EXON. B${bNum}]</span>` : ''));
+                    const tagHtml = isRet ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px;">RETIRADO</span>' : (isAus ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; margin-left:4px;">AUSENTE</span>' : (isExon ? ` <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#0284c7; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; margin-left:4px;">EXON. (B${bNum})</span>` : ''));
                     const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
                     const daysCells = daysInfo.map(d => {
-                        const bgStyle = d.isWeekend ? 'background:#f1f5f9;' : (isRet ? 'background:#fef2f2; color:#94a3b8;' : '');
-                        return `<td style="width:16px; padding:0; text-align:center; font-size:7px; border:1px solid #94a3b8; ${bgStyle}">${(!isVacio && isRet && !d.isWeekend) ? '—' : ''}</td>`;
+                        const bgStyle = d.isWeekend ? 'background:#f1f5f9;' : (isRet ? 'background:#fef2f2; color:#94a3b8;' : (isAus ? 'background:#fffbeb; color:#94a3b8;' : (isExon ? 'background:#f0f9ff; color:#0284c7;' : '')));
+                        const cellMark = (!isVacio && (isRet || isAus) && !d.isWeekend) ? '—' : ((!isVacio && isExon && !d.isWeekend) ? '—' : '');
+                        return `<td style="width:16px; padding:0; text-align:center; font-size:7px; border:1px solid #94a3b8; ${bgStyle}">${cellMark}</td>`;
                     }).join('');
 
                     return `
-                    <tr style="height:18px; ${isRet ? 'background:#fef2f2;' : (isExon ? 'background:#f0f9ff;' : '')}">
+                    <tr style="height:18px; ${isRet ? 'background:#fef2f2;' : (isAus ? 'background:#fffbeb;' : (isExon ? 'background:#f0f9ff;' : ''))}">
                         <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
                         <td style="text-align:center; font-family:monospace; width:70px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
                         <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:180px; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
                         ${daysCells}
-                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};">${(!isVacio && isRet) ? '—' : ''}</td>
-                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};">${(!isVacio && isRet) ? '—' : ''}</td>
-                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};">${(!isVacio && isRet) ? '—' : ''}</td>
-                        <td style="width:30px; text-align:center; font-weight:800; background:#f1f5f9; font-size:${rowFontSize};">${(!isVacio && isRet) ? '<span style="color:#b91c1c; font-size:5.5px;">RET.</span>' : ''}</td>
+                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};">${(!isVacio && (isRet || isAus || isExon)) ? '—' : ''}</td>
+                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};">${(!isVacio && (isRet || isAus || isExon)) ? '—' : ''}</td>
+                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};">${(!isVacio && (isRet || isAus || isExon)) ? '—' : ''}</td>
+                        <td style="width:30px; text-align:center; font-weight:800; background:#f1f5f9; font-size:${rowFontSize};">${(!isVacio && isRet) ? '<span style="color:#b91c1c; font-size:5.5px; font-weight:800; background:#fee2e2; border:1px solid #fca5a5; padding:1px 2px; border-radius:2px;">RET.</span>' : ((!isVacio && isAus) ? '<span style="color:#b45309; font-size:5.5px; font-weight:800; background:#fef3c7; border:1px solid #fde68a; padding:1px 2px; border-radius:2px;">AUS.</span>' : ((!isVacio && isExon) ? '<span style="color:#0284c7; font-size:5.5px; font-weight:800; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 2px; border-radius:2px;">EXON.</span>' : ''))}</td>
                     </tr>`;
                 }).join('');
 
@@ -17787,7 +17828,7 @@ function generateOfficialPrintList(opts = null) {
                     const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
                     const isInactive = isRet || isAus;
                     const isExon = !isRet && ((finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
-                    const tagHtml = isRet ? ' <span style="color:#b91c1c; font-weight:800;">[RETIRADO]</span>' : (isAus ? ' <span style="color:#b45309; font-weight:800;">[AUSENTE]</span>' : (isExon ? ` <span style="color:#0284c7; font-weight:800;">[EXONERADO B${bNum}]</span>` : ''));
+                    const tagHtml = isRet ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px;">RETIRADO</span>' : (isAus ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; margin-left:4px;">AUSENTE</span>' : (isExon ? ` <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#0284c7; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; margin-left:4px;">EXONERADO (B${bNum})</span>` : ''));
                     const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
                     const uData = (s.gradebookDetails && s.gradebookDetails[finalSubjectName] && s.gradebookDetails[finalSubjectName][bNum])
                         ? s.gradebookDetails[finalSubjectName][bNum]
@@ -17816,11 +17857,11 @@ function generateOfficialPrintList(opts = null) {
                     const zonaText = (!isVacio && (isInactive || isExon)) ? '—' : ((!isVacio && (hasAnyAct || sumZona > 0)) ? sumZona : '');
                     let complianceBadge = '';
                     if (!isVacio && isRet) {
-                        complianceBadge = `<strong style="color:#b91c1c; font-size:6.8px;">RETIRADO</strong>`;
+                        complianceBadge = `<span style="color:#b91c1c; font-size:6.5pt; font-weight:800; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px;">RETIRADO</span>`;
                     } else if (!isVacio && isAus) {
-                        complianceBadge = `<strong style="color:#b45309; font-size:6.8px;">AUSENTE</strong>`;
+                        complianceBadge = `<span style="color:#b45309; font-size:6.5pt; font-weight:800; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px;">AUSENTE</span>`;
                     } else if (!isVacio && isExon) {
-                        complianceBadge = `<strong style="color:#0284c7; font-size:6.8px;">EXONERADO</strong>`;
+                        complianceBadge = `<span style="color:#0284c7; font-size:6.5pt; font-weight:800; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px;">EXONERADO</span>`;
                     } else if (!isVacio && hasAnyAct) {
                         const percentCompliance = cfgZonaMax > 0 ? Math.round((sumZona / cfgZonaMax) * 100) : 0;
                         complianceBadge = percentCompliance >= 75
@@ -17830,7 +17871,7 @@ function generateOfficialPrintList(opts = null) {
                     }
 
                     return `
-                    <tr style="height:${rowHeight}; ${isRet ? 'background:#fef2f2;' : (isExon ? 'background:#f0f9ff;' : '')}">
+                    <tr style="height:${rowHeight}; ${isRet ? 'background:#fef2f2;' : (isAus ? 'background:#fffbeb;' : (isExon ? 'background:#f0f9ff;' : ''))}">
                         <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
                         <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
                         <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
@@ -17887,12 +17928,12 @@ function generateOfficialPrintList(opts = null) {
                         actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#94a3b8; font-size:${rowFontSize};">-</td>`).join('');
                         zonaVal = '-';
                         examVal = '-';
-                        totalVal = `<span style="color:${isRet ? '#b91c1c' : '#b45309'}; font-size:6.5px; font-weight:700;">${isRet ? 'RETIRADO' : 'AUSENTE'}</span>`;
+                        totalVal = `<span style="color:${isRet ? '#b91c1c' : '#b45309'}; font-size:6.5pt; font-weight:800; background:${isRet ? '#fee2e2' : '#fef3c7'}; border:1px solid ${isRet ? '#fca5a5' : '#fde68a'}; padding:1px 3px; border-radius:2px;">${isRet ? 'RETIRADO' : 'AUSENTE'}</span>`;
                     } else if (isExonerated) {
                         actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#0284c7; font-size:${rowFontSize};">-</td>`).join('');
                         zonaVal = '-';
                         examVal = '-';
-                        totalVal = `<span style="color:#0284c7; font-size:7px; font-weight:800;">EXONERADO</span>`;
+                        totalVal = `<span style="color:#0284c7; font-size:6.5pt; font-weight:800; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 3px; border-radius:2px;">EXONERADO</span>`;
                     } else if (uData) {
                         const acts = uData.activities || [];
                         let sumZona = 0;
@@ -17939,11 +17980,11 @@ function generateOfficialPrintList(opts = null) {
                         }
                     }
 
-                    const tagHtml = isRet ? ' <span style="color:#b91c1c; font-weight:800;">[RETIRADO]</span>' : (isAus ? ' <span style="color:#b45309; font-weight:800;">[AUSENTE]</span>' : (isExonerated ? ` <span style="color:#0284c7; font-weight:800;">[EXON. B${bNum}]</span>` : ''));
+                    const tagHtml = isRet ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px;">RETIRADO</span>' : (isAus ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; margin-left:4px;">AUSENTE</span>' : (isExonerated ? ` <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#0284c7; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; margin-left:4px;">EXON. (B${bNum})</span>` : ''));
                     const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
 
                     return `
-                    <tr style="height:${rowHeight}; ${isRet ? 'background:#fef2f2;' : (isExonerated ? 'background:#f0f9ff;' : '')}">
+                    <tr style="height:${rowHeight}; ${isRet ? 'background:#fef2f2;' : (isAus ? 'background:#fffbeb;' : (isExonerated ? 'background:#f0f9ff;' : ''))}">
                         <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
                         <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
                         <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
@@ -18706,6 +18747,7 @@ function generateOfficialExcelList(opts = null) {
         }
     }, 400);
 }
+window.generateOfficialPrintList = generateOfficialPrintList;
 
 function downloadStudentTemplate(targetBim = null) {
     const activeBim = targetBim || document.getElementById('printModelBimestreSelect')?.value || document.getElementById('gradebookBimestreSelect')?.value || (STATE.config?.activeBimestre ? String(STATE.config.activeBimestre) : '1');
@@ -19780,7 +19822,7 @@ function printStudentsOfficialList(targetGrade = null) {
 
     // 3. Filtro de Estado (si se ejecuta desde la vista de estudiantes con filtro activo)
     const statusFilterSel = document.getElementById('statusFilterSelect');
-    const statusVal = statusFilterSel ? statusFilterSel.value : 'Activo';
+    const statusVal = statusFilterSel ? statusFilterSel.value : 'ALL';
     if (statusVal && statusVal !== 'ALL') {
         const sValLower = statusVal.toLowerCase();
         if (sValLower === 'retirado' || sValLower === 'inactivo') {
@@ -19844,31 +19886,33 @@ function printStudentsOfficialList(targetGrade = null) {
         const isAusBim = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
         const isExonBim = !isRetBim && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, activeBim) : false);
 
-        let displayStatus = 'Activo';
-        let statusColor = '#15803d';
+        let rowBg = '#ffffff';
+        let statusBadge = '<span style="display:inline-block; font-size:7pt; font-weight:800; color:#15803d; background:#dcfce7; border:1px solid #86efac; padding:1px 6px; border-radius:4px;">Activo</span>';
+        let nameTag = '';
+
         if (isRetBim) {
-            displayStatus = 'Retirado';
-            statusColor = '#b91c1c';
+            rowBg = '#fef2f2';
+            statusBadge = '<span style="display:inline-block; font-size:7pt; font-weight:800; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 6px; border-radius:4px;">Retirado</span>';
+            nameTag = ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px;">RETIRADO</span>';
         } else if (isAusBim) {
-            displayStatus = 'Ausente';
-            statusColor = '#d97706';
+            rowBg = '#fffbeb';
+            statusBadge = '<span style="display:inline-block; font-size:7pt; font-weight:800; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 6px; border-radius:4px;">Ausente</span>';
+            nameTag = ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; margin-left:4px;">AUSENTE</span>';
         } else if (isExonBim) {
-            displayStatus = `Exonerado (B${activeBim})`;
-            statusColor = '#0f766e';
-        } else {
-            displayStatus = s.status || 'Activo';
-            statusColor = (displayStatus === 'Activo' || displayStatus === 'Inscrito') ? '#15803d' : '#b91c1c';
+            rowBg = '#f0f9ff';
+            statusBadge = `<span style="display:inline-block; font-size:7pt; font-weight:800; color:#0369a1; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 6px; border-radius:4px;">Exonerado (B${activeBim})</span>`;
+            nameTag = ` <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#0369a1; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; margin-left:4px;">EXONERADO (B${activeBim})</span>`;
         }
 
         return `
-        <tr style="${isRetBim ? 'background:#fee2e2;' : (isExonBim ? 'background:#f0fdfa;' : '')}">
+        <tr style="background:${rowBg};">
             <td style="text-align:center; font-weight:bold; width:35px; border:1px solid #334155; padding:5px;">${idx + 1}</td>
             <td style="text-align:center; font-weight:bold; width:85px; border:1px solid #334155; padding:5px;">${s.carne || '-'}</td>
             <td style="text-align:center; width:110px; border:1px solid #334155; padding:5px;">${s.personalCode || s.cui || '-'}</td>
-            <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:5px;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase())}</td>
+            <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:5px;">${escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase())}${nameTag}</td>
             <td style="text-align:center; width:50px; font-weight:600; border:1px solid #334155; padding:5px;">${(s.gender || '').toLowerCase().startsWith('f') ? 'F' : 'M'}</td>
             <td style="width:140px; border:1px solid #334155; padding:5px; font-size:8.5pt;">${s.tutor || s.tutorName || 'No reg.'} (${s.tutorPhone || s.phone || 'Sin tel.'})</td>
-            <td style="text-align:center; width:75px; font-weight:bold; border:1px solid #334155; padding:5px; color:${statusColor};">${displayStatus}</td>
+            <td style="text-align:center; width:75px; border:1px solid #334155; padding:5px;">${statusBadge}</td>
         </tr>
         `;
     }).join('');
@@ -20015,8 +20059,8 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
         return (qGradeNum === sGradeNum) && (qSec === sSec);
     });
 
-    // 3. Filtrar estudiantes activos para la nómina de tareas
-    list = list.filter(s => s.status === 'Activo' || s.status === 'Inscrito' || s.statusSire === 'INSCRITO' || s.active !== false || !s.status);
+    // 3. Incluir a todos los estudiantes matriculados en la sección (Activos, Exonerados, Retirados y Ausentes)
+    list = list.filter(s => s.active !== false);
 
     if (list.length === 0) {
         showToast("No se encontraron estudiantes matriculados para el grado y sección seleccionados.", "warning");
@@ -20080,28 +20124,61 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
     const dateStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const capDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
-    // 5. Filas con 10 casillas en blanco para calificación manual (ajustadas para Hoja Oficio de 8.5in x 13in)
-    const rowsHtml = list.map((s, idx) => `
-        <tr style="height:22px; background:#ffffff;">
-            <td style="text-align:center; font-weight:bold; width:26px; border:1px solid #334155; padding:2px 1px; font-size:8pt; background:#ffffff;">${idx + 1}</td>
+    // Conteo por condición académica para el encabezado
+    const countRet = list.filter(s => (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBimestre) : true)).length;
+    const countAus = list.filter(s => (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBimestre) : true)).length;
+    const countExon = list.filter(s => !(s.status === 'Retirado' || s.status === 'Inactivo') && ((selectedSubject && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, selectedSubject, activeBimestre)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, activeBimestre)))).length;
+    const countAct = list.length - countRet - countAus;
+
+    // 5. Filas con 10 casillas para calificación manual (con diferenciación cromática de Retirados, Ausentes y Exonerados)
+    const rowsHtml = list.map((s, idx) => {
+        const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBimestre) : true);
+        const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBimestre) : true);
+        const isExon = !isRet && ((selectedSubject && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, selectedSubject, activeBimestre)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, activeBimestre)));
+
+        let rowBg = '#ffffff';
+        let nameTag = '';
+        let cellContent = '';
+        let zonaContent = '';
+
+        if (isRet) {
+            rowBg = '#fef2f2';
+            nameTag = ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px;">RETIRADO</span>';
+            cellContent = '<span style="color:#94a3b8; font-weight:bold; font-size:7.5pt;">—</span>';
+            zonaContent = '<span style="color:#b91c1c; font-weight:800; font-size:6.5pt; background:#fee2e2; border:1px solid #fca5a5; padding:1px 3px; border-radius:2px;">RET.</span>';
+        } else if (isAus) {
+            rowBg = '#fffbeb';
+            nameTag = ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; margin-left:4px;">AUSENTE</span>';
+            cellContent = '<span style="color:#94a3b8; font-weight:bold; font-size:7.5pt;">—</span>';
+            zonaContent = '<span style="color:#b45309; font-weight:800; font-size:6.5pt; background:#fef3c7; border:1px solid #fde68a; padding:1px 3px; border-radius:2px;">AUS.</span>';
+        } else if (isExon) {
+            rowBg = '#f0f9ff';
+            nameTag = ` <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#0369a1; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; margin-left:4px;">EXONERADO (B${activeBimestre})</span>`;
+            cellContent = '<span style="color:#0284c7; font-weight:bold; font-size:7.5pt;">—</span>';
+            zonaContent = '<span style="color:#0284c7; font-weight:800; font-size:6.5pt; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 3px; border-radius:2px;">EXON.</span>';
+        }
+
+        return `
+        <tr style="height:22px; background:${rowBg};">
+            <td style="text-align:center; font-weight:bold; width:26px; border:1px solid #334155; padding:2px 1px; font-size:8pt; background:${rowBg};">${idx + 1}</td>
             <td style="text-align:center; font-weight:bold; width:78px; border:1px solid #334155; padding:2px 2px; font-size:7.5pt; font-family:monospace;">${escapeHtml(s.personalCode || s.cui || s.carne || '-')}</td>
             <td style="font-weight:700; text-transform:uppercase; border:1px solid #334155; padding:2px 5px; font-size:8pt; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:215px;">
-                ${escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase())}
+                ${escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase())}${nameTag}
             </td>
             <td style="text-align:center; width:22px; font-weight:600; border:1px solid #334155; padding:2px 1px; font-size:7.5pt;">${(s.gender || '').toLowerCase().startsWith('f') ? 'F' : 'M'}</td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:38px; text-align:center;"></td>
-            <td style="border:1px solid #334155; width:44px; text-align:center;"></td>
-        </tr>
-    `).join('');
+            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:38px; text-align:center;">${cellContent}</td>
+            <td style="border:1px solid #334155; width:44px; text-align:center;">${zonaContent}</td>
+        </tr>`;
+    }).join('');
 
     const htmlContent = `
         <style>
@@ -20176,7 +20253,7 @@ function printStudentsBlankRoster10Casillas(targetGrade = null, targetSubject = 
                     </div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:3px; border-top:1px dashed #cbd5e1; font-size:7.5pt; color:#475569;">
-                        <span>Total Alumnos: <strong style="color:#15803d;">${list.length}</strong> (Varones: <strong style="color:#0284c7;">${countMale}</strong> | Mujeres: <strong style="color:#db2777;">${countFemale}</strong>)</span>
+                        <span>Total Alumnos: <strong style="color:#15803d;">${list.length}</strong> (Activos: <strong style="color:#15803d;">${countAct}</strong>${countRet > 0 ? ` | Retirados: <strong style="color:#b91c1c;">${countRet}</strong>` : ''}${countAus > 0 ? ` | Ausentes: <strong style="color:#b45309;">${countAus}</strong>` : ''}${countExon > 0 ? ` | Exonerados: <strong style="color:#0284c7;">${countExon}</strong>` : ''} | Varones: <strong style="color:#0284c7;">${countMale}</strong> | Mujeres: <strong style="color:#db2777;">${countFemale}</strong>)</span>
                         <span>Instructivo: Registre el punteo de cada tarea formativa en las casillas C-1 a C-10 y sume el Total Zona.</span>
                     </div>
                 </div>
@@ -30798,12 +30875,6 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
     const recordKey = getAttendanceRecordKey(gradeCode, month, courseId);
     const monthData = getConsolidatedAttendanceMonthData(gradeCode, month, courseId);
 
-    let printWin = window.open('', '_blank');
-    if (!printWin) {
-        showToast("Habilite las ventanas emergentes en su navegador para imprimir.", "danger");
-        return;
-    }
-
     const h = STATE.schoolHeader || { schoolName: 'Escuela Nacional de Ciencias Comerciales', code: 'ENCCO Jutiapa', location: 'Jutiapa' };
     const capDate = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -30842,8 +30913,10 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
 
             if (isWeekend) {
                 dayCells += `<td style="background:#e2e8f0; text-align:center; color:#94a3b8; font-size:8pt; border:1px solid #64748b;">-</td>`;
-            } else if (isRet) {
+            } else if (isRet || isAus) {
                 dayCells += `<td style="background:#f8fafc; text-align:center; color:#94a3b8; font-size:8pt; font-weight:bold; border:1px solid #64748b;">—</td>`;
+            } else if (isExon) {
+                dayCells += `<td style="background:#f0f9ff; text-align:center; color:#0369a1; font-size:8pt; font-weight:bold; border:1px solid #64748b;">—</td>`;
             } else if (forcedIsBlank === true) {
                 dayCells += `<td style="background:#ffffff; color:#000000; text-align:center; font-weight:bold; font-size:8pt; border:1px solid #64748b;">&nbsp;</td>`;
             } else {
@@ -30861,19 +30934,19 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
             }
         }
 
-        const totalLogged = (isRet || forcedIsBlank === true) ? 0 : (pCount + aCount + jCount + tCount);
-        const pct = (!isRet && forcedIsBlank !== true && totalLogged > 0) ? Math.round(((pCount + jCount + (tCount * 0.5)) / totalLogged) * 100) : 100;
+        const totalLogged = (isRet || isAus || forcedIsBlank === true) ? 0 : (pCount + aCount + jCount + tCount);
+        const pct = (!isRet && !isAus && forcedIsBlank !== true && totalLogged > 0) ? Math.round(((pCount + jCount + (tCount * 0.5)) / totalLogged) * 100) : 100;
         const retTag = isRet ? ' <span style="color:#b91c1c; font-weight:900; font-size:7.5pt;">[RETIRADO]</span>' : '';
         const ausTag = isAus ? ' <span style="color:#d97706; font-weight:900; font-size:7.5pt;">[AUSENTE]</span>' : '';
         const exonTag = isExon ? ` <span style="color:#0284c7; font-weight:900; font-size:7.5pt;">[EXONERADO B${attBim}]</span>` : '';
 
-        const printRowBg = isRet ? 'background-color:#fef2f2; color:#64748b;' : (isAus ? 'background-color:#fffbeb; color:#92400e;' : (isExon ? 'background-color:#eff6ff; color:#0369a1;' : (idx % 2 === 1 ? 'background-color:#f8fafc;' : '')));
+        const printRowBg = isRet ? 'background-color:#fef2f2; color:#64748b;' : (isAus ? 'background-color:#fffbeb; color:#92400e;' : (isExon ? 'background-color:#f0f9ff; color:#0369a1;' : (idx % 2 === 1 ? 'background-color:#f8fafc;' : '')));
 
-        const statPDisplay = (isRet || forcedIsBlank === true) ? '—' : pCount;
-        const statADisplay = (isRet || forcedIsBlank === true) ? '—' : aCount;
-        const statJDisplay = (isRet || forcedIsBlank === true) ? '—' : jCount;
-        const statTDisplay = (isRet || forcedIsBlank === true) ? '—' : tCount;
-        const statPctDisplay = forcedIsBlank === true ? '—' : (isRet ? '<span style="color:#b91c1c; font-weight:800; font-size:7.5pt;">RETIRADO</span>' : (isAus ? '<span style="color:#d97706; font-weight:800; font-size:7.5pt;">AUSENTE</span>' : pct + '%'));
+        const statPDisplay = (isRet || isAus || forcedIsBlank === true) ? '—' : pCount;
+        const statADisplay = (isRet || isAus || forcedIsBlank === true) ? '—' : aCount;
+        const statJDisplay = (isRet || isAus || forcedIsBlank === true) ? '—' : jCount;
+        const statTDisplay = (isRet || isAus || forcedIsBlank === true) ? '—' : tCount;
+        const statPctDisplay = forcedIsBlank === true ? '—' : (isRet ? '<span style="color:#b91c1c; font-weight:800; font-size:7.5pt;">RET.</span>' : (isAus ? '<span style="color:#d97706; font-weight:800; font-size:7.5pt;">AUS.</span>' : (isExon ? '<span style="color:#0369a1; font-weight:800; font-size:7.5pt;">EXON.</span>' : pct + '%')));
 
         tbodyRows += `
             <tr style="${printRowBg}">
@@ -30897,7 +30970,7 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
         ? 'PLANILLA OFICIAL DE ASISTENCIA (EN BLANCO)'
         : 'PLANILLA OFICIAL DE ASISTENCIA';
 
-    printWin.document.write(`
+    const fullDocHtml = `
         <!DOCTYPE html>
         <html lang="es">
         <head>
@@ -30994,12 +31067,21 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
             </div>
         </body>
         </html>
-    `);
-    printWin.document.close();
-    setTimeout(() => {
-        printWin.focus();
-        printWin.print();
-    }, 400);
+    `;
+
+    const printWin = (typeof window !== 'undefined' && window.open) ? window.open('', '_blank') : null;
+    if (printWin) {
+        printWin.document.write(fullDocHtml);
+        printWin.document.close();
+        setTimeout(() => {
+            try {
+                printWin.focus();
+                printWin.print();
+            } catch(e) {}
+        }, 400);
+    } else {
+        renderAndShowPrintDocument(`Planilla Oficial de Asistencia - ${gradeText}`, fullDocHtml, 'landscape');
+    }
 }
 
 function exportAttendanceOfficialExcel() {
@@ -35142,24 +35224,48 @@ function exportGradebookHtmlExcelFallback(targetPensum, unit, students, actsConf
         </tr>`;
 
     students.forEach((s, idx) => {
+        const isBimRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, unit) : true);
+        const isBimAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, unit) : true);
+        const isBimExon = !isBimRet && !isBimAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, unit) : false);
+
+        let rowBg = '#ffffff';
+        let statusTag = '';
+        let resText = '';
+        if (isBimRet) {
+            rowBg = 'background:#fef2f2; color:#b91c1c;';
+            statusTag = ' <span style="font-weight:bold; color:#b91c1c;">[RETIRADO]</span>';
+            resText = 'RETIRADO';
+        } else if (isBimAus) {
+            rowBg = 'background:#fffbeb; color:#b45309;';
+            statusTag = ' <span style="font-weight:bold; color:#b45309;">[AUSENTE]</span>';
+            resText = 'AUSENTE';
+        } else if (isBimExon) {
+            rowBg = 'background:#f0f9ff; color:#0369a1;';
+            statusTag = ` <span style="font-weight:bold; color:#0369a1;">[EXONERADO B${unit}]</span>`;
+            resText = `EXONERADO B${unit}`;
+        }
+
         const fullName = formatStudentDisplayName(s, 'lastFirst');
         const uData = (s.gradebookDetails && s.gradebookDetails[targetPensum.subject] && s.gradebookDetails[targetPensum.subject][unit])
             ? s.gradebookDetails[targetPensum.subject][unit] : null;
-        const acts = (uData && Array.isArray(uData.activities)) ? uData.activities : [0,0,0,0,0,0,0,0,0,0];
-        const zona = uData ? (uData.zona || 0) : 0;
-        const exam = uData ? (uData.exam || 0) : 0;
-        const total = uData ? (uData.total || (zona + exam)) : 0;
+        const acts = (!isBimRet && !isBimAus && !isBimExon && uData && Array.isArray(uData.activities)) ? uData.activities : [0,0,0,0,0,0,0,0,0,0];
+        const zona = (!isBimRet && !isBimAus && !isBimExon && uData) ? (uData.zona || 0) : (isBimRet ? 'RET.' : (isBimAus ? 'AUS.' : (isBimExon ? 'EXON.' : 0)));
+        const exam = (!isBimRet && !isBimAus && !isBimExon && uData) ? (uData.exam || 0) : '—';
+        const total = (!isBimRet && !isBimAus && !isBimExon && uData) ? (uData.total || ((typeof zona === 'number' ? zona : 0) + (typeof exam === 'number' ? exam : 0))) : '—';
+        if (!resText) {
+            resText = (typeof total === 'number' && total >= 60) ? 'APROBADO' : 'NO APROBADO';
+        }
 
-        html += `<tr>
+        html += `<tr style="${rowBg}">
             <td style="text-align:center;">${idx + 1}</td>
             <td style="text-align:center;">${escapeHtml(s.personalCode || '')}</td>
             <td style="text-align:center;">${escapeHtml(s.cui || '')}</td>
-            <td>${escapeHtml(fullName)}</td>
-            ${actsConfig.map((a, i) => `<td style="text-align:center;">${acts[i] || 0}</td>`).join('')}
+            <td>${escapeHtml(fullName)}${statusTag}</td>
+            ${actsConfig.map((a, i) => `<td style="text-align:center;">${(isBimRet || isBimAus || isBimExon) ? '—' : (acts[i] || 0)}</td>`).join('')}
             <td style="text-align:center; font-weight:bold;">${zona}</td>
             <td style="text-align:center; font-weight:bold;">${exam}</td>
             <td style="text-align:center; font-weight:bold;">${total}</td>
-            <td style="text-align:center;">${total >= 60 ? 'APROBADO' : 'NO APROBADO'}</td>
+            <td style="text-align:center; font-weight:bold;">${resText}</td>
         </tr>`;
     });
 
@@ -36237,13 +36343,25 @@ function exportDataToExcelFile(filename, title, subtitle, headers, dataRows, col
     // 1. Intentar con SheetJS nativo si está disponible
     if (xlsxLib && xlsxLib.utils) {
         try {
+            const rawRows = dataRows.map(r => {
+                const meta = r._meta;
+                if (!meta || (!meta.isRet && !meta.isAus && !meta.isExon)) return r;
+                const fgRgb = meta.isRet ? "FEF2F2" : (meta.isAus ? "FFFBEB" : "F0F9FF");
+                return r.map(cell => {
+                    if (typeof cell === 'object' && cell !== null && cell.v !== undefined) {
+                        return { ...cell, s: { fill: { fgColor: { rgb: fgRgb } } } };
+                    }
+                    return { v: cell, t: typeof cell === 'number' ? 'n' : 's', s: { fill: { fgColor: { rgb: fgRgb } } } };
+                });
+            });
+
             const aoa = [
                 ["ESCUELA NACIONAL DE CIENCIAS COMERCIALES - ENCCO JUTIAPA"],
                 [title + (subtitle ? " - " + subtitle : "")],
                 [`Ciclo Escolar: ${cycle} | Generado el: ${new Date().toLocaleDateString('es-GT')}`],
                 [],
                 headers,
-                ...dataRows
+                ...rawRows
             ];
 
             const ws = xlsxLib.utils.aoa_to_sheet(aoa);
@@ -36261,28 +36379,43 @@ function exportDataToExcelFile(filename, title, subtitle, headers, dataRows, col
             if (typeof showToast === 'function') showToast(`Archivo "${cleanFileName}" descargado exitosamente.`, "success");
             return true;
         } catch (err) {
-            console.warn("SheetJS export error, usando respaldo CSV/HTML:", err);
+            console.warn("SheetJS export error, usando respaldo HTML enriquecido:", err);
         }
     }
 
-    // 2. Respaldo directo en CSV con BOM UTF-8 (compatible 100% con Excel sin distorsión de caracteres)
+    // 2. Respaldo HTML enriquecido compatible con Excel (.xls) conservando el 100% de los colores institucionales
     try {
-        const csvFileName = filename.replace(/\.[^/.]+$/, "") + ".csv";
-        let csvContent = "\uFEFF"; // UTF-8 BOM para Excel
-        csvContent += `"${title}"\n`;
-        csvContent += `"Ciclo Escolar: ${cycle} - ENCCO"\n\n`;
-        
-        csvContent += headers.map(h => `"${String(h).replace(/"/g, '""')}"`).join(";") + "\n";
-        dataRows.forEach(row => {
-            csvContent += row.map(cell => `"${String(cell !== undefined && cell !== null ? cell : '').replace(/"/g, '""')}"`).join(";") + "\n";
-        });
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        triggerBlobDownload(blob, csvFileName);
-        showToast(`Nómina exportada como "${csvFileName}".`, "success");
+        const htmlFileName = filename.replace(/\.[^/.]+$/, "") + ".xls";
+        let htmlContent = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            <style>
+                th { background:#0369a1; color:#ffffff; font-weight:bold; border:1px solid #cbd5e1; padding:6px; font-family:Arial; }
+                td { border:1px solid #cbd5e1; padding:5px; font-family:Arial; }
+            </style>
+            </head>
+            <body>
+            <table>
+                <tr><th colspan="${headers.length}" style="font-size:14pt; background:#0f2b5c; color:#fff;">ESCUELA NACIONAL DE CIENCIAS COMERCIALES - ENCCO JUTIAPA</th></tr>
+                <tr><th colspan="${headers.length}" style="font-size:12pt; background:#0369a1; color:#fff;">${title} ${subtitle ? ' - ' + subtitle : ''}</th></tr>
+                <tr><td colspan="${headers.length}" style="color:#64748b; font-size:9pt;">Ciclo Escolar: ${cycle} | Generado el: ${new Date().toLocaleDateString('es-GT')}</td></tr>
+                <tr></tr>
+                <tr>${headers.map(h => `<th>${escapeHtml(String(h))}</th>`).join('')}</tr>
+                ${dataRows.map(row => {
+                    const meta = row._meta || {};
+                    const rowBg = meta.isRet ? 'background:#fef2f2; color:#b91c1c;' : (meta.isAus ? 'background:#fffbeb; color:#b45309;' : (meta.isExon ? 'background:#f0f9ff; color:#0369a1;' : ''));
+                    return `<tr style="${rowBg}">${row.map(c => `<td>${escapeHtml(String(c !== undefined && c !== null ? c : ''))}</td>`).join('')}</tr>`;
+                }).join('')}
+            </table>
+            </body>
+            </html>
+        `;
+        const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8' });
+        triggerBlobDownload(blob, htmlFileName);
+        if (typeof showToast === 'function') showToast(`Nómina exportada como "${htmlFileName}".`, "success");
         return true;
     } catch (err2) {
-        console.error("Error en fallback CSV:", err2);
+        console.error("Error en exportación Excel fallback:", err2);
         showToast("Error al exportar el archivo.", "danger");
         return false;
     }
@@ -36460,9 +36593,9 @@ function exportStudentsOfficialExcel() {
             fileName = `nomina_${cleanCode}_${cycle}.xlsx`;
         }
 
-        // Respetar estado si hay filtro activo
+        // Respetar estado si hay filtro activo (por defecto exporta la nómina completa)
         const statusFilterSel = document.getElementById('statusFilterSelect');
-        const statusVal = statusFilterSel ? statusFilterSel.value : 'Activo';
+        const statusVal = statusFilterSel ? statusFilterSel.value : 'ALL';
         if (statusVal && statusVal !== 'ALL') {
             const sValLower = statusVal.toLowerCase();
             if (sValLower === 'retirado' || sValLower === 'inactivo') {
@@ -36502,6 +36635,7 @@ function exportStudentsOfficialExcel() {
             "Estado"
         ];
 
+        const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
         const dataRows = students.map((s, idx) => {
             let lName = (s.lastName || s.apellidos || '').trim();
             let fName = (s.firstName || s.nombres || '').trim();
@@ -36525,22 +36659,44 @@ function exportStudentsOfficialExcel() {
                     }
                 }
             }
-            return [
+
+            const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
+            const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
+            const isExon = !isRet && !isAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, activeBim) : false);
+
+            let statusTxt = 'ACTIVO';
+            let nameTag = '';
+            if (isRet) {
+                statusTxt = 'RETIRADO';
+                nameTag = ' [RETIRADO]';
+            } else if (isAus) {
+                statusTxt = 'AUSENTE';
+                nameTag = ' [AUSENTE]';
+            } else if (isExon) {
+                statusTxt = `EXONERADO (B${activeBim})`;
+                nameTag = ` [EXONERADO B${activeBim}]`;
+            } else if (s.status && s.status !== 'Activo') {
+                statusTxt = String(s.status).toUpperCase();
+            }
+
+            const row = [
                 idx + 1,
                 s.carne || '-',
                 s.personalCode || '-',
                 s.cui || '-',
-                (lName || '-').toUpperCase(),
+                (lName || '-').toUpperCase() + nameTag,
                 (fName || '-').toUpperCase(),
                 s.gender || 'Masculino',
                 formatStudentGradeAndSection(s),
                 s.tutorName || s.tutor || '-',
                 s.tutorPhone || s.phone || '-',
-                s.status || 'Inscrito Regular'
+                statusTxt
             ];
+            row._meta = { isRet, isAus, isExon };
+            return row;
         });
 
-        const colWidths = [6, 15, 18, 18, 25, 25, 12, 20, 25, 14, 15];
+        const colWidths = [6, 15, 18, 18, 25, 25, 12, 20, 25, 14, 18];
         exportDataToExcelFile(fileName, reportTitle, `CICLO ESCOLAR ${cycle}`, headers, dataRows, colWidths);
     } catch (err) {
         console.error("Error al exportar estudiantes:", err);
@@ -37383,23 +37539,51 @@ function printSectionStudentsList(gradeCode, section) {
         }
     }
 
-    const students = (STATE.students || []).filter(s => (s.gradeCode === gradeCode || s.grade === gradeCode || (s.gradeLabel && s.gradeLabel.includes(gradeCode))) && (!section || s.section === section));
+    const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.name === gradeCode) || { name: gradeCode, section: section || 'A', career: 'Ciclo Diversificado' };
+    const students = (STATE.students || []).filter(s => {
+        const matchGrade = (s.gradeCode === gradeCode || s.grade === gradeCode || (gradeObj && (s.grade === gradeObj.name || s.gradeCode === gradeObj.code)) || (s.gradeLabel && s.gradeLabel.includes(gradeCode)));
+        const matchSec = (!section || s.section === section || (gradeObj && s.section === gradeObj.section));
+        return matchGrade && matchSec;
+    });
     students.sort((a, b) => {
         const nameA = formatStudentDisplayName(a, 'lastFirst');
         const nameB = formatStudentDisplayName(b, 'lastFirst');
         return nameA.localeCompare(nameB, 'es', { sensitivity: 'base' });
     });
-    const gradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode) || { name: gradeCode, section: section || 'A', career: 'Ciclo Diversificado' };
 
-    let rows = students.map((s, idx) => `
-        <tr>
-            <td style="text-align:center; font-weight:700;">${idx + 1}</td>
-            <td><code>${s.carne || '---'}</code></td>
-            <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
-            <td style="text-align:center;">${s.gender || 'M'}</td>
-            <td style="text-align:center;"><span class="badge ${s.status === 'Activo' ? 'badge-success' : 'badge-danger'}">${s.status || 'Activo'}</span></td>
-        </tr>
-    `).join('');
+    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
+    let rows = students.map((s, idx) => {
+        const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
+        const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
+        const isExon = !isRet && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, activeBim) : false);
+
+        let rowBg = '#ffffff';
+        let statusBadge = '<span style="display:inline-block; font-size:7pt; font-weight:800; color:#15803d; background:#dcfce7; border:1px solid #86efac; padding:1px 6px; border-radius:4px;">Activo</span>';
+        let nameTag = '';
+
+        if (isRet) {
+            rowBg = '#fef2f2';
+            statusBadge = '<span style="display:inline-block; font-size:7pt; font-weight:800; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 6px; border-radius:4px;">Retirado</span>';
+            nameTag = ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px;">RETIRADO</span>';
+        } else if (isAus) {
+            rowBg = '#fffbeb';
+            statusBadge = '<span style="display:inline-block; font-size:7pt; font-weight:800; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 6px; border-radius:4px;">Ausente</span>';
+            nameTag = ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; margin-left:4px;">AUSENTE</span>';
+        } else if (isExon) {
+            rowBg = '#f0f9ff';
+            statusBadge = `<span style="display:inline-block; font-size:7pt; font-weight:800; color:#0369a1; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 6px; border-radius:4px;">Exonerado (B${activeBim})</span>`;
+            nameTag = ` <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#0369a1; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; margin-left:4px;">EXONERADO (B${activeBim})</span>`;
+        }
+
+        return `
+        <tr style="background:${rowBg};">
+            <td style="text-align:center; font-weight:700; border:1px solid #cbd5e1; padding:5px;">${idx + 1}</td>
+            <td style="border:1px solid #cbd5e1; padding:5px;"><code>${s.carne || s.personalCode || '---'}</code></td>
+            <td style="border:1px solid #cbd5e1; padding:5px;"><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong>${nameTag}</td>
+            <td style="text-align:center; border:1px solid #cbd5e1; padding:5px;">${s.gender || 'M'}</td>
+            <td style="text-align:center; border:1px solid #cbd5e1; padding:5px;">${statusBadge}</td>
+        </tr>`;
+    }).join('');
 
     if (students.length === 0) {
         rows = `<tr><td colspan="5" style="text-align:center; padding:20px; color:#64748b;">No hay estudiantes matriculados en esta sección.</td></tr>`;
@@ -37436,6 +37620,7 @@ function printSectionStudentsList(gradeCode, section) {
 
     renderAndShowPrintDocument(`Nómina Oficial - ${gradeObj.name} "${gradeObj.section || section}"`, html, 'portrait');
 }
+window.printSectionStudentsList = printSectionStudentsList;
 
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -38820,19 +39005,43 @@ function viewStudentsBySectionModal(gradeCode, section) {
 
     if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-users"></i> Estudiantes de ${gradeObj.name} Sección "${gradeObj.section || section}" (${gradeObj.career})`;
 
+    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
     if (tbody) {
         if (students.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:25px; color:var(--text-muted);">No hay estudiantes matriculados en esta sección.</td></tr>`;
         } else {
-            tbody.innerHTML = students.map((s, idx) => `
-                <tr>
+            tbody.innerHTML = students.map((s, idx) => {
+                const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
+                const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, activeBim) : true);
+                const isExon = !isRet && (typeof isStudentExonerated === 'function' ? isStudentExonerated(s, activeBim) : false);
+
+                let rowBg = '';
+                let statusBadge = '<span class="badge badge-success">Activo</span>';
+                let nameTag = '';
+
+                if (isRet) {
+                    rowBg = 'background:#fef2f2;';
+                    statusBadge = '<span class="badge badge-danger">Retirado</span>';
+                    nameTag = ' <span class="badge" style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; font-size:0.7rem; font-weight:800;">RETIRADO</span>';
+                } else if (isAus) {
+                    rowBg = 'background:#fffbeb;';
+                    statusBadge = '<span class="badge" style="background:#fef3c7; color:#92400e; border:1px solid #fcd34d;">Ausente</span>';
+                    nameTag = ' <span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-size:0.7rem; font-weight:800;">AUSENTE</span>';
+                } else if (isExon) {
+                    rowBg = 'background:#f0f9ff;';
+                    statusBadge = `<span class="badge" style="background:#ccfbf1; color:#0f766e; border:1px solid #5eead4;">Exonerado B${activeBim}</span>`;
+                    nameTag = ` <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #7dd3fc; font-size:0.7rem; font-weight:800;">EXONERADO</span>`;
+                }
+
+                return `
+                <tr style="${rowBg}">
                     <td style="text-align:center; font-weight:700;">${idx + 1}</td>
                     <td><code>${s.carne || s.personalCode || '---'}</code></td>
-                    <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong></td>
+                    <td><strong>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))}</strong>${nameTag}</td>
                     <td style="text-align:center;">${s.gender || 'M'}</td>
-                    <td style="text-align:center;"><span class="badge ${s.status === 'Activo' ? 'badge-success' : 'badge-danger'}">${s.status || 'Activo'}</span></td>
-                </tr>
-            `).join('');
+                    <td style="text-align:center;">${statusBadge}</td>
+                </tr>`;
+            }).join('');
         }
     }
 
@@ -44722,16 +44931,39 @@ function printAuxiliaturaLog() {
     const pendingCount = filtered.filter(a => a.status === 'pendiente' || !a.status).length;
     const citedCount = filtered.filter(a => a.status === 'citacion').length;
 
+    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
     let rowsHtml = '';
     if (filtered.length === 0) {
         rowsHtml = `<tr><td colspan="7" style="text-align:center; padding:25px; color:#64748b;">No se registraron inasistencias en la fecha indicada.</td></tr>`;
     } else {
-        rowsHtml = filtered.map((a, idx) => `
-            <tr>
+        rowsHtml = filtered.map((a, idx) => {
+            const sObj = (STATE.students || []).find(s => s && (s.id === a.studentId || (s.carne && s.carne === a.carne)));
+            let isRet = false, isAus = false, isExon = false;
+            if (sObj) {
+                isRet = (sObj.status === 'Retirado' || sObj.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(sObj, activeBim) : true);
+                isAus = (sObj.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(sObj, activeBim) : true);
+                isExon = !isRet && !isAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(sObj, activeBim) : false);
+            }
+
+            let rowBg = '';
+            let tagHtml = '';
+            if (isRet) {
+                rowBg = 'background-color:#fef2f2; color:#b91c1c;';
+                tagHtml = ' <span style="background:#fee2e2; color:#b91c1c; font-size:7.5pt; font-weight:800; padding:1px 5px; border-radius:3px; border:1px solid #fca5a5;">RETIRADO</span>';
+            } else if (isAus) {
+                rowBg = 'background-color:#fffbeb; color:#b45309;';
+                tagHtml = ' <span style="background:#fef3c7; color:#b45309; font-size:7.5pt; font-weight:800; padding:1px 5px; border-radius:3px; border:1px solid #fde68a;">AUSENTE</span>';
+            } else if (isExon) {
+                rowBg = 'background-color:#f0f9ff; color:#0369a1;';
+                tagHtml = ` <span style="background:#e0f2fe; color:#0369a1; font-size:7.5pt; font-weight:800; padding:1px 5px; border-radius:3px; border:1px solid #7dd3fc;">EXONERADO (B${activeBim})</span>`;
+            }
+
+            return `
+            <tr style="${rowBg}">
                 <td style="text-align:center; font-weight:700;">${idx + 1}</td>
                 <td style="text-align:center; font-family:monospace; font-weight:700;">${escapeHtml(a.time || '--:--')}</td>
                 <td>
-                    <strong>${escapeHtml(a.studentName)}</strong><br>
+                    <strong>${escapeHtml(a.studentName)}</strong>${tagHtml}<br>
                     <small>Carné: ${escapeHtml(a.carne || '---')}</small>
                 </td>
                 <td>${escapeHtml(a.gradeLabel)}</td>
@@ -44745,13 +44977,8 @@ function printAuxiliaturaLog() {
                     ${a.notes ? `<br><small style="font-style:italic;">${escapeHtml(a.notes)}</small>` : ''}
                 </td>
             </tr>
-        `).join('');
-    }
-
-    const printWin = window.open('', '_blank');
-    if (!printWin) {
-        showToast("Habilite las ventanas emergentes (pop-ups) para imprimir la bitácora.", "warning");
-        return;
+        `;
+        }).join('');
     }
 
     const html = `<!DOCTYPE html>
@@ -44860,16 +45087,20 @@ function printAuxiliaturaLog() {
 </body>
 </html>`;
 
-    printWin.document.open();
-    printWin.document.write(html);
-    printWin.document.close();
-
-    setTimeout(() => {
-        try {
-            printWin.focus();
-            printWin.print();
-        } catch(e) {}
-    }, 400);
+    const printWin = (typeof window !== 'undefined' && window.open) ? window.open('', '_blank') : null;
+    if (printWin) {
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
+        setTimeout(() => {
+            try {
+                printWin.focus();
+                printWin.print();
+            } catch(e) {}
+        }, 400);
+    } else {
+        renderAndShowPrintDocument(`Bitácora Oficial de Ausencias - ${formattedDate}`, html, 'portrait');
+    }
 }
 
 // ==========================================================================
@@ -46179,11 +46410,34 @@ function printGlobalIncidentsOfficialReport() {
     const totalNotes = incidents.reduce((acc, x) => acc + x.courseNotesCount + x.discReportsCount, 0);
     const totalAll = totalA + totalT + totalJ + totalNotes;
 
-    const rowsHtml = incidents.map((item, idx) => `
-        <tr>
+    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
+    const rowsHtml = incidents.map((item, idx) => {
+        const sObj = (STATE.students || []).find(s => s && (s.id === item.studentId || s.id === item.id || (s.carne && s.carne === item.carne)));
+        let isRet = false, isAus = false, isExon = false;
+        if (sObj) {
+            isRet = (sObj.status === 'Retirado' || sObj.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(sObj, activeBim) : true);
+            isAus = (sObj.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(sObj, activeBim) : true);
+            isExon = !isRet && !isAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(sObj, activeBim) : false);
+        }
+
+        let rowBg = '';
+        let tagHtml = '';
+        if (isRet) {
+            rowBg = 'background-color:#fef2f2; color:#b91c1c;';
+            tagHtml = ' <span style="background:#fee2e2; color:#b91c1c; font-size:7.5pt; font-weight:800; padding:1px 5px; border-radius:3px; border:1px solid #fca5a5;">RETIRADO</span>';
+        } else if (isAus) {
+            rowBg = 'background-color:#fffbeb; color:#b45309;';
+            tagHtml = ' <span style="background:#fef3c7; color:#b45309; font-size:7.5pt; font-weight:800; padding:1px 5px; border-radius:3px; border:1px solid #fde68a;">AUSENTE</span>';
+        } else if (isExon) {
+            rowBg = 'background-color:#f0f9ff; color:#0369a1;';
+            tagHtml = ` <span style="background:#e0f2fe; color:#0369a1; font-size:7.5pt; font-weight:800; padding:1px 5px; border-radius:3px; border:1px solid #7dd3fc;">EXONERADO (B${activeBim})</span>`;
+        }
+
+        return `
+        <tr style="${rowBg}">
             <td style="text-align:center; font-weight:700;">${idx + 1}</td>
             <td style="text-align:center; font-family:monospace; font-weight:700;">${item.carne}</td>
-            <td style="font-weight:700;">${item.name}</td>
+            <td style="font-weight:700;">${item.name}${tagHtml}</td>
             <td style="text-align:center;">${item.grade}</td>
             <td style="text-align:center; font-weight:800; color:#b91c1c;">${item.faltasA}</td>
             <td style="text-align:center; font-weight:800; color:#d97706;">${item.tardanzasT}</td>
@@ -46194,7 +46448,8 @@ function printGlobalIncidentsOfficialReport() {
                 <strong>${item.latestIncidentDate}:</strong> ${item.latestIncidentDesc}
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 
     const printHtml = `
         <!DOCTYPE html>
@@ -46294,13 +46549,19 @@ function printGlobalIncidentsOfficialReport() {
         </html>
     `;
 
-    const printWin = window.open('', '_blank', 'width=1000,height=700');
+    const printWin = (typeof window !== 'undefined' && window.open) ? window.open('', '_blank', 'width=1000,height=700') : null;
     if (printWin) {
         printWin.document.open();
         printWin.document.write(printHtml);
         printWin.document.close();
+        setTimeout(() => {
+            try {
+                printWin.focus();
+                printWin.print();
+            } catch(e) {}
+        }, 400);
     } else {
-        showToast("Por favor permita las ventanas emergentes (pop-ups) para imprimir.", "warning");
+        renderAndShowPrintDocument('Informe Global de Incidencias', printHtml, 'landscape');
     }
 }
 window.printGlobalIncidentsOfficialReport = printGlobalIncidentsOfficialReport;
@@ -46362,18 +46623,42 @@ function printCourseBitacoraOfficial() {
     const cycle = STATE.activeCycle || '2026';
     const today = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    const rowsHtml = entries.map((e, idx) => `
-        <tr>
+    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
+    const rowsHtml = entries.map((e, idx) => {
+        const sObj = (STATE.students || []).find(s => s && (s.id === e.studentId || (s.carne && s.carne === e.carne)));
+        let isRet = false, isAus = false, isExon = false;
+        if (sObj) {
+            isRet = (sObj.status === 'Retirado' || sObj.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(sObj, activeBim) : true);
+            isAus = (sObj.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(sObj, activeBim) : true);
+            isExon = !isRet && !isAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(sObj, activeBim) : false);
+        }
+
+        let rowBg = '';
+        let tagHtml = '';
+        if (isRet) {
+            rowBg = 'background-color:#fef2f2; color:#b91c1c;';
+            tagHtml = ' <span style="background:#fee2e2; color:#b91c1c; font-size:7.5pt; font-weight:800; padding:1px 5px; border-radius:3px; border:1px solid #fca5a5;">RETIRADO</span>';
+        } else if (isAus) {
+            rowBg = 'background-color:#fffbeb; color:#b45309;';
+            tagHtml = ' <span style="background:#fef3c7; color:#b45309; font-size:7.5pt; font-weight:800; padding:1px 5px; border-radius:3px; border:1px solid #fde68a;">AUSENTE</span>';
+        } else if (isExon) {
+            rowBg = 'background-color:#f0f9ff; color:#0369a1;';
+            tagHtml = ` <span style="background:#e0f2fe; color:#0369a1; font-size:7.5pt; font-weight:800; padding:1px 5px; border-radius:3px; border:1px solid #7dd3fc;">EXONERADO (B${activeBim})</span>`;
+        }
+
+        return `
+        <tr style="${rowBg}">
             <td style="text-align:center; font-weight:700;">${idx + 1}</td>
             <td style="text-align:center; white-space:nowrap;">${e.date}</td>
             <td style="text-align:center;">Bim. ${e.bimester || 1}</td>
-            <td><strong>${e.studentName || 'Estudiante'}</strong>${e.carne ? `<br><small style="color:#64748b;">${e.carne}</small>` : ''}</td>
+            <td><strong>${e.studentName || 'Estudiante'}</strong>${tagHtml}${e.carne ? `<br><small style="color:#64748b;">${e.carne}</small>` : ''}</td>
             <td style="text-align:center; font-size:0.80rem;">${(e.category || '').toUpperCase()}</td>
             <td style="font-size:0.80rem; color:#0369a1;">${e.scoreRef || '—'}</td>
             <td style="white-space:pre-wrap; line-height:1.4;">${e.text}</td>
             <td style="font-size:0.78rem; color:#475569;">${e.authorName || ''}</td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 
     const printHtml = `
         <!DOCTYPE html>
@@ -46467,13 +46752,19 @@ function printCourseBitacoraOfficial() {
         </html>
     `;
 
-    const printWin = window.open('', '_blank', 'width=1000,height=700');
+    const printWin = (typeof window !== 'undefined' && window.open) ? window.open('', '_blank', 'width=1000,height=700') : null;
     if (printWin) {
         printWin.document.open();
         printWin.document.write(printHtml);
         printWin.document.close();
+        setTimeout(() => {
+            try {
+                printWin.focus();
+                printWin.print();
+            } catch(e) {}
+        }, 400);
     } else {
-        showToast("Por favor permita las ventanas emergentes (pop-ups) para imprimir.", "warning");
+        renderAndShowPrintDocument(`Bitácora de Materia - ${courseName}`, printHtml, 'landscape');
     }
 }
 window.printCourseBitacoraOfficial = printCourseBitacoraOfficial;
@@ -48313,6 +48604,7 @@ function printPermissionsLog() {
         periodText = `Período: Hasta ${effectiveTo}`;
     }
 
+    const activeBim = parseInt(STATE.config?.activeBimestre) || 1;
     let rowsHtml = '';
     if (perms.length === 0) {
         rowsHtml = '<tr><td colspan="6" style="text-align:center; padding:25px; color:#64748b;">No se registran permisos de ausencia autorizados bajo los criterios seleccionados.</td></tr>';
@@ -48320,12 +48612,33 @@ function printPermissionsLog() {
         rowsHtml = perms.map((p, idx) => {
             const isSingleDay = !p.endDate || p.endDate === p.startDate;
             const dateStr = isSingleDay ? p.startDate : `${p.startDate} al ${p.endDate}`;
+            const sObj = (STATE.students || []).find(s => s && (s.id === p.studentId || (s.carne && s.carne === p.personalCode) || (s.personalCode && s.personalCode === p.personalCode)));
+            let isRet = false, isAus = false, isExon = false;
+            if (sObj) {
+                isRet = (sObj.status === 'Retirado' || sObj.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(sObj, activeBim) : true);
+                isAus = (sObj.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(sObj, activeBim) : true);
+                isExon = !isRet && !isAus && (typeof isStudentExonerated === 'function' ? isStudentExonerated(sObj, activeBim) : false);
+            }
+
+            let rowBg = '';
+            let tagHtml = '';
+            if (isRet) {
+                rowBg = 'background-color:#fef2f2; color:#b91c1c;';
+                tagHtml = ' <span style="background:#fee2e2; color:#b91c1c; font-size:7.5pt; font-weight:800; padding:1px 5px; border-radius:3px; border:1px solid #fca5a5;">RETIRADO</span>';
+            } else if (isAus) {
+                rowBg = 'background-color:#fffbeb; color:#b45309;';
+                tagHtml = ' <span style="background:#fef3c7; color:#b45309; font-size:7.5pt; font-weight:800; padding:1px 5px; border-radius:3px; border:1px solid #fde68a;">AUSENTE</span>';
+            } else if (isExon) {
+                rowBg = 'background-color:#f0f9ff; color:#0369a1;';
+                tagHtml = ` <span style="background:#e0f2fe; color:#0369a1; font-size:7.5pt; font-weight:800; padding:1px 5px; border-radius:3px; border:1px solid #7dd3fc;">EXONERADO (B${activeBim})</span>`;
+            }
+
             return `
-                <tr>
+                <tr style="${rowBg}">
                     <td style="text-align:center; font-weight:700;">${idx + 1}</td>
                     <td style="text-align:center;">${escapeHtml(dateStr)}</td>
                     <td>
-                        <strong>${escapeHtml(p.studentName)}</strong><br>
+                        <strong>${escapeHtml(p.studentName)}</strong>${tagHtml}<br>
                         <small>Cód: ${escapeHtml(p.personalCode || 'S/C')}</small>
                     </td>
                     <td>${escapeHtml(p.grade || '')} ${escapeHtml(p.section || '')}</td>
@@ -48337,12 +48650,6 @@ function printPermissionsLog() {
                 </tr>
             `;
         }).join('');
-    }
-
-    const printWin = window.open('', '_blank');
-    if (!printWin) {
-        showToast("Habilite las ventanas emergentes (pop-ups) para imprimir.", "warning");
-        return;
     }
 
     const printContent = `<!DOCTYPE html>
@@ -48428,9 +48735,20 @@ function printPermissionsLog() {
 </body>
 </html>`;
 
-    printWin.document.open();
-    printWin.document.write(printContent);
-    printWin.document.close();
+    const printWin = (typeof window !== 'undefined' && window.open) ? window.open('', '_blank') : null;
+    if (printWin) {
+        printWin.document.open();
+        printWin.document.write(printContent);
+        printWin.document.close();
+        setTimeout(() => {
+            try {
+                printWin.focus();
+                printWin.print();
+            } catch(e) {}
+        }, 400);
+    } else {
+        renderAndShowPrintDocument('Libro Oficial de Permisos de Ausencia', printContent, 'landscape');
+    }
 }
 window.printPermissionsLog = printPermissionsLog;
 
