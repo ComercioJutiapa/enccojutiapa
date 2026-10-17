@@ -45674,33 +45674,29 @@ window.deleteStudentAnnotation = deleteStudentAnnotation;
 
 function canUserAccessCourseBitacora(courseId, gradeCode, user, role) {
     const currentUser = user || (window.STATE && window.STATE.currentUser);
-    const currentRole = role || (window.STATE && window.STATE.currentRole) || currentUser?.role || '';
+    const currentRole = (role || (window.STATE && window.STATE.currentRole) || currentUser?.role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase().trim();
 
     // Si no hay sesión (ej. entorno de prueba unitario sin sesión), permitir acceso
     if (!currentUser && !currentRole) return true;
 
-    // Roles de supervisión y auditoría: acceso total institucional
-    const auditRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar'];
-    if (auditRoles.includes(currentRole)) return true;
+    // Roles de supervisión con acceso global a todas las cátedras: Superusuario, Dirección y Secretaría
+    const hasGlobalAccess = ['super_usuario', 'admin', 'director', 'direccion', 'secretaria'].includes(currentRole);
+    if (hasGlobalAccess) return true;
 
-    // Docentes / Catedráticos: SOLO tienen acceso si la clase está formalmente asignada
-    if (currentRole === 'docente' || currentRole === 'profesor') {
-        if (!courseId || courseId === 'GENERAL') return false;
-        const pensumList = (window.STATE && window.STATE.pensum) || [];
-        const course = pensumList.find(p => p && (p.id === courseId || p.courseId === courseId || p.code === courseId));
-        if (!course) return false;
-        return (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(course, currentUser) : false;
-    }
-
-    return false;
+    // Docentes / Catedráticos: Restricción estricta de privacidad. ÚNICAMENTE tienen acceso si la cátedra está formalmente asignada
+    if (!courseId || courseId === 'GENERAL') return false;
+    const pensumList = (window.STATE && window.STATE.pensum) || [];
+    const course = pensumList.find(p => p && (p.id === courseId || p.courseId === courseId || p.code === courseId));
+    if (!course) return false;
+    return (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(course, currentUser) : false;
 }
 window.canUserAccessCourseBitacora = canUserAccessCourseBitacora;
 
 function getTeacherAssignedCoursesInGrade(gradeCode, user) {
     const currentUser = user || (window.STATE && window.STATE.currentUser);
-    const currentRole = (window.STATE && window.STATE.currentRole) || currentUser?.role || '';
+    const currentRole = ((window.STATE && window.STATE.currentRole) || currentUser?.role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase().trim();
     const pensumList = (window.STATE && window.STATE.pensum) || [];
-    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+    const hasGlobalAccess = ['super_usuario', 'admin', 'director', 'direccion', 'secretaria'].includes(currentRole);
 
     let coursesInGrade = pensumList;
     if (gradeCode && gradeCode !== 'ALL') {
@@ -45720,11 +45716,17 @@ function getTeacherAssignedCoursesInGrade(gradeCode, user) {
         }
     }
 
-    if (isAuditRole) {
+    if (hasGlobalAccess) {
         return coursesInGrade;
     }
 
-    return coursesInGrade.filter(c => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(c, currentUser) : false);
+    // Para docentes: filtrado dinámico estricto que muestra ÚNICAMENTE las materias asignadas al perfil
+    let assigned = coursesInGrade.filter(c => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(c, currentUser) : false);
+    if (assigned.length === 0 && pensumList.length > 0) {
+        // Si en este grado específico no tiene materias pero tiene materias asignadas en el pensum general
+        assigned = pensumList.filter(c => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(c, currentUser) : false);
+    }
+    return assigned;
 }
 window.getTeacherAssignedCoursesInGrade = getTeacherAssignedCoursesInGrade;
 
@@ -45733,11 +45735,11 @@ function getCourseBitacoraEntries(filters = {}) {
     let list = [...STATE.courseBitacora];
 
     const currentUser = STATE.currentUser;
-    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
-    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+    const currentRole = (STATE.currentRole || (currentUser && currentUser.role) || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase().trim();
+    const hasGlobalAccess = ['super_usuario', 'admin', 'director', 'direccion', 'secretaria'].includes(currentRole);
 
     // Si es docente, solo puede consultar registros de materias asignadas
-    if (!isAuditRole && (currentRole === 'docente' || currentRole === 'profesor')) {
+    if (!hasGlobalAccess) {
         const myAssignedCourseIds = new Set(
             (STATE.pensum || [])
                 .filter(p => typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, currentUser))
@@ -46182,23 +46184,29 @@ function openCourseBitacoraModal(preSelectedStudentId, preSelectedCourseId, init
     }
 
     const currentUser = STATE.currentUser;
-    const currentRole = (STATE.currentRole || currentUser?.role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
-    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
+    const currentRole = (STATE.currentRole || currentUser?.role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase().trim();
+    const hasGlobalAccess = ['super_usuario', 'admin', 'director', 'direccion', 'secretaria'].includes(currentRole);
 
     let allowedCourses = getTeacherAssignedCoursesInGrade(gradeCode, currentUser);
-    if (allowedCourses.length === 0 && isAuditRole) {
+    if (!hasGlobalAccess) {
+        // Doble blindaje: filtrado estricto por docente
+        allowedCourses = allowedCourses.filter(c => typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(c, currentUser));
+        if (allowedCourses.length === 0) {
+            allowedCourses = (STATE.pensum || []).filter(c => typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(c, currentUser));
+        }
+    } else if (allowedCourses.length === 0) {
         allowedCourses = STATE.pensum || [];
     }
 
-    if (!isAuditRole && allowedCourses.length === 0) {
-        showToast("No tiene materias asignadas en este grado para gestionar su bitácora.", "warning");
+    if (!hasGlobalAccess && allowedCourses.length === 0) {
+        showToast("No tiene materias asignadas a su perfil docente para gestionar su bitácora.", "warning");
         return;
     }
 
     const courseSelectEl = document.getElementById('courseBitacoraCourseSelect');
     if (courseSelectEl) {
         courseSelectEl.innerHTML = allowedCourses.map(c => `
-            <option value="${c.id}">${c.subject} (${c.grade || gradeCode || 'General'})</option>
+            <option value="${c.id}">${c.subject} (${c.grade || c.gradeCode || gradeCode || 'General'})</option>
         `).join('');
 
         const attCourseSelect = document.getElementById('attendanceCourseSelect') || document.getElementById('attCourseSelect');
@@ -46261,9 +46269,9 @@ function openCourseBitacoraModal(preSelectedStudentId, preSelectedCourseId, init
 
     const roleBadgeEl = document.getElementById('courseBitacoraRoleBadge');
     if (roleBadgeEl) {
-        roleBadgeEl.innerHTML = isAuditRole
-            ? `<i class="fa-solid fa-school"></i> Supervisión Institucional`
-            : `<i class="fa-solid fa-chalkboard-user"></i> Cátedra Autorizada`;
+        roleBadgeEl.innerHTML = hasGlobalAccess
+            ? `<i class="fa-solid fa-school"></i> SUPERVISIÓN INSTITUCIONAL`
+            : `<i class="fa-solid fa-chalkboard-user"></i> CÁTEDRA DOCENTE AUTORIZADA`;
     }
 
     const dateInput = document.getElementById('courseBitacoraFormDate');
@@ -46304,14 +46312,22 @@ function onCourseBitacoraCourseChange() {
     const courseSelect = document.getElementById('courseBitacoraCourseSelect');
     const courseId = courseSelect ? courseSelect.value : '';
     const currentUser = STATE.currentUser;
-    const currentRole = STATE.currentRole || currentUser?.role || '';
-    const gradeSelect = document.getElementById('attendanceGradeSelect') || document.getElementById('attGradeSelect');
-    const gradeCode = gradeSelect ? gradeSelect.value : (STATE.attendanceSelectedGrade || '');
+    const currentRole = (STATE.currentRole || currentUser?.role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase().trim();
+    const hasGlobalAccess = ['super_usuario', 'admin', 'director', 'direccion', 'secretaria'].includes(currentRole);
 
-    if (!canUserAccessCourseBitacora(courseId, gradeCode, currentUser, currentRole)) {
-        showToast("No tiene permisos para consultar la bitácora de esta materia.", "warning");
-        return;
+    if (!hasGlobalAccess) {
+        const pensumList = STATE.pensum || [];
+        const courseObj = pensumList.find(p => p && (p.id === courseId || p.courseId === courseId || p.code === courseId));
+        if (!courseObj || (typeof isCourseAssignedToTeacher === 'function' && !isCourseAssignedToTeacher(courseObj, currentUser))) {
+            showToast("Acceso Restringido: Únicamente puede consultar la bitácora de materias asignadas a su perfil docente.", "warning");
+            const myCourses = pensumList.filter(p => typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, currentUser));
+            if (courseSelect && myCourses.length > 0) {
+                courseSelect.value = myCourses[0].id;
+            }
+            return;
+        }
     }
+
     const courseObj = (STATE.pensum || []).find(p => p && p.id === courseId);
     const subtitleEl = document.getElementById('courseBitacoraHeaderSubtitle');
     if (subtitleEl && courseObj) {
