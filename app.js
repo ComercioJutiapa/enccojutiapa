@@ -15749,7 +15749,8 @@ function openStudentProfileModal(id) {
     const annotationsList = fullRecord.annotationsList;
     const unifiedAttEvents = fullRecord.unifiedAttEvents;
     const monthAbsencesCount = fullRecord.monthAbsencesCount;
-    const totalIncidents = discList.length + totalCycleAbsences + tardiesCount;
+    const suspensionCount = fullRecord.suspensionCount || 0;
+    const totalIncidents = discList.length + totalCycleAbsences + tardiesCount + suspensionCount;
 
     // Badges en cabecera del perfil
     const countBadge = document.getElementById('profDisciplineCount');
@@ -15758,11 +15759,12 @@ function openStudentProfileModal(id) {
     const absBadge = document.getElementById('profAbsencesBadge');
     const absBadgeText = document.getElementById('profAbsencesBadgeText');
     if (absBadge && absBadgeText) {
-        if (totalCycleAbsences > 0 || tardiesCount > 0) {
+        if (totalCycleAbsences > 0 || tardiesCount > 0 || suspensionCount > 0) {
             absBadge.style.display = 'inline-flex';
             const parts = [];
             if (totalCycleAbsences > 0) parts.push(`${totalCycleAbsences} Inasistencia${totalCycleAbsences > 1 ? 's' : ''}`);
             if (lockedAbsencesCount > 0) parts.push(`🔒 ${lockedAbsencesCount} Blindada${lockedAbsencesCount > 1 ? 's' : ''}`);
+            if (suspensionCount > 0) parts.push(`⚖️ ${suspensionCount} Suspensión${suspensionCount > 1 ? 'es' : ''}`);
             if (tardiesCount > 0) parts.push(`${tardiesCount} Tardanza${tardiesCount > 1 ? 's' : ''}`);
             absBadgeText.textContent = parts.join(' • ');
             if (totalCycleAbsences >= 3 || lockedAbsencesCount > 0) {
@@ -15770,6 +15772,11 @@ function openStudentProfileModal(id) {
                 absBadge.style.color = '#991b1b';
                 absBadge.style.borderColor = '#fca5a5';
                 absBadge.title = `Atención prioritaria: ${totalCycleAbsences} inasistencia(s) acumulada(s)`;
+            } else if (suspensionCount > 0) {
+                absBadge.style.background = '#faf5ff';
+                absBadge.style.color = '#6b21a8';
+                absBadge.style.borderColor = '#d8b4fe';
+                absBadge.title = `Estudiante con ${suspensionCount} suspensión(es) disciplinaria(s) registrada(s)`;
             } else {
                 absBadge.style.background = '#fef3c7';
                 absBadge.style.color = '#92400e';
@@ -15786,11 +15793,15 @@ function openStudentProfileModal(id) {
     const elKpiMonAbs = document.getElementById('profKpiMonthAbsences');
     const elKpiJust = document.getElementById('profKpiJustifiedAbsences');
     const elKpiDisc = document.getElementById('profKpiDisciplineCount');
+    const elKpiSusp = document.getElementById('profKpiSuspensions');
+    const elSuspNotice = document.getElementById('profSuspensionNotice');
     if (elKpiTotAbs) elKpiTotAbs.textContent = totalCycleAbsences;
     if (elKpiLockedAbs) elKpiLockedAbs.textContent = lockedAbsencesCount;
     if (elKpiMonAbs) elKpiMonAbs.textContent = tardiesCount;
     if (elKpiJust) elKpiJust.textContent = justifiedCount;
     if (elKpiDisc) elKpiDisc.textContent = discList.length;
+    if (elKpiSusp) elKpiSusp.textContent = suspensionCount;
+    if (elSuspNotice) elSuspNotice.style.display = suspensionCount > 0 ? 'flex' : 'none';
 
     // Renderizar Resumen Integral en Pestaña 1 (Ficha de Datos Personales)
     const quickSummaryBox = document.getElementById('profDataQuickSummaryBox');
@@ -15802,12 +15813,12 @@ function openStudentProfileModal(id) {
         let semaforoIcon = 'fa-shield-heart';
         let semaforoLabel = 'Conducta y Asistencia Óptima';
 
-        if (totalCycleAbsences >= 5 || lockedAbsencesCount > 0 || hasGraveDiscipline || discList.length >= 3) {
-            semaforoBg = '#fee2e2';
-            semaforoBorder = '#fca5a5';
-            semaforoColor = '#991b1b';
-            semaforoIcon = 'fa-triangle-exclamation';
-            semaforoLabel = 'Alerta de Seguimiento / Citación';
+        if (totalCycleAbsences >= 5 || lockedAbsencesCount > 0 || hasGraveDiscipline || discList.length >= 3 || suspensionCount > 0) {
+            semaforoBg = suspensionCount > 0 ? '#faf5ff' : '#fee2e2';
+            semaforoBorder = suspensionCount > 0 ? '#d8b4fe' : '#fca5a5';
+            semaforoColor = suspensionCount > 0 ? '#6b21a8' : '#991b1b';
+            semaforoIcon = suspensionCount > 0 ? 'fa-gavel' : 'fa-triangle-exclamation';
+            semaforoLabel = suspensionCount > 0 ? 'Medida Disciplinaria Registrada (S)' : 'Alerta de Seguimiento / Citación';
         } else if (totalCycleAbsences >= 2 || tardiesCount >= 2 || discList.length >= 1) {
             semaforoBg = '#fef3c7';
             semaforoBorder = '#fde047';
@@ -15851,6 +15862,11 @@ function openStudentProfileModal(id) {
                     <div style="font-size:0.65rem; font-weight:800; color:#881337; text-transform:uppercase;">🔒 "A" Blindadas</div>
                     <div style="font-size:1.15rem; font-weight:900; color:#be123c;">${lockedAbsencesCount}</div>
                     <div style="font-size:0.65rem; color:#9f1239;">Sin derecho</div>
+                </div>
+                <div style="background:#ffffff; border:1px solid #ddd6fe; border-top:3px solid #7c3aed; border-radius:8px; padding:7px 8px; text-align:center; cursor:pointer;" onclick="switchStudentProfileTab('discipline')" title="Ver detalle de suspensiones disciplinarias (No restan derecho a examen)">
+                    <div style="font-size:0.65rem; font-weight:800; color:#6b21a8; text-transform:uppercase;">⚖️ Suspensión (S)</div>
+                    <div style="font-size:1.15rem; font-weight:900; color:#7c3aed;">${suspensionCount}</div>
+                    <div style="font-size:0.65rem; color:#6d28d9;">Con derecho</div>
                 </div>
                 <div style="background:#ffffff; border:1px solid #fde68a; border-top:3px solid #d97706; border-radius:8px; padding:7px 8px; text-align:center; cursor:pointer;" onclick="switchStudentProfileTab('discipline')" title="Ver llegadas tarde">
                     <div style="font-size:0.65rem; font-weight:800; color:#92400e; text-transform:uppercase;">Tardanzas (T)</div>
@@ -15901,7 +15917,7 @@ function openStudentProfileModal(id) {
                 <div style="display:flex; gap:6px; flex-wrap:wrap;">
                     ${canManagePerms ? `
                         <button type="button" class="btn btn-xs" onclick="openCreatePermissionModal('${student.id}')" style="background:#0f172a; color:#fff; font-size:0.74rem; font-weight:700; padding:4px 10px; border-radius:6px;">
-                            <i class="fa-solid fa-file-signature"></i> + Permiso "J" / Ausencia "A" 🔒
+                            <i class="fa-solid fa-file-signature"></i> + Permiso "J" / Suspensión "S" / "A" 🔒
                         </button>
                     ` : ''}
                     <button type="button" class="btn btn-xs btn-warning" onclick="openDisciplineModalForStudent('${student.id}')" style="font-size:0.74rem; font-weight:700; padding:4px 10px; border-radius:6px;">
@@ -16076,7 +16092,7 @@ function getStudentFullAttendanceAndDisciplineData(student) {
         return false;
     });
 
-    // 3. Permisos Oficiales ("J") y Ausencias Injustificadas Blindadas ("A" 🔒)
+    // 3. Permisos Oficiales ("J"), Suspensiones ("S" ⚖️) y Ausencias Injustificadas Blindadas ("A" 🔒)
     const studentPerms = (STATE.studentPermissions || []).filter(p => {
         if (!p) return false;
         if (p.studentId && candidateKeys.has(String(p.studentId))) return true;
@@ -16085,18 +16101,27 @@ function getStudentFullAttendanceAndDisciplineData(student) {
         return false;
     });
 
+    const isSuspPermFn = (p) => {
+        if (typeof isSuspensionPermission === 'function') return isSuspensionPermission(p);
+        const code = String(p.attendanceCode || p.code || '').toUpperCase();
+        const cat = String(p.reasonCategory || p.status || '').toLowerCase();
+        return code === 'S' || cat.includes('suspens') || cat.includes('sanción') || cat.includes('sancion') || cat.includes('disciplin');
+    };
+
     const isUnjustPermFn = (p) => {
+        if (isSuspPermFn(p)) return false;
         if (typeof isUnjustifiedPermission === 'function') return isUnjustifiedPermission(p);
         const code = String(p.attendanceCode || p.code || '').toUpperCase();
         const cat = String(p.reasonCategory || p.status || '').toLowerCase();
         return code === 'A' || cat.includes('injustificad');
     };
 
+    const suspensionPerms = studentPerms.filter(p => isSuspPermFn(p));
     const lockedPerms = studentPerms.filter(p => isUnjustPermFn(p));
-    const justifiedPerms = studentPerms.filter(p => !isUnjustPermFn(p));
+    const justifiedPerms = studentPerms.filter(p => !isSuspPermFn(p) && !isUnjustPermFn(p));
 
-    // 4. Escaneo Dinámico de STATE.attendanceRecords (P, A, T, J) en todos los meses y cursos
-    const dailyMarksByDate = {}; // 'YYYY-MM-DD' -> { status, courses: Set, isLockedA, metaNote }
+    // 4. Escaneo Dinámico de STATE.attendanceRecords (P, A, T, J, S) en todos los meses y cursos
+    const dailyMarksByDate = {}; // 'YYYY-MM-DD' -> { status, courses: Set, isLockedA, isSuspension, metaNote }
     const allRecords = STATE.attendanceRecords || {};
     const allMeta = STATE.attendancePermissionsMeta || {};
 
@@ -16140,7 +16165,7 @@ function getStudentFullAttendanceAndDisciplineData(student) {
             const dayNum = parseInt(dayStr, 10);
             if (isNaN(dayNum) || dayNum < 1 || dayNum > 31) return;
             const rawVal = String(studentDaysObj[dayStr] || '').toUpperCase().trim();
-            if (!['P', 'A', 'T', 'J'].includes(rawVal)) return;
+            if (!['P', 'A', 'T', 'J', 'S'].includes(rawVal)) return;
 
             const isoDate = `${activeYear}-${String(monthNum).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
             if (!dailyMarksByDate[isoDate]) {
@@ -16151,6 +16176,7 @@ function getStudentFullAttendanceAndDisciplineData(student) {
                     status: rawVal,
                     courses: new Set(),
                     isLockedA: false,
+                    isSuspension: false,
                     metaNote: ''
                 };
             }
@@ -16160,8 +16186,8 @@ function getStudentFullAttendanceAndDisciplineData(student) {
                 entry.courses.add(courseName);
             }
 
-            // Prioridad de estado del día: A > T > J > P
-            const priority = { 'A': 4, 'T': 3, 'J': 2, 'P': 1 };
+            // Prioridad de estado del día: S > A > T > J > P
+            const priority = { 'S': 5, 'A': 4, 'T': 3, 'J': 2, 'P': 1 };
             if ((priority[rawVal] || 0) > (priority[entry.status] || 0)) {
                 entry.status = rawVal;
             }
@@ -16173,7 +16199,9 @@ function getStudentFullAttendanceAndDisciplineData(student) {
                 const mCat = String(dayMeta.reasonCategory || dayMeta.category || '').toLowerCase();
                 const mReason = dayMeta.reasonDetail || dayMeta.reason || '';
                 const mCatLabel = dayMeta.reasonCategory || dayMeta.category || '';
-                if (mCode === 'A' || mCat.includes('injustificad') || dayMeta.is_locked_by_admin && rawVal === 'A') {
+                if (mCode === 'S' || mCat.includes('suspens') || mCat.includes('sanción') || mCat.includes('sancion')) {
+                    entry.isSuspension = true;
+                } else if (mCode === 'A' || mCat.includes('injustificad') || (dayMeta.is_locked_by_admin && rawVal === 'A')) {
                     entry.isLockedA = true;
                 }
                 if (mReason && !entry.metaNote) {
@@ -16183,15 +16211,18 @@ function getStudentFullAttendanceAndDisciplineData(student) {
         });
     });
 
-    // Verificar también por función getStudentPermissionForDay si algún día marcado corresponde a permiso o "A" blindada
+    // Verificar también por función getStudentPermissionForDay si algún día marcado corresponde a permiso, suspensión o "A" blindada
     Object.values(dailyMarksByDate).forEach(entry => {
         if (typeof getStudentPermissionForDay === 'function') {
             const pObj = getStudentPermissionForDay(student.id, activeYear, entry.monthNum, entry.dayNum);
             if (pObj) {
-                if (isUnjustPermFn(pObj)) {
+                if (isSuspPermFn(pObj)) {
+                    entry.status = 'S';
+                    entry.isSuspension = true;
+                } else if (isUnjustPermFn(pObj)) {
                     entry.status = 'A';
                     entry.isLockedA = true;
-                } else if (entry.status !== 'A') {
+                } else if (entry.status !== 'A' && entry.status !== 'S') {
                     entry.status = 'J';
                 }
                 if (!entry.metaNote && pObj.reasonDetail) {
@@ -16206,11 +16237,14 @@ function getStudentFullAttendanceAndDisciplineData(student) {
     let dailyLockedAbsentCount = 0;
     let dailyTardyCount = 0;
     let dailyJustifiedCount = 0;
+    let dailySuspensionCount = 0;
     let monthAbsencesFromRecords = 0;
 
     Object.values(dailyMarksByDate).forEach(entry => {
         if (entry.status === 'P') presentDaysCount++;
-        else if (entry.status === 'A') {
+        else if (entry.status === 'S') {
+            dailySuspensionCount++;
+        } else if (entry.status === 'A') {
             dailyAbsentCount++;
             if (entry.isLockedA) dailyLockedAbsentCount++;
             if (entry.monthNum === currentMonth) monthAbsencesFromRecords++;
@@ -16227,14 +16261,16 @@ function getStudentFullAttendanceAndDisciplineData(student) {
     const activeAlertsAbsences = attAlerts.filter(a => a.status !== 'corregida' && a.status !== 'justificada').length;
     const justifiedAlertsCount = attAlerts.filter(a => a.status === 'justificada').length;
 
+    const suspensionCount = Math.max(dailySuspensionCount, suspensionPerms.length);
     const lockedAbsencesCount = Math.max(dailyLockedAbsentCount, lockedPerms.length);
     const totalAbsences = Math.max(dailyAbsentCount, activeAlertsAbsences, monthAbsencesCount, lockedAbsencesCount);
     const tardiesCount = dailyTardyCount;
     const justifiedCount = Math.max(dailyJustifiedCount, justifiedPerms.length + justifiedAlertsCount);
 
-    const totalEvaluatedDays = presentDaysCount + totalAbsences + tardiesCount + justifiedCount;
+    // ⚖️ Salvaguarda Legal y Ministerial: Las suspensiones disciplinarias NO restan derecho a examen
+    const totalEvaluatedDays = presentDaysCount + totalAbsences + tardiesCount + justifiedCount + suspensionCount;
     const attendancePercent = totalEvaluatedDays > 0
-        ? Math.max(0, Math.min(100, Math.round(((presentDaysCount + justifiedCount + (tardiesCount * 0.5)) / totalEvaluatedDays) * 100)))
+        ? Math.max(0, Math.min(100, Math.round(((presentDaysCount + justifiedCount + suspensionCount + (tardiesCount * 0.5)) / totalEvaluatedDays) * 100)))
         : 100;
 
     // 5. Bitácora y Anotaciones del Estudiante
@@ -16256,9 +16292,10 @@ function getStudentFullAttendanceAndDisciplineData(student) {
     const unifiedAttEvents = [];
     const coveredDatesByPerms = new Set();
 
-    // A) Permisos Oficiales y Ausencias "A" Blindadas
+    // A) Permisos Oficiales, Suspensiones ("S") y Ausencias "A" Blindadas
     studentPerms.forEach(p => {
-        const isUnjust = isUnjustPermFn(p);
+        const isSusp = isSuspPermFn(p);
+        const isUnjust = !isSusp && isUnjustPermFn(p);
         const dateRangeLabel = (p.startDate && p.endDate && p.endDate !== p.startDate)
             ? `Del ${p.startDate} al ${p.endDate}`
             : (p.startDate || 'Fecha registrada');
@@ -16274,21 +16311,39 @@ function getStudentFullAttendanceAndDisciplineData(student) {
             }
         }
 
-        unifiedAttEvents.push({
-            sortDate: p.startDate || (p.createdAt ? p.createdAt.slice(0, 10) : '2026-01-01'),
-            dateLabel: dateRangeLabel,
-            statusLabel: isUnjust ? '🔒 Ausencia Injustificada ("A" Blindada)' : 'Permiso Oficial Justificado ("J")',
-            icon: isUnjust ? 'fa-lock' : 'fa-file-circle-check',
-            badgeBg: isUnjust ? '#ffe4e6' : '#dcfce7',
-            badgeColor: isUnjust ? '#9f1239' : '#166534',
-            badgeBorder: isUnjust ? '#fda4af' : '#86efac',
-            accentColor: isUnjust ? '#be123c' : '#16a34a',
-            borderColor: isUnjust ? '#fecdd3' : '#bbf7d0',
-            detailHtml: `<strong>Categoría:</strong> ${escapeHtml(p.reasonCategory || 'General')} &bull; <strong>Autorizado/Reg.:</strong> ${escapeHtml(p.authorizedBy || 'Auxiliatura')}`,
-            notes: `${p.reasonDetail || ''}${p.docRef ? ' (Ref: ' + p.docRef + ')' : ''}`,
-            permId: p.id,
-            rawStatus: isUnjust ? 'injustificada_blindada' : 'justificada'
-        });
+        if (isSusp) {
+            unifiedAttEvents.push({
+                sortDate: p.startDate || (p.createdAt ? p.createdAt.slice(0, 10) : '2026-01-01'),
+                dateLabel: dateRangeLabel,
+                statusLabel: '⚖️ Suspensión Disciplinaria Oficial ("S")',
+                icon: 'fa-gavel',
+                badgeBg: '#faf5ff',
+                badgeColor: '#6b21a8',
+                badgeBorder: '#d8b4fe',
+                accentColor: '#7c3aed',
+                borderColor: '#e9d5ff',
+                detailHtml: `<strong>Categoría:</strong> ${escapeHtml(p.reasonCategory || 'Suspensión')} &bull; <strong>Autorizado/Reg.:</strong> ${escapeHtml(p.authorizedBy || 'Dirección')} <span class="badge" style="background:#f5f3ff; color:#6b21a8; font-size:0.68rem; margin-left:4px; border:1px solid #d8b4fe;">⚖️ Mantiene Derecho a Examen</span>`,
+                notes: `${p.reasonDetail || ''}${p.docRef ? ' (Ref: ' + p.docRef + ')' : ''}`,
+                permId: p.id,
+                rawStatus: 'suspension_oficial'
+            });
+        } else {
+            unifiedAttEvents.push({
+                sortDate: p.startDate || (p.createdAt ? p.createdAt.slice(0, 10) : '2026-01-01'),
+                dateLabel: dateRangeLabel,
+                statusLabel: isUnjust ? '🔒 Ausencia Injustificada ("A" Blindada)' : 'Permiso Oficial Justificado ("J")',
+                icon: isUnjust ? 'fa-lock' : 'fa-file-circle-check',
+                badgeBg: isUnjust ? '#ffe4e6' : '#dcfce7',
+                badgeColor: isUnjust ? '#9f1239' : '#166534',
+                badgeBorder: isUnjust ? '#fda4af' : '#86efac',
+                accentColor: isUnjust ? '#be123c' : '#16a34a',
+                borderColor: isUnjust ? '#fecdd3' : '#bbf7d0',
+                detailHtml: `<strong>Categoría:</strong> ${escapeHtml(p.reasonCategory || 'General')} &bull; <strong>Autorizado/Reg.:</strong> ${escapeHtml(p.authorizedBy || 'Auxiliatura')}`,
+                notes: `${p.reasonDetail || ''}${p.docRef ? ' (Ref: ' + p.docRef + ')' : ''}`,
+                permId: p.id,
+                rawStatus: isUnjust ? 'injustificada_blindada' : 'justificada'
+            });
+        }
     });
 
     // B) Alertas de Inasistencia reportadas en Aula
@@ -16317,7 +16372,7 @@ function getStudentFullAttendanceAndDisciplineData(student) {
         });
     });
 
-    // C) Registros Diarios de Planilla (A, T, J) no cubiertos ya por un permiso de rango
+    // C) Registros Diarios de Planilla (A, T, J, S) no cubiertos ya por un permiso de rango
     Object.values(dailyMarksByDate).forEach(entry => {
         if (entry.status === 'P') return;
         if (coveredDatesByPerms.has(entry.isoDate)) return;
@@ -16325,7 +16380,22 @@ function getStudentFullAttendanceAndDisciplineData(student) {
         const mName = monthNames[entry.monthNum] || `Mes ${entry.monthNum}`;
         const coursesStr = entry.courses.size > 0 ? Array.from(entry.courses).join(', ') : 'Control General';
 
-        if (entry.status === 'A') {
+        if (entry.status === 'S') {
+            unifiedAttEvents.push({
+                sortDate: entry.isoDate,
+                dateLabel: `${entry.dayNum} de ${mName} (${entry.isoDate})`,
+                statusLabel: '⚖️ Suspensión Disciplinaria Oficial (S)',
+                icon: 'fa-gavel',
+                badgeBg: '#faf5ff',
+                badgeColor: '#6b21a8',
+                badgeBorder: '#d8b4fe',
+                accentColor: '#7c3aed',
+                borderColor: '#e9d5ff',
+                detailHtml: `<strong>Medida Correctiva Oficial:</strong> ${escapeHtml(coursesStr)} &bull; <span style="color:#6b21a8; font-weight:700;">Conserva derecho a evaluaciones</span>`,
+                notes: entry.metaNote || '',
+                rawStatus: 'suspension_oficial'
+            });
+        } else if (entry.status === 'A') {
             unifiedAttEvents.push({
                 sortDate: entry.isoDate,
                 dateLabel: `${entry.dayNum} de ${mName} (${entry.isoDate})`,
@@ -16420,6 +16490,8 @@ function getStudentFullAttendanceAndDisciplineData(student) {
         discList,
         attAlerts,
         studentPerms,
+        suspensionPerms,
+        suspensionCount,
         totalAbsences,
         lockedAbsencesCount,
         tardiesCount,
@@ -16549,16 +16621,20 @@ function printStudentFullFicha(studentId) {
             </div>
 
             <div class="section-title">2. Consolidado General de Asistencia, Inasistencias y Disciplina</div>
-            <div class="kpi-row">
+            <div class="kpi-row" style="grid-template-columns: repeat(7, 1fr);">
                 <div class="kpi-box"><div class="lbl">% Asistencia</div><div class="val" style="color:#0369a1;">${fullRecord.attendancePercent}%</div></div>
                 <div class="kpi-box"><div class="lbl">Inasistencias (A)</div><div class="val" style="color:#dc2626;">${fullRecord.totalAbsences}</div></div>
                 <div class="kpi-box"><div class="lbl">🔒 "A" Blindadas</div><div class="val" style="color:#be123c;">${fullRecord.lockedAbsencesCount}</div></div>
+                <div class="kpi-box" style="background:#faf5ff; border-color:#d8b4fe;"><div class="lbl" style="color:#6b21a8;">⚖️ Suspensión (S)</div><div class="val" style="color:#7c3aed;">${fullRecord.suspensionCount || 0}</div></div>
                 <div class="kpi-box"><div class="lbl">Tardanzas (T)</div><div class="val" style="color:#d97706;">${fullRecord.tardiesCount}</div></div>
                 <div class="kpi-box"><div class="lbl">Permisos (J)</div><div class="val" style="color:#16a34a;">${fullRecord.justifiedCount}</div></div>
                 <div class="kpi-box"><div class="lbl">Faltas Conducta</div><div class="val" style="color:#db2777;">${fullRecord.discList.length}</div></div>
             </div>
+            <div style="font-size:9.5px; color:#5b21b6; background:#faf5ff; border:1px solid #ddd6fe; border-radius:4px; padding:4px 8px; margin:4px 0 8px 0;">
+                ⚖️ <strong>Garantía de Derecho a Examen:</strong> Las suspensiones disciplinarias oficiales ("S") no computan como inasistencias injustificadas para la pérdida de derecho a evaluaciones académicas.
+            </div>
 
-            <div class="section-title">3. Detalle de Inasistencias, Tardanzas y Permisos Oficiales ("J" y "A" Blindada)</div>
+            <div class="section-title">3. Detalle de Inasistencias, Suspensiones, Tardanzas y Permisos Oficiales</div>
             <table>
                 <thead>
                     <tr>
@@ -27665,8 +27741,18 @@ window.selectTeacherCourseCard = function(courseId) {
 // 📱 CONTROL DE ASISTENCIA: MODAL DE PASE DE LISTA RÁPIDO DIARIO
 // ==========================================================================
 
+function isSuspensionPermission(permOrMeta) {
+    if (!permOrMeta || typeof permOrMeta !== 'object') return false;
+    const code = String(permOrMeta.attendanceCode || permOrMeta.code || '').toUpperCase().trim();
+    if (code === 'S') return true;
+    const cat = String(permOrMeta.reasonCategory || permOrMeta.category || permOrMeta.status || '').toLowerCase().trim();
+    return cat.includes('suspens') || cat.includes('sanción') || cat.includes('sancion');
+}
+window.isSuspensionPermission = isSuspensionPermission;
+
 function isUnjustifiedPermission(permOrMeta) {
     if (!permOrMeta || typeof permOrMeta !== 'object') return false;
+    if (isSuspensionPermission(permOrMeta)) return false; // ⚖️ Las suspensiones disciplinarias son sanciones oficiales y NO inasistencias injustificadas
     if (permOrMeta.attendanceCode === 'A') return true;
     const cat = String(permOrMeta.reasonCategory || '').toLowerCase().trim();
     return cat.includes('injustificada');
@@ -27674,6 +27760,7 @@ function isUnjustifiedPermission(permOrMeta) {
 window.isUnjustifiedPermission = isUnjustifiedPermission;
 
 function getPermissionAttendanceCode(permOrMeta) {
+    if (isSuspensionPermission(permOrMeta)) return 'S';
     return isUnjustifiedPermission(permOrMeta) ? 'A' : 'J';
 }
 window.getPermissionAttendanceCode = getPermissionAttendanceCode;
@@ -28337,6 +28424,12 @@ function updateAttendanceCoursesList() {
     }
 }
 
+function isDirectorRole(role = null) {
+    const r = (role || (window.STATE && (window.STATE.currentRole || (window.STATE.currentUser && window.STATE.currentUser.role))) || '').toLowerCase();
+    return ['director', 'direccion', 'super_usuario', 'admin'].includes(r);
+}
+window.isDirectorRole = isDirectorRole;
+
 function getAttendanceRecordKey(gradeCode, month, courseId) {
     const cycleKey = STATE.activeCycle || '2026';
     if (courseId && courseId !== 'GENERAL') {
@@ -28590,15 +28683,30 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
                                 continue;
                             }
                         }
+
+                        // 🛡️ REGLA: Si el docente ingresa una 'J' por cuenta propia, queda a nivel interno del docente.
+                        // No aparecerá en la vista general de Auxiliatura, Secretaría ni Dirección a menos que exista justificación oficial.
+                        if (val === 'J') {
+                            const hasOfficialPerm = typeof getStudentPermissionForDay === 'function' && getStudentPermissionForDay(canonicalId, year, month, dNum);
+                            const metaKey = `${canonicalId}_${month}_${dNum}`;
+                            const metaObj = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]);
+                            const hasOfficialMeta = metaObj && (metaObj.is_locked_by_admin || authorityRoles.includes((metaObj.origin_role || '').toLowerCase())) && (metaObj.origin_role || '').toLowerCase() !== 'docente';
+                            if (!hasOfficialPerm && !hasOfficialMeta) {
+                                continue;
+                            }
+                        }
+
                         const cur = monthData[canonicalId][d];
                         if (!cur) {
                             monthData[canonicalId][d] = val;
+                        } else if (val === 'S' || cur === 'S') {
+                            monthData[canonicalId][d] = 'S';
                         } else if (val === 'J' || cur === 'J') {
                             monthData[canonicalId][d] = 'J';
                         } else if (val === 'A' || cur === 'A') {
                             monthData[canonicalId][d] = 'A';
                         } else if (val === 'T' || cur === 'T') {
-                            monthData[canonicalId][d] = (cur === 'A' || cur === 'J') ? cur : 'T';
+                            monthData[canonicalId][d] = (cur === 'A' || cur === 'J' || cur === 'S') ? cur : 'T';
                         } else {
                             monthData[canonicalId][d] = cur || val;
                         }
@@ -28615,7 +28723,7 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
             }
         });
 
-        // Asegurar justificaciones oficiales como 'J' y faltas injustificadas oficiales como 'A'
+        // Asegurar justificaciones oficiales como 'J', suspensiones oficiales como 'S' y faltas injustificadas oficiales como 'A'
         (gradeStudents.length > 0 ? gradeStudents : (STATE.students || [])).forEach(s => {
             const sId = s.id;
             const isArevalo = (typeof isStudentArevalo === 'function') ? isStudentArevalo(s) : (sId === 'stu-sire-I228WGR' || s.personalCode === 'I228WGR' || (s.carne && s.carne.includes('2026-CB-003')));
@@ -28628,7 +28736,7 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
                 const perm = typeof getStudentPermissionForDay === 'function' ? getStudentPermissionForDay(sId, year, month, day) : null;
                 const metaKey = `${sId}_${month}_${day}`;
                 if (perm) {
-                    const code = isUnjustifiedPermission(perm) ? 'A' : 'J';
+                    const code = getPermissionAttendanceCode(perm);
                     if (!monthData[sId]) monthData[sId] = {};
                     monthData[sId][day] = code;
                     if (s.carne) { if (!monthData[s.carne]) monthData[s.carne] = {}; monthData[s.carne][day] = code; }
@@ -28866,8 +28974,9 @@ function loadAttendanceList() {
     let daysInMonth = new Date(year, month, 0).getDate();
     const dayNames = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
-    const isDirectorOrAdmin = (STATE.currentRole === 'director' || STATE.currentRole === 'admin' || STATE.currentRole === 'secretaria');
-    const isAuditRole = (isDirectorOrAdmin || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar' || STATE.currentRole === 'auxiliatura' || STATE.currentRole === 'super_usuario');
+    const isDirector = isDirectorRole(STATE.currentRole);
+    const isDirectorOrAdmin = (isDirector || STATE.currentRole === 'secretaria');
+    const isAuditRole = (isDirectorOrAdmin || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar' || STATE.currentRole === 'auxiliatura');
     const isDocente = (STATE.currentRole === 'docente');
     const currentUser = STATE.currentUser || (STATE.users || [])[0];
 
@@ -29028,6 +29137,7 @@ function loadAttendanceList() {
     let dayAbsentTotals = new Array(daysInMonth + 1).fill(0);
     let dayJustTotals = new Array(daysInMonth + 1).fill(0);
     let dayTardyTotals = new Array(daysInMonth + 1).fill(0);
+    let daySuspensionTotals = new Array(daysInMonth + 1).fill(0);
     let totalClassLogs = 0;
     let totalClassPresent = 0;
 
@@ -29040,7 +29150,7 @@ function loadAttendanceList() {
             ...(s.studentId && monthData[s.studentId] ? monthData[s.studentId] : {}),
             ...(s.id && monthData[s.id] ? monthData[s.id] : {})
         };
-        let pCount = 0, aCount = 0, jCount = 0, tCount = 0;
+        let pCount = 0, aCount = 0, jCount = 0, tCount = 0, sCount = 0;
         let cellsHtml = '';
         const studentFullName = formatStudentDisplayName(s, 'lastFirst');
         const attBim = (typeof getBimestreFromMonth === 'function') ? getBimestreFromMonth(month) : 1;
@@ -29134,39 +29244,61 @@ function loadAttendanceList() {
                 const permOriginRole = permMeta ? (permMeta.origin_role || permMeta.originRole || '').toLowerCase() : '';
                 const permIsLockedByAdmin = permMeta ? (permMeta.is_locked_by_admin === true || (permMeta.is_locked_by_admin !== false && permOriginRole !== 'docente')) : false;
 
+                // ¿Es suspensión oficial ('S' inamovible en todos los maestros)?
+                const isOfficialSuspension = !!permMeta && isSuspensionPermission(permMeta) && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente';
+
                 // ¿Es ausencia INJUSTIFICADA oficial blindada ('A' inamovible en todos los maestros)?
-                const isOfficialUnjustified = !!permMeta && isUnjustifiedPermission(permMeta) && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente';
+                const isOfficialUnjustified = !isOfficialSuspension && !!permMeta && isUnjustifiedPermission(permMeta) && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente';
 
                 // ¿Es justificación oficial ('J') de Auxiliatura, Secretaría o Dirección?
-                const isOfficialJustified = !isOfficialUnjustified && !!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente';
+                const isOfficialJustified = !isOfficialSuspension && !isOfficialUnjustified && !!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente';
 
-                // Si tiene falta injustificada oficial, el indicador obligatorio y blindado es 'A'; si es justificado oficial, es 'J'
-                if (isOfficialUnjustified) {
+                // Si tiene suspensión oficial es 'S'; si es falta injustificada oficial es 'A'; si es justificado oficial es 'J'
+                if (isOfficialSuspension) {
+                    val = 'S';
+                } else if (isOfficialUnjustified) {
                     val = 'A';
                 } else if (isOfficialJustified) {
                     val = 'J';
+                } else if (val === 'J' && isAuditRole && !isOfficialJustified) {
+                    // 🛡️ REGLA: Si el docente ingresa una 'J' por cuenta propia, esta queda a nivel interno del docente.
+                    // No aparecerá ni en Auxiliatura, ni en Secretaría, ni en Dirección.
+                    val = '';
                 }
 
                 let cellClass = 'att-val-empty';
                 let cellTitle = `${studentFullName} — Día ${day}: Sin registrar (Haga clic para marcar P)`;
                 let cellInnerHtml = val;
                 let isCellReadonly = false;
-                let cellOriginRole = (isOfficialJustified || isOfficialUnjustified) ? permOriginRole : (val === 'J' ? 'docente' : '');
+                let cellOriginRole = (isOfficialJustified || isOfficialUnjustified || isOfficialSuspension) ? permOriginRole : (val === 'J' ? 'docente' : '');
 
                 if (val === 'P') {
                     cellClass = 'att-val-p att-val-P';
                     pCount++;
                     dayPresentTotals[day]++;
                     cellTitle = `${studentFullName} — Día ${day}: PRESENTE`;
+                } else if (val === 'S') {
+                    sCount++;
+                    daySuspensionTotals[day]++;
+                    const authBy = permMeta ? (permMeta.authorizedBy || 'Dirección / Auxiliatura') : 'Dirección / Auxiliatura';
+                    const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Suspensión Disciplinaria Oficial';
+                    cellClass = 'att-val-s att-val-S att-val-suspension att-cell-locked';
+                    cellTitle = `${studentFullName} — Día ${day}: SUSPENSIÓN DISCIPLINARIA (📋 ${authBy}: ${reason}) — ⚖️ Sanción oficial (Mantiene derecho de examen). Modificable únicamente por Dirección.`;
+                    if (!isDirector) {
+                        isCellReadonly = true;
+                        cellInnerHtml = `<span onclick="event.stopPropagation(); if(typeof showJustificationDetailModal==='function') showJustificationDetailModal('${s.id}', ${day}, '${month}');" style="display:inline-flex; align-items:center; justify-content:center; gap:2px; cursor:pointer;" title="Suspensión Disciplinaria Oficial — Clic para ver detalles"><i class="fa-solid fa-gavel" style="font-size:0.60rem; opacity:0.95; color:#7c3aed;"></i>S</span>`;
+                    } else {
+                        cellInnerHtml = `<span style="display:inline-flex; align-items:center; justify-content:center; gap:2px; pointer-events:none;"><i class="fa-solid fa-gavel" style="font-size:0.62rem; color:#7c3aed; pointer-events:auto; cursor:pointer;" onclick="event.stopPropagation(); if(typeof showJustificationDetailModal==='function') showJustificationDetailModal('${s.id}', ${day}, '${month}');" title="Clic para consultar detalle de la suspensión"></i>S</span>`;
+                    }
                 } else if (val === 'A') {
                     aCount++;
                     dayAbsentTotals[day]++;
                     if (isOfficialUnjustified) {
                         const authBy = permMeta ? (permMeta.authorizedBy || 'Auxiliatura / Dirección') : 'Auxiliatura / Dirección';
                         const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Ausencia Injustificada Oficial';
-                        isCellReadonly = true;
+                        if (!isDirector) isCellReadonly = true;
                         cellClass = 'att-val-a att-val-A att-val-permiso att-cell-locked att-cell-unjustified-locked';
-                        cellTitle = `${studentFullName} — Día ${day}: AUSENCIA INJUSTIFICADA BLINDADA (📋 ${authBy}: ${reason}) — 🔒 Esta "A" está blindada y nadie puede cambiarla en la asistencia.`;
+                        cellTitle = `${studentFullName} — Día ${day}: AUSENCIA INJUSTIFICADA BLINDADA (📋 ${authBy}: ${reason}) — 🔒 Modificable únicamente por Dirección.`;
                         cellInnerHtml = `<span onclick="event.stopPropagation(); if(typeof showJustificationDetailModal==='function') showJustificationDetailModal('${s.id}', ${day}, '${month}');" style="display:inline-flex; align-items:center; justify-content:center; gap:2px; cursor:pointer;" title="Ausencia Injustificada Blindada — Clic para ver detalles"><i class="fa-solid fa-lock" style="font-size:0.60rem; opacity:0.92; color:#991b1b;"></i>A</span>`;
                     } else {
                         cellClass = 'att-val-a att-val-A';
@@ -29184,17 +29316,17 @@ function loadAttendanceList() {
                         cellClass = 'att-val-j att-val-J att-val-permiso';
                         cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO (📋 ${authBy}: ${reason})`;
 
-                        if (!isAuditRole) {
-                            // BLOQUEADO PARA DOCENTE: Solo lectura (disabled)
+                        if (!isDirector) {
+                            // BLOQUEADO PARA DOCENTE, AUXILIATURA Y SECRETARÍA: Solo modificable por Dirección
                             isCellReadonly = true;
                             cellClass += ' att-cell-locked att-cell-justified-readonly';
-                            cellTitle += ' — 🔒 REGISTRO OFICIAL BLOQUEADO: Justificado por Auxiliatura / Dirección / Secretaría. Haga clic para ver detalles.';
+                            cellTitle += ' — 🔒 REGISTRO OFICIAL BLOQUEADO: Justificado por ' + authBy + '. Únicamente Dirección puede modificarlo. Haga clic para ver detalles.';
                             cellInnerHtml = `<span onclick="event.stopPropagation(); if(typeof showJustificationDetailModal==='function') showJustificationDetailModal('${s.id}', ${day}, '${month}');" style="display:inline-flex; align-items:center; justify-content:center; gap:2px; cursor:pointer;" title="Clic para consultar quién autorizó esta inasistencia"><i class="fa-solid fa-lock" style="font-size:0.60rem; opacity:0.85; color:#c2410c;"></i>J</span>`;
                         } else {
                             cellInnerHtml = `<span style="display:inline-flex; align-items:center; justify-content:center; gap:2px; pointer-events:none;"><i class="fa-solid fa-shield-halved" style="font-size:0.62rem; color:#ea580c; pointer-events:auto; cursor:pointer;" onclick="event.stopPropagation(); if(typeof showJustificationDetailModal==='function') showJustificationDetailModal('${s.id}', ${day}, '${month}');" title="Clic para consultar detalle oficial de la inasistencia"></i>J</span>`;
                         }
                     } else {
-                        // J COLOCADA DIRECTAMENTE POR EL DOCENTE (Editable libremente)
+                        // J COLOCADA DIRECTAMENTE POR EL DOCENTE (Editable libremente en su cátedra)
                         cellClass = 'att-val-j att-val-J';
                         cellTitle = `${studentFullName} — Día ${day}: JUSTIFICADO (Registrado por el docente - Haga clic para cambiar a T)`;
                         cellInnerHtml = 'J';
@@ -29217,15 +29349,16 @@ function loadAttendanceList() {
                 const isFutureDay = (year > todayYear) || 
                                     (year === todayYear && month > todayMonth) || 
                                     (year === todayYear && month === todayMonth && day > todayDay);
-                const isDayLocked = (isPastDay || isFutureDay) && !isAuditRole;
-                if (isDayLocked && !isCellReadonly) {
+                const isDayLocked = (isPastDay || isFutureDay) && !isDirector;
+                if (isDayLocked) {
                     cellClass += ' att-cell-locked';
-                    if (isPastDay) cellTitle += ' (🔒 Finalizado - Bloqueado para modificación)';
-                    else if (isFutureDay) cellTitle += ' (🔒 Fecha futura)';
+                    isCellReadonly = true;
+                    if (isPastDay) cellTitle += ' (🔒 Finalizado - Bloqueado para modificación. Solo Dirección puede modificar)';
+                    else if (isFutureDay) cellTitle += ' (🔒 Fecha futura - Bloqueado por calendario)';
                 }
 
-                const cellDisabledAttr = (isOfficialUnjustified || (isCellReadonly && !isAuditRole)) ? 'disabled="disabled" aria-disabled="true"' : '';
-                const cellLockAdminAttr = (isOfficialJustified || isOfficialUnjustified) ? 'data-locked-by-admin="true"' : 'data-locked-by-admin="false"';
+                const cellDisabledAttr = (isCellReadonly && !isDirector) ? 'disabled="disabled" aria-disabled="true"' : '';
+                const cellLockAdminAttr = (isOfficialJustified || isOfficialUnjustified || isOfficialSuspension) ? 'data-locked-by-admin="true"' : 'data-locked-by-admin="false"';
                 const cellOriginRoleAttr = `data-origin-role="${cellOriginRole}"`;
 
                 const cellDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -29235,6 +29368,10 @@ function loadAttendanceList() {
                     cellTitle += ` — 📌 Anotación: ${annotTextPreview}`;
                     cellInnerHtml += `<span style="font-size:0.55rem; color:#0284c7; margin-left:1px;" title="${escapeHtml(annotTextPreview)}">📌</span>`;
                 }
+
+                const cellClickAction = (isOfficialJustified || isOfficialUnjustified || isOfficialSuspension) && !isDirector
+                    ? `showJustificationDetailModal('${s.id}', ${day}, '${month}')`
+                    : `toggleAttendanceCell('${s.id}', ${day})`;
 
                 cellsHtml += `
                     <td class="att-cell ${cellClass} ${todayColClass} ${weekendClass}" 
@@ -29247,7 +29384,7 @@ function loadAttendanceList() {
                         ${cellDisabledAttr}
                         ${cellLockAdminAttr}
                         ${cellOriginRoleAttr}
-                        onclick="toggleAttendanceCell('${s.id}', ${day})"
+                        onclick="${cellClickAction}"
                         title="${cellTitle}">
                         ${cellInnerHtml}
                     </td>
@@ -29557,6 +29694,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     }
 
     const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
+    const isDirector = isDirectorRole(currentRole);
     const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
     const isDocente = (currentRole === 'docente');
 
@@ -29579,16 +29717,16 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
                      (cycleYear === todayYear && month > todayMonth) || 
                      (cycleYear === todayYear && month === todayMonth && day > todayDay);
 
-    if (isPast && !isAuditRole) {
+    if (isPast && !isDirector) {
         if (typeof showToast === 'function') {
-            showToast(`🔒 Toma de Asistencia Bloqueada: El día ${day} ya finalizó. No está permitido modificar la asistencia de fechas anteriores. Para justificaciones o cambios oficiales, comuníquese con Auxiliatura o Dirección.`, 'warning');
+            showToast(`🔒 Fecha Bloqueada: La asistencia se toma exclusivamente el día actual. El día ${day}/${month} ya finalizó. Únicamente Dirección tiene autorización para registrar o modificar asistencias fuera de fecha.`, 'warning', 5000);
         }
         return;
     }
 
-    if (isFuture && !isAuditRole) {
+    if (isFuture && !isDirector) {
         if (typeof showToast === 'function') {
-            showToast(`🔒 Fecha Futura Bloqueada: No está permitido tomar asistencia de días futuros por adelantado.`, 'warning');
+            showToast(`🔒 Fecha Futura Bloqueada: No está permitido tomar asistencia de días futuros por adelantado. Únicamente Dirección cuenta con autorización.`, 'warning', 5000);
         }
         return;
     }
@@ -29625,32 +29763,47 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     const permOriginRole = permMeta ? (permMeta.origin_role || permMeta.originRole || '').toLowerCase() : '';
     const permIsLockedByAdmin = permMeta ? (permMeta.is_locked_by_admin === true || (permMeta.is_locked_by_admin !== false && authorityRoles.includes(permOriginRole) && permOriginRole !== 'docente')) : false;
 
-    // 🔒 1. ¿Es AUSENCIA INJUSTIFICADA BLINDADA ('A' que nadie puede cambiar en la planilla)?
-    const isOfficialUnjustified = (!!permMeta && isUnjustifiedPermission(permMeta) && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente') ||
-                                  (td && td.classList && td.classList.contains('att-cell-unjustified-locked'));
+    // 🔒 0. ¿Es SUSPENSIÓN DISCIPLINARIA OFICIAL ('S' inamovible en la planilla)?
+    const isOfficialSuspension = (!!permMeta && isSuspensionPermission(permMeta) && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente') ||
+                                 (cur === 'S') || (td && td.classList && td.classList.contains('att-val-suspension'));
 
-    if (isOfficialUnjustified) {
+    if (isOfficialSuspension && !isDirector) {
+        const studentObj = targetStudent || (STATE.students || []).find(s => s.id === studentId);
+        const sName = studentObj ? formatStudentDisplayName(studentObj, 'lastFirst') : 'El estudiante';
+        const authBy = permMeta ? (permMeta.authorizedBy || 'Dirección / Auxiliatura') : 'Dirección / Auxiliatura';
+        const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Suspensión Disciplinaria Oficial';
+        if (typeof showToast === 'function') {
+            showToast(`🔒 Suspensión Disciplinaria Oficial: ${sName} se encuentra en cumplimiento de sanción autorizada por ${authBy} (${reason}). Este registro está protegido (no computa para pérdida de examen) y únicamente Dirección puede modificarlo.`, 'warning', 6000);
+        }
+        return;
+    }
+
+    // 🔒 1. ¿Es AUSENCIA INJUSTIFICADA BLINDADA ('A' que nadie puede cambiar en la planilla)?
+    const isOfficialUnjustified = !isOfficialSuspension && (((!!permMeta && isUnjustifiedPermission(permMeta) && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente')) ||
+                                  (td && td.classList && td.classList.contains('att-cell-unjustified-locked')));
+
+    if (isOfficialUnjustified && !isDirector) {
         const studentObj = targetStudent || (STATE.students || []).find(s => s.id === studentId);
         const sName = studentObj ? formatStudentDisplayName(studentObj, 'lastFirst') : 'El estudiante';
         const authBy = permMeta ? (permMeta.authorizedBy || 'Auxiliatura / Dirección') : 'Auxiliatura / Dirección';
         const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Ausencia Injustificada Oficial';
         if (typeof showToast === 'function') {
-            showToast(`🔒 Ausencia Injustificada Blindada: ${sName} tiene registrada una falta injustificada oficial por ${authBy} (${reason}). Esta "A" está blindada y nadie puede cambiarla en la planilla.`, 'error', 5500);
+            showToast(`🔒 Ausencia Injustificada Blindada: ${sName} tiene registrada una falta injustificada oficial por ${authBy} (${reason}). Este registro está bloqueado y únicamente Dirección puede modificarlo.`, 'error', 5500);
         }
         return;
     }
 
     // 🔒 2. ¿Es justificación oficial ('J') de Auxiliatura, Secretaría o Dirección?
-    const isOfficialJustified = !isOfficialUnjustified && !!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente';
+    const isOfficialJustified = !isOfficialSuspension && !isOfficialUnjustified && !!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente';
 
-    if (isOfficialJustified && !isAuditRole) {
+    if (isOfficialJustified && !isDirector) {
         const studentObj = targetStudent || (STATE.students || []).find(s => s.id === studentId);
         const sName = studentObj ? formatStudentDisplayName(studentObj, 'lastFirst') : 'El estudiante';
-        const authBy = permMeta ? (permMeta.authorizedBy || 'Auxiliatura') : 'Auxiliatura / Dirección / Secretaría';
+        const authBy = permMeta ? (permMeta.authorizedBy || 'Auxiliatura / Secretaría / Dirección') : 'Autoridad Institucional';
         const reason = permMeta ? `${permMeta.reasonCategory} — "${permMeta.reasonDetail}"` : 'Justificación / Permiso Oficial Autorizado';
 
         if (typeof showToast === 'function') {
-            showToast(`🔒 Registro Bloqueado: ${sName} cuenta con inasistencia justificada autorizada por ${authBy} (${reason}). Este registro es de solo lectura y no puede ser modificado por docentes.`, 'warning', 6000);
+            showToast(`🔒 Registro Bloqueado: ${sName} cuenta con inasistencia justificada autorizada por ${authBy} (${reason}). Este registro está protegido y únicamente Dirección puede modificarlo.`, 'warning', 6000);
         }
         return;
     }
@@ -29788,6 +29941,12 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
             emitAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month);
         } else if (finalVal !== 'A' && typeof dismissAttendanceAbsenceAlert === 'function') {
             dismissAttendanceAbsenceAlert(studentId, gradeCode, courseId, day, month);
+        }
+
+        if (finalVal === 'T' && typeof emitAttendanceTardyAlert === 'function') {
+            emitAttendanceTardyAlert(studentId, gradeCode, courseId, day, month);
+        } else if (finalVal !== 'T' && typeof dismissAttendanceTardyAlert === 'function') {
+            dismissAttendanceTardyAlert(studentId, gradeCode, courseId, day, month);
         }
         try {
             const studentObj = targetStudent || (STATE.students || []).find(s => String(s.id) === String(studentId));
@@ -31417,6 +31576,17 @@ function onPermissionCategoryChanged() {
         infoNotice.style.background = '#fef2f2';
         infoNotice.style.borderColor = '#fecaca';
         infoNotice.style.borderLeftColor = '#dc2626';
+    } else if (val.includes('suspens') || val.includes('sanción') || val.includes('sancion')) {
+        infoNotice.innerHTML = `
+            <i class="fa-solid fa-gavel" style="font-size:1.25rem; margin-top:2px; flex-shrink:0; color:#7c3aed;"></i>
+            <div>
+                <strong style="color:#6b21a8;">Efecto Automático — Suspensión Disciplinaria Oficial ("S"):</strong> Se registrará como <strong style="color:#7c3aed;">"S" (Suspensión Oficial)</strong> en todas las cátedras y quedará blindada con candado institucional 🔒. <br>
+                <strong style="color:#0f172a;"><i class="fa-solid fa-scale-balanced" style="color:#16a34a;"></i> Salvaguarda Legal y de Evaluación:</strong> Las suspensiones disciplinarias son medidas correctivas y <strong>NO computan como inasistencias acumuladas que generen pérdida de derecho de examen</strong>. El estudiante mantiene su derecho a evaluaciones académicas. Modificable únicamente por Dirección.
+            </div>
+        `;
+        infoNotice.style.background = '#faf5ff';
+        infoNotice.style.borderColor = '#e9d5ff';
+        infoNotice.style.borderLeftColor = '#9333ea';
     } else {
         infoNotice.innerHTML = `
             <i class="fa-solid fa-circle-info" style="font-size:1.25rem; margin-top:2px; flex-shrink:0; color:#d97706;"></i>
@@ -31480,9 +31650,7 @@ function saveStudentPermissionForm(e) {
         perm.endDate = endDate;
         perm.reasonCategory = reasonCategory;
         perm.reasonDetail = reasonDetail;
-        perm.docRef = docRef;
-        perm.authorizedBy = authorizedBy;
-        perm.attendanceCode = isUnjustifiedPermission(perm) ? 'A' : 'J';
+        perm.attendanceCode = getPermissionAttendanceCode(perm);
         perm.lastEditedAt = new Date().toISOString();
         perm.lastEditedBy = (STATE.currentUser && STATE.currentUser.name) ? STATE.currentUser.name : (STATE.currentRole === 'profesor_auxiliar' ? 'Auxiliatura' : 'Dirección General');
 
@@ -31563,7 +31731,10 @@ function saveStudentPermissionForm(e) {
 
     const docRef = (document.getElementById('permDocRef')?.value || '').trim();
     const authorizedBy = (document.getElementById('permAuthorizedBy')?.value || 'Auxiliatura').trim();
-    const isUnjust = reasonCategory.toLowerCase().includes('injustificad');
+    const isSusp = isSuspensionPermission({ reasonCategory });
+    const isUnjust = !isSusp && isUnjustifiedPermission({ reasonCategory });
+    const targetCode = isSusp ? 'S' : (isUnjust ? 'A' : 'J');
+    const statusLabel = isSusp ? 'Suspensión Disciplinaria (Con Derecho a Examen)' : (isUnjust ? 'Injustificada Blindada' : 'Autorizado');
 
     const perm = {
         id: 'perm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
@@ -31582,9 +31753,9 @@ function saveStudentPermissionForm(e) {
         authorizedById: (STATE.currentUser && STATE.currentUser.id) ? STATE.currentUser.id : 'auxiliar',
         origin_role: ((window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || (STATE.currentUser && STATE.currentUser.role) || 'profesor_auxiliar').toLowerCase(),
         is_locked_by_admin: true,
-        attendanceCode: isUnjust ? 'A' : 'J',
+        attendanceCode: targetCode,
         createdAt: new Date().toISOString(),
-        status: isUnjust ? 'Injustificada Blindada' : 'Autorizado'
+        status: statusLabel
     };
 
     if (!Array.isArray(STATE.studentPermissions)) {
@@ -31621,10 +31792,12 @@ function saveStudentPermissionForm(e) {
         openStudentProfileModal(STATE.selectedStudentId);
     }
 
-    if (isUnjust) {
-        showToast(`🔒 Ausencia Injustificada ("A" Blindada) registrada para ${perm.studentName}. Se aplicó automáticamente en la asistencia de TODOS los maestros y nadie podrá modificarla.`, 'warning');
+    if (isSusp) {
+        showToast(`⚖️ Suspensión Disciplinaria Registrada: Se aplicó "S" en la asistencia institucional para ${perm.studentName}. (Salvaguarda: Mantiene derecho a examen).`, 'info', 6000);
+    } else if (isUnjust) {
+        showToast(`🔒 Ausencia Injustificada ("A" Blindada) registrada para ${perm.studentName}. Se aplicó automáticamente en la asistencia de TODOS los maestros y nadie podrá modificarla.`, 'warning', 5500);
     } else {
-        showToast(`✅ Permiso autorizado exitosamente para ${perm.studentName}. Se reflejará automáticamente en la asistencia de todos los docentes.`, 'success');
+        showToast(`✅ Permiso autorizado exitosamente para ${perm.studentName}. Se reflejará automáticamente en la asistencia de todos los docentes.`, 'success', 5000);
     }
 
     // Ofrecer impresión del comprobante oficial
@@ -31725,7 +31898,7 @@ function removeStudentPermissionDatesFromAttendance(perm, oldStartDate = null, o
                         if (!STATE.attendanceRecords[genKey]) STATE.attendanceRecords[genKey] = {};
                         if (!STATE.attendanceRecords[genKey][aliasId]) STATE.attendanceRecords[genKey][aliasId] = {};
                         STATE.attendanceRecords[genKey][aliasId][d] = prevMarks[genKey];
-                    } else if (STATE.attendanceRecords[genKey]?.[aliasId]?.[d] === 'J' || STATE.attendanceRecords[genKey]?.[aliasId]?.[d] === 'A') {
+                    } else if (STATE.attendanceRecords[genKey]?.[aliasId]?.[d] === 'J' || STATE.attendanceRecords[genKey]?.[aliasId]?.[d] === 'A' || STATE.attendanceRecords[genKey]?.[aliasId]?.[d] === 'S') {
                         delete STATE.attendanceRecords[genKey][aliasId][d];
                     }
 
@@ -31735,7 +31908,7 @@ function removeStudentPermissionDatesFromAttendance(perm, oldStartDate = null, o
                             if (!STATE.attendanceRecords[cKey]) STATE.attendanceRecords[cKey] = {};
                             if (!STATE.attendanceRecords[cKey][aliasId]) STATE.attendanceRecords[cKey][aliasId] = {};
                             STATE.attendanceRecords[cKey][aliasId][d] = prevMarks[cKey];
-                        } else if (STATE.attendanceRecords[cKey]?.[aliasId]?.[d] === 'J' || STATE.attendanceRecords[cKey]?.[aliasId]?.[d] === 'A') {
+                        } else if (STATE.attendanceRecords[cKey]?.[aliasId]?.[d] === 'J' || STATE.attendanceRecords[cKey]?.[aliasId]?.[d] === 'A' || STATE.attendanceRecords[cKey]?.[aliasId]?.[d] === 'S') {
                             delete STATE.attendanceRecords[cKey][aliasId][d];
                         }
                     });
@@ -31749,7 +31922,7 @@ function removeStudentPermissionDatesFromAttendance(perm, oldStartDate = null, o
                         if (recDays) {
                             if (prevMarks[recKey]) {
                                 recDays[d] = prevMarks[recKey];
-                            } else if (recDays[d] === 'J' || recDays[d] === 'A') {
+                            } else if (recDays[d] === 'J' || recDays[d] === 'A' || recDays[d] === 'S') {
                                 if (Array.isArray(recDays)) {
                                     recDays[d] = null;
                                 } else {
@@ -31816,7 +31989,7 @@ function cleanupOrphanStudentPermissionsFromAttendance(perm) {
                     if (!aliasDays[d]) continue;
                     const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                     if (dateStr < startStr || dateStr > endStr) {
-                        if (aliasDays[d] === 'J' || aliasDays[d] === 'A') {
+                        if (aliasDays[d] === 'J' || aliasDays[d] === 'A' || aliasDays[d] === 'S') {
                             aliasDays[d] = null;
                         }
                     }
@@ -31826,7 +31999,7 @@ function cleanupOrphanStudentPermissionsFromAttendance(perm) {
                     const d = parseInt(dStr, 10);
                     const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                     if (dateStr < startStr || dateStr > endStr) {
-                        if (aliasDays[dStr] === 'J' || aliasDays[dStr] === 'A') {
+                        if (aliasDays[dStr] === 'J' || aliasDays[dStr] === 'A' || aliasDays[dStr] === 'S') {
                             delete aliasDays[dStr];
                         }
                     }
@@ -32178,8 +32351,9 @@ function applyStudentPermission(perm) {
 window.applyStudentPermission = applyStudentPermission;
 
 function openEditStudentPermissionModal(permId) {
-    if (!canManageStudentPermissions()) {
-        showToast('Acceso Restringido: La edición de permisos de ausencia está reservada a Auxiliatura, Dirección y Secretaría.', 'warning');
+    const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
+    if (!isDirectorRole(currentRole)) {
+        showToast('🔒 Registro Bloqueado: Los permisos y justificaciones registrados por las autoridades únicamente pueden ser editados o modificados por Dirección.', 'warning', 5500);
         return;
     }
 
@@ -32319,15 +32493,23 @@ function renderPermissionsHistoryTable() {
             ? `<strong>${p.startDate}</strong>` 
             : `<strong>${p.startDate}</strong> al <strong>${p.endDate}</strong>`;
         const refTag = p.docRef ? `<br><small style="color:#64748b;"><i class="fa-solid fa-paperclip"></i> ${p.docRef}</small>` : '';
-        const isUnjust = isUnjustifiedPermission(p);
-        const catBadge = isUnjust
-            ? `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:800; font-size:0.75rem; border:1px solid #fca5a5;"><i class="fa-solid fa-lock"></i> ${p.reasonCategory} (A Blindada)</span>`
-            : `<span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.75rem;">${p.reasonCategory}</span>`;
+        const isSusp = (typeof isSuspensionPermission === 'function') ? isSuspensionPermission(p) : (p.attendanceCode === 'S' || String(p.reasonCategory || '').toLowerCase().includes('suspens'));
+        const isUnjust = !isSusp && isUnjustifiedPermission(p);
+        let catBadge = '';
+        if (isSusp) {
+            catBadge = `<span class="badge" style="background:#faf5ff; color:#6b21a8; font-weight:800; font-size:0.75rem; border:1px solid #d8b4fe;"><i class="fa-solid fa-gavel"></i> ${escapeHtml(p.reasonCategory)} (S - Con Derecho a Examen)</span>`;
+        } else if (isUnjust) {
+            catBadge = `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:800; font-size:0.75rem; border:1px solid #fca5a5;"><i class="fa-solid fa-lock"></i> ${escapeHtml(p.reasonCategory)} (A Blindada)</span>`;
+        } else {
+            catBadge = `<span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.75rem;"><i class="fa-solid fa-check"></i> ${escapeHtml(p.reasonCategory)}</span>`;
+        }
+
+        const dateIconColor = isSusp ? '#7c3aed' : (isUnjust ? '#dc2626' : '#d97706');
 
         return `
             <tr>
                 <td style="white-space:nowrap;">
-                    <i class="fa-solid fa-calendar-check" style="color:${isUnjust ? '#dc2626' : '#d97706'};"></i> ${dateDisplay}
+                    <i class="fa-solid fa-calendar-check" style="color:${dateIconColor};"></i> ${dateDisplay}
                 </td>
                 <td>
                     <strong>${p.studentName}</strong>
@@ -32364,8 +32546,9 @@ window.renderPermissionsHistoryTable = renderPermissionsHistoryTable;
 
 function revokeStudentPermission(permId) {
     if (!permId) return;
-    if (!canManageStudentPermissions()) {
-        showToast("Acceso Restringido: La anulación o revocación de permisos está reservada a Auxiliatura, Dirección y Secretaría.", "warning");
+    const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
+    if (!isDirectorRole(currentRole)) {
+        showToast("🔒 Registro Bloqueado: Las justificaciones y permisos registrados por las autoridades únicamente pueden ser anulados o revocados por Dirección.", "warning", 5500);
         return;
     }
     const perm = (STATE.studentPermissions || []).find(p => p.id === permId);
@@ -32432,6 +32615,156 @@ function revokeStudentPermission(permId) {
 }
 window.revokeStudentPermission = revokeStudentPermission;
 
+function showJustificationDetailModal(studentId, day, month) {
+    if (!studentId) return;
+    const student = (STATE.students || []).find(s => s && (s.id === studentId || s.carne === studentId || s.personalCode === studentId));
+    const stuName = student ? ((typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(student, 'lastFirst') : (student.name || `${student.firstName || ''} ${student.lastName || ''}`.trim())) : 'Estudiante';
+    const gradeSec = student ? `${student.grade || student.gradeCode || ''} ${student.section ? '(' + student.section + ')' : ''}`.trim() : '';
+
+    const year = parseInt(STATE.activeCycle) || new Date().getFullYear();
+    const permMeta = (typeof getStudentPermissionForDay === 'function') ? getStudentPermissionForDay(studentId, year, month, day) : null;
+
+    let foundPerm = null;
+    if (Array.isArray(STATE.studentPermissions)) {
+        foundPerm = STATE.studentPermissions.find(p => {
+            if (!p) return false;
+            if (permMeta && permMeta.permissionId && p.id === permMeta.permissionId) return true;
+            const matchesStu = (p.studentId === studentId || (student && (p.studentId === student.id || p.personalCode === student.personalCode || p.carne === student.carne)));
+            if (!matchesStu) return false;
+            const targetDateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const s = p.startDate;
+            const e = p.endDate || p.startDate;
+            return targetDateStr >= s && targetDateStr <= e;
+        });
+    }
+
+    const metaKey = `${studentId}_${month}_${day}`;
+    const directMeta = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]) || null;
+    const eff = permMeta || directMeta || foundPerm || {};
+
+    const author = eff.authorizedBy || (foundPerm && foundPerm.authorizedBy) || 'Autoridad Institucional';
+    const originRole = (eff.origin_role || eff.originRole || (foundPerm && foundPerm.origin_role) || 'Auxiliatura').toUpperCase();
+    const roleLabels = {
+        'DIRECTOR': 'Dirección General',
+        'DIRECCION': 'Dirección General',
+        'SECRETARIA': 'Secretaría',
+        'PROFESOR_AUXILIAR': 'Auxiliatura',
+        'AUXILIAR': 'Auxiliatura',
+        'AUXILIATURA': 'Auxiliatura',
+        'ADMIN': 'Dirección',
+        'SUPER_USUARIO': 'Dirección General'
+    };
+    const roleText = roleLabels[originRole] || originRole;
+    const reasonCat = eff.reasonCategory || (foundPerm && foundPerm.reasonCategory) || 'Inasistencia Justificada';
+    const reasonDet = eff.reasonDetail || (foundPerm && foundPerm.reasonDetail) || 'Permiso oficial autorizado';
+    const docRef = eff.docRef || (foundPerm && foundPerm.docRef) || 'Constancia en archivo institucional';
+    const isSusp = eff.attendanceCode === 'S' || (foundPerm && typeof isSuspensionPermission === 'function' && isSuspensionPermission(foundPerm)) || (reasonCat && reasonCat.toLowerCase().includes('suspens'));
+    const isUnjust = !isSusp && (eff.attendanceCode === 'A' || (foundPerm && typeof isUnjustifiedPermission === 'function' && isUnjustifiedPermission(foundPerm)));
+
+    const sDate = (foundPerm && foundPerm.startDate) || eff.date || `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const eDate = (foundPerm && foundPerm.endDate) || sDate;
+    const dateRangeText = (sDate !== eDate) ? `${sDate} al ${eDate}` : sDate;
+
+    const existing = document.getElementById('justificationDetailModal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'justificationDetailModal';
+    modal.className = 'modal-overlay';
+    modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.65); backdrop-filter:blur(3px); z-index:100000; display:flex; justify-content:center; align-items:center; padding:15px;';
+    modal.onclick = function (e) {
+        if (e.target === modal) modal.remove();
+    };
+
+    let headerBg = '#0f172a';
+    let iconColor = '#f59e0b';
+    let headerIcon = 'fa-lock';
+    let titleText = 'Registro Oficial de Inasistencia Justificada ("J")';
+    let lockNotice = '<i class="fa-solid fa-lock" style="color:#2563eb;"></i> <strong>Blindaje Institucional:</strong> Este registro fue emitido por autoridad y se encuentra protegido. El docente no puede modificar este valor. <em>Únicamente Dirección cuenta con privilegios para modificarlo o anularlo.</em>';
+    let lockNoticeBg = '#eff6ff';
+    let lockNoticeBorder = '#bfdbfe';
+    let lockNoticeColor = '#1e40af';
+
+    if (isSusp) {
+        headerBg = '#581c87';
+        iconColor = '#d8b4fe';
+        headerIcon = 'fa-gavel';
+        titleText = 'Suspensión Disciplinaria Oficial ("S")';
+        lockNotice = '<i class="fa-solid fa-scale-balanced" style="color:#9333ea; font-size:1.1rem; margin-right:4px;"></i> <strong>⚖️ Salvaguarda Académica (Derecho de Examen):</strong> Esta suspensión es una sanción institucional formalmente desglosada y protegida. <strong>NO computa como inasistencia injustificada acumulada que cause la pérdida de derecho de examen</strong> conforme a la normativa ministerial y escolar vigente. El estudiante conserva su derecho a realizar evaluaciones y tareas académicas. <em>Únicamente Dirección puede modificar o revocar este registro.</em>';
+        lockNoticeBg = '#faf5ff';
+        lockNoticeBorder = '#e9d5ff';
+        lockNoticeColor = '#581c87';
+    } else if (isUnjust) {
+        headerBg = '#991b1b';
+        iconColor = '#fca5a5';
+        headerIcon = 'fa-lock';
+        titleText = 'Ausencia Injustificada Oficial Blindada ("A")';
+        lockNotice = '<i class="fa-solid fa-lock" style="color:#dc2626;"></i> <strong>Ausencia Injustificada Blindada:</strong> Falta oficial registrada con candado institucional en todos los catedráticos. Computa en el historial de inasistencias sin derecho a reposición ordinaria. <em>Únicamente Dirección cuenta con privilegios para modificarla o anularla.</em>';
+        lockNoticeBg = '#fef2f2';
+        lockNoticeBorder = '#fecaca';
+        lockNoticeColor = '#991b1b';
+    }
+
+    modal.innerHTML = `
+        <div style="background:#ffffff; border-radius:12px; width:100%; max-width:460px; box-shadow:0 20px 30px rgba(0,0,0,0.3); overflow:hidden; border:1px solid #cbd5e1;">
+            <div style="background:${headerBg}; color:#fff; padding:12px 16px; display:flex; justify-content:space-between; align-items:center;">
+                <strong style="display:flex; align-items:center; gap:8px; font-size:0.92rem;">
+                    <i class="fa-solid ${headerIcon}" style="color:${iconColor};"></i> ${titleText}
+                </strong>
+                <button type="button" onclick="document.getElementById('justificationDetailModal').remove()" style="background:none; border:none; color:#fff; font-size:1.3rem; line-height:1; cursor:pointer;" title="Cerrar">&times;</button>
+            </div>
+            <div style="padding:16px; font-size:0.88rem;">
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:12px;">
+                    <strong style="color:#0f172a; font-size:0.95rem; display:block;">${escapeHtml(stuName)}</strong>
+                    <span style="font-size:0.78rem; color:#64748b;">${escapeHtml(gradeSec)} &bull; Día ${day} de ${((document.getElementById('attendanceMonthSelect')?.options[document.getElementById('attendanceMonthSelect')?.selectedIndex]?.text) || 'Mes')}</span>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:9px; margin-bottom:14px;">
+                    <div>
+                        <span style="font-size:0.73rem; color:#64748b; font-weight:800; display:block; text-transform:uppercase; letter-spacing:0.5px;">Quién Realizó el Bloqueo / Autorización:</span>
+                        <div style="color:#0369a1; font-weight:700; font-size:0.9rem; display:flex; align-items:center; gap:6px; margin-top:2px;">
+                            <i class="fa-solid fa-user-shield"></i> ${escapeHtml(author)} 
+                            <span style="background:#e0f2fe; color:#0369a1; padding:1px 6px; border-radius:4px; font-size:0.72rem; font-weight:800;">${escapeHtml(roleText)}</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span style="font-size:0.73rem; color:#64748b; font-weight:800; display:block; text-transform:uppercase; letter-spacing:0.5px;">Razón o Motivo Oficial:</span>
+                        <div style="color:#334155; background:${isSusp ? '#faf5ff' : '#fff7ed'}; border-left:3px solid ${isSusp ? '#9333ea' : '#ea580c'}; padding:7px 10px; border-radius:4px; font-size:0.84rem; margin-top:2px;">
+                            <strong>${escapeHtml(reasonCat)}</strong>${reasonDet ? `<div style="margin-top:2px; color:#475569;">"${escapeHtml(reasonDet)}"</div>` : ''}
+                        </div>
+                    </div>
+
+                    <div>
+                        <span style="font-size:0.73rem; color:#64748b; font-weight:800; display:block; text-transform:uppercase; letter-spacing:0.5px;">Rango de Fechas Aplicable:</span>
+                        <div style="color:#0f172a; font-weight:600; font-size:0.83rem; margin-top:2px;">
+                            <i class="fa-regular fa-calendar-check" style="color:#16a34a; margin-right:4px;"></i> ${escapeHtml(dateRangeText)}
+                        </div>
+                    </div>
+
+                    <div>
+                        <span style="font-size:0.73rem; color:#64748b; font-weight:800; display:block; text-transform:uppercase; letter-spacing:0.5px;">Documento de Respaldo / Constancia:</span>
+                        <span style="color:#475569; font-family:monospace; font-size:0.82rem; background:#f1f5f9; padding:2px 6px; border-radius:4px; display:inline-block; margin-top:2px;">${escapeHtml(docRef)}</span>
+                    </div>
+                </div>
+
+                <div style="background:${lockNoticeBg}; border:1px solid ${lockNoticeBorder}; border-radius:6px; padding:9px 12px; font-size:0.78rem; color:${lockNoticeColor}; line-height:1.38;">
+                    ${lockNotice}
+                </div>
+            </div>
+            <div style="background:#f8fafc; border-top:1px solid #e2e8f0; padding:10px 16px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:0.72rem; color:#94a3b8;"><i class="fa-solid fa-fingerprint"></i> Trazabilidad ENCCO</span>
+                <button type="button" class="btn btn-sm btn-primary" onclick="document.getElementById('justificationDetailModal').remove()" style="font-weight:700; padding:5px 14px;">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+}
+window.showJustificationDetailModal = showJustificationDetailModal;
+
 function printStudentPermissionPass(permId) {
     const perm = (STATE.studentPermissions || []).find(p => p.id === permId);
     if (!perm) {
@@ -32447,14 +32780,26 @@ function printStudentPermissionPass(permId) {
 
     const isSingleDay = !perm.endDate || perm.endDate === perm.startDate;
     const datesAuthorized = isSingleDay ? perm.startDate : `Del ${perm.startDate} al ${perm.endDate}`;
-    const isUnjust = isUnjustifiedPermission(perm);
+    const isSusp = (typeof isSuspensionPermission === 'function') ? isSuspensionPermission(perm) : (perm.attendanceCode === 'S' || String(perm.reasonCategory || '').toLowerCase().includes('suspens'));
+    const isUnjust = !isSusp && isUnjustifiedPermission(perm);
+
+    const themeColor = isSusp ? '#7c3aed' : (isUnjust ? '#dc2626' : '#d97706');
+    const headerColor = isSusp ? '#6b21a8' : (isUnjust ? '#dc2626' : '#b45309');
+    const badgeBg = isSusp ? '#faf5ff' : (isUnjust ? '#fef2f2' : '#fffbeb');
+    const badgeBorder = isSusp ? '#7c3aed' : (isUnjust ? '#dc2626' : '#d97706');
+    const badgeColor = isSusp ? '#6b21a8' : (isUnjust ? '#b91c1c' : '#b45309');
+    const watermarkText = isSusp ? 'SUSPENSIÓN DISCIPLINARIA (S)' : (isUnjust ? 'AUSENCIA INJUSTIFICADA (A)' : 'JUSTIFICADO OFICIAL');
+    const watermarkColor = isSusp ? 'rgba(124, 58, 237, 0.08)' : (isUnjust ? 'rgba(220, 38, 38, 0.08)' : 'rgba(217, 119, 6, 0.08)');
+    const headerTitle = isSusp 
+        ? 'Boleta Oficial de Suspensión Disciplinaria (Medida Correctiva)' 
+        : (isUnjust ? 'Constancia Oficial de Ausencia Injustificada (A Blindada)' : 'Comprobante Oficial de Permiso / Justificación de Ausencia');
 
     printWin.document.write(`
         <!DOCTYPE html>
         <html lang="es">
         <head>
             <meta charset="UTF-8">
-            <title>Pase Oficial de Permiso - ${perm.studentName}</title>
+            <title>${headerTitle} - ${perm.studentName}</title>
             <style>
                 @page {
                     size: 8.5in 5.5in;
@@ -32501,14 +32846,14 @@ function printStudentPermissionPass(permId) {
                 .pass-header-text h4 {
                     margin: 3px 0 0 0;
                     font-size: 0.88rem;
-                    color: ${isUnjust ? '#dc2626' : '#b45309'};
+                    color: ${headerColor};
                     font-weight: 800;
                     text-transform: uppercase;
                 }
                 .pass-badge {
-                    border: 1.5px solid ${isUnjust ? '#dc2626' : '#d97706'};
-                    background: ${isUnjust ? '#fef2f2' : '#fffbeb'};
-                    color: ${isUnjust ? '#b91c1c' : '#b45309'};
+                    border: 1.5px solid ${badgeBorder};
+                    background: ${badgeBg};
+                    color: ${badgeColor};
                     padding: 4px 10px;
                     border-radius: 6px;
                     font-size: 0.78rem;
@@ -32555,7 +32900,7 @@ function printStudentPermissionPass(permId) {
                     left: 50%;
                     transform: translate(-50%, -50%) rotate(-15deg);
                     font-size: 3.2rem;
-                    color: ${isUnjust ? 'rgba(220, 38, 38, 0.08)' : 'rgba(217, 119, 6, 0.08)'};
+                    color: ${watermarkColor};
                     font-weight: 900;
                     text-transform: uppercase;
                     pointer-events: none;
@@ -32565,7 +32910,7 @@ function printStudentPermissionPass(permId) {
         </head>
         <body>
             <div class="pass-container">
-                <div class="watermark">${isUnjust ? 'AUSENCIA INJUSTIFICADA (A)' : 'JUSTIFICADO OFICIAL'}</div>
+                <div class="watermark">${watermarkText}</div>
                 <div class="pass-header">
                     <div style="font-size:0.75rem; font-weight:800; color:#047857;">
                         MINISTERIO DE EDUCACIÓN<br>DIRECCIÓN DEPARTAMENTAL
@@ -32573,7 +32918,7 @@ function printStudentPermissionPass(permId) {
                     <div class="pass-header-text">
                         <h2>Escuela Nacional de Ciencias Comerciales</h2>
                         <h3>Auxiliatura y Control de Disciplina Estudiantil</h3>
-                        <h4>${isUnjust ? 'Constancia Oficial de Ausencia Injustificada (A Blindada)' : 'Comprobante Oficial de Permiso / Justificación de Ausencia'}</h4>
+                        <h4>${headerTitle}</h4>
                     </div>
                     <div class="pass-badge">
                         FOLIO: ${perm.id.replace('perm_', 'PERM-').substr(0, 14).toUpperCase()}<br>
@@ -32598,8 +32943,13 @@ function printStudentPermissionPass(permId) {
                     <strong>Motivo y Observación Registrada:</strong><br>
                     "${perm.reasonDetail}"
                     <div style="margin-top:4px; font-size:0.76rem; color:#64748b;">
-                        <em>* Este registro ha sido aplicado automáticamente en la lista de asistencia de todos los catedráticos del estudiante con código '${isUnjust ? 'A\' (Ausencia Injustificada Blindada)' : 'J\' (Justificado)'}.</em>
+                        <em>* Este registro ha sido aplicado automáticamente en la lista de asistencia institucional con código '${isSusp ? 'S\' (Suspensión Disciplinaria Oficial)' : (isUnjust ? 'A\' (Ausencia Injustificada Blindada)' : 'J\' (Justificado)')}.</em>
                     </div>
+                    ${isSusp ? `
+                    <div style="margin-top:8px; padding:6px 10px; background:#faf5ff; border:1px solid #ddd6fe; border-radius:4px; font-size:0.75rem; color:#5b21b6; line-height:1.4;">
+                        <strong>⚖️ Garantía Institucional de Derecho a Examen:</strong> De conformidad con la normativa ministerial y el reglamento escolar de la ENCCO, la medida disciplinaria de suspensión temporal restringe la presencia física en el establecimiento, pero <u>NO se computa como inasistencia injustificada para la pérdida de derecho a evaluaciones</u>. El/la estudiante conserva su derecho pleno a presentar tareas, proyectos y evaluaciones correspondientes.
+                    </div>
+                    ` : ''}
                 </div>
 
                 <div class="signatures">
@@ -32611,14 +32961,13 @@ function printStudentPermissionPass(permId) {
                     </div>
                     <div>
                         <div class="sig-line">
-                            Sello Oficial de Auxiliatura<br>
-                            Control de Asistencia ENCCO
+                            ${isSusp ? 'Sello Oficial de Dirección<br>Comisión de Disciplina ENCCO' : 'Sello Oficial de Auxiliatura<br>Control de Asistencia ENCCO'}
                         </div>
                     </div>
                     <div>
                         <div class="sig-line">
-                            Firma de Padre / Encargado<br>
-                            Enterado(a) de la Justificación
+                            Firma de Padre / Madre / Encargado<br>
+                            ${isSusp ? 'Notificado(a) de la Medida Disciplinaria' : (isUnjust ? 'Notificado(a) de la Inasistencia' : 'Enterado(a) de la Justificación')}
                         </div>
                     </div>
                 </div>
@@ -48489,17 +48838,25 @@ function renderPermissionsHistoryView(forceReset = false) {
             : `<strong style="color:#0f172a;">${escapeHtml(p.startDate)}</strong><br><small style="color:#64748b;">al ${escapeHtml(p.endDate)}</small>`;
         const refTag = p.docRef ? `<br><small style="color:#64748b;"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(p.docRef)}</small>` : '';
 
-        const isUnjust = isUnjustifiedPermission(p);
-        const catBadgeHtml = isUnjust
-            ? `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:800; font-size:0.75rem; border:1px solid #fca5a5;"><i class="fa-solid fa-lock"></i> ${escapeHtml(p.reasonCategory)} (A Blindada)</span>`
-            : `<span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.75rem; border:1px solid #fed7aa;">${escapeHtml(p.reasonCategory)}</span>`;
+        const isSusp = (typeof isSuspensionPermission === 'function') ? isSuspensionPermission(p) : (p.attendanceCode === 'S' || String(p.reasonCategory || '').toLowerCase().includes('suspens'));
+        const isUnjust = !isSusp && isUnjustifiedPermission(p);
+        let catBadgeHtml = '';
+        if (isSusp) {
+            catBadgeHtml = `<span class="badge" style="background:#faf5ff; color:#6b21a8; font-weight:800; font-size:0.75rem; border:1px solid #d8b4fe;"><i class="fa-solid fa-gavel"></i> ${escapeHtml(p.reasonCategory)} (S - Con Derecho a Examen)</span>`;
+        } else if (isUnjust) {
+            catBadgeHtml = `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:800; font-size:0.75rem; border:1px solid #fca5a5;"><i class="fa-solid fa-lock"></i> ${escapeHtml(p.reasonCategory)} (A Blindada)</span>`;
+        } else {
+            catBadgeHtml = `<span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; font-size:0.75rem; border:1px solid #fed7aa;"><i class="fa-solid fa-check"></i> ${escapeHtml(p.reasonCategory)}</span>`;
+        }
+
+        const dateIconColor = isSusp ? '#7c3aed' : (isUnjust ? '#dc2626' : '#d97706');
 
         return `
             <tr style="border-bottom:1px solid #f1f5f9;">
                 <td style="text-align:center; font-weight:700; color:#64748b;">${idx + 1}</td>
                 <td style="white-space:nowrap;">
                     <div style="font-size:0.84rem; display:flex; align-items:center; gap:6px;">
-                        <i class="fa-solid fa-calendar-check" style="color:${isUnjust ? '#dc2626' : '#d97706'};"></i>
+                        <i class="fa-solid fa-calendar-check" style="color:${dateIconColor};"></i>
                         <div>${dateDisplay}</div>
                     </div>
                 </td>

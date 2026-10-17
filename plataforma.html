@@ -2760,8 +2760,9 @@
                                 <span class="badge" style="background:#dcfce7; color:#15803d; font-weight:800; padding:4px 8px; font-size:0.8rem;">P = Presente</span>
                                 <span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:800; padding:4px 8px; font-size:0.8rem;">A = Ausente / Falta</span>
                                 <span class="badge" style="background:#ffedd5; color:#c2410c; font-weight:800; padding:4px 8px; font-size:0.8rem;" title="Justificado por Auxiliatura / Dirección. Bloqueado para edición en la vista del docente."><i class="fa-solid fa-lock" style="font-size:0.75rem; margin-right:3px;"></i>J = Justificado (Protegido)</span>
+                                <span class="badge" style="background:#faf5ff; color:#6b21a8; font-weight:800; padding:4px 8px; font-size:0.8rem; border:1px solid #d8b4fe;" title="Suspensión Disciplinaria Oficial. Mantiene derecho a examen."><i class="fa-solid fa-gavel" style="font-size:0.75rem; margin-right:3px;"></i>S = Suspensión (Oficial)</span>
                                 <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800; padding:4px 8px; font-size:0.8rem;">T = Tardanza</span>
-                                <span class="badge" style="background:#f1f5f9; color:#475569; font-weight:700; padding:4px 8px; font-size:0.78rem;" title="Presione P, A, J, T o Espacio en el teclado para marcar la casilla activa"><i class="fa-solid fa-keyboard"></i> Teclas: P / A / J / T</span>
+                                <span class="badge" style="background:#f1f5f9; color:#475569; font-weight:700; padding:4px 8px; font-size:0.78rem;" title="Presione P, A, J, T, S o Espacio en el teclado para marcar la casilla activa"><i class="fa-solid fa-keyboard"></i> Teclas: P / A / J / T / S</span>
                             </div>
                             <div id="attendanceStatsSummary" style="font-weight:800; color:var(--brand-green-dark); font-size:0.88rem;">
                                 <!-- Resumen en vivo -->
@@ -3028,6 +3029,7 @@
                                 </label>
                                 <select id="permissionsLogCategoryFilter" class="form-control" onchange="renderPermissionsHistoryView()" style="font-size:0.84rem; font-weight:600;">
                                     <option value="ALL">-- Todos los Motivos --</option>
+                                    <option value="Suspensión Disciplinaria">⚖️ Suspensión Disciplinaria (S - Con Derecho a Examen)</option>
                                     <option value="Injustificada">Injustificada (A Blindada)</option>
                                     <option value="Salud / Cita Médica">Salud / Cita Médica</option>
                                     <option value="Enfermedad">Enfermedad / Salud</option>
@@ -5108,6 +5110,10 @@
                                 <div style="font-size:0.68rem; font-weight:800; color:#881337; text-transform:uppercase;">🔒 "A" Blindadas</div>
                                 <div id="profKpiLockedAbsences" style="font-size:1.25rem; font-weight:900; color:#be123c;">0</div>
                             </div>
+                            <div style="background:#faf5ff; border:1px solid #d8b4fe; border-radius:8px; padding:8px 10px; text-align:center;">
+                                <div style="font-size:0.68rem; font-weight:800; color:#6b21a8; text-transform:uppercase;">⚖️ Suspensión (S)</div>
+                                <div id="profKpiSuspensions" style="font-size:1.25rem; font-weight:900; color:#7c3aed;">0</div>
+                            </div>
                             <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:8px 10px; text-align:center;">
                                 <div style="font-size:0.68rem; font-weight:800; color:#92400e; text-transform:uppercase;">Tardanzas (T)</div>
                                 <div id="profKpiMonthAbsences" style="font-size:1.25rem; font-weight:900; color:#d97706;">0</div>
@@ -5122,6 +5128,12 @@
                             </div>
                         </div>
 
+                        <!-- AVISO DE SALVAGUARDA INSTITUCIONAL DE SUSPENSIÓN -->
+                        <div id="profSuspensionNotice" style="display:none; background:#faf5ff; border:1px solid #d8b4fe; border-radius:6px; padding:8px 12px; margin-bottom:14px; font-size:0.78rem; color:#5b21b6; align-items:center; gap:8px;">
+                            <i class="fa-solid fa-gavel" style="font-size:1.1rem; color:#7c3aed;"></i>
+                            <div><strong>Garantía Institucional de Derecho a Examen:</strong> Las suspensiones disciplinarias oficiales ("S") corresponden a medidas correctivas temporales y <u>no restan derecho a evaluaciones</u> ni se computan como inasistencias injustificadas según la reglamentación académica oficial.</div>
+                        </div>
+
                         <!-- SECCIÓN 1: HISTORIAL DE INASISTENCIAS, PERMISOS Y AUSENCIAS EN AULA -->
                         <div style="margin-bottom:16px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
@@ -5129,10 +5141,10 @@
                                     <h4 style="margin:0; color:#0369a1; font-size:0.95rem; font-weight:800;">
                                         <i class="fa-solid fa-user-xmark"></i> Historial Integral de Inasistencias, Tardanzas y Permisos Oficiales
                                     </h4>
-                                    <p style="margin:2px 0 0 0; font-size:0.78rem; color:var(--text-secondary);">Consolidado automático de listas de asistencia diaria, ausencias blindadas (🔒) y permisos de Auxiliatura/Dirección.</p>
+                                    <p style="margin:2px 0 0 0; font-size:0.78rem; color:var(--text-secondary);">Consolidado automático de listas de asistencia diaria, ausencias blindadas (🔒), suspensiones disciplinarias (⚖️) y permisos de Auxiliatura/Dirección.</p>
                                 </div>
                                 <button type="button" class="btn btn-outline-primary btn-sm role-restricted" data-allowed="admin,director,secretaria,profesor_auxiliar,auxiliar" onclick="openCreatePermissionModal(STATE.selectedStudentId)" style="font-weight:700; font-size:0.78rem; padding:3px 10px;">
-                                    <i class="fa-solid fa-file-signature"></i> + Permiso / Ausencia "A"
+                                    <i class="fa-solid fa-file-signature"></i> + Permiso / Suspensión "S" / "A" 🔒
                                 </button>
                             </div>
                             <div id="studentAttendanceHistory" style="font-size:0.84rem; min-height:80px; max-height:240px; overflow-y:auto; background:var(--bg-main); padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border-color);"></div>
@@ -6012,6 +6024,7 @@
                             <option value="Trámite Personal / Legal">Trámite Personal / Legal del Encargado</option>
                             <option value="Fuerza Mayor / Clima">Fuerza Mayor / Transporte / Clima</option>
                             <option value="Otro Motivo Justificado">Otro Motivo Justificado</option>
+                            <option value="Suspensión Disciplinaria">Suspensión Disciplinaria (Sanción Oficial - Mantiene Derecho a Examen)</option>
                             <option value="Injustificada">Injustificada (Falta "A" Blindada en Todos los Maestros)</option>
                         </select>
                     </div>
