@@ -82,6 +82,7 @@ eval(extractFunction('extractGradeNumber'));
 eval(extractFunction('extractSectionLetter'));
 eval(extractFunction('formatStudentDisplayName'));
 eval(extractFunction('isDirectorOrSuperAdmin'));
+eval(extractFunction('canManageStudentPermissions'));
 eval(extractFunction('saveAttendanceRecords'));
 eval(extractFunction('isUnjustifiedPermission'));
 eval(extractFunction('applyStudentPermission'));
@@ -187,13 +188,15 @@ test('Modificación: Desplazamiento de rango (10-12 -> 12-15) remueve J del 10 y
     perm.endDate = newEnd;
     applyStudentPermission(perm);
 
-    // Días 12, 13, 14, 15 deben ser 'J'
-    [12, 13, 14, 15].forEach(day => {
-        assert.strictEqual(STATE.attendanceRecords[genKey]['std-test-1'][day], 'J', `Día ${day} debe ser 'J' en General`);
-        assert.strictEqual(STATE.attendanceRecords[crs1Key]['std-test-1'][day], 'J', `Día ${day} debe ser 'J' en Curso 1`);
-        assert.strictEqual(STATE.attendanceRecords[crs2Key]['std-test-1'][day], 'J', `Día ${day} debe ser 'J' en Curso 2`);
-        assert(STATE.attendancePermissionsMeta[`std-test-1_8_${day}`], `Metadata debe existir para día ${day}`);
+    // Días lectivos 12, 13, 14 (miércoles, jueves, viernes) deben ser 'J'
+    // Día 15 de agosto de 2026 es sábado (fin de semana), por lo que se respeta el calendario y no se marca automáticamente
+    [12, 13, 14].forEach(day => {
+        assert.strictEqual(STATE.attendanceRecords[genKey]['std-test-1'][day], 'J', `Día lectivo ${day} debe ser 'J' en General`);
+        assert.strictEqual(STATE.attendanceRecords[crs1Key]['std-test-1'][day], 'J', `Día lectivo ${day} debe ser 'J' en Curso 1`);
+        assert.strictEqual(STATE.attendanceRecords[crs2Key]['std-test-1'][day], 'J', `Día lectivo ${day} debe ser 'J' en Curso 2`);
+        assert(STATE.attendancePermissionsMeta[`std-test-1_8_${day}`], `Metadata debe existir para día lectivo ${day}`);
     });
+    assert.strictEqual(STATE.attendanceRecords[genKey]['std-test-1'][15], undefined, 'Día 15 (sábado fin de semana) no debe marcarse');
 
     // Verificación de datos de otros días y otros alumnos: totalmente preservados
     assert.strictEqual(STATE.attendanceRecords[genKey]['std-test-1'][1], 'P', 'Día 1 no debe haber cambiado');

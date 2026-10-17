@@ -1451,6 +1451,15 @@ function isDirectorOrSuperAdmin() {
 }
 window.isDirectorOrSuperAdmin = isDirectorOrSuperAdmin;
 
+function canManageStudentPermissions() {
+    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
+    const rLower = String(curRole).toLowerCase();
+    const userRole = (window.STATE && STATE.currentUser && STATE.currentUser.role) ? String(STATE.currentUser.role).toLowerCase() : '';
+    const valid = ['admin', 'super_usuario', 'superadmin', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
+    return valid.includes(rLower) || valid.includes(userRole);
+}
+window.canManageStudentPermissions = canManageStudentPermissions;
+
 // 🔒 RBAC ESTRICTO: ACCESO A RESPALDO Y AUDITORÍAS
 // Exclusivo para Dirección, Secretaría y Superusuario (oculto y bloqueado para usuarios estándar y docentes)
 function canAccessBackupAndAudit(role = null) {
@@ -2396,6 +2405,9 @@ async function recoverAllAttendanceRecords(forceRefresh = true) {
     // 2. Limpieza estricta de registros de Arévalo (estrictamente acotada a 25 y 26 de septiembre)
     if (typeof sanitizeArevaloAttendanceRecords === 'function') {
         sanitizeArevaloAttendanceRecords();
+    }
+    if (typeof sanitizeAttendanceCalendarAndWeekends === 'function') {
+        sanitizeAttendanceCalendarAndWeekends();
     }
 
     if (forceRefresh) {
@@ -5263,23 +5275,29 @@ function initFirebaseRealtimeConnection() {
                         }
                     } else if (cleanPath === 'disciplineReports') {
                         if (Array.isArray(nodeData)) {
-                            STATE.disciplineReports = nodeData;
+                            const deletedDisc = Array.isArray(STATE.deletedDisciplineIds) ? new Set(STATE.deletedDisciplineIds) : new Set();
+                            STATE.disciplineReports = nodeData.filter(d => d && d.id && !deletedDisc.has(d.id));
                             if (typeof renderDisciplineTable === 'function') renderDisciplineTable();
                         }
                     } else if (cleanPath === 'studentPermissions') {
                         if (Array.isArray(nodeData)) {
-                            nodeData.forEach(p => {
+                            const deletedPerms = Array.isArray(STATE.deletedPermissionIds) ? new Set(STATE.deletedPermissionIds) : new Set();
+                            const activeNodeData = nodeData.filter(p => p && p.id && !deletedPerms.has(p.id));
+                            activeNodeData.forEach(p => {
                                 if (p && (typeof isStudentArevalo === 'function' ? isStudentArevalo(p.studentId || p.studentCode || p.studentName) : (p.studentId === 'I228WGR' || p.studentCode === 'I228WGR'))) {
                                     p.startDate = '2026-09-25';
                                     p.endDate = '2026-09-26';
                                 }
                             });
-                            STATE.studentPermissions = nodeData;
-                            nodeData.forEach(p => {
+                            STATE.studentPermissions = activeNodeData;
+                            activeNodeData.forEach(p => {
                                 if (typeof applyStudentPermission === 'function') applyStudentPermission(p);
                             });
                             if (typeof sanitizeArevaloAttendanceRecords === 'function') {
                                 sanitizeArevaloAttendanceRecords();
+                            }
+                            if (typeof sanitizeAttendanceCalendarAndWeekends === 'function') {
+                                sanitizeAttendanceCalendarAndWeekends();
                             }
                             if (typeof renderPermissionsHistoryView === 'function' && STATE.activeView === 'permissions-history') {
                                 renderPermissionsHistoryView();
@@ -7806,7 +7824,9 @@ var STATE = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {
     pensum: [],
     announcements: [],
     disciplineReports: [],
+    deletedDisciplineIds: [],
     studentPermissions: [],
+    deletedPermissionIds: [],
     attendancePermissionsMeta: {},
     attendanceRecords: {},
     dismissedAlerts: {},
@@ -7816,7 +7836,23 @@ var STATE = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {
     schoolHeader: { schoolName: 'Escuela Nacional de Ciencias Comerciales', schoolCode: '22-01-0014-46', location: 'Jutiapa, Guatemala' },
     config: { activeBimestre: 1, activeUnits: [1], globalLocked: false, minPassingScore: 60, teacherBypass: {} }
 };
-if (typeof window !== 'undefined') window.STATE = STATE;
+if (typeof window !== 'undefined') {
+    window.STATE = STATE;
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const savedDelPerms = localStorage.getItem('ENCCO_DELETED_PERMISSION_IDS');
+            if (savedDelPerms) {
+                const parsedP = JSON.parse(savedDelPerms);
+                if (Array.isArray(parsedP)) STATE.deletedPermissionIds = parsedP;
+            }
+            const savedDelDisc = localStorage.getItem('ENCCO_DELETED_DISCIPLINE_IDS');
+            if (savedDelDisc) {
+                const parsedD = JSON.parse(savedDelDisc);
+                if (Array.isArray(parsedD)) STATE.deletedDisciplineIds = parsedD;
+            }
+        }
+    } catch(e) {}
+}
 
 function toggleMobileMenu() {
     const menu = document.getElementById('mobileNavMenu');
@@ -10075,10 +10111,25 @@ function applyIncomingCloudState(incomingState, force = false) {
                         STATE.attendanceRecords[recKey][sId][dayKey] = dayVal;
                     }
                 }
+                // 🛡️ DEPURACIÓN ATÓMICA DE RESIDUOS Y CACHÉ FANTASMA:
+                // Si un día fue eliminado o limpiado en la nube, purgarlo definitivamente del estado local
+                for (const localDay of Object.keys(STATE.attendanceRecords[recKey][sId])) {
+                    if (daysMap[localDay] === undefined) {
+                        const dirtyExact = dirtyCells[`${recKey}_${sId}_${localDay}`];
+                        const dirtyAny = dirtyCells[`ANY_${sId}_${localDay}`];
+                        const activeDirty = (dirtyExact && (nowTs - dirtyExact.ts < 8000)) ? dirtyExact : ((dirtyAny && (nowTs - dirtyAny.ts < 8000)) ? dirtyAny : null);
+                        if (!activeDirty) {
+                            delete STATE.attendanceRecords[recKey][sId][localDay];
+                        }
+                    }
+                }
             }
         }
         if (typeof sanitizeArevaloAttendanceRecords === 'function') {
             sanitizeArevaloAttendanceRecords();
+        }
+        if (typeof sanitizeAttendanceCalendarAndWeekends === 'function') {
+            sanitizeAttendanceCalendarAndWeekends();
         }
     }
     if (incomingState.attendanceAlerts) {
@@ -10107,9 +10158,10 @@ function applyIncomingCloudState(incomingState, force = false) {
         }
     }
     if (incomingState.studentPermissions) {
+        const deletedPerms = Array.isArray(STATE.deletedPermissionIds) ? new Set(STATE.deletedPermissionIds) : new Set();
         const cloudPerms = (Array.isArray(incomingState.studentPermissions)
             ? incomingState.studentPermissions
-            : Object.values(incomingState.studentPermissions)).filter(p => p && p.id);
+            : Object.values(incomingState.studentPermissions)).filter(p => p && p.id && !deletedPerms.has(p.id));
         cloudPerms.forEach(p => {
             if (p && (typeof isStudentArevalo === 'function' ? isStudentArevalo(p.studentId || p.studentCode || p.studentName) : (p.studentId === 'I228WGR' || p.studentCode === 'I228WGR'))) {
                 p.startDate = '2026-09-25';
@@ -10123,6 +10175,9 @@ function applyIncomingCloudState(incomingState, force = false) {
         if (typeof sanitizeArevaloAttendanceRecords === 'function') {
             sanitizeArevaloAttendanceRecords();
         }
+        if (typeof sanitizeAttendanceCalendarAndWeekends === 'function') {
+            sanitizeAttendanceCalendarAndWeekends();
+        }
         if (STATE.activeView === 'permissions-history' && typeof renderPermissionsHistoryView === 'function') {
             renderPermissionsHistoryView();
         }
@@ -10134,6 +10189,7 @@ function applyIncomingCloudState(incomingState, force = false) {
         if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
         const dirtyCells = window._localDirtyAttendanceCells || {};
         const nowTs = Date.now();
+        const incomingMetaKeys = new Set(Object.keys(incomingState.attendancePermissionsMeta));
         for (const [mKey, mVal] of Object.entries(incomingState.attendancePermissionsMeta)) {
             const isArevaloMeta = (typeof isStudentArevalo === 'function' && isStudentArevalo(mKey)) || mKey.includes('I228WGR') || mKey.includes('2026-CB-003');
             if (isArevaloMeta) {
@@ -10156,18 +10212,36 @@ function applyIncomingCloudState(incomingState, force = false) {
                 STATE.attendancePermissionsMeta[mKey] = mVal;
             }
         }
+        // 🛡️ DEPURACIÓN ATÓMICA DE METADATA FANTASMA:
+        // Eliminar claves locales de metadatos de permisos que ya no existen en la base de datos
+        for (const localMKey of Object.keys(STATE.attendancePermissionsMeta)) {
+            if (!incomingMetaKeys.has(localMKey)) {
+                const parts = localMKey.split('_');
+                const sId = parts[0];
+                const dKey = parts[2];
+                const dirtyAny = (sId && dKey) ? dirtyCells[`ANY_${sId}_${dKey}`] : null;
+                if (!dirtyAny || (nowTs - dirtyAny.ts >= 8000)) {
+                    delete STATE.attendancePermissionsMeta[localMKey];
+                }
+            }
+        }
         if (typeof sanitizeArevaloAttendanceRecords === 'function') {
             sanitizeArevaloAttendanceRecords();
+        }
+        if (typeof sanitizeAttendanceCalendarAndWeekends === 'function') {
+            sanitizeAttendanceCalendarAndWeekends();
         }
         if (STATE.activeView === 'attendance' && !isActivelyClickingAttendance && typeof loadAttendanceList === 'function') {
             loadAttendanceList();
         }
     }
     if (incomingState.studentAnnotations) {
+        const deletedAnnots = Array.isArray(STATE.deletedAnnotationIds) ? new Set(STATE.deletedAnnotationIds) : new Set();
         const cloudAnnots = (Array.isArray(incomingState.studentAnnotations)
             ? incomingState.studentAnnotations
-            : Object.values(incomingState.studentAnnotations)).filter(a => a && a.id);
+            : Object.values(incomingState.studentAnnotations)).filter(a => a && a.id && !deletedAnnots.has(a.id));
         if (!Array.isArray(STATE.studentAnnotations)) STATE.studentAnnotations = [];
+        STATE.studentAnnotations = STATE.studentAnnotations.filter(a => a && a.id && !deletedAnnots.has(a.id));
         const annotMap = new Map();
         STATE.studentAnnotations.forEach(a => { if (a && a.id) annotMap.set(a.id, a); });
         cloudAnnots.forEach(a => {
@@ -10176,10 +10250,12 @@ function applyIncomingCloudState(incomingState, force = false) {
         STATE.studentAnnotations = Array.from(annotMap.values()).sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(b.createdAt || a.date || 0));
     }
     if (incomingState.courseBitacora) {
+        const deletedBitacora = Array.isArray(STATE.deletedCourseBitacoraIds) ? new Set(STATE.deletedCourseBitacoraIds) : new Set();
         const cloudBitacora = (Array.isArray(incomingState.courseBitacora)
             ? incomingState.courseBitacora
-            : Object.values(incomingState.courseBitacora)).filter(b => b && b.id);
+            : Object.values(incomingState.courseBitacora)).filter(b => b && b.id && !deletedBitacora.has(b.id));
         if (!Array.isArray(STATE.courseBitacora)) STATE.courseBitacora = [];
+        STATE.courseBitacora = STATE.courseBitacora.filter(b => b && b.id && !deletedBitacora.has(b.id));
         const bitMap = new Map();
         STATE.courseBitacora.forEach(b => { if (b && b.id) bitMap.set(b.id, b); });
         cloudBitacora.forEach(b => {
@@ -10416,7 +10492,9 @@ function saveStateRecursively(options = { syncCloud: false, isAutoSave: false })
             pensum: recursiveDeepClone(STATE.pensum || []),
             announcements: recursiveDeepClone(STATE.announcements || []),
             disciplineReports: recursiveDeepClone(STATE.disciplineReports || []),
+            deletedDisciplineIds: recursiveDeepClone(STATE.deletedDisciplineIds || []),
             studentPermissions: recursiveDeepClone(STATE.studentPermissions || []),
+            deletedPermissionIds: recursiveDeepClone(STATE.deletedPermissionIds || []),
             attendancePermissionsMeta: recursiveDeepClone(STATE.attendancePermissionsMeta || {}),
             attendanceRecords: recursiveDeepClone(STATE.attendanceRecords || {}),
             studentAnnotations: recursiveDeepClone(STATE.studentAnnotations || []),
@@ -28532,6 +28610,11 @@ function getStudentPermissionForDay(studentId, year, month, day) {
     const y = parseInt(year) || 2026;
     const m = parseInt(month);
     const d = parseInt(day);
+    if (!m || !d || d < 1 || d > 31) return null;
+    const targetDate = new Date(y, m - 1, d);
+    if (isNaN(targetDate.getTime())) return null;
+    const dayOfWeek = targetDate.getDay();
+    const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
     const targetDateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     
     // Obtener datos del estudiante para búsqueda tolerante multidimensional
@@ -28548,6 +28631,13 @@ function getStudentPermissionForDay(studentId, year, month, day) {
         ? (isStudentArevalo(studentId) || isStudentArevalo(sObj) || isStudentArevalo(sCode) || isStudentArevalo(sCarne) || isStudentArevalo(sName))
         : (studentId === 'stu-sire-I228WGR' || sCode === 'I228WGR' || (sCarne && sCarne.includes('2026-CB-003')) || sName.includes('ARÉVALO MORÁN'));
     if (isArevalo && (m !== 9 || (d !== 25 && d !== 26))) {
+        return null;
+    }
+
+    // 🛡️ REGLA OBLIGATORIA: Respeto estricto del calendario escolar.
+    // Fines de semana (sábados y domingos) no tienen marcas automáticas de justificación.
+    // Excepción estricta exclusiva: Arévalo Morán (sábado 26 de septiembre de 2026).
+    if (isWeekend && !(isArevalo && m === 9 && d === 26)) {
         return null;
     }
 
@@ -28657,6 +28747,9 @@ function loadAttendanceList() {
     }
     if (typeof sanitizeArevaloAttendanceRecords === 'function') {
         sanitizeArevaloAttendanceRecords();
+    }
+    if (typeof sanitizeAttendanceCalendarAndWeekends === 'function') {
+        sanitizeAttendanceCalendarAndWeekends();
     }
     const today = new Date();
     const todayDay = today.getDate();
@@ -28885,9 +28978,19 @@ function loadAttendanceList() {
                         sRecords[day] = '';
                     }
                 }
-            } else if (!permMeta && (val === 'J' || val === 'A')) {
-                const hasOfficialPerm = Array.isArray(STATE.studentPermissions) && STATE.studentPermissions.some(p => p && (p.studentId === s.id || p.personalCode === s.personalCode || p.carne === s.carne));
-                if (hasOfficialPerm) {
+            } else if (!permMeta && val === 'J') {
+                val = '';
+                rawVal = '';
+                genDayVal = '';
+                sRecords[day] = '';
+            }
+
+            // 🛡️ REGLA OBLIGATORIA: Respeto estricto del calendario escolar en fines de semana
+            // Los fines de semana (sábados y domingos) no tienen marcas automáticas ni estados asignados por el sistema.
+            // Excepción estricta: Arévalo Morán (sábado 26 de septiembre).
+            if (isWeekend && !(isArevalo && month === 9 && day === 26)) {
+                permMeta = null;
+                if (val === 'J' || val === 'A') {
                     val = '';
                     rawVal = '';
                     genDayVal = '';
@@ -29981,6 +30084,9 @@ function saveAttendanceRecords(showToastMsg = true, e = null, recordKey = null) 
     if (typeof sanitizeArevaloAttendanceRecords === 'function') {
         sanitizeArevaloAttendanceRecords();
     }
+    if (typeof sanitizeAttendanceCalendarAndWeekends === 'function') {
+        sanitizeAttendanceCalendarAndWeekends();
+    }
     if (e) {
         if (e._enccoHandled) return;
         e._enccoHandled = true;
@@ -30004,10 +30110,10 @@ function saveAttendanceRecords(showToastMsg = true, e = null, recordKey = null) 
         } catch(e) {}
     }
 
-    // Persistencia ultrarrápida del backup exclusivo de asistencia en LocalStorage (<1ms)
+    // 🛡️ Depuración de almacenamiento residual: eliminar copias secundarias que causan caché fantasma o rollbacks
     try {
-        if (typeof localStorage !== 'undefined' && STATE.attendanceRecords && Object.keys(STATE.attendanceRecords).length > 0) {
-            localStorage.setItem('ENCCO_ATTENDANCE_MASTER_BACKUP', JSON.stringify(STATE.attendanceRecords));
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('ENCCO_ATTENDANCE_MASTER_BACKUP');
         }
     } catch(e) {}
 
@@ -31206,8 +31312,8 @@ function saveStudentPermissionForm(e) {
 
     const editingId = (document.getElementById('permEditingId')?.value || '').trim();
     if (editingId) {
-        if (!isDirectorOrSuperAdmin()) {
-            showToast('Acceso Restringido: Solo la Dirección General puede editar permisos de ausencia existentes.', 'warning');
+        if (!canManageStudentPermissions()) {
+            showToast('Acceso Restringido: La edición de permisos de ausencia está reservada a Auxiliatura, Dirección y Secretaría.', 'warning');
             return;
         }
 
@@ -31251,7 +31357,7 @@ function saveStudentPermissionForm(e) {
         perm.authorizedBy = authorizedBy;
         perm.attendanceCode = isUnjustifiedPermission(perm) ? 'A' : 'J';
         perm.lastEditedAt = new Date().toISOString();
-        perm.lastEditedBy = 'Dirección General';
+        perm.lastEditedBy = (STATE.currentUser && STATE.currentUser.name) ? STATE.currentUser.name : (STATE.currentRole === 'profesor_auxiliar' ? 'Auxiliatura' : 'Dirección General');
 
         // 3. Re-aplicar nuevo rango a la asistencia institucional
         applyStudentPermission(perm);
@@ -31288,6 +31394,11 @@ function saveStudentPermissionForm(e) {
         }
 
         showToast(`✅ Registro actualizado exitosamente para ${perm.studentName}. La asistencia se ha sincronizado automáticamente.`, 'success');
+        return;
+    }
+
+    if (!canManageStudentPermissions()) {
+        showToast('Acceso Restringido: El registro de permisos oficiales de ausencia está reservado a Auxiliatura, Dirección y Secretaría.', 'warning');
         return;
     }
 
@@ -31416,8 +31527,18 @@ function removeStudentPermissionDatesFromAttendance(perm, oldStartDate = null, o
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
     if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
 
-    const oldStart = new Date(effectiveOldStart + 'T00:00:00');
-    const oldEnd = new Date(effectiveOldEnd + 'T00:00:00');
+    const cleanDateStr = (val) => String(val || '').split('T')[0].trim();
+    const parseLocalDate = (val) => {
+        const str = cleanDateStr(val);
+        const parts = str.split('-').map(Number);
+        if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+            return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+        }
+        return new Date(val);
+    };
+
+    const oldStart = parseLocalDate(effectiveOldStart);
+    const oldEnd = parseLocalDate(effectiveOldEnd);
 
     // Encontrar estudiante y sus códigos
     const student = (STATE.students || []).find(s => s.id === perm.studentId);
@@ -31512,9 +31633,18 @@ function removeStudentPermissionDatesFromAttendance(perm, oldStartDate = null, o
                     }
                 });
 
-                // Eliminar metadata asociada
+                // Eliminar metadata asociada y liberar candado
                 if (!meta || meta.permissionId === perm.id || !meta.permissionId) {
                     delete STATE.attendancePermissionsMeta[metaKey];
+                }
+
+                // 🛡️ Liberar celdas temporales en buffer local para permitir desbloqueo inmediato en tiempo real
+                if (window._localDirtyAttendanceCells) {
+                    Object.keys(window._localDirtyAttendanceCells).forEach(k => {
+                        if (k.includes(aliasId) && (k.endsWith('_' + d) || k.includes('_' + d + '_'))) {
+                            delete window._localDirtyAttendanceCells[k];
+                        }
+                    });
                 }
             });
         }
@@ -31678,39 +31808,113 @@ function sanitizeArevaloAttendanceRecords() {
         });
     }
 
-    // 3. Sanitizar master backup en localStorage si existe
+    // 3. Purgar definitivamente cualquier residuo en localStorage
     try {
         if (typeof localStorage !== 'undefined') {
-            const rawBackup = localStorage.getItem('ENCCO_ATTENDANCE_MASTER_BACKUP');
-            if (rawBackup) {
-                const parsed = JSON.parse(rawBackup);
-                if (parsed && typeof parsed === 'object') {
-                    for (const [sheetKey, sheetObj] of Object.entries(parsed)) {
-                        if (!sheetObj || typeof sheetObj !== 'object') continue;
-                        const mMatch = sheetKey.match(/_M(\d+)_/);
-                        const m = mMatch ? parseInt(mMatch[1], 10) : 0;
-                        arevaloAliases.forEach(alias => {
-                            const daysObj = sheetObj[alias];
-                            if (!daysObj) return;
-                            if (typeof daysObj === 'object') {
-                                for (const [dStr, val] of Object.entries(daysObj)) {
-                                    const d = parseInt(dStr, 10);
-                                    if (val === 'J' || val === 'A') {
-                                        if (m !== 9 || (d !== 25 && d !== 26)) {
-                                            delete daysObj[dStr];
-                                        }
-                                    }
-                                }
-                            }
-                        });
-                    }
-                    localStorage.setItem('ENCCO_ATTENDANCE_MASTER_BACKUP', JSON.stringify(parsed));
-                }
-            }
+            localStorage.removeItem('ENCCO_ATTENDANCE_MASTER_BACKUP');
         }
     } catch (e) {}
 }
 window.sanitizeArevaloAttendanceRecords = sanitizeArevaloAttendanceRecords;
+
+function sanitizeAttendanceCalendarAndWeekends() {
+    if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+    if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
+    const cycleYear = parseInt(STATE.activeCycle) || 2026;
+
+    // 1. Limpieza de marcas automáticas 'J' en fines de semana en STATE.attendanceRecords
+    for (const [recKey, sheetObj] of Object.entries(STATE.attendanceRecords)) {
+        if (!sheetObj || typeof sheetObj !== 'object') continue;
+        const mMatch = recKey.match(/_M(\d+)_/) || recKey.match(/_M(\d+)$/) || recKey.match(/_(\d+)_/);
+        const m = mMatch ? parseInt(mMatch[1], 10) : 0;
+        if (!m || m < 1 || m > 12) continue;
+
+        for (const [studentId, daysObj] of Object.entries(sheetObj)) {
+            if (!daysObj) continue;
+            const isArevalo = (typeof isStudentArevalo === 'function')
+                ? isStudentArevalo(studentId)
+                : (studentId === 'stu-sire-I228WGR' || studentId === 'I228WGR' || studentId === '2026-CB-003');
+
+            if (Array.isArray(daysObj)) {
+                for (let d = 1; d < daysObj.length; d++) {
+                    const dt = new Date(cycleYear, m - 1, d);
+                    if (isNaN(dt.getTime())) continue;
+                    const dow = dt.getDay();
+                    const isWeekend = (dow === 0 || dow === 6);
+                    const isArevaloSept26 = (isArevalo && m === 9 && d === 26);
+                    if (isWeekend && !isArevaloSept26) {
+                        if (daysObj[d] === 'J') {
+                            daysObj[d] = null;
+                        }
+                    }
+                }
+            } else if (typeof daysObj === 'object') {
+                for (const [dStr, val] of Object.entries(daysObj)) {
+                    const d = parseInt(dStr, 10);
+                    const dt = new Date(cycleYear, m - 1, d);
+                    if (isNaN(dt.getTime())) continue;
+                    const dow = dt.getDay();
+                    const isWeekend = (dow === 0 || dow === 6);
+                    const isArevaloSept26 = (isArevalo && m === 9 && d === 26);
+                    if (isWeekend && !isArevaloSept26) {
+                        if (val === 'J') {
+                            delete daysObj[dStr];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Limpieza en STATE.attendancePermissionsMeta para fines de semana
+    for (const metaKey of Object.keys(STATE.attendancePermissionsMeta)) {
+        const parts = metaKey.split('_');
+        if (parts.length >= 3) {
+            const studentId = parts[0];
+            const m = parseInt(parts[1], 10);
+            const d = parseInt(parts[2], 10);
+            if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                const dt = new Date(cycleYear, m - 1, d);
+                if (!isNaN(dt.getTime())) {
+                    const dow = dt.getDay();
+                    const isWeekend = (dow === 0 || dow === 6);
+                    const isArevalo = (typeof isStudentArevalo === 'function')
+                        ? isStudentArevalo(studentId)
+                        : (studentId === 'stu-sire-I228WGR' || studentId === 'I228WGR' || studentId === '2026-CB-003');
+                    const isArevaloSept26 = (isArevalo && m === 9 && d === 26);
+                    if (isWeekend && !isArevaloSept26) {
+                        delete STATE.attendancePermissionsMeta[metaKey];
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Limpieza en buffer local _localDirtyAttendanceCells para fines de semana
+    if (window._localDirtyAttendanceCells) {
+        for (const [k, entry] of Object.entries(window._localDirtyAttendanceCells)) {
+            if (entry && (entry.val === 'J' || entry.val === 'A')) {
+                const parts = k.split('_');
+                const d = parseInt(parts[parts.length - 1], 10);
+                const mMatch = k.match(/_M(\d+)_/) || k.match(/_M(\d+)$/) || k.match(/_(\d+)_/);
+                const m = mMatch ? parseInt(mMatch[1], 10) : 0;
+                if (m && d) {
+                    const dt = new Date(cycleYear, m - 1, d);
+                    if (!isNaN(dt.getTime())) {
+                        const dow = dt.getDay();
+                        const isWeekend = (dow === 0 || dow === 6);
+                        const isArevalo = (typeof isStudentArevalo === 'function') ? isStudentArevalo(k) : (k.includes('I228WGR') || k.includes('2026-CB-003'));
+                        const isArevaloSept26 = (isArevalo && m === 9 && d === 26);
+                        if (isWeekend && !isArevaloSept26 && entry.val === 'J') {
+                            delete window._localDirtyAttendanceCells[k];
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+window.sanitizeAttendanceCalendarAndWeekends = sanitizeAttendanceCalendarAndWeekends;
 
 function applyStudentPermission(perm) {
     if (!perm || !perm.studentId || !perm.startDate) return;
@@ -31726,8 +31930,18 @@ function applyStudentPermission(perm) {
         perm.endDate = '2026-09-26';
     }
 
-    const start = new Date(perm.startDate + 'T00:00:00');
-    const end = new Date((perm.endDate || perm.startDate) + 'T00:00:00');
+    const cleanDateStr = (val) => String(val || '').split('T')[0].trim();
+    const parseLocalDate = (val) => {
+        const str = cleanDateStr(val);
+        const parts = str.split('-').map(Number);
+        if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+            return new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+        }
+        return new Date(val);
+    };
+
+    const start = parseLocalDate(perm.startDate);
+    const end = parseLocalDate(perm.endDate || perm.startDate);
     const targetLetter = isUnjustifiedPermission(perm) ? 'A' : 'J';
 
     // Encontrar estudiante y sus códigos
@@ -31776,6 +31990,16 @@ function applyStudentPermission(perm) {
         const y = curDate.getFullYear();
         const m = curDate.getMonth() + 1;
         const d = curDate.getDate();
+        const dayOfWeek = curDate.getDay(); // 0: Domingo, 6: Sábado
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+        // 🛡️ REGLA OBLIGATORIA: Respeto estricto del calendario escolar.
+        // Las fechas de asistencia deben validar estrictamente el calendario escolar y no generar marcas automáticas en fines de semana.
+        // Excepción estricta: Arévalo Morán (sábado 26 de septiembre de 2026).
+        if (isWeekend && !(isArevaloPerm && m === 9 && d === 26)) {
+            curDate.setDate(curDate.getDate() + 1);
+            continue;
+        }
 
         if (isArevaloPerm && (m !== 9 || (d !== 25 && d !== 26))) {
             curDate.setDate(curDate.getDate() + 1);
@@ -31831,8 +32055,8 @@ function applyStudentPermission(perm) {
 window.applyStudentPermission = applyStudentPermission;
 
 function openEditStudentPermissionModal(permId) {
-    if (!isDirectorOrSuperAdmin()) {
-        showToast('Acceso Restringido: La edición de permisos de ausencia está reservada exclusivamente a la Dirección General.', 'warning');
+    if (!canManageStudentPermissions()) {
+        showToast('Acceso Restringido: La edición de permisos de ausencia está reservada a Auxiliatura, Dirección y Secretaría.', 'warning');
         return;
     }
 
@@ -31852,7 +32076,7 @@ function openEditStudentPermissionModal(permId) {
 
     const titleEl = document.getElementById('createPermissionModalTitle');
     if (titleEl) {
-        titleEl.innerHTML = '<i class="fa-solid fa-file-pen"></i> Editar Permiso Oficial de Ausencia (Dirección General)';
+        titleEl.innerHTML = '<i class="fa-solid fa-file-pen"></i> Editar Permiso Oficial de Ausencia (Auxiliatura / Dirección)';
     }
     const headerEl = document.getElementById('createPermissionModalHeader');
     if (headerEl) {
@@ -31863,7 +32087,7 @@ function openEditStudentPermissionModal(permId) {
         infoNotice.innerHTML = `
             <i class="fa-solid fa-shield-halved" style="font-size:1.25rem; margin-top:2px; flex-shrink:0; color:#16a34a;"></i>
             <div>
-                <strong style="color:#15803d;">Modo de Edición Exclusivo de Dirección General:</strong> Modifique las fechas, justificación o comprobantes de <strong>${escapeHtml(perm.studentName)}</strong>. Los cambios se actualizarán automáticamente en la asistencia de todos los docentes.
+                <strong style="color:#15803d;">Modo de Edición Oficial:</strong> Modifique las fechas, justificación o comprobantes de <strong>${escapeHtml(perm.studentName)}</strong>. Los cambios liberarán o actualizarán automáticamente el candado de asistencia en el rango correspondiente.
             </div>
         `;
         infoNotice.style.background = '#f0fdf4';
@@ -31893,7 +32117,7 @@ function openEditStudentPermissionModal(permId) {
     if (docInput) docInput.value = perm.docRef || '';
 
     const authInput = document.getElementById('permAuthorizedBy');
-    if (authInput) authInput.value = perm.authorizedBy || 'Dirección General';
+    if (authInput) authInput.value = perm.authorizedBy || 'Auxiliatura';
 
     const submitBtn = document.getElementById('createPermissionSubmitBtn');
     if (submitBtn) {
@@ -31935,8 +32159,7 @@ function renderPermissionsHistoryTable() {
     const tbody = document.getElementById('permissionsHistoryTableBody');
     if (!tbody) return;
 
-    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
-    const canManagePerms = ['director', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
+    const canManagePerms = canManageStudentPermissions();
     const btnNew = document.getElementById('btnNewPermHistory');
     if (btnNew) {
         btnNew.style.display = canManagePerms ? 'inline-flex' : 'none';
@@ -32002,11 +32225,11 @@ function renderPermissionsHistoryTable() {
                     <button type="button" class="btn btn-outline-primary btn-xs" onclick="printStudentPermissionPass('${p.id}')" title="Imprimir Comprobante Oficial" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
                         <i class="fa-solid fa-print"></i> Pase
                     </button>
-                    ${isDirectorOrSuperAdmin() ? `
-                    <button type="button" class="btn btn-outline-warning btn-xs" onclick="openEditStudentPermissionModal('${p.id}')" title="Editar este permiso (Dirección General)" style="padding:3px 8px; font-size:0.75rem; font-weight:700; margin-left:4px; color:#b45309; border-color:#f59e0b; background:#fffbeb;">
+                    ${canManagePerms ? `
+                    <button type="button" class="btn btn-outline-warning btn-xs" onclick="openEditStudentPermissionModal('${p.id}')" title="Editar este permiso (Auxiliatura / Dirección)" style="padding:3px 8px; font-size:0.75rem; font-weight:700; margin-left:4px; color:#b45309; border-color:#f59e0b; background:#fffbeb;">
                         <i class="fa-solid fa-pen-to-square"></i> Editar
                     </button>
-                    <button type="button" class="btn btn-outline-danger btn-xs" onclick="revokeStudentPermission('${p.id}')" title="Anular este permiso (Dirección General)" style="padding:3px 8px; font-size:0.75rem; font-weight:700; margin-left:4px;">
+                    <button type="button" class="btn btn-outline-danger btn-xs" onclick="revokeStudentPermission('${p.id}')" title="Anular este permiso (Auxiliatura / Dirección)" style="padding:3px 8px; font-size:0.75rem; font-weight:700; margin-left:4px;">
                         <i class="fa-solid fa-trash"></i>
                     </button>` : ''}
                 </td>
@@ -32018,8 +32241,8 @@ window.renderPermissionsHistoryTable = renderPermissionsHistoryTable;
 
 function revokeStudentPermission(permId) {
     if (!permId) return;
-    if (!isDirectorOrSuperAdmin()) {
-        showToast("Acceso Restringido: La anulación o revocación de permisos está reservada exclusivamente a la Dirección General.", "warning");
+    if (!canManageStudentPermissions()) {
+        showToast("Acceso Restringido: La anulación o revocación de permisos está reservada a Auxiliatura, Dirección y Secretaría.", "warning");
         return;
     }
     const perm = (STATE.studentPermissions || []).find(p => p.id === permId);
@@ -32029,8 +32252,15 @@ function revokeStudentPermission(permId) {
         // 1. Remover automáticamente la marca de justificación ('J') o falta ('A') y metadata de todas las asistencias vinculadas
         removeStudentPermissionDatesFromAttendance(perm, perm.startDate, perm.endDate, null, null);
 
-        // 2. Remover de la lista oficial de permisos
+        // 2. Remover de la lista oficial de permisos y registrar lápida para evitar resurrecciones
         STATE.studentPermissions = (STATE.studentPermissions || []).filter(p => p.id !== permId);
+        if (!Array.isArray(STATE.deletedPermissionIds)) STATE.deletedPermissionIds = [];
+        if (!STATE.deletedPermissionIds.includes(permId)) STATE.deletedPermissionIds.push(permId);
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('ENCCO_DELETED_PERMISSION_IDS', JSON.stringify(STATE.deletedPermissionIds));
+            }
+        } catch(e) {}
 
         saveAttendanceRecords(false);
 
@@ -33962,6 +34192,11 @@ async function deleteDisciplineReport(reportId) {
         STATE.deletedDisciplineIds = STATE.deletedDisciplineIds || [];
         if (!STATE.deletedDisciplineIds.includes(reportId)) {
             STATE.deletedDisciplineIds.push(reportId);
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem('ENCCO_DELETED_DISCIPLINE_IDS', JSON.stringify(STATE.deletedDisciplineIds));
+                }
+            } catch(e) {}
         }
 
         STATE.disciplineReports = (STATE.disciplineReports || []).filter(d => d.id !== reportId);
@@ -43135,10 +43370,25 @@ function initFirestoreModularLiveListeners() {
                 }
                 const metaSource = d.attendancePermissionsMeta || d.permissionsMeta;
                 if (metaSource && typeof metaSource === 'object') {
-                    STATE.attendancePermissionsMeta = { ...(STATE.attendancePermissionsMeta || {}), ...metaSource };
+                    const cleanedMeta = {};
+                    for (const [mKey, mVal] of Object.entries(metaSource)) {
+                        if (!mVal) continue;
+                        const permId = mVal.permissionId;
+                        if (permId && (STATE.deletedPermissionIds || []).includes(permId)) continue;
+                        cleanedMeta[mKey] = mVal;
+                    }
+                    STATE.attendancePermissionsMeta = { ...(STATE.attendancePermissionsMeta || {}), ...cleanedMeta };
+                    // Purgar también cualquier entrada en STATE.attendancePermissionsMeta que esté en deletedPermissionIds
+                    Object.keys(STATE.attendancePermissionsMeta).forEach(k => {
+                        const pid = STATE.attendancePermissionsMeta[k]?.permissionId;
+                        if (pid && (STATE.deletedPermissionIds || []).includes(pid)) {
+                            delete STATE.attendancePermissionsMeta[k];
+                        }
+                    });
                 }
                 if (d.studentPermissions) {
-                    const cloudPerms = (Array.isArray(d.studentPermissions) ? d.studentPermissions : Object.values(d.studentPermissions)).filter(p => p && p.id);
+                    const cloudPerms = (Array.isArray(d.studentPermissions) ? d.studentPermissions : Object.values(d.studentPermissions))
+                        .filter(p => p && p.id && !(STATE.deletedPermissionIds || []).includes(p.id));
                     if (cloudPerms.length > 0) {
                         STATE.studentPermissions = cloudPerms;
                         cloudPerms.forEach(p => {
@@ -43146,6 +43396,8 @@ function initFirestoreModularLiveListeners() {
                         });
                     }
                 }
+                if (typeof sanitizeArevaloAttendanceRecords === 'function') sanitizeArevaloAttendanceRecords();
+                if (typeof sanitizeAttendanceCalendarAndWeekends === 'function') sanitizeAttendanceCalendarAndWeekends();
                 if (STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') loadAttendanceList();
                 if (STATE.activeView === 'permissions-history' && typeof renderPermissionsHistoryView === 'function') renderPermissionsHistoryView();
                 const profModal = document.getElementById('studentProfileModal');
@@ -43163,11 +43415,15 @@ function initFirestoreModularLiveListeners() {
                 const items = [];
                 snap.forEach(d => {
                     const data = d.data();
-                    if (data) items.push({ id: d.id, ...data });
+                    if (data) {
+                        const rId = d.id;
+                        if ((STATE.deletedDisciplineIds || []).includes(rId)) return;
+                        items.push({ id: rId, ...data });
+                    }
                 });
                 if (items.length > 0 || !snap.empty) {
                     items.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
-                    STATE.disciplineReports = items;
+                    STATE.disciplineReports = items.filter(r => !(STATE.deletedDisciplineIds || []).includes(r.id));
                     if (STATE.activeView === 'discipline' && typeof renderDisciplineTable === 'function') renderDisciplineTable();
                     if (typeof renderDashboard === 'function') renderDashboard();
                     const profModal = document.getElementById('studentProfileModal');
@@ -47172,11 +47428,11 @@ function renderPermissionsHistoryView() {
                         <button type="button" class="btn btn-xs btn-outline-primary" onclick="printStudentPermissionPass('${p.id}')" title="Imprimir Comprobante Oficial de Permiso" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
                             <i class="fa-solid fa-print"></i> Pase
                         </button>
-                        ${isDirectorOrSuperAdmin() ? `
-                        <button type="button" class="btn btn-xs btn-outline-warning" onclick="openEditStudentPermissionModal('${p.id}')" title="Editar este permiso de ausencia (Dirección General)" style="padding:3px 8px; font-size:0.75rem; font-weight:700; color:#b45309; border-color:#f59e0b; background:#fffbeb;">
+                        ${canManageStudentPermissions() ? `
+                        <button type="button" class="btn btn-xs btn-outline-warning" onclick="openEditStudentPermissionModal('${p.id}')" title="Editar este permiso de ausencia" style="padding:3px 8px; font-size:0.75rem; font-weight:700; color:#b45309; border-color:#f59e0b; background:#fffbeb;">
                             <i class="fa-solid fa-pen-to-square"></i> Editar
                         </button>
-                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="revokeStudentPermission('${p.id}')" title="Anular este permiso de ausencia (Dirección General)" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
+                        <button type="button" class="btn btn-xs btn-outline-danger" onclick="revokeStudentPermission('${p.id}')" title="Anular este permiso de ausencia" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
                             <i class="fa-solid fa-trash"></i>
                         </button>` : ''}
                     </div>
