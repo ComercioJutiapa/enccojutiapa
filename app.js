@@ -35311,7 +35311,8 @@ function closeAllActiveModals() {
         typeof closeDisciplineModal === 'function' ? closeDisciplineModal : null,
         typeof closeUserModal === 'function' ? closeUserModal : null,
         typeof closeDbConfigModal === 'function' ? closeDbConfigModal : null,
-        typeof closeNotificationsModal === 'function' ? closeNotificationsModal : null
+        typeof closeNotificationsModal === 'function' ? closeNotificationsModal : null,
+        typeof closeCourseBitacoraModal === 'function' ? closeCourseBitacoraModal : null
     ];
 
     closeFns.forEach(fn => {
@@ -45984,6 +45985,12 @@ function getGlobalStudentsWithIncidents(targetGradeCode) {
                             latestIncidentDate = dateStr;
                             latestIncidentDesc = `Inasistencia Justificada (J) - Día ${dNum}/${recMonth}`;
                         }
+                    } else if (val === 'S') {
+                        justificadasJ++;
+                        if (!latestIncidentDate || dateStr > latestIncidentDate) {
+                            latestIncidentDate = dateStr;
+                            latestIncidentDesc = `Suspensión Disciplinaria Oficial (S) - Día ${dNum}/${recMonth}`;
+                        }
                     }
                 }
             });
@@ -46175,10 +46182,13 @@ function openCourseBitacoraModal(preSelectedStudentId, preSelectedCourseId, init
     }
 
     const currentUser = STATE.currentUser;
-    const currentRole = STATE.currentRole || currentUser?.role || '';
-    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+    const currentRole = (STATE.currentRole || currentUser?.role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
+    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
 
-    const allowedCourses = getTeacherAssignedCoursesInGrade(gradeCode, currentUser);
+    let allowedCourses = getTeacherAssignedCoursesInGrade(gradeCode, currentUser);
+    if (allowedCourses.length === 0 && isAuditRole) {
+        allowedCourses = STATE.pensum || [];
+    }
 
     if (!isAuditRole && allowedCourses.length === 0) {
         showToast("No tiene materias asignadas en este grado para gestionar su bitácora.", "warning");
@@ -46266,6 +46276,8 @@ function openCourseBitacoraModal(preSelectedStudentId, preSelectedCourseId, init
         bimesterInput.value = String(STATE.attendanceSelectedBimester || STATE.config?.currentBlock || '1');
     }
 
+    modal.classList.add('active');
+    modal.style.setProperty('display', 'flex', 'important');
     modal.style.display = 'flex';
 
     // Determinar modo inicial: si viene con studentId preseleccionado -> 'student', sino -> 'global'
@@ -46276,7 +46288,11 @@ window.openCourseBitacoraModal = openCourseBitacoraModal;
 
 function closeCourseBitacoraModal() {
     const modal = document.getElementById('courseBitacoraModal');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+        modal.style.display = 'none';
+    }
     const formCard = document.getElementById('courseBitacoraFormCard');
     if (formCard) formCard.style.display = 'none';
     const btnToggle = document.getElementById('btnToggleCourseBitacoraForm');
@@ -46437,6 +46453,12 @@ function renderCourseBitacoraStudentDayView(studentId, courseId, bimester, categ
                     const reason = meta ? `${meta.reasonCategory || ''} - "${meta.reasonDetail || ''}"` : 'Inasistencia Justificada';
                     const authBy = meta ? (meta.authorizedBy || 'Auxiliatura') : 'Autoridad';
                     dayEntry.attendance.push({ type: 'J', label: `Justificado: ${reason}`, authBy, color: '#7c3aed', bg: '#ede9fe', icon: 'fa-file-signature', course: courseLabel });
+                } else if (val === 'S') {
+                    const metaKey = `${studentId}_${m}_${dNum}`;
+                    const meta = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]);
+                    const reason = meta ? `${meta.reasonCategory || ''} - "${meta.reasonDetail || ''}"` : 'Suspensión Disciplinaria Oficial';
+                    const authBy = meta ? (meta.authorizedBy || 'Dirección / Auxiliatura') : 'Autoridad Institucional';
+                    dayEntry.attendance.push({ type: 'S', label: `Suspensión Oficial: ${reason}`, authBy, color: '#6b21a8', bg: '#faf5ff', icon: 'fa-gavel', course: courseLabel });
                 }
             }
         });
