@@ -1212,7 +1212,7 @@ function enforceViewReadOnlyMode(viewName) {
         return;
     }
 
-    if (STATE.currentRole === 'admin') return;
+    if (STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario' || STATE.currentRole === 'superadmin') return;
 
     // El módulo de disciplina administra sus propios niveles de seguridad y permisos granulares (Docentes reportan, Auxiliar resuelve, Dirección autoriza)
     if (viewName === 'discipline') return;
@@ -1390,7 +1390,7 @@ function hasRolePermission(permKey, role = null) {
     
     // Si el rol es guest o indefinido, denegar terminantemente
     if (!targetRole || targetRole === 'guest') return false;
-    if (targetRole === 'admin' || targetRole === 'super_usuario') return true;
+    if (targetRole === 'admin' || targetRole === 'super_usuario' || targetRole === 'superadmin') return true;
 
     if (!permKey) return false;
 
@@ -1427,7 +1427,7 @@ function canRoleModify(moduleKey, role = null) {
     // 🛡️ Principio de Menor Privilegio Defensivo
     const targetRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
     if (!targetRole || targetRole === 'guest') return false;
-    if (targetRole === 'admin' || targetRole === 'super_usuario') return true;
+    if (targetRole === 'admin' || targetRole === 'super_usuario' || targetRole === 'superadmin') return true;
 
     if (!moduleKey) return false;
 
@@ -1446,10 +1446,34 @@ function isDirectorOrSuperAdmin() {
     const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
     const rLower = String(curRole).toLowerCase();
     const userRole = (window.STATE && STATE.currentUser && STATE.currentUser.role) ? String(STATE.currentUser.role).toLowerCase() : '';
-    const valid = ['director', 'direccion', 'admin', 'super_usuario'];
+    const valid = ['director', 'direccion', 'admin', 'super_usuario', 'superadmin'];
     return valid.includes(rLower) || valid.includes(userRole);
 }
 window.isDirectorOrSuperAdmin = isDirectorOrSuperAdmin;
+
+// 🔒 RBAC ESTRICTO: ACCESO A RESPALDO Y AUDITORÍAS
+// Exclusivo para Dirección, Secretaría y Superusuario (oculto y bloqueado para usuarios estándar y docentes)
+function canAccessBackupAndAudit(role = null) {
+    const curRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || '').trim().toLowerCase();
+    const userRole = (window.STATE && STATE.currentUser && STATE.currentUser.role) ? String(STATE.currentUser.role).trim().toLowerCase() : '';
+    const rLower = curRole || userRole;
+    if (!rLower || rLower === 'guest') return false;
+
+    const authorizedRoles = [
+        'director',
+        'direccion',
+        'secretaria',
+        'secretario',
+        'secretaria_general',
+        'secretaria_contador',
+        'secretaria_auxiliar',
+        'super_usuario',
+        'superadmin',
+        'admin'
+    ];
+    return authorizedRoles.includes(rLower);
+}
+window.canAccessBackupAndAudit = canAccessBackupAndAudit;
 
 // 📲 REGLA INSTITUCIONAL: ACCESO EXCLUSIVO A WHATSAPP
 // Restringido estrictamente a Dirección, Auxiliatura y Secretaría
@@ -2861,6 +2885,12 @@ function recordAuditLog(action, category, details, targetId = '') {
 window.recordAuditLog = recordAuditLog;
 
 function openSystemAuditLogModal() {
+    if (typeof canAccessBackupAndAudit === 'function' && !canAccessBackupAndAudit()) {
+        if (typeof showToast === 'function') {
+            showToast("Acceso Restringido: La Bitácora de Auditoría está disponible exclusivamente para Dirección, Secretaría y Superusuario.", "warning");
+        }
+        return;
+    }
     renderSystemAuditLogTable();
     showModalById('modalSystemAuditLog');
 }
@@ -2977,6 +3007,12 @@ window.exportAuditLogCSV = exportAuditLogCSV;
 // 🛡️ CENTRO MAESTRO DE RESPALDO Y BÓVEDA SEGURA INSTITUCIONAL
 // ======================================================================
 function openUniversalBackupModal() {
+    if (typeof canAccessBackupAndAudit === 'function' && !canAccessBackupAndAudit()) {
+        if (typeof showToast === 'function') {
+            showToast("Acceso Restringido: El Respaldo Maestro está disponible exclusivamente para Dirección, Secretaría y Superusuario.", "warning");
+        }
+        return;
+    }
     const badge = document.getElementById('backupLastRecordedBadge');
     if (badge) {
         const lastTime = localStorage.getItem('ENCCO_LAST_BACKUP_TIME');
@@ -2998,9 +3034,9 @@ window.closeUniversalBackupModal = closeUniversalBackupModal;
 
 function exportSystemSafeBackup() {
     const backupCategory = arguments[0] || 'all';
-    if (!isDirectorOrSuperAdmin()) {
+    if (typeof canAccessBackupAndAudit === 'function' && !canAccessBackupAndAudit()) {
         if (typeof showToast === 'function') {
-            showToast("Acceso Restringido: La descarga de respaldo institucional está reservada exclusivamente a la Dirección General.", "warning");
+            showToast("Acceso Restringido: La descarga de respaldo institucional está disponible exclusivamente para Dirección, Secretaría y Superusuario.", "warning");
         }
         return;
     }
@@ -5619,7 +5655,7 @@ function renderGuideTeachersView(searchQuery = '') {
         return;
     }
 
-    const canManageGuides = typeof canRoleModify === 'function' ? canRoleModify('guide-teachers', STATE.currentRole) : (STATE.currentRole === 'admin' || STATE.currentRole === 'director');
+    const canManageGuides = typeof canRoleModify === 'function' ? canRoleModify('guide-teachers', STATE.currentRole) : (STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario' || STATE.currentRole === 'superadmin' || STATE.currentRole === 'director');
 
     tbody.innerHTML = list.map((g, idx) => {
         const count = typeof getStudentCountByGradeAndSection === 'function' ? getStudentCountByGradeAndSection(g.code, g.name, g.section) : 0;
@@ -7391,10 +7427,10 @@ function ensureSireOfficialStudents() {
             grade: '4to Perito Contador',
             gradeCode: '4to PC B',
             section: 'Sección B',
-            startDate: '2026-01-01',
-            endDate: '2026-11-30',
-            reasonCategory: 'Permiso Oficial Extendido',
-            reasonDetail: 'Permiso oficial extendido por motivos de salud y tratamiento médico autorizado por Auxiliatura.',
+            startDate: '2026-09-25',
+            endDate: '2026-09-26',
+            reasonCategory: 'Salud / Cita Médica',
+            reasonDetail: 'Permiso oficial emitido por Auxiliatura para fechas estipuladas.',
             docRef: 'CONSTANCIA-AUX-EXT-2026-003',
             authorizedBy: 'Auxiliatura General (Profesor Auxiliar)',
             authorizedById: 'usr-aux-01',
@@ -7419,9 +7455,12 @@ function ensureSireOfficialStudents() {
             existingPerm.status = 'autorizado';
             existingPerm.origin_role = existingPerm.origin_role || 'profesor_auxiliar';
             existingPerm.is_locked_by_admin = true;
-            existingPerm.startDate = existingPerm.startDate || '2026-01-01';
-            existingPerm.endDate = existingPerm.endDate || '2026-11-30';
-            if (typeof removeStudentPermissionDatesFromAttendance === 'function') {
+            // Preservar estrictamente las fechas configuradas por Dirección / Auxiliatura
+            existingPerm.startDate = existingPerm.startDate || '2026-09-25';
+            existingPerm.endDate = existingPerm.endDate || '2026-09-26';
+            if (typeof cleanupOrphanStudentPermissionsFromAttendance === 'function') {
+                cleanupOrphanStudentPermissionsFromAttendance(existingPerm);
+            } else if (typeof removeStudentPermissionDatesFromAttendance === 'function') {
                 removeStudentPermissionDatesFromAttendance(existingPerm, '2026-01-01', '2026-11-30', existingPerm.startDate, existingPerm.endDate);
             }
             if (typeof applyStudentPermission === 'function') {
@@ -9160,6 +9199,22 @@ function synchronizeGlobalDynamicUI() {
 }
 
 function updateTopRoleBar() {
+    const curR = (STATE.currentRole || '').toLowerCase();
+    const canBackupAudit = typeof canAccessBackupAndAudit === 'function' ? canAccessBackupAndAudit(curR) : ['director', 'direccion', 'secretaria', 'secretario', 'admin', 'super_usuario'].includes(curR);
+
+    const btnMasterBackup = document.getElementById('btnHeaderMasterBackup');
+    if (btnMasterBackup) {
+        btnMasterBackup.style.display = canBackupAudit ? 'inline-flex' : 'none';
+    }
+    const btnAuditLog = document.getElementById('btnHeaderAuditLog');
+    if (btnAuditLog) {
+        btnAuditLog.style.display = canBackupAudit ? 'inline-flex' : 'none';
+    }
+    const btnExportHeader = document.getElementById('btnExportSafeBackupHeader');
+    if (btnExportHeader) {
+        btnExportHeader.style.display = canBackupAudit ? 'inline-flex' : 'none';
+    }
+
     const group = document.getElementById('topRoleSwitcherGroup');
     if (!group || !STATE.currentUser) return;
 
@@ -9188,8 +9243,8 @@ function updateTopRoleBar() {
         return;
     }
 
-    // SI EL ROL ACTIVO ES ADMINISTRADOR:
-    if (STATE.currentRole === 'admin') {
+    // SI EL ROL ACTIVO ES ADMINISTRADOR O SUPERUSUARIO:
+    if (STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario') {
         let userSelectOptions = '<option value="">-- Probar vista como... --</option>';
         (STATE.users || []).filter(u => u.id !== STATE.currentUser.id).forEach(u => {
             userSelectOptions += `<option value="${u.id}">👤 ${u.name} (${u.title || u.role})</option>`;
@@ -9198,7 +9253,7 @@ function updateTopRoleBar() {
         group.innerHTML = `
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <span class="role-btn active" style="cursor:default; background:#eff6ff; color:var(--brand-blue); border-color:var(--brand-blue); font-weight:800; padding:6px 14px; border-radius:6px; font-size:0.84rem;">
-                    <i class="fa-solid fa-user-shield"></i> Super Administrador
+                    <i class="fa-solid fa-user-shield"></i> ${STATE.currentRole === 'super_usuario' ? 'Superusuario' : 'Super Administrador'}
                 </span>
                 <div style="display:flex; align-items:center; gap:6px; background:var(--bg-main); padding:3px 8px; border-radius:6px; border:1px solid var(--border-color);">
                     <label style="font-size:0.75rem; font-weight:800; color:var(--text-secondary); margin:0;">
@@ -9228,16 +9283,6 @@ function updateTopRoleBar() {
                 <i class="fa-solid fa-clipboard-user"></i> Auxiliatura y Disciplina
             </span>
         `;
-    }
-
-    const curR = (STATE.currentRole || '').toLowerCase();
-    const btnMasterBackup = document.getElementById('btnHeaderMasterBackup');
-    if (btnMasterBackup) {
-        btnMasterBackup.style.display = (curR === 'admin' || curR === 'director') ? 'inline-flex' : 'none';
-    }
-    const btnAuditLog = document.getElementById('btnHeaderAuditLog');
-    if (btnAuditLog) {
-        btnAuditLog.style.display = (curR === 'admin' || curR === 'director' || curR === 'secretaria') ? 'inline-flex' : 'none';
     }
 }
 
@@ -10508,7 +10553,7 @@ function switchRole(role) {
 // AUDITORÍA Y SIMULACIÓN DE CUALQUIER USUARIO PARA EL SUPER ADMINISTRADOR
 // ==========================================================================
 function impersonateUser(userId) {
-    const isOriginalAdmin = (STATE.currentRole === 'admin' || STATE.impersonatorAdmin || (STATE.currentUser && STATE.currentUser.role === 'admin'));
+    const isOriginalAdmin = (STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario' || STATE.impersonatorAdmin || (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'super_usuario')));
     if (!isOriginalAdmin) {
         showToast("Acceso Restringido: La simulación y prueba de cuentas es exclusiva del Super Administrador.", "danger");
         return;
@@ -10817,7 +10862,7 @@ function renderQuickActionsHub() {
                 fn: "openPermissionsHistoryModal()"
             }
         ];
-    } else if (role === 'director' || role === 'admin') {
+    } else if (role === 'director' || role === 'admin' || role === 'super_usuario') {
         actions = [
             {
                 title: "Respaldo Maestro JSON",
@@ -11153,7 +11198,7 @@ function renderDashboard() {
         }
 
         renderCurrentDashboardAlerts();
-    } else if (STATE.currentRole === 'director' || STATE.currentRole === 'admin') {
+    } else if (STATE.currentRole === 'director' || STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario') {
         const isDirector = (STATE.currentRole === 'director');
         welcomeTitle.textContent = isDirector ? `¡Bienvenido(a) Director(a), ${currentUser.name}!` : `¡Panel de Super Administrador, ${currentUser.name}!`;
         welcomeSubtitle.textContent = `Supervisión Académica Integral, Auditoría de Calificaciones y Respaldo Institucional.`;
@@ -11232,12 +11277,13 @@ function renderDashboard() {
                         </p>
                     </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        ${(typeof canAccessBackupAndAudit === 'function' ? canAccessBackupAndAudit() : false) ? `
                         <button type="button" class="btn btn-outline-success btn-xs" onclick="openUniversalBackupModal()" style="font-weight:700;">
                             <i class="fa-solid fa-shield-halved"></i> Respaldo Maestro JSON
                         </button>
                         <button type="button" class="btn btn-outline-primary btn-xs" onclick="openSystemAuditLogModal()" style="font-weight:700;">
                             <i class="fa-solid fa-clipboard-list"></i> Bitácora de Auditoría
-                        </button>
+                        </button>` : ''}
                         <button type="button" class="btn btn-outline-warning btn-xs" onclick="navigateTo('grade-lock')" style="font-weight:700;">
                             <i class="fa-solid fa-lock"></i> Cierres Bimestrales
                         </button>
@@ -11378,9 +11424,10 @@ function renderDashboard() {
                         <button type="button" class="btn btn-outline-purple btn-xs" onclick="navigateTo('reports')" style="font-weight:700; color:#7c3aed; border-color:#c4b5fd;">
                             <i class="fa-solid fa-print"></i> Sábanas y Boletines
                         </button>
+                        ${(typeof canAccessBackupAndAudit === 'function' ? canAccessBackupAndAudit() : false) ? `
                         <button type="button" class="btn btn-outline-secondary btn-xs" onclick="openSystemAuditLogModal()" style="font-weight:700;">
                             <i class="fa-solid fa-clipboard-list"></i> Auditoría
-                        </button>
+                        </button>` : ''}
                     </div>
                 </div>
 
@@ -22675,6 +22722,12 @@ window.saveCloudDatabaseConfig = typeof saveFirebaseDatabaseConfig === 'function
 window.toggleDbProviderFields = function() {};
 
 function exportDataBackupJSON() {
+    if (typeof canAccessBackupAndAudit === 'function' && !canAccessBackupAndAudit()) {
+        if (typeof showToast === 'function') {
+            showToast("Acceso denegado: Esta función está reservada para Dirección, Secretaría o Superusuario.", "warning");
+        }
+        return;
+    }
     if (typeof exportSystemSafeBackup === 'function') {
         exportSystemSafeBackup('all');
     } else {
@@ -22694,6 +22747,13 @@ function exportDataBackupJSON() {
 window.exportDataBackupJSON = exportDataBackupJSON;
 
 async function importDataBackupJSON(e) {
+    if (typeof canAccessBackupAndAudit === 'function' && !canAccessBackupAndAudit()) {
+        if (typeof showToast === 'function') {
+            showToast("Acceso denegado: La restauración de respaldos está restringida a Dirección, Secretaría o Superusuario.", "error");
+        }
+        if (e && e.target) e.target.value = '';
+        return;
+    }
     const file = e.target.files[0];
     if (!file) return;
 
@@ -28338,16 +28398,16 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
             for (let day = 1; day <= 31; day++) {
                 const perm = typeof getStudentPermissionForDay === 'function' ? getStudentPermissionForDay(sId, year, month, day) : null;
                 const metaKey = `${sId}_${month}_${day}`;
-                const meta = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]) || null;
-                const metaOrigin = meta ? (meta.origin_role || '').toLowerCase() : '';
-                if (perm || (meta && (meta.is_locked_by_admin || authorityRoles.includes(metaOrigin)))) {
-                    const effectiveObj = perm || meta;
-                    const code = isUnjustifiedPermission(effectiveObj) ? 'A' : 'J';
+                if (perm) {
+                    const code = isUnjustifiedPermission(perm) ? 'A' : 'J';
                     if (!monthData[sId]) monthData[sId] = {};
                     monthData[sId][day] = code;
                     if (s.carne) { if (!monthData[s.carne]) monthData[s.carne] = {}; monthData[s.carne][day] = code; }
                     if (s.personalCode) { if (!monthData[s.personalCode]) monthData[s.personalCode] = {}; monthData[s.personalCode][day] = code; }
                     if (s.codigoPersonal) { if (!monthData[s.codigoPersonal]) monthData[s.codigoPersonal] = {}; monthData[s.codigoPersonal][day] = code; }
+                } else if (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]) {
+                    // Si no hay permiso oficial vigente para esta fecha, purgar metadata huérfana residual
+                    delete STATE.attendancePermissionsMeta[metaKey];
                 }
             }
         });
@@ -28745,7 +28805,7 @@ function loadAttendanceList() {
                 const isOfficialUnjustified = !!permMeta && isUnjustifiedPermission(permMeta) && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente';
 
                 // ¿Es justificación oficial ('J') de Auxiliatura, Secretaría o Dirección?
-                const isOfficialJustified = !isOfficialUnjustified && ((courseId === 'GENERAL' && genDayVal === 'J') || (!!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente'));
+                const isOfficialJustified = !isOfficialUnjustified && !!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente';
 
                 // Si tiene falta injustificada oficial, el indicador obligatorio y blindado es 'A'; si es justificado oficial, es 'J'
                 if (isOfficialUnjustified) {
@@ -28758,7 +28818,7 @@ function loadAttendanceList() {
                 let cellTitle = `${studentFullName} — Día ${day}: Sin registrar (Haga clic para marcar P)`;
                 let cellInnerHtml = val;
                 let isCellReadonly = false;
-                let cellOriginRole = (isOfficialJustified || isOfficialUnjustified) ? (permOriginRole || (genDayVal === 'J' ? 'profesor_auxiliar' : 'director')) : (val === 'J' ? 'docente' : '');
+                let cellOriginRole = (isOfficialJustified || isOfficialUnjustified) ? permOriginRole : (val === 'J' ? 'docente' : '');
 
                 if (val === 'P') {
                     cellClass = 'att-val-p att-val-P';
@@ -31294,6 +31354,25 @@ function removeStudentPermissionDatesFromAttendance(perm, oldStartDate = null, o
                     });
                 });
 
+                // Barrido universal de todas las claves de asistencia que contengan este estudiante en el mes
+                Object.keys(STATE.attendanceRecords).forEach(recKey => {
+                    const mMatch = recKey.match(/_M(\d+)_/);
+                    if (mMatch && parseInt(mMatch[1], 10) === m) {
+                        const recDays = STATE.attendanceRecords[recKey]?.[aliasId];
+                        if (recDays) {
+                            if (prevMarks[recKey]) {
+                                recDays[d] = prevMarks[recKey];
+                            } else if (recDays[d] === 'J' || recDays[d] === 'A') {
+                                if (Array.isArray(recDays)) {
+                                    recDays[d] = null;
+                                } else {
+                                    delete recDays[d];
+                                }
+                            }
+                        }
+                    }
+                });
+
                 // Eliminar metadata asociada
                 if (!meta || meta.permissionId === perm.id || !meta.permissionId) {
                     delete STATE.attendancePermissionsMeta[metaKey];
@@ -31304,6 +31383,80 @@ function removeStudentPermissionDatesFromAttendance(perm, oldStartDate = null, o
     }
 }
 window.removeStudentPermissionDatesFromAttendance = removeStudentPermissionDatesFromAttendance;
+
+function cleanupOrphanStudentPermissionsFromAttendance(perm) {
+    if (!perm || !perm.studentId) return;
+    const startStr = perm.startDate;
+    const endStr = perm.endDate || perm.startDate;
+    if (!startStr) return;
+
+    if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+    if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
+
+    const student = (STATE.students || []).find(s => s && (s.id === perm.studentId || s.personalCode === perm.studentId || s.carne === perm.studentId));
+    const studentAliases = new Set([perm.studentId]);
+    if (student) {
+        if (student.id) studentAliases.add(student.id);
+        if (student.personalCode) studentAliases.add(student.personalCode);
+        if (student.carne) studentAliases.add(student.carne);
+    }
+    if (perm.personalCode) studentAliases.add(perm.personalCode);
+    if (perm.carne) studentAliases.add(perm.carne);
+
+    // 1. Limpiar registros de asistencia que no caigan en el rango estipulado
+    Object.keys(STATE.attendanceRecords).forEach(recKey => {
+        const mMatch = recKey.match(/_M(\d+)_/);
+        if (!mMatch) return;
+        const m = parseInt(mMatch[1], 10);
+        const yMatch = recKey.match(/^(\d{4})_/);
+        const y = yMatch ? parseInt(yMatch[1], 10) : 2026;
+
+        studentAliases.forEach(aliasId => {
+            const aliasDays = STATE.attendanceRecords[recKey]?.[aliasId];
+            if (!aliasDays) return;
+
+            if (Array.isArray(aliasDays)) {
+                for (let d = 1; d < aliasDays.length; d++) {
+                    if (!aliasDays[d]) continue;
+                    const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    if (dateStr < startStr || dateStr > endStr) {
+                        if (aliasDays[d] === 'J' || aliasDays[d] === 'A') {
+                            aliasDays[d] = null;
+                        }
+                    }
+                }
+            } else if (typeof aliasDays === 'object') {
+                Object.keys(aliasDays).forEach(dStr => {
+                    const d = parseInt(dStr, 10);
+                    const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    if (dateStr < startStr || dateStr > endStr) {
+                        if (aliasDays[dStr] === 'J' || aliasDays[dStr] === 'A') {
+                            delete aliasDays[dStr];
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    // 2. Limpiar metadata indexada fuera de rango
+    Object.keys(STATE.attendancePermissionsMeta).forEach(metaKey => {
+        studentAliases.forEach(aliasId => {
+            if (metaKey.startsWith(aliasId + '_')) {
+                const parts = metaKey.split('_');
+                if (parts.length >= 3) {
+                    const m = parseInt(parts[1], 10);
+                    const d = parseInt(parts[2], 10);
+                    const dateStr = `2026-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    if (dateStr < startStr || dateStr > endStr) {
+                        delete STATE.attendancePermissionsMeta[metaKey];
+                    }
+                }
+            }
+        });
+    });
+}
+window.cleanupOrphanStudentPermissionsFromAttendance = cleanupOrphanStudentPermissionsFromAttendance;
 
 function applyStudentPermission(perm) {
     if (!perm || !perm.studentId || !perm.startDate) return;
