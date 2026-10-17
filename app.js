@@ -2351,108 +2351,56 @@ function saveStateToLocalStorageQuick() {
 }
 window.saveStateToLocalStorageQuick = saveStateToLocalStorageQuick;
 
+function isStudentArevalo(s) {
+    if (!s) return false;
+    if (typeof s === 'string') {
+        const str = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        return str.includes('I228WGR') || str.includes('2026-CB-003') || (str.includes('AREVALO') && str.includes('MORAN'));
+    }
+    const norm = (val) => String(val || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+    const id = String(s.id || s.studentId || '');
+    const code = norm(s.personalCode || s.codigoPersonal || '');
+    const carne = String(s.carne || '');
+    const name = norm(s.name || s.studentName || `${s.lastName || ''} ${s.firstName || ''}`);
+    return id.includes('I228WGR') || 
+           code.includes('I228WGR') || 
+           carne.includes('2026-CB-003') || 
+           (name.includes('AREVALO') && name.includes('MORAN'));
+}
+window.isStudentArevalo = isStudentArevalo;
+
+function extractMonthFromRecordKey(key) {
+    if (!key) return 0;
+    const m1 = String(key).match(/_M0?(\d+)/i);
+    if (m1) return parseInt(m1[1], 10);
+    const m2 = String(key).match(/_(\d+)_/);
+    if (m2) return parseInt(m2[1], 10);
+    return 0;
+}
+window.extractMonthFromRecordKey = extractMonthFromRecordKey;
+
 // ======================================================================
-//   RECUPERACIÓN Y ASEGURAMIENTO ABSOLUTO DE ASISTENCIAS (V190)
-//   Garantiza que NUNCA se borren, NUNCA se oculten y se recuperen al 100%
+//   CONTROL DE ASISTENCIAS: SINCRONIZACIÓN AL MOMENTO DE TOMAR DATOS (V191)
+//   No se recuperan volcados antiguos globales que sobrescriban la toma activa.
 // ======================================================================
 async function recoverAllAttendanceRecords(forceRefresh = true) {
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
-    let recoveredCount = 0;
-    const fbUrl = (typeof getFirebaseDatabaseUrl === "function") 
-        ? getFirebaseDatabaseUrl() 
-        : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== "undefined" ? ENCCO_OFFICIAL_FIREBASE_URL : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com");
 
-    console.log("🔄 [Recuperación de Asistencias] Iniciando restauración y consolidación autoritativa...");
-
-    // 1. Purgar master backup obsoleto en localStorage para no sobrescribir modificaciones/eliminaciones reales
+    // 1. Purgar master backup obsoleto en localStorage para evitar resurrección de datos antiguos
     try {
         if (typeof localStorage !== 'undefined') {
             localStorage.removeItem('ENCCO_ATTENDANCE_MASTER_BACKUP');
         }
     } catch(err) {}
 
-    // 2. Traer en paralelo ambos endpoints de Firebase RTDB:
-    //    a) /attendanceRecords.json
-    //    b) /encc_school_state/attendanceRecords.json
-    if (fbUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
-        try {
-            const [resRoot, resState] = await Promise.all([
-                fetch(`${fbUrl}/attendanceRecords.json?t=${Date.now()}`).catch(() => null),
-                fetch(`${fbUrl}/encc_school_state/attendanceRecords.json?t=${Date.now()}`).catch(() => null)
-            ]);
-
-            const [dataRoot, dataState] = await Promise.all([
-                (resRoot && resRoot.ok) ? resRoot.json().catch(() => null) : null,
-                (resState && resState.ok) ? resState.json().catch(() => null) : null
-            ]);
-
-            const mergeSource = (src) => {
-                if (!src || typeof src !== 'object') return;
-                for (const [k, rec] of Object.entries(src)) {
-                    if (!rec || typeof rec !== 'object') continue;
-                    if (!STATE.attendanceRecords[k]) STATE.attendanceRecords[k] = {};
-                    for (const [sId, days] of Object.entries(rec)) {
-                        if (!days || typeof days !== 'object') continue;
-                        if (!STATE.attendanceRecords[k][sId]) STATE.attendanceRecords[k][sId] = {};
-                        Object.assign(STATE.attendanceRecords[k][sId], days);
-                        recoveredCount++;
-                    }
-                }
-            };
-
-            mergeSource(dataRoot);
-            mergeSource(dataState);
-        } catch(netErr) {
-            console.warn("⚠️ Aviso de red al recuperar asistencias desde Firebase:", netErr);
-        }
+    // 2. Limpieza estricta de registros de Arévalo (estrictamente acotada a 25 y 26 de septiembre)
+    if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+        sanitizeArevaloAttendanceRecords();
     }
-
-    // 3. Traer Firestore backup si está disponible (FirebaseModular)
-    try {
-        const modular = window.FirebaseModular;
-        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.getDoc === 'function') {
-            const docRef = modular.doc(modular.db, 'config', 'asistencia');
-            const docSnap = await modular.getDoc(docRef).catch(() => null);
-            if (docSnap && docSnap.exists()) {
-                const fsData = docSnap.data();
-                if (fsData && fsData.records && typeof fsData.records === 'object') {
-                    for (const [k, rec] of Object.entries(fsData.records)) {
-                        if (!rec || typeof rec !== 'object') continue;
-                        if (!STATE.attendanceRecords[k]) STATE.attendanceRecords[k] = {};
-                        for (const [sId, days] of Object.entries(rec)) {
-                            if (!days || typeof days !== 'object') continue;
-                            if (!STATE.attendanceRecords[k][sId]) STATE.attendanceRecords[k][sId] = {};
-                            Object.assign(STATE.attendanceRecords[k][sId], days);
-                            recoveredCount++;
-                        }
-                    }
-                }
-            }
-        }
-    } catch(fsErr) {
-        console.warn("Aviso en Firestore backup asistencia:", fsErr);
-    }
-
-    // 4. Guardar MASTER BACKUP en localStorage
-    try {
-        if (typeof localStorage !== 'undefined' && STATE.attendanceRecords && Object.keys(STATE.attendanceRecords).length > 0) {
-            localStorage.setItem('ENCCO_ATTENDANCE_MASTER_BACKUP', JSON.stringify(STATE.attendanceRecords));
-        }
-    } catch(bErr) {}
-
-    // 5. Asegurar sincronización en ambas rutas de Firebase para que nunca falte
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode && Object.keys(STATE.attendanceRecords).length > 0) {
-        EnccoCloudSync.syncNode('attendanceRecords', STATE.attendanceRecords).catch(() => {});
-    }
-
-    console.log(`✅ [Recuperación de Asistencias] Completada exitosamente. Total de planillas en memoria: ${Object.keys(STATE.attendanceRecords).length}`);
 
     if (forceRefresh) {
         if (STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') {
             loadAttendanceList();
-        }
-        if (typeof showToast === 'function') {
-            showToast(`✅ ${Object.keys(STATE.attendanceRecords).length} planillas de asistencia recuperadas y aseguradas al 100%.`, 'success', 5000);
         }
     }
 
@@ -5236,11 +5184,20 @@ function initFirebaseRealtimeConnection() {
                             const mergeRecordSheet = (sheetKey, incomingSheet) => {
                                 if (!incomingSheet || typeof incomingSheet !== 'object') return;
                                 if (!STATE.attendanceRecords[sheetKey]) STATE.attendanceRecords[sheetKey] = {};
+                                const sheetMonth = (typeof extractMonthFromRecordKey === 'function') ? extractMonthFromRecordKey(sheetKey) : null;
                                 Object.keys(incomingSheet).forEach(sId => {
                                     const inDays = incomingSheet[sId];
                                     if (!inDays || typeof inDays !== 'object') return;
+                                    const isArevalo = (typeof isStudentArevalo === 'function') ? isStudentArevalo(sId) : (sId === 'I228WGR' || sId === 'stu-sire-I228WGR' || sId === '2026-CB-003');
                                     if (!STATE.attendanceRecords[sheetKey][sId]) STATE.attendanceRecords[sheetKey][sId] = {};
                                     Object.keys(inDays).forEach(dKey => {
+                                        const dayNum = parseInt(dKey, 10);
+                                        const inVal = inDays[dKey];
+                                        if (isArevalo && (inVal === 'J' || inVal === 'A')) {
+                                            if (sheetMonth !== 9 || (dayNum !== 25 && dayNum !== 26)) {
+                                                return; // Do not resurrect obsolete J or A for Arévalo outside Sept 25-26
+                                            }
+                                        }
                                         const dirtyEntry = dirtyMap[`${sheetKey}_${sId}_${dKey}`];
                                         if (dirtyEntry && (nowTs - dirtyEntry.ts < 5000)) {
                                             if (dirtyEntry.val) STATE.attendanceRecords[sheetKey][sId][dKey] = dirtyEntry.val;
@@ -5268,6 +5225,9 @@ function initFirebaseRealtimeConnection() {
                                         STATE.attendanceRecords[sub] = nodeData;
                                     }
                                 }
+                            }
+                            if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+                                sanitizeArevaloAttendanceRecords();
                             }
                             if (STATE.activeView === 'attendance') {
                                 const timeSinceLocalClick = Date.now() - (window._lastLocalAttendanceClickTime || 0);
@@ -5308,10 +5268,19 @@ function initFirebaseRealtimeConnection() {
                         }
                     } else if (cleanPath === 'studentPermissions') {
                         if (Array.isArray(nodeData)) {
+                            nodeData.forEach(p => {
+                                if (p && (typeof isStudentArevalo === 'function' ? isStudentArevalo(p.studentId || p.studentCode || p.studentName) : (p.studentId === 'I228WGR' || p.studentCode === 'I228WGR'))) {
+                                    p.startDate = '2026-09-25';
+                                    p.endDate = '2026-09-26';
+                                }
+                            });
                             STATE.studentPermissions = nodeData;
                             nodeData.forEach(p => {
                                 if (typeof applyStudentPermission === 'function') applyStudentPermission(p);
                             });
+                            if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+                                sanitizeArevaloAttendanceRecords();
+                            }
                             if (typeof renderPermissionsHistoryView === 'function' && STATE.activeView === 'permissions-history') {
                                 renderPermissionsHistoryView();
                             }
@@ -5321,7 +5290,21 @@ function initFirebaseRealtimeConnection() {
                         }
                     } else if (cleanPath === 'attendancePermissionsMeta') {
                         if (nodeData && typeof nodeData === 'object') {
+                            Object.keys(nodeData).forEach(metaKey => {
+                                const isArevaloMeta = (typeof isStudentArevalo === 'function' && isStudentArevalo(metaKey)) || metaKey.includes('I228WGR') || metaKey.includes('2026-CB-003');
+                                if (isArevaloMeta) {
+                                    const metaEntry = nodeData[metaKey];
+                                    const isSept25or26 = metaKey.includes('2026-09-25') || metaKey.includes('2026-09-26') || (metaEntry && (metaEntry.date === '2026-09-25' || metaEntry.date === '2026-09-26'));
+                                    if (!isSept25or26) {
+                                        delete nodeData[metaKey];
+                                        if (STATE.attendancePermissionsMeta) delete STATE.attendancePermissionsMeta[metaKey];
+                                    }
+                                }
+                            });
                             STATE.attendancePermissionsMeta = { ...(STATE.attendancePermissionsMeta || {}), ...nodeData };
+                            if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+                                sanitizeArevaloAttendanceRecords();
+                            }
                             if (typeof loadAttendanceList === 'function' && STATE.activeView === 'attendance') {
                                 const timeSinceLocalClick = Date.now() - (window._lastLocalAttendanceClickTime || 0);
                                 if (timeSinceLocalClick >= 2500) {
@@ -7455,18 +7438,25 @@ function ensureSireOfficialStudents() {
             existingPerm.status = 'autorizado';
             existingPerm.origin_role = existingPerm.origin_role || 'profesor_auxiliar';
             existingPerm.is_locked_by_admin = true;
-            // Preservar estrictamente las fechas configuradas por Dirección / Auxiliatura
-            existingPerm.startDate = existingPerm.startDate || '2026-09-25';
-            existingPerm.endDate = existingPerm.endDate || '2026-09-26';
+            // Preservar estrictamente las fechas configuradas por Dirección / Auxiliatura (Sept 25 y 26 únicamente)
+            existingPerm.startDate = '2026-09-25';
+            existingPerm.endDate = '2026-09-26';
             if (typeof cleanupOrphanStudentPermissionsFromAttendance === 'function') {
                 cleanupOrphanStudentPermissionsFromAttendance(existingPerm);
             } else if (typeof removeStudentPermissionDatesFromAttendance === 'function') {
                 removeStudentPermissionDatesFromAttendance(existingPerm, '2026-01-01', '2026-11-30', existingPerm.startDate, existingPerm.endDate);
             }
+            if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+                sanitizeArevaloAttendanceRecords();
+            }
             if (typeof applyStudentPermission === 'function') {
                 applyStudentPermission(existingPerm);
             }
         }
+    }
+
+    if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+        sanitizeArevaloAttendanceRecords();
     }
 
     // 🎓 Preservación absoluta de calificaciones: Firebase es la única fuente autoritativa
@@ -7662,6 +7652,7 @@ function getInitialData() {
         studentPermissions: [],
         attendancePermissionsMeta: {},
         attendanceRecords: {},
+        courseBitacora: [],
         dismissedAlerts: {},
         schoolHeader: {
             schoolName: "Escuela Nacional de Ciencias Comerciales",
@@ -7820,6 +7811,7 @@ var STATE = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {
     attendanceRecords: {},
     dismissedAlerts: {},
     studentAnnotations: [],
+    courseBitacora: [],
     gradeEditRequests: [],
     schoolHeader: { schoolName: 'Escuela Nacional de Ciencias Comerciales', schoolCode: '22-01-0014-46', location: 'Jutiapa, Guatemala' },
     config: { activeBimestre: 1, activeUnits: [1], globalLocked: false, minPassingScore: 60, teacherBypass: {} }
@@ -10054,10 +10046,18 @@ function applyIncomingCloudState(incomingState, force = false) {
         for (const [recKey, studentsMap] of Object.entries(incomingState.attendanceRecords)) {
             if (!studentsMap || typeof studentsMap !== 'object') continue;
             if (!STATE.attendanceRecords[recKey]) STATE.attendanceRecords[recKey] = {};
+            const sheetMonth = (typeof extractMonthFromRecordKey === 'function') ? extractMonthFromRecordKey(recKey) : null;
             for (const [sId, daysMap] of Object.entries(studentsMap)) {
                 if (!daysMap || typeof daysMap !== 'object') continue;
+                const isArevalo = (typeof isStudentArevalo === 'function') ? isStudentArevalo(sId) : (sId === 'I228WGR' || sId === 'stu-sire-I228WGR' || sId === '2026-CB-003');
                 if (!STATE.attendanceRecords[recKey][sId]) STATE.attendanceRecords[recKey][sId] = {};
                 for (const [dayKey, dayVal] of Object.entries(daysMap)) {
+                    const dayNum = parseInt(dayKey, 10);
+                    if (isArevalo && (dayVal === 'J' || dayVal === 'A')) {
+                        if (sheetMonth !== 9 || (dayNum !== 25 && dayNum !== 26)) {
+                            continue; // Reject obsolete J or A for Arévalo outside Sept 25-26
+                        }
+                    }
                     const dirtyExact = dirtyCells[`${recKey}_${sId}_${dayKey}`];
                     const dirtyAny = dirtyCells[`ANY_${sId}_${dayKey}`];
                     const activeDirty = (dirtyExact && (nowTs - dirtyExact.ts < 8000)) ? dirtyExact : ((dirtyAny && (nowTs - dirtyAny.ts < 8000)) ? dirtyAny : null);
@@ -10076,6 +10076,9 @@ function applyIncomingCloudState(incomingState, force = false) {
                     }
                 }
             }
+        }
+        if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+            sanitizeArevaloAttendanceRecords();
         }
     }
     if (incomingState.attendanceAlerts) {
@@ -10107,10 +10110,19 @@ function applyIncomingCloudState(incomingState, force = false) {
         const cloudPerms = (Array.isArray(incomingState.studentPermissions)
             ? incomingState.studentPermissions
             : Object.values(incomingState.studentPermissions)).filter(p => p && p.id);
+        cloudPerms.forEach(p => {
+            if (p && (typeof isStudentArevalo === 'function' ? isStudentArevalo(p.studentId || p.studentCode || p.studentName) : (p.studentId === 'I228WGR' || p.studentCode === 'I228WGR'))) {
+                p.startDate = '2026-09-25';
+                p.endDate = '2026-09-26';
+            }
+        });
         STATE.studentPermissions = cloudPerms;
         cloudPerms.forEach(p => {
             if (typeof applyStudentPermission === 'function') applyStudentPermission(p);
         });
+        if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+            sanitizeArevaloAttendanceRecords();
+        }
         if (STATE.activeView === 'permissions-history' && typeof renderPermissionsHistoryView === 'function') {
             renderPermissionsHistoryView();
         }
@@ -10123,6 +10135,14 @@ function applyIncomingCloudState(incomingState, force = false) {
         const dirtyCells = window._localDirtyAttendanceCells || {};
         const nowTs = Date.now();
         for (const [mKey, mVal] of Object.entries(incomingState.attendancePermissionsMeta)) {
+            const isArevaloMeta = (typeof isStudentArevalo === 'function' && isStudentArevalo(mKey)) || mKey.includes('I228WGR') || mKey.includes('2026-CB-003');
+            if (isArevaloMeta) {
+                const isSept25or26 = mKey.includes('2026-09-25') || mKey.includes('2026-09-26') || (mVal && (mVal.date === '2026-09-25' || mVal.date === '2026-09-26'));
+                if (!isSept25or26) {
+                    delete STATE.attendancePermissionsMeta[mKey];
+                    continue;
+                }
+            }
             const parts = mKey.split('_');
             const sId = parts[0];
             const dKey = parts[2];
@@ -10135,6 +10155,9 @@ function applyIncomingCloudState(incomingState, force = false) {
             } else {
                 STATE.attendancePermissionsMeta[mKey] = mVal;
             }
+        }
+        if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+            sanitizeArevaloAttendanceRecords();
         }
         if (STATE.activeView === 'attendance' && !isActivelyClickingAttendance && typeof loadAttendanceList === 'function') {
             loadAttendanceList();
@@ -10151,6 +10174,22 @@ function applyIncomingCloudState(incomingState, force = false) {
             if (a && a.id) annotMap.set(a.id, { ...(annotMap.get(a.id) || {}), ...a });
         });
         STATE.studentAnnotations = Array.from(annotMap.values()).sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(b.createdAt || a.date || 0));
+    }
+    if (incomingState.courseBitacora) {
+        const cloudBitacora = (Array.isArray(incomingState.courseBitacora)
+            ? incomingState.courseBitacora
+            : Object.values(incomingState.courseBitacora)).filter(b => b && b.id);
+        if (!Array.isArray(STATE.courseBitacora)) STATE.courseBitacora = [];
+        const bitMap = new Map();
+        STATE.courseBitacora.forEach(b => { if (b && b.id) bitMap.set(b.id, b); });
+        cloudBitacora.forEach(b => {
+            if (b && b.id) bitMap.set(b.id, { ...(bitMap.get(b.id) || {}), ...b });
+        });
+        STATE.courseBitacora = Array.from(bitMap.values()).sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
+        const bitModal = document.getElementById('courseBitacoraModal');
+        if (bitModal && (bitModal.style.display === 'flex' || bitModal.classList.contains('active')) && typeof renderCourseBitacoraList === 'function') {
+            renderCourseBitacoraList();
+        }
     }
 
     // 5b. Solicitudes de Habilitación de Edición de Notas (Bimestres Cerrados)
@@ -10381,6 +10420,7 @@ function saveStateRecursively(options = { syncCloud: false, isAutoSave: false })
             attendancePermissionsMeta: recursiveDeepClone(STATE.attendancePermissionsMeta || {}),
             attendanceRecords: recursiveDeepClone(STATE.attendanceRecords || {}),
             studentAnnotations: recursiveDeepClone(STATE.studentAnnotations || []),
+            courseBitacora: recursiveDeepClone(STATE.courseBitacora || []),
             dismissedAlerts: recursiveDeepClone(STATE.dismissedAlerts || {}),
             rolesConfig: recursiveDeepClone(STATE.rolesConfig || (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : [])),
             schoolHeader: recursiveDeepClone(STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {})),
@@ -27484,6 +27524,9 @@ function getPermissionAttendanceCode(permOrMeta) {
 window.getPermissionAttendanceCode = getPermissionAttendanceCode;
 
 window.openQuickAttendanceModal = function() {
+    if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+        sanitizeArevaloAttendanceRecords();
+    }
     const gradeSelect = document.getElementById('attendanceGradeSelect');
     const courseSelect = document.getElementById('attendanceCourseSelect');
     if (!gradeSelect) return;
@@ -27839,6 +27882,9 @@ function onAttendanceTeacherFilterChange() {
 }
 
 function populateAttendanceSelects(resetSelection = false, filterTeacherId = null) {
+    if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+        sanitizeArevaloAttendanceRecords();
+    }
     populateAttendanceTeacherFilter();
 
     const gradeSelect = document.getElementById('attendanceGradeSelect');
@@ -28366,6 +28412,14 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
                     if (!monthData[canonicalId]) monthData[canonicalId] = {};
                     for (const [d, val] of Object.entries(daysObj)) {
                         if (!val) continue;
+                        // Salvaguarda: Para Arévalo Morán, jamás admitir 'J' en meses diferentes a septiembre o días distintos a 25 y 26
+                        const isArevalo = (canonicalId === 'stu-sire-I228WGR' || canonicalId === '2026-CB-003' || canonicalId === 'I228WGR' || (student && (student.id === 'stu-sire-I228WGR' || student.personalCode === 'I228WGR' || student.carne === '2026-CB-003')));
+                        if (isArevalo && (val === 'J' || val === 'A')) {
+                            const dNum = parseInt(d, 10);
+                            if (month !== 9 || (dNum !== 25 && dNum !== 26)) {
+                                continue;
+                            }
+                        }
                         const cur = monthData[canonicalId][d];
                         if (!cur) {
                             monthData[canonicalId][d] = val;
@@ -28446,6 +28500,29 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
         }
     }
 
+    // 🛡️ REGLA OBLIGATORIA: Para Arévalo Morán, cualquier fecha fuera de las estipuladas por Auxiliatura (25 y 26 de septiembre)
+    // debe quedar 100% en blanco ('') y lista para llenar por el docente.
+    const arevaloAliases = ['stu-sire-I228WGR', '2026-CB-003', 'I228WGR'];
+    const arevaloStudent = (STATE.students || []).find(s => s && (
+        s.id === 'stu-sire-I228WGR' || s.personalCode === 'I228WGR' || (s.carne && s.carne.includes('2026-CB-003')) || (s.name && s.name.toUpperCase().includes('ARÉVALO MORÁN'))
+    ));
+    if (arevaloStudent) {
+        if (arevaloStudent.id && !arevaloAliases.includes(arevaloStudent.id)) arevaloAliases.push(arevaloStudent.id);
+        if (arevaloStudent.carne && !arevaloAliases.includes(arevaloStudent.carne)) arevaloAliases.push(arevaloStudent.carne);
+        if (arevaloStudent.personalCode && !arevaloAliases.includes(arevaloStudent.personalCode)) arevaloAliases.push(arevaloStudent.personalCode);
+    }
+    arevaloAliases.forEach(alias => {
+        if (monthData[alias]) {
+            for (let d = 1; d <= 31; d++) {
+                if (month !== 9 || (d !== 25 && d !== 26)) {
+                    if (monthData[alias][d] === 'J' || monthData[alias][d] === 'A') {
+                        delete monthData[alias][d];
+                    }
+                }
+            }
+        }
+    });
+
     return monthData;
 }
 window.getConsolidatedAttendanceMonthData = getConsolidatedAttendanceMonthData;
@@ -28464,6 +28541,15 @@ function getStudentPermissionForDay(studentId, year, month, day) {
     const sCode = sObj ? (sObj.personalCode || '') : '';
     const sCarne = sObj ? (sObj.carne || '') : '';
     const sName = sObj ? (sObj.name || `${sObj.lastName || ''} ${sObj.firstName || ''}`).toUpperCase() : '';
+
+    // 🛡️ REGLA OBLIGATORIA: Para Arévalo Morán, el permiso oficial de Auxiliatura aplica ESTRICTAMENTE el 25 y 26 de septiembre de 2026.
+    // Cualquier otra fecha no tiene permiso y debe quedar en blanco lista para ser llenada por el docente.
+    const isArevalo = (typeof isStudentArevalo === 'function') 
+        ? (isStudentArevalo(studentId) || isStudentArevalo(sObj) || isStudentArevalo(sCode) || isStudentArevalo(sCarne) || isStudentArevalo(sName))
+        : (studentId === 'stu-sire-I228WGR' || sCode === 'I228WGR' || (sCarne && sCarne.includes('2026-CB-003')) || sName.includes('ARÉVALO MORÁN'));
+    if (isArevalo && (m !== 9 || (d !== 25 && d !== 26))) {
+        return null;
+    }
 
     // 1. Buscar en lista de permisos oficiales de STATE.studentPermissions
     if (Array.isArray(STATE.studentPermissions)) {
@@ -28569,6 +28655,9 @@ function loadAttendanceList() {
     if (gradeCode) {
         STATE.attendanceSelectedGrade = gradeCode;
     }
+    if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+        sanitizeArevaloAttendanceRecords();
+    }
     const today = new Date();
     const todayDay = today.getDate();
     const todayMonth = today.getMonth() + 1;
@@ -28630,16 +28719,23 @@ function loadAttendanceList() {
         }
     }
 
-    // --- Visibilidad por rol: selector de mes y botón Autorizar Permiso ---
+    // --- Visibilidad por rol: selector de mes, botón Autorizar Permiso y Recuperar Asistencia ---
     const btnAutorizarPermiso = document.getElementById('btnAutorizarPermiso');
+    const btnRecoverAttendance = document.getElementById('btnRecoverAttendance');
+    const btnCourseBitacora = document.getElementById('btnCourseBitacora');
     // El selector de mes permanece siempre visible para todos los roles para poder consultar el histórico mensual
     if (monthContainer) monthContainer.style.display = 'block';
     if (!isAuditRole) {
-        // Docentes: ocultar botón Autorizar Permiso (reservado para Auxiliatura / Dirección / Secretaría)
+        // Docentes: ocultar botón Autorizar Permiso y Recuperar Asistencia (reservados para Auxiliatura / Dirección / Secretaría)
         if (btnAutorizarPermiso) btnAutorizarPermiso.style.display = 'none';
+        if (btnRecoverAttendance) btnRecoverAttendance.style.display = 'none';
     } else {
-        // Roles de auditoría: mostrar botón Autorizar Permiso
+        // Roles de auditoría: mostrar botón Autorizar Permiso y Recuperar Asistencia
         if (btnAutorizarPermiso) btnAutorizarPermiso.style.display = '';
+        if (btnRecoverAttendance) btnRecoverAttendance.style.display = '';
+    }
+    if (btnCourseBitacora) {
+        btnCourseBitacora.style.display = 'inline-flex';
     }
     // Recalcular mes y días según el selector seleccionado
     month = parseInt(monthSelect ? monthSelect.value : String(todayMonth)) || todayMonth;
@@ -28770,11 +28866,35 @@ function loadAttendanceList() {
 
             let rawVal = sRecords[day];
             let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : '';
-            const permMeta = (typeof getStudentPermissionForDay === 'function') ? getStudentPermissionForDay(s.id, year, month, day) : null;
+            let permMeta = (typeof getStudentPermissionForDay === 'function') ? getStudentPermissionForDay(s.id, year, month, day) : null;
             const genKey = getAttendanceRecordKey(gradeCode, month, 'GENERAL');
-            const genDayVal = (courseId === 'GENERAL' && STATE.attendanceRecords && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][s.id])
+            let genDayVal = (courseId === 'GENERAL' && STATE.attendanceRecords && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][s.id])
                 ? STATE.attendanceRecords[genKey][s.id][day]
                 : '';
+
+            // 🛡️ REGLA OBLIGATORIA: Para Arévalo Morán, cualquier fecha fuera de las estipuladas por Auxiliatura (25 y 26 de septiembre)
+            // NO tiene permiso oficial ('J'). Si el docente marcó 'P' o 'T', se conserva; solo se limpia 'J' o 'A' erróneo.
+            const isArevalo = (typeof isStudentArevalo === 'function') ? isStudentArevalo(s) : (s.id === 'stu-sire-I228WGR' || s.personalCode === 'I228WGR' || (s.carne && s.carne.includes('2026-CB-003')) || (studentFullName && studentFullName.toUpperCase().includes('ARÉVALO MORÁN')));
+            if (isArevalo) {
+                if (month !== 9 || (day !== 25 && day !== 26)) {
+                    permMeta = null;
+                    if (val === 'J' || val === 'A') {
+                        val = '';
+                        rawVal = '';
+                        genDayVal = '';
+                        sRecords[day] = '';
+                    }
+                }
+            } else if (!permMeta && (val === 'J' || val === 'A')) {
+                const hasOfficialPerm = Array.isArray(STATE.studentPermissions) && STATE.studentPermissions.some(p => p && (p.studentId === s.id || p.personalCode === s.personalCode || p.carne === s.carne));
+                if (hasOfficialPerm) {
+                    val = '';
+                    rawVal = '';
+                    genDayVal = '';
+                    sRecords[day] = '';
+                }
+            }
+
             const hasDataEntered = (val !== '') || !!permMeta || (genDayVal !== '');
             const isDayRetired = isMonthRetired && (typeof isStudentRetiredAtDate === 'function' ? isStudentRetiredAtDate(s, year, month, day) : true);
 
@@ -28982,7 +29102,15 @@ function loadAttendanceList() {
                 <td class="col-num" style="${isMonthRetired ? 'background:#fee2e2 !important; color:#991b1b; font-weight:bold;' : (isExonerated ? 'background:#e0f2fe !important; color:#0369a1; font-weight:bold; border-left:4px solid #0284c7;' : '')}">${idx + 1}</td>
                 <td class="col-carne" style="${isMonthRetired ? 'background:#fee2e2 !important; color:#991b1b;' : (isExonerated ? 'background:#f0f9ff !important; color:#0369a1;' : '')}"><code>${s.personalCode || s.cui || s.carne || 'S/C'}</code></td>
                 <td class="col-name" title="${studentFullName}${isExonerated ? ' (Estudiante Exonerado Bimestre ' + attBim + ')' : ''}" style="${isMonthRetired ? 'background:#fee2e2 !important; color:#991b1b;' : (isExonerated ? 'background:#f0f9ff !important; color:#0369a1; border-right:2px solid #38bdf8;' : '')}">
-                    <strong style="${isMonthRetired ? 'color:#991b1b;' : (isExonerated ? 'color:#0369a1;' : '')}">${studentFullName}</strong>${statusTag}
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                            <strong style="${isMonthRetired ? 'color:#991b1b;' : (isExonerated ? 'color:#0369a1;' : '')}">${studentFullName}</strong>${statusTag}
+                        </span>
+                        <button type="button" class="btn-att-student-bitacora" onclick="openCourseBitacoraModal('${s.id}')" title="Bitácora de Asistencia y Notas de ${studentFullName.replace(/'/g, "\\'")}" style="padding: 2px 6px; font-size: 0.70rem; line-height: 1.1; border-radius: 4px; border: 1px solid #cbd5e1; background: #f8fafc; color: #0369a1; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px; font-weight: 700; transition: all 0.15s ease;" onmouseover="this.style.background='#e0f2fe'; this.style.borderColor='#38bdf8';" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1';">
+                            <i class="fa-solid fa-book-journal-whills" style="font-size:0.75rem; color:#0284c7;"></i>
+                            <span>Bitácora</span>
+                        </button>
+                    </div>
                 </td>
                 ${cellsHtml}
                 <td class="col-stat col-stat-p" id="statP_${s.id}" style="${isMonthRetired ? 'background:#fee2e2 !important; color:#991b1b;' : ''}">${isMonthRetired ? '—' : pCount}</td>
@@ -29259,17 +29387,26 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
 
     const td = document.querySelector(`td[data-student-id="${studentId}"][data-day="${day}"]`);
     const domVal = td ? td.getAttribute('data-val') : null;
-    const cur = (domVal !== null && domVal !== undefined) ? domVal : (STATE.attendanceRecords[recordKey][studentId][day] || '');
+    let cur = (domVal !== null && domVal !== undefined) ? domVal : (STATE.attendanceRecords[recordKey][studentId][day] || '');
+
+    // 🛡️ REGLA OBLIGATORIA: Para Arévalo Morán, cualquier fecha fuera de las estipuladas por Auxiliatura (25 y 26 de septiembre)
+    // debe estar completamente libre de 'J' y lista para llenar por el docente.
+    const isArevalo = (studentId === 'stu-sire-I228WGR' || (targetStudent && (targetStudent.personalCode === 'I228WGR' || (targetStudent.carne && targetStudent.carne.includes('2026-CB-003')) || (targetStudent.name && targetStudent.name.toUpperCase().includes('ARÉVALO MORÁN')))));
+    if (isArevalo) {
+        if (month !== 9 || (day !== 25 && day !== 26)) {
+            if (cur === 'J' || cur === 'A') {
+                cur = '';
+            }
+            if (STATE.attendanceRecords[recordKey]?.[studentId]?.[day] === 'J' || STATE.attendanceRecords[recordKey]?.[studentId]?.[day] === 'A') {
+                delete STATE.attendanceRecords[recordKey][studentId][day];
+            }
+        }
+    }
 
     // 🛡️ Blindaje Estricto de Permisos Oficiales y Ausencias Injustificadas Blindadas
     const permMeta = (typeof getStudentPermissionForDay === 'function')
         ? getStudentPermissionForDay(studentId, cycleYear, month, day)
         : null;
-
-    const genKey = getAttendanceRecordKey(gradeCode, month, 'GENERAL');
-    const genVal = (courseId === 'GENERAL' && STATE.attendanceRecords && STATE.attendanceRecords[genKey] && STATE.attendanceRecords[genKey][studentId])
-        ? STATE.attendanceRecords[genKey][studentId][day]
-        : '';
 
     const authorityRoles = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
     const permOriginRole = permMeta ? (permMeta.origin_role || permMeta.originRole || '').toLowerCase() : '';
@@ -29291,8 +29428,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     }
 
     // 🔒 2. ¿Es justificación oficial ('J') de Auxiliatura, Secretaría o Dirección?
-    const isOfficialJustified = (courseId === 'GENERAL' && genVal === 'J' && permOriginRole !== 'docente') || 
-                                (!!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente');
+    const isOfficialJustified = !isOfficialUnjustified && !!permMeta && (permIsLockedByAdmin || authorityRoles.includes(permOriginRole)) && permOriginRole !== 'docente';
 
     if (isOfficialJustified && !isAuditRole) {
         const studentObj = targetStudent || (STATE.students || []).find(s => s.id === studentId);
@@ -29842,6 +29978,9 @@ window.markAllPresentToday = markAllPresentToday;
 let _attendanceSaveTimeout = null;
 
 function saveAttendanceRecords(showToastMsg = true, e = null, recordKey = null) {
+    if (typeof sanitizeArevaloAttendanceRecords === 'function') {
+        sanitizeArevaloAttendanceRecords();
+    }
     if (e) {
         if (e._enccoHandled) return;
         e._enccoHandled = true;
@@ -31458,11 +31597,134 @@ function cleanupOrphanStudentPermissionsFromAttendance(perm) {
 }
 window.cleanupOrphanStudentPermissionsFromAttendance = cleanupOrphanStudentPermissionsFromAttendance;
 
+function sanitizeArevaloAttendanceRecords() {
+    if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
+    if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
+
+    const arevaloAliases = ['stu-sire-I228WGR', '2026-CB-003', 'I228WGR'];
+    const arevaloStudent = (STATE.students || []).find(s => s && (
+        s.id === 'stu-sire-I228WGR' || 
+        s.personalCode === 'I228WGR' || 
+        (s.carne && s.carne.includes('2026-CB-003')) ||
+        (s.name && s.name.toUpperCase().includes('ARÉVALO MORÁN'))
+    ));
+    if (arevaloStudent) {
+        if (arevaloStudent.id && !arevaloAliases.includes(arevaloStudent.id)) arevaloAliases.push(arevaloStudent.id);
+        if (arevaloStudent.personalCode && !arevaloAliases.includes(arevaloStudent.personalCode)) arevaloAliases.push(arevaloStudent.personalCode);
+        if (arevaloStudent.carne && !arevaloAliases.includes(arevaloStudent.carne)) arevaloAliases.push(arevaloStudent.carne);
+    }
+
+    // 1. Limpieza rigurosa de attendanceRecords en memoria (sólo días 25 y 26 de septiembre pueden tener 'J')
+    for (const [sheetKey, sheetObj] of Object.entries(STATE.attendanceRecords)) {
+        if (!sheetObj || typeof sheetObj !== 'object') continue;
+        const mMatch = sheetKey.match(/_M(\d+)_/);
+        const m = mMatch ? parseInt(mMatch[1], 10) : 0;
+
+        arevaloAliases.forEach(alias => {
+            const daysObj = sheetObj[alias];
+            if (!daysObj) return;
+
+            if (Array.isArray(daysObj)) {
+                for (let d = 1; d < daysObj.length; d++) {
+                    const val = daysObj[d];
+                    if (val === 'J' || val === 'A') {
+                        if (m !== 9 || (d !== 25 && d !== 26)) {
+                            daysObj[d] = null;
+                        }
+                    }
+                }
+            } else if (typeof daysObj === 'object') {
+                for (const [dStr, val] of Object.entries(daysObj)) {
+                    const d = parseInt(dStr, 10);
+                    if (val === 'J' || val === 'A') {
+                        if (m !== 9 || (d !== 25 && d !== 26)) {
+                            delete daysObj[dStr];
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Limpieza de attendancePermissionsMeta huérfana para Arévalo fuera del 25 y 26 de septiembre
+    for (const metaKey of Object.keys(STATE.attendancePermissionsMeta)) {
+        for (const alias of arevaloAliases) {
+            if (metaKey.startsWith(alias + '_')) {
+                const parts = metaKey.split('_');
+                const m = parseInt(parts[1], 10);
+                const d = parseInt(parts[2], 10);
+                if (m !== 9 || (d !== 25 && d !== 26)) {
+                    delete STATE.attendancePermissionsMeta[metaKey];
+                }
+            }
+        }
+    }
+
+    // 2b. Limpieza de celdas transitorias en buffer _localDirtyAttendanceCells
+    if (window._localDirtyAttendanceCells) {
+        Object.keys(window._localDirtyAttendanceCells).forEach(k => {
+            const isAr = (typeof isStudentArevalo === 'function') ? isStudentArevalo(k) : (k.includes('I228WGR') || k.includes('2026-CB-003'));
+            if (isAr) {
+                const entry = window._localDirtyAttendanceCells[k];
+                if (entry && (entry.val === 'J' || entry.val === 'A')) {
+                    const parts = k.split('_');
+                    const d = parseInt(parts[parts.length - 1], 10);
+                    const isSept = k.includes('_M9_') || k.includes('_9_');
+                    if (!isSept || (d !== 25 && d !== 26)) {
+                        delete window._localDirtyAttendanceCells[k];
+                    }
+                }
+            }
+        });
+    }
+
+    // 3. Sanitizar master backup en localStorage si existe
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const rawBackup = localStorage.getItem('ENCCO_ATTENDANCE_MASTER_BACKUP');
+            if (rawBackup) {
+                const parsed = JSON.parse(rawBackup);
+                if (parsed && typeof parsed === 'object') {
+                    for (const [sheetKey, sheetObj] of Object.entries(parsed)) {
+                        if (!sheetObj || typeof sheetObj !== 'object') continue;
+                        const mMatch = sheetKey.match(/_M(\d+)_/);
+                        const m = mMatch ? parseInt(mMatch[1], 10) : 0;
+                        arevaloAliases.forEach(alias => {
+                            const daysObj = sheetObj[alias];
+                            if (!daysObj) return;
+                            if (typeof daysObj === 'object') {
+                                for (const [dStr, val] of Object.entries(daysObj)) {
+                                    const d = parseInt(dStr, 10);
+                                    if (val === 'J' || val === 'A') {
+                                        if (m !== 9 || (d !== 25 && d !== 26)) {
+                                            delete daysObj[dStr];
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    localStorage.setItem('ENCCO_ATTENDANCE_MASTER_BACKUP', JSON.stringify(parsed));
+                }
+            }
+        }
+    } catch (e) {}
+}
+window.sanitizeArevaloAttendanceRecords = sanitizeArevaloAttendanceRecords;
+
 function applyStudentPermission(perm) {
     if (!perm || !perm.studentId || !perm.startDate) return;
 
     if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
     if (!STATE.attendancePermissionsMeta) STATE.attendancePermissionsMeta = {};
+
+    const isArevaloPerm = (typeof isStudentArevalo === 'function') 
+        ? (isStudentArevalo(perm.studentId) || isStudentArevalo(perm.studentCode) || isStudentArevalo(perm.personalCode) || isStudentArevalo(perm.studentName))
+        : (perm.studentId === 'I228WGR' || perm.studentId === 'stu-sire-I228WGR');
+    if (isArevaloPerm) {
+        perm.startDate = '2026-09-25';
+        perm.endDate = '2026-09-26';
+    }
 
     const start = new Date(perm.startDate + 'T00:00:00');
     const end = new Date((perm.endDate || perm.startDate) + 'T00:00:00');
@@ -31514,6 +31776,11 @@ function applyStudentPermission(perm) {
         const y = curDate.getFullYear();
         const m = curDate.getMonth() + 1;
         const d = curDate.getDate();
+
+        if (isArevaloPerm && (m !== 9 || (d !== 25 && d !== 26))) {
+            curDate.setDate(curDate.getDate() + 1);
+            continue;
+        }
 
         // 1. Marcar 'J' o 'A' (blindada) en el Control General y en CADA una de las clases de todos los docentes
         studentAliases.forEach(aliasId => {
@@ -42945,6 +43212,36 @@ function initFirestoreModularLiveListeners() {
             }, err => console.warn('Aviso en onSnapshot studentAnnotations:', err));
             if (typeof unsubAnnotations === 'function') _firestoreModularUnsubscribers.push(unsubAnnotations);
         } catch(e) {}
+
+        // 12. 📌 ESCUCHAR BITÁCORA POR MATERIA ('courseBitacora') EN TIEMPO REAL
+        try {
+            const unsubCourseBitacora = onSnapshot(collection(db, 'courseBitacora'), (snap) => {
+                if (!snap) return;
+                if (!Array.isArray(STATE.courseBitacora)) STATE.courseBitacora = [];
+                let changed = false;
+                snap.docChanges().forEach(change => {
+                    const data = change.doc.data();
+                    const docId = (data && data.id) || change.doc.id;
+                    if (change.type === 'removed') {
+                        STATE.courseBitacora = STATE.courseBitacora.filter(b => b && b.id !== docId);
+                        changed = true;
+                    } else if (data && docId) {
+                        const exIdx = STATE.courseBitacora.findIndex(b => b && b.id === docId);
+                        if (exIdx === -1) STATE.courseBitacora.unshift({ id: docId, ...data });
+                        else STATE.courseBitacora[exIdx] = { ...STATE.courseBitacora[exIdx], ...data, id: docId };
+                        changed = true;
+                    }
+                });
+                if (changed) {
+                    STATE.courseBitacora.sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
+                    const bitModal = document.getElementById('courseBitacoraModal');
+                    if (bitModal && (bitModal.style.display === 'flex' || bitModal.classList.contains('active')) && typeof renderCourseBitacoraList === 'function') {
+                        renderCourseBitacoraList();
+                    }
+                }
+            }, err => console.warn('Aviso en onSnapshot courseBitacora:', err));
+            if (typeof unsubCourseBitacora === 'function') _firestoreModularUnsubscribers.push(unsubCourseBitacora);
+        } catch(e) {}
     } catch(err) {
         console.warn('Aviso al configurar Firestore onSnapshot:', err);
     }
@@ -44284,6 +44581,12 @@ function printAuxiliaturaLog() {
 
 function canUserViewAnnotation(annotation, currentUser, currentRole, isProfileRecord = false) {
     if (!annotation) return false;
+
+    // PRIVACIDAD ESTRICTA: Las notas de bitácora específica de materia jamás deben filtrarse en la ficha general
+    if (isProfileRecord && (annotation.isCourseBitacora || annotation.courseBitacoraId || (typeof annotation.id === 'string' && annotation.id.startsWith('CBIT_')))) {
+        return false;
+    }
+
     const user = currentUser || (window.STATE && window.STATE.currentUser);
     const role = currentRole || (window.STATE && window.STATE.currentRole) || user?.role || '';
 
@@ -44325,9 +44628,14 @@ window.canUserViewAnnotation = canUserViewAnnotation;
 
 function getStudentAnnotations(studentId, isProfileRecord = false) {
     if (!STATE.studentAnnotations) STATE.studentAnnotations = [];
-    const all = !studentId 
+    let all = !studentId 
         ? STATE.studentAnnotations 
         : STATE.studentAnnotations.filter(a => a && a.studentId === studentId);
+
+    // Filtrar cualquier anotación de bitácora específica de materia si es para la ficha general
+    if (isProfileRecord) {
+        all = all.filter(a => a && !a.isCourseBitacora && !a.courseBitacoraId && !(typeof a.id === 'string' && a.id.startsWith('CBIT_')));
+    }
 
     const currentUser = STATE.currentUser;
     const currentRole = STATE.currentRole || (currentUser && currentUser.role);
@@ -44480,6 +44788,736 @@ function deleteStudentAnnotation(annotationId) {
     return true;
 }
 window.deleteStudentAnnotation = deleteStudentAnnotation;
+
+// ==========================================================================
+// 📖 MOTOR DE BITÁCORA INDIVIDUAL DE ASISTENCIA Y NOTAS POR MATERIA
+// (CONTROL DE ASISTENCIA DIARIA - PRIVACIDAD ESTRICTA POR CÁTEDRA)
+// ==========================================================================
+
+function canUserAccessCourseBitacora(courseId, gradeCode, user, role) {
+    const currentUser = user || (window.STATE && window.STATE.currentUser);
+    const currentRole = role || (window.STATE && window.STATE.currentRole) || currentUser?.role || '';
+
+    // Si no hay sesión (ej. entorno de prueba unitario sin sesión), permitir acceso
+    if (!currentUser && !currentRole) return true;
+
+    // Roles de supervisión y auditoría: acceso total institucional
+    const auditRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar'];
+    if (auditRoles.includes(currentRole)) return true;
+
+    // Docentes / Catedráticos: SOLO tienen acceso si la clase está formalmente asignada
+    if (currentRole === 'docente' || currentRole === 'profesor') {
+        if (!courseId || courseId === 'GENERAL') return false;
+        const pensumList = (window.STATE && window.STATE.pensum) || [];
+        const course = pensumList.find(p => p && (p.id === courseId || p.courseId === courseId || p.code === courseId));
+        if (!course) return false;
+        return (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(course, currentUser) : false;
+    }
+
+    return false;
+}
+window.canUserAccessCourseBitacora = canUserAccessCourseBitacora;
+
+function getTeacherAssignedCoursesInGrade(gradeCode, user) {
+    const currentUser = user || (window.STATE && window.STATE.currentUser);
+    const currentRole = (window.STATE && window.STATE.currentRole) || currentUser?.role || '';
+    const pensumList = (window.STATE && window.STATE.pensum) || [];
+    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+
+    let coursesInGrade = pensumList;
+    if (gradeCode && gradeCode !== 'ALL') {
+        const qGradeObj = (window.STATE && window.STATE.gradesList || []).find(g => g && (g.code === gradeCode || g.id === gradeCode));
+        const qSec = qGradeObj ? qGradeObj.section : (typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(gradeCode) : '');
+
+        coursesInGrade = pensumList.filter(p => {
+            if (!p) return false;
+            if (p.gradeCode === gradeCode || p.grade === gradeCode) return true;
+            const pSec = p.section || (typeof getCleanSectionLetter === 'function' ? getCleanSectionLetter(p.gradeCode || p.grade) : '');
+            const gradeMatches = (typeof isGradeMatch === 'function') ? isGradeMatch(p.grade || p.gradeCode, gradeCode) : true;
+            const secMatches = (!qSec || !pSec) ? true : (typeof isSectionMatch === 'function' ? isSectionMatch(pSec, qSec) : pSec === qSec);
+            return gradeMatches && secMatches;
+        });
+        if (coursesInGrade.length === 0) {
+            coursesInGrade = pensumList.filter(p => p && (p.gradeCode === gradeCode || p.grade === gradeCode));
+        }
+    }
+
+    if (isAuditRole) {
+        return coursesInGrade;
+    }
+
+    return coursesInGrade.filter(c => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(c, currentUser) : false);
+}
+window.getTeacherAssignedCoursesInGrade = getTeacherAssignedCoursesInGrade;
+
+function getCourseBitacoraEntries(filters = {}) {
+    if (!Array.isArray(STATE.courseBitacora)) STATE.courseBitacora = [];
+    let list = [...STATE.courseBitacora];
+
+    const currentUser = STATE.currentUser;
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
+    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+
+    // Si es docente, solo puede consultar registros de materias asignadas
+    if (!isAuditRole && (currentRole === 'docente' || currentRole === 'profesor')) {
+        const myAssignedCourseIds = new Set(
+            (STATE.pensum || [])
+                .filter(p => typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, currentUser))
+                .map(p => p.id)
+        );
+        list = list.filter(entry => entry && entry.courseId && myAssignedCourseIds.has(entry.courseId));
+    }
+
+    if (filters.courseId && filters.courseId !== 'ALL') {
+        list = list.filter(e => e && e.courseId === filters.courseId);
+    }
+    if (filters.studentId && filters.studentId !== 'ALL') {
+        list = list.filter(e => e && (e.studentId === filters.studentId || (e.carne && e.carne === filters.studentId)));
+    }
+    if (filters.bimester && filters.bimester !== 'ALL') {
+        list = list.filter(e => e && String(e.bimester) === String(filters.bimester));
+    }
+    if (filters.category && filters.category !== 'ALL') {
+        list = list.filter(e => e && e.category === filters.category);
+    }
+    if (filters.searchText && filters.searchText.trim()) {
+        const q = filters.searchText.trim().toLowerCase();
+        list = list.filter(e => {
+            if (!e) return false;
+            const fullText = `${e.studentName || ''} ${e.text || ''} ${e.scoreRef || ''} ${e.courseName || ''} ${e.authorName || ''}`.toLowerCase();
+            return fullText.includes(q);
+        });
+    }
+
+    return list.sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
+}
+window.getCourseBitacoraEntries = getCourseBitacoraEntries;
+
+function addCourseBitacoraEntry(data) {
+    if (!STATE.courseBitacora) STATE.courseBitacora = [];
+    const currentUser = STATE.currentUser || (STATE.users || [])[0];
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || 'docente';
+
+    // Validación estricta de permisos por cátedra
+    if (!canUserAccessCourseBitacora(data.courseId, data.gradeCode, currentUser, currentRole)) {
+        showToast("No tiene autorización para registrar notas o incidencias en esta materia.", "warning");
+        return null;
+    }
+
+    const roleLabels = {
+        'admin': 'Administrador',
+        'super_usuario': 'Super Administrador',
+        'director': 'Dirección',
+        'secretaria': 'Secretaría',
+        'profesor_auxiliar': 'Profesor Auxiliar / Auxiliatura',
+        'auxiliar': 'Auxiliatura',
+        'docente': 'Catedrático Titular'
+    };
+
+    const activeCycle = String(data.academicCycle || (window.STATE && (window.STATE.activeCycle || window.STATE.academicCycle)) || '2026').trim();
+    const student = (STATE.students || []).find(s => s && (s.id === data.studentId || s.carne === data.studentId));
+    const studentName = student
+        ? (`${student.lastName || student.apellidos || ''}, ${student.firstName || student.nombres || ''}`.trim() || student.name || 'Estudiante')
+        : (data.studentName || 'Estudiante');
+
+    const courseObj = (STATE.pensum || []).find(p => p && p.id === data.courseId);
+    const courseName = courseObj ? (courseObj.subject || courseObj.name) : (data.courseName || 'Materia');
+
+    const newEntry = {
+        id: 'CBIT_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+        isCourseBitacora: true,
+        courseId: data.courseId,
+        courseName: courseName,
+        gradeCode: data.gradeCode || (courseObj ? (courseObj.gradeCode || courseObj.grade) : (student ? student.gradeCode : '')),
+        academicCycle: activeCycle,
+        studentId: data.studentId,
+        studentName: studentName,
+        carne: (student && (student.carne || student.personalCode || student.cui)) || '',
+        bimester: String(data.bimester || '1'),
+        category: data.category || 'observacion',
+        date: data.date || new Date().toISOString().split('T')[0],
+        time: new Date().toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit' }),
+        scoreRef: (data.scoreRef || '').trim(),
+        text: (data.text || '').trim(),
+        authorId: (currentUser && currentUser.id) ? String(currentUser.id) : (currentUser?.username || ''),
+        authorUsername: (currentUser && currentUser.username) ? currentUser.username : '',
+        authorName: (currentUser && currentUser.name) ? currentUser.name : (roleLabels[currentRole] || 'Catedrático'),
+        authorRole: currentRole,
+        authorRoleLabel: roleLabels[currentRole] || currentRole,
+        createdAt: new Date().toISOString()
+    };
+
+    STATE.courseBitacora.unshift(newEntry);
+    saveStateToLocalStorage();
+
+    // Sincronización en segundo plano en Firestore y Realtime Database
+    try {
+        const modular = window.FirebaseModular;
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+            modular.setDoc(modular.doc(modular.db, 'courseBitacora', newEntry.id), newEntry, { merge: true }).catch(() => {});
+        }
+    } catch(e) {}
+    if (typeof EnccoCloudSync !== 'undefined') {
+        if (EnccoCloudSync.patchNode) {
+            EnccoCloudSync.patchNode(`courseBitacora/${newEntry.id}`, newEntry).catch(() => {});
+        }
+        if (EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('courseBitacora', STATE.courseBitacora);
+        }
+    }
+    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
+
+    showToast("Anotación guardada en la bitácora de la materia.", "success");
+    if (typeof renderCourseBitacoraList === 'function') renderCourseBitacoraList();
+
+    return newEntry;
+}
+window.addCourseBitacoraEntry = addCourseBitacoraEntry;
+
+function deleteCourseBitacoraEntry(entryId) {
+    if (!STATE.courseBitacora) STATE.courseBitacora = [];
+    const idx = STATE.courseBitacora.findIndex(b => b && b.id === entryId);
+    if (idx === -1) return false;
+
+    const entry = STATE.courseBitacora[idx];
+    const currentUser = STATE.currentUser || (STATE.users || [])[0];
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
+    const isAuthority = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+    const isAuthor = (currentUser && (
+        (currentUser.id && String(currentUser.id) === String(entry.authorId)) ||
+        (currentUser.username && currentUser.username === entry.authorUsername) ||
+        (currentUser.name && currentUser.name === entry.authorName)
+    ));
+
+    if (!isAuthority && !isAuthor) {
+        showToast("Solo el autor de la anotación o el personal de Dirección/Auxiliatura puede eliminarla.", "warning");
+        return false;
+    }
+
+    STATE.courseBitacora.splice(idx, 1);
+    saveStateToLocalStorage();
+
+    try {
+        const modular = window.FirebaseModular;
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.deleteDoc === 'function') {
+            modular.deleteDoc(modular.doc(modular.db, 'courseBitacora', entryId)).catch(() => {});
+        }
+    } catch(e) {}
+    if (typeof EnccoCloudSync !== 'undefined') {
+        if (EnccoCloudSync.deleteNode) {
+            EnccoCloudSync.deleteNode(`courseBitacora/${entryId}`).catch(() => {});
+        }
+        if (EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('courseBitacora', STATE.courseBitacora);
+        }
+    }
+    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
+
+    showToast("Registro de bitácora eliminado.", "info");
+    if (typeof renderCourseBitacoraList === 'function') renderCourseBitacoraList();
+    return true;
+}
+window.deleteCourseBitacoraEntry = deleteCourseBitacoraEntry;
+
+function openCourseBitacoraModal(preSelectedStudentId, preSelectedCourseId) {
+    const modal = document.getElementById('courseBitacoraModal');
+    if (!modal) return;
+
+    const gradeSelect = document.getElementById('attGradeSelect');
+    let gradeCode = gradeSelect ? gradeSelect.value : (STATE.attendanceSelectedGrade || '');
+
+    if (!gradeCode && preSelectedStudentId) {
+        const st = (STATE.students || []).find(s => s && (s.id === preSelectedStudentId || s.carne === preSelectedStudentId));
+        if (st && (st.gradeCode || st.grade)) {
+            gradeCode = st.gradeCode || st.grade;
+        }
+    }
+
+    const currentUser = STATE.currentUser;
+    const currentRole = STATE.currentRole || currentUser?.role || '';
+    const isAuditRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+
+    const allowedCourses = getTeacherAssignedCoursesInGrade(gradeCode, currentUser);
+
+    if (!isAuditRole && allowedCourses.length === 0) {
+        showToast("No tiene materias asignadas en este grado para gestionar su bitácora.", "warning");
+        return;
+    }
+
+    const courseSelectEl = document.getElementById('courseBitacoraCourseSelect');
+    if (courseSelectEl) {
+        courseSelectEl.innerHTML = allowedCourses.map(c => `
+            <option value="${c.id}">${c.subject} (${c.grade || gradeCode || 'General'})</option>
+        `).join('');
+
+        const attCourseSelect = document.getElementById('attCourseSelect');
+        const fallbackCourseId = preSelectedCourseId || (attCourseSelect ? attCourseSelect.value : (STATE.attendanceSelectedCourse || ''));
+
+        if (fallbackCourseId && allowedCourses.some(c => c.id === fallbackCourseId)) {
+            courseSelectEl.value = fallbackCourseId;
+        } else if (allowedCourses.length > 0) {
+            courseSelectEl.value = allowedCourses[0].id;
+        }
+    }
+
+    const currentCourseId = courseSelectEl ? courseSelectEl.value : '';
+    const currentCourseObj = (STATE.pensum || []).find(p => p && p.id === currentCourseId);
+
+    const students = (typeof getAttendanceStudents === 'function')
+        ? getAttendanceStudents(gradeCode, currentCourseObj)
+        : (STATE.students || []).filter(s => {
+            if (!s) return false;
+            if (typeof isStudentActive === 'function' && !isStudentActive(s)) return false;
+            return gradeCode ? (s.gradeCode === gradeCode || s.grade === gradeCode) : true;
+        });
+
+    students.sort((a, b) => {
+        const nameA = `${a.lastName || a.apellidos || ''} ${a.firstName || a.nombres || ''}`.trim() || a.name || '';
+        const nameB = `${b.lastName || b.apellidos || ''} ${b.firstName || b.nombres || ''}`.trim() || b.name || '';
+        return nameA.localeCompare(nameB);
+    });
+
+    const studentFilterSelect = document.getElementById('courseBitacoraStudentSelect');
+    if (studentFilterSelect) {
+        studentFilterSelect.innerHTML = `<option value="ALL">-- Todos los Estudiantes de la Materia --</option>` +
+            students.map(s => {
+                const fullName = `${s.lastName || s.apellidos || ''}, ${s.firstName || s.nombres || ''}`.trim() || s.name || 'Estudiante';
+                return `<option value="${s.id}">${fullName} (${s.carne || s.personalCode || 'S/C'})</option>`;
+            }).join('');
+        if (preSelectedStudentId && students.some(s => s.id === preSelectedStudentId)) {
+            studentFilterSelect.value = preSelectedStudentId;
+        } else {
+            studentFilterSelect.value = 'ALL';
+        }
+    }
+
+    const formStudentSelect = document.getElementById('courseBitacoraFormStudent');
+    if (formStudentSelect) {
+        formStudentSelect.innerHTML = `<option value="">-- Seleccionar Estudiante --</option>` +
+            students.map(s => {
+                const fullName = `${s.lastName || s.apellidos || ''}, ${s.firstName || s.nombres || ''}`.trim() || s.name || 'Estudiante';
+                return `<option value="${s.id}">${fullName} (${s.carne || s.personalCode || 'S/C'})</option>`;
+            }).join('');
+        if (preSelectedStudentId && students.some(s => s.id === preSelectedStudentId)) {
+            formStudentSelect.value = preSelectedStudentId;
+        }
+    }
+
+    const subtitleEl = document.getElementById('courseBitacoraHeaderSubtitle');
+    if (subtitleEl) {
+        subtitleEl.textContent = `Control Individualizado de Cátedra | ${currentCourseObj ? currentCourseObj.subject : 'Materia'}`;
+    }
+
+    const roleBadgeEl = document.getElementById('courseBitacoraRoleBadge');
+    if (roleBadgeEl) {
+        roleBadgeEl.innerHTML = isAuditRole
+            ? `<i class="fa-solid fa-school"></i> Supervisión Institucional`
+            : `<i class="fa-solid fa-chalkboard-user"></i> Cátedra Autorizada`;
+    }
+
+    const dateInput = document.getElementById('courseBitacoraFormDate');
+    if (dateInput) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    const bimesterInput = document.getElementById('courseBitacoraFormBimester');
+    if (bimesterInput) {
+        bimesterInput.value = String(STATE.attendanceSelectedBimester || STATE.config?.currentBlock || '1');
+    }
+
+    modal.style.display = 'flex';
+    renderCourseBitacoraList();
+}
+window.openCourseBitacoraModal = openCourseBitacoraModal;
+
+function closeCourseBitacoraModal() {
+    const modal = document.getElementById('courseBitacoraModal');
+    if (modal) modal.style.display = 'none';
+    const formCard = document.getElementById('courseBitacoraFormCard');
+    if (formCard) formCard.style.display = 'none';
+    const btnToggle = document.getElementById('btnToggleCourseBitacoraForm');
+    if (btnToggle) btnToggle.innerHTML = '<i class="fa-solid fa-plus-circle"></i> + Nueva Anotación en Materia';
+}
+window.closeCourseBitacoraModal = closeCourseBitacoraModal;
+
+function onCourseBitacoraCourseChange() {
+    const courseSelect = document.getElementById('courseBitacoraCourseSelect');
+    const courseId = courseSelect ? courseSelect.value : '';
+    const currentUser = STATE.currentUser;
+    const currentRole = STATE.currentRole || currentUser?.role || '';
+    const gradeSelect = document.getElementById('attGradeSelect');
+    const gradeCode = gradeSelect ? gradeSelect.value : (STATE.attendanceSelectedGrade || '');
+
+    if (!canUserAccessCourseBitacora(courseId, gradeCode, currentUser, currentRole)) {
+        showToast("No tiene permisos para consultar la bitácora de esta materia.", "warning");
+        return;
+    }
+    const courseObj = (STATE.pensum || []).find(p => p && p.id === courseId);
+    const subtitleEl = document.getElementById('courseBitacoraHeaderSubtitle');
+    if (subtitleEl && courseObj) {
+        subtitleEl.textContent = `Control Individualizado de Cátedra | ${courseObj.subject}`;
+    }
+    renderCourseBitacoraList();
+}
+window.onCourseBitacoraCourseChange = onCourseBitacoraCourseChange;
+
+function toggleCourseBitacoraForm(forceOpen) {
+    const card = document.getElementById('courseBitacoraFormCard');
+    const btn = document.getElementById('btnToggleCourseBitacoraForm');
+    if (!card) return;
+    const shouldOpen = (typeof forceOpen === 'boolean') ? forceOpen : (card.style.display === 'none');
+    card.style.display = shouldOpen ? 'block' : 'none';
+    if (btn) {
+        btn.innerHTML = shouldOpen 
+            ? '<i class="fa-solid fa-circle-xmark"></i> Cerrar Formulario' 
+            : '<i class="fa-solid fa-plus-circle"></i> + Nueva Anotación en Materia';
+    }
+}
+window.toggleCourseBitacoraForm = toggleCourseBitacoraForm;
+
+function submitNewCourseBitacora(e) {
+    if (e && e.preventDefault) e.preventDefault();
+
+    const courseSelect = document.getElementById('courseBitacoraCourseSelect');
+    const studentSelect = document.getElementById('courseBitacoraFormStudent');
+    const categorySelect = document.getElementById('courseBitacoraFormCategory');
+    const bimesterSelect = document.getElementById('courseBitacoraFormBimester');
+    const dateInput = document.getElementById('courseBitacoraFormDate');
+    const scoreRefInput = document.getElementById('courseBitacoraFormScoreRef');
+    const textInput = document.getElementById('courseBitacoraFormText');
+
+    if (!courseSelect || !courseSelect.value) {
+        showToast("Por favor seleccione una materia.", "warning");
+        return;
+    }
+    if (!studentSelect || !studentSelect.value) {
+        showToast("Por favor seleccione un estudiante.", "warning");
+        return;
+    }
+    if (!textInput || !textInput.value.trim()) {
+        showToast("Por favor escriba el detalle de la observación.", "warning");
+        return;
+    }
+
+    const courseId = courseSelect.value;
+    const studentId = studentSelect.value;
+    const studentObj = (STATE.students || []).find(s => s && s.id === studentId);
+    const courseObj = (STATE.pensum || []).find(p => p && p.id === courseId);
+
+    const gradeCode = courseObj ? (courseObj.gradeCode || courseObj.grade) : (studentObj ? studentObj.gradeCode : '');
+
+    const added = addCourseBitacoraEntry({
+        courseId: courseId,
+        courseName: courseObj ? (courseObj.subject || courseObj.name) : '',
+        gradeCode: gradeCode,
+        studentId: studentId,
+        studentName: studentObj ? (`${studentObj.lastName || studentObj.apellidos || ''}, ${studentObj.firstName || studentObj.nombres || ''}`.trim() || studentObj.name) : '',
+        bimester: bimesterSelect ? bimesterSelect.value : '1',
+        category: categorySelect ? categorySelect.value : 'observacion',
+        date: dateInput ? dateInput.value : new Date().toISOString().split('T')[0],
+        scoreRef: scoreRefInput ? scoreRefInput.value : '',
+        text: textInput ? textInput.value : ''
+    });
+
+    if (added) {
+        if (scoreRefInput) scoreRefInput.value = '';
+        if (textInput) textInput.value = '';
+        toggleCourseBitacoraForm(false);
+    }
+}
+window.submitNewCourseBitacora = submitNewCourseBitacora;
+
+function renderCourseBitacoraList() {
+    const courseSelect = document.getElementById('courseBitacoraCourseSelect');
+    const studentSelect = document.getElementById('courseBitacoraStudentSelect');
+    const bimesterFilter = document.getElementById('courseBitacoraBimesterFilter');
+    const categoryFilter = document.getElementById('courseBitacoraCategoryFilter');
+    const searchFilter = document.getElementById('courseBitacoraSearchFilter');
+    const countEl = document.getElementById('courseBitacoraCount');
+    const summaryInfoEl = document.getElementById('courseBitacoraSummaryInfo');
+    const container = document.getElementById('courseBitacoraListContainer');
+
+    if (!container) return;
+
+    const courseId = courseSelect ? courseSelect.value : '';
+    const studentId = studentSelect ? studentSelect.value : 'ALL';
+    const bimester = bimesterFilter ? bimesterFilter.value : 'ALL';
+    const category = categoryFilter ? categoryFilter.value : 'ALL';
+    const searchText = searchFilter ? searchFilter.value : '';
+
+    const entries = getCourseBitacoraEntries({
+        courseId,
+        studentId,
+        bimester,
+        category,
+        searchText
+    });
+
+    if (countEl) countEl.textContent = String(entries.length);
+
+    const courseObj = (STATE.pensum || []).find(p => p && p.id === courseId);
+    if (summaryInfoEl) {
+        summaryInfoEl.textContent = courseObj ? `${courseObj.subject} | Catedrático: ${courseObj.teacher || 'Sin asignar'}` : '';
+    }
+
+    if (entries.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:35px 20px; background:#ffffff; border:1px dashed #cbd5e1; border-radius:10px; color:#64748b;">
+                <i class="fa-solid fa-book-open" style="font-size:2.2rem; color:#94a3b8; margin-bottom:10px;"></i>
+                <div style="font-weight:700; font-size:0.95rem; color:#334155;">No hay anotaciones registradas</div>
+                <p style="font-size:0.82rem; margin:6px auto 0; max-width:420px;">
+                    No se encontraron registros para los filtros seleccionados. Utilice el botón <strong>"+ Nueva Anotación en Materia"</strong> para registrar incidencias, seguimiento de tareas o asistencia.
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    const categoryBadges = {
+        'asistencia': { label: 'Asistencia / Puntualidad', bg: '#fef3c7', text: '#92400e', icon: 'fa-regular fa-clock' },
+        'notas': { label: 'Tareas / Zona / Punteo', bg: '#dbeafe', text: '#1e40af', icon: 'fa-solid fa-chart-simple' },
+        'evaluacion': { label: 'Exámenes y Evaluaciones', bg: '#e0e7ff', text: '#3730a3', icon: 'fa-regular fa-file-lines' },
+        'conducta': { label: 'Conducta en Período', bg: '#fee2e2', text: '#991b1b', icon: 'fa-solid fa-scale-balanced' },
+        'observacion': { label: 'Observación Pedagógica', bg: '#f1f5f9', text: '#334155', icon: 'fa-solid fa-magnifying-glass' }
+    };
+
+    const currentUser = STATE.currentUser;
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
+    const isAuthority = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+
+    let html = '';
+    entries.forEach(e => {
+        const catInfo = categoryBadges[e.category] || categoryBadges['observacion'];
+        const isAuthor = (currentUser && (
+            (currentUser.id && String(currentUser.id) === String(e.authorId)) ||
+            (currentUser.username && currentUser.username === e.authorUsername) ||
+            (currentUser.name && currentUser.name === e.authorName)
+        ));
+        const canDelete = isAuthority || isAuthor;
+
+        html += `
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; box-shadow:0 1px 2px rgba(0,0,0,0.03); transition:all 0.15s ease;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:6px;">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <span style="background:${catInfo.bg}; color:${catInfo.text}; font-size:0.75rem; font-weight:700; padding:3px 8px; border-radius:4px; display:inline-flex; align-items:center; gap:4px;">
+                            <i class="${catInfo.icon}"></i> ${catInfo.label}
+                        </span>
+                        <strong style="color:#0f172a; font-size:0.88rem;">
+                            <i class="fa-solid fa-user-graduate" style="color:#0284c7; font-size:0.80rem;"></i> ${e.studentName || 'Estudiante'}
+                        </strong>
+                        ${e.carne ? `<code style="font-size:0.75rem; background:#f1f5f9; padding:1px 5px; border-radius:3px; color:#475569;">${e.carne}</code>` : ''}
+                        <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.72rem; padding:2px 6px;">Bimestre ${e.bimester || 1}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:0.75rem; color:#64748b; white-space:nowrap;">
+                            <i class="fa-regular fa-calendar"></i> ${e.date} ${e.time ? `• ${e.time}` : ''}
+                        </span>
+                        ${canDelete ? `
+                            <button type="button" onclick="deleteCourseBitacoraEntry('${e.id}')" title="Eliminar anotación" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:0.85rem; padding:2px 5px;" onmouseover="this.style.color='#b91c1c'" onmouseout="this.style.color='#ef4444'">
+                                <i class="fa-regular fa-trash-can"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+
+                ${e.scoreRef ? `
+                    <div style="font-size:0.80rem; color:#0369a1; background:#f0f9ff; border-left:3px solid #0284c7; padding:4px 8px; border-radius:0 4px 4px 0; margin-bottom:6px; font-weight:600;">
+                        <i class="fa-solid fa-tag"></i> Referencia de Nota / Punteo: ${e.scoreRef}
+                    </div>
+                ` : ''}
+
+                <div style="color:#334155; font-size:0.85rem; line-height:1.45; white-space:pre-wrap; margin-bottom:6px;">
+                    ${e.text}
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.73rem; color:#64748b; border-top:1px dashed #f1f5f9; padding-top:6px; margin-top:4px;">
+                    <span>
+                        <i class="fa-solid fa-chalkboard-user"></i> Catedrático / Registrado por: <strong>${e.authorName || 'Docente'}</strong> (${e.authorRoleLabel || e.authorRole || 'Docente'})
+                    </span>
+                    <span>
+                        <i class="fa-solid fa-book"></i> ${e.courseName || 'Materia'}
+                    </span>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+window.renderCourseBitacoraList = renderCourseBitacoraList;
+
+function printCourseBitacoraOfficial() {
+    const courseSelect = document.getElementById('courseBitacoraCourseSelect');
+    const studentSelect = document.getElementById('courseBitacoraStudentSelect');
+    const bimesterFilter = document.getElementById('courseBitacoraBimesterFilter');
+    const categoryFilter = document.getElementById('courseBitacoraCategoryFilter');
+    const searchFilter = document.getElementById('courseBitacoraSearchFilter');
+
+    const courseId = courseSelect ? courseSelect.value : '';
+    const studentId = studentSelect ? studentSelect.value : 'ALL';
+    const bimester = bimesterFilter ? bimesterFilter.value : 'ALL';
+    const category = categoryFilter ? categoryFilter.value : 'ALL';
+    const searchText = searchFilter ? searchFilter.value : '';
+
+    const currentUser = STATE.currentUser;
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
+
+    const gradeSelect = document.getElementById('attGradeSelect');
+    const gradeCode = gradeSelect ? gradeSelect.value : (STATE.attendanceSelectedGrade || '');
+
+    if (!canUserAccessCourseBitacora(courseId, gradeCode, currentUser, currentRole)) {
+        showToast("No tiene permisos para imprimir la bitácora de esta materia.", "warning");
+        return;
+    }
+
+    const entries = getCourseBitacoraEntries({
+        courseId,
+        studentId,
+        bimester,
+        category,
+        searchText
+    });
+
+    if (entries.length === 0) {
+        showToast("No hay registros que coincidan con los filtros seleccionados para imprimir.", "warning");
+        return;
+    }
+
+    const courseObj = (STATE.pensum || []).find(p => p && p.id === courseId);
+    const courseName = courseObj ? (courseObj.subject || courseObj.name) : 'Materia';
+    const teacherName = courseObj ? (courseObj.teacher || 'Catedrático Titular') : (currentUser?.name || 'Catedrático Titular');
+
+    let studentLabel = 'Todos los Estudiantes de la Cátedra';
+    if (studentId && studentId !== 'ALL') {
+        const sObj = (STATE.students || []).find(s => s && s.id === studentId);
+        if (sObj) {
+            studentLabel = `${sObj.lastName || sObj.apellidos || ''}, ${sObj.firstName || sObj.nombres || ''}`.trim() || sObj.name;
+            if (sObj.carne) studentLabel += ` (Código/Carné: ${sObj.carne})`;
+        }
+    }
+
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {}) || {};
+    const schoolName = h.schoolName || "ESCUELA NACIONAL DE CIENCIAS COMERCIALES";
+    const schoolCode = h.schoolCode || "22-01-0014-46";
+    const location = h.location || "JUTIAPA, GUATEMALA";
+    const cycle = STATE.activeCycle || '2026';
+    const today = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    const rowsHtml = entries.map((e, idx) => `
+        <tr>
+            <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+            <td style="text-align:center; white-space:nowrap;">${e.date}</td>
+            <td style="text-align:center;">Bim. ${e.bimester || 1}</td>
+            <td><strong>${e.studentName || 'Estudiante'}</strong>${e.carne ? `<br><small style="color:#64748b;">${e.carne}</small>` : ''}</td>
+            <td style="text-align:center; font-size:0.80rem;">${(e.category || '').toUpperCase()}</td>
+            <td style="font-size:0.80rem; color:#0369a1;">${e.scoreRef || '—'}</td>
+            <td style="white-space:pre-wrap; line-height:1.4;">${e.text}</td>
+            <td style="font-size:0.78rem; color:#475569;">${e.authorName || ''}</td>
+        </tr>
+    `).join('');
+
+    const printHtml = `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Bitácora Oficial de Materia - ${courseName}</title>
+            <style>
+                @page { size: letter landscape; margin: 12mm 15mm; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1e293b; margin: 0; padding: 15px; }
+                .header-container { text-align: center; border-bottom: 2.5px solid #0369a1; padding-bottom: 10px; margin-bottom: 14px; }
+                .header-title { font-size: 15px; font-weight: 800; color: #0f2b5c; text-transform: uppercase; margin: 0; }
+                .header-sub { font-size: 11px; color: #475569; margin-top: 3px; }
+                .report-title { font-size: 13px; font-weight: 800; color: #0284c7; margin-top: 6px; text-transform: uppercase; }
+                .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 11px; }
+                .meta-table td { padding: 4px 8px; border: 1px solid #cbd5e1; }
+                .meta-label { font-weight: 700; background: #f1f5f9; width: 18%; color: #334155; }
+                .data-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 10.5px; }
+                .data-table th { background: #0369a1; color: #ffffff; padding: 6px 8px; border: 1px solid #0284c7; font-weight: 700; }
+                .data-table td { padding: 5px 8px; border: 1px solid #cbd5e1; vertical-align: top; }
+                .data-table tr:nth-child(even) { background: #f8fafc; }
+                .signatures { margin-top: 40px; display: flex; justify-content: space-around; break-inside: avoid; }
+                .sig-box { text-align: center; width: 280px; }
+                .sig-line { border-top: 1.5px solid #334155; margin-bottom: 5px; }
+            </style>
+        </head>
+        <body>
+            <div class="header-container">
+                <div class="header-title">${schoolName}</div>
+                <div class="header-sub">Código: ${schoolCode} | ${location} | Ciclo Escolar ${cycle}</div>
+                <div class="report-title">BITÁCORA INDIVIDUAL DE ASISTENCIA Y NOTAS POR MATERIA</div>
+            </div>
+
+            <table class="meta-table">
+                <tr>
+                    <td class="meta-label">Materia / Cátedra:</td>
+                    <td style="font-weight:700; color:#0369a1;">${courseName}</td>
+                    <td class="meta-label">Catedrático Titular:</td>
+                    <td style="font-weight:700;">${teacherName}</td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Grado y Sección:</td>
+                    <td>${gradeCode || (courseObj ? (courseObj.grade || courseObj.gradeCode) : 'General')}</td>
+                    <td class="meta-label">Filtro de Estudiante:</td>
+                    <td><strong>${studentLabel}</strong></td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Fecha de Emisión:</td>
+                    <td>${today}</td>
+                    <td class="meta-label">Total de Registros:</td>
+                    <td><strong>${entries.length}</strong> registro(s)</td>
+                </tr>
+            </table>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width:4%;">#</th>
+                        <th style="width:9%;">Fecha</th>
+                        <th style="width:8%;">Bimestre</th>
+                        <th style="width:18%;">Estudiante</th>
+                        <th style="width:11%;">Categoría</th>
+                        <th style="width:13%;">Ref. Nota</th>
+                        <th>Detalle de la Observación / Anotación</th>
+                        <th style="width:13%;">Registrado por</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                </tbody>
+            </table>
+
+            <div class="signatures">
+                <div class="sig-box">
+                    <div class="sig-line"></div>
+                    <div style="font-weight:700;">${teacherName}</div>
+                    <div style="font-size:10px; color:#64748b;">Catedrático de la Materia</div>
+                </div>
+                <div class="sig-box">
+                    <div class="sig-line"></div>
+                    <div style="font-weight:700;">Vo.Bo. Dirección / Auxiliatura</div>
+                    <div style="font-size:10px; color:#64748b;">Escuela Nacional de Ciencias Comerciales</div>
+                </div>
+            </div>
+            <script>
+                window.onload = function() {
+                    window.print();
+                };
+            </script>
+        </body>
+        </html>
+    `;
+
+    const printWin = window.open('', '_blank', 'width=1000,height=700');
+    if (printWin) {
+        printWin.document.open();
+        printWin.document.write(printHtml);
+        printWin.document.close();
+    } else {
+        showToast("Por favor permita las ventanas emergentes (pop-ups) para imprimir.", "warning");
+    }
+}
+window.printCourseBitacoraOfficial = printCourseBitacoraOfficial;
 
 // Helper: Encontrar grado correspondiente para un estudiante
 function findGradeForStudent(student) {
