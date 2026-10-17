@@ -10844,7 +10844,7 @@ function navigateTo(viewName, event = null) {
         'carnets': { title: 'Generador e Impresión de Carnés Estudiantiles', sub: 'Credenciales oficiales formato CR80 con código de barras e impresión masiva' },
         'auxiliatura-log': { title: 'Bitácora Diaria de Ausencias y Alertas Escolares', sub: 'Monitoreo en tiempo real de inasistencias en aula, avisos a padres y verificación de auxiliatura' },
         'exoneraciones-log': { title: 'Libro de Registro Oficial de Exoneraciones Académicas', sub: 'Archivo central de alumnos con consideraciones especiales, dispensas y resoluciones ministeriales' },
-        'permissions-history': { title: 'Libro de Registro Oficial de Permisos de Ausencia', sub: 'Archivo central de justificaciones de inasistencia, pases de salida y licencias emitidas por Auxiliatura' },
+        'permissions-history': { title: 'Libro de Registro Oficial de Permisos y Ausencias', sub: 'Archivo central de justificaciones de inasistencia, pases de salida y licencias emitidas por Auxiliatura' },
         'auxiliatura-center': { title: 'Centro de Control Estudiantil y Disciplinario', sub: 'Ficha 360°, monitoreo activo de inasistencias, emisión de permisos y resolución de incidencias' },
         'exam-schedules': { title: 'Auxiliaturas de Exámenes', sub: 'Planificación de fechas, división en medias listas A y B, horarios en hoja oficio y balance de cuidadores' },
     };
@@ -10888,7 +10888,7 @@ function renderCurrentView() {
         case 'auxiliatura-center': if (typeof renderAuxiliaturaCenterView === 'function') renderAuxiliaturaCenterView(); break;
         case 'auxiliatura-log': if (typeof renderAuxiliaturaLogView === 'function') renderAuxiliaturaLogView(); break;
         case 'exoneraciones-log': if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView(); break;
-        case 'permissions-history': if (typeof renderPermissionsHistoryView === 'function') renderPermissionsHistoryView(); break;
+        case 'permissions-history': if (typeof renderPermissionsHistoryView === 'function') renderPermissionsHistoryView(true); break;
         case 'exam-schedules':
             if (typeof syncExamSchedulesFromCloud === 'function') {
                 syncExamSchedulesFromCloud(false).catch(() => {}).finally(() => {
@@ -47859,6 +47859,23 @@ function renderPermissionsHistoryViewDebounced() {
 }
 window.renderPermissionsHistoryViewDebounced = renderPermissionsHistoryViewDebounced;
 
+// Helper para normalizar cualquier fecha a formato YYYY-MM-DD estándar
+function normalizePermissionDateStr(val) {
+    if (!val) return '';
+    const s = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(s)) {
+        const parts = s.split('/');
+        return `${parts[2]}-${String(parts[1]).padStart(2, '0')}-${String(parts[0]).padStart(2, '0')}`;
+    }
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+    return s.slice(0, 10);
+}
+
 function setPermissionsDateRange(mode) {
     const fromInput = document.getElementById('permissionsLogDateFrom');
     const toInput = document.getElementById('permissionsLogDateTo');
@@ -47917,7 +47934,7 @@ function setPermissionsDateRange(mode) {
         if (toInput) toInput.value = formatYMD(lastDay);
     }
 
-    renderPermissionsHistoryView();
+    renderPermissionsHistoryView(false);
 }
 window.setPermissionsDateRange = setPermissionsDateRange;
 
@@ -47929,26 +47946,60 @@ function onPermissionsDateInputChange() {
     const btnWeek = document.getElementById('btnQuickPermWeek');
     const btnMonth = document.getElementById('btnQuickPermMonth');
 
-    const fromVal = fromInput ? fromInput.value : '';
-    const toVal = toInput ? toInput.value : '';
+    const fromVal = fromInput ? (fromInput.value || '').trim() : '';
+    const toVal = toInput ? (toInput.value || '').trim() : '';
 
-    [btnAll, btnToday, btnWeek, btnMonth].forEach(btn => {
-        if (btn) {
-            btn.className = 'btn btn-xs btn-outline-warning';
-            btn.style.color = '#b45309';
-            btn.style.borderColor = '#f59e0b';
-            btn.style.background = 'transparent';
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const formatYMD = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const todayStr = formatYMD(now);
+
+    const dayOfWeek = now.getDay();
+    const diffToMonday = (dayOfWeek === 0 ? -6 : 1 - dayOfWeek);
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMonday);
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4);
+    const mondayStr = formatYMD(monday);
+    const fridayStr = formatYMD(friday);
+
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const monthStartStr = formatYMD(firstDay);
+    const monthEndStr = formatYMD(lastDay);
+
+    let activeMode = null;
+    if (!fromVal && !toVal) {
+        activeMode = 'all';
+    } else if (fromVal === todayStr && toVal === todayStr) {
+        activeMode = 'today';
+    } else if (fromVal === mondayStr && toVal === fridayStr) {
+        activeMode = 'week';
+    } else if (fromVal === monthStartStr && toVal === monthEndStr) {
+        activeMode = 'month';
+    }
+
+    [
+        { id: 'all', btn: btnAll },
+        { id: 'today', btn: btnToday },
+        { id: 'week', btn: btnWeek },
+        { id: 'month', btn: btnMonth }
+    ].forEach(item => {
+        if (!item.btn) return;
+        if (item.id === activeMode) {
+            item.btn.className = 'btn btn-xs btn-warning';
+            item.btn.style.color = '#ffffff';
+            item.btn.style.borderColor = '#d97706';
+            item.btn.style.background = '#f59e0b';
+        } else {
+            item.btn.className = 'btn btn-xs btn-outline-warning';
+            item.btn.style.color = '#b45309';
+            item.btn.style.borderColor = '#f59e0b';
+            item.btn.style.background = 'transparent';
         }
     });
 
-    if (!fromVal && !toVal && btnAll) {
-        btnAll.className = 'btn btn-xs btn-warning';
-        btnAll.style.color = '#ffffff';
-        btnAll.style.borderColor = '#d97706';
-        btnAll.style.background = '#f59e0b';
-    }
-
-    renderPermissionsHistoryView();
+    renderPermissionsHistoryView(false);
 }
 window.onPermissionsDateInputChange = onPermissionsDateInputChange;
 
@@ -47968,7 +48019,7 @@ function clearPermissionsFilters() {
 }
 window.clearPermissionsFilters = clearPermissionsFilters;
 
-function renderPermissionsHistoryView() {
+function renderPermissionsHistoryView(forceReset = false) {
     const gradeSelect = document.getElementById('permissionsLogGradeFilter');
     const catSelect = document.getElementById('permissionsLogCategoryFilter');
     const fromInput = document.getElementById('permissionsLogDateFrom');
@@ -47978,6 +48029,48 @@ function renderPermissionsHistoryView() {
     const counterBadge = document.getElementById('permissionsLogCounterBadge');
 
     if (!tbody) return;
+
+    // Si se invoca con forceReset (al ingresar a la vista), asegurar que por defecto se muestre el listado completo
+    if (forceReset) {
+        if (fromInput) fromInput.value = '';
+        if (toInput) toInput.value = '';
+        if (gradeSelect) gradeSelect.value = 'ALL';
+        if (catSelect) catSelect.value = 'ALL';
+        if (searchInput) searchInput.value = '';
+
+        const btnAll = document.getElementById('btnQuickPermAll');
+        const btnToday = document.getElementById('btnQuickPermToday');
+        const btnWeek = document.getElementById('btnQuickPermWeek');
+        const btnMonth = document.getElementById('btnQuickPermMonth');
+        [btnAll, btnToday, btnWeek, btnMonth].forEach(b => {
+            if (!b) return;
+            if (b === btnAll) {
+                b.className = 'btn btn-xs btn-warning';
+                b.style.color = '#ffffff';
+                b.style.borderColor = '#d97706';
+                b.style.background = '#f59e0b';
+            } else {
+                b.className = 'btn btn-xs btn-outline-warning';
+                b.style.color = '#b45309';
+                b.style.borderColor = '#f59e0b';
+                b.style.background = 'transparent';
+            }
+        });
+    }
+
+    // Vincular listeners reactivos a los controladores de fecha para garantizar filtrado dinámico en cualquier navegador
+    if (fromInput && !fromInput._permListenersAttached) {
+        ['input', 'change', 'keyup'].forEach(evtName => {
+            fromInput.addEventListener(evtName, () => onPermissionsDateInputChange());
+        });
+        fromInput._permListenersAttached = true;
+    }
+    if (toInput && !toInput._permListenersAttached) {
+        ['input', 'change', 'keyup'].forEach(evtName => {
+            toInput.addEventListener(evtName, () => onPermissionsDateInputChange());
+        });
+        toInput._permListenersAttached = true;
+    }
 
     // Control de visibilidad del botón + Nuevo Permiso en la barra superior
     const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
@@ -47998,25 +48091,36 @@ function renderPermissionsHistoryView() {
 
     const selGrade = gradeSelect ? gradeSelect.value : 'ALL';
     const selCat = catSelect ? catSelect.value : 'ALL';
-    const dateFrom = fromInput ? (fromInput.value || '').trim() : '';
-    const dateTo = toInput ? (toInput.value || '').trim() : '';
+    const dateFromRaw = fromInput ? (fromInput.value || '').trim() : '';
+    const dateToRaw = toInput ? (toInput.value || '').trim() : '';
     const searchQuery = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+    let dateFrom = normalizePermissionDateStr(dateFromRaw);
+    let dateTo = normalizePermissionDateStr(dateToRaw);
+
+    // Si el usuario seleccionó fechas invertidas, ordenarlas de forma tolerante y fluida
+    let effectiveFrom = dateFrom;
+    let effectiveTo = dateTo;
+    if (effectiveFrom && effectiveTo && effectiveFrom > effectiveTo) {
+        effectiveFrom = dateTo;
+        effectiveTo = dateFrom;
+    }
 
     let perms = Array.isArray(STATE.studentPermissions) ? [...STATE.studentPermissions] : [];
     const totalCount = perms.length;
 
-    // Filtro por rango de fechas dinámico (intersección de intervalos de fechas)
-    if (dateFrom || dateTo) {
+    // Filtro por rango de fechas dinámico (intersección exacta de intervalos)
+    if (effectiveFrom || effectiveTo) {
         perms = perms.filter(p => {
-            const pStart = p.startDate || p.date || '';
-            const pEnd = p.endDate || pStart;
+            const pStart = normalizePermissionDateStr(p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : ''));
+            const pEnd = normalizePermissionDateStr(p.endDate || pStart);
             if (!pStart && !pEnd) return true;
-            if (dateFrom && dateTo) {
-                return (pStart <= dateTo && pEnd >= dateFrom);
-            } else if (dateFrom) {
-                return pEnd >= dateFrom;
-            } else if (dateTo) {
-                return pStart <= dateTo;
+            if (effectiveFrom && effectiveTo) {
+                return (pStart <= effectiveTo && pEnd >= effectiveFrom);
+            } else if (effectiveFrom) {
+                return pEnd >= effectiveFrom;
+            } else if (effectiveTo) {
+                return pStart <= effectiveTo;
             }
             return true;
         });
@@ -48049,15 +48153,15 @@ function renderPermissionsHistoryView() {
 
     // Actualizar badge contador dinámico en tiempo real
     if (counterBadge) {
-        const isFiltered = (dateFrom || dateTo || selGrade !== 'ALL' || selCat !== 'ALL' || searchQuery);
+        const isFiltered = (effectiveFrom || effectiveTo || selGrade !== 'ALL' || selCat !== 'ALL' || searchQuery);
         if (isFiltered) {
             let labelFilter = '';
-            if (dateFrom && dateTo) {
-                labelFilter = dateFrom === dateTo ? ` (${dateFrom})` : ` (${dateFrom} al ${dateTo})`;
-            } else if (dateFrom) {
-                labelFilter = ` (desde ${dateFrom})`;
-            } else if (dateTo) {
-                labelFilter = ` (hasta ${dateTo})`;
+            if (effectiveFrom && effectiveTo) {
+                labelFilter = effectiveFrom === effectiveTo ? ` (${effectiveFrom})` : ` (${effectiveFrom} al ${effectiveTo})`;
+            } else if (effectiveFrom) {
+                labelFilter = ` (desde ${effectiveFrom})`;
+            } else if (effectiveTo) {
+                labelFilter = ` (hasta ${effectiveTo})`;
             }
             counterBadge.innerHTML = `<i class="fa-solid fa-filter"></i> Mostrando <strong>${perms.length}</strong> de <strong>${totalCount}</strong> permisos${escapeHtml(labelFilter)}`;
             counterBadge.style.background = '#fef3c7';
@@ -48153,24 +48257,33 @@ function printPermissionsLog() {
     const toInput = document.getElementById('permissionsLogDateTo');
     const targetGrade = gradeSelect ? gradeSelect.value : 'ALL';
     const targetCat = catSelect ? catSelect.value : 'ALL';
-    const dateFrom = fromInput ? (fromInput.value || '').trim() : '';
-    const dateTo = toInput ? (toInput.value || '').trim() : '';
+    const dateFromRaw = fromInput ? (fromInput.value || '').trim() : '';
+    const dateToRaw = toInput ? (toInput.value || '').trim() : '';
     const cycle = STATE.activeCycle || '2026';
+
+    const dateFrom = normalizePermissionDateStr(dateFromRaw);
+    const dateTo = normalizePermissionDateStr(dateToRaw);
+    let effectiveFrom = dateFrom;
+    let effectiveTo = dateTo;
+    if (effectiveFrom && effectiveTo && effectiveFrom > effectiveTo) {
+        effectiveFrom = dateTo;
+        effectiveTo = dateFrom;
+    }
 
     let perms = Array.isArray(STATE.studentPermissions) ? [...STATE.studentPermissions] : [];
 
     // Filtro por fecha en impresión
-    if (dateFrom || dateTo) {
+    if (effectiveFrom || effectiveTo) {
         perms = perms.filter(p => {
-            const pStart = p.startDate || p.date || '';
-            const pEnd = p.endDate || pStart;
+            const pStart = normalizePermissionDateStr(p.startDate || p.date || (p.createdAt ? p.createdAt.slice(0, 10) : ''));
+            const pEnd = normalizePermissionDateStr(p.endDate || pStart);
             if (!pStart && !pEnd) return true;
-            if (dateFrom && dateTo) {
-                return (pStart <= dateTo && pEnd >= dateFrom);
-            } else if (dateFrom) {
-                return pEnd >= dateFrom;
-            } else if (dateTo) {
-                return pStart <= dateTo;
+            if (effectiveFrom && effectiveTo) {
+                return (pStart <= effectiveTo && pEnd >= effectiveFrom);
+            } else if (effectiveFrom) {
+                return pEnd >= effectiveFrom;
+            } else if (effectiveTo) {
+                return pStart <= effectiveTo;
             }
             return true;
         });
@@ -48192,12 +48305,12 @@ function printPermissionsLog() {
 
     // Período para encabezado oficial
     let periodText = `Historial Oficial General - Ciclo Escolar ${cycle}`;
-    if (dateFrom && dateTo) {
-        periodText = dateFrom === dateTo ? `Fecha Oficial: ${dateFrom}` : `Período: Del ${dateFrom} al ${dateTo}`;
-    } else if (dateFrom) {
-        periodText = `Período: Desde ${dateFrom}`;
-    } else if (dateTo) {
-        periodText = `Período: Hasta ${dateTo}`;
+    if (effectiveFrom && effectiveTo) {
+        periodText = effectiveFrom === effectiveTo ? `Fecha Oficial: ${effectiveFrom}` : `Período: Del ${effectiveFrom} al ${effectiveTo}`;
+    } else if (effectiveFrom) {
+        periodText = `Período: Desde ${effectiveFrom}`;
+    } else if (effectiveTo) {
+        periodText = `Período: Hasta ${effectiveTo}`;
     }
 
     let rowsHtml = '';

@@ -880,7 +880,7 @@
                 </a>
                 <a href="#" class="nav-item" data-view="permissions-history" data-perm="permissions-history" data-allowed="*" onclick="navigateTo('permissions-history', event)">
                     <i class="fa-solid fa-clipboard-list"></i>
-                    <span>Permisos de Ausencia</span>
+                    <span>Permisos y Ausencias</span>
                 </a>
 
                 <!-- SECCIÓN REPORTES Y CUADRO DE HONOR -->
@@ -2985,7 +2985,7 @@
                         <div>
                             <h3 style="margin:0; color:#0f172a; font-weight:800; display:flex; align-items:center; gap:8px;">
                                 <i class="fa-solid fa-clipboard-list" style="color:#d97706;"></i>
-                                Libro de Registro Oficial de Permisos de Ausencia
+                                Libro de Registro Oficial de Permisos y Ausencias
                             </h3>
                             <p style="margin:4px 0 0 0; color:#64748b; font-size:0.85rem;">
                                 Archivo central de justificaciones de inasistencia, pases de salida y licencias emitidas por Auxiliatura.
@@ -3038,13 +3038,13 @@
                                 <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
                                     <i class="fa-regular fa-calendar" style="color:#d97706;"></i> Fecha Desde:
                                 </label>
-                                <input type="date" id="permissionsLogDateFrom" class="form-control" onchange="onPermissionsDateInputChange()" style="font-size:0.84rem;">
+                                <input type="date" id="permissionsLogDateFrom" class="form-control" onchange="onPermissionsDateInputChange()" oninput="onPermissionsDateInputChange()" style="font-size:0.84rem;">
                             </div>
                             <div style="min-width:140px;">
                                 <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
                                     <i class="fa-regular fa-calendar-check" style="color:#d97706;"></i> Fecha Hasta:
                                 </label>
-                                <input type="date" id="permissionsLogDateTo" class="form-control" onchange="onPermissionsDateInputChange()" style="font-size:0.84rem;">
+                                <input type="date" id="permissionsLogDateTo" class="form-control" onchange="onPermissionsDateInputChange()" oninput="onPermissionsDateInputChange()" style="font-size:0.84rem;">
                             </div>
                             <div style="min-width:200px; flex:2;">
                                 <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">
