@@ -44,8 +44,7 @@ function verifySireRoleMiddleware(req, res, next) {
     <meta http-equiv="refresh" content="1;url=plataforma.html?auth_denied=datos_sire_restricted">
     <title>403 Acceso Denegado - ENCCO Jutiapa</title>
     <script>
-        alert("ACCESO DENEGADO (403)\\n\\nEl módulo 'Datos para Sire' está reservado exclusivamente para la Dirección y Secretaría de la ENCCO.\\n\\nRedirigiendo a la plataforma principal...");
-        window.location.replace("plataforma.html");
+        window.location.replace("plataforma.html?auth_denied=datos_sire_restricted");
     </script>
     <style>
         body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; background: #0b132b; color: #fff; margin:0; }

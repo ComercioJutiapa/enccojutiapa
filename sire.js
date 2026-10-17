@@ -245,10 +245,12 @@
                    document.getElementById('studentFormPersonalCode')?.value || '').trim();
 
         if (!code) {
-            if (typeof window.showToast === 'function') {
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.alert({ title: 'Búsqueda SIRE', message: 'Por favor ingrese un Código Personal o CUI para buscar.', type: 'warning' });
+            } else if (typeof window.showToast === 'function') {
                 window.showToast('Por favor ingrese un Código Personal o CUI para buscar.', 'warning');
             } else {
-                alert('Por favor ingrese un Código Personal o CUI para buscar.');
+                console.warn('Por favor ingrese un Código Personal o CUI para buscar.');
             }
             const inputQuick = document.getElementById('quickSireSearchCode');
             if (inputQuick) inputQuick.focus();

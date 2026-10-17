@@ -1263,7 +1263,7 @@
         // Registro oficial PWA Service Worker
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js?v=20261016_v269_exoneracion_and_import').catch(function(err) {
+                navigator.serviceWorker.register('sw.js?v=20261017_v270_persistence_fix').catch(function(err) {
                     console.debug('[SW] Registro omitido o no compatible:', err);
                 });
             });

@@ -376,9 +376,22 @@
 
                 log('sireLogBox', `🎉 MATRÍCULA APROBADA: Alumno registrado legalmente en el SIRE para el Ciclo 2026.`);
                 log('enccoLogBox', `✔ Sincronización bidireccional finalizada con éxito (100%).`);
-                alert('🎉 ¡Simulación completada con éxito!\n\n1. El alumno se inscribió en la plataforma ENCCO.\n2. La extensión rellenó automáticamente el SIRE en 0 segundos.\n3. La confirmación final en el SIRE legalizó la matrícula sin errores.');
+                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                    window.EnccoDialog.(typeof showToast === 'function' ? showToast({
+                        title: '¡Simulación Completada con Éxito!',
+                        message: '1. El alumno se inscribió en la plataforma ENCCO.\n2. La extensión rellenó automáticamente el SIRE en 0 segundos.\n3. La confirmación final en el SIRE legalizó la matrícula sin errores.',
+                        type: 'success'
+                    }, 'warning') : console.warn({
+                        title: '¡Simulación Completada con Éxito!',
+                        message: '1. El alumno se inscribió en la plataforma ENCCO.\n2. La extensión rellenó automáticamente el SIRE en 0 segundos.\n3. La confirmación final en el SIRE legalizó la matrícula sin errores.',
+                        type: 'success'
+                    }));
+                } else {
+        if (typeof showToast === 'function') showToast('🎉 ¡Simulación completada con éxito!\n\n1. El alumno se inscribió en la plataforma ENCCO.\n2. La extensión rellenó automáticamente el SIRE en 0 segundos.\n3. La confirmación final en el SIRE legalizó la matrícula sin errores.', 'warning'); else console.warn('🎉 ¡Simulación completada con éxito!\n\n1. El alumno se inscribió en la plataforma ENCCO.\n2. La extensión rellenó automáticamente el SIRE en 0 segundos.\n3. La confirmación final en el SIRE legalizó la matrícula sin errores.');
+    }
             }, 1200);
         }
     </script>
+    <script src="ui.js"></script>
 </body>
 </html>

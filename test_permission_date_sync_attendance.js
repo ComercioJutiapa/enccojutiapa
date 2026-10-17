@@ -83,6 +83,7 @@ eval(extractFunction('extractSectionLetter'));
 eval(extractFunction('formatStudentDisplayName'));
 eval(extractFunction('isDirectorOrSuperAdmin'));
 eval(extractFunction('saveAttendanceRecords'));
+eval(extractFunction('isUnjustifiedPermission'));
 eval(extractFunction('applyStudentPermission'));
 eval(extractFunction('removeStudentPermissionDatesFromAttendance'));
 eval(extractFunction('revokeStudentPermission'));

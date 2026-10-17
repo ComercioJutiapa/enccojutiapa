@@ -111,7 +111,6 @@
                 }
 
                 if (!isAuthorized) {
-                    alert('ACCESO DENEGADO (403)\n\nEl usuario actual (' + (parsedUser.name || parsedUser.username || 'Usuario') + ') con rol [' + (roleLower || 'Desconocido') + '] no cuenta con los privilegios requeridos para el módulo de Bloqueo de Bimestres.');
                     window.location.replace('plataforma.html?auth_denied=bloqueo_notas_restricted');
                     return;
                 }

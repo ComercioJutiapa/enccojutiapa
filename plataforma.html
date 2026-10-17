@@ -2135,7 +2135,7 @@
                         <button type="button" onclick="dismissBannerAlert(this)" title="Cerrar esta alerta" style="margin-left:auto; background:none; border:none; color:#0c4a6e; font-size:1.25rem; font-weight:700; cursor:pointer; opacity:0.65; padding:0 4px; line-height:1;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.65'">&times;</button>
                     </div>
                     <script>
-                        function openAutonomousLockModule(e) {
+                        async function openAutonomousLockModule(e) {
                             if (e && e.preventDefault) e.preventDefault();
                             if (e && e.stopPropagation) e.stopPropagation();
 
@@ -2151,7 +2151,21 @@
                             }
 
                             if (!user) {
-                                alert('Debe iniciar sesión para ingresar a este módulo.');
+                                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                                    await window.EnccoDialog.(typeof showToast === 'function' ? showToast({
+                                        title: 'Sesión Requerida',
+                                        message: 'Debe iniciar sesión para ingresar a este módulo.',
+                                        type: 'warning'
+                                    }, 'warning') : console.warn({
+                                        title: 'Sesión Requerida',
+                                        message: 'Debe iniciar sesión para ingresar a este módulo.',
+                                        type: 'warning'
+                                    }));
+                                } else if (typeof showToast === 'function') {
+                                    showToast('Debe iniciar sesión para ingresar a este módulo.', 'warning');
+                                } else {
+        if (typeof showToast === 'function') showToast('Debe iniciar sesión para ingresar a este módulo.', 'warning'); else console.warn('Debe iniciar sesión para ingresar a este módulo.');
+    }
                                 window.location.replace('index.html');
                                 return false;
                             }
@@ -2173,7 +2187,17 @@
                             }
 
                             if (!isAuthorized) {
-                                alert('ACCESO RESTRINGIDO (403)\n\nEl usuario actual (' + (user.name || user.username || 'Usuario') + ') con rol [' + normRole + '] no cuenta con privilegios para el módulo de Bloqueo de Bimestres.');
+                                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                                    await window.EnccoDialog.alert({
+                                        title: 'Acceso Restringido (403)',
+                                        message: 'El usuario actual (' + (user.name || user.username || 'Usuario') + ') con rol [' + normRole + '] no cuenta con privilegios para el módulo de Bloqueo de Bimestres.',
+                                        type: 'danger'
+                                    });
+                                } else if (typeof showToast === 'function') {
+                                    showToast('Acceso denegado: Privilegios insuficientes para Bloqueo de Bimestres.', 'danger');
+                                } else {
+                                    console.warn('ACCESO RESTRINGIDO (403): Sin privilegios para Bloqueo de Bimestres.');
+                                }
                                 return false;
                             }
 
@@ -6216,24 +6240,24 @@
         // Registro de Service Worker para PWA y disponibilidad fuera de línea
         if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
             window.addEventListener('load', function() {
-                navigator.serviceWorker.register('sw.js?v=20261016_v269_exoneracion_and_import').catch(function(err) {
+                navigator.serviceWorker.register('sw.js?v=20261017_v270_persistence_fix').catch(function(err) {
                     console.debug('[SW] Registro omitido o no compatible:', err);
                 });
             });
         }
     </script>
-    <script src="auth.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
-    <script src="db.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
-    <script src="ui.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
-    <script src="sire.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
+    <script src="auth.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
+    <script src="db.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
+    <script src="ui.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
+    <script src="sire.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
     <script src="official_historical_patches.js?v=20261014_v1" defer charset="UTF-8"></script>
-    <script src="app.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
+    <script src="app.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
     <script src="cycle_archiver.js?v=20260925_v1" charset="UTF-8"></script>
-    <script src="grade_stats.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
-    <script src="analytics.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
+    <script src="grade_stats.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
+    <script src="analytics.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
     <script src="qrcode.min.js" defer charset="UTF-8"></script>
     <script src="carnets.js?v=2026.09.21.v226_carnets_horizontal_vertical" charset="UTF-8"></script>
-    <script src="auxiliatura_center.js?v=20261016_v269_exoneracion_and_import" charset="UTF-8"></script>
+    <script src="auxiliatura_center.js?v=20261017_v270_persistence_fix" charset="UTF-8"></script>
     <script src="db_repository.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="modal_manager.js?v=20261003_v1" charset="UTF-8"></script>
     <script src="exam_schedules_module.js?v=20261014_v248_opt_performance" charset="UTF-8"></script>

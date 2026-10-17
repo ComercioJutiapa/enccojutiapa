@@ -1046,7 +1046,13 @@ function printGradeStatsReport(reportType = 'section') {
 
     const printWin = window.open('', '_blank', 'width=950,height=800');
     if (!printWin) {
-        alert("Por favor permita las ventanas emergentes (pop-ups) en su navegador para imprimir el reporte.");
+        if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+            window.EnccoDialog.alert({ title: 'Ventana Emergente Bloqueada', message: 'Por favor permita las ventanas emergentes (pop-ups) en su navegador para imprimir el reporte.', type: 'warning' });
+        } else if (typeof showToast === 'function') {
+            showToast('Por favor permita las ventanas emergentes (pop-ups) en su navegador para imprimir el reporte.', 'warning');
+        } else {
+            console.warn('Por favor permita las ventanas emergentes (pop-ups) en su navegador para imprimir el reporte.');
+        }
         return;
     }
 

@@ -22,6 +22,24 @@
 
 (function (window, document) {
     'use strict';
+    // Función encapsulada de alertas y modales institucionales
+    function showExamScheduleAlert(message, title = 'Auxiliaturas de Exámenes', type = 'warning') {
+        if (window && window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+            return window.EnccoDialog.alert({ title, message, type });
+        }
+        if (typeof showToast === 'function') {
+            showToast(message, type === 'danger' ? 'error' : (type === 'success' ? 'success' : 'warning'));
+            return;
+        }
+        if (typeof window !== 'undefined' && typeof window.alert === 'function') {
+            return window.alert(message);
+        }
+        if (typeof alert === 'function') {
+            return alert(message);
+        }
+        console.warn('[' + title + '] ' + message);
+    }
+
 
     // Clave de almacenamiento local persistente
     const STORAGE_KEY = 'ENCCO_EXAM_SCHEDULES';
@@ -501,6 +519,13 @@
         let scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
         let dayObj = (scheduleBlock.days || []).find(d => String(d.id) === String(dayId));
         if (dayObj) return { dayObj, day: dayObj, scheduleBlock, scheduleKey };
+
+        if (window._lastActiveScheduleBlock && Array.isArray(window._lastActiveScheduleBlock.days)) {
+            const foundDay = window._lastActiveScheduleBlock.days.find(d => String(d.id) === String(dayId));
+            if (foundDay) {
+                return { dayObj: foundDay, day: foundDay, scheduleBlock: window._lastActiveScheduleBlock, scheduleKey: null };
+            }
+        }
 
         // Búsqueda exhaustiva en todos los bloques del sistema si no se encontró en el bimestre preferido
         const all = getExamSchedulesData();
@@ -2049,7 +2074,7 @@
             const dateInput = document.getElementById('newExamDayDate');
             const isPractica = document.getElementById('newExamDayIsPractica') ? document.getElementById('newExamDayIsPractica').checked : false;
             if (!dateInput || !dateInput.value) {
-                alert("Por favor seleccione una fecha válida.");
+                showExamScheduleAlert("Por favor seleccione una fecha válida.", 'Auxiliaturas de Exámenes', 'warning');
                 return;
             }
 
@@ -2060,7 +2085,7 @@
 
             // Evitar fechas duplicadas
             if (scheduleBlock.days && scheduleBlock.days.some(d => d.date === dateVal)) {
-                alert("Esta fecha ya se encuentra programada en este bimestre.");
+                showExamScheduleAlert("Esta fecha ya se encuentra programada en este bimestre.", 'Auxiliaturas de Exámenes', 'warning');
                 return;
             }
 
@@ -2084,7 +2109,7 @@
             renderExamSchedulesView();
         } catch (err) {
             console.error("Error al programar nuevo día:", err);
-            alert("Error al guardar la nueva fecha: " + (err.message || err));
+            showExamScheduleAlert("Error al guardar la nueva fecha: " + (err.message || err), 'Auxiliaturas de Exámenes', 'danger');
         }
     };
 
@@ -2092,7 +2117,7 @@
         try {
             const { dayObj, scheduleBlock } = findDayAndScheduleBlock(dayId);
             if (!dayObj || !scheduleBlock) {
-                alert("No se pudo localizar la jornada de exámenes seleccionada.");
+                showExamScheduleAlert("No se pudo localizar la jornada de exámenes seleccionada.", 'Auxiliaturas de Exámenes', 'warning');
                 return;
             }
 
@@ -2132,7 +2157,7 @@
             if (inputEl) inputEl.focus();
         } catch (err) {
             console.error("Error al abrir editor de fecha:", err);
-            alert("No se pudo abrir el editor de fecha: " + (err.message || err));
+            showExamScheduleAlert("No se pudo abrir el editor de fecha: " + (err.message || err), 'Auxiliaturas de Exámenes', 'warning');
         }
     };
 
@@ -2140,14 +2165,14 @@
         try {
             const inputEl = document.getElementById('inputEditExamDayDate');
             if (!inputEl || !inputEl.value) {
-                alert("Por favor seleccione una fecha válida.");
+                showExamScheduleAlert("Por favor seleccione una fecha válida.", 'Auxiliaturas de Exámenes', 'warning');
                 return;
             }
 
             const newDateVal = inputEl.value.trim();
             const { dayObj, scheduleBlock } = findDayAndScheduleBlock(dayId);
             if (!dayObj || !scheduleBlock) {
-                alert("No se pudo localizar el día a actualizar.");
+                showExamScheduleAlert("No se pudo localizar el día a actualizar.", 'Auxiliaturas de Exámenes', 'warning');
                 return;
             }
 
@@ -2159,7 +2184,7 @@
 
             // Verificar si ya existe otro día con esta misma fecha en el bloque
             if (Array.isArray(scheduleBlock.days) && scheduleBlock.days.some(d => String(d.id) !== String(dayId) && d.date === newDateVal)) {
-                alert(`Ya existe otra jornada de evaluaciones programada para la fecha ${newDateVal}.`);
+                showExamScheduleAlert(`Ya existe otra jornada de evaluaciones programada para la fecha ${newDateVal}.`, 'Auxiliaturas de Exámenes', 'warning');
                 return;
             }
 
@@ -2178,15 +2203,29 @@
             }
         } catch (err) {
             console.error("Error al guardar la nueva fecha del examen:", err);
-            alert("Error al actualizar la fecha: " + (err.message || err));
+            showExamScheduleAlert("Error al actualizar la fecha: " + (err.message || err), 'Auxiliaturas de Exámenes', 'danger');
         }
     };
 
-    window.deleteExamDay = function (dayId) {
-        if (!confirm("¿Está seguro de eliminar esta fecha completa de evaluaciones y todas sus asignaciones?")) return;
+    window.deleteExamDay = async function (dayId) {
+        const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+            ? await window.EnccoDialog.confirm({
+                title: 'Eliminar Fecha de Evaluaciones',
+                message: '¿Está seguro de eliminar esta fecha completa de evaluaciones y todas sus asignaciones?',
+                confirmText: 'Sí, eliminar fecha',
+                cancelText: 'Cancelar',
+                type: 'danger'
+            })
+            : false;
+        if (!confirmed) return;
+
         const { scheduleBlock } = findDayAndScheduleBlock(dayId);
         if (!scheduleBlock || !Array.isArray(scheduleBlock.days)) {
-            alert("No se pudo localizar el bloque del día a eliminar.");
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.alert({ title: 'Error', message: 'No se pudo localizar el bloque del día a eliminar.', type: 'danger' });
+            } else {
+                showExamScheduleAlert("No se pudo localizar el bloque del día a eliminar.", 'Auxiliaturas de Exámenes', 'warning');
+            }
             return;
         }
 
@@ -2432,7 +2471,7 @@
     window.addEvaluationToDay = function (dayId, evalToEdit = null) {
         const { dayObj, scheduleBlock } = findDayAndScheduleBlock(dayId);
         if (!dayObj) {
-            alert("No se pudo localizar el día seleccionado para asignar la evaluación.");
+            showExamScheduleAlert("No se pudo localizar el día seleccionado para asignar la evaluación.", 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
@@ -2522,7 +2561,7 @@
         window.setAllSectionsProcessStatus = function (targetStatus) {
             const selects = document.querySelectorAll('[id^="evalSectionProcessStatus_"]');
             if (!selects || selects.length === 0) {
-                alert("Primero seleccione grado y asignatura para cargar las secciones correspondientes.");
+                showExamScheduleAlert("Primero seleccione grado y asignatura para cargar las secciones correspondientes.", 'Auxiliaturas de Exámenes', 'warning');
                 return;
             }
             selects.forEach((sel) => {
@@ -3201,19 +3240,19 @@
             const recess = recessInput ? (parseInt(recessInput.value, 10) || 15) : 15;
 
             if (!academicGradeName || !courseName) {
-                alert("Por favor seleccione grado y asignatura.");
+                showExamScheduleAlert("Por favor seleccione grado y asignatura.", 'Auxiliaturas de Exámenes', 'warning');
                 return;
             }
 
             // Validación infranqueable de horario: NUNCA pasar de 12:30 PM
             if (timeStringToMinutes(endTime) > 750) {
-                alert("🔒 RESTRICCIÓN OFICIAL DE JORNADA:\n\nLa evaluación finalizaría a las " + endTime + " hrs, sobrepasando el límite estricto de las 12:30 PM. Por favor reduzca la duración o inicie más temprano.");
+                showExamScheduleAlert("🔒 RESTRICCIÓN OFICIAL DE JORNADA:\n\nLa evaluación finalizaría a las " + endTime + " hrs, sobrepasando el límite estricto de las 12:30 PM. Por favor reduzca la duración o inicie más temprano.", 'Regla Institucional de Exámenes', 'warning');
                 return;
             }
 
             const { dayObj, scheduleBlock } = findDayAndScheduleBlock(dayId);
             if (!dayObj) {
-                alert("No se pudo localizar el día seleccionado (" + dayId + ") para guardar los cambios.");
+                showExamScheduleAlert("No se pudo localizar el día seleccionado (" + dayId + ") para guardar los cambios.", 'Auxiliaturas de Exámenes', 'warning');
                 return;
             }
 
@@ -3257,7 +3296,7 @@
                         if (collision) {
                             const teacherObj = (STATE.users || []).find(u => u.id === cId);
                             const tName = teacherObj ? teacherObj.name : 'El docente';
-                            alert(`🔒 REGLA OFICIAL DE AUXILIATURA:\n\n${tName} está evaluando ${collision[2] || 'Computación/Mecanografía'} en el horario ${minutesToTimeString(collision[0])} a ${minutesToTimeString(collision[1])} hrs.\n\nLos docentes de computación y mecanografía no pueden tener auxiliaturas en el momento que evalúan.`);
+                            showExamScheduleAlert(`🔒 REGLA OFICIAL DE AUXILIATURA:\n\n${tName} está evaluando ${collision[2] || 'Computación/Mecanografía'} en el horario ${minutesToTimeString(collision[0])} a ${minutesToTimeString(collision[1])} hrs.\n\nLos docentes de computación y mecanografía no pueden tener auxiliaturas en el momento que evalúan.`, 'Regla Institucional de Exámenes', 'warning');
                             return;
                         }
                     }
@@ -3420,26 +3459,36 @@
             renderExamSchedulesView();
         } catch (err) {
             console.error("Error al guardar evaluación:", err);
-            alert("Ocurrió un error al guardar la asignación: " + (err.message || err));
+            showExamScheduleAlert("Ocurrió un error al guardar la asignación: " + (err.message || err), 'Auxiliaturas de Exámenes', 'danger');
         }
     };
 
     window.editEvaluationModal = function (dayId, evalId) {
         const { dayObj } = findDayAndScheduleBlock(dayId);
         if (!dayObj) {
-            alert("No se pudo localizar el día del examen a editar.");
+            showExamScheduleAlert("No se pudo localizar el día del examen a editar.", 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
         const ev = (dayObj.evaluations || []).find(e => String(e.id) === String(evalId));
         if (!ev) {
-            alert("No se encontró la evaluación seleccionada.");
+            showExamScheduleAlert("No se encontró la evaluación seleccionada.", 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
         window.addEvaluationToDay(dayId, ev);
     };
 
-    window.deleteEvaluation = function (dayId, evalId) {
-        if (!confirm("¿Desea quitar esta evaluación de la programación de este día?")) return;
+    window.deleteEvaluation = async function (dayId, evalId) {
+        const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+            ? await window.EnccoDialog.confirm({
+                title: 'Quitar Evaluación',
+                message: '¿Desea quitar esta evaluación de la programación de este día?',
+                confirmText: 'Sí, quitar',
+                cancelText: 'Cancelar',
+                type: 'danger'
+            })
+            : false;
+        if (!confirmed) return;
+
         const { dayObj } = findDayAndScheduleBlock(dayId);
         if (!dayObj || !Array.isArray(dayObj.evaluations)) return;
 
@@ -3461,6 +3510,7 @@
      * 5. Guarda la configuración en Firebase/LocalStorage para poder ser editada manualmente en cualquier momento.
      */
     function autoAssignRandomProctors(scheduleBlock, targetDayId = null) {
+        if (scheduleBlock) window._lastActiveScheduleBlock = scheduleBlock;
         // Pool de docentes candidatos (Auxiliares, Director y Secretaría estrictamente excluidos)
         const allCandidates = (STATE.users || []).filter(isTeacherEligibleForProctoring);
         if (allCandidates.length === 0) {
@@ -3819,19 +3869,27 @@
     }
 
     // Disparador del sorteo para todo el bimestre
-    window.randomizeProctorsForBimester = function () {
+    window.randomizeProctorsForBimester = async function () {
         const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
 
         if (!scheduleBlock.days || scheduleBlock.days.length === 0) {
-            alert("No hay días de evaluación configurados en este bimestre para realizar el sorteo.");
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.alert({ title: 'Aviso del Sorteo', message: "No hay días de evaluación configurados en este bimestre para realizar el sorteo.", type: 'warning' });
+            } else {
+                showExamScheduleAlert("No hay días de evaluación configurados en este bimestre para realizar el sorteo.", 'Auxiliaturas de Exámenes', 'warning');
+            }
             return;
         }
 
         const totalEvals = scheduleBlock.days.reduce((acc, d) => acc + (d.evaluations ? d.evaluations.length : 0), 0);
         if (totalEvals === 0) {
-            alert("Debe agregar al menos una asignatura en las jornadas de este bimestre antes de sortear cuidadores.");
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.alert({ title: 'Aviso del Sorteo', message: "Debe agregar al menos una asignatura en las jornadas de este bimestre antes de sortear cuidadores.", type: 'warning' });
+            } else {
+                showExamScheduleAlert("Debe agregar al menos una asignatura en las jornadas de este bimestre antes de sortear cuidadores.", 'Auxiliaturas de Exámenes', 'warning');
+            }
             return;
         }
 
@@ -3840,27 +3898,48 @@
             `• Las cargas de minutos se balancearán equitativamente entre los docentes sin solapamiento de horarios.\n` +
             `• Toda la configuración quedará guardada y podrá modificar o afinar cualquier salón manualmente en cualquier momento.`;
 
-        if (!confirm(confirmMsg)) return;
+        const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+            ? await window.EnccoDialog.confirm({
+                title: 'Sorteo de Cuidadores del Bimestre',
+                message: confirmMsg,
+                confirmText: 'Sí, ejecutar sorteo',
+                cancelText: 'Cancelar',
+                type: 'question'
+            })
+            : false;
+        if (!confirmed) return;
 
         const res = autoAssignRandomProctors(scheduleBlock, null);
         if (res.success) {
             saveExamSchedulesData(true);
             renderExamSchedulesView();
-            alert(`🎉 ¡Sorteo Exitoso!\n\n${res.message}`);
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.alert({ title: '¡Sorteo Exitoso!', message: res.message, type: 'success' });
+            } else {
+                showExamScheduleAlert(`🎉 ¡Sorteo Exitoso!\n\n${res.message}`, 'Auxiliaturas de Exámenes', 'success');
+            }
         } else {
-            alert(`⚠️ Aviso: ${res.message}`);
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.alert({ title: 'Aviso', message: res.message, type: 'warning' });
+            } else {
+                showExamScheduleAlert(`⚠️ Aviso: ${res.message}`, 'Auxiliaturas de Exámenes', 'warning');
+            }
         }
     };
 
     // Disparador del sorteo exclusivo para un día específico
-    window.randomizeProctorsForDay = function (dayId) {
+    window.randomizeProctorsForDay = async function (dayId) {
         const bimesterSelectVal = (window._currentSelectedExamBim) || getInstitutionalActiveBimester();
         const scheduleKey = getCurrentScheduleKey(bimesterSelectVal);
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
         const dayObj = scheduleBlock.days.find(d => d.id === dayId);
 
         if (!dayObj || !dayObj.evaluations || dayObj.evaluations.length === 0) {
-            alert("No hay asignaturas configuradas en esta fecha para sortear cuidadores.");
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.alert({ title: 'Aviso', message: "No hay asignaturas configuradas en esta fecha para sortear cuidadores.", type: 'warning' });
+            } else {
+                showExamScheduleAlert("No hay asignaturas configuradas en esta fecha para sortear cuidadores.", 'Auxiliaturas de Exámenes', 'warning');
+            }
             return;
         }
 
@@ -3868,15 +3947,32 @@
             `• Se respetará la regla de no asignar titulares a sus propias asignaturas ni colisiones de horario.\n` +
             `• Podrá editar cualquier salón manualmente después del sorteo.`;
 
-        if (!confirm(confirmMsg)) return;
+        const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+            ? await window.EnccoDialog.confirm({
+                title: 'Sorteo de Cuidadores para la Fecha',
+                message: confirmMsg,
+                confirmText: 'Sí, ejecutar sorteo',
+                cancelText: 'Cancelar',
+                type: 'question'
+            })
+            : false;
+        if (!confirmed) return;
 
         const res = autoAssignRandomProctors(scheduleBlock, dayId);
         if (res.success) {
             saveExamSchedulesData(true);
             renderExamSchedulesView();
-            alert(`🎉 ¡Sorteo de fecha completado!\n\n${res.message}`);
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.alert({ title: '¡Sorteo de Fecha Completado!', message: res.message, type: 'success' });
+            } else {
+                showExamScheduleAlert(`🎉 ¡Sorteo de fecha completado!\n\n${res.message}`, 'Auxiliaturas de Exámenes', 'success');
+            }
         } else {
-            alert(`⚠️ Aviso: ${res.message}`);
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.alert({ title: 'Aviso', message: res.message, type: 'warning' });
+            } else {
+                showExamScheduleAlert(`⚠️ Aviso: ${res.message}`, 'Auxiliaturas de Exámenes', 'warning');
+            }
         }
     };
     // IMPRESIÓN 1: HORARIO DIARIO EN HOJA OFICIO (LEGAL - 3 COLUMNAS)
@@ -3885,7 +3981,7 @@
         const found = findDayAndScheduleBlock(dayId, window._currentSelectedExamBim);
         const dayObj = found ? (found.dayObj || found.day) : null;
         if (!found || !dayObj) {
-            alert('⚠️ No se encontró la jornada de examen solicitada para imprimir.');
+            showExamScheduleAlert('⚠️ No se encontró la jornada de examen solicitada para imprimir.', 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
@@ -4184,17 +4280,17 @@
         const found = findDayAndScheduleBlock(dayId, window._currentSelectedExamBim);
         const dayObj = found ? (found.dayObj || found.day) : null;
         if (!found || !dayObj) {
-            alert('⚠️ No se encontró la jornada de examen solicitada.');
+            showExamScheduleAlert('⚠️ No se encontró la jornada de examen solicitada.', 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
         const ev = (dayObj.evaluations || []).find(e => e.id === evalId);
         if (!ev) {
-            alert('⚠️ No se encontró la evaluación seleccionada.');
+            showExamScheduleAlert('⚠️ No se encontró la evaluación seleccionada.', 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
         if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') {
-            alert("Esta asignatura evalúa en proceso (acumulativo continuo). No requiere listas de cuido de examen en salón.");
+            showExamScheduleAlert("Esta asignatura evalúa en proceso (acumulativo continuo). No requiere listas de cuido de examen en salón.", 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
@@ -4205,17 +4301,17 @@
         const found = findDayAndScheduleBlock(dayId, window._currentSelectedExamBim);
         const dayObj = found ? (found.dayObj || found.day) : null;
         if (!found || !dayObj) {
-            alert('⚠️ No se encontró la jornada de examen solicitada.');
+            showExamScheduleAlert('⚠️ No se encontró la jornada de examen solicitada.', 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
         if (!dayObj || !dayObj.evaluations || dayObj.evaluations.length === 0) {
-            alert("No hay evaluaciones asignadas en este día.");
+            showExamScheduleAlert("No hay evaluaciones asignadas en este día.", 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
         const printableEvals = dayObj.evaluations.filter(e => !e.isEnProceso && e.evaluationStatus !== 'EN_PROCESO');
         if (printableEvals.length === 0) {
-            alert("No hay evaluaciones con examen presencial en esta fecha (las programadas evalúan en proceso).");
+            showExamScheduleAlert("No hay evaluaciones con examen presencial en esta fecha (las programadas evalúan en proceso).", 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
@@ -4248,7 +4344,7 @@
         });
 
         if (!combinedHtml) {
-            alert("No se encontraron secciones con examen presencial para imprimir en este día.");
+            showExamScheduleAlert("No se encontraron secciones con examen presencial para imprimir en este día.", 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
@@ -4261,7 +4357,7 @@
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
 
         if (!scheduleBlock || !scheduleBlock.days || scheduleBlock.days.length === 0) {
-            alert("No hay días de evaluación configurados para este bimestre.");
+            showExamScheduleAlert("No hay días de evaluación configurados para este bimestre.", 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
@@ -4300,7 +4396,7 @@
         });
 
         if (totalEvalsCount === 0 || !combinedHtml) {
-            alert("No se encontraron evaluaciones con examen presencial en este bimestre para imprimir.");
+            showExamScheduleAlert("No se encontraron evaluaciones con examen presencial en este bimestre para imprimir.", 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
@@ -4309,7 +4405,7 @@
 
     function printEvaluationSheets(dayObj, ev, mode = 'BOTH') {
         if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') {
-            alert("Esta asignatura evalúa en proceso (acumulativo continuo). No requiere listas de cuido de examen.");
+            showExamScheduleAlert("Esta asignatura evalúa en proceso (acumulativo continuo). No requiere listas de cuido de examen.", 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
@@ -4319,7 +4415,7 @@
         if (Array.isArray(ev.sections) && ev.sections.length > 0) {
             const printableSecs = ev.sections.filter(s => !s.isEnProceso && s.evaluationStatus !== 'EN_PROCESO');
             if (printableSecs.length === 0) {
-                alert("Todas las secciones de esta asignatura evalúan en proceso.");
+                showExamScheduleAlert("Todas las secciones de esta asignatura evalúan en proceso.", 'Auxiliaturas de Exámenes', 'warning');
                 return;
             }
             printableSecs.forEach(sec => {
@@ -4756,16 +4852,16 @@
         const found = findDayAndScheduleBlock(dayId, window._currentSelectedExamBim);
         const dayObj = found ? (found.dayObj || found.day) : null;
         if (!found || !dayObj) {
-            alert('⚠️ No se encontró la jornada de examen solicitada.');
+            showExamScheduleAlert('⚠️ No se encontró la jornada de examen solicitada.', 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
         const ev = (dayObj.evaluations || []).find(e => e.id === evalId);
         if (!ev) {
-            alert('⚠️ No se encontró la evaluación seleccionada.');
+            showExamScheduleAlert('⚠️ No se encontró la evaluación seleccionada.', 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
         if (ev.isEnProceso || ev.evaluationStatus === 'EN_PROCESO') {
-            alert("Esta asignatura evalúa en proceso (acumulativo continuo). No requiere listas de cuido de examen.");
+            showExamScheduleAlert("Esta asignatura evalúa en proceso (acumulativo continuo). No requiere listas de cuido de examen.", 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
@@ -4775,7 +4871,7 @@
         if (Array.isArray(ev.sections) && ev.sections.length > 0) {
             const printableSecs = ev.sections.filter(s => !s.isEnProceso && s.evaluationStatus !== 'EN_PROCESO');
             if (printableSecs.length === 0) {
-                alert("Todas las secciones de esta asignatura evalúan en proceso.");
+                showExamScheduleAlert("Todas las secciones de esta asignatura evalúan en proceso.", 'Auxiliaturas de Exámenes', 'warning');
                 return;
             }
             printableSecs.forEach((sec, idx) => {
@@ -4839,13 +4935,13 @@
         const found = findDayAndScheduleBlock(dayId, window._currentSelectedExamBim);
         const dayObj = found ? (found.dayObj || found.day) : null;
         if (!found || !dayObj) {
-            alert('⚠️ No se encontró la jornada de examen solicitada.');
+            showExamScheduleAlert('⚠️ No se encontró la jornada de examen solicitada.', 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
         const evs = (dayObj.evaluations || []).slice();
         if (evs.length === 0) {
-            alert('No hay evaluaciones asignadas en esta fecha para exportar.');
+            showExamScheduleAlert('No hay evaluaciones asignadas en esta fecha para exportar.', 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
@@ -4976,7 +5072,7 @@
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
 
         if (!scheduleBlock.days || scheduleBlock.days.length === 0) {
-            alert("No hay fechas de evaluación configuradas para este bimestre.");
+            showExamScheduleAlert("No hay fechas de evaluación configuradas para este bimestre.", 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
@@ -5284,7 +5380,7 @@
         const scheduleBlock = getOrCreateScheduleBlock(scheduleKey);
 
         if (!scheduleBlock.days || scheduleBlock.days.length === 0) {
-            alert("No hay fechas de evaluación configuradas para este bimestre.");
+            showExamScheduleAlert("No hay fechas de evaluación configuradas para este bimestre.", 'Auxiliaturas de Exámenes', 'warning');
             return;
         }
 
@@ -5588,7 +5684,7 @@
             }, 450);
         } catch (e) {
             console.error("Error al imprimir via iframe:", e);
-            alert("No se pudo iniciar la impresión automática. Por favor verifique los permisos de su navegador.");
+            showExamScheduleAlert("No se pudo iniciar la impresión automática. Por favor verifique los permisos de su navegador.", 'Auxiliaturas de Exámenes', 'warning');
         }
     }
 

@@ -47,7 +47,6 @@
                 var allowedRoles = ['director', 'secretaria', 'admin', 'super_usuario', 'docente'];
 
                 if (!allowedRoles.includes(roleLower)) {
-                    alert('ACCESO DENEGADO (403)\n\nEl módulo "Directorio de Maestros Guías" requiere una cuenta institucional autorizada.\n\nSu rol (' + (authRole || 'Desconocido') + ') no cuenta con los privilegios requeridos.');
                     window.location.replace('plataforma.html?auth_denied=maestros_guias_restricted');
                 }
             } catch(e) {

@@ -6,7 +6,8 @@
  * Copyright (c) 2026 Escuela Nacional de Ciencias Comerciales - ENCCO
  * ======================================================================
  */
-const CACHE_NAME = 'encco-cache-v2026-10-16-v269-exoneracion-and-import';
+const ENCCO_SW_BUILD = '20261017_v271_architecture_optimization';
+const CACHE_NAME = 'encco-cache-v2026-10-17-v271-architecture-optimization';
 const STATIC_ASSETS = [
     './',
     'index.html',

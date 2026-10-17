@@ -1625,14 +1625,36 @@
     window.showJustificationDetailModal = showJustificationDetailModal;
 
     // 8. CITACIÓN OFICIAL A PADRES DE FAMILIA
-    function openParentCitationModal(studentId) {
+    async function openParentCitationModal(studentId) {
         const student = (window.STATE?.students || []).find(s => s.id === studentId);
         if (!student) return;
 
-        const reason = prompt(`Ingrese el motivo de la citación para el encargado de ${student.name}:`, 'Seguimiento disciplinario y rendimiento académico');
+        let reason = null;
+        if (window.EnccoDialog && typeof window.EnccoDialog.prompt === 'function') {
+            reason = await window.EnccoDialog.prompt({
+                title: 'Citación Oficial a Padres de Familia',
+                message: `Ingrese el motivo de la citación para el encargado de ${student.name}:`,
+                defaultValue: 'Seguimiento disciplinario y rendimiento académico',
+                confirmText: 'Siguiente',
+                cancelText: 'Cancelar'
+            });
+        } else {
+            reason = 'Seguimiento disciplinario y rendimiento académico';
+        }
         if (!reason) return;
 
-        const dateStr = prompt('Fecha y hora de la cita (ej. Mañana a las 09:00 hrs):', 'Lunes próximo a las 08:30 hrs');
+        let dateStr = null;
+        if (window.EnccoDialog && typeof window.EnccoDialog.prompt === 'function') {
+            dateStr = await window.EnccoDialog.prompt({
+                title: 'Fecha y Hora de la Cita',
+                message: 'Ingrese fecha y hora para la cita (ej. Mañana a las 09:00 hrs):',
+                defaultValue: 'Lunes próximo a las 08:30 hrs',
+                confirmText: 'Generar Citación',
+                cancelText: 'Cancelar'
+            });
+        } else {
+            dateStr = 'Lunes próximo a las 08:30 hrs';
+        }
         if (!dateStr) return;
 
         printOfficialParentCitation(student, reason, dateStr);
@@ -1722,5 +1744,187 @@
         }, 400);
     }
     window.printOfficialParentCitation = printOfficialParentCitation;
+
+    /**
+     * Imprime el Expediente Oficial 360° / Ficha Integral del estudiante
+     */
+    function printStudentFullFile(studentId) {
+        if (typeof window.printStudentFullFicha === 'function') {
+            return window.printStudentFullFicha(studentId);
+        } else if (typeof printStudentFullFicha === 'function') {
+            return printStudentFullFicha(studentId);
+        }
+        if (typeof showToast === 'function') {
+            showToast('No se encontró el módulo de impresión de ficha integral.', 'warning');
+        }
+    }
+    window.printStudentFullFile = printStudentFullFile;
+
+    /**
+     * Genera e imprime el Reporte Oficial Diario Consolidado de Auxiliatura
+     */
+    function printAuxiliaturaDailyConsolidated() {
+        const todayStr = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const nowIsoDate = new Date().toISOString().split('T')[0];
+
+        const absences = (typeof getTodayAbsencesList === 'function') ? getTodayAbsencesList() : [];
+        const statePermissions = (window.STATE && Array.isArray(window.STATE.studentPermissions)) ? window.STATE.studentPermissions : (studentPermissions || []);
+        const activePermissions = statePermissions.filter(p => {
+            const start = p.startDate || p.date || '';
+            const end = p.endDate || start;
+            return (!start || start <= nowIsoDate) && (!end || end >= nowIsoDate);
+        });
+
+        const stateDiscipline = (window.STATE && Array.isArray(window.STATE.disciplineReports)) ? window.STATE.disciplineReports : (disciplineReports || []);
+        const activeDiscipline = stateDiscipline.filter(d => d.status !== 'Resuelto');
+
+        const user = window.STATE ? window.STATE.currentUser : null;
+        const emitterName = user ? (user.name || user.username || 'Auxiliatura General') : 'Auxiliatura General';
+
+        const printHtml = `
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <title>Reporte Diario Consolidado - Auxiliatura ENCCO</title>
+                <style>
+                    @page { size: letter portrait; margin: 12mm 15mm; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9.5pt; color: #1e293b; line-height: 1.45; }
+                    .header { text-align: center; border-bottom: 2px solid #0f2b5c; padding-bottom: 8px; margin-bottom: 14px; }
+                    .header h1 { font-size: 13pt; margin: 0; color: #0f2b5c; text-transform: uppercase; font-weight: 800; }
+                    .header h2 { font-size: 10pt; margin: 3px 0; color: #059669; font-weight: 700; }
+                    .header-sub { font-size: 8.5pt; color: #475569; }
+                    .meta-bar { display: flex; justify-content: space-between; font-size: 8.5pt; margin-bottom: 12px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 6px; }
+                    .summary-grid { display: flex; gap: 8px; margin-bottom: 14px; }
+                    .summary-box { flex: 1; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; background: #f8fafc; text-align: center; }
+                    .summary-box strong { display: block; font-size: 13pt; color: #0f2b5c; }
+                    .summary-box span { font-size: 7.5pt; color: #64748b; font-weight: 700; text-transform: uppercase; }
+                    h3 { font-size: 10pt; color: #0f2b5c; margin: 12px 0 6px 0; border-left: 3px solid #0284c7; padding-left: 6px; text-transform: uppercase; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 8.5pt; }
+                    th, td { border: 1px solid #cbd5e1; padding: 5px 8px; text-align: left; }
+                    th { background: #f1f5f9; color: #1e293b; font-weight: 700; font-size: 8pt; }
+                    .badge { font-size: 7.5pt; font-weight: 700; padding: 1px 5px; border-radius: 3px; display: inline-block; }
+                    .signatures { margin-top: 35px; display: flex; justify-content: space-around; text-align: center; page-break-inside: avoid; }
+                    .sig-line { width: 38%; border-top: 1.5px solid #334155; padding-top: 5px; font-size: 8.5pt; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>Escuela Nacional de Ciencias Comerciales</h1>
+                    <h2>Jornada Diurna — Jutiapa, Guatemala (Fundada en 1970)</h2>
+                    <div class="header-sub">CENTRO DE CONTROL ESTUDIANTIL Y AUXILIATURA GENERAL</div>
+                </div>
+
+                <div class="meta-bar">
+                    <div><strong>Fecha de emisión:</strong> ${todayStr.charAt(0).toUpperCase() + todayStr.slice(1)}</div>
+                    <div><strong>Responsable de emisión:</strong> ${emitterName}</div>
+                </div>
+
+                <div class="summary-grid">
+                    <div class="summary-box">
+                        <strong style="color:#dc2626;">${absences.length}</strong>
+                        <span>Inasistencias Hoy</span>
+                    </div>
+                    <div class="summary-box">
+                        <strong style="color:#0284c7;">${activePermissions.length}</strong>
+                        <span>Permisos Vigentes</span>
+                    </div>
+                    <div class="summary-box">
+                        <strong style="color:#ea580c;">${activeDiscipline.length}</strong>
+                        <span>Casos Disciplinarios</span>
+                    </div>
+                </div>
+
+                <h3>1. Inasistencias al Aula Reportadas en la Fecha (${absences.length})</h3>
+                ${absences.length === 0 ? '<p style="color:#64748b; font-style:italic; font-size:8.5pt;">No se registraron inasistencias en la jornada de hoy.</p>' : `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:25px;">No.</th>
+                                <th>Estudiante</th>
+                                <th style="width:75px;">Carné</th>
+                                <th style="width:130px;">Grado y Sección</th>
+                                <th>Cátedra / Docente</th>
+                                <th style="width:80px;">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${absences.map((a, i) => `
+                                <tr>
+                                    <td style="text-align:center;">${i + 1}</td>
+                                    <td><strong>${a.studentName || 'Estudiante'}</strong></td>
+                                    <td>${a.carne || '---'}</td>
+                                    <td>${a.gradeLabel || a.gradeCode || '---'}</td>
+                                    <td>${a.courseName || '---'} (${a.teacherName || 'Docente'})</td>
+                                    <td>${a.status || 'Pendiente'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `}
+
+                <h3>2. Permisos Oficiales de Ausencia Vigentes (${activePermissions.length})</h3>
+                ${activePermissions.length === 0 ? '<p style="color:#64748b; font-style:italic; font-size:8.5pt;">No existen permisos de ausencia vigentes para hoy.</p>' : `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:25px;">No.</th>
+                                <th>Estudiante</th>
+                                <th style="width:130px;">Vigencia</th>
+                                <th>Motivo / Justificación</th>
+                                <th style="width:110px;">Autorizado por</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${activePermissions.map((p, i) => `
+                                <tr>
+                                    <td style="text-align:center;">${i + 1}</td>
+                                    <td><strong>${p.studentName || 'Estudiante'}</strong> (${p.grade || p.gradeCode || ''})</td>
+                                    <td>${p.startDate || p.date || ''} al ${p.endDate || p.startDate || p.date || ''}</td>
+                                    <td>${p.reason || 'Sin especificar'}</td>
+                                    <td>${p.authorizer || 'Auxiliatura'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `}
+
+                <div class="signatures">
+                    <div class="sig-line">
+                        <strong>Profesor(a) Auxiliar / Secretaría</strong><br>
+                        ENCCO Jutiapa
+                    </div>
+                    <div class="sig-line">
+                        <strong>Dirección del Plantel</strong><br>
+                        Vo.Bo. Institucional
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(printHtml);
+        doc.close();
+
+        iframe.contentWindow.focus();
+        setTimeout(() => {
+            iframe.contentWindow.print();
+            setTimeout(() => {
+                if (document.body.contains(iframe)) document.body.removeChild(iframe);
+            }, 2000);
+        }, 400);
+    }
+    window.printAuxiliaturaDailyConsolidated = printAuxiliaturaDailyConsolidated;
 
 })(window, document);

@@ -1410,10 +1410,10 @@
                 }
             } catch (err) {
                 console.error('Error procesando archivo:', err);
-                if (typeof window.showToast === 'function') {
+                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                    window.EnccoDialog.alert({ title: 'Error de Imagen', message: 'No se pudo procesar la imagen seleccionada.', type: 'danger' });
+                } else if (typeof window.showToast === 'function') {
                     window.showToast('Error al procesar la imagen seleccionada.', 'danger');
-                } else {
-                    alert('No se pudo procesar la imagen seleccionada.');
                 }
             }
         },
@@ -1577,10 +1577,10 @@
                     this.applyPhoto(entity, listNode, dataUrl);
                 } catch (err) {
                     console.error('Error procesando imagen directa:', err);
-                    if (typeof window.showToast === 'function') {
+                    if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                        window.EnccoDialog.alert({ title: 'Error de Imagen', message: 'No se pudo procesar la imagen.', type: 'danger' });
+                    } else if (typeof window.showToast === 'function') {
                         window.showToast('Error al procesar la imagen.', 'danger');
-                    } else {
-                        alert('No se pudo procesar la imagen.');
                     }
                 }
             };
@@ -1606,10 +1606,10 @@
                 if (!student) return;
                 if (student.status === 'Retirado' || student.status === 'Inactivo') {
                     const stName = (typeof formatStudentDisplayName === 'function' ? formatStudentDisplayName(student, 'lastFirst') : (student.name || ''));
-                    if (typeof showToast === 'function') {
-                        showToast(`🔒 Impresión de Carné Bloqueada: El estudiante "${stName}" se encuentra RETIRADO. No se emiten carnés para alumnos retirados.`, 'warning');
-                    } else {
-                        alert(`El estudiante "${stName}" se encuentra RETIRADO. No se emiten carnés para alumnos retirados.`);
+                    if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                        window.EnccoDialog.alert({ title: 'Impresión Bloqueada', message: `El estudiante "${stName}" se encuentra RETIRADO. No se emiten carnés institucionales para alumnos retirados.`, type: 'warning' });
+                    } else if (typeof showToast === 'function') {
+                        showToast(`🔒 Impresión de Carné Bloqueada: El estudiante "${stName}" se encuentra RETIRADO.`, 'warning');
                     }
                     return;
                 }
@@ -1712,7 +1712,11 @@
                 });
 
                 if (itemsToPrint.length === 0) {
-                    alert('No hay docentes para imprimir según los filtros.');
+                    if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                        window.EnccoDialog.alert({ title: 'Impresión de Carnés', message: 'No hay docentes para imprimir según los filtros seleccionados.', type: 'warning' });
+                    } else if (typeof showToast === 'function') {
+                        showToast('No hay docentes para imprimir según los filtros.', 'warning');
+                    }
                     return;
                 }
 
@@ -1754,7 +1758,11 @@
                 });
 
                 if (itemsToPrint.length === 0) {
-                    alert('No hay estudiantes seleccionados para imprimir.');
+                    if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                        window.EnccoDialog.alert({ title: 'Impresión de Carnés', message: 'No hay estudiantes seleccionados para imprimir según los filtros aplicados.', type: 'warning' });
+                    } else if (typeof showToast === 'function') {
+                        showToast('No hay estudiantes seleccionados para imprimir.', 'warning');
+                    }
                     return;
                 }
 

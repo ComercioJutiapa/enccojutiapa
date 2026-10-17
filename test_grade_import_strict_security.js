@@ -65,7 +65,7 @@ const appCode = fs.readFileSync(path.join(__dirname, 'app.js'), 'utf8');
 
 const mockWindow = {
     STATE: mockState,
-    location: { href: '', search: '', hash: '' },
+    location: { href: '', search: '', hash: '', pathname: '' },
     localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
     sessionStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
     addEventListener: () => {},
@@ -98,6 +98,8 @@ const { processGradebookImportRows } = evalContext(
 );
 
 async function runSecurityTests() {
+    mockState.students[0].grades = mockState.students[0].grades || {};
+    mockState.students[0].grades['Contabilidad General'] = [0, 0, 0, 0];
     const activeCourse = mockState.pensum[0]; // Contabilidad General, 4to A, Bimestre 1
 
     // 1. TEST MATERIA INCORRECTA (Debe rechazar con "¡Cuadro Erróneo!")
@@ -188,7 +190,9 @@ async function runSecurityTests() {
     console.log('========================================================================\n');
 }
 
-runSecurityTests().catch(err => {
+runSecurityTests().then(() => {
+    process.exit(0);
+}).catch(err => {
     console.error('❌ Error en pruebas:', err);
     process.exit(1);
 });

@@ -48,7 +48,6 @@
 
                 // Redirigir a usuarios no autorizados (ej. docentes, alumnos)
                 if (!allowedRoles.includes(roleLower)) {
-                    alert('ACCESO DENEGADO (403)\n\nEl módulo "Datos para Sire" está reservado exclusivamente para la Dirección y Secretaría de la ENCCO.\n\nSu rol (' + (authRole || 'Desconocido') + ') no cuenta con los privilegios requeridos.');
                     window.location.replace('plataforma.html?auth_denied=datos_sire_restricted');
                 }
             } catch(e) {
@@ -984,6 +983,7 @@
 
     <!-- SCRIPTS -->
     <script src="xlsx.full.min.js" charset="UTF-8"></script>
+    <script src="ui.js"></script>
     <script>
         // ESTADO VOLÁTIL EXCLUSIVO EN RAM (NO PERSISTE EN DISCO NI LOCALSTORAGE)
         window._sireSessionState = {
@@ -1925,7 +1925,12 @@
             const schoolCode = b1 + '-' + b2 + '-' + b3 + '-' + b4;
 
             if (b1.length !== 2 || b2.length !== 2 || b3.length !== 4 || b4.length !== 2) {
-                alert('Por favor complete las 4 casillas del código de establecimiento correctamente (ej. 22-01-0014-46).');
+                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                    window.EnccoDialog.alert({ title: 'Código de Establecimiento', message: 'Por favor complete las 4 casillas del código de establecimiento correctamente (ej. 22-01-0014-46).', type: 'warning' });
+                } else {
+                    if (typeof showToast === 'function') showToast('Por favor complete las 4 casillas del código de establecimiento correctamente (ej. 22-01-0014-46).', 'warning');
+                    else console.warn('Por favor complete las 4 casillas del código de establecimiento correctamente.');
+                }
                 return;
             }
 
@@ -1934,12 +1939,20 @@
             const role = document.getElementById('sireRoleSelect').value;
 
             if (dpi.length !== 13) {
-                alert('El DPI debe contener exactamente 13 dígitos numéricos.');
+                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                    window.EnccoDialog.(typeof showToast === 'function' ? showToast({ title: 'Validación de DPI', message: 'El DPI debe contener exactamente 13 dígitos numéricos.', type: 'warning' }, 'warning') : console.warn({ title: 'Validación de DPI', message: 'El DPI debe contener exactamente 13 dígitos numéricos.', type: 'warning' }));
+                } else {
+        if (typeof showToast === 'function') showToast('El DPI debe contener exactamente 13 dígitos numéricos.', 'warning'); else console.warn('El DPI debe contener exactamente 13 dígitos numéricos.');
+    }
                 return;
             }
 
             if (!pass) {
-                alert('Por favor ingrese su contraseña de acceso a SIRE.');
+                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                    window.EnccoDialog.(typeof showToast === 'function' ? showToast({ title: 'Contraseña Requerida', message: 'Por favor ingrese su contraseña de acceso a SIRE.', type: 'warning' }, 'warning') : console.warn({ title: 'Contraseña Requerida', message: 'Por favor ingrese su contraseña de acceso a SIRE.', type: 'warning' }));
+                } else {
+        if (typeof showToast === 'function') showToast('Por favor ingrese su contraseña de acceso a SIRE.', 'warning'); else console.warn('Por favor ingrese su contraseña de acceso a SIRE.');
+    }
                 return;
             }
 
@@ -1986,7 +1999,16 @@
                     document.getElementById('sirePassInput').readOnly = true;
                     document.getElementById('sireRoleSelect').disabled = true;
 
-                    alert('✅ Inicio de sesión exitoso en SIRE MINEDUC.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role + '\nDPI: ' + dpi.slice(0, 4) + ' ••••• ' + dpi.slice(9) + '\nLas credenciales se mantienen en memoria RAM activa.');
+                    if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                        window.EnccoDialog.alert({
+                            title: 'Conexión Exitosa',
+                            message: 'Inicio de sesión exitoso en SIRE MINEDUC.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role + '\nDPI: ' + dpi.slice(0, 4) + ' ••••• ' + dpi.slice(9) + '\nLas credenciales se mantienen en memoria RAM activa.',
+                            type: 'success'
+                        });
+                    } else {
+                        if (typeof showToast === 'function') showToast('Inicio de sesión exitoso en SIRE MINEDUC.', 'success');
+                        else console.log('Inicio de sesión exitoso en SIRE.');
+                    }
                 } else {
                     throw new Error(data.error || 'Credenciales no autorizadas en SIRE.');
                 }
@@ -2015,12 +2037,33 @@
                 document.getElementById('sirePassInput').readOnly = true;
                 document.getElementById('sireRoleSelect').disabled = true;
 
-                alert('✅ Sesión segura en memoria iniciada correctamente.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role);
+                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                    window.EnccoDialog.(typeof showToast === 'function' ? showToast({
+                        title: 'Sesión SIRE en Memoria',
+                        message: 'Sesión segura en memoria iniciada correctamente.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role,
+                        type: 'success'
+                    }, 'warning') : console.warn({
+                        title: 'Sesión SIRE en Memoria',
+                        message: 'Sesión segura en memoria iniciada correctamente.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role,
+                        type: 'success'
+                    }));
+                } else {
+        if (typeof showToast === 'function') showToast('✅ Sesión segura en memoria iniciada correctamente.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role, 'warning'); else console.warn('✅ Sesión segura en memoria iniciada correctamente.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role);
+    }
             }
         }
 
-        function handleSireDisconnect() {
-            if (!confirm('¿Desea cerrar la conexión con el portal SIRE y purgar las credenciales en memoria RAM?')) return;
+        async function handleSireDisconnect() {
+            const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+                ? await window.EnccoDialog.confirm({
+                    title: 'Desconectar SIRE',
+                    message: '¿Desea cerrar la conexión con el portal SIRE y purgar las credenciales en memoria RAM?',
+                    confirmText: 'Sí, desconectar y purgar',
+                    cancelText: 'Cancelar',
+                    type: 'danger'
+                })
+                : false;
+            if (!confirmed) return;
 
             window._sireSessionState = {
                 isConnected: false,
@@ -2050,7 +2093,19 @@
 
             try { fetch('/api/sire/disconnect', { method: 'POST' }); } catch(e) {}
 
-            alert('🔒 Sesión SIRE cerrada. Credenciales purgadas de la memoria volátil.');
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.(typeof showToast === 'function' ? showToast({
+                    title: 'Sesión Finalizada',
+                    message: 'Sesión SIRE cerrada. Credenciales purgadas de la memoria volátil.',
+                    type: 'info'
+                }, 'warning') : console.warn({
+                    title: 'Sesión Finalizada',
+                    message: 'Sesión SIRE cerrada. Credenciales purgadas de la memoria volátil.',
+                    type: 'info'
+                }));
+            } else {
+        if (typeof showToast === 'function') showToast('🔒 Sesión SIRE cerrada. Credenciales purgadas de la memoria volátil.', 'warning'); else console.warn('🔒 Sesión SIRE cerrada. Credenciales purgadas de la memoria volátil.');
+    }
         }
 
         // 7. EXPORTACIÓN EXCEL EN FORMATO SIRE MINEDUC
@@ -2168,7 +2223,11 @@
             const studentsToExport = _filteredStudents.length > 0 ? _filteredStudents : _sireStudents;
 
             if (!studentsToExport || studentsToExport.length === 0) {
-                alert('No hay estudiantes disponibles para exportar a XML. Verifique que existan registros cargados en la tabla.');
+                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                    window.EnccoDialog.(typeof showToast === 'function' ? showToast({ title: 'Exportación XML', message: 'No hay estudiantes disponibles para exportar a XML. Verifique que existan registros cargados en la tabla.', type: 'info' }, 'warning') : console.warn({ title: 'Exportación XML', message: 'No hay estudiantes disponibles para exportar a XML. Verifique que existan registros cargados en la tabla.', type: 'info' }));
+                } else {
+        if (typeof showToast === 'function') showToast('No hay estudiantes disponibles para exportar a XML. Verifique que existan registros cargados en la tabla.', 'warning'); else console.warn('No hay estudiantes disponibles para exportar a XML. Verifique que existan registros cargados en la tabla.');
+    }
                 return;
             }
 
@@ -2184,7 +2243,19 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            alert('✅ Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <data-set>\nTotal de registros exportados: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml');
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.(typeof showToast === 'function' ? showToast({
+                    title: 'Exportación XML Exitosa',
+                    message: 'Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <data-set>\nTotal de registros exportados: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml',
+                    type: 'success'
+                }, 'warning') : console.warn({
+                    title: 'Exportación XML Exitosa',
+                    message: 'Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <data-set>\nTotal de registros exportados: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml',
+                    type: 'success'
+                }));
+            } else {
+        if (typeof showToast === 'function') showToast('✅ Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <data-set>\nTotal de registros exportados: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml', 'warning'); else console.warn('✅ Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <data-set>\nTotal de registros exportados: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml');
+    }
         }
 
         function previewSireXml() {
@@ -2192,7 +2263,11 @@
             const studentsToExport = _filteredStudents.length > 0 ? _filteredStudents : _sireStudents;
 
             if (!studentsToExport || studentsToExport.length === 0) {
-                alert('No hay estudiantes disponibles para previsualizar XML.');
+                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                    window.EnccoDialog.(typeof showToast === 'function' ? showToast({ title: 'Previsualización XML', message: 'No hay estudiantes disponibles para previsualizar XML.', type: 'info' }, 'warning') : console.warn({ title: 'Previsualización XML', message: 'No hay estudiantes disponibles para previsualizar XML.', type: 'info' }));
+                } else {
+        if (typeof showToast === 'function') showToast('No hay estudiantes disponibles para previsualizar XML.', 'warning'); else console.warn('No hay estudiantes disponibles para previsualizar XML.');
+    }
                 return;
             }
 
@@ -2210,12 +2285,20 @@
             const textarea = document.getElementById('xmlPreviewContent');
             textarea.select();
             document.execCommand('copy');
-            alert('📋 XML copiado al portapapeles.');
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.(typeof showToast === 'function' ? showToast({ title: 'Portapapeles', message: 'XML copiado al portapapeles exitosamente.', type: 'success' }, 'warning') : console.warn({ title: 'Portapapeles', message: 'XML copiado al portapapeles exitosamente.', type: 'success' }));
+            } else {
+        if (typeof showToast === 'function') showToast('📋 XML copiado al portapapeles.', 'warning'); else console.warn('📋 XML copiado al portapapeles.');
+    }
         }
 
         function exportSireExcel() {
             if (typeof XLSX === 'undefined') {
-                alert('La biblioteca de exportación Excel aún está cargando. Espere un momento.');
+                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                    window.EnccoDialog.(typeof showToast === 'function' ? showToast({ title: 'Exportación Excel', message: 'La biblioteca de exportación Excel aún está cargando. Espere un momento.', type: 'info' }, 'warning') : console.warn({ title: 'Exportación Excel', message: 'La biblioteca de exportación Excel aún está cargando. Espere un momento.', type: 'info' }));
+                } else {
+        if (typeof showToast === 'function') showToast('La biblioteca de exportación Excel aún está cargando. Espere un momento.', 'warning'); else console.warn('La biblioteca de exportación Excel aún está cargando. Espere un momento.');
+    }
                 return;
             }
 
@@ -2330,11 +2413,26 @@
 
         function reloadSireDataFromFirebase() {
             initFirebaseDataReader();
-            alert('🔄 Datos actualizados directamente desde Firebase (Lectura Estricta).');
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.alert({ title: 'Sincronización', message: 'Datos actualizados directamente desde Firebase (Lectura Estricta).', type: 'info' });
+            } else {
+                if (typeof showToast === 'function') showToast('Datos actualizados directamente desde Firebase (Lectura Estricta).', 'info');
+                else console.log('Datos actualizados directamente desde Firebase.');
+            }
         }
 
         async function handleLogout() {
-            if (confirm('¿Desea cerrar la sesión del sistema ENCCO?')) {
+            const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+                ? await window.EnccoDialog.confirm({
+                    title: 'Cerrar Sesión',
+                    message: '¿Desea cerrar la sesión del sistema ENCCO?',
+                    confirmText: 'Sí, salir',
+                    cancelText: 'Permanecer',
+                    type: 'question'
+                })
+                : false;
+
+            if (confirmed) {
                 if (window.EnccoInactivityTimer && typeof window.EnccoInactivityTimer.stop === 'function') {
                     window.EnccoInactivityTimer.stop();
                 }

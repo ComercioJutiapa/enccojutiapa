@@ -547,7 +547,11 @@
     EnccoAnalytics.openParentCitationModal = function(studentId) {
         const student = (window.STATE && window.STATE.students) ? window.STATE.students.find(s => s.id === studentId) : null;
         if (!student) {
-            alert('Estudiante no encontrado.');
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.alert({ title: 'Aviso', message: 'Estudiante no encontrado.', type: 'warning' });
+            } else if (typeof showToast === 'function') {
+                showToast('Estudiante no encontrado.', 'warning');
+            }
             return;
         }
 
@@ -635,7 +639,11 @@
 
     EnccoAnalytics.exportRiskListToExcel = function() {
         if (typeof XLSX === 'undefined') {
-            alert('Librería de exportación no cargada.');
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.alert({ title: 'Exportación Excel', message: 'La librería de exportación a Excel aún no ha finalizado de cargar. Por favor reintente en unos momentos.', type: 'warning' });
+            } else if (typeof showToast === 'function') {
+                showToast('Librería de exportación no cargada.', 'warning');
+            }
             return;
         }
         const data = EnccoAnalytics.getAggregatedAnalytics();

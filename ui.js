@@ -145,6 +145,420 @@
         });
     }
 
+    // ======================================================================
+    // 2b. SISTEMA INSTITUCIONAL DE DIÁLOGOS Y MODALES PROPIOS (EnccoDialog)
+    // Reemplazo completo de window.alert, window.confirm y window.prompt
+    // ======================================================================
+    const EnccoDialog = {
+        _activeResolve: null,
+        _currentConfig: null,
+
+        _createOverlay() {
+            if (typeof document === 'undefined') return null;
+            let overlay = document.getElementById('enccoDialogOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'enccoDialogOverlay';
+                overlay.style.cssText = `
+                    position: fixed;
+                    inset: 0;
+                    z-index: 100080;
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    background: rgba(15, 23, 42, 0.72);
+                    backdrop-filter: blur(6px);
+                    -webkit-backdrop-filter: blur(6px);
+                    opacity: 0;
+                    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+                    padding: 16px;
+                    box-sizing: border-box;
+                    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                `;
+                overlay.innerHTML = `
+                    <div id="enccoDialogCard" style="
+                        max-width: 500px;
+                        width: 100%;
+                        background: #ffffff;
+                        border-radius: 16px;
+                        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(226, 232, 240, 0.8);
+                        overflow: hidden;
+                        transform: scale(0.95) translateY(8px);
+                        transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+                        display: flex;
+                        flex-direction: column;
+                    ">
+                        <!-- Header -->
+                        <div id="enccoDialogHeader" style="
+                            padding: 16px 20px;
+                            color: #ffffff;
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            gap: 12px;
+                        ">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div id="enccoDialogIconWrapper" style="
+                                    width: 38px;
+                                    height: 38px;
+                                    border-radius: 10px;
+                                    background: rgba(255, 255, 255, 0.22);
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-size: 1.15rem;
+                                    flex-shrink: 0;
+                                ">
+                                    <i id="enccoDialogIcon" class="fa-solid fa-circle-question"></i>
+                                </div>
+                                <div>
+                                    <h4 id="enccoDialogTitle" style="margin: 0; font-size: 1.05rem; font-weight: 800; line-height: 1.25; color: #ffffff;">Confirmación</h4>
+                                    <span style="font-size: 0.74rem; opacity: 0.92; color: #ffffff;">Escuela Nacional de Ciencias Comerciales ENCCO</span>
+                                </div>
+                            </div>
+                            <button id="enccoDialogCloseBtn" type="button" aria-label="Cerrar diálogo" style="
+                                background: rgba(255, 255, 255, 0.18);
+                                border: none;
+                                color: #ffffff;
+                                width: 30px;
+                                height: 30px;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-size: 1.15rem;
+                                cursor: pointer;
+                                transition: background 0.15s;
+                            ">&times;</button>
+                        </div>
+
+                        <!-- Body -->
+                        <div id="enccoDialogBody" style="
+                            padding: 22px 24px;
+                            background: #ffffff;
+                            color: #334155;
+                            font-size: 0.92rem;
+                            line-height: 1.55;
+                            max-height: 70vh;
+                            overflow-y: auto;
+                        ">
+                            <div id="enccoDialogMessage" style="color: #334155; white-space: pre-line;"></div>
+                            <div id="enccoDialogInputContainer" style="margin-top: 14px; display: none;"></div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div id="enccoDialogFooter" style="
+                            padding: 14px 20px;
+                            background: #f8fafc;
+                            border-top: 1px solid #e2e8f0;
+                            display: flex;
+                            align-items: center;
+                            justify-content: flex-end;
+                            gap: 10px;
+                        ">
+                            <button id="enccoDialogCancelBtn" type="button" style="
+                                background: #f1f5f9;
+                                color: #475569;
+                                border: 1px solid #cbd5e1;
+                                border-radius: 9px;
+                                font-weight: 700;
+                                font-size: 0.88rem;
+                                padding: 9px 18px;
+                                cursor: pointer;
+                                transition: all 0.15s;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 6px;
+                            ">
+                                <i class="fa-solid fa-xmark"></i> <span id="enccoDialogCancelText">Cancelar</span>
+                            </button>
+                            <button id="enccoDialogConfirmBtn" type="button" style="
+                                background: #15803d;
+                                color: #ffffff;
+                                border: none;
+                                border-radius: 9px;
+                                font-weight: 700;
+                                font-size: 0.88rem;
+                                padding: 9px 20px;
+                                cursor: pointer;
+                                transition: all 0.15s;
+                                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 6px;
+                            ">
+                                <i id="enccoDialogConfirmIcon" class="fa-solid fa-check"></i> <span id="enccoDialogConfirmText">Aceptar</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+
+                // Handlers de botones
+                const closeBtn = document.getElementById('enccoDialogCloseBtn');
+                const cancelBtn = document.getElementById('enccoDialogCancelBtn');
+                const confirmBtn = document.getElementById('enccoDialogConfirmBtn');
+
+                closeBtn.onmouseenter = () => closeBtn.style.background = 'rgba(255,255,255,0.3)';
+                closeBtn.onmouseleave = () => closeBtn.style.background = 'rgba(255,255,255,0.18)';
+                closeBtn.onclick = () => EnccoDialog._dismiss(false);
+
+                cancelBtn.onmouseenter = () => cancelBtn.style.background = '#e2e8f0';
+                cancelBtn.onmouseleave = () => cancelBtn.style.background = '#f1f5f9';
+                cancelBtn.onclick = () => EnccoDialog._dismiss(false);
+
+                confirmBtn.onclick = () => EnccoDialog._confirm();
+
+                overlay.onclick = (e) => {
+                    if (e.target === overlay) EnccoDialog._dismiss(false);
+                };
+
+                // Manejo de teclado (ESC y Enter)
+                overlay.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        e.stopPropagation();
+                        EnccoDialog._dismiss(false);
+                    } else if (e.key === 'Enter' && e.target && e.target.tagName !== 'TEXTAREA') {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        EnccoDialog._confirm();
+                    }
+                });
+            }
+            return overlay;
+        },
+
+        _open(config) {
+            return new Promise((resolve) => {
+                const overlay = this._createOverlay();
+                if (!overlay) {
+                    resolve(config.mode === 'alert' ? true : false);
+                    return;
+                }
+                const card = document.getElementById('enccoDialogCard');
+                const header = document.getElementById('enccoDialogHeader');
+                const icon = document.getElementById('enccoDialogIcon');
+                const title = document.getElementById('enccoDialogTitle');
+                const message = document.getElementById('enccoDialogMessage');
+                const inputContainer = document.getElementById('enccoDialogInputContainer');
+                const cancelBtn = document.getElementById('enccoDialogCancelBtn');
+                const cancelText = document.getElementById('enccoDialogCancelText');
+                const confirmBtn = document.getElementById('enccoDialogConfirmBtn');
+                const confirmIcon = document.getElementById('enccoDialogConfirmIcon');
+                const confirmText = document.getElementById('enccoDialogConfirmText');
+
+                this._activeResolve = resolve;
+                this._currentConfig = config;
+
+                // Tipo y tema
+                const type = config.type || 'info';
+                let headerBg = 'linear-gradient(135deg, #15803d 0%, #059669 100%)';
+                let btnBg = '#15803d';
+                let defaultIcon = 'fa-circle-question';
+
+                if (type === 'danger') {
+                    headerBg = 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)';
+                    btnBg = '#dc2626';
+                    defaultIcon = 'fa-triangle-exclamation';
+                } else if (type === 'warning') {
+                    headerBg = 'linear-gradient(135deg, #d97706 0%, #b45309 100%)';
+                    btnBg = '#d97706';
+                    defaultIcon = 'fa-triangle-exclamation';
+                } else if (type === 'info') {
+                    headerBg = 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)';
+                    btnBg = '#0284c7';
+                    defaultIcon = 'fa-circle-info';
+                } else if (type === 'success') {
+                    headerBg = 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
+                    btnBg = '#16a34a';
+                    defaultIcon = 'fa-circle-check';
+                }
+
+                header.style.background = headerBg;
+                confirmBtn.style.background = btnBg;
+
+                // Icono
+                icon.className = `fa-solid ${config.icon || defaultIcon}`;
+
+                // Título
+                title.textContent = config.title || (config.mode === 'alert' ? 'Aviso Institucional' : (config.mode === 'prompt' ? 'Ingreso de Información' : 'Confirmación Requerida'));
+
+                // Mensaje (procesar texto)
+                message.textContent = config.message || '';
+
+                // Botones
+                cancelText.textContent = config.cancelText || 'Cancelar';
+                confirmText.textContent = config.confirmText || (config.mode === 'alert' ? 'Entendido' : 'Confirmar');
+
+                if (config.mode === 'alert') {
+                    cancelBtn.style.display = 'none';
+                    confirmIcon.className = 'fa-solid fa-check';
+                } else {
+                    cancelBtn.style.display = 'inline-flex';
+                    confirmIcon.className = (type === 'danger') ? 'fa-solid fa-trash-can' : (config.confirmIcon || 'fa-solid fa-check');
+                }
+
+                // Input para Prompt / Select
+                inputContainer.innerHTML = '';
+                if (config.mode === 'prompt') {
+                    inputContainer.style.display = 'block';
+                    if (Array.isArray(config.options) && config.options.length > 0) {
+                        const selectEl = document.createElement('select');
+                        selectEl.id = 'enccoDialogInput';
+                        selectEl.style.cssText = `
+                            width: 100%;
+                            padding: 10px 14px;
+                            border: 1.5px solid #cbd5e1;
+                            border-radius: 9px;
+                            font-size: 0.92rem;
+                            font-weight: 600;
+                            color: #1e293b;
+                            background: #ffffff;
+                            outline: none;
+                            transition: border-color 0.2s, box-shadow 0.2s;
+                        `;
+                        config.options.forEach(opt => {
+                            const option = document.createElement('option');
+                            option.value = typeof opt === 'object' ? opt.value : opt;
+                            option.textContent = typeof opt === 'object' ? opt.label : opt;
+                            if (config.defaultValue !== undefined && String(option.value) === String(config.defaultValue)) {
+                                option.selected = true;
+                            }
+                            selectEl.appendChild(option);
+                        });
+                        inputContainer.appendChild(selectEl);
+                    } else {
+                        const inputEl = document.createElement('input');
+                        inputEl.type = 'text';
+                        inputEl.id = 'enccoDialogInput';
+                        inputEl.placeholder = config.placeholder || 'Escriba aquí...';
+                        inputEl.value = config.defaultValue || '';
+                        inputEl.style.cssText = `
+                            width: 100%;
+                            padding: 10px 14px;
+                            border: 1.5px solid #cbd5e1;
+                            border-radius: 9px;
+                            font-size: 0.92rem;
+                            color: #1e293b;
+                            box-sizing: border-box;
+                            outline: none;
+                            transition: border-color 0.2s, box-shadow 0.2s;
+                        `;
+                        inputContainer.appendChild(inputEl);
+                    }
+                } else {
+                    inputContainer.style.display = 'none';
+                }
+
+                // Mostrar con animación
+                overlay.style.display = 'flex';
+                requestAnimationFrame(() => {
+                    overlay.style.opacity = '1';
+                    card.style.transform = 'scale(1) translateY(0)';
+                });
+
+                document.body.style.overflow = 'hidden';
+
+                setTimeout(() => {
+                    if (config.mode === 'prompt') {
+                        const input = document.getElementById('enccoDialogInput');
+                        if (input) input.focus();
+                    } else {
+                        confirmBtn.focus();
+                    }
+                }, 60);
+            });
+        },
+
+        _confirm() {
+            if (!this._activeResolve) return;
+            const res = this._activeResolve;
+            const cfg = this._currentConfig || {};
+            this._activeResolve = null;
+
+            let resultVal = true;
+            if (cfg.mode === 'prompt') {
+                const input = document.getElementById('enccoDialogInput');
+                resultVal = input ? input.value : '';
+            } else if (cfg.mode === 'alert') {
+                resultVal = true;
+            }
+
+            this._closeAnimation(() => res(resultVal));
+        },
+
+        _dismiss(val = false) {
+            if (!this._activeResolve) return;
+            const res = this._activeResolve;
+            this._activeResolve = null;
+            this._closeAnimation(() => res(val));
+        },
+
+        _closeAnimation(callback) {
+            const overlay = document.getElementById('enccoDialogOverlay');
+            const card = document.getElementById('enccoDialogCard');
+            if (overlay && card) {
+                overlay.style.opacity = '0';
+                card.style.transform = 'scale(0.95) translateY(8px)';
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    const anyOpenModal = document.querySelector('.modal.active, .modal-backdrop.active, .modal-overlay.modal-active');
+                    if (!anyOpenModal) {
+                        document.body.style.overflow = '';
+                    }
+                    if (callback) callback();
+                }, 200);
+            } else {
+                if (callback) callback();
+            }
+        },
+
+        confirm(options) {
+            const opts = typeof options === 'string' ? { message: options } : (options || {});
+            opts.mode = 'confirm';
+            return this._open(opts);
+        },
+
+        alert(options) {
+            const opts = typeof options === 'string' ? { message: options } : (options || {});
+            opts.mode = 'alert';
+            return this._open(opts);
+        },
+
+        prompt(options, defaultValue) {
+            let opts = {};
+            if (typeof options === 'string') {
+                opts = { message: options, defaultValue: defaultValue };
+            } else {
+                opts = options || {};
+            }
+            opts.mode = 'prompt';
+            return this._open(opts);
+        },
+
+        select(options) {
+            const opts = options || {};
+            opts.mode = 'prompt';
+            return this._open(opts);
+        }
+    };
+
+    // Publicación global
+    window.EnccoDialog = EnccoDialog;
+    window.showConfirmModal = (opts) => EnccoDialog.confirm(opts);
+    window.showAlertModal = (opts) => EnccoDialog.alert(opts);
+    window.showPromptModal = (opts, def) => EnccoDialog.prompt(opts, def);
+
+    // Reemplazo no bloqueante universal de window.alert para evitar popups nativos
+    try {
+        window.alert = function(msg) {
+            if (typeof showToast === 'function') {
+                showToast(String(msg || ''), 'info', 4000);
+            }
+            return EnccoDialog.alert({ message: String(msg || ''), title: 'Aviso Institucional', type: 'info' });
+        };
+    } catch(e) {}
+
     // 3. BLOQUEO DINÁMICO DE BIMESTRES PARA INGRESO DE NOTAS
     function isGradebookEditableForUser(student, subjectName, unit) {
         const uRole = (window.STATE && window.STATE.currentRole ? window.STATE.currentRole : (

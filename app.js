@@ -144,7 +144,7 @@ EnccoSecurityShield.preventFrameHijacking();
 // ======================================================================
 // 🧹 GESTOR AUTOMÁTICO DE VERSIÓN Y LIMPIEZA DE CACHÉ (V170 MULTISYNC)
 // ======================================================================
-const ENCCO_BUILD_VERSION = '20261016_v269_exoneracion_and_import';
+const ENCCO_BUILD_VERSION = '20261017_v270_persistence_fix';
 window.ENCCO_BUILD_VERSION = ENCCO_BUILD_VERSION;
 const withTimeout = (promise, ms = 8000, errorMsg = 'Tiempo de espera agotado al conectar con Firebase.') => {
     return Promise.race([
@@ -327,7 +327,7 @@ const EnccoCacheManager = {
             if (curUrl && (curUrl.includes('enccojutiapa-db-default') || curUrl.includes('tu-proyecto') || curUrl.includes('mi-colegio'))) {
                 localStorage.removeItem('ENCCO_FIREBASE_URL');
             }
-            // [v189] Eliminación terminante de toda base de datos local secundaria y respaldos locales
+            // [v270] Eliminación terminante de toda base de datos local secundaria y respaldos obsoletos
             const secondaryKeys = [
                 'ENCCO_DATABASE',
                 'ENCCO_DATABASE_BACKUP',
@@ -336,26 +336,31 @@ const EnccoCacheManager = {
                 'ENCCO_DATABASE_BLANK',
                 'ENCCO_DATABASE_PROD',
                 'ENCCO_BACKUP_BLANK',
-                'ENCCO_MASTER_DATABASE'
+                'ENCCO_MASTER_DATABASE',
+                'encco_pensum_backup',
+                'ENCCO_ATTENDANCE_MASTER_BACKUP',
+                'ENCCO_SYSTEM_DATA'
             ];
             secondaryKeys.forEach(k => {
                 try { localStorage.removeItem(k); } catch(e) {}
             });
             for (let i = localStorage.length - 1; i >= 0; i--) {
                 const k = localStorage.key(i);
-                if (k && (k.startsWith('ENCCO_DATABASE') || k.startsWith('ENCCO_BACKUP') || k.startsWith('ENCCO_SNAPSHOT') || k.startsWith('ENCCO_SYSTEM_DATA'))) {
+                if (k && (k.startsWith('ENCCO_DATABASE') || k.startsWith('ENCCO_BACKUP') || k.startsWith('ENCCO_SNAPSHOT') || k.startsWith('ENCCO_SYSTEM_DATA') || k.startsWith('encco_pensum') || k.startsWith('ENCCO_ATTENDANCE_MASTER'))) {
                     try { localStorage.removeItem(k); } catch(e) {}
                 }
             }
-            // [v189] Eliminar base de datos IndexedDB ENCCO_SUPERUSER_BACKUP_DB
+            // [v270] Eliminar base de datos IndexedDB ENCCO_SUPERUSER_BACKUP_DB
             if (typeof indexedDB !== 'undefined') {
                 try { indexedDB.deleteDatabase('ENCCO_SUPERUSER_BACKUP_DB'); } catch(e) {}
             }
-            // Limpiar únicamente CacheStorage de versiones anteriores sin destruir la versión activa
-            const prevBuildVer = localStorage.getItem('ENCCO_BUILD_VERSION');
-            if (prevBuildVer !== this.version && typeof caches !== 'undefined') {
+            // [v270] Limpiar rigurosamente CacheStorage de versiones obsoletas, conservando ÚNICAMENTE la versión activa
+            if (typeof caches !== 'undefined') {
                 caches.keys().then(keys => keys.forEach(k => {
-                    if (!k.includes('v265')) caches.delete(k);
+                    if (!k.includes(this.version)) {
+                        console.log('🧹 [EnccoCacheManager] Purgando caché obsoleta:', k);
+                        caches.delete(k);
+                    }
                 })).catch(() => {});
             }
             localStorage.setItem('ENCCO_BUILD_VERSION', this.version);
@@ -1146,6 +1151,26 @@ function updateCycleSelects() {
 }
 window.updateCycleSelects = updateCycleSelects;
 
+async function exitLocalReadOnlyMode() {
+    if (window.STATE) {
+        window.STATE.isLocalReadOnlyMode = false;
+    }
+    sessionStorage.removeItem('encco_local_readonly_mode');
+    localStorage.removeItem('encco_local_readonly_mode');
+    if (typeof showToast === 'function') {
+        showToast('Restableciendo conexión en vivo con la base de datos institucional...', 'info', 2500);
+    }
+    if (typeof reloadAllData === 'function') {
+        await reloadAllData();
+    } else if (typeof renderCurrentView === 'function') {
+        renderCurrentView();
+    } else if (typeof navigateTo === 'function' && window.STATE && window.STATE.activeView) {
+        navigateTo(window.STATE.activeView);
+    } else {
+        window.location.reload();
+    }
+}
+window.exitLocalReadOnlyMode = exitLocalReadOnlyMode;
 
 function enforceViewReadOnlyMode(viewName) {
     const viewEl = document.getElementById(`view-${viewName}`);
@@ -1955,6 +1980,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     if (Array.isArray(STATE.gradeEditRequests)) cleanPayload.gradeEditRequests = STATE.gradeEditRequests;
     if (Array.isArray(STATE.rolesConfig) && STATE.rolesConfig.length > 0) cleanPayload.rolesConfig = STATE.rolesConfig;
     if (STATE.schoolHeader && Object.keys(STATE.schoolHeader).length > 0) cleanPayload.schoolHeader = STATE.schoolHeader;
+    if (STATE.exoneraciones && typeof STATE.exoneraciones === 'object') cleanPayload.exoneraciones = STATE.exoneraciones;
 
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
         updateDbSyncStatus("disconnected", "⚠️ Sin conexión a Internet");
@@ -1980,6 +2006,31 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
         });
 
         if (response.ok) {
+            // [v270] Sincronizar colecciones tipo Array mediante PUT a sus nodos para truncar y eliminar permanentemente
+            const arrayNodesToSync = ['students', 'pensum', 'announcements', 'disciplineReports', 'studentPermissions', 'gradeEditRequests', 'cycles', 'careers', 'users', 'rolesConfig', 'gradesList'];
+            const syncPromises = [];
+            for (const nodeKey of arrayNodesToSync) {
+                if (cleanPayload[nodeKey] !== undefined) {
+                    syncPromises.push(
+                        fetch(`${firebaseUrl}/encc_school_state/${nodeKey}.json`, {
+                            method: "PUT",
+                            headers: headers,
+                            body: JSON.stringify(cleanPayload[nodeKey])
+                        }).catch(e => console.warn(`Aviso al sincronizar colección ${nodeKey}:`, e))
+                    );
+                }
+            }
+            if (cleanPayload.exoneraciones !== undefined) {
+                syncPromises.push(
+                    fetch(`${firebaseUrl}/encc_school_state/exoneraciones.json`, {
+                        method: "PUT",
+                        headers: headers,
+                        body: JSON.stringify(cleanPayload.exoneraciones)
+                    }).catch(e => console.warn(`Aviso al sincronizar exoneraciones:`, e))
+                );
+            }
+            await Promise.all(syncPromises);
+
             if (typeof EnccoDDoSProtection !== "undefined" && EnccoDDoSProtection.recordSuccess) {
                 EnccoDDoSProtection.recordSuccess();
             }
@@ -2206,6 +2257,66 @@ const EnccoCloudSync = {
             console.error(`❌ [EnccoCloudSync] Error de red al sincronizar /${nodeName}:`, err);
             return false;
         }
+    },
+
+    async deleteNode(nodePath) {
+        if (!nodePath) return false;
+        const firebaseUrl = this.getUrl();
+        const now = Date.now();
+        if (typeof STATE !== 'undefined' && STATE) {
+            STATE.lastModified = now;
+            STATE._lastSavedLocally = now;
+        }
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now));
+            }
+        } catch(e) {}
+
+        if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+            try {
+                _enccBroadcastChannel.postMessage({
+                    type: 'NODE_DELETED',
+                    node: nodePath,
+                    timestamp: now
+                });
+            } catch(bcErr) {}
+        }
+
+        if (!firebaseUrl || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+            if (typeof updateDbSyncStatus === 'function') updateDbSyncStatus('synced');
+            return true;
+        }
+
+        try {
+            const nodeEndpoint = `${firebaseUrl}/encc_school_state/${nodePath}.json`;
+            const rootNodeEndpoint = `${firebaseUrl}/${nodePath}.json`;
+            const timeEndpoint = `${firebaseUrl}/encc_school_state/lastModified.json`;
+
+            const [resNode, resTime] = await Promise.all([
+                fetch(nodeEndpoint, { method: 'DELETE' }),
+                fetch(rootNodeEndpoint, { method: 'DELETE' }).catch(() => null),
+                fetch(timeEndpoint, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(now)
+                })
+            ]);
+
+            if (resNode.ok) {
+                console.log(`🗑️ [EnccoCloudSync.deleteNode] /${nodePath} eliminado definitivamente en RTDB (${resNode.status} OK).`);
+                if (typeof updateDbSyncStatus === 'function') {
+                    updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
+                }
+                return true;
+            } else {
+                console.warn(`⚠️ [EnccoCloudSync.deleteNode] Falló eliminación de /${nodePath}. Status: ${resNode.status}`);
+                return false;
+            }
+        } catch(err) {
+            console.error(`❌ [EnccoCloudSync.deleteNode] Error al eliminar /${nodePath}:`, err);
+            return false;
+        }
     }
 };
 window.EnccoCloudSync = EnccoCloudSync;
@@ -2229,29 +2340,12 @@ async function recoverAllAttendanceRecords(forceRefresh = true) {
 
     console.log("🔄 [Recuperación de Asistencias] Iniciando restauración y consolidación autoritativa...");
 
-    // 1. Restaurar desde master backup en localStorage si existe
+    // 1. Purgar master backup obsoleto en localStorage para no sobrescribir modificaciones/eliminaciones reales
     try {
         if (typeof localStorage !== 'undefined') {
-            const masterBkp = localStorage.getItem('ENCCO_ATTENDANCE_MASTER_BACKUP');
-            if (masterBkp) {
-                const parsedBkp = JSON.parse(masterBkp);
-                if (parsedBkp && typeof parsedBkp === 'object') {
-                    for (const [k, rec] of Object.entries(parsedBkp)) {
-                        if (!rec || typeof rec !== 'object') continue;
-                        if (!STATE.attendanceRecords[k]) STATE.attendanceRecords[k] = {};
-                        for (const [sId, days] of Object.entries(rec)) {
-                            if (!days || typeof days !== 'object') continue;
-                            if (!STATE.attendanceRecords[k][sId]) STATE.attendanceRecords[k][sId] = {};
-                            Object.assign(STATE.attendanceRecords[k][sId], days);
-                            recoveredCount++;
-                        }
-                    }
-                }
-            }
+            localStorage.removeItem('ENCCO_ATTENDANCE_MASTER_BACKUP');
         }
-    } catch(err) {
-        console.warn("Aviso al leer ENCCO_ATTENDANCE_MASTER_BACKUP:", err);
-    }
+    } catch(err) {}
 
     // 2. Traer en paralelo ambos endpoints de Firebase RTDB:
     //    a) /attendanceRecords.json
@@ -2902,7 +2996,14 @@ function closeUniversalBackupModal() {
 }
 window.closeUniversalBackupModal = closeUniversalBackupModal;
 
-function exportSystemSafeBackup(backupCategory = 'all') {
+function exportSystemSafeBackup() {
+    const backupCategory = arguments[0] || 'all';
+    if (!isDirectorOrSuperAdmin()) {
+        if (typeof showToast === 'function') {
+            showToast("Acceso Restringido: La descarga de respaldo institucional está reservada exclusivamente a la Dirección General.", "warning");
+        }
+        return;
+    }
     try {
         const now = new Date();
         const y = now.getFullYear();
@@ -2990,7 +3091,7 @@ function exportSystemSafeBackup(backupCategory = 'all') {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `ENCCO_RESPALDO_${labelCategory}_${y}-${m}-${d}_${h}${min}.json`;
+        a.download = `ENCO_RESPALDO_OFICIAL_${labelCategory}_${y}-${m}-${d}_${h}${min}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -3753,7 +3854,7 @@ function renderRolesTable(filterVal = '') {
 }
 window.renderRolesTable = renderRolesTable;
 
-function deleteRole(roleKey) {
+async function deleteRole(roleKey) {
     if (!isDirectorOrSuperAdmin()) {
         showToast('Acceso Restringido: Solo la Dirección General tiene autorización para eliminar roles.', 'warning');
         return;
@@ -3778,14 +3879,32 @@ function deleteRole(roleKey) {
 
     const assignedUsers = (STATE.users || []).filter(u => u.role === roleKey);
     if (assignedUsers.length > 0) {
-        if (!confirm(`El rol "${roleName}" (${roleKey}) tiene actualmente ${assignedUsers.length} usuario(s) asignado(s).\n\nSi continúa, el rol será eliminado y los usuarios asignados serán transferidos automáticamente al rol "docente".\n\n¿Desea eliminar el rol y reasignar los usuarios?`)) {
+        const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+            ? await window.EnccoDialog.confirm({
+                title: 'Eliminar Rol con Usuarios Asignados',
+                message: `El rol "${roleName}" (${roleKey}) tiene actualmente ${assignedUsers.length} usuario(s) asignado(s).\n\nSi continúa, el rol será eliminado y los usuarios asignados serán transferidos automáticamente al rol "docente".\n\n¿Desea eliminar el rol y reasignar los usuarios?`,
+                type: 'warning',
+                confirmText: 'Eliminar y Reasignar',
+                cancelText: 'Cancelar'
+            })
+            : false;
+        if (!confirmed) {
             return;
         }
         assignedUsers.forEach(u => {
             u.role = 'docente';
         });
     } else {
-        if (!confirm(`¿Está seguro de que desea eliminar permanentemente el rol "${roleName}" (${roleKey})?\n\nEsta acción no se puede deshacer.`)) {
+        const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+            ? await window.EnccoDialog.confirm({
+                title: 'Eliminar Rol Institucional',
+                message: `¿Está seguro de que desea eliminar permanentemente el rol "${roleName}" (${roleKey})?\n\nEsta acción no se puede deshacer.`,
+                type: 'danger',
+                confirmText: 'Eliminar Rol',
+                cancelText: 'Cancelar'
+            })
+            : false;
+        if (!confirmed) {
             return;
         }
     }
@@ -4407,12 +4526,23 @@ function editCareer(careerId) {
 }
 window.editCareer = editCareer;
 
-function deleteCareer(careerId) {
+async function deleteCareer(careerId) {
     if (careerId === 'car-1') {
         showToast("La carrera oficial Perito Contador no puede ser eliminada.", "warning");
         return;
     }
-    if (!confirm("¿Está seguro de eliminar esta carrera?")) return;
+    const careerObj = (STATE.careers || []).find(c => c.id === careerId);
+    const careerName = careerObj ? careerObj.name : 'esta carrera';
+    const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+        ? await window.EnccoDialog.confirm({
+            title: 'Eliminar Carrera Institucional',
+            message: `¿Está seguro de que desea eliminar permanentemente la carrera "${careerName}"?\n\nEsta acción afectará los grados, pensum y asignaciones vinculadas a esta carrera.`,
+            type: 'danger',
+            confirmText: 'Eliminar Carrera',
+            cancelText: 'Cancelar'
+        })
+        : true;
+    if (!confirmed) return;
 
     normalizeCareers();
     STATE.careers = STATE.careers.filter(c => c.id !== careerId);
@@ -5204,20 +5334,38 @@ function initFirebaseRealtimeConnection() {
                         }
                     } else if (cleanPath === 'exoneraciones' || cleanPath.startsWith('exoneraciones')) {
                         if (nodeData && typeof nodeData === 'object') {
+                            const deletedExons = Array.isArray(STATE.deletedExonerationIds) ? new Set(STATE.deletedExonerationIds) : new Set();
                             if (!STATE.exoneraciones) STATE.exoneraciones = {};
                             if (cleanPath === 'exoneraciones') {
                                 if (Array.isArray(nodeData)) {
                                     nodeData.forEach(ex => {
-                                        if (ex && ex.id) STATE.exoneraciones[ex.id] = ex;
+                                        if (ex && ex.id && !deletedExons.has(ex.id) && ex.active !== false && !ex.deletedAt) {
+                                            STATE.exoneraciones[ex.id] = ex;
+                                        } else if (ex && ex.id) {
+                                            delete STATE.exoneraciones[ex.id];
+                                        }
                                     });
                                 } else {
-                                    Object.assign(STATE.exoneraciones, nodeData);
+                                    Object.entries(nodeData).forEach(([k, ex]) => {
+                                        if (ex && !deletedExons.has(k) && !deletedExons.has(ex.id) && ex.active !== false && !ex.deletedAt) {
+                                            STATE.exoneraciones[k] = ex;
+                                        } else {
+                                            delete STATE.exoneraciones[k];
+                                        }
+                                    });
                                 }
                             } else {
                                 const sub = cleanPath.replace(/^exoneraciones\/?/, '');
                                 const exId = sub || nodeData.id;
-                                if (exId) STATE.exoneraciones[exId] = nodeData;
+                                if (exId && (deletedExons.has(exId) || nodeData.active === false || nodeData.deletedAt)) {
+                                    delete STATE.exoneraciones[exId];
+                                } else if (exId) {
+                                    STATE.exoneraciones[exId] = nodeData;
+                                }
                             }
+                            deletedExons.forEach(delId => {
+                                delete STATE.exoneraciones[delId];
+                            });
                             if (Array.isArray(STATE.students)) {
                                 STATE.students.forEach(st => {
                                     if (st && typeof getStudentExonerationsList === 'function') getStudentExonerationsList(st);
@@ -5247,15 +5395,27 @@ function initFirebaseRealtimeConnection() {
                                 STATE.config = { ...(STATE.config || {}), ...data.data };
                             }
                         } else if (data.path === '/exoneraciones' || data.path.startsWith('/exoneraciones')) {
+                            const deletedExons = Array.isArray(STATE.deletedExonerationIds) ? new Set(STATE.deletedExonerationIds) : new Set();
                             if (!STATE.exoneraciones) STATE.exoneraciones = {};
                             if (data.path === '/exoneraciones') {
-                                Object.assign(STATE.exoneraciones, data.data);
+                                Object.entries(data.data || {}).forEach(([k, ex]) => {
+                                    if (ex && !deletedExons.has(k) && !deletedExons.has(ex.id) && ex.active !== false && !ex.deletedAt) {
+                                        STATE.exoneraciones[k] = ex;
+                                    } else {
+                                        delete STATE.exoneraciones[k];
+                                    }
+                                });
                             } else {
                                 const subPath = data.path.replace(/^\/exoneraciones\/?/, '');
-                                if (subPath) {
+                                if (subPath && (deletedExons.has(subPath) || data.data.active === false || data.data.deletedAt)) {
+                                    delete STATE.exoneraciones[subPath];
+                                } else if (subPath) {
                                     STATE.exoneraciones[subPath] = { ...(STATE.exoneraciones[subPath] || {}), ...data.data };
                                 }
                             }
+                            deletedExons.forEach(delId => {
+                                delete STATE.exoneraciones[delId];
+                            });
                             if (Array.isArray(STATE.students)) {
                                 STATE.students.forEach(st => {
                                     if (st && typeof getStudentExonerationsList === 'function') getStudentExonerationsList(st);
@@ -7730,15 +7890,10 @@ function ensureOfficialPensumAssignments() {
         return;
     }
 
-    // Intentar recuperar de caché local de respaldo si está disponible
+    // Purgar caché de respaldo local obsoleta para garantizar sincronización directa con Firebase
     try {
-        const cached = localStorage.getItem('encco_pensum_backup');
-        if (cached) {
-            const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length >= 28) {
-                STATE.pensum = parsed;
-                console.log(`✅ [Pensum 2026] ${parsed.length} cátedras recuperadas desde caché local.`);
-            }
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('encco_pensum_backup');
         }
     } catch(e) {}
 
@@ -8156,7 +8311,7 @@ async function initApp() {
             let _cloudRes = null;
             try {
                 const _abortCtrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-                const _timeoutId = _abortCtrl ? setTimeout(() => _abortCtrl.abort(), 2500) : null;
+                const _timeoutId = _abortCtrl ? setTimeout(() => _abortCtrl.abort(), 12000) : null;
                 _cloudRes = await fetch(_fbUrl + "/encc_school_state.json?t=" + Date.now(), { 
                     method: "GET", 
                     headers: { "Accept": "application/json" },
@@ -8435,20 +8590,40 @@ async function initApp() {
         if (typeof window !== 'undefined') window._isAppBootCompleted = true;
     }, 3000);
 
-    // 🛡️ Notificación amigable en caso de redirección por intento de acceso denegado a "Datos para Sire"
+    // 🛡️ Notificación institucional en caso de redirección por intento de acceso denegado (403)
     try {
         if (typeof window !== 'undefined' && window.location && window.location.search) {
             const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('auth_denied') === 'datos_sire_restricted') {
+            if (urlParams.has('auth_denied')) {
+                const reason = urlParams.get('auth_denied');
+                let modalTitle = 'Acceso Restringido (403)';
+                let modalMsg = 'No cuenta con los privilegios requeridos para ingresar al módulo seleccionado.';
+                if (reason === 'datos_sire_restricted') {
+                    modalTitle = 'Acceso Exclusivo (403)';
+                    modalMsg = 'El módulo "Datos para Sire" está reservado exclusivamente para la Dirección y Secretaría de la ENCCO.';
+                } else if (reason === 'maestros_guias_restricted') {
+                    modalTitle = 'Acceso Denegado (403)';
+                    modalMsg = 'El módulo "Directorio de Maestros Guías" requiere una cuenta institucional autorizada.';
+                } else if (reason === 'bloqueo_notas_restricted') {
+                    modalTitle = 'Control de Bimestres (403)';
+                    modalMsg = 'Su rol actual no cuenta con privilegios suficientes para configurar el bloqueo de bimestres.';
+                }
+
                 setTimeout(() => {
-                    if (typeof showToast === 'function') {
-                        showToast('Acceso Denegado (403): El módulo "Datos para Sire" está reservado exclusivamente para Dirección y Secretaría.', 'error', 6000);
+                    if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                        window.EnccoDialog.alert({
+                            title: modalTitle,
+                            message: modalMsg,
+                            type: 'danger'
+                        });
+                    } else if (typeof showToast === 'function') {
+                        showToast(`${modalTitle}: ${modalMsg}`, 'error', 6000);
                     }
                     try {
                         const cleanUrl = window.location.pathname + window.location.hash;
                         window.history.replaceState({}, document.title, cleanUrl);
                     } catch(e) {}
-                }, 600);
+                }, 500);
             }
         }
     } catch(e) {}
@@ -9266,24 +9441,39 @@ async function reiniciarBaseDeDatosTotal() {
 
     // 1. SEGURIDAD ESTRICTA: Exclusivo para rol Administrador
     if (!isSuper) {
-        alert("⛔ ACCESO DENEGADO: El reinicio total de la base de datos es una función crítica exclusiva para el Administrador del sistema.");
+        if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+            await window.EnccoDialog.alert({
+                title: 'Acceso Denegado',
+                message: 'El reinicio total de la base de datos es una función crítica exclusiva para el Administrador del sistema.',
+                type: 'danger'
+            });
+        } else {
+            showToast("Acceso denegado: Función exclusiva para el Administrador.", "danger");
+        }
         return false;
     }
 
     // 2. DOBLE CONFIRMACIÓN EN PANTALLA
-    const confirmacion1 = window.confirm(
-        "⚠️ ADVERTENCIA DE SEGURIDAD - REINICIO TOTAL DE BASE DE DATOS\n\n" +
-        "¿Está completamente seguro de que desea REINICIAR la base de datos de Firebase en la nube?\n\n" +
-        "Esta acción eliminará de forma atómica todas las notas, clases, docentes, estudiantes, pensum, exoneraciones y bimestres.\n\n" +
-        "Presione ACEPTAR para continuar a la confirmación final."
-    );
+    const confirmacion1 = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+        ? await window.EnccoDialog.confirm({
+            title: 'Advertencia de Seguridad - Reinicio Total',
+            message: "¿Está completamente seguro de que desea REINICIAR la base de datos de Firebase en la nube?\n\nEsta acción eliminará de forma atómica todas las notas, clases, docentes, estudiantes, pensum, exoneraciones y bimestres.\n\nPresione Continuar para pasar a la confirmación final.",
+            type: 'danger',
+            confirmText: 'Continuar a Confirmación Final',
+            cancelText: 'Cancelar'
+        })
+        : false;
     if (!confirmacion1) return false;
 
-    const confirmacion2 = window.confirm(
-        "🛑 CONFIRMACIÓN FINAL IRREVERSIBLE\n\n" +
-        "Esta operación es definitiva y no se puede deshacer. Se ejecutarán operaciones por lotes (writeBatch) para purgar de forma inmediata los datos en la nube.\n\n" +
-        "¿Confirma DEFINITIVAMENTE el borrado y reinicio total de la base de datos escolar?"
-    );
+    const confirmacion2 = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+        ? await window.EnccoDialog.confirm({
+            title: 'Confirmación Final Irreversible',
+            message: "Esta operación es definitiva y no se puede deshacer. Se ejecutarán operaciones por lotes (writeBatch) para purgar de forma inmediata los datos en la nube.\n\n¿Confirma DEFINITIVAMENTE el borrado y reinicio total de la base de datos escolar?",
+            type: 'danger',
+            confirmText: 'Sí, Purgar y Reiniciar Base de Datos',
+            cancelText: 'Cancelar'
+        })
+        : false;
     if (!confirmacion2) return false;
 
     // 3. INDICADOR VISUAL DE PROCESAMIENTO
@@ -9570,6 +9760,10 @@ function applyIncomingCloudState(incomingState, force = false) {
     const incomingTime = incomingState.lastModified || Date.now();
 
     // 1. Usuarios y Autenticación
+    const deletedUsrs = Array.isArray(STATE.deletedUserIds) ? new Set(STATE.deletedUserIds) : new Set();
+    if (Array.isArray(incomingState.users)) {
+        incomingState.users = incomingState.users.filter(u => u && u.id && !deletedUsrs.has(u.id));
+    }
     if (Array.isArray(incomingState.users) && incomingState.users.length >= 20) {
         STATE.users = (typeof deduplicateUsersCollection === 'function') ? deduplicateUsersCollection(incomingState.users) : incomingState.users;
         if (window.EnccoAuthStore && typeof window.EnccoAuthStore.syncUserFromServer === "function") {
@@ -9586,7 +9780,7 @@ function applyIncomingCloudState(incomingState, force = false) {
             }
         }
         incomingState.users.forEach(incUser => {
-            if (!incUser || !incUser.id) return;
+            if (!incUser || !incUser.id || deletedUsrs.has(incUser.id)) return;
             const idx = (STATE.users || []).findIndex(u => u.id === incUser.id);
             if (idx !== -1) {
                 STATE.users[idx] = { ...STATE.users[idx], ...incUser };
@@ -9619,6 +9813,10 @@ function applyIncomingCloudState(incomingState, force = false) {
     }
 
     // 3. Ingreso de Notas y Calificaciones (Fusión inteligente multiusuario y mapeo de índices)
+    const deletedStus = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
+    if (Array.isArray(incomingState.students)) {
+        incomingState.students = incomingState.students.filter(s => s && s.id && !deletedStus.has(s.id) && !deletedStus.has(s.personalCode) && !deletedStus.has(s.carne));
+    }
     if (Array.isArray(incomingState.students) && incomingState.students.length > 0) {
         if (!window._rtdbStudentIndexMap) window._rtdbStudentIndexMap = new Map();
         if (!window._rtdbIndexToIdMap) window._rtdbIndexToIdMap = new Map();
@@ -9631,13 +9829,38 @@ function applyIncomingCloudState(incomingState, force = false) {
             }
         });
 
-        if (Array.isArray(STATE.students) && STATE.students.length > 0) {
+        if (force && incomingState.students.length >= 350) {
+            const localDirty = window._locallyDirtyStudentIds || new Set();
+            if (localDirty.size > 0 && Array.isArray(STATE.students)) {
+                const localDirtyMap = new Map();
+                STATE.students.forEach(st => {
+                    const k = st.id || st.personalCode;
+                    if (localDirty.has(k)) localDirtyMap.set(k, st);
+                });
+                incomingState.students.forEach(incSt => {
+                    const k = incSt.id || incSt.personalCode;
+                    if (localDirtyMap.has(k)) {
+                        const dirtySt = localDirtyMap.get(k);
+                        incSt.grades = { ...(incSt.grades || {}), ...(dirtySt.grades || {}) };
+                        incSt.gradebookDetails = { ...(incSt.gradebookDetails || {}), ...(dirtySt.gradebookDetails || {}) };
+                    }
+                });
+            }
+            STATE.students = deduplicateStudentsCollection(incomingState.students);
+            console.log("⚡ [applyIncomingCloudState] Reemplazo autoritativo inicial desde la nube completado.");
+        } else if (Array.isArray(STATE.students) && STATE.students.length > 0) {
             const localDirty = window._locallyDirtyStudentIds || new Set();
             const studentMap = new Map();
-            STATE.students.forEach(st => studentMap.set(st.id || st.personalCode, st));
+            STATE.students.forEach(st => {
+                const k = st.id || st.personalCode;
+                if (!deletedStus.has(k) && !deletedStus.has(st.carne)) {
+                    studentMap.set(k, st);
+                }
+            });
 
             incomingState.students.forEach(incSt => {
                 const key = incSt.id || incSt.personalCode;
+                if (deletedStus.has(key) || deletedStus.has(incSt.carne)) return;
                 const localSt = studentMap.get(key);
                 if (!localSt) {
                     studentMap.set(key, incSt);
@@ -9681,12 +9904,34 @@ function applyIncomingCloudState(incomingState, force = false) {
                             }
                         });
                     }
-                    Object.assign(localSt, incSt, {
-                        grades: mergedGrades,
-                        gradebookDetails: mergedDetails
-                    });
+
+                    const localMod = localSt.lastModified || localSt._localModifiedAt || 0;
+                    const incMod = incSt.lastModified || 0;
+                    if (localMod > incMod) {
+                        // Preservar datos locales del estudiante (nombre, estado, grado, etc.) modificados recientemente
+                        Object.assign(localSt, {
+                            grades: mergedGrades,
+                            gradebookDetails: mergedDetails
+                        });
+                    } else {
+                        Object.assign(localSt, incSt, {
+                            grades: mergedGrades,
+                            gradebookDetails: mergedDetails
+                        });
+                    }
                 }
             });
+
+            // Si la nube trae la nómina completa autoritativa, remover cualquier estudiante que haya sido eliminado en la nube
+            if (incomingState.students.length >= 350) {
+                const incKeys = new Set(incomingState.students.map(s => s.id || s.personalCode));
+                for (const [k, st] of studentMap.entries()) {
+                    if (!incKeys.has(k) && !st._isNewlyCreatedLocally) {
+                        studentMap.delete(k);
+                    }
+                }
+            }
+
             STATE.students = deduplicateStudentsCollection(Array.from(studentMap.values()));
             console.log("⚡ [Multiusuario] Fusión inteligente de calificaciones completada sin colisiones entre docentes.");
         } else {
@@ -9700,10 +9945,22 @@ function applyIncomingCloudState(incomingState, force = false) {
     }
 
     // 4. Asignación de Cátedras y Pensum (Blindaje estricto anti-sobreescritura por arreglos incompletos o vacíos)
+    const sanitizePensumArray = (arr) => {
+        if (!Array.isArray(arr)) return [];
+        const seenP = new Set();
+        return arr.filter(p => {
+            if (!p || (!p.subject && !p.name) || (!p.grade && !p.gradeCode)) return false;
+            const normSubj = (p.subject || p.name || "").trim().toLowerCase();
+            const key = `${p.grade || p.gradeCode}_${p.section}_${normSubj}`;
+            if (seenP.has(key)) return false;
+            seenP.add(key);
+            return true;
+        });
+    };
     if (Array.isArray(incomingState.pensum) && incomingState.pensum.length >= 28) {
-        STATE.pensum = incomingState.pensum;
+        STATE.pensum = sanitizePensumArray(incomingState.pensum);
     } else if (Array.isArray(incomingState.pensum) && incomingState.pensum.length > 0 && (!STATE.pensum || STATE.pensum.length === 0)) {
-        STATE.pensum = incomingState.pensum;
+        STATE.pensum = sanitizePensumArray(incomingState.pensum);
     } else if (!STATE.pensum || STATE.pensum.length < 28) {
         if (typeof ensureOfficialPensumAssignments === 'function') ensureOfficialPensumAssignments();
     }
@@ -9790,9 +10047,10 @@ function applyIncomingCloudState(incomingState, force = false) {
         if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
     }
     if (incomingState.disciplineReports) {
+        const deletedDisc = Array.isArray(STATE.deletedDisciplineIds) ? new Set(STATE.deletedDisciplineIds) : new Set();
         const cloudDisc = (Array.isArray(incomingState.disciplineReports)
             ? incomingState.disciplineReports
-            : Object.values(incomingState.disciplineReports)).filter(d => d && d.id);
+            : Object.values(incomingState.disciplineReports)).filter(d => d && d.id && !deletedDisc.has(d.id));
         if (cloudDisc.length > 0 || !Array.isArray(STATE.disciplineReports)) {
             STATE.disciplineReports = cloudDisc;
         }
@@ -9861,7 +10119,34 @@ function applyIncomingCloudState(incomingState, force = false) {
         }
     }
 
-    // 6. Ciclos y Configuraci?n
+    // 5c. Exoneraciones y Adecuaciones Curriculares (Fusión protegida contra resurrecciones)
+    if (incomingState.exoneraciones && typeof incomingState.exoneraciones === 'object') {
+        const deletedExons = Array.isArray(STATE.deletedExonerationIds) ? new Set(STATE.deletedExonerationIds) : new Set();
+        if (!STATE.exoneraciones) STATE.exoneraciones = {};
+        const rawExons = Array.isArray(incomingState.exoneraciones) ? incomingState.exoneraciones : Object.values(incomingState.exoneraciones);
+        rawExons.forEach(ex => {
+            if (!ex || !ex.id || deletedExons.has(ex.id) || ex.active === false || ex.deletedAt) {
+                if (ex && ex.id && STATE.exoneraciones[ex.id]) {
+                    delete STATE.exoneraciones[ex.id];
+                }
+                return;
+            }
+            STATE.exoneraciones[ex.id] = ex;
+        });
+        deletedExons.forEach(delId => {
+            delete STATE.exoneraciones[delId];
+        });
+        if (Array.isArray(STATE.students)) {
+            STATE.students.forEach(st => {
+                if (st && typeof getStudentExonerationsList === 'function') getStudentExonerationsList(st);
+            });
+        }
+        if (STATE.activeView === 'exoneraciones-log' && typeof renderExoneracionesLogView === 'function') {
+            renderExoneracionesLogView();
+        }
+    }
+
+    // 6. Ciclos y Configuración
     if (Array.isArray(incomingState.cycles)) {
         STATE.cycles = incomingState.cycles;
         ensureOfficialCycles();
@@ -10310,10 +10595,14 @@ function navigateTo(viewName, event = null) {
             window.location.href = 'datos-sire.html';
             return;
         } else {
-            if (typeof showToast === 'function') {
+            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+                window.EnccoDialog.alert({
+                    title: 'Acceso Restringido',
+                    message: 'El módulo "Datos para Sire" es exclusivo de Dirección y Secretaría.',
+                    type: 'warning'
+                });
+            } else if (typeof showToast === 'function') {
                 showToast('Acceso Restringido: El módulo "Datos para Sire" es exclusivo de Dirección y Secretaría.', 'error');
-            } else {
-                alert('Acceso Restringido: El módulo "Datos para Sire" es exclusivo de Dirección y Secretaría.');
             }
             return;
         }
@@ -10409,6 +10698,8 @@ function navigateTo(viewName, event = null) {
     if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
 }
 window.navigateTo = navigateTo;
+window.navigateToView = navigateTo;
+window.showView = navigateTo;
 
 function renderCurrentView() {
     switch (STATE.activeView) {
@@ -12865,7 +13156,28 @@ async function deleteStudent(studentId) {
     if (!student) return;
 
     const sName = formatStudentDisplayName(student, 'lastFirst');
-    if (confirm(`¿Está seguro de eliminar permanentemente al estudiante "${sName}" (${student.carne || ''})? Esta acción borrará expediente, notas y registros de disciplina.`)) {
+    const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+        ? await window.EnccoDialog.confirm({
+            title: 'Eliminar Estudiante Permanentemente',
+            message: `¿Está seguro de eliminar permanentemente al estudiante "${sName}" (${student.carne || ''})?\n\nEsta acción borrará expediente, notas y registros de disciplina asociados.`,
+            type: 'danger',
+            confirmText: 'Eliminar Estudiante',
+            cancelText: 'Cancelar'
+        })
+        : true;
+
+    if (confirmed) {
+        STATE.deletedStudentIds = STATE.deletedStudentIds || [];
+        if (!STATE.deletedStudentIds.includes(studentId)) {
+            STATE.deletedStudentIds.push(studentId);
+        }
+        if (student.personalCode && !STATE.deletedStudentIds.includes(student.personalCode)) {
+            STATE.deletedStudentIds.push(student.personalCode);
+        }
+        if (student.carne && !STATE.deletedStudentIds.includes(student.carne)) {
+            STATE.deletedStudentIds.push(student.carne);
+        }
+
         STATE.students = (STATE.students || []).filter(s => s.id !== studentId);
         
         // Limpiar reportes de disciplina del estudiante
@@ -12901,9 +13213,14 @@ async function deleteStudent(studentId) {
                 }
             }
 
-            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            if (typeof EnccoCloudSync !== 'undefined') {
                 try {
-                    await EnccoCloudSync.syncNode('students', STATE.students);
+                    if (EnccoCloudSync.deleteNode) {
+                        await EnccoCloudSync.deleteNode(`students/${studentId}`).catch(() => {});
+                    }
+                    if (EnccoCloudSync.syncNode) {
+                        await EnccoCloudSync.syncNode('students', STATE.students);
+                    }
                 } catch(rtdbErr) {
                     console.warn("Aviso al sincronizar students en RTDB:", rtdbErr);
                 }
@@ -13663,9 +13980,12 @@ function getStudentExonerationsList(student) {
     if (!student) return [];
     const list = [];
     const seen = new Set();
+    const deletedExons = (typeof STATE !== 'undefined' && Array.isArray(STATE.deletedExonerationIds)) 
+        ? new Set(STATE.deletedExonerationIds) 
+        : ((window.STATE && Array.isArray(window.STATE.deletedExonerationIds)) ? new Set(window.STATE.deletedExonerationIds) : new Set());
 
     const addEx = ex => {
-        if (!ex) return;
+        if (!ex || ex.active === false || ex.deletedAt || (ex.id && deletedExons.has(ex.id))) return;
         const key = `${ex.id || ''}_${(ex.subject || '').toLowerCase()}_${String(ex.bimestre || '').toLowerCase()}`;
         if (!seen.has(key)) {
             seen.add(key);
@@ -13687,7 +14007,7 @@ function getStudentExonerationsList(student) {
         const carne = String(student.carne || '').trim().toLowerCase();
 
         Object.values(globalExons).forEach(ex => {
-            if (!ex) return;
+            if (!ex || ex.active === false || ex.deletedAt || (ex.id && deletedExons.has(ex.id))) return;
             const exId = String(ex.studentId || '').trim();
             const exCode = String(ex.personalCode || '').trim().toLowerCase();
             const exCarne = String(ex.carne || '').trim().toLowerCase();
@@ -14935,17 +15255,30 @@ async function deleteAcademicExoneration(studentId, exIndex) {
     const student = (STATE.students || []).find(s => String(s.id) === String(studentId));
     if (!student || !student.academicExceptions) return;
 
-    if (typeof confirm === 'function' && !confirm("¿Desea eliminar esta exoneración? La nota regular volverá a ser evaluada en el Cuadro de Honor.")) {
-        return;
-    }
+    const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+        ? await window.EnccoDialog.confirm({
+            title: 'Eliminar Exoneración Académica',
+            message: '¿Desea eliminar esta exoneración?\n\nLa nota regular volverá a ser evaluada en el Cuadro de Honor.',
+            type: 'warning',
+            confirmText: 'Eliminar Exoneración',
+            cancelText: 'Cancelar'
+        })
+        : true;
+    if (!confirmed) return;
 
     const removedEx = student.academicExceptions.splice(exIndex, 1)[0];
     if (student.exoneraciones && Array.isArray(student.exoneraciones)) {
         const exIdx2 = student.exoneraciones.findIndex(x => x.id === (removedEx && removedEx.id) || (removedEx && x.subject === removedEx.subject && String(x.bimestre) === String(removedEx.bimestre)));
         if (exIdx2 !== -1) student.exoneraciones.splice(exIdx2, 1);
     }
-    if (removedEx && removedEx.id && STATE.exoneraciones) {
-        delete STATE.exoneraciones[removedEx.id];
+    if (removedEx && removedEx.id) {
+        STATE.deletedExonerationIds = STATE.deletedExonerationIds || [];
+        if (!STATE.deletedExonerationIds.includes(removedEx.id)) {
+            STATE.deletedExonerationIds.push(removedEx.id);
+        }
+        if (STATE.exoneraciones) {
+            delete STATE.exoneraciones[removedEx.id];
+        }
     }
     const nowTime = Date.now();
     STATE.lastModified = nowTime;
@@ -14977,25 +15310,30 @@ async function deleteAcademicExoneration(studentId, exIndex) {
 
     try {
         const modular = window.FirebaseModular;
-        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
-            await modular.setDoc(modular.doc(modular.db, 'students', student.id), {
-                academicExceptions: student.academicExceptions,
-                exoneraciones: student.exoneraciones,
-                lastModified: nowTime
-            }, { merge: true });
+        if (modular && modular.db && typeof modular.doc === 'function') {
+            if (typeof modular.setDoc === 'function') {
+                await modular.setDoc(modular.doc(modular.db, 'students', student.id), {
+                    academicExceptions: student.academicExceptions,
+                    exoneraciones: student.exoneraciones,
+                    lastModified: nowTime
+                }, { merge: true });
+            }
+            if (removedEx && removedEx.id && typeof modular.deleteDoc === 'function') {
+                modular.deleteDoc(modular.doc(modular.db, 'exoneraciones', removedEx.id)).catch(e => {});
+            }
         }
     } catch(fsErr) {
         console.warn("Aviso en Firestore al eliminar exoneración:", fsErr);
     }
 
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+    if (typeof EnccoCloudSync !== 'undefined') {
         const studentIndex = (STATE.students || []).findIndex(s => s && (
             String(s.id) === String(student.id) ||
             (s.personalCode && s.personalCode === student.personalCode) ||
             (s.carne && s.carne === student.carne)
         ));
 
-        if (studentIndex !== -1) {
+        if (studentIndex !== -1 && EnccoCloudSync.patchNode) {
             EnccoCloudSync.patchNode(`students/${studentIndex}`, {
                 academicExceptions: student.academicExceptions || [],
                 exoneraciones: student.exoneraciones || [],
@@ -15003,7 +15341,15 @@ async function deleteAcademicExoneration(studentId, exIndex) {
             });
         }
         if (removedEx && removedEx.id) {
-            EnccoCloudSync.patchNode(`exoneraciones/${removedEx.id}`, { active: false, deletedAt: new Date().toISOString() });
+            if (EnccoCloudSync.patchNode) {
+                EnccoCloudSync.patchNode(`exoneraciones/${removedEx.id}`, { active: false, deletedAt: new Date().toISOString() });
+            }
+            if (typeof EnccoCloudSync.deleteNode === 'function') {
+                EnccoCloudSync.deleteNode(`exoneraciones/${removedEx.id}`);
+            }
+            if (typeof EnccoCloudSync.syncNode === 'function') {
+                EnccoCloudSync.syncNode('exoneraciones', STATE.exoneraciones || {});
+            }
         }
     }
 }
@@ -19753,7 +20099,7 @@ function onPrimaryBimestreSelectChange(val) {
 }
 window.onPrimaryBimestreSelectChange = onPrimaryBimestreSelectChange;
 
-function openAutonomousLockModule(event) {
+async function openAutonomousLockModule(event) {
     if (event && event.preventDefault) event.preventDefault();
 
     // 1. Obtener usuario y rol activo en la plataforma
@@ -19774,10 +20120,14 @@ function openAutonomousLockModule(event) {
     }
 
     if (!user) {
-        if (typeof showToast === 'function') {
+        if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+            await window.EnccoDialog.alert({
+                title: 'Sesión Requerida',
+                message: 'Debe iniciar sesión para ingresar a este módulo.',
+                type: 'warning'
+            });
+        } else if (typeof showToast === 'function') {
             showToast('Debe iniciar sesión para ingresar a este módulo.', 'warning');
-        } else {
-            alert('Debe iniciar sesión para ingresar a este módulo.');
         }
         window.location.replace('index.html');
         return false;
@@ -19805,11 +20155,15 @@ function openAutonomousLockModule(event) {
     }
 
     if (!isAuthorized) {
-        const msg = `ACCESO RESTRINGIDO (403)\n\nEl usuario actual (${user.name || user.username || 'Usuario'}) con rol [${normRole}] no tiene habilitado el módulo de Bloqueo de Bimestres.\n\nEste módulo está reservado para la Dirección, Secretaría y roles con permisos autorizados.`;
-        if (typeof showToast === 'function') {
+        const msg = `El usuario actual (${user.name || user.username || 'Usuario'}) con rol [${normRole}] no tiene habilitado el módulo de Bloqueo de Bimestres.\n\nEste módulo está reservado para la Dirección, Secretaría y roles con permisos autorizados.`;
+        if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
+            await window.EnccoDialog.alert({
+                title: 'Acceso Restringido (403)',
+                message: msg,
+                type: 'danger'
+            });
+        } else if (typeof showToast === 'function') {
             showToast(msg, 'danger');
-        } else {
-            alert(msg);
         }
         return false;
     }
@@ -22339,11 +22693,21 @@ function exportDataBackupJSON() {
 }
 window.exportDataBackupJSON = exportDataBackupJSON;
 
-function importDataBackupJSON(e) {
+async function importDataBackupJSON(e) {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (!confirm("⚠️ ¿Está seguro que desea restaurar los datos desde este archivo de respaldo?\n\nEsta acción integrará los registros de estudiantes, notas y configuraciones del respaldo.")) {
+    const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+        ? await window.EnccoDialog.confirm({
+            title: 'Restaurar Copia de Seguridad',
+            message: '¿Está seguro de que desea restaurar los datos desde este archivo de respaldo?\n\nEsta acción integrará los registros de estudiantes, notas y configuraciones del respaldo.',
+            type: 'warning',
+            confirmText: 'Restaurar Respaldo',
+            cancelText: 'Cancelar'
+        })
+        : true;
+
+    if (!confirmed) {
         e.target.value = '';
         return;
     }
@@ -23643,12 +24007,22 @@ function setCycleActive(cycleId) {
     if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(viewName);
 }
 
-function deleteCycle(cycleId) {
+async function deleteCycle(cycleId) {
     if (!checkEnrolmentPermissions()) return;
     const c = (STATE.cycles || []).find(x => x.id === cycleId);
     if (!c) return;
 
-    if (confirm(`¿Está seguro de eliminar el ciclo escolar "${c.name}"?`)) {
+    const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+        ? await window.EnccoDialog.confirm({
+            title: 'Eliminar Ciclo Escolar',
+            message: `¿Está seguro de eliminar el ciclo escolar "${c.name}"?\n\nEsta acción modificará la configuración de los periodos lectivos.`,
+            type: 'danger',
+            confirmText: 'Eliminar Ciclo',
+            cancelText: 'Cancelar'
+        })
+        : true;
+
+    if (confirmed) {
         STATE.cycles = (STATE.cycles || []).filter(x => x.id !== cycleId);
         if (STATE.cycles.length === 0) {
             STATE.cycles = [{ id: 'cyc-2026', name: '2026', status: 'Activo' }];
@@ -25581,7 +25955,16 @@ async function saveGradingConfigForm(e) {
     const eVal = parseInt(document.getElementById('cfgFormExamMax')?.value) || 0;
 
     if (zVal + eVal !== 100) {
-        if (!confirm(`La suma de Zona (${zVal} pts) y Examen (${eVal} pts) es ${zVal + eVal} pts (diferente de 100).\n¿Desea guardar esta ponderación de todas formas?`)) {
+        const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+            ? await window.EnccoDialog.confirm({
+                title: 'Ponderación no Equivale a 100 Puntos',
+                message: `La suma de Zona (${zVal} pts) y Examen (${eVal} pts) es ${zVal + eVal} pts (diferente de 100).\n\n¿Desea guardar esta ponderación de todas formas?`,
+                type: 'warning',
+                confirmText: 'Guardar de todas formas',
+                cancelText: 'Corregir Valores'
+            })
+            : true;
+        if (!confirmed) {
             return;
         }
     }
@@ -30808,8 +31191,17 @@ function saveStudentPermissionForm(e) {
     }
 
     // Ofrecer impresión del comprobante oficial
-    setTimeout(() => {
-        if (confirm(`¿Desea imprimir el Comprobante Oficial de Ausencia / Permiso para ${perm.studentName}?`)) {
+    setTimeout(async () => {
+        const wantsPrint = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+            ? await window.EnccoDialog.confirm({
+                title: 'Comprobante Oficial',
+                message: `¿Desea imprimir el Comprobante Oficial de Ausencia / Permiso para ${perm.studentName}?`,
+                confirmText: 'Imprimir Comprobante',
+                cancelText: 'Ahora no',
+                type: 'info'
+            })
+            : false;
+        if (wantsPrint) {
             printStudentPermissionPass(perm.id);
         }
     }, 400);
@@ -31213,42 +31605,57 @@ function revokeStudentPermission(permId) {
     const perm = (STATE.studentPermissions || []).find(p => p.id === permId);
     if (!perm) return;
 
-    if (!confirm(`¿Está seguro de que desea anular el permiso de ausencia de ${perm.studentName} (${perm.startDate})?\n\nAl anularlo, se removerá la justificación de la asistencia y se restablecerán los registros correspondientes.`)) {
+    const doRevoke = () => {
+        // 1. Remover automáticamente la marca de justificación ('J') o falta ('A') y metadata de todas las asistencias vinculadas
+        removeStudentPermissionDatesFromAttendance(perm, perm.startDate, perm.endDate, null, null);
+
+        // 2. Remover de la lista oficial de permisos
+        STATE.studentPermissions = (STATE.studentPermissions || []).filter(p => p.id !== permId);
+
+        saveAttendanceRecords(false);
+
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
+            EnccoCloudSync.syncNode('attendanceRecords', STATE.attendanceRecords);
+            EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta);
+        }
+        if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
+
+        if (typeof renderPermissionsHistoryTable === 'function') {
+            renderPermissionsHistoryTable();
+        }
+        if (typeof renderPermissionsHistoryView === 'function') {
+            renderPermissionsHistoryView();
+        }
+        if (typeof renderAuxiliaturaLogView === 'function' && STATE.activeView === 'auxiliatura-log') {
+            renderAuxiliaturaLogView();
+        }
+        if (typeof loadAttendanceList === 'function') {
+            loadAttendanceList();
+        }
+        const profModalRevoke = document.getElementById('studentProfileModal');
+        if (profModalRevoke && (profModalRevoke.classList.contains('active') || profModalRevoke.style.display === 'flex') && STATE.selectedStudentId && typeof openStudentProfileModal === 'function') {
+            openStudentProfileModal(STATE.selectedStudentId);
+        }
+        showToast(`✅ Permiso de ${perm.studentName} anulado exitosamente. La asistencia se ha actualizado automáticamente.`, 'info');
+    };
+
+    if (typeof window !== 'undefined' && window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function') {
+        window.EnccoDialog.confirm({
+            title: 'Anular Permiso de Ausencia',
+            message: `¿Está seguro de que desea anular el permiso de ausencia de ${perm.studentName} (${perm.startDate})?\n\nAl anularlo, se removerá la justificación de la asistencia y se restablecerán los registros correspondientes.`,
+            confirmText: 'Sí, anular permiso',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        }).then(confirmed => {
+            if (confirmed) {
+                doRevoke();
+            }
+        });
         return;
     }
 
-    // 1. Remover automáticamente la marca de justificación ('J') o falta ('A') y metadata de todas las asistencias vinculadas
-    removeStudentPermissionDatesFromAttendance(perm, perm.startDate, perm.endDate, null, null);
-
-    // 2. Remover de la lista oficial de permisos
-    STATE.studentPermissions = (STATE.studentPermissions || []).filter(p => p.id !== permId);
-
-    saveAttendanceRecords(false);
-
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
-        EnccoCloudSync.syncNode('attendanceRecords', STATE.attendanceRecords);
-        EnccoCloudSync.syncNode('attendancePermissionsMeta', STATE.attendancePermissionsMeta);
-    }
-    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
-
-    if (typeof renderPermissionsHistoryTable === 'function') {
-        renderPermissionsHistoryTable();
-    }
-    if (typeof renderPermissionsHistoryView === 'function') {
-        renderPermissionsHistoryView();
-    }
-    if (typeof renderAuxiliaturaLogView === 'function' && STATE.activeView === 'auxiliatura-log') {
-        renderAuxiliaturaLogView();
-    }
-    if (typeof loadAttendanceList === 'function') {
-        loadAttendanceList();
-    }
-    const profModalRevoke = document.getElementById('studentProfileModal');
-    if (profModalRevoke && (profModalRevoke.classList.contains('active') || profModalRevoke.style.display === 'flex') && STATE.selectedStudentId && typeof openStudentProfileModal === 'function') {
-        openStudentProfileModal(STATE.selectedStudentId);
-    }
-    showToast(`✅ Permiso de ${perm.studentName} anulado exitosamente. La asistencia se ha actualizado automáticamente.`, 'info');
+    doRevoke();
 }
 window.revokeStudentPermission = revokeStudentPermission;
 
@@ -33107,7 +33514,7 @@ async function saveDisciplineResolutionForm(e) {
 }
 window.saveDisciplineResolutionForm = saveDisciplineResolutionForm;
 
-function deleteDisciplineReport(reportId) {
+async function deleteDisciplineReport(reportId) {
     if (!checkDisciplineDirectorPermission()) {
         showToast("Acceso denegado: Únicamente la Dirección o Administrador del establecimiento tienen autorización de rol y permiso para eliminar reportes disciplinarios.", "danger");
         return;
@@ -33121,7 +33528,22 @@ function deleteDisciplineReport(reportId) {
         ? '¿Está seguro de eliminar este reporte disciplinario de "' + studentName + '" del sistema? Esta acción es irreversible y facultad exclusiva de Dirección.'
         : '¿Está seguro de eliminar este reporte disciplinario del sistema? Esta acción es irreversible y solo puede ser autorizada por Dirección.';
 
-    if (confirm(confirmMsg)) {
+    const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+        ? await window.EnccoDialog.confirm({
+            title: 'Eliminar Reporte Disciplinario',
+            message: confirmMsg,
+            confirmText: 'Sí, eliminar reporte',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        })
+        : false;
+
+    if (confirmed) {
+        STATE.deletedDisciplineIds = STATE.deletedDisciplineIds || [];
+        if (!STATE.deletedDisciplineIds.includes(reportId)) {
+            STATE.deletedDisciplineIds.push(reportId);
+        }
+
         STATE.disciplineReports = (STATE.disciplineReports || []).filter(d => d.id !== reportId);
         if (STATE.discipline) {
             STATE.discipline = (STATE.discipline || []).filter(d => d.id !== reportId);
@@ -33131,11 +33553,18 @@ function deleteDisciplineReport(reportId) {
             const modular = window.FirebaseModular;
             if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.deleteDoc === 'function') {
                 modular.deleteDoc(modular.doc(modular.db, 'disciplina', reportId)).catch(e => {});
+                modular.deleteDoc(modular.doc(modular.db, 'disciplineReports', reportId)).catch(e => {});
             }
         } catch(fsErr) {}
 
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports);
+        if (typeof EnccoCloudSync !== 'undefined') {
+            if (typeof EnccoCloudSync.deleteNode === 'function') {
+                EnccoCloudSync.deleteNode('disciplineReports/' + reportId);
+                EnccoCloudSync.deleteNode('disciplina/' + reportId);
+            }
+            if (typeof EnccoCloudSync.syncNode === 'function') {
+                EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports);
+            }
         }
         if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
         renderDisciplineTable();
@@ -34450,7 +34879,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             ? allPensum.filter(p => isCourseAssignedToTeacher(p, currentUser))
             : allPensum;
 
-        const candidatePools = [teacherAssignedList, allPensum];
+        const candidatePools = (isDocente && teacherAssignedList.length > 0) ? [teacherAssignedList] : [allPensum];
 
         for (const pool of candidatePools) {
             if (autoPensum) break;
@@ -34546,6 +34975,12 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         ? isMateriaEspecialGraduacion(activePensum?.subject || detectedSubject)
         : (cleanStr(activePensum?.subject || detectedSubject).includes('seminario') || cleanStr(activePensum?.subject || detectedSubject).includes('practica'));
 
+    // REGLA 1: Verificación estricta de Bimestre (con excepción de graduación para Seminario y Práctica)
+    if (!isSpecialGraduationSubj && hasExplicitUnit && detectedUnit !== activeUnit) {
+        showToast(`¡Bimestre Incorrecto! El archivo cargado corresponde a la Unidad/Bimestre ${detectedUnit}, pero actualmente tiene abierta la Unidad/Bimestre ${activeUnit}. Seleccione el Bimestre ${detectedUnit} en el selector antes de importar.`, "danger");
+        return;
+    }
+
     if (isSpecialGraduationSubj) {
         activeUnit = 4;
         detectedUnit = 4;
@@ -34555,17 +34990,6 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         try {
             sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', '4');
             localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', '4');
-        } catch(e) {}
-    } else if (hasExplicitUnit && detectedUnit >= 1 && detectedUnit <= 4) {
-        // Auto-sincronizar Bimestre detectado automáticamente para materias ordinarias
-        activeUnit = detectedUnit;
-        const bSelect = document.getElementById('gradebookBimestreSelect');
-        if (bSelect && parseInt(bSelect.value) !== detectedUnit) {
-            bSelect.value = String(detectedUnit);
-        }
-        try {
-            sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', String(detectedUnit));
-            localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', String(detectedUnit));
         } catch(e) {}
     }
 
@@ -34597,12 +35021,6 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
                 return;
             }
         }
-    }
-
-    // REGLA 1: Verificación estricta de Bimestre (con excepción de graduación para Seminario y Práctica)
-    if (!isSpecialGraduationSubj && hasExplicitUnit && detectedUnit !== activeUnit) {
-        showToast(`¡Bimestre Incorrecto! El archivo cargado corresponde a la Unidad/Bimestre ${detectedUnit}, pero actualmente tiene abierta la Unidad/Bimestre ${activeUnit}. Seleccione el Bimestre ${detectedUnit} en el selector antes de importar.`, "danger");
-        return;
     }
 
     // REGLA 6: Verificación de Catedrático con coincidencia de múltiples tokens
@@ -37646,7 +38064,16 @@ async function deletePensumSubject(subjectId) {
     const s = (STATE.pensumCatalog || []).find(x => x.id === subjectId);
     if (!s) return;
 
-    if (!confirm(`¿Está seguro de eliminar la asignatura "${s.name || s.subject}" del pensum oficial?`)) return;
+    const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+        ? await window.EnccoDialog.confirm({
+            title: 'Eliminar Asignatura del Pensum',
+            message: `¿Está seguro de eliminar la asignatura "${s.name || s.subject}" del pensum oficial?`,
+            confirmText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        })
+        : false;
+    if (!confirmed) return;
 
     STATE.pensumCatalog = (STATE.pensumCatalog || []).filter(x => x.id !== subjectId);
 
@@ -38657,7 +39084,7 @@ function updateUserRoleSelectOptions() {
 
 
 
-function deleteUser(userId) {
+async function deleteUser(userId) {
     if (typeof EnccoSecurityShield !== 'undefined' && !EnccoSecurityShield.isAuthorizedRole('admin')) {
         if (typeof showToast === 'function') showToast('Acceso denegado: Eliminación de usuarios restringida a Administrador.', 'danger');
         return;
@@ -38669,7 +39096,17 @@ function deleteUser(userId) {
     }
 
     const oldName = user.name;
-    if (confirm(`¿Está seguro de eliminar al docente o usuario "${oldName}"? Esta acción desvinculará sus cátedras asignadas.`)) {
+    const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+        ? await window.EnccoDialog.confirm({
+            title: 'Eliminar Usuario / Docente',
+            message: `¿Está seguro de eliminar al docente o usuario "${oldName}"? Esta acción desvinculará sus cátedras asignadas.`,
+            confirmText: 'Sí, eliminar usuario',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        })
+        : false;
+
+    if (confirmed) {
         STATE.deletedUserIds = STATE.deletedUserIds || [];
         if (!STATE.deletedUserIds.includes(userId)) {
             STATE.deletedUserIds.push(userId);
@@ -38720,11 +39157,17 @@ function deleteUser(userId) {
                 }
             }
 
-            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            if (typeof EnccoCloudSync !== 'undefined') {
                 try {
-                    EnccoCloudSync.syncNode('users', STATE.users);
-                    EnccoCloudSync.syncNode('pensum', STATE.pensum);
-                    EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
+                    if (typeof EnccoCloudSync.deleteNode === 'function') {
+                        EnccoCloudSync.deleteNode('users/' + userId);
+                        EnccoCloudSync.deleteNode('docentes/' + userId);
+                    }
+                    if (typeof EnccoCloudSync.syncNode === 'function') {
+                        EnccoCloudSync.syncNode('users', STATE.users);
+                        EnccoCloudSync.syncNode('pensum', STATE.pensum);
+                        EnccoCloudSync.syncNode('gradesList', STATE.gradesList);
+                    }
                 } catch(rtdbErr) {
                     console.warn("Aviso al sincronizar en RTDB:", rtdbErr);
                 }
@@ -39040,7 +39483,17 @@ async function deleteGrade(gradeId) {
     const g = (STATE.gradesList || []).find(x => x.id === gradeId);
     if (!g) return;
 
-    if (confirm(`¿Está seguro de eliminar el grado "${g.name} (${g.section})"? Esta acción no se puede deshacer.`)) {
+    const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+        ? await window.EnccoDialog.confirm({
+            title: 'Eliminar Grado / Sección',
+            message: `¿Está seguro de eliminar el grado "${g.name} (${g.section})"? Esta acción no se puede deshacer.`,
+            confirmText: 'Sí, eliminar grado',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        })
+        : false;
+
+    if (confirmed) {
         STATE.gradesList = (STATE.gradesList || []).filter(x => x.id !== gradeId);
         saveStateToLocalStorage();
 
@@ -39424,6 +39877,32 @@ function renderGradeTabsBar(fullList) {
 
     tabsContainer.innerHTML = tabsHtml + extraTabsHtml;
 }
+window.renderGradeTabsBar = renderGradeTabsBar;
+
+function selectAssignmentGradeTab(gradeKey = '4to') {
+    currentActiveGradeTab = gradeKey;
+    currentAssignmentsViewMode = 'byGrade';
+
+    const btnTable = document.getElementById('asgViewModeTableBtn');
+    const btnGrade = document.getElementById('asgViewModeGradeBtn');
+    const btnTeacher = document.getElementById('asgViewModeTeacherBtn');
+
+    if (btnTable) btnTable.className = 'btn btn-sm btn-outline-secondary asg-view-mode-btn';
+    if (btnGrade) btnGrade.className = 'btn btn-sm btn-primary asg-view-mode-btn';
+    if (btnTeacher) btnTeacher.className = 'btn btn-sm btn-outline-secondary asg-view-mode-btn';
+
+    const tableView = document.getElementById('assignmentsTableView');
+    const gradeView = document.getElementById('assignmentsByGradeView');
+    const teacherView = document.getElementById('assignmentsByTeacherView');
+
+    if (tableView) tableView.style.display = 'none';
+    if (gradeView) gradeView.style.display = 'block';
+    if (teacherView) teacherView.style.display = 'none';
+
+    renderGradeTabsBar(Array.isArray(STATE.pensum) ? STATE.pensum : []);
+    renderGradeMatrixView(gradeKey);
+}
+window.selectAssignmentGradeTab = selectAssignmentGradeTab;
 
 function renderGradeMatrixView(gradeKey = '4to', searchQuery = '') {
     const container = document.getElementById('assignmentsMatrixByGradeView');
@@ -41086,7 +41565,16 @@ async function deleteClassAssignment(asgId) {
     const a = (STATE.pensum || []).find(x => x.id === asgId);
     if (!a) return;
 
-    if (!confirm(`¿Está seguro de eliminar la asignación de la clase "${a.subject || a.name}" al docente ${a.teacher}?`)) return;
+    const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
+        ? await window.EnccoDialog.confirm({
+            title: 'Eliminar Asignación de Cátedra',
+            message: `¿Está seguro de eliminar la asignación de la clase "${a.subject || a.name}" al docente ${a.teacher}?`,
+            confirmText: 'Sí, eliminar cátedra',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        })
+        : false;
+    if (!confirmed) return;
 
     // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
     STATE.pensum = (STATE.pensum || []).filter(x => x.id !== asgId);
@@ -43054,7 +43542,7 @@ function getStudentMonthAbsenceDays(studentId, month) {
     return absentDays.size;
 }
 
-function openWhatsAppPrompt(studentName, guardianPhone, gradeLabel, accumulatedAbsences) {
+async function openWhatsAppPrompt(studentName, guardianPhone, gradeLabel, accumulatedAbsences) {
     if (!canRoleUseWhatsApp()) {
         if (typeof showToast === 'function') {
             showToast('El envío de mensajes por WhatsApp está restringido a Dirección, Auxiliatura y Secretaría.', 'warning');
@@ -43071,12 +43559,24 @@ function openWhatsAppPrompt(studentName, guardianPhone, gradeLabel, accumulatedA
     const t2 = `Estimado(a) padre/madre de familia del estudiante ${studentName} (${gradeLabel}): Notificamos desde Auxiliatura de la ENCCO Jutiapa que el alumno acumula ${accumulatedAbsences || 2} inasistencias en este período lectivo. Le solicitamos comunicarse para justificar formalmente y evitar afectación académica.`;
     const t3 = `CITACIÓN OFICIAL - ENCCO JUTIAPA: Estimado(a) padre/madre de familia de ${studentName} (${gradeLabel}), se le cita formalmente a la Dirección y Auxiliatura de la Escuela Nacional de Ciencias Comerciales para tratar asuntos de asistencia escolar y disciplinarios.`;
 
-    const choice = prompt(`📱 SELECCIONE PLANTILLA DE WHATSAPP PARA ${studentName.toUpperCase()}:\n\n1. Consulta Simple de Inasistencia de Hoy\n2. Alerta de Inasistencias Acumuladas (${accumulatedAbsences} faltas este mes)\n3. Citación Formal a Dirección\n\nEscriba 1, 2 o 3:`, "1");
+    let choice = null;
+    if (window.EnccoDialog && typeof window.EnccoDialog.prompt === 'function') {
+        choice = await window.EnccoDialog.prompt({
+            title: `📱 Notificación WhatsApp: ${studentName.toUpperCase()}`,
+            message: `Seleccione la plantilla que desea enviar:\n\n1. Consulta Simple de Inasistencia de Hoy\n2. Alerta de Inasistencias Acumuladas (${accumulatedAbsences} faltas este mes)\n3. Citación Formal a Dirección\n\nEscriba 1, 2 o 3:`,
+            defaultValue: "1",
+            placeholder: "1, 2 o 3",
+            confirmText: "Abrir WhatsApp",
+            cancelText: "Cancelar"
+        });
+    } else {
+        choice = "1";
+    }
     if (!choice) return;
 
     let textToSend = t1;
-    if (choice.trim() === '2') textToSend = t2;
-    else if (choice.trim() === '3') textToSend = t3;
+    if (String(choice).trim() === '2') textToSend = t2;
+    else if (String(choice).trim() === '3') textToSend = t3;
 
     const url = `https://wa.me/502${cleanPhone}?text=${encodeURIComponent(textToSend)}`;
     window.open(url, '_blank');
