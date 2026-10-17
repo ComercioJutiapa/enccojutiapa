@@ -28415,9 +28415,16 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
 
         // Permisos oficiales de autoridad institucional (J para justificados, A blindada para Injustificada)
         const year = parseInt(cycleKey) || 2026;
+        const daysInMonthCourse = new Date(year, month, 0).getDate();
         (gradeStudents.length > 0 ? gradeStudents : (STATE.students || [])).forEach(s => {
             const sId = s.id;
-            for (let day = 1; day <= 31; day++) {
+            const isArevalo = (typeof isStudentArevalo === 'function') ? isStudentArevalo(s) : (sId === 'stu-sire-I228WGR' || s.personalCode === 'I228WGR' || (s.carne && s.carne.includes('2026-CB-003')));
+            for (let day = 1; day <= daysInMonthCourse; day++) {
+                const checkDate = new Date(year, month - 1, day);
+                const isWk = (checkDate.getDay() === 0 || checkDate.getDay() === 6);
+                if (isWk && !(isArevalo && month === 9 && day === 26)) {
+                    continue;
+                }
                 const perm = typeof getStudentPermissionForDay === 'function' ? getStudentPermissionForDay(sId, year, month, day) : null;
                 const permOrigin = perm ? (perm.origin_role || perm.originRole || '').toLowerCase() : '';
                 const permIsAdmin = !!perm && (perm.is_locked_by_admin === true || authorityRoles.includes(permOrigin)) && permOrigin !== 'docente';
@@ -28479,6 +28486,8 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
         });
 
         // Consolidar todos los registros encontrados aplicando orden de prioridad
+        const year = parseInt(cycleKey) || 2026;
+        const daysInMonthGen = new Date(year, month, 0).getDate();
         genKeys.forEach(k => {
             const src = STATE.attendanceRecords[k];
             if (src && typeof src === 'object') {
@@ -28490,10 +28499,16 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
                     if (!monthData[canonicalId]) monthData[canonicalId] = {};
                     for (const [d, val] of Object.entries(daysObj)) {
                         if (!val) continue;
+                        const dNum = parseInt(d, 10);
+                        if (isNaN(dNum) || dNum < 1 || dNum > daysInMonthGen) continue;
+                        const checkDate = new Date(year, month - 1, dNum);
+                        const isWk = (checkDate.getDay() === 0 || checkDate.getDay() === 6);
                         // Salvaguarda: Para Arévalo Morán, jamás admitir 'J' en meses diferentes a septiembre o días distintos a 25 y 26
                         const isArevalo = (canonicalId === 'stu-sire-I228WGR' || canonicalId === '2026-CB-003' || canonicalId === 'I228WGR' || (student && (student.id === 'stu-sire-I228WGR' || student.personalCode === 'I228WGR' || student.carne === '2026-CB-003')));
+                        if (isWk && !(isArevalo && month === 9 && dNum === 26)) {
+                            continue;
+                        }
                         if (isArevalo && (val === 'J' || val === 'A')) {
-                            const dNum = parseInt(d, 10);
                             if (month !== 9 || (dNum !== 25 && dNum !== 26)) {
                                 continue;
                             }
@@ -28524,10 +28539,15 @@ function getConsolidatedAttendanceMonthData(gradeCode, month, courseId) {
         });
 
         // Asegurar justificaciones oficiales como 'J' y faltas injustificadas oficiales como 'A'
-        const year = parseInt(cycleKey) || 2026;
         (gradeStudents.length > 0 ? gradeStudents : (STATE.students || [])).forEach(s => {
             const sId = s.id;
-            for (let day = 1; day <= 31; day++) {
+            const isArevalo = (typeof isStudentArevalo === 'function') ? isStudentArevalo(s) : (sId === 'stu-sire-I228WGR' || s.personalCode === 'I228WGR' || (s.carne && s.carne.includes('2026-CB-003')));
+            for (let day = 1; day <= daysInMonthGen; day++) {
+                const checkDate = new Date(year, month - 1, day);
+                const isWk = (checkDate.getDay() === 0 || checkDate.getDay() === 6);
+                if (isWk && !(isArevalo && month === 9 && day === 26)) {
+                    continue;
+                }
                 const perm = typeof getStudentPermissionForDay === 'function' ? getStudentPermissionForDay(sId, year, month, day) : null;
                 const metaKey = `${sId}_${month}_${day}`;
                 if (perm) {
@@ -28978,11 +28998,24 @@ function loadAttendanceList() {
                         sRecords[day] = '';
                     }
                 }
-            } else if (!permMeta && val === 'J') {
-                val = '';
-                rawVal = '';
-                genDayVal = '';
-                sRecords[day] = '';
+            } else {
+                const metaKey = `${s.id}_${month}_${day}`;
+                const meta = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]);
+                const authorityRoles = ['director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'];
+                const metaIsAdmin = !!meta && (meta.is_locked_by_admin === true || authorityRoles.includes((meta.origin_role || '').toLowerCase())) && (meta.origin_role || '').toLowerCase() !== 'docente';
+                const isOrphanAuthority = metaIsAdmin && !permMeta;
+                const isTombstoned = meta && meta.permissionId && Array.isArray(STATE.deletedPermissionIds) && STATE.deletedPermissionIds.includes(meta.permissionId);
+                if (isOrphanAuthority || isTombstoned) {
+                    if (val === 'J' || val === 'A') {
+                        val = '';
+                        rawVal = '';
+                        genDayVal = '';
+                        sRecords[day] = '';
+                    }
+                    if (meta) {
+                        delete STATE.attendancePermissionsMeta[metaKey];
+                    }
+                }
             }
 
             // 🛡️ REGLA OBLIGATORIA: Respeto estricto del calendario escolar en fines de semana
@@ -30811,6 +30844,8 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
                 dayCells += `<td style="background:#e2e8f0; text-align:center; color:#94a3b8; font-size:8pt; border:1px solid #64748b;">-</td>`;
             } else if (isRet) {
                 dayCells += `<td style="background:#f8fafc; text-align:center; color:#94a3b8; font-size:8pt; font-weight:bold; border:1px solid #64748b;">—</td>`;
+            } else if (forcedIsBlank === true) {
+                dayCells += `<td style="background:#ffffff; color:#000000; text-align:center; font-weight:bold; font-size:8pt; border:1px solid #64748b;">&nbsp;</td>`;
             } else {
                 let rawVal = sRecords[day];
                 let val = (rawVal !== undefined && rawVal !== null && rawVal !== '') ? rawVal : '';
@@ -30826,13 +30861,19 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
             }
         }
 
-        const totalLogged = isRet ? 0 : (pCount + aCount + jCount + tCount);
-        const pct = (!isRet && totalLogged > 0) ? Math.round(((pCount + jCount + (tCount * 0.5)) / totalLogged) * 100) : 100;
+        const totalLogged = (isRet || forcedIsBlank === true) ? 0 : (pCount + aCount + jCount + tCount);
+        const pct = (!isRet && forcedIsBlank !== true && totalLogged > 0) ? Math.round(((pCount + jCount + (tCount * 0.5)) / totalLogged) * 100) : 100;
         const retTag = isRet ? ' <span style="color:#b91c1c; font-weight:900; font-size:7.5pt;">[RETIRADO]</span>' : '';
         const ausTag = isAus ? ' <span style="color:#d97706; font-weight:900; font-size:7.5pt;">[AUSENTE]</span>' : '';
         const exonTag = isExon ? ` <span style="color:#0284c7; font-weight:900; font-size:7.5pt;">[EXONERADO B${attBim}]</span>` : '';
 
         const printRowBg = isRet ? 'background-color:#fef2f2; color:#64748b;' : (isAus ? 'background-color:#fffbeb; color:#92400e;' : (isExon ? 'background-color:#eff6ff; color:#0369a1;' : (idx % 2 === 1 ? 'background-color:#f8fafc;' : '')));
+
+        const statPDisplay = (isRet || forcedIsBlank === true) ? '—' : pCount;
+        const statADisplay = (isRet || forcedIsBlank === true) ? '—' : aCount;
+        const statJDisplay = (isRet || forcedIsBlank === true) ? '—' : jCount;
+        const statTDisplay = (isRet || forcedIsBlank === true) ? '—' : tCount;
+        const statPctDisplay = forcedIsBlank === true ? '—' : (isRet ? '<span style="color:#b91c1c; font-weight:800; font-size:7.5pt;">RETIRADO</span>' : (isAus ? '<span style="color:#d97706; font-weight:800; font-size:7.5pt;">AUSENTE</span>' : pct + '%'));
 
         tbodyRows += `
             <tr style="${printRowBg}">
@@ -30840,17 +30881,21 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
                 <td style="font-family:monospace; font-weight:bold; border:1px solid #64748b; padding:4px 4px; font-size:7.8pt;">${s.personalCode || s.cui || s.carne || 'S/C'}</td>
                 <td style="font-weight:bold; border:1px solid #64748b; padding:4px 6px; white-space:nowrap; font-size:8.2pt;">${studentFullName}${retTag}${ausTag}${exonTag}</td>
                 ${dayCells}
-                <td style="text-align:center; font-weight:bold; color:#15803d; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : pCount}</td>
-                <td style="text-align:center; font-weight:bold; color:#b91c1c; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : aCount}</td>
-                <td style="text-align:center; font-weight:bold; color:#c2410c; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : jCount}</td>
-                <td style="text-align:center; font-weight:bold; color:#0369a1; border:1px solid #64748b; font-size:8pt;">${isRet ? '—' : tCount}</td>
-                <td style="text-align:center; font-weight:bold; background:${isRet ? '#fee2e2' : (isAus ? '#fef3c7' : '#f1f5f9')}; border:1px solid #64748b; font-size:8.5pt;">${isRet ? '<span style="color:#b91c1c; font-weight:800; font-size:7.5pt;">RETIRADO</span>' : (isAus ? '<span style="color:#d97706; font-weight:800; font-size:7.5pt;">AUSENTE</span>' : pct + '%')}</td>
+                <td style="text-align:center; font-weight:bold; color:#15803d; border:1px solid #64748b; font-size:8pt;">${statPDisplay}</td>
+                <td style="text-align:center; font-weight:bold; color:#b91c1c; border:1px solid #64748b; font-size:8pt;">${statADisplay}</td>
+                <td style="text-align:center; font-weight:bold; color:#c2410c; border:1px solid #64748b; font-size:8pt;">${statJDisplay}</td>
+                <td style="text-align:center; font-weight:bold; color:#0369a1; border:1px solid #64748b; font-size:8pt;">${statTDisplay}</td>
+                <td style="text-align:center; font-weight:bold; background:${isRet ? '#fee2e2' : (isAus ? '#fef3c7' : '#f1f5f9')}; border:1px solid #64748b; font-size:8.5pt;">${statPctDisplay}</td>
             </tr>
         `;
     });
 
     const grandSumP = dayPresentTotals.reduce((a, b) => a + b, 0);
     const grandSumA = dayAbsentTotals.reduce((a, b) => a + b, 0);
+
+    const bannerDocTitle = forcedIsBlank === true
+        ? 'PLANILLA OFICIAL DE ASISTENCIA (EN BLANCO)'
+        : 'PLANILLA OFICIAL DE ASISTENCIA';
 
     printWin.document.write(`
         <!DOCTYPE html>
@@ -30888,7 +30933,7 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
                         </div>
                     </div>
                     <div style="text-align:right;">
-                        <div style="font-size:11pt; font-weight:900; text-transform:uppercase;">PLANILLA OFICIAL DE ASISTENCIA</div>
+                        <div style="font-size:11pt; font-weight:900; text-transform:uppercase;">${bannerDocTitle}</div>
                         <div style="font-size:8pt; color:#bbf7d0;">MES: ${monthNames[month].toUpperCase()} ${year}</div>
                     </div>
                 </div>
@@ -30924,10 +30969,10 @@ function printAttendanceOfficialSheet(forcedIsBlank = null) {
                         ${dayPresentTotals.slice(1).map((tot, idx) => {
                             const dObj = new Date(year, month - 1, idx + 1);
                             const isWk = (dObj.getDay() === 0 || dObj.getDay() === 6);
-                            return `<td style="text-align:center; border:1px solid #0f172a; ${isWk ? 'background:#cbd5e1;' : ''}">${isWk ? '-' : tot}</td>`;
+                            return `<td style="text-align:center; border:1px solid #0f172a; ${isWk ? 'background:#cbd5e1;' : ''}">${isWk ? '-' : (forcedIsBlank === true ? '&nbsp;' : tot)}</td>`;
                         }).join('')}
-                        <td style="text-align:center; background:#15803d; color:#fff; border:1px solid #0f172a;">${grandSumP}</td>
-                        <td style="text-align:center; background:#b91c1c; color:#fff; border:1px solid #0f172a;">${grandSumA}</td>
+                        <td style="text-align:center; background:#15803d; color:#fff; border:1px solid #0f172a;">${forcedIsBlank === true ? '—' : grandSumP}</td>
+                        <td style="text-align:center; background:#b91c1c; color:#fff; border:1px solid #0f172a;">${forcedIsBlank === true ? '—' : grandSumA}</td>
                         <td colspan="3" style="text-align:center; background:#0f172a; color:#fff; border:1px solid #0f172a;">${students.length} Alumnos</td>
                     </tr>
                 </tbody>
@@ -31843,9 +31888,7 @@ function sanitizeAttendanceCalendarAndWeekends() {
                     const isWeekend = (dow === 0 || dow === 6);
                     const isArevaloSept26 = (isArevalo && m === 9 && d === 26);
                     if (isWeekend && !isArevaloSept26) {
-                        if (daysObj[d] === 'J') {
-                            daysObj[d] = null;
-                        }
+                        daysObj[d] = null;
                     }
                 }
             } else if (typeof daysObj === 'object') {
@@ -31857,9 +31900,7 @@ function sanitizeAttendanceCalendarAndWeekends() {
                     const isWeekend = (dow === 0 || dow === 6);
                     const isArevaloSept26 = (isArevalo && m === 9 && d === 26);
                     if (isWeekend && !isArevaloSept26) {
-                        if (val === 'J') {
-                            delete daysObj[dStr];
-                        }
+                        delete daysObj[dStr];
                     }
                 }
             }
@@ -31893,7 +31934,7 @@ function sanitizeAttendanceCalendarAndWeekends() {
     // 3. Limpieza en buffer local _localDirtyAttendanceCells para fines de semana
     if (window._localDirtyAttendanceCells) {
         for (const [k, entry] of Object.entries(window._localDirtyAttendanceCells)) {
-            if (entry && (entry.val === 'J' || entry.val === 'A')) {
+            if (entry) {
                 const parts = k.split('_');
                 const d = parseInt(parts[parts.length - 1], 10);
                 const mMatch = k.match(/_M(\d+)_/) || k.match(/_M(\d+)$/) || k.match(/_(\d+)_/);
@@ -31905,7 +31946,7 @@ function sanitizeAttendanceCalendarAndWeekends() {
                         const isWeekend = (dow === 0 || dow === 6);
                         const isArevalo = (typeof isStudentArevalo === 'function') ? isStudentArevalo(k) : (k.includes('I228WGR') || k.includes('2026-CB-003'));
                         const isArevaloSept26 = (isArevalo && m === 9 && d === 26);
-                        if (isWeekend && !isArevaloSept26 && entry.val === 'J') {
+                        if (isWeekend && !isArevaloSept26) {
                             delete window._localDirtyAttendanceCells[k];
                         }
                     }
@@ -45275,11 +45316,275 @@ function deleteCourseBitacoraEntry(entryId) {
 }
 window.deleteCourseBitacoraEntry = deleteCourseBitacoraEntry;
 
-function openCourseBitacoraModal(preSelectedStudentId, preSelectedCourseId) {
+function setBitacoraViewMode(mode) {
+    window._currentBitacoraMode = mode;
+    const btnTabGlobal = document.getElementById('btnBitacoraTabGlobal');
+    const btnTabStudent = document.getElementById('btnBitacoraTabStudent');
+    const secGlobal = document.getElementById('courseBitacoraGlobalSection');
+    const secStudent = document.getElementById('courseBitacoraStudentSection');
+    const btnPrintGlobal = document.getElementById('btnBitacoraPrintGlobal');
+    const btnPrintStudent = document.getElementById('btnBitacoraPrintStudent');
+
+    if (mode === 'global') {
+        if (btnTabGlobal) { btnTabGlobal.style.background = '#0284c7'; btnTabGlobal.style.color = '#ffffff'; }
+        if (btnTabStudent) { btnTabStudent.style.background = '#e2e8f0'; btnTabStudent.style.color = '#334155'; }
+        if (secGlobal) secGlobal.style.display = 'block';
+        if (secStudent) secStudent.style.display = 'none';
+        if (btnPrintGlobal) btnPrintGlobal.style.display = 'inline-flex';
+        if (btnPrintStudent) btnPrintStudent.style.display = 'none';
+        renderCourseBitacoraGlobalView();
+    } else {
+        if (btnTabGlobal) { btnTabGlobal.style.background = '#e2e8f0'; btnTabGlobal.style.color = '#334155'; }
+        if (btnTabStudent) { btnTabStudent.style.background = '#0284c7'; btnTabStudent.style.color = '#ffffff'; }
+        if (secGlobal) secGlobal.style.display = 'none';
+        if (secStudent) secStudent.style.display = 'block';
+        if (btnPrintGlobal) btnPrintGlobal.style.display = 'none';
+        if (btnPrintStudent) btnPrintStudent.style.display = 'inline-flex';
+        renderCourseBitacoraList();
+    }
+}
+window.setBitacoraViewMode = setBitacoraViewMode;
+
+function getGlobalStudentsWithIncidents(targetGradeCode) {
+    let studentPool = (STATE.students || []).filter(s => {
+        if (!s) return false;
+        if (typeof isStudentActive === 'function' && !isStudentActive(s)) return false;
+        if (!targetGradeCode || targetGradeCode === 'ALL') return true;
+        return (s.gradeCode === targetGradeCode || s.grade === targetGradeCode);
+    });
+
+    const activeCycle = parseInt(STATE.activeCycle) || 2026;
+    const currentMonth = (STATE.attendanceSelectedMonth ? parseInt(STATE.attendanceSelectedMonth) : (new Date().getMonth() + 1)) || 8;
+    const studentsWithIncidents = [];
+
+    studentPool.forEach(st => {
+        const sId = st.id;
+        const aliases = [sId, st.carne, st.personalCode, st.codigoPersonal, st.cui].filter(Boolean);
+
+        let faltasA = 0;
+        let tardanzasT = 0;
+        let justificadasJ = 0;
+        let latestIncidentDate = '';
+        let latestIncidentDesc = '';
+
+        // 1. Escanear asistencias registradas
+        Object.keys(STATE.attendanceRecords || {}).forEach(k => {
+            const sheet = STATE.attendanceRecords[k];
+            if (!sheet || typeof sheet !== 'object') return;
+
+            aliases.forEach(alias => {
+                const daysObj = sheet[alias];
+                if (!daysObj || typeof daysObj !== 'object') return;
+
+                const mMatch = k.match(/_M(\d+)_/) || k.match(/_M(\d+)$/) || k.match(/_(\d+)_/);
+                const recMonth = mMatch ? parseInt(mMatch[1], 10) : currentMonth;
+
+                for (const [d, val] of Object.entries(daysObj)) {
+                    if (!val) continue;
+                    const dNum = parseInt(d, 10);
+                    if (isNaN(dNum)) continue;
+
+                    const dateStr = `${activeCycle}-${String(recMonth).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
+
+                    if (val === 'A') {
+                        faltasA++;
+                        if (!latestIncidentDate || dateStr > latestIncidentDate) {
+                            latestIncidentDate = dateStr;
+                            latestIncidentDesc = `Inasistencia Injustificada (A) - Día ${dNum}/${recMonth}`;
+                        }
+                    } else if (val === 'T') {
+                        tardanzasT++;
+                        if (!latestIncidentDate || dateStr > latestIncidentDate) {
+                            latestIncidentDate = dateStr;
+                            latestIncidentDesc = `Tardanza (T) - Día ${dNum}/${recMonth}`;
+                        }
+                    } else if (val === 'J') {
+                        justificadasJ++;
+                        if (!latestIncidentDate || dateStr > latestIncidentDate) {
+                            latestIncidentDate = dateStr;
+                            latestIncidentDesc = `Inasistencia Justificada (J) - Día ${dNum}/${recMonth}`;
+                        }
+                    }
+                }
+            });
+        });
+
+        // 2. Escanear Anotaciones de Cátedra (courseBitacora)
+        const courseNotes = (STATE.courseBitacora || []).filter(b => b && (b.studentId === sId || aliases.includes(b.studentId)));
+        courseNotes.forEach(b => {
+            if (b.date && (!latestIncidentDate || b.date > latestIncidentDate)) {
+                latestIncidentDate = b.date;
+                latestIncidentDesc = `Anotación [${b.courseName || 'Materia'}]: ${b.text ? b.text.substring(0, 45) : 'Observación'}`;
+            }
+        });
+
+        // 3. Escanear Reportes Disciplinarios (disciplineReports)
+        const discReports = (STATE.disciplineReports || []).filter(d => d && (d.studentId === sId || aliases.includes(d.studentId) || (st.carne && d.carne === st.carne)));
+        discReports.forEach(d => {
+            const dDate = d.date || d.createdAt?.split('T')[0] || '';
+            if (dDate && (!latestIncidentDate || dDate > latestIncidentDate)) {
+                latestIncidentDate = dDate;
+                latestIncidentDesc = `Reporte Disciplinario: ${d.faultType || d.description?.substring(0, 40) || 'Falta'}`;
+            }
+        });
+
+        const totalIncidents = faltasA + tardanzasT + justificadasJ + courseNotes.length + discReports.length;
+
+        if (totalIncidents > 0) {
+            studentsWithIncidents.push({
+                student: st,
+                studentId: sId,
+                name: (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(st, 'lastFirst') : `${st.lastName || ''}, ${st.firstName || ''}`,
+                carne: st.carne || st.personalCode || 'S/C',
+                grade: st.grade || st.gradeCode || targetGradeCode || 'General',
+                faltasA,
+                tardanzasT,
+                justificadasJ,
+                courseNotesCount: courseNotes.length,
+                discReportsCount: discReports.length,
+                totalIncidents,
+                latestIncidentDate: latestIncidentDate || '—',
+                latestIncidentDesc: latestIncidentDesc || 'Registro existente'
+            });
+        }
+    });
+
+    studentsWithIncidents.sort((a, b) => b.totalIncidents - a.totalIncidents || a.name.localeCompare(b.name));
+    return studentsWithIncidents;
+}
+window.getGlobalStudentsWithIncidents = getGlobalStudentsWithIncidents;
+
+function renderCourseBitacoraGlobalView() {
+    const gradeSelect = document.getElementById('attendanceGradeSelect') || document.getElementById('attGradeSelect');
+    const targetGradeCode = gradeSelect ? gradeSelect.value : (STATE.attendanceSelectedGrade || '');
+    const searchInput = document.getElementById('courseBitacoraGlobalSearch');
+    const typeFilterSelect = document.getElementById('courseBitacoraGlobalTypeFilter');
+    const container = document.getElementById('courseBitacoraGlobalListContainer');
+
+    const searchTxt = searchInput ? searchInput.value.trim().toLowerCase() : '';
+    const typeFilter = typeFilterSelect ? typeFilterSelect.value : 'ALL';
+
+    const allIncidents = getGlobalStudentsWithIncidents(targetGradeCode);
+
+    // Actualizar métricas del resumen
+    const statStudentsEl = document.getElementById('globalBitacoraStatStudents');
+    const statAEl = document.getElementById('globalBitacoraStatA');
+    const statTEl = document.getElementById('globalBitacoraStatT');
+    const statJEl = document.getElementById('globalBitacoraStatJ');
+    const statNotesEl = document.getElementById('globalBitacoraStatNotes');
+
+    const sumA = allIncidents.reduce((acc, x) => acc + x.faltasA, 0);
+    const sumT = allIncidents.reduce((acc, x) => acc + x.tardanzasT, 0);
+    const sumJ = allIncidents.reduce((acc, x) => acc + x.justificadasJ, 0);
+    const sumNotes = allIncidents.reduce((acc, x) => acc + x.courseNotesCount + x.discReportsCount, 0);
+
+    if (statStudentsEl) statStudentsEl.textContent = String(allIncidents.length);
+    if (statAEl) statAEl.textContent = String(sumA);
+    if (statTEl) statTEl.textContent = String(sumT);
+    if (statJEl) statJEl.textContent = String(sumJ);
+    if (statNotesEl) statNotesEl.textContent = String(sumNotes);
+
+    if (!container) return;
+
+    // Filtrar según búsqueda y tipo de incidencia
+    const filtered = allIncidents.filter(item => {
+        if (searchTxt) {
+            const matchName = item.name.toLowerCase().includes(searchTxt);
+            const matchCarne = item.carne.toLowerCase().includes(searchTxt);
+            if (!matchName && !matchCarne) return false;
+        }
+        if (typeFilter === 'A' && item.faltasA === 0) return false;
+        if (typeFilter === 'T' && item.tardanzasT === 0) return false;
+        if (typeFilter === 'J' && item.justificadasJ === 0) return false;
+        if (typeFilter === 'NOTES' && (item.courseNotesCount === 0 && item.discReportsCount === 0)) return false;
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:35px 20px; color:#64748b;">
+                <i class="fa-solid fa-clipboard-check" style="font-size:2.4rem; color:#10b981; margin-bottom:10px;"></i>
+                <div style="font-weight:700; font-size:0.95rem; color:#1e293b;">No hay incidencias registradas</div>
+                <p style="font-size:0.82rem; margin:6px auto 0; max-width:420px;">
+                    Todos los alumnos presentan asistencia y conducta impecable según los filtros actuales.
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    let rowsHtml = filtered.map((item, idx) => `
+        <tr style="border-bottom:1px solid #e2e8f0; font-size:0.83rem; transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+            <td style="text-align:center; font-weight:700; padding:8px 6px; color:#475569;">${idx + 1}</td>
+            <td style="font-family:monospace; font-weight:700; padding:8px 6px; color:#0369a1; white-space:nowrap;">${item.carne}</td>
+            <td style="font-weight:700; padding:8px 6px; color:#0f172a;">${item.name}</td>
+            <td style="padding:8px 6px; color:#475569; font-size:0.78rem;">${item.grade}</td>
+            <td style="text-align:center; padding:8px 6px;">
+                ${item.faltasA > 0 ? `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:800; padding:3px 7px; border-radius:4px;"><i class="fa-solid fa-circle-xmark"></i> ${item.faltasA}</span>` : '<span style="color:#cbd5e1;">0</span>'}
+            </td>
+            <td style="text-align:center; padding:8px 6px;">
+                ${item.tardanzasT > 0 ? `<span class="badge" style="background:#fef3c7; color:#b45309; font-weight:800; padding:3px 7px; border-radius:4px;"><i class="fa-solid fa-clock"></i> ${item.tardanzasT}</span>` : '<span style="color:#cbd5e1;">0</span>'}
+            </td>
+            <td style="text-align:center; padding:8px 6px;">
+                ${item.justificadasJ > 0 ? `<span class="badge" style="background:#ede9fe; color:#6d28d9; font-weight:800; padding:3px 7px; border-radius:4px;"><i class="fa-solid fa-file-signature"></i> ${item.justificadasJ}</span>` : '<span style="color:#cbd5e1;">0</span>'}
+            </td>
+            <td style="text-align:center; padding:8px 6px;">
+                ${(item.courseNotesCount + item.discReportsCount) > 0 ? `<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:800; padding:3px 7px; border-radius:4px;"><i class="fa-solid fa-book"></i> ${item.courseNotesCount + item.discReportsCount}</span>` : '<span style="color:#cbd5e1;">0</span>'}
+            </td>
+            <td style="padding:8px 6px; font-size:0.77rem; color:#475569;">
+                <div style="font-weight:700; color:#0369a1;">${item.latestIncidentDate}</div>
+                <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:210px;" title="${item.latestIncidentDesc}">${item.latestIncidentDesc}</div>
+            </td>
+            <td style="text-align:center; padding:8px 6px;">
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="drillDownToStudentBitacora('${item.studentId}')" style="font-weight:700; font-size:0.75rem; padding:3px 8px; display:inline-flex; align-items:center; gap:4px; border-radius:4px;" title="Ver bitácora detallada por día de ${item.name.replace(/'/g, "\\'")}">
+                    <i class="fa-solid fa-calendar-day"></i> Ver Detalle por Día
+                </button>
+            </td>
+        </tr>
+    `).join('');
+
+    container.innerHTML = `
+        <table style="width:100%; border-collapse:collapse; text-align:left;">
+            <thead>
+                <tr style="background:#0369a1; color:#ffffff; font-size:0.80rem; text-transform:uppercase;">
+                    <th style="padding:8px 6px; width:35px; text-align:center;">#</th>
+                    <th style="padding:8px 6px; width:95px;">Código/Carné</th>
+                    <th style="padding:8px 6px;">Estudiante</th>
+                    <th style="padding:8px 6px; width:120px;">Grado</th>
+                    <th style="padding:8px 6px; width:75px; text-align:center;" title="Faltas Injustificadas">Faltas (A)</th>
+                    <th style="padding:8px 6px; width:75px; text-align:center;" title="Tardanzas">Tardes (T)</th>
+                    <th style="padding:8px 6px; width:75px; text-align:center;" title="Justificaciones Oficiales">Justif. (J)</th>
+                    <th style="padding:8px 6px; width:80px; text-align:center;" title="Anotaciones de Cátedra y Disciplina">Anotaciones</th>
+                    <th style="padding:8px 6px; min-width:180px;">Última Incidencia</th>
+                    <th style="padding:8px 6px; width:125px; text-align:center;">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rowsHtml}
+            </tbody>
+        </table>
+    `;
+}
+window.renderCourseBitacoraGlobalView = renderCourseBitacoraGlobalView;
+
+function drillDownToStudentBitacora(studentId) {
+    const studentFilterSelect = document.getElementById('courseBitacoraStudentSelect');
+    if (studentFilterSelect) {
+        studentFilterSelect.value = studentId;
+    }
+    const formStudentSelect = document.getElementById('courseBitacoraFormStudent');
+    if (formStudentSelect) {
+        formStudentSelect.value = studentId;
+    }
+    setBitacoraViewMode('student');
+}
+window.drillDownToStudentBitacora = drillDownToStudentBitacora;
+
+function openCourseBitacoraModal(preSelectedStudentId, preSelectedCourseId, initialMode = null) {
     const modal = document.getElementById('courseBitacoraModal');
     if (!modal) return;
 
-    const gradeSelect = document.getElementById('attGradeSelect');
+    const gradeSelect = document.getElementById('attendanceGradeSelect') || document.getElementById('attGradeSelect');
     let gradeCode = gradeSelect ? gradeSelect.value : (STATE.attendanceSelectedGrade || '');
 
     if (!gradeCode && preSelectedStudentId) {
@@ -45306,7 +45611,7 @@ function openCourseBitacoraModal(preSelectedStudentId, preSelectedCourseId) {
             <option value="${c.id}">${c.subject} (${c.grade || gradeCode || 'General'})</option>
         `).join('');
 
-        const attCourseSelect = document.getElementById('attCourseSelect');
+        const attCourseSelect = document.getElementById('attendanceCourseSelect') || document.getElementById('attCourseSelect');
         const fallbackCourseId = preSelectedCourseId || (attCourseSelect ? attCourseSelect.value : (STATE.attendanceSelectedCourse || ''));
 
         if (fallbackCourseId && allowedCourses.some(c => c.id === fallbackCourseId)) {
@@ -45361,7 +45666,7 @@ function openCourseBitacoraModal(preSelectedStudentId, preSelectedCourseId) {
 
     const subtitleEl = document.getElementById('courseBitacoraHeaderSubtitle');
     if (subtitleEl) {
-        subtitleEl.textContent = `Control Individualizado de Cátedra | ${currentCourseObj ? currentCourseObj.subject : 'Materia'}`;
+        subtitleEl.textContent = `Control Institucional de Incidencias y Bitácora de Cátedra | ${currentCourseObj ? currentCourseObj.subject : 'Materia'}`;
     }
 
     const roleBadgeEl = document.getElementById('courseBitacoraRoleBadge');
@@ -45382,7 +45687,10 @@ function openCourseBitacoraModal(preSelectedStudentId, preSelectedCourseId) {
     }
 
     modal.style.display = 'flex';
-    renderCourseBitacoraList();
+
+    // Determinar modo inicial: si viene con studentId preseleccionado -> 'student', sino -> 'global'
+    const targetMode = initialMode || (preSelectedStudentId ? 'student' : 'global');
+    setBitacoraViewMode(targetMode);
 }
 window.openCourseBitacoraModal = openCourseBitacoraModal;
 
@@ -45401,7 +45709,7 @@ function onCourseBitacoraCourseChange() {
     const courseId = courseSelect ? courseSelect.value : '';
     const currentUser = STATE.currentUser;
     const currentRole = STATE.currentRole || currentUser?.role || '';
-    const gradeSelect = document.getElementById('attGradeSelect');
+    const gradeSelect = document.getElementById('attendanceGradeSelect') || document.getElementById('attGradeSelect');
     const gradeCode = gradeSelect ? gradeSelect.value : (STATE.attendanceSelectedGrade || '');
 
     if (!canUserAccessCourseBitacora(courseId, gradeCode, currentUser, currentRole)) {
@@ -45483,6 +45791,244 @@ function submitNewCourseBitacora(e) {
 }
 window.submitNewCourseBitacora = submitNewCourseBitacora;
 
+function renderCourseBitacoraStudentDayView(studentId, courseId, bimester, category, searchText) {
+    const container = document.getElementById('courseBitacoraListContainer');
+    const countEl = document.getElementById('courseBitacoraCount');
+    const summaryInfoEl = document.getElementById('courseBitacoraSummaryInfo');
+    if (!container) return;
+
+    const studentObj = (STATE.students || []).find(s => s && s.id === studentId);
+    const studentName = studentObj ? ((typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(studentObj, 'lastFirst') : `${studentObj.lastName || ''}, ${studentObj.firstName || ''}`) : 'Estudiante';
+    const studentCarne = studentObj ? (studentObj.carne || studentObj.personalCode || '') : '';
+    const aliases = [studentId, studentObj?.carne, studentObj?.personalCode, studentObj?.codigoPersonal, studentObj?.cui].filter(Boolean);
+
+    if (summaryInfoEl) {
+        summaryInfoEl.innerHTML = `Historial Cronológico de <strong>${studentName}</strong> (${studentCarne})`;
+    }
+
+    const activeCycle = parseInt(STATE.activeCycle) || 2026;
+    const currentMonth = (STATE.attendanceSelectedMonth ? parseInt(STATE.attendanceSelectedMonth) : (new Date().getMonth() + 1)) || 8;
+
+    // Colección de eventos agrupados por fecha
+    const dayMap = {}; // dateStr -> { dateStr, attendance: [], bitacora: [], discipline: [] }
+
+    function getOrCreateDay(dateStr) {
+        if (!dayMap[dateStr]) {
+            dayMap[dateStr] = { dateStr, attendance: [], bitacora: [], discipline: [] };
+        }
+        return dayMap[dateStr];
+    }
+
+    // 1. Recolectar asistencias registradas para este estudiante
+    Object.keys(STATE.attendanceRecords || {}).forEach(k => {
+        const sheet = STATE.attendanceRecords[k];
+        if (!sheet || typeof sheet !== 'object') return;
+
+        aliases.forEach(alias => {
+            const daysObj = sheet[alias];
+            if (!daysObj || typeof daysObj !== 'object') return;
+
+            const mMatch = k.match(/_M(\d+)_/) || k.match(/_M(\d+)$/) || k.match(/_(\d+)_/);
+            const m = mMatch ? parseInt(mMatch[1], 10) : currentMonth;
+
+            for (const [d, val] of Object.entries(daysObj)) {
+                if (!val) continue;
+                const dNum = parseInt(d, 10);
+                if (isNaN(dNum)) continue;
+
+                const dateStr = `${activeCycle}-${String(m).padStart(2, '0')}-${String(dNum).padStart(2, '0')}`;
+                const dayEntry = getOrCreateDay(dateStr);
+
+                let courseLabel = 'Control General de Asistencia';
+                if (k.includes('_pen-') || k.match(/pen-[a-z0-9-]+/i)) {
+                    const penMatch = k.match(/pen-[a-z0-9-]+/i);
+                    const penId = penMatch ? penMatch[0] : '';
+                    const pObj = (STATE.pensum || []).find(p => p.id === penId);
+                    if (pObj) courseLabel = pObj.subject;
+                }
+
+                if (val === 'A') {
+                    dayEntry.attendance.push({ type: 'A', label: 'Inasistencia (Falta)', color: '#dc2626', bg: '#fee2e2', icon: 'fa-circle-xmark', course: courseLabel });
+                } else if (val === 'T') {
+                    dayEntry.attendance.push({ type: 'T', label: 'Tardanza (Llegada tarde)', color: '#d97706', bg: '#fef3c7', icon: 'fa-clock', course: courseLabel });
+                } else if (val === 'J') {
+                    const metaKey = `${studentId}_${m}_${dNum}`;
+                    const meta = (STATE.attendancePermissionsMeta && STATE.attendancePermissionsMeta[metaKey]);
+                    const reason = meta ? `${meta.reasonCategory || ''} - "${meta.reasonDetail || ''}"` : 'Inasistencia Justificada';
+                    const authBy = meta ? (meta.authorizedBy || 'Auxiliatura') : 'Autoridad';
+                    dayEntry.attendance.push({ type: 'J', label: `Justificado: ${reason}`, authBy, color: '#7c3aed', bg: '#ede9fe', icon: 'fa-file-signature', course: courseLabel });
+                }
+            }
+        });
+    });
+
+    // 2. Recolectar Anotaciones de Cátedra (courseBitacora)
+    const courseNotes = getCourseBitacoraEntries({
+        courseId: courseId || 'ALL',
+        studentId: studentId,
+        bimester: bimester,
+        category: category,
+        searchText: searchText
+    });
+
+    courseNotes.forEach(b => {
+        const dateStr = b.date || new Date().toISOString().split('T')[0];
+        const dayEntry = getOrCreateDay(dateStr);
+        dayEntry.bitacora.push(b);
+    });
+
+    // 3. Recolectar Reportes Disciplinarios
+    (STATE.disciplineReports || []).forEach(d => {
+        if (d && (d.studentId === studentId || aliases.includes(d.studentId) || (studentCarne && d.carne === studentCarne))) {
+            const dateStr = d.date || d.createdAt?.split('T')[0] || '';
+            if (dateStr) {
+                const dayEntry = getOrCreateDay(dateStr);
+                dayEntry.discipline.push(d);
+            }
+        }
+    });
+
+    // Ordenar fechas cronológicamente de forma descendente (más reciente primero)
+    const sortedDates = Object.keys(dayMap).sort((a, b) => b.localeCompare(a));
+    let totalItems = 0;
+    sortedDates.forEach(d => {
+        totalItems += (dayMap[d].attendance.length + dayMap[d].bitacora.length + dayMap[d].discipline.length);
+    });
+
+    if (countEl) countEl.textContent = String(totalItems);
+
+    if (sortedDates.length === 0 || totalItems === 0) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:35px 20px; background:#ffffff; border:1px dashed #cbd5e1; border-radius:10px; color:#64748b;">
+                <i class="fa-solid fa-user-check" style="font-size:2.4rem; color:#10b981; margin-bottom:10px;"></i>
+                <div style="font-weight:700; font-size:0.95rem; color:#1e293b;">Sin incidencias registradas</div>
+                <p style="font-size:0.82rem; margin:6px auto 0; max-width:420px;">
+                    El estudiante <strong>${studentName}</strong> presenta asistencia y desempeño completamente regulares en el período seleccionado.
+                </p>
+            </div>
+        `;
+        return;
+    }
+
+    const categoryBadges = {
+        'asistencia': { label: 'Asistencia / Puntualidad', bg: '#fef3c7', text: '#92400e', icon: 'fa-regular fa-clock' },
+        'notas': { label: 'Tareas / Zona / Punteo', bg: '#dbeafe', text: '#1e40af', icon: 'fa-solid fa-chart-simple' },
+        'evaluacion': { label: 'Exámenes y Evaluaciones', bg: '#e0e7ff', text: '#3730a3', icon: 'fa-regular fa-file-lines' },
+        'conducta': { label: 'Conducta en Período', bg: '#fee2e2', text: '#991b1b', icon: 'fa-solid fa-scale-balanced' },
+        'observacion': { label: 'Observación Pedagógica', bg: '#f1f5f9', text: '#334155', icon: 'fa-solid fa-magnifying-glass' }
+    };
+
+    const currentUser = STATE.currentUser;
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
+    const isAuthority = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+
+    let html = '';
+    sortedDates.forEach(dateStr => {
+        const item = dayMap[dateStr];
+        const hasEvents = (item.attendance.length + item.bitacora.length + item.discipline.length) > 0;
+        if (!hasEvents) return;
+
+        // Parsear fecha amigable
+        const parts = dateStr.split('-');
+        let formattedDateHeader = dateStr;
+        if (parts.length === 3) {
+            const dt = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            formattedDateHeader = dt.toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        html += `
+            <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:10px; margin-bottom:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <div style="background:#f1f5f9; padding:8px 14px; font-weight:800; color:#0369a1; font-size:0.86rem; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0;">
+                    <span style="text-transform:capitalize;">
+                        <i class="fa-regular fa-calendar-check" style="color:#0284c7; margin-right:6px;"></i> ${formattedDateHeader}
+                    </span>
+                    <span style="font-size:0.75rem; color:#64748b; font-weight:600;">Fecha: ${dateStr}</span>
+                </div>
+                <div style="padding:12px 14px; display:flex; flex-direction:column; gap:8px;">
+        `;
+
+        // Renderizar eventos de asistencia
+        item.attendance.forEach(att => {
+            html += `
+                <div style="display:flex; align-items:flex-start; gap:8px; background:${att.bg}; border-left:4px solid ${att.color}; padding:8px 10px; border-radius:0 6px 6px 0;">
+                    <i class="fa-solid ${att.icon}" style="color:${att.color}; font-size:1.1rem; margin-top:2px;"></i>
+                    <div style="flex:1;">
+                        <div style="font-weight:800; font-size:0.84rem; color:${att.color};">
+                            ${att.label}
+                        </div>
+                        <div style="font-size:0.76rem; color:#475569; margin-top:2px;">
+                            <i class="fa-solid fa-chalkboard"></i> ${att.course} ${att.authBy ? `• Autorizado por: <strong>${att.authBy}</strong>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Renderizar anotaciones de cátedra
+        item.bitacora.forEach(b => {
+            const catInfo = categoryBadges[b.category] || categoryBadges['observacion'];
+            const isAuthor = (currentUser && (
+                (currentUser.id && String(currentUser.id) === String(b.authorId)) ||
+                (currentUser.username && currentUser.username === b.authorUsername) ||
+                (currentUser.name && currentUser.name === b.authorName)
+            ));
+            const canDelete = isAuthority || isAuthor;
+
+            html += `
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:6px; padding:10px 12px; margin-top:2px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span style="background:${catInfo.bg}; color:${catInfo.text}; font-size:0.72rem; font-weight:700; padding:2px 7px; border-radius:4px;">
+                                <i class="${catInfo.icon}"></i> ${catInfo.label}
+                            </span>
+                            <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.70rem; padding:2px 6px;">Bimestre ${b.bimester || 1}</span>
+                            <strong style="color:#0369a1; font-size:0.82rem;">${b.courseName || 'Materia'}</strong>
+                        </div>
+                        ${canDelete ? `
+                            <button type="button" onclick="deleteCourseBitacoraEntry('${b.id}')" title="Eliminar anotación" style="background:transparent; border:none; color:#ef4444; cursor:pointer; font-size:0.82rem; padding:2px;" onmouseover="this.style.color='#b91c1c'" onmouseout="this.style.color='#ef4444'">
+                                <i class="fa-regular fa-trash-can"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                    ${b.scoreRef ? `
+                        <div style="font-size:0.78rem; color:#0369a1; background:#f0f9ff; border-left:3px solid #0284c7; padding:3px 6px; border-radius:0 4px 4px 0; margin-bottom:4px; font-weight:600;">
+                            <i class="fa-solid fa-tag"></i> Ref: ${b.scoreRef}
+                        </div>
+                    ` : ''}
+                    <div style="color:#334155; font-size:0.83rem; line-height:1.4; white-space:pre-wrap;">
+                        ${b.text}
+                    </div>
+                    <div style="font-size:0.72rem; color:#64748b; margin-top:4px; border-top:1px dashed #f1f5f9; padding-top:4px;">
+                        <i class="fa-solid fa-chalkboard-user"></i> Catedrático: <strong>${b.authorName || 'Docente'}</strong>
+                    </div>
+                </div>
+            `;
+        });
+
+        // Renderizar reportes disciplinarios
+        item.discipline.forEach(d => {
+            html += `
+                <div style="background:#fef2f2; border:1px solid #fecaca; border-left:4px solid #dc2626; border-radius:0 6px 6px 0; padding:8px 10px; margin-top:2px;">
+                    <div style="font-weight:800; color:#b91c1c; font-size:0.82rem; display:flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Reporte Disciplinario: ${d.faultType || 'Falta Registrada'}
+                    </div>
+                    <div style="color:#7f1d1d; font-size:0.80rem; margin-top:3px; line-height:1.35;">
+                        ${d.description || d.actionTaken || 'Sin detalle adicional'}
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+window.renderCourseBitacoraStudentDayView = renderCourseBitacoraStudentDayView;
+
 function renderCourseBitacoraList() {
     const courseSelect = document.getElementById('courseBitacoraCourseSelect');
     const studentSelect = document.getElementById('courseBitacoraStudentSelect');
@@ -45500,6 +46046,12 @@ function renderCourseBitacoraList() {
     const bimester = bimesterFilter ? bimesterFilter.value : 'ALL';
     const category = categoryFilter ? categoryFilter.value : 'ALL';
     const searchText = searchFilter ? searchFilter.value : '';
+
+    // Si hay un estudiante específico seleccionado, mostrar la vista detallada por día de incidencias
+    if (studentId && studentId !== 'ALL') {
+        renderCourseBitacoraStudentDayView(studentId, courseId, bimester, category, searchText);
+        return;
+    }
 
     const entries = getCourseBitacoraEntries({
         courseId,
@@ -45602,6 +46154,157 @@ function renderCourseBitacoraList() {
 }
 window.renderCourseBitacoraList = renderCourseBitacoraList;
 
+function printGlobalIncidentsOfficialReport() {
+    const gradeSelect = document.getElementById('attendanceGradeSelect') || document.getElementById('attGradeSelect');
+    const targetGradeCode = gradeSelect ? gradeSelect.value : (STATE.attendanceSelectedGrade || '');
+    const gradeText = gradeSelect && gradeSelect.selectedIndex >= 0 ? gradeSelect.options[gradeSelect.selectedIndex].text : (targetGradeCode || 'Todos los Grados');
+
+    const incidents = getGlobalStudentsWithIncidents(targetGradeCode);
+
+    if (incidents.length === 0) {
+        showToast("No hay incidencias registradas en este grado para generar el informe.", "info");
+        return;
+    }
+
+    const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {}) || {};
+    const schoolName = h.schoolName || "ESCUELA NACIONAL DE CIENCIAS COMERCIALES";
+    const schoolCode = h.schoolCode || "22-01-0014-46";
+    const location = h.location || "JUTIAPA, GUATEMALA";
+    const cycle = STATE.activeCycle || '2026';
+    const today = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    const totalA = incidents.reduce((acc, x) => acc + x.faltasA, 0);
+    const totalT = incidents.reduce((acc, x) => acc + x.tardanzasT, 0);
+    const totalJ = incidents.reduce((acc, x) => acc + x.justificadasJ, 0);
+    const totalNotes = incidents.reduce((acc, x) => acc + x.courseNotesCount + x.discReportsCount, 0);
+    const totalAll = totalA + totalT + totalJ + totalNotes;
+
+    const rowsHtml = incidents.map((item, idx) => `
+        <tr>
+            <td style="text-align:center; font-weight:700;">${idx + 1}</td>
+            <td style="text-align:center; font-family:monospace; font-weight:700;">${item.carne}</td>
+            <td style="font-weight:700;">${item.name}</td>
+            <td style="text-align:center;">${item.grade}</td>
+            <td style="text-align:center; font-weight:800; color:#b91c1c;">${item.faltasA}</td>
+            <td style="text-align:center; font-weight:800; color:#d97706;">${item.tardanzasT}</td>
+            <td style="text-align:center; font-weight:800; color:#7c3aed;">${item.justificadasJ}</td>
+            <td style="text-align:center; font-weight:800; color:#0369a1;">${item.courseNotesCount + item.discReportsCount}</td>
+            <td style="text-align:center; font-weight:900; background:#f1f5f9;">${item.totalIncidents}</td>
+            <td style="font-size:9.5px; line-height:1.3;">
+                <strong>${item.latestIncidentDate}:</strong> ${item.latestIncidentDesc}
+            </td>
+        </tr>
+    `).join('');
+
+    const printHtml = `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Informe Global de Incidencias - ENCCO</title>
+            <style>
+                @page { size: letter landscape; margin: 10mm 12mm; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 10.5px; color: #1e293b; margin: 0; padding: 12px; }
+                .header-container { text-align: center; border-bottom: 2.5px solid #0369a1; padding-bottom: 8px; margin-bottom: 12px; }
+                .header-title { font-size: 15px; font-weight: 800; color: #0f2b5c; text-transform: uppercase; margin: 0; }
+                .header-sub { font-size: 11px; color: #475569; margin-top: 3px; }
+                .report-title { font-size: 13px; font-weight: 800; color: #0284c7; margin-top: 5px; text-transform: uppercase; }
+                .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 10.5px; }
+                .meta-table td { padding: 4px 8px; border: 1px solid #cbd5e1; }
+                .meta-label { font-weight: 700; background: #f1f5f9; width: 18%; color: #334155; }
+                .data-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 10px; }
+                .data-table th { background: #0369a1; color: #ffffff; padding: 5px 6px; border: 1px solid #0284c7; font-weight: 700; text-align: center; }
+                .data-table td { padding: 4px 6px; border: 1px solid #cbd5e1; vertical-align: middle; }
+                .data-table tr:nth-child(even) { background: #f8fafc; }
+                .data-table tr.total-row td { background: #e0f2fe; font-weight: 900; border: 1.5px solid #0284c7; }
+                .signatures { margin-top: 35px; display: flex; justify-content: space-around; break-inside: avoid; }
+                .sig-box { text-align: center; width: 260px; }
+                .sig-line { border-top: 1.5px solid #334155; margin-bottom: 4px; }
+            </style>
+        </head>
+        <body>
+            <div class="header-container">
+                <div class="header-title">${schoolName}</div>
+                <div class="header-sub">Código: ${schoolCode} | ${location} | Ciclo Escolar ${cycle}</div>
+                <div class="report-title">INFORME GLOBAL DE INCIDENCIAS DE ASISTENCIA Y CONDUCTA</div>
+            </div>
+
+            <table class="meta-table">
+                <tr>
+                    <td class="meta-label">Grado / Grupo:</td>
+                    <td style="font-weight:700; color:#0369a1;">${gradeText}</td>
+                    <td class="meta-label">Fecha de Emisión:</td>
+                    <td>${today}</td>
+                </tr>
+                <tr>
+                    <td class="meta-label">Total Alumnos con Incidencias:</td>
+                    <td><strong>${incidents.length}</strong> estudiante(s)</td>
+                    <td class="meta-label">Total Incidencias Acumuladas:</td>
+                    <td><strong>${totalAll}</strong> (Faltas: ${totalA}, Tardanzas: ${totalT}, Justificadas: ${totalJ}, Anotaciones: ${totalNotes})</td>
+                </tr>
+            </table>
+
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width:3%;">#</th>
+                        <th style="width:10%;">Código/Carné</th>
+                        <th style="width:23%;">Apellidos y Nombres</th>
+                        <th style="width:12%;">Grado</th>
+                        <th style="width:7%;">Faltas (A)</th>
+                        <th style="width:7%;">Tardanzas (T)</th>
+                        <th style="width:7%;">Justif. (J)</th>
+                        <th style="width:7%;">Anotaciones</th>
+                        <th style="width:7%;">Total</th>
+                        <th>Última Incidencia / Observación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rowsHtml}
+                    <tr class="total-row">
+                        <td colspan="4" style="text-align:right; padding-right:8px;">TOTALES INSTITUCIONALES:</td>
+                        <td style="text-align:center; color:#b91c1c;">${totalA}</td>
+                        <td style="text-align:center; color:#d97706;">${totalT}</td>
+                        <td style="text-align:center; color:#7c3aed;">${totalJ}</td>
+                        <td style="text-align:center; color:#0369a1;">${totalNotes}</td>
+                        <td style="text-align:center;">${totalAll}</td>
+                        <td style="text-align:center;">${incidents.length} Alumnos Monitoreados</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="signatures">
+                <div class="sig-box">
+                    <div class="sig-line"></div>
+                    <div style="font-weight:700;">Comisión de Asistencia / Auxiliatura</div>
+                    <div style="font-size:9.5px; color:#64748b;">Escuela Nacional de Ciencias Comerciales</div>
+                </div>
+                <div class="sig-box">
+                    <div class="sig-line"></div>
+                    <div style="font-weight:700;">Dirección / Secretaría</div>
+                    <div style="font-size:9.5px; color:#64748b;">Vo.Bo. Autoridad Institucional</div>
+                </div>
+            </div>
+            <script>
+                window.onload = function() {
+                    window.print();
+                };
+            </script>
+        </body>
+        </html>
+    `;
+
+    const printWin = window.open('', '_blank', 'width=1000,height=700');
+    if (printWin) {
+        printWin.document.open();
+        printWin.document.write(printHtml);
+        printWin.document.close();
+    } else {
+        showToast("Por favor permita las ventanas emergentes (pop-ups) para imprimir.", "warning");
+    }
+}
+window.printGlobalIncidentsOfficialReport = printGlobalIncidentsOfficialReport;
+
 function printCourseBitacoraOfficial() {
     const courseSelect = document.getElementById('courseBitacoraCourseSelect');
     const studentSelect = document.getElementById('courseBitacoraStudentSelect');
@@ -45618,7 +46321,7 @@ function printCourseBitacoraOfficial() {
     const currentUser = STATE.currentUser;
     const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
 
-    const gradeSelect = document.getElementById('attGradeSelect');
+    const gradeSelect = document.getElementById('attendanceGradeSelect') || document.getElementById('attGradeSelect');
     const gradeCode = gradeSelect ? gradeSelect.value : (STATE.attendanceSelectedGrade || '');
 
     if (!canUserAccessCourseBitacora(courseId, gradeCode, currentUser, currentRole)) {

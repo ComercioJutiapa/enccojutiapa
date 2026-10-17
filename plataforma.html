@@ -5551,11 +5551,11 @@
 
     <!-- MODAL DE BITÁCORA INDIVIDUAL DE ASISTENCIA Y NOTAS POR MATERIA (CONTROL DE ASISTENCIA DIARIA) -->
     <div class="modal-overlay" id="courseBitacoraModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeCourseBitacoraModal()">
-        <div class="modal-container" style="max-width:860px; width:95%; max-height:92vh; display:flex; flex-direction:column; border-radius:12px; overflow:hidden; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);">
+        <div class="modal-container" style="max-width:920px; width:95%; max-height:92vh; display:flex; flex-direction:column; border-radius:12px; overflow:hidden; box-shadow:0 20px 25px -5px rgba(0,0,0,0.3);">
             <div class="modal-header" style="background:linear-gradient(135deg, #0284c7, #0369a1); color:#ffffff; padding:14px 20px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
                     <h3 style="color:#ffffff; margin:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
-                        <i class="fa-solid fa-book-journal-whills"></i> Bitácora de Asistencia y Notas por Materia
+                        <i class="fa-solid fa-book-journal-whills"></i> Bitácora de Asistencia e Incidencias
                     </h3>
                     <div style="font-size:0.78rem; opacity:0.92; margin-top:2px;" id="courseBitacoraHeaderSubtitle">
                         Control Individualizado por Cátedra | Privacidad Estricta
@@ -5565,100 +5565,106 @@
             </div>
             
             <div class="modal-body" style="padding:16px 20px; overflow-y:auto; flex:1; font-size:0.88rem; background:#f8fafc;">
-                <!-- BARRA DE INFORMACIÓN Y AVISO DE PRIVACIDAD -->
-                <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:10px 14px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                    <div style="display:flex; align-items:center; gap:8px; font-size:0.83rem; color:#0369a1; flex:1;">
-                        <i class="fa-solid fa-shield-halved" style="font-size:1.1rem;"></i>
-                        <span><strong>Privacidad de Cátedra:</strong> Estas anotaciones pertenecen exclusivamente a la materia seleccionada y solo son visibles e imprimibles por los catedráticos asignados y supervisión institucional. No se reflejan en la ficha general del estudiante.</span>
-                    </div>
-                    <span class="badge" id="courseBitacoraRoleBadge" style="background:#0284c7; color:#fff; font-size:0.75rem; padding:4px 8px; font-weight:700;">
-                        <i class="fa-solid fa-chalkboard-user"></i> Cátedra Autorizada
-                    </span>
+                <!-- SELECTOR DE PESTAÑAS: LISTADO GLOBAL VS REGISTRO POR DÍA -->
+                <div style="display:flex; gap:8px; margin-bottom:14px; border-bottom:2px solid #e2e8f0; padding-bottom:8px;">
+                    <button type="button" id="btnBitacoraTabGlobal" onclick="setBitacoraViewMode('global')" class="btn btn-sm" style="font-weight:700; border-radius:6px; display:inline-flex; align-items:center; gap:6px; background:#0284c7; color:#ffffff; border:none; padding:6px 14px; cursor:pointer;">
+                        <i class="fa-solid fa-users-viewfinder"></i> Listado Global de Incidencias
+                    </button>
+                    <button type="button" id="btnBitacoraTabStudent" onclick="setBitacoraViewMode('student')" class="btn btn-sm" style="font-weight:700; border-radius:6px; display:inline-flex; align-items:center; gap:6px; background:#e2e8f0; color:#334155; border:none; padding:6px 14px; cursor:pointer;">
+                        <i class="fa-solid fa-calendar-day"></i> Registros e Incidencias por Día
+                    </button>
                 </div>
 
-                <!-- CONTROLES Y FILTROS -->
-                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:10px; margin-bottom:8px;">
-                        <div>
-                            <label style="font-weight:700; font-size:0.80rem; color:#475569; display:block; margin-bottom:4px;">
-                                <i class="fa-solid fa-book-bookmark" style="color:#0284c7;"></i> Materia / Cátedra *:
-                            </label>
-                            <select id="courseBitacoraCourseSelect" class="form-control" style="font-size:0.84rem; height:34px; font-weight:700;" onchange="onCourseBitacoraCourseChange()">
-                                <!-- Materias del grado asignadas -->
-                            </select>
+                <!-- SECCIÓN 1: VISTA GLOBAL DE INCIDENCIAS (PARA BOTÓN SUPERIOR GENERAL) -->
+                <div id="courseBitacoraGlobalSection" style="display:none;">
+                    <!-- RESUMEN ESTADÍSTICO DE INCIDENCIAS -->
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:14px;">
+                        <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid #0284c7; border-radius:8px; padding:10px; text-align:center;">
+                            <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">Alumnos Afectados</div>
+                            <div style="font-size:1.35rem; font-weight:800; color:#0369a1;" id="globalBitacoraStatStudents">0</div>
                         </div>
-                        <div>
-                            <label style="font-weight:700; font-size:0.80rem; color:#475569; display:block; margin-bottom:4px;">
-                                <i class="fa-solid fa-user-graduate" style="color:#0284c7;"></i> Filtrar Estudiante:
-                            </label>
-                            <select id="courseBitacoraStudentSelect" class="form-control" style="font-size:0.84rem; height:34px; font-weight:700;" onchange="renderCourseBitacoraList()">
-                                <option value="ALL">-- Todos los Estudiantes de la Materia --</option>
-                            </select>
+                        <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid #ef4444; border-radius:8px; padding:10px; text-align:center;">
+                            <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">Faltas (A)</div>
+                            <div style="font-size:1.35rem; font-weight:800; color:#dc2626;" id="globalBitacoraStatA">0</div>
                         </div>
-                        <div>
-                            <label style="font-weight:700; font-size:0.80rem; color:#475569; display:block; margin-bottom:4px;">
-                                <i class="fa-solid fa-calendar-check" style="color:#0284c7;"></i> Bimestre:
-                            </label>
-                            <select id="courseBitacoraBimesterFilter" class="form-control" style="font-size:0.84rem; height:34px;" onchange="renderCourseBitacoraList()">
-                                <option value="ALL">Todos los Bimestres</option>
-                                <option value="1">Bimestre 1</option>
-                                <option value="2">Bimestre 2</option>
-                                <option value="3">Bimestre 3</option>
-                                <option value="4">Bimestre 4</option>
-                            </select>
+                        <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid #f59e0b; border-radius:8px; padding:10px; text-align:center;">
+                            <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">Tardanzas (T)</div>
+                            <div style="font-size:1.35rem; font-weight:800; color:#d97706;" id="globalBitacoraStatT">0</div>
                         </div>
-                        <div>
-                            <label style="font-weight:700; font-size:0.80rem; color:#475569; display:block; margin-bottom:4px;">
-                                <i class="fa-solid fa-filter" style="color:#0284c7;"></i> Categoría:
+                        <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid #8b5cf6; border-radius:8px; padding:10px; text-align:center;">
+                            <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">Justificadas (J)</div>
+                            <div style="font-size:1.35rem; font-weight:800; color:#7c3aed;" id="globalBitacoraStatJ">0</div>
+                        </div>
+                        <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid #06b6d4; border-radius:8px; padding:10px; text-align:center;">
+                            <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">Anotaciones</div>
+                            <div style="font-size:1.35rem; font-weight:800; color:#0891b2;" id="globalBitacoraStatNotes">0</div>
+                        </div>
+                    </div>
+
+                    <!-- FILTROS DE LISTADO GLOBAL -->
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <div style="position:relative; flex:1; min-width:220px;">
+                            <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:0.78rem; color:#94a3b8;"></i>
+                            <input type="text" id="courseBitacoraGlobalSearch" class="form-control" placeholder="Filtrar estudiante por nombre o código personal..." oninput="renderCourseBitacoraGlobalView()" style="height:34px; font-size:0.83rem; padding-left:28px;">
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <label style="font-weight:700; font-size:0.80rem; color:#475569; margin:0; white-space:nowrap;">
+                                <i class="fa-solid fa-filter" style="color:#0284c7;"></i> Tipo de Incidencia:
                             </label>
-                            <select id="courseBitacoraCategoryFilter" class="form-control" style="font-size:0.84rem; height:34px;" onchange="renderCourseBitacoraList()">
-                                <option value="ALL">Todas las Categorías</option>
-                                <option value="asistencia">⏰ Asistencia / Puntualidad</option>
-                                <option value="notas">📊 Tareas / Zona / Punteo</option>
-                                <option value="evaluacion">📝 Exámenes y Evaluaciones</option>
-                                <option value="conducta">⚖️ Conducta en Período</option>
-                                <option value="observacion">🔍 Observación Pedagógica</option>
+                            <select id="courseBitacoraGlobalTypeFilter" class="form-control" style="font-size:0.82rem; height:34px; min-width:170px;" onchange="renderCourseBitacoraGlobalView()">
+                                <option value="ALL">Todas las Incidencias</option>
+                                <option value="A">Solo Faltas Injustificadas (A)</option>
+                                <option value="T">Solo Tardanzas (T)</option>
+                                <option value="J">Solo Justificaciones (J)</option>
+                                <option value="NOTES">Solo Anotaciones de Cátedra</option>
                             </select>
                         </div>
                     </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                        <div style="position:relative; flex:1; min-width:200px;">
-                            <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:9px; top:50%; transform:translateY(-50%); font-size:0.75rem; color:#94a3b8;"></i>
-                            <input type="text" id="courseBitacoraSearchFilter" class="form-control" placeholder="Buscar por texto o nombre..." oninput="renderCourseBitacoraList()" style="height:32px; font-size:0.80rem; padding-left:26px;">
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleCourseBitacoraForm()" id="btnToggleCourseBitacoraForm" style="font-weight:700; height:32px; display:inline-flex; align-items:center; gap:5px;">
-                            <i class="fa-solid fa-plus-circle"></i> + Nueva Anotación en Materia
-                        </button>
+
+                    <!-- TABLA GLOBAL DE ALUMNOS CON INCIDENCIAS -->
+                    <div id="courseBitacoraGlobalListContainer" style="max-height:420px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:8px; background:#ffffff;">
+                        <!-- Se llena dinámicamente -->
                     </div>
                 </div>
 
-                <!-- FORMULARIO DE NUEVA ANOTACIÓN EN MATERIA (COLAPSIBLE) -->
-                <div id="courseBitacoraFormCard" style="display:none; background:#ffffff; border:1.5px solid #0284c7; border-radius:10px; padding:16px; margin-bottom:14px; box-shadow:0 4px 6px -1px rgba(2,132,199,0.1);">
-                    <div style="font-weight:800; font-size:0.92rem; color:#0369a1; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
-                        <span><i class="fa-solid fa-pen-to-square"></i> Registrar Anotación / Incidencia en Materia</span>
-                        <button type="button" onclick="toggleCourseBitacoraForm()" style="background:transparent; border:none; color:#64748b; cursor:pointer; font-size:1.1rem;">&times;</button>
+                <!-- SECCIÓN 2: VISTA DETALLADA POR ESTUDIANTE / REGISTRO POR DÍA -->
+                <div id="courseBitacoraStudentSection">
+                    <!-- BARRA DE INFORMACIÓN Y AVISO DE PRIVACIDAD -->
+                    <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:10px 14px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                        <div style="display:flex; align-items:center; gap:8px; font-size:0.83rem; color:#0369a1; flex:1;">
+                            <i class="fa-solid fa-shield-halved" style="font-size:1.1rem;"></i>
+                            <span><strong>Privacidad de Cátedra:</strong> Estas anotaciones pertenecen exclusivamente a la materia seleccionada y solo son visibles e imprimibles por los catedráticos asignados y supervisión institucional. No se reflejan en la ficha general del estudiante.</span>
+                        </div>
+                        <span class="badge" id="courseBitacoraRoleBadge" style="background:#0284c7; color:#fff; font-size:0.75rem; padding:4px 8px; font-weight:700;">
+                            <i class="fa-solid fa-chalkboard-user"></i> Cátedra Autorizada
+                        </span>
                     </div>
-                    <form onsubmit="submitNewCourseBitacora(event); return false;">
-                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px; margin-bottom:10px;">
+
+                    <!-- CONTROLES Y FILTROS -->
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:10px; margin-bottom:8px;">
                             <div>
-                                <label style="font-weight:700; font-size:0.80rem; color:#334155;">Estudiante *</label>
-                                <select id="courseBitacoraFormStudent" class="form-control" required style="font-size:0.84rem; height:34px; font-weight:700;">
-                                    <!-- Lista de estudiantes -->
+                                <label style="font-weight:700; font-size:0.80rem; color:#475569; display:block; margin-bottom:4px;">
+                                    <i class="fa-solid fa-book-bookmark" style="color:#0284c7;"></i> Materia / Cátedra *:
+                                </label>
+                                <select id="courseBitacoraCourseSelect" class="form-control" style="font-size:0.84rem; height:34px; font-weight:700;" onchange="onCourseBitacoraCourseChange()">
+                                    <!-- Materias del grado asignadas -->
                                 </select>
                             </div>
                             <div>
-                                <label style="font-weight:700; font-size:0.80rem; color:#334155;">Categoría *</label>
-                                <select id="courseBitacoraFormCategory" class="form-control" required style="font-size:0.84rem; height:34px;">
-                                    <option value="asistencia">⏰ Asistencia / Puntualidad</option>
-                                    <option value="notas">📊 Tareas / Zona / Punteo</option>
-                                    <option value="evaluacion">📝 Exámenes y Evaluaciones</option>
-                                    <option value="conducta">⚖️ Conducta en Período</option>
-                                    <option value="observacion">🔍 Observación Pedagógica</option>
+                                <label style="font-weight:700; font-size:0.80rem; color:#475569; display:block; margin-bottom:4px;">
+                                    <i class="fa-solid fa-user-graduate" style="color:#0284c7;"></i> Filtrar Estudiante:
+                                </label>
+                                <select id="courseBitacoraStudentSelect" class="form-control" style="font-size:0.84rem; height:34px; font-weight:700;" onchange="renderCourseBitacoraList()">
+                                    <option value="ALL">-- Todos los Estudiantes de la Materia --</option>
                                 </select>
                             </div>
                             <div>
-                                <label style="font-weight:700; font-size:0.80rem; color:#334155;">Bimestre *</label>
-                                <select id="courseBitacoraFormBimester" class="form-control" required style="font-size:0.84rem; height:34px;">
+                                <label style="font-weight:700; font-size:0.80rem; color:#475569; display:block; margin-bottom:4px;">
+                                    <i class="fa-solid fa-calendar-check" style="color:#0284c7;"></i> Bimestre:
+                                </label>
+                                <select id="courseBitacoraBimesterFilter" class="form-control" style="font-size:0.84rem; height:34px;" onchange="renderCourseBitacoraList()">
+                                    <option value="ALL">Todos los Bimestres</option>
                                     <option value="1">Bimestre 1</option>
                                     <option value="2">Bimestre 2</option>
                                     <option value="3">Bimestre 3</option>
@@ -5666,46 +5672,111 @@
                                 </select>
                             </div>
                             <div>
-                                <label style="font-weight:700; font-size:0.80rem; color:#334155;">Fecha de la Incidencia *</label>
-                                <input type="date" id="courseBitacoraFormDate" class="form-control" required style="font-size:0.84rem; height:34px;">
-                            </div>
-                            <div>
-                                <label style="font-weight:700; font-size:0.80rem; color:#334155;">Referencia de Nota / Punteo</label>
-                                <input type="text" id="courseBitacoraFormScoreRef" class="form-control" placeholder="Ej: Zona 12/20, Tarea #2 pendiente" style="font-size:0.84rem; height:34px;">
+                                <label style="font-weight:700; font-size:0.80rem; color:#475569; display:block; margin-bottom:4px;">
+                                    <i class="fa-solid fa-filter" style="color:#0284c7;"></i> Categoría:
+                                </label>
+                                <select id="courseBitacoraCategoryFilter" class="form-control" style="font-size:0.84rem; height:34px;" onchange="renderCourseBitacoraList()">
+                                    <option value="ALL">Todas las Categorías</option>
+                                    <option value="asistencia">⏰ Asistencia / Puntualidad</option>
+                                    <option value="notas">📊 Tareas / Zona / Punteo</option>
+                                    <option value="evaluacion">📝 Exámenes y Evaluaciones</option>
+                                    <option value="conducta">⚖️ Conducta en Período</option>
+                                    <option value="observacion">🔍 Observación Pedagógica</option>
+                                </select>
                             </div>
                         </div>
-                        <div style="margin-bottom:10px;">
-                            <label style="font-weight:700; font-size:0.80rem; color:#334155;">Detalle de la Observación / Anotación *</label>
-                            <textarea id="courseBitacoraFormText" class="form-control" rows="3" required placeholder="Detalle la observación específica de la materia: dificultades en tareas, justificación de falta en el período, participación, etc." style="font-size:0.85rem; width:100%;"></textarea>
-                        </div>
-                        <div style="display:flex; justify-content:flex-end; gap:8px;">
-                            <button type="button" class="btn btn-sm btn-secondary" onclick="toggleCourseBitacoraForm()">Cancelar</button>
-                            <button type="submit" class="btn btn-sm btn-primary" style="font-weight:700;">
-                                <i class="fa-solid fa-floppy-disk"></i> Guardar en Bitácora de Materia
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                            <div style="position:relative; flex:1; min-width:200px;">
+                                <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:9px; top:50%; transform:translateY(-50%); font-size:0.75rem; color:#94a3b8;"></i>
+                                <input type="text" id="courseBitacoraSearchFilter" class="form-control" placeholder="Buscar por texto o nombre..." oninput="renderCourseBitacoraList()" style="height:32px; font-size:0.80rem; padding-left:26px;">
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleCourseBitacoraForm()" id="btnToggleCourseBitacoraForm" style="font-weight:700; height:32px; display:inline-flex; align-items:center; gap:5px;">
+                                <i class="fa-solid fa-plus-circle"></i> + Nueva Anotación en Materia
                             </button>
                         </div>
-                    </form>
-                </div>
+                    </div>
 
-                <!-- CONTENEDOR DE REGISTROS DE BITÁCORA -->
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                    <strong style="color:#0f172a; font-size:0.90rem;">
-                        <i class="fa-solid fa-list-ul" style="color:#0284c7;"></i> Registros de la Materia (<span id="courseBitacoraCount">0</span>)
-                    </strong>
-                    <span style="font-size:0.75rem; color:#64748b;" id="courseBitacoraSummaryInfo"></span>
-                </div>
-                <div id="courseBitacoraListContainer" style="display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto; padding-right:4px;">
-                    <!-- Se llena dinámicamente -->
+                    <!-- FORMULARIO DE NUEVA ANOTACIÓN EN MATERIA (COLAPSIBLE) -->
+                    <div id="courseBitacoraFormCard" style="display:none; background:#ffffff; border:1.5px solid #0284c7; border-radius:10px; padding:16px; margin-bottom:14px; box-shadow:0 4px 6px -1px rgba(2,132,199,0.1);">
+                        <div style="font-weight:800; font-size:0.92rem; color:#0369a1; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center;">
+                            <span><i class="fa-solid fa-pen-to-square"></i> Registrar Anotación / Incidencia en Materia</span>
+                            <button type="button" onclick="toggleCourseBitacoraForm()" style="background:transparent; border:none; color:#64748b; cursor:pointer; font-size:1.1rem;">&times;</button>
+                        </div>
+                        <form onsubmit="submitNewCourseBitacora(event); return false;">
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:10px; margin-bottom:10px;">
+                                <div>
+                                    <label style="font-weight:700; font-size:0.80rem; color:#334155;">Estudiante *</label>
+                                    <select id="courseBitacoraFormStudent" class="form-control" required style="font-size:0.84rem; height:34px; font-weight:700;">
+                                        <!-- Lista de estudiantes -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-weight:700; font-size:0.80rem; color:#334155;">Categoría *</label>
+                                    <select id="courseBitacoraFormCategory" class="form-control" required style="font-size:0.84rem; height:34px;">
+                                        <option value="asistencia">⏰ Asistencia / Puntualidad</option>
+                                        <option value="notas">📊 Tareas / Zona / Punteo</option>
+                                        <option value="evaluacion">📝 Exámenes y Evaluaciones</option>
+                                        <option value="conducta">⚖️ Conducta en Período</option>
+                                        <option value="observacion">🔍 Observación Pedagógica</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-weight:700; font-size:0.80rem; color:#334155;">Bimestre *</label>
+                                    <select id="courseBitacoraFormBimester" class="form-control" required style="font-size:0.84rem; height:34px;">
+                                        <option value="1">Bimestre 1</option>
+                                        <option value="2">Bimestre 2</option>
+                                        <option value="3">Bimestre 3</option>
+                                        <option value="4">Bimestre 4</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-weight:700; font-size:0.80rem; color:#334155;">Fecha de la Incidencia *</label>
+                                    <input type="date" id="courseBitacoraFormDate" class="form-control" required style="font-size:0.84rem; height:34px;">
+                                </div>
+                                <div>
+                                    <label style="font-weight:700; font-size:0.80rem; color:#334155;">Referencia de Nota / Punteo</label>
+                                    <input type="text" id="courseBitacoraFormScoreRef" class="form-control" placeholder="Ej: Zona 12/20, Tarea #2 pendiente" style="font-size:0.84rem; height:34px;">
+                                </div>
+                            </div>
+                            <div style="margin-bottom:10px;">
+                                <label style="font-weight:700; font-size:0.80rem; color:#334155;">Detalle de la Observación / Anotación *</label>
+                                <textarea id="courseBitacoraFormText" class="form-control" rows="3" required placeholder="Detalle la observación específica de la materia: dificultades en tareas, justificación de falta en el período, participación, etc." style="font-size:0.85rem; width:100%;"></textarea>
+                            </div>
+                            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                                <button type="button" class="btn btn-sm btn-secondary" onclick="toggleCourseBitacoraForm()">Cancelar</button>
+                                <button type="submit" class="btn btn-sm btn-primary" style="font-weight:700;">
+                                    <i class="fa-solid fa-floppy-disk"></i> Guardar en Bitácora de Materia
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- CONTENEDOR DE REGISTROS DE BITÁCORA -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <strong style="color:#0f172a; font-size:0.90rem;">
+                            <i class="fa-solid fa-list-ul" style="color:#0284c7;"></i> Registros de la Materia (<span id="courseBitacoraCount">0</span>)
+                        </strong>
+                        <span style="font-size:0.75rem; color:#64748b;" id="courseBitacoraSummaryInfo"></span>
+                    </div>
+                    <div id="courseBitacoraListContainer" style="display:flex; flex-direction:column; gap:8px; max-height:420px; overflow-y:auto; padding-right:4px;">
+                        <!-- Se llena dinámicamente -->
+                    </div>
                 </div>
             </div>
 
             <div class="modal-footer" style="background:#f8fafc; padding:12px 20px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                <button type="button" class="btn btn-success btn-sm" onclick="printCourseBitacoraOfficial()" style="font-weight:700; display:inline-flex; align-items:center; gap:6px;">
-                    <i class="fa-solid fa-print"></i> Imprimir Bitácora de Materia
-                </button>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" id="btnBitacoraPrintGlobal" class="btn btn-primary btn-sm" onclick="printGlobalIncidentsOfficialReport()" style="font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+                        <i class="fa-solid fa-print"></i> Imprimir Listado Global de Incidencias
+                    </button>
+                    <button type="button" id="btnBitacoraPrintStudent" class="btn btn-success btn-sm" onclick="printCourseBitacoraOfficial()" style="font-weight:700; display:inline-flex; align-items:center; gap:6px; display:none;">
+                        <i class="fa-solid fa-print"></i> Imprimir Bitácora de Materia
+                    </button>
+                </div>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="closeCourseBitacoraModal()">Cerrar</button>
             </div>
         </div>
+    </div>
     </div>
     <div class="modal-overlay" id="exonerationDetailDocenteModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeExonerationDetailDocenteModal()">
         <div class="modal-container" style="max-width:540px;">
