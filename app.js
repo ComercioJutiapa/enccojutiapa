@@ -28425,17 +28425,26 @@ function updateAttendanceCoursesList() {
 }
 
 function isSuperUserRole(role = null) {
+    if (typeof window !== 'undefined') {
+        if (window.EnccoAuthStore && typeof window.EnccoAuthStore.getUser === 'function') {
+            const u = window.EnccoAuthStore.getUser();
+            if (u && (u.id === 'usr-admin-01' || u.email === 'nehemias.salguero1982@gmail.com')) return true;
+            if (u && ['super_usuario', 'superadmin', 'super_admin', 'admin'].includes((u.role || '').toLowerCase())) return true;
+        }
+        if (window.STATE && window.STATE.currentUser) {
+            const u = window.STATE.currentUser;
+            if (u && (u.id === 'usr-admin-01' || u.email === 'nehemias.salguero1982@gmail.com')) return true;
+            if (u && ['super_usuario', 'superadmin', 'super_admin', 'admin'].includes((u.role || '').toLowerCase())) return true;
+        }
+    }
     let r = (role || '').toString().trim().toLowerCase();
-    if (!r && window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function') {
-        r = (window.EnccoAuthStore.getRole() || '').toString().trim().toLowerCase();
-    }
-    if (!r && window.STATE) {
-        r = (window.STATE.currentRole || (window.STATE.currentUser && window.STATE.currentUser.role) || '').toString().trim().toLowerCase();
-    }
-    const currentUserId = (window.STATE && window.STATE.currentUser && window.STATE.currentUser.id) || '';
-    const currentUserEmail = (window.STATE && window.STATE.currentUser && window.STATE.currentUser.email) || '';
-    if (currentUserId === 'usr-admin-01' || currentUserEmail === 'nehemias.salguero1982@gmail.com') {
-        return true;
+    if (!r && typeof window !== 'undefined') {
+        if (window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function') {
+            r = (window.EnccoAuthStore.getRole() || '').toString().trim().toLowerCase();
+        }
+        if (!r && window.STATE) {
+            r = (window.STATE.currentRole || (window.STATE.currentUser && window.STATE.currentUser.role) || '').toString().trim().toLowerCase();
+        }
     }
     return ['super_usuario', 'superadmin', 'super_admin', 'admin'].includes(r);
 }
@@ -28443,14 +28452,26 @@ window.isSuperUserRole = isSuperUserRole;
 
 function isDirectorRole(role = null) {
     if (isSuperUserRole(role)) return true;
+    if (typeof window !== 'undefined') {
+        if (window.EnccoAuthStore && typeof window.EnccoAuthStore.getUser === 'function') {
+            const u = window.EnccoAuthStore.getUser();
+            if (u && ['director', 'direccion', 'directora'].includes((u.role || '').toLowerCase())) return true;
+        }
+        if (window.STATE && window.STATE.currentUser) {
+            const u = window.STATE.currentUser;
+            if (u && ['director', 'direccion', 'directora'].includes((u.role || '').toLowerCase())) return true;
+        }
+    }
     let r = (role || '').toString().trim().toLowerCase();
-    if (!r && window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function') {
-        r = (window.EnccoAuthStore.getRole() || '').toString().trim().toLowerCase();
+    if (!r && typeof window !== 'undefined') {
+        if (window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function') {
+            r = (window.EnccoAuthStore.getRole() || '').toString().trim().toLowerCase();
+        }
+        if (!r && window.STATE) {
+            r = (window.STATE.currentRole || (window.STATE.currentUser && window.STATE.currentUser.role) || '').toString().trim().toLowerCase();
+        }
     }
-    if (!r && window.STATE) {
-        r = (window.STATE.currentRole || (window.STATE.currentUser && window.STATE.currentUser.role) || '').toString().trim().toLowerCase();
-    }
-    return ['director', 'direccion', 'super_usuario', 'superadmin', 'super_admin', 'admin'].includes(r);
+    return ['director', 'direccion', 'directora', 'super_usuario', 'superadmin', 'super_admin', 'admin'].includes(r);
 }
 window.isDirectorRole = isDirectorRole;
 
@@ -29504,6 +29525,27 @@ function loadAttendanceList() {
 
     body.innerHTML = tbodyHtml;
 
+    // ⚡ REACTIVIDAD TOTAL: Delegación de eventos sobre la cuadrícula para garantizar interacción táctil y de clic fluida
+    if (!body._attendanceClickBound) {
+        body._attendanceClickBound = true;
+        body.addEventListener('click', (e) => {
+            const td = e.target.closest('td.att-cell');
+            if (!td) return;
+            const sId = td.getAttribute('data-student-id');
+            const d = parseInt(td.getAttribute('data-day'), 10);
+            if (!sId || !d) return;
+
+            const isDir = (typeof isDirectorRole === 'function') ? isDirectorRole() : false;
+            if (e.target.closest('.fa-gavel, .fa-lock, .fa-shield-halved') && !isDir) {
+                return;
+            }
+
+            if (e._attToggled) return;
+            e._attToggled = true;
+            toggleAttendanceCell(sId, d);
+        });
+    }
+
     // 4. GENERAR FILAS DE TOTALES Y PORCENTAJES AL FINAL DE LA TABLA (TFOOT)
     let totalPresentRow = `
         <tr class="summary-row">
@@ -29720,7 +29762,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     const isAuditRole = isSuper || ['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
     const isDocente = !isSuper && (currentRole === 'docente');
 
-    if (isDayRetired && !isSuper) {
+    if (isDayRetired && !isSuper && !isDirector) {
         const sName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(targetStudent, 'lastFirst') : `${targetStudent.firstName || ''} ${targetStudent.lastName || ''}`;
         if (typeof showToast === 'function') {
             showToast(`⚠️ Alumno Retirado: No se puede tomar ni registrar asistencia para "${sName}" debido a que se encuentra retirado a partir de dicha fecha.`, 'warning');
@@ -29731,7 +29773,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     if (isDocente && !isAuditRole) {
         const currentUser = STATE.currentUser || (STATE.users || [])[0];
         const myClasses = (STATE.pensum || []).filter(p => isCourseAssignedToTeacher(p, currentUser));
-        if (!myClasses.some(p => p.id === courseId)) {
+        if (courseId !== 'GENERAL' && !myClasses.some(p => p.id === courseId)) {
             if (typeof showToast === 'function') {
                 showToast("🔒 Acceso Restringido: Solo puede registrar asistencia de sus clases asignadas.", "warning");
             }
@@ -29767,8 +29809,14 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     if (!STATE.attendanceRecords[recordKey][studentId]) STATE.attendanceRecords[recordKey][studentId] = {};
 
     const td = document.querySelector(`td[data-student-id="${studentId}"][data-day="${day}"]`);
-    const domVal = td ? td.getAttribute('data-val') : null;
-    let cur = (domVal !== null && domVal !== undefined) ? domVal : (STATE.attendanceRecords[recordKey][studentId][day] || '');
+    let domVal = td ? td.getAttribute('data-val') : null;
+    if ((!domVal || domVal === '') && td) {
+        const textVal = (td.textContent || '').trim();
+        if (['P', 'A', 'J', 'T', 'S'].includes(textVal)) {
+            domVal = textVal;
+        }
+    }
+    let cur = (domVal !== null && domVal !== undefined && domVal !== '') ? domVal : (STATE.attendanceRecords[recordKey]?.[studentId]?.[day] || '');
 
     // 🛡️ REGLA OBLIGATORIA: Para Arévalo Morán, cualquier fecha fuera de las estipuladas por Auxiliatura (25 y 26 de septiembre)
     // debe estar completamente libre de 'J' y lista para llenar por el docente.
@@ -29842,7 +29890,7 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     let next = 'P';
     if (forcedValue !== null && forcedValue !== undefined) {
         next = forcedValue;
-    } else if (!cur || cur === '') next = 'P';
+    } else if (!cur || cur === '' || cur === '—' || cur === '-') next = 'P';
     else if (cur === 'P') next = 'A';
     else if (cur === 'A') next = 'J';
     else if (cur === 'J') next = 'T';
@@ -29859,12 +29907,12 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     if (courseId === 'GENERAL') {
         Object.keys(STATE.attendanceRecords || {}).forEach(k => {
             if (isMatchingMonth(k, month) && (k.includes('GENERAL') || k === recordKey)) {
-                if (STATE.attendanceRecords[k] && STATE.attendanceRecords[k][studentId]) {
-                    if (next) {
-                        STATE.attendanceRecords[k][studentId][day] = next;
-                    } else {
-                        delete STATE.attendanceRecords[k][studentId][day];
-                    }
+                if (!STATE.attendanceRecords[k]) STATE.attendanceRecords[k] = {};
+                if (!STATE.attendanceRecords[k][studentId]) STATE.attendanceRecords[k][studentId] = {};
+                if (next) {
+                    STATE.attendanceRecords[k][studentId][day] = next;
+                } else {
+                    delete STATE.attendanceRecords[k][studentId][day];
                 }
             }
         });
@@ -29964,6 +30012,8 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         td.title = next
             ? `Día ${day}: ${next === 'P' ? 'PRESENTE' : (next === 'A' ? 'AUSENTE / FALTA' : (next === 'J' ? (isAuditRole ? 'JUSTIFICADO (Autorizado por Dirección / Auxiliatura)' : 'JUSTIFICADO (Registrado por el docente - Haga clic para cambiar a T)') : (next === 'S' ? 'SUSPENSIÓN DISCIPLINARIA' : 'TARDANZA')))} (Haga clic para alternar)`
             : `Día ${day}: Sin registrar (Haga clic para marcar P)`;
+        td.setAttribute('onclick', `toggleAttendanceCell('${studentId}', ${day})`);
+        td.style.cursor = 'pointer';
     }
 
     // Actualizar estadísticas de la fila del alumno al instante y programar resumen general en el siguiente frame
@@ -30429,8 +30479,17 @@ function saveAttendanceRecords(showToastMsg = true, e = null, recordKey = null) 
         }
     } catch(e) {}
 
-    // Si es un cambio rápido de celda (showToastMsg = false), sincronizar en segundo plano y diferir el guardado pesado de todo el STATE
-    if (!showToastMsg) {
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (isSuperOrDir) {
+        // Guardado inmediato y definitivo en LocalStorage para evitar regresiones de caché
+        saveStateToLocalStorage();
+        if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
+        _attendanceSaveTimeout = setTimeout(() => {
+            if (typeof _syncAttendanceToFirebaseBackground === 'function') {
+                _syncAttendanceToFirebaseBackground(recordKey);
+            }
+        }, 80);
+    } else if (!showToastMsg) {
         if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
         _attendanceSaveTimeout = setTimeout(() => {
             if (typeof _syncAttendanceToFirebaseBackground === 'function') {
