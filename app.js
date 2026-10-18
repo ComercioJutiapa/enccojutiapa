@@ -85,6 +85,8 @@ const EnccoSecurityShield = {
     },
 
     isAuthorizedRole(requiredRole = 'admin') {
+        if (typeof isSuperUserRole === 'function' && isSuperUserRole()) return true;
+        if (typeof isDirectorRole === 'function' && isDirectorRole()) return true;
         let currentUser = (typeof STATE !== 'undefined' && STATE && STATE.currentUser) ? STATE.currentUser : null;
         if (!currentUser) {
             try {
@@ -102,9 +104,11 @@ const EnccoSecurityShield = {
     },
 
     checkRoleMatch(userRole, requiredRole) {
+        if (typeof isSuperUserRole === 'function' && isSuperUserRole(userRole)) return true;
+        if (typeof isDirectorRole === 'function' && isDirectorRole(userRole)) return true;
         const uRole = (userRole || '').toLowerCase().trim();
         const rRole = (requiredRole || '').toLowerCase().trim();
-        if (uRole === 'admin' || uRole === 'super_usuario' || uRole === 'director') return true;
+        if (uRole === 'admin' || uRole === 'super_usuario' || uRole === 'superadmin' || uRole === 'super_admin' || uRole === 'director' || uRole === 'direccion') return true;
         if (rRole === 'secretaria') return (uRole === 'secretaria' || uRole === 'admin' || uRole === 'director');
         if (rRole === 'docente') return (uRole === 'docente' || uRole === 'catedratico' || uRole === 'admin' || uRole === 'director');
         return uRole === rRole;
@@ -635,10 +639,12 @@ const EnccoFirebaseCacheEngine = {
         return (
             r === 'super_usuario' || 
             r === 'admin' || 
+            r === 'director' ||
+            (typeof isDirectorRole === 'function' && isDirectorRole(r)) ||
             email === '22-01-0014-14@mineduc.edu.gt' ||
             email === '22-01-0014-46@mineduc.edu.gt' ||
             email === 'nehemias.salguero1982@gmail.com' ||
-            (u && (u.role === 'super_usuario' || u.role === 'admin'))
+            (u && (u.role === 'super_usuario' || u.role === 'admin' || u.role === 'director' || (typeof isDirectorRole === 'function' && isDirectorRole(u.role))))
         );
     },
 
@@ -868,7 +874,9 @@ const EnccoAuthStore = {
             return;
         }
 
-        const isSuper = (role === 'admin' || role === 'super_usuario');
+        const isSuper = (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) ||
+                        (typeof isDirectorRole === 'function' && isDirectorRole(role)) ||
+                        role === 'admin' || role === 'super_usuario' || role === 'director' || role === 'direccion';
 
         // 2. Navegación lateral reactiva 100% dinámica
         document.querySelectorAll('.nav-item').forEach(el => {
@@ -1010,7 +1018,7 @@ const EnccoAuthStore = {
                             ? (isSuper || hasRolePermission(requiredPerm, role))
                             : canWriteCurrentView;
 
-                        if (!canPerformAction || (STATE.isLocalReadOnlyMode && !btn.classList.contains('allow-in-readonly'))) {
+                        if (!canPerformAction || (!isSuper && STATE.isLocalReadOnlyMode && !btn.classList.contains('allow-in-readonly'))) {
                             btn.disabled = true;
                             btn.style.opacity = '0.45';
                             btn.style.cursor = 'not-allowed';
@@ -1181,7 +1189,7 @@ function enforceViewReadOnlyMode(viewName) {
     if (existingBanner) existingBanner.remove();
 
     // CASO ESPECIAL: MODO COPIA LOCAL (SOLO LECTURA) PARA AUDITORÍA DE RESPALDO
-    if (window.STATE && window.STATE.isLocalReadOnlyMode) {
+    if (window.STATE && window.STATE.isLocalReadOnlyMode && !isSuperUserRole() && !isDirectorRole()) {
         const banner = document.createElement('div');
         banner.className = 'readonly-mode-banner';
         banner.style.cssText = 'background:#fef2f2; border:1.5px solid #fca5a5; color:#991b1b; padding:12px 18px; border-radius:10px; margin-bottom:18px; font-weight:700; font-size:0.88rem; display:flex; align-items:center; justify-content:space-between; gap:12px; box-shadow:0 2px 5px rgba(0,0,0,0.06);';
@@ -1212,7 +1220,11 @@ function enforceViewReadOnlyMode(viewName) {
         return;
     }
 
-    if (STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario' || STATE.currentRole === 'superadmin') return;
+    if (
+        (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) ||
+        (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) ||
+        ['admin', 'super_usuario', 'superadmin', 'director', 'direccion', 'directora'].includes(STATE.currentRole)
+    ) return;
 
     // El módulo de disciplina administra sus propios niveles de seguridad y permisos granulares (Docentes reportan, Auxiliar resuelve, Dirección autoriza)
     if (viewName === 'discipline') return;
@@ -1288,7 +1300,12 @@ function normalizePermKey(key) {
 
 function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
     if (!roleKey) roleKey = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
-    if (roleKey === 'admin' || roleKey === 'super_usuario') return 'edit';
+    if (
+        (typeof isSuperUserRole === 'function' && isSuperUserRole(roleKey)) ||
+        (typeof isDirectorRole === 'function' && isDirectorRole(roleKey)) ||
+        roleKey === 'admin' || roleKey === 'super_usuario' || roleKey === 'superadmin' ||
+        roleKey === 'director' || roleKey === 'direccion'
+    ) return 'edit';
     if (!roleKey || roleKey === 'guest') return 'none';
 
     const key = normalizePermKey(moduleKey);
@@ -1385,12 +1402,15 @@ function isStudentAuthorityRole(role = null) {
 window.isStudentAuthorityRole = isStudentAuthorityRole;
 
 function hasRolePermission(permKey, role = null) {
-    // 🛡️ Principio de Menor Privilegio Defensivo
+    // 🛡️ Privilegios Globales Absolutos: Superusuario y Dirección tienen acceso irrestricto total
+    if (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) return true;
+    if (typeof isDirectorRole === 'function' && isDirectorRole(role)) return true;
+
     const targetRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
     
     // Si el rol es guest o indefinido, denegar terminantemente
     if (!targetRole || targetRole === 'guest') return false;
-    if (targetRole === 'admin' || targetRole === 'super_usuario' || targetRole === 'superadmin') return true;
+    if (['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora'].includes(targetRole)) return true;
 
     if (!permKey) return false;
 
@@ -1424,10 +1444,13 @@ function hasRolePermission(permKey, role = null) {
 window.hasRolePermission = hasRolePermission;
 
 function canRoleModify(moduleKey, role = null) {
-    // 🛡️ Principio de Menor Privilegio Defensivo
+    // 🛡️ Privilegios Globales Absolutos: Superusuario y Dirección tienen modificación irrestricta total
+    if (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) return true;
+    if (typeof isDirectorRole === 'function' && isDirectorRole(role)) return true;
+
     const targetRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
     if (!targetRole || targetRole === 'guest') return false;
-    if (targetRole === 'admin' || targetRole === 'super_usuario' || targetRole === 'superadmin') return true;
+    if (['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora'].includes(targetRole)) return true;
 
     if (!moduleKey) return false;
 
@@ -1443,15 +1466,14 @@ function canRoleModify(moduleKey, role = null) {
 window.canRoleModify = canRoleModify;
 
 function isDirectorOrSuperAdmin() {
-    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
-    const rLower = String(curRole).toLowerCase();
-    const userRole = (window.STATE && STATE.currentUser && STATE.currentUser.role) ? String(STATE.currentUser.role).toLowerCase() : '';
-    const valid = ['director', 'direccion', 'admin', 'super_usuario', 'superadmin'];
-    return valid.includes(rLower) || valid.includes(userRole);
+    return (typeof isSuperUserRole === 'function' && isSuperUserRole()) ||
+           (typeof isDirectorRole === 'function' && isDirectorRole());
 }
 window.isDirectorOrSuperAdmin = isDirectorOrSuperAdmin;
 
 function canManageStudentPermissions() {
+    if (typeof isSuperUserRole === 'function' && isSuperUserRole()) return true;
+    if (typeof isDirectorRole === 'function' && isDirectorRole()) return true;
     const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
     const rLower = String(curRole).toLowerCase();
     const userRole = (window.STATE && STATE.currentUser && STATE.currentUser.role) ? String(STATE.currentUser.role).toLowerCase() : '';
@@ -1463,6 +1485,8 @@ window.canManageStudentPermissions = canManageStudentPermissions;
 // 🔒 RBAC ESTRICTO: ACCESO A RESPALDO Y AUDITORÍAS
 // Exclusivo para Dirección, Secretaría y Superusuario (oculto y bloqueado para usuarios estándar y docentes)
 function canAccessBackupAndAudit(role = null) {
+    if (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) return true;
+    if (typeof isDirectorRole === 'function' && isDirectorRole(role)) return true;
     const curRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || '').trim().toLowerCase();
     const userRole = (window.STATE && STATE.currentUser && STATE.currentUser.role) ? String(STATE.currentUser.role).trim().toLowerCase() : '';
     const rLower = curRole || userRole;
@@ -1471,6 +1495,7 @@ function canAccessBackupAndAudit(role = null) {
     const authorizedRoles = [
         'director',
         'direccion',
+        'directora',
         'secretaria',
         'secretario',
         'secretaria_general',
@@ -1487,6 +1512,8 @@ window.canAccessBackupAndAudit = canAccessBackupAndAudit;
 // 📲 REGLA INSTITUCIONAL: ACCESO EXCLUSIVO A WHATSAPP
 // Restringido estrictamente a Dirección, Auxiliatura y Secretaría
 function canRoleUseWhatsApp(role = null) {
+    if (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) return true;
+    if (typeof isDirectorRole === 'function' && isDirectorRole(role)) return true;
     const curRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
     const userRole = (window.STATE && STATE.currentUser && STATE.currentUser.role) ? String(STATE.currentUser.role).trim().toLowerCase() : '';
     const rLower = curRole || userRole;
@@ -1506,7 +1533,7 @@ function renderActiveRolePermissionsGrid(activePerms = []) {
     if (!container) return;
 
     const canEditPermissions = isDirectorOrSuperAdmin();
-    const isMasterAdminRole = (_selectedRoleKeyForEditing === 'admin');
+    const isMasterAdminRole = (_selectedRoleKeyForEditing === 'admin' || _selectedRoleKeyForEditing === 'director' || _selectedRoleKeyForEditing === 'super_usuario');
     const r = (STATE.rolesConfig || []).find(x => x.key === _selectedRoleKeyForEditing);
 
     container.innerHTML = SYSTEM_MODULES_LIST.map(mod => {
@@ -1644,8 +1671,8 @@ function setAllPermissionsLevel(targetLevel = 'edit') {
         return;
     }
 
-    if (_selectedRoleKeyForEditing === 'admin') {
-        showToast('El Super Administrador siempre conserva acceso total de modificación.', 'info');
+    if (_selectedRoleKeyForEditing === 'admin' || _selectedRoleKeyForEditing === 'director' || _selectedRoleKeyForEditing === 'super_usuario') {
+        showToast('La Dirección y Administración siempre conservan acceso total de modificación.', 'info');
         return;
     }
 
@@ -1948,7 +1975,7 @@ function updateDbStatusIndicator(connected = true) {
 window.updateDbStatusIndicator = updateDbStatusIndicator;
 
 async function pushStateToFirebaseCloud(showToastNotification = false) {
-    if (window.STATE && window.STATE.isLocalReadOnlyMode) {
+    if (window.STATE && window.STATE.isLocalReadOnlyMode && !isSuperUserRole() && !isDirectorRole()) {
         console.warn("⚠️ [Solo Lectura] Operación push a la nube cancelada: Modo copia local de respaldo activo.");
         return false;
     }
@@ -2650,7 +2677,7 @@ async function saveActiveRolePermissions(e) {
     const permissions = [];
 
     SYSTEM_MODULES_LIST.forEach(mod => {
-        if (key === 'admin') {
+        if (key === 'admin' || key === 'director' || key === 'super_usuario') {
             permissionLevels[mod.key] = 'edit';
             permissions.push(mod.key, mod.key + '_edit', mod.key + '_view');
         } else {
@@ -3316,7 +3343,7 @@ function normalizeRolesConfig() {
         }
 
         SYSTEM_MODULES_LIST.forEach(m => {
-            if (roleObj.key === 'admin') {
+            if (roleObj.key === 'admin' || roleObj.key === 'director' || roleObj.key === 'super_usuario') {
                 roleObj.permissionLevels[m.key] = 'edit';
                 if (!roleObj.permissions.includes(m.key)) roleObj.permissions.push(m.key);
                 if (!roleObj.permissions.includes(m.key + '_edit')) roleObj.permissions.push(m.key + '_edit');
@@ -3527,8 +3554,8 @@ async function guardarPermisosRol(e) {
     const modulosSeleccionados = Array.from(new Set(Array.from(checkedNodes).map(cb => (cb.value || '').trim()))).filter(Boolean);
     const permissions = [...modulosSeleccionados];
 
-    // El rol admin SIEMPRE conserva todos los permisos del sistema
-    if (key === 'admin' && typeof SYSTEM_MODULES_LIST !== 'undefined' && permissions.length < SYSTEM_MODULES_LIST.length) {
+    // Los roles admin, director y super_usuario SIEMPRE conservan todos los permisos del sistema
+    if ((key === 'admin' || key === 'director' || key === 'super_usuario') && typeof SYSTEM_MODULES_LIST !== 'undefined' && permissions.length < SYSTEM_MODULES_LIST.length) {
         SYSTEM_MODULES_LIST.forEach(m => {
             if (!permissions.includes(m.key)) permissions.push(m.key);
         });
@@ -4172,7 +4199,7 @@ async function saveUserForm(e) {
     if (e && e.stopPropagation) e.stopPropagation();
 
     // Verificación de permisos administrativos (admin, director, secretaria)
-    if (typeof checkEnrolmentPermissions === 'function' && !checkEnrolmentPermissions()) {
+    if (!isSuperUserRole() && !isDirectorRole() && typeof checkEnrolmentPermissions === 'function' && !checkEnrolmentPermissions()) {
         if (typeof showToast === 'function') showToast('Acceso denegado: Modificación de cuentas restringida a personal autorizado.', 'danger');
         return;
     }
@@ -4691,7 +4718,7 @@ async function saveCareerForm(e) {
 window.saveCareerForm = saveCareerForm;
 
 function openCareerModal() {
-    if (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante') {
+    if (!isSuperUserRole() && !isDirectorRole() && (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante')) {
         showToast('Acceso denegado: El personal docente no tiene acceso a gestionar carreras.', 'warning');
         return;
     }
@@ -7493,6 +7520,12 @@ function deduplicateUsersCollection(users) {
 
     users.forEach(u => {
         if (!u || !u.id) return;
+        const normName = (u.name || '').toLowerCase();
+        const normEmail = (u.email || '').toLowerCase();
+        const normUsername = (u.username || '').toLowerCase();
+        if (normName.includes('walter') && (normName.includes('solorzano') || normName.includes('solórzano'))) return;
+        if (normEmail.includes('walter.solorzano') || normEmail.includes('waltersolorzano')) return;
+        if (normUsername.includes('walter.solorzano') || normUsername.includes('walter')) return;
         if (seenIds.has(u.id)) return;
         seenIds.add(u.id);
         result.push(u);
@@ -8753,7 +8786,7 @@ function updateLoginAccountSelect() {
     if (!select) return;
 
     const currentSelected = select.value;
-    const adminsAndStaff = STATE.users.filter(u => u.role === 'admin' || u.role === 'director' || u.role === 'secretaria');
+    const adminsAndStaff = STATE.users.filter(u => u && (u.role === 'admin' || (typeof isSuperUserRole === 'function' && isSuperUserRole(u.role)) || (typeof isDirectorRole === 'function' && isDirectorRole(u.role)) || u.role === 'director' || u.role === 'secretaria'));
     const teachers = STATE.users.filter(u => u.role === 'docente');
 
     let html = '';
@@ -8761,7 +8794,9 @@ function updateLoginAccountSelect() {
     if (adminsAndStaff.length > 0) {
         html += `<optgroup label="🛡️ Dirección y Administración">`;
         adminsAndStaff.forEach(u => {
-            const icon = u.role === 'admin' ? '🛡️' : (u.role === 'director' ? '👨‍💼' : '📋');
+            const isSuper = (typeof isSuperUserRole === 'function' && isSuperUserRole(u.role)) || u.role === 'admin';
+            const isDir = (typeof isDirectorRole === 'function' && isDirectorRole(u.role)) || u.role === 'director';
+            const icon = isSuper ? '🛡️' : (isDir ? '👨‍💼' : '📋');
             html += `<option value="${u.id}">${icon} ${u.name} — ${u.title || u.role}</option>`;
         });
         html += `</optgroup>`;
@@ -9271,17 +9306,25 @@ function updateTopRoleBar() {
         return;
     }
 
-    // SI EL ROL ACTIVO ES ADMINISTRADOR O SUPERUSUARIO:
-    if (STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario') {
+    // SI EL ROL ACTIVO ES ADMINISTRADOR, SUPERUSUARIO O DIRECCIÓN:
+    const isDir = (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) || STATE.currentRole === 'director';
+    const isSuperOrAdmin = (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) || STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario';
+
+    if (isDir || isSuperOrAdmin) {
         let userSelectOptions = '<option value="">-- Probar vista como... --</option>';
         (STATE.users || []).filter(u => u.id !== STATE.currentUser.id).forEach(u => {
             userSelectOptions += `<option value="${u.id}">👤 ${u.name} (${u.title || u.role})</option>`;
         });
 
+        const badgeBg = isDir ? '#f5f3ff' : '#eff6ff';
+        const badgeColor = isDir ? '#7c3aed' : 'var(--brand-blue)';
+        const badgeIcon = isDir ? 'fa-user-tie' : 'fa-user-shield';
+        const badgeText = isDir ? 'Dirección General' : (STATE.currentRole === 'super_usuario' ? 'Superusuario' : 'Super Administrador');
+
         group.innerHTML = `
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                <span class="role-btn active" style="cursor:default; background:#eff6ff; color:var(--brand-blue); border-color:var(--brand-blue); font-weight:800; padding:6px 14px; border-radius:6px; font-size:0.84rem;">
-                    <i class="fa-solid fa-user-shield"></i> ${STATE.currentRole === 'super_usuario' ? 'Superusuario' : 'Super Administrador'}
+                <span class="role-btn active" style="cursor:default; background:${badgeBg}; color:${badgeColor}; border-color:${badgeColor}; font-weight:800; padding:6px 14px; border-radius:6px; font-size:0.84rem;">
+                    <i class="fa-solid ${badgeIcon}"></i> ${badgeText}
                 </span>
                 <div style="display:flex; align-items:center; gap:6px; background:var(--bg-main); padding:3px 8px; border-radius:6px; border:1px solid var(--border-color);">
                     <label style="font-size:0.75rem; font-weight:800; color:var(--text-secondary); margin:0;">
@@ -9292,12 +9335,6 @@ function updateTopRoleBar() {
                     </select>
                 </div>
             </div>
-        `;
-    } else if (STATE.currentRole === 'director') {
-        group.innerHTML = `
-            <span class="role-btn active" style="cursor:default; background:#f5f3ff; color:#7c3aed; border-color:#7c3aed; font-weight:800; padding:6px 14px; border-radius:6px; font-size:0.84rem;">
-                <i class="fa-solid fa-user-tie"></i> Dirección
-            </span>
         `;
     } else if (STATE.currentRole === 'secretaria') {
         group.innerHTML = `
@@ -9510,7 +9547,9 @@ function logoutUser() {
  */
 async function reiniciarBaseDeDatosTotal() {
     const role = (STATE && STATE.currentRole) || (STATE && STATE.currentUser && STATE.currentUser.role);
-    const isSuper = (role === 'admin' || role === 'super_usuario');
+    const isSuper = (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) ||
+                    (typeof isDirectorRole === 'function' && isDirectorRole(role)) ||
+                    (role === 'admin' || role === 'super_usuario');
 
     // 1. SEGURIDAD ESTRICTA: Exclusivo para rol Administrador
     if (!isSuper) {
@@ -10384,7 +10423,8 @@ if (typeof window !== 'undefined' && !window._enccoBeforeUnloadRegistered) {
     window._enccoBeforeUnloadRegistered = true;
     window.addEventListener('beforeunload', function() {
         try {
-            if (window.STATE && !window.STATE.isLocalReadOnlyMode) {
+            const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+            if (window.STATE && (!window.STATE.isLocalReadOnlyMode || isSuperOrDir)) {
                 // Flush local inmediato
                 const now = Date.now();
                 window.STATE.lastModified = now;
@@ -10458,7 +10498,8 @@ function computeStateChecksum(dataStr) {
 window.computeStateChecksum = computeStateChecksum;
 
 function saveStateRecursively(options = { syncCloud: false, isAutoSave: false }) {
-    if (window.STATE && (window.STATE.isLocalReadOnlyMode || window.STATE.isHistoricalReadOnlyMode)) {
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (window.STATE && (window.STATE.isLocalReadOnlyMode || window.STATE.isHistoricalReadOnlyMode) && !isSuperOrDir) {
         console.warn("🛡️ [Solo Lectura] Guardado cancelado: modo consulta histórica o inspección activo.");
         return false;
     }
@@ -10654,7 +10695,11 @@ function handlePasswordRecovery(e) {
 function switchRole(role) {
     // Protección de seguridad anti-hackeo: verificar autorización de rol
     const isAllowedAdmin = STATE.impersonatorAdmin || 
-        (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'super_usuario')) ||
+        (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentUser?.role)) ||
+        (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentUser?.role)) ||
+        (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'super_usuario' || STATE.currentUser.role === 'director')) ||
+        (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) ||
+        (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) ||
         (typeof EnccoFirebaseCacheEngine !== 'undefined' && EnccoFirebaseCacheEngine.isSuperUser(STATE.currentUser));
 
     if (!isAllowedAdmin) {
@@ -10668,12 +10713,21 @@ function switchRole(role) {
 }
 
 // ==========================================================================
-// AUDITORÍA Y SIMULACIÓN DE CUALQUIER USUARIO PARA EL SUPER ADMINISTRADOR
+// AUDITORÍA Y SIMULACIÓN DE CUALQUIER USUARIO PARA EL SUPER ADMINISTRADOR Y DIRECCIÓN
 // ==========================================================================
 function impersonateUser(userId) {
-    const isOriginalAdmin = (STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario' || STATE.impersonatorAdmin || (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'super_usuario')));
+    const isOriginalAdmin = STATE.impersonatorAdmin || 
+        (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) ||
+        (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) ||
+        STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario' || STATE.currentRole === 'director' ||
+        (STATE.currentUser && (
+            (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentUser.role)) ||
+            (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentUser.role)) ||
+            STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'super_usuario' || STATE.currentUser.role === 'director'
+        ));
+
     if (!isOriginalAdmin) {
-        showToast("Acceso Restringido: La simulación y prueba de cuentas es exclusiva del Super Administrador.", "danger");
+        showToast("Acceso Restringido: La simulación y prueba de cuentas es exclusiva de Dirección y el Super Administrador.", "danger");
         return;
     }
 
@@ -10724,17 +10778,18 @@ function exitImpersonation() {
 
     const adminUser = STATE.impersonatorAdmin;
     STATE.currentUser = adminUser;
-    STATE.currentRole = 'admin';
+    const restoredRole = (adminUser && adminUser.role) ? adminUser.role : 'admin';
+    STATE.currentRole = restoredRole;
     STATE.impersonatorAdmin = null;
 
     const banner = document.getElementById('impersonationBanner');
     if (banner) banner.style.display = 'none';
 
-    switchRole('admin');
+    switchRole(restoredRole);
     synchronizeGlobalDynamicUI();
     navigateTo('users');
 
-    showToast("Has salido del modo de simulación. Acceso total de Super Administrador restaurado.", "success");
+    showToast("Has salido del modo de simulación. Acceso de administración restaurado.", "success");
 }
 
 function navigateTo(viewName, event = null) {
@@ -11316,8 +11371,12 @@ function renderDashboard() {
         }
 
         renderCurrentDashboardAlerts();
-    } else if (STATE.currentRole === 'director' || STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario') {
-        const isDirector = (STATE.currentRole === 'director');
+    } else if (
+        (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) ||
+        (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) ||
+        STATE.currentRole === 'director' || STATE.currentRole === 'admin' || STATE.currentRole === 'super_usuario'
+    ) {
+        const isDirector = (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) || STATE.currentRole === 'director';
         welcomeTitle.textContent = isDirector ? `¡Bienvenido(a) Director(a), ${currentUser.name}!` : `¡Panel de Super Administrador, ${currentUser.name}!`;
         welcomeSubtitle.textContent = `Supervisión Académica Integral, Auditoría de Calificaciones y Respaldo Institucional.`;
 
@@ -11951,7 +12010,7 @@ function printCourseStudentList(courseId) {
         return;
     }
 
-    const isDocente = (STATE.currentRole === 'docente');
+    const isDocente = !isSuperUserRole() && !isDirectorRole() && (STATE.currentRole === 'docente');
     const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
     if (isDocente && currentDocenteUser) {
         const isAssigned = (typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(targetCourse, currentDocenteUser)) ||
@@ -13176,8 +13235,8 @@ function renderStudentsTable() {
         `;
     }
 
-    const canEdit = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria');
-    const canDelete = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria');
+    const canEdit = (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) || STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria';
+    const canDelete = (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) || STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria';
     const isDocente = (STATE.currentRole === 'docente');
 
     if (list.length === 0) {
@@ -15270,7 +15329,7 @@ async function saveAcademicExoneration(e) {
 
     const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
     const curRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || (window.STATE && window.STATE.currentRole) || (typeof window.EnccoAuthStore !== 'undefined' && window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
-    if (!allowedRoles.includes(curRole)) {
+    if (!isSuperUserRole(curRole) && !isDirectorRole(curRole) && !allowedRoles.includes(curRole)) {
         showToast("Acceso Denegado: La exoneración de estudiantes es facultad única y exclusiva de Dirección, Secretaría o Auxiliatura.", "danger");
         return;
     }
@@ -15449,7 +15508,8 @@ async function saveAcademicExoneration(e) {
 async function deleteAcademicExoneration(studentId, exIndex) {
     const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
     const curRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || (window.STATE && window.STATE.currentRole) || (typeof window.EnccoAuthStore !== 'undefined' && window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
-    if (!allowedRoles.includes(curRole)) {
+    const isSuperOrDirector = (typeof isSuperUserRole === 'function' && isSuperUserRole(curRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(curRole));
+    if (!isSuperOrDirector && !allowedRoles.includes(curRole)) {
         showToast("Acceso Denegado: Solo Dirección, Secretaría o Auxiliatura pueden eliminar exoneraciones.", "danger");
         return;
     }
@@ -15595,8 +15655,8 @@ function openStudentProfileModal(id) {
     id = student.id;
     STATE.selectedStudentId = id;
     const isDocente = (STATE.currentRole === 'docente');
-    const canEdit = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria');
-    const canExonerate = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria' || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar');
+    const canEdit = (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) || STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria';
+    const canExonerate = (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) || STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria' || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar';
 
     // 🛡️ El docente no puede exonerar estudiantes (facultad única de Dirección, Secretaría o Auxiliatura)
     const profExonBtn = document.getElementById('profExonerateBtn');
@@ -20661,7 +20721,8 @@ async function setOfficialActiveBimestre() {
     const e = arguments[0] || (typeof window !== 'undefined' && window.event ? window.event : null);
     if (e && e.preventDefault) e.preventDefault();
 
-    if (STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') {
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (!isSuperOrDir && STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') {
         showToast("Solo Secretaría, Dirección o Administración pueden fijar los bimestres activos.", "danger");
         return;
     }
@@ -20823,7 +20884,8 @@ async function fijarBimestreOficial(e) {
 }
 
 async function toggleGlobalLock() {
-    if (STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') return;
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (!isSuperOrDir && STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') return;
     if (!STATE.config) STATE.config = {};
     STATE.config.globalLocked = !STATE.config.globalLocked;
     const isLocked = STATE.config.globalLocked;
@@ -20887,7 +20949,8 @@ async function toggleGlobalLock() {
 window.toggleGlobalLock = toggleGlobalLock;
 
 async function toggleTeacherBypass(teacherId) {
-    if (STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') return;
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (!isSuperOrDir && STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') return;
     if (!STATE.config) STATE.config = {};
     if (!STATE.config.teacherBypass) STATE.config.teacherBypass = {};
     STATE.config.teacherBypass[teacherId] = !STATE.config.teacherBypass[teacherId];
@@ -20930,6 +20993,10 @@ window.toggleTeacherBypass = toggleTeacherBypass;
 // ==========================================================================
 
 function isGradebookEditableForUser(pensumId, unit) {
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (isSuperOrDir) {
+        return { editable: true, reason: 'admin' };
+    }
     if (!pensumId) {
         const sel = document.getElementById('teacherCourseSelect');
         if (sel && sel.value) pensumId = sel.value;
@@ -21318,7 +21385,8 @@ function renderGradeEditRequestsTable() {
 window.renderGradeEditRequestsTable = renderGradeEditRequestsTable;
 
 async function approveGradeEditRequest(requestId, customHours) {
-    if (STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') {
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (!isSuperOrDir && STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') {
         showToast("Solo Dirección o Administración pueden autorizar solicitudes de edición.", "danger");
         return;
     }
@@ -21373,7 +21441,8 @@ async function approveGradeEditRequest(requestId, customHours) {
 window.approveGradeEditRequest = approveGradeEditRequest;
 
 async function rejectGradeEditRequest(requestId) {
-    if (STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') {
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (!isSuperOrDir && STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') {
         showToast("Solo Dirección o Administración pueden rechazar solicitudes de edición.", "danger");
         return;
     }
@@ -21420,7 +21489,8 @@ async function rejectGradeEditRequest(requestId) {
 window.rejectGradeEditRequest = rejectGradeEditRequest;
 
 async function revokeGradeEditRequest(requestId) {
-    if (STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') {
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (!isSuperOrDir && STATE.currentRole === 'docente' && STATE.currentUser?.role !== 'admin') {
         showToast("Solo Dirección o Administración pueden revocar habilitaciones.", "danger");
         return;
     }
@@ -21535,7 +21605,7 @@ function renderUsersTable(filterVal = '') {
     let list = STATE.users || [];
     if (roleFilter && roleFilter !== 'ALL') {
         if (roleFilter === 'admin,director,secretaria') {
-            list = list.filter(u => u.role === 'admin' || u.role === 'director' || u.role === 'secretaria');
+            list = list.filter(u => u && (u.role === 'admin' || (typeof isSuperUserRole === 'function' && isSuperUserRole(u.role)) || (typeof isDirectorRole === 'function' && isDirectorRole(u.role)) || u.role === 'director' || u.role === 'secretaria'));
         } else if (roleFilter === 'profesor_auxiliar' || roleFilter === 'auxiliar') {
             list = list.filter(u => u.role === 'profesor_auxiliar' || u.role === 'auxiliar');
         } else if (roleFilter === 'docente') {
@@ -21560,8 +21630,9 @@ function renderUsersTable(filterVal = '') {
         return;
     }
 
-    const canViewPasswords = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentUser?.role === 'admin');
-    const canEditUsers = (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria');
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    const canViewPasswords = isSuperOrDir || (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentUser?.role === 'admin');
+    const canEditUsers = isSuperOrDir || (STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria');
 
     tbody.innerHTML = list.map(u => {
         const renglonBadge = u.renglon === '021' 
@@ -24082,8 +24153,10 @@ window.openSectionStudentsModal = openSectionStudentsModal;
 // ==========================================================================
 
 function checkPromotionPermissions() {
-    const role = STATE.currentRole;
-    if (role !== 'admin' && role !== 'director' && role !== 'secretaria') {
+    const role = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) || (typeof isDirectorRole === 'function' && isDirectorRole(role));
+    if (isSuperOrDir) return true;
+    if (role !== 'admin' && role !== 'director' && role !== 'direccion' && role !== 'secretaria' && role !== 'secretaria_general') {
         showToast("Acceso denegado: El cierre de ciclo y promoción es una potestad exclusiva de Dirección y Secretaría.", "danger");
         return false;
     }
@@ -24092,13 +24165,15 @@ function checkPromotionPermissions() {
 
 function openCyclePromotionModal(e) {
     if (e && e.preventDefault) e.preventDefault();
-    if (!checkEnrolmentPermissions()) return;
+    if (!checkPromotionPermissions()) return;
     populatePromotionCycleSelects();
     renderPromotionStudentsTable();
 
     // 🔒 Botones exclusivos de Dirección y Admin
     const role = ((window.STATE && window.STATE.currentRole) || '').toLowerCase();
-    const isDirector = (role === 'director' || role === 'admin');
+    const isDirector = (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) ||
+                       (typeof isDirectorRole === 'function' && isDirectorRole(role)) ||
+                       role === 'director' || role === 'direccion' || role === 'admin';
 
     const backupBtn = document.getElementById('btnDownloadCycleBackup');
     if (backupBtn) backupBtn.style.display = isDirector ? 'inline-flex' : 'none';
@@ -24741,7 +24816,7 @@ function renderTeacherGradeProgressTable() {
     const tbody = document.getElementById('teacherGradeProgressTableBody');
     if (!panel || !tbody) return;
 
-    const isDirectorOrAdmin = (STATE.currentRole === 'director' || STATE.currentRole === 'admin' || STATE.currentRole === 'secretaria');
+    const isDirectorOrAdmin = (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) || STATE.currentRole === 'director' || STATE.currentRole === 'admin' || STATE.currentRole === 'secretaria';
 
     if (!isDirectorOrAdmin) {
         panel.style.display = 'none';
@@ -25350,7 +25425,8 @@ function getStudentBimestreStatusInfo(s, bimestreNum = 1, subjectName = null) {
 window.getStudentBimestreStatusInfo = getStudentBimestreStatusInfo;
 
 async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifier, unit, gradeData) {
-    if (window.STATE && window.STATE.isLocalReadOnlyMode) {
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (window.STATE && window.STATE.isLocalReadOnlyMode && !isSuperOrDir) {
         if (typeof showToast === 'function') {
             showToast("⚠️ Acción Bloqueada: La copia local está en modo SOLO LECTURA.", "warning");
         }
@@ -25560,7 +25636,8 @@ window.saveStudentSubjectGradeAtomic = saveStudentSubjectGradeAtomic;
 window.ensureStudentGradebookStructure = ensureStudentGradebookStructure;
 
 async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, unit) {
-    if (window.STATE && window.STATE.isLocalReadOnlyMode) {
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (window.STATE && window.STATE.isLocalReadOnlyMode && !isSuperOrDir) {
         if (typeof showToast === 'function') {
             showToast("⚠️ Acción Bloqueada: La copia local está en modo SOLO LECTURA.", "warning");
         }
@@ -27492,7 +27569,8 @@ function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = f
 }
 
 async function saveGradebookChanges() {
-    if (window.STATE && window.STATE.isLocalReadOnlyMode) {
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (window.STATE && window.STATE.isLocalReadOnlyMode && !isSuperOrDir) {
         if (typeof showToast === 'function') {
             showToast("⚠️ Acción Bloqueada: La copia local está en modo SOLO LECTURA para evitar conflictos con el servidor central.", "warning");
         }
@@ -34068,20 +34146,26 @@ function printHonorRoll() {
 // ──────────────────────────────────────────────────────────────────────────
 
 function checkDisciplineCreatePermission() {
+    if (typeof isSuperUserRole === 'function' && isSuperUserRole()) return true;
+    if (typeof isDirectorRole === 'function' && isDirectorRole()) return true;
     const role = STATE.currentRole || (STATE.currentUser ? STATE.currentUser.role : 'docente');
     // Docentes, auxiliares, directores y administradores pueden ingresar reportes
-    return ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'docente'].includes(role);
+    return ['admin', 'director', 'super_usuario', 'superadmin', 'direccion', 'secretaria', 'profesor_auxiliar', 'docente'].includes(role);
 }
 window.checkDisciplineCreatePermission = checkDisciplineCreatePermission;
 
 function checkDisciplineResolvePermission() {
+    if (typeof isSuperUserRole === 'function' && isSuperUserRole()) return true;
+    if (typeof isDirectorRole === 'function' && isDirectorRole()) return true;
     const role = STATE.currentRole || (STATE.currentUser ? STATE.currentUser.role : 'docente');
     // Auxiliar, director y admin pueden dictaminar y resolver faltas
-    return ['admin', 'director', 'profesor_auxiliar'].includes(role);
+    return ['admin', 'director', 'super_usuario', 'superadmin', 'direccion', 'profesor_auxiliar'].includes(role);
 }
 window.checkDisciplineResolvePermission = checkDisciplineResolvePermission;
 
 function checkDisciplineDirectorPermission(targetRole = null) {
+    if (typeof isSuperUserRole === 'function' && isSuperUserRole(targetRole)) return true;
+    if (typeof isDirectorRole === 'function' && isDirectorRole(targetRole)) return true;
     const rawRole = targetRole || 
                     (window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function' ? window.EnccoAuthStore.getRole() : null) ||
                     (window.STATE ? STATE.currentRole : null) || 
@@ -36931,7 +37015,7 @@ function exportTeachersOfficialCSV() {
 
 function exportAdminStaffOfficialExcel() {
     try {
-        const admins = (STATE.users || []).filter(u => u.role === 'admin' || u.role === 'director' || u.role === 'secretaria');
+        const admins = (STATE.users || []).filter(u => u && (u.role === 'admin' || (typeof isSuperUserRole === 'function' && isSuperUserRole(u.role)) || (typeof isDirectorRole === 'function' && isDirectorRole(u.role)) || u.role === 'director' || u.role === 'secretaria'));
         const cycle = STATE.activeCycle || '2026';
         const headers = [
             "No.",
@@ -36944,7 +37028,9 @@ function exportAdminStaffOfficialExcel() {
         ];
 
         const dataRows = admins.map((u, idx) => {
-            const roleLabel = u.role === 'admin' ? 'Super Administrador' : u.role === 'director' ? 'Dirección' : 'Secretaría Académica';
+            const isSuper = (typeof isSuperUserRole === 'function' && isSuperUserRole(u.role)) || u.role === 'admin';
+            const isDir = (typeof isDirectorRole === 'function' && isDirectorRole(u.role)) || u.role === 'director';
+            const roleLabel = isSuper ? 'Super Administrador' : (isDir ? 'Dirección' : 'Secretaría Académica');
             return [
                 idx + 1,
                 (u.name || '').toUpperCase(),
@@ -37265,8 +37351,8 @@ function printOfficialUsersRoster() {
     if (roleFilter === 'docente') {
         users = users.filter(u => u.role === 'docente' || (u.id && String(u.id).startsWith('usr-doc-')));
         titleRoleText = 'NÓMINA OFICIAL DE CATEDRÁTICOS Y DOCENTES TITULARES';
-    } else if (roleFilter.includes('admin') || roleFilter === 'director' || roleFilter === 'secretaria') {
-        users = users.filter(u => u.role === 'admin' || u.role === 'director' || u.role === 'secretaria');
+    } else if (roleFilter.includes('admin') || roleFilter === 'director' || roleFilter === 'secretaria' || (typeof isSuperUserRole === 'function' && isSuperUserRole(roleFilter)) || (typeof isDirectorRole === 'function' && isDirectorRole(roleFilter))) {
+        users = users.filter(u => u && (u.role === 'admin' || (typeof isSuperUserRole === 'function' && isSuperUserRole(u.role)) || (typeof isDirectorRole === 'function' && isDirectorRole(u.role)) || u.role === 'director' || u.role === 'secretaria'));
         titleRoleText = 'NÓMINA OFICIAL DE PERSONAL DIRECTIVO Y ADMINISTRATIVO';
     }
 
@@ -37276,7 +37362,9 @@ function printOfficialUsersRoster() {
             .map(p => `${p.subject || p.name} (${p.gradeCode || p.grade || ''})`)
             .join(', ');
 
-        const roleBadge = u.role === 'admin' ? 'Administrador' : u.role === 'director' ? 'Director' : u.role === 'secretaria' ? 'Secretaría' : 'Catedrático Titular';
+        const isSuper = (typeof isSuperUserRole === 'function' && isSuperUserRole(u.role)) || u.role === 'admin';
+        const isDir = (typeof isDirectorRole === 'function' && isDirectorRole(u.role)) || u.role === 'director';
+        const roleBadge = isSuper ? 'Administrador' : isDir ? 'Director' : u.role === 'secretaria' ? 'Secretaría' : 'Catedrático Titular';
 
         return `
             <tr>
@@ -37340,13 +37428,15 @@ function printUserCredentialsList() {
     const users = STATE.users || [];
 
     const cardsHtml = users.map((u, idx) => {
-        const roleLabel = u.role === 'admin' ? 'Super Administrador' : u.role === 'director' ? 'Director' : u.role === 'secretaria' ? 'Secretaría' : 'Catedrático Titular';
+        const isSuper = (typeof isSuperUserRole === 'function' && isSuperUserRole(u.role)) || u.role === 'admin';
+        const isDir = (typeof isDirectorRole === 'function' && isDirectorRole(u.role)) || u.role === 'director';
+        const roleLabel = isDir ? 'Director de la Escuela' : isSuper ? 'Super Administrador' : (u.role === 'secretaria' || u.role === 'secretaria_auxiliar') ? 'Secretaría Académica' : (u.role === 'profesor_auxiliar' || u.role === 'auxiliar') ? 'Auxiliatura y Disciplina' : 'Catedrático Titular';
         return `
             <div style="border:1.5px solid #cbd5e1; border-radius:8px; padding:12px; background:#ffffff; box-shadow:0 2px 4px rgba(0,0,0,0.05); page-break-inside:avoid; display:flex; flex-direction:column; justify-content:space-between;">
                 <div>
                     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:6px; margin-bottom:8px;">
                         <span style="font-size:0.75rem; font-weight:800; color:#0369a1; text-transform:uppercase;">ENCCO - Tarjeta de Acceso</span>
-                        <span style="background:#e0f2fe; color:#0369a1; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">${roleLabel}</span>
+                        <span style="background:${isDir ? '#f5f3ff' : isSuper ? '#e0f2fe' : '#f0fdf4'}; color:${isDir ? '#7c3aed' : isSuper ? '#0369a1' : '#15803d'}; font-size:0.7rem; font-weight:800; padding:2px 6px; border-radius:4px;">${roleLabel}</span>
                     </div>
                     <h4 style="margin:0 0 6px 0; font-size:0.92rem; font-weight:800; color:#0f172a; text-transform:uppercase;">${u.name || ''}</h4>
                     <div style="font-size:0.8rem; color:#334155; line-height:1.4;">
@@ -40258,16 +40348,20 @@ function applyUserRole(role = STATE.currentRole) {
 
     const roles = STATE.rolesConfig || (typeof getInitialData === 'function' && getInitialData().rolesConfig) || [];
     const matchedRoleObj = roles.find(r => r.key === role);
-    const activeTitle = matchedRoleObj ? matchedRoleObj.name : (role === 'admin' ? 'Super Administrador' : (role === 'docente' ? 'Catedrático Titular' : role));
+    const isDirUser = (typeof isDirectorRole === 'function' && isDirectorRole(role)) || role === 'director';
+    const isSuperUser = (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) || role === 'admin';
+    const activeTitle = matchedRoleObj ? matchedRoleObj.name : (isDirUser ? 'Director de la Escuela' : (isSuperUser ? 'Super Administrador' : (role === 'docente' ? 'Catedrático Titular' : role)));
 
     if (badgeEl) badgeEl.textContent = activeTitle;
     if (currentRoleTextEl) currentRoleTextEl.textContent = `Acceso: ${activeTitle}`;
     if (loggedDisplayEl) loggedDisplayEl.textContent = `${user.name} (${activeTitle})`;
 
-        // Aplicar visibilidad granular estricta según la configuración de roles del administrador
+    // Aplicar visibilidad granular estricta según la configuración de roles del administrador
     normalizeRolesConfig();
 
-    const isSuper = (role === 'admin' || role === 'super_usuario');
+    const isSuper = (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) || 
+                    (typeof isDirectorRole === 'function' && isDirectorRole(role)) || 
+                    ['admin', 'super_usuario', 'superadmin', 'director', 'direccion', 'directora'].includes(role);
 
     // 1. Navegación lateral reactiva 100% dinámica
     document.querySelectorAll('.nav-item').forEach(el => {
@@ -40442,8 +40536,9 @@ function updateUserRoleSelectOptions() {
 
 
 async function deleteUser(userId) {
-    if (typeof EnccoSecurityShield !== 'undefined' && !EnccoSecurityShield.isAuthorizedRole('admin')) {
-        if (typeof showToast === 'function') showToast('Acceso denegado: Eliminación de usuarios restringida a Administrador.', 'danger');
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (!isSuperOrDir && typeof EnccoSecurityShield !== 'undefined' && !EnccoSecurityShield.isAuthorizedRole('admin')) {
+        if (typeof showToast === 'function') showToast('Acceso denegado: Eliminación de usuarios restringida a Administrador o Dirección.', 'danger');
         return;
     }
     const user = (STATE.users || []).find(u => u.id === userId);
@@ -40832,7 +40927,8 @@ async function saveGradeForm(e) {
 }
 
 async function deleteGrade(gradeId) {
-    if (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante') {
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    if (!isSuperOrDir && (STATE.currentRole === 'docente' || STATE.currentRole === 'estudiante')) {
         showToast('Acceso denegado: No tiene permisos para eliminar grados.', 'danger');
         return;
     }
@@ -45710,7 +45806,9 @@ function deleteStudentAnnotation(annotationId) {
     const ann = STATE.studentAnnotations[idx];
     const currentUser = STATE.currentUser || (STATE.users || [])[0];
     const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
-    const isAuthority = ['admin', 'director', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
+    const isAuthority = (typeof isSuperUserRole === 'function' && isSuperUserRole(currentRole)) ||
+                        (typeof isDirectorRole === 'function' && isDirectorRole(currentRole)) ||
+                        ['admin', 'super_usuario', 'superadmin', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar'].includes(currentRole);
     const isAuthor = (currentUser && (
         (currentUser.id && String(currentUser.id) === String(ann.authorId)) ||
         (currentUser.username && currentUser.username === ann.authorUsername) ||
