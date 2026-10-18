@@ -5798,57 +5798,90 @@
             </div>
         </div>
     </div>
-    </div>
-    <div class="modal-overlay" id="exonerationDetailDocenteModal" style="display:none !important;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeExonerationDetailDocenteModal()">
-        <div class="modal-container" style="max-width:540px;">
-            <div class="modal-header" style="background:#0284c7; color:#ffffff;">
-                <h3 style="color:#ffffff;"><i class="fa-solid fa-file-shield"></i> Constancia de Exoneración Académica</h3>
-                <button type="button" class="modal-close" onclick="closeExonerationDetailDocenteModal()" style="color:#ffffff;">&times;</button>
+    <div class="modal-overlay" id="exonerationDetailDocenteModal" style="display:none;" onclick="if(event.target===this || event.target.classList.contains('modal-overlay')) closeExonerationDetailDocenteModal()">
+        <div class="modal-container" style="max-width:640px; width:95%; border-radius:12px; overflow:hidden; box-shadow:0 20px 25px -5px rgba(0,0,0,0.35);">
+            <div class="modal-header" style="background:linear-gradient(135deg, #0f766e, #0d9488); color:#ffffff; padding:14px 20px; display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="color:#ffffff; margin:0; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-file-shield"></i> Constancia Oficial de Exoneración Académica
+                </h3>
+                <button type="button" class="modal-close" onclick="closeExonerationDetailDocenteModal()" style="color:#ffffff; font-size:1.6rem; background:transparent; border:none; cursor:pointer;">&times;</button>
             </div>
-            <div class="modal-body" style="padding:18px;">
-                <div style="background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:8px; padding:14px; margin-bottom:14px;">
-                    <div style="font-size:0.8rem; font-weight:800; color:#0369a1; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
-                        Expediente del Alumno
+            <div class="modal-body" style="padding:20px; background:#f8fafc; font-size:0.88rem; max-height:80vh; overflow-y:auto;">
+                <!-- ENCABEZADO INSTITUCIONAL DE LA CONSTANCIA -->
+                <div style="background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; padding:12px 16px; margin-bottom:14px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                    <img src="logo.png" alt="Logo ENCCO" style="width:48px; height:auto; max-height:52px;" onerror="this.style.display='none'">
+                    <div style="flex:1;">
+                        <div style="font-size:0.72rem; font-weight:800; color:#0f766e; text-transform:uppercase; letter-spacing:0.5px;">MINISTERIO DE EDUCACIÓN &bull; GUATEMALA</div>
+                        <div style="font-size:0.92rem; font-weight:900; color:#0f172a; text-transform:uppercase;">Escuela Nacional de Ciencias Comerciales</div>
+                        <div style="font-size:0.75rem; color:#64748b;">Jutiapa, Guatemala &bull; Archivo Oficial de Secretaría y Dirección</div>
                     </div>
-                    <h4 style="margin:0; font-size:1.05rem; color:#0f172a; font-weight:800;" id="exonDocModalStudentName">
+                    <div style="text-align:right;">
+                        <span class="badge" style="background:#f0fdfa; color:#0f766e; border:1px solid #99f6e4; font-size:0.72rem; font-weight:800; display:block;" id="exonDocModalFolio">
+                            REG-OFICIAL
+                        </span>
+                        <span style="font-size:0.7rem; color:#94a3b8; display:block; margin-top:2px;">Ciclo 2026</span>
+                    </div>
+                </div>
+
+                <!-- EXPEDIENTE DEL ESTUDIANTE -->
+                <div style="background:#f0fdfa; border:1.5px solid #99f6e4; border-radius:8px; padding:14px; margin-bottom:14px;">
+                    <div style="font-size:0.75rem; font-weight:800; color:#0f766e; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
+                        <i class="fa-solid fa-user-graduate"></i> Datos Oficiales del Alumno Exonerado
+                    </div>
+                    <h4 style="margin:0; font-size:1.1rem; color:#0f172a; font-weight:900;" id="exonDocModalStudentName">
                         ESTUDIANTE
                     </h4>
-                    <div style="font-size:0.82rem; color:#475569; margin-top:2px;" id="exonDocModalMeta">
+                    <div style="font-size:0.84rem; color:#334155; margin-top:4px; font-weight:600;" id="exonDocModalMeta">
                         Carné: --- | Grado y Sección
                     </div>
                 </div>
 
+                <!-- DETALLES ACADÉMICOS -->
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
-                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px;">
-                        <span style="font-size:0.75rem; color:#64748b; font-weight:700; display:block;">Materia Exonerada:</span>
-                        <strong style="color:#0f172a; font-size:0.88rem;" id="exonDocModalSubject">Asignatura</strong>
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+                        <span style="font-size:0.72rem; color:#64748b; font-weight:800; display:block; text-transform:uppercase;">Asignatura(s) Afectada(s):</span>
+                        <strong style="color:#0f172a; font-size:0.92rem; display:block; margin-top:2px;" id="exonDocModalSubject">Asignatura</strong>
                     </div>
-                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:10px;">
-                        <span style="font-size:0.75rem; color:#64748b; font-weight:700; display:block;">Unidad / Bimestre:</span>
-                        <strong style="color:#0284c7; font-size:0.88rem;" id="exonDocModalBimestre">1er Bimestre</strong>
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,0.03);">
+                        <span style="font-size:0.72rem; color:#64748b; font-weight:800; display:block; text-transform:uppercase;">Unidad / Bimestre Afectado:</span>
+                        <strong style="color:#0f766e; font-size:0.92rem; display:block; margin-top:2px;" id="exonDocModalBimestre">1er Bimestre</strong>
                     </div>
                 </div>
 
-                <div style="background:#fffbeb; border:1.5px solid #fde68a; border-radius:8px; padding:12px; margin-bottom:14px;">
-                    <span style="font-size:0.75rem; color:#92400e; font-weight:800; text-transform:uppercase; display:block; margin-bottom:3px;">
-                        <i class="fa-solid fa-circle-info"></i> Motivo Institucional Registrado:
+                <!-- MOTIVO Y RESOLUCIÓN OFICIAL -->
+                <div style="background:#fffbeb; border:1.5px solid #fde68a; border-radius:8px; padding:14px; margin-bottom:14px;">
+                    <span style="font-size:0.75rem; color:#92400e; font-weight:800; text-transform:uppercase; display:block; margin-bottom:4px;">
+                        <i class="fa-solid fa-file-circle-check"></i> Motivo / Resolución Oficial del Plantel:
                     </span>
-                    <p style="margin:0; color:#78350f; font-size:0.88rem; font-weight:600; line-height:1.4;" id="exonDocModalReason">
+                    <p style="margin:0; color:#78350f; font-size:0.9rem; font-weight:600; line-height:1.45;" id="exonDocModalReason">
                         Motivo registrado.
                     </p>
                 </div>
 
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; font-size:0.78rem; color:#64748b; border-top:1px dashed #cbd5e1; padding-top:10px;">
-                    <span>Autorizado por: <strong style="color:#0f172a;" id="exonDocModalAuthorizedBy">Dirección del Plantel</strong></span>
-                    <span>Fecha: <strong style="color:#0f172a;" id="exonDocModalDate">--/--/----</strong></span>
+                <!-- AUTORIZACIÓN Y FECHA -->
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:12px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <span style="font-size:0.72rem; color:#64748b; font-weight:800; display:block; text-transform:uppercase;">Autorizado por:</span>
+                        <strong style="color:#0f172a; font-size:0.88rem;" id="exonDocModalAuthorizedBy">Dirección del Plantel</strong>
+                    </div>
+                    <div>
+                        <span style="font-size:0.72rem; color:#64748b; font-weight:800; display:block; text-transform:uppercase;">Fecha de Registro:</span>
+                        <strong style="color:#0f172a; font-size:0.88rem;" id="exonDocModalDate">--/--/----</strong>
+                    </div>
                 </div>
 
-                <div style="margin-top:12px; background:#f0fdf4; border:1px solid #86efac; border-radius:6px; padding:8px 12px; font-size:0.75rem; color:#166534;">
-                    <i class="fa-solid fa-shield-halved"></i> <strong>Instrucción para el Catedrático:</strong> No ingresar zona ni examen; el sistema omite esta materia para el divisor de promedios o aplicará la resolución ministerial oficial.
+                <!-- INSTRUCCIÓN TÉCNICA INSTITUCIONAL -->
+                <div style="background:#f0fdf4; border:1px solid #86efac; border-radius:8px; padding:10px 14px; font-size:0.78rem; color:#166534; line-height:1.4;">
+                    <i class="fa-solid fa-shield-halved"></i> <strong>Efecto en el Registro de Calificaciones:</strong> La constancia ampara la omisión de zona y examen numérico en las materias señaladas. El sistema excluye esta unidad para el divisor de promedios o aplica la resolución ministerial oficial.
                 </div>
             </div>
-            <div class="modal-footer" style="background:#f8fafc; padding:10px 16px;">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="closeExonerationDetailDocenteModal()">Entendido</button>
+            <div class="modal-footer" style="background:#ffffff; padding:12px 20px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <button type="button" class="btn btn-primary btn-sm" id="btnPrintExonCertificate" onclick="printCurrentExonerationCertificate()" style="font-weight:700; display:inline-flex; align-items:center; gap:6px; background:#0f766e; border-color:#0d9488; color:#ffffff; padding:7px 16px; border-radius:6px; font-size:0.86rem; cursor:pointer;">
+                    <i class="fa-solid fa-print"></i> Imprimir Constancia Oficial
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeExonerationDetailDocenteModal()" style="font-weight:600; padding:7px 16px; border-radius:6px; font-size:0.86rem;">
+                    Cerrar
+                </button>
             </div>
         </div>
     </div>

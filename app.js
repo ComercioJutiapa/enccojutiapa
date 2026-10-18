@@ -6401,10 +6401,174 @@ function isCourseAssignedToTeacher(p, user) {
 }
 window.isCourseAssignedToTeacher = isCourseAssignedToTeacher;
 
+// UNIVERSAL HELPER: OBTENER CÁTEDRAS ASIGNADAS A UN DOCENTE
+function getTeacherAssignedCourses(teacherObj) {
+    if (!teacherObj) return [];
+    return (window.STATE?.pensum || []).filter(p => typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, teacherObj));
+}
+window.getTeacherAssignedCourses = getTeacherAssignedCourses;
 
+// ============================================================================
+// RBAC CENTRALIZADO: ACCESO Y VISIBILIDAD ESTRICTA DE ESTUDIANTES POR DOCENTE
+// ============================================================================
 
+function hasGlobalStudentAccess(user, role) {
+    const r = String(role || user?.role || window.STATE?.currentRole || '').toLowerCase().trim();
+    const email = String(user?.email || window.STATE?.currentUser?.email || '').toLowerCase().trim();
+    const id = String(user?.id || window.STATE?.currentUser?.id || '').trim();
 
-// 🌟 HELPER UNIVERSAL DE ESTUDIANTES ACTIVOS / MATRICULADOS
+    // Superusuario y Dirección mantienen visibilidad global y acceso irrestricto
+    if (['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(r)) {
+        return true;
+    }
+    if (email === 'nehemias.salguero1982@gmail.com' || id === 'usr-admin-01' || id === 'usr-aux-01') {
+        return true;
+    }
+    return false;
+}
+window.hasGlobalStudentAccess = hasGlobalStudentAccess;
+
+function isStudentInCourse(student, course) {
+    if (!student || !course) return false;
+
+    // Coincidencia directa por código exacto de grado
+    if (student.gradeCode && course.gradeCode && student.gradeCode === course.gradeCode) {
+        return true;
+    }
+
+    const cGradeObj = (window.STATE?.gradesList || []).find(g => g && (g.code === course.gradeCode || g.id === course.gradeCode));
+    const rawC = `${course.gradeCode || ''} ${course.grade || ''} ${course.section || ''} ${cGradeObj ? (cGradeObj.name + ' ' + cGradeObj.section + ' ' + cGradeObj.code) : ''}`.toUpperCase();
+    let cGradeNum = 0;
+    if (rawC.includes('6') || rawC.includes('SEXTO') || rawC.includes('6TO')) cGradeNum = 6;
+    else if (rawC.includes('5') || rawC.includes('QUINTO') || rawC.includes('5TO')) cGradeNum = 5;
+    else if (rawC.includes('4') || rawC.includes('CUARTO') || rawC.includes('4TO')) cGradeNum = 4;
+
+    const cSec = (typeof getCleanSectionLetter === 'function')
+        ? getCleanSectionLetter(course.section || (cGradeObj ? cGradeObj.section : '') || course.gradeCode || rawC)
+        : (course.section || '').replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+
+    const rawS = `${student.grade || ''} ${student.gradeCode || ''} ${student.gradeLabel || ''} ${student.section || ''}`.toUpperCase();
+    let sGradeNum = 0;
+    if (rawS.includes('6') || rawS.includes('SEXTO') || rawS.includes('6TO')) sGradeNum = 6;
+    else if (rawS.includes('5') || rawS.includes('QUINTO') || rawS.includes('5TO')) sGradeNum = 5;
+    else if (rawS.includes('4') || rawS.includes('CUARTO') || rawS.includes('4TO')) sGradeNum = 4;
+
+    const sSec = (typeof getCleanSectionLetter === 'function')
+        ? getCleanSectionLetter(student.section || student.gradeCode || student.gradeLabel || rawS)
+        : (student.section || '').replace(/[^A-Za-z]/g, '').slice(0, 1).toUpperCase();
+
+    if (cGradeNum > 0 && sGradeNum > 0 && cGradeNum !== sGradeNum) return false;
+    if (cSec && sSec && cSec !== sSec) return false;
+
+    return (cGradeNum === sGradeNum) && (!cSec || !sSec || cSec === sSec);
+}
+window.isStudentInCourse = isStudentInCourse;
+
+function isStudentAssignedToTeacher(student, teacherUser) {
+    if (!student) return false;
+    const user = teacherUser || window.STATE?.currentUser;
+    const role = (window.STATE?.currentRole || user?.role || '').toLowerCase().trim();
+
+    if (hasGlobalStudentAccess(user, role)) {
+        return true;
+    }
+
+    if (role === 'estudiante' || role === 'alumno') {
+        return (student.id && student.id === user?.id) ||
+               (student.carne && user?.username && student.carne === user.username) ||
+               (student.carne && user?.carne && student.carne === user.carne);
+    }
+
+    if (!user) return false;
+
+    // Obtener cátedras asignadas al docente
+    const assignedCourses = (typeof getTeacherAssignedCourses === 'function')
+        ? getTeacherAssignedCourses(user)
+        : (window.STATE?.pensum || []).filter(p => typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, user));
+
+    if (assignedCourses.length === 0) {
+        // Verificar si es Docente Guía de alguna sección en gradesList
+        const guidedGrades = (window.STATE?.gradesList || []).filter(g => 
+            (g.guideTeacherId && user.id && g.guideTeacherId === user.id) ||
+            (g.guideTeacher && user.name && g.guideTeacher.toLowerCase() === user.name.toLowerCase())
+        );
+        if (guidedGrades.length > 0) {
+            return guidedGrades.some(g => isStudentInCourse(student, { grade: g.name, section: g.section, gradeCode: g.code }));
+        }
+        return false;
+    }
+
+    // Coincide si el estudiante pertenece a cualquiera de las cátedras asignadas
+    return assignedCourses.some(c => isStudentInCourse(student, c));
+}
+window.isStudentAssignedToTeacher = isStudentAssignedToTeacher;
+
+function getAuthorizedStudents(teacherUser, role) {
+    const user = teacherUser || window.STATE?.currentUser;
+    const r = (role || window.STATE?.currentRole || user?.role || '').toLowerCase().trim();
+    const allStudents = (window.STATE?.students || []);
+
+    if (hasGlobalStudentAccess(user, r)) {
+        return allStudents;
+    }
+
+    if (r === 'estudiante' || r === 'alumno') {
+        return allStudents.filter(s => s && (
+            s.id === user?.id ||
+            (s.carne && user?.username && s.carne === user.username) ||
+            (s.carne && user?.carne && s.carne === user.carne)
+        ));
+    }
+
+    return allStudents.filter(s => isStudentAssignedToTeacher(s, user));
+}
+window.getAuthorizedStudents = getAuthorizedStudents;
+
+function getTeacherAssignedGradesList(teacherUser) {
+    const user = teacherUser || window.STATE?.currentUser;
+    const allGrades = (window.STATE?.gradesList || []);
+    if (!user) return allGrades;
+
+    const role = (window.STATE?.currentRole || user?.role || '').toLowerCase().trim();
+    if (hasGlobalStudentAccess(user, role)) {
+        return allGrades;
+    }
+
+    const assignedCourses = (typeof getTeacherAssignedCourses === 'function')
+        ? getTeacherAssignedCourses(user)
+        : (window.STATE?.pensum || []).filter(p => typeof isCourseAssignedToTeacher === 'function' && isCourseAssignedToTeacher(p, user));
+
+    return allGrades.filter(g => {
+        // Docente guía
+        if ((g.guideTeacherId && user.id && g.guideTeacherId === user.id) ||
+            (g.guideTeacher && user.name && g.guideTeacher.toLowerCase() === user.name.toLowerCase())) {
+            return true;
+        }
+        // Match con cursos asignados
+        return assignedCourses.some(c => {
+            if (c.gradeCode && g.code && c.gradeCode === g.code) return true;
+            const rawC = `${c.grade || ''} ${c.gradeCode || ''} ${c.section || ''}`.toUpperCase();
+            let cGradeNum = 0;
+            if (rawC.includes('6') || rawC.includes('SEXTO') || rawC.includes('6TO')) cGradeNum = 6;
+            else if (rawC.includes('5') || rawC.includes('QUINTO') || rawC.includes('5TO')) cGradeNum = 5;
+            else if (rawC.includes('4') || rawC.includes('CUARTO') || rawC.includes('4TO')) cGradeNum = 4;
+
+            const rawG = `${g.name || ''} ${g.code || ''} ${g.section || ''}`.toUpperCase();
+            let gGradeNum = 0;
+            if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
+            else if (rawG.includes('5') || rawG.includes('QUINTO') || rawG.includes('5TO')) gGradeNum = 5;
+            else if (rawG.includes('4') || rawG.includes('CUARTO') || rawG.includes('4TO')) gGradeNum = 4;
+
+            const cSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(c.section || c.gradeCode || rawC) : '';
+            const gSec = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(g.section || g.code || rawG) : '';
+
+            const isMatchGrade = (gGradeNum > 0 && cGradeNum > 0 && gGradeNum === cGradeNum) || (c.grade && g.name && (c.grade.toLowerCase().includes(g.name.toLowerCase()) || g.name.toLowerCase().includes(c.grade.toLowerCase())));
+            const isMatchSec = (!cSec || !gSec || cSec === gSec);
+            return isMatchGrade && isMatchSec;
+        });
+    });
+}
+window.getTeacherAssignedGradesList = getTeacherAssignedGradesList;
 function isStudentActive(s) {
     if (!s) return false;
     if (s.active === false) return false;
@@ -6674,6 +6838,11 @@ function getAttendanceStudents(gradeCode, currentCourseObj = null) {
         });
     }
 
+    // 🛡️ REGLA ESTRICTA INSTITUCIONAL: Para docentes, restringir estrictamente a estudiantes asignados
+    if (STATE.currentRole === 'docente' && STATE.currentUser && typeof isStudentAssignedToTeacher === 'function') {
+        students = students.filter(s => isStudentAssignedToTeacher(s, STATE.currentUser));
+    }
+
     return students.sort((a, b) => {
         const nameA = formatStudentDisplayName(a, 'lastFirst');
         const nameB = formatStudentDisplayName(b, 'lastFirst');
@@ -6804,12 +6973,22 @@ function updateGradeSelects() {
     try {
         const gradeSelects = document.querySelectorAll('.grade-select, #studentGradeFilter, #studentFormGrade, #pensumSubjectGrade, #gradeFilterSelect, #reportsGradeSelect, #honorRollGradeSelect, #profGradeSelect');
         if (gradeSelects && gradeSelects.length > 0) {
-            const grades = (STATE.gradesList && STATE.gradesList.length > 0) ? sortGrades(STATE.gradesList) : [];
+            const isDocente = (STATE.currentRole === 'docente');
+            const currentDocenteUser = STATE.currentUser || (typeof getCurrentUser === 'function' ? getCurrentUser() : null);
+            const allGrades = (STATE.gradesList && STATE.gradesList.length > 0) ? sortGrades(STATE.gradesList) : [];
+            const teacherGrades = (isDocente && currentDocenteUser && typeof getTeacherAssignedGradesList === 'function')
+                ? sortGrades(getTeacherAssignedGradesList(currentDocenteUser))
+                : allGrades;
+
             gradeSelects.forEach(sel => {
                 if (!sel) return;
                 const currentVal = sel.value;
                 const isProfileSel = (sel.id === 'profGradeSelect');
                 const isEnrollmentForm = (sel.id === 'studentFormGrade');
+                const isFilterSel = (sel.id === 'gradeFilterSelect' || sel.id === 'studentGradeFilter' || sel.id === 'reportsGradeSelect' || sel.id === 'honorRollGradeSelect');
+
+                const grades = (isDocente && isFilterSel) ? teacherGrades : allGrades;
+
                 let opts = isProfileSel ? '<option value="">-- Seleccione Grado y Sección --</option>' : '<option value="">Todos los Grados / Secciones</option>';
                 grades.forEach(g => {
                     const val = g.name + ' - ' + g.section;
@@ -13086,17 +13265,14 @@ function renderStudentsTable() {
     const tbody = document.getElementById('studentsTableBody');
     if (!tbody) return;
 
-    // Calcular KPIs de Matrícula por Género y Sección en tiempo real (Adaptado a Docente y Dirección)
-    let kpiStudents = STATE.students || [];
-    if (STATE.currentRole === 'docente' && STATE.currentUser) {
-        const teacherName = (STATE.currentUser.name || '').toLowerCase();
-        const teacherPensum = (STATE.pensum || []).filter(p => (p.teacher || '').toLowerCase().includes(teacherName) || (p.teacherName || '').toLowerCase().includes(teacherName));
-        const assignedGrades = Array.from(new Set(teacherPensum.map(p => p.grade || p.gradeCode)));
-        
-        if (assignedGrades.length > 0) {
-            kpiStudents = kpiStudents.filter(s => assignedGrades.includes(s.grade) || assignedGrades.some(g => (s.gradeLabel || '').includes(g)));
-        }
-    }
+    // 🛡️ REGLA ESTRICTA INSTITUCIONAL: Restricción universal y estricta para Docentes
+    const isDocente = (STATE.currentRole === 'docente');
+    const authStudents = (typeof getAuthorizedStudents === 'function')
+        ? getAuthorizedStudents(STATE.currentUser, STATE.currentRole)
+        : (STATE.students || []);
+
+    // Calcular KPIs de Matrícula por Género y Sección en tiempo real
+    let kpiStudents = authStudents;
 
     let countMale = 0, countFemale = 0;
     kpiStudents.forEach(s => {
@@ -13133,10 +13309,9 @@ function renderStudentsTable() {
 
     const sValLower = (statusVal || '').toLowerCase().trim();
     const isSpecialStatusFilter = (sValLower === 'retirado' || sValLower === 'ausente' || sValLower === 'inactivo' || sValLower === 'all');
-    const isTeacherScope = (STATE.currentRole === 'docente' && window._filterTeacherOnlyAssigned);
 
     // Verificación estricta: Si no se ha seleccionado grado/sección, no hay búsqueda activa por texto y el estado es Activo (por defecto)
-    if (!gradeVal && !searchVal && !isSpecialStatusFilter && !isTeacherScope) {
+    if (!gradeVal && !searchVal && !isSpecialStatusFilter && !isDocente) {
         if (summaryBox) summaryBox.style.display = 'none';
         tbody.innerHTML = `
             <tr>
@@ -13156,13 +13331,6 @@ function renderStudentsTable() {
                             <span class="badge" style="background:#e2e8f0; color:#334155; padding:6px 12px;"><i class="fa-solid fa-school"></i> 2. Grado</span>
                             <span class="badge" style="background:#e2e8f0; color:#334155; padding:6px 12px;"><i class="fa-solid fa-users-rectangle"></i> 3. Sección</span>
                         </div>
-                        ${STATE.currentRole === 'docente' ? `
-                            <div style="margin-top:18px; border-top:1px dashed #cbd5e1; padding-top:14px;">
-                                <button type="button" class="btn btn-success btn-sm" onclick="showTeacherAssignedStudents()" style="font-weight:700;">
-                                    <i class="fa-solid fa-users-viewfinder"></i> Ver Mis Alumnos Asignados Directamente
-                                </button>
-                            </div>
-                        ` : ''}
                     </div>
                 </td>
             </tr>
@@ -13170,17 +13338,7 @@ function renderStudentsTable() {
         return;
     }
 
-    let list = STATE.students || [];
-
-    // Si el usuario es docente y está viendo el listado sin seleccionar un grado específico, limitar a sus cátedras
-    if (STATE.currentRole === 'docente' && STATE.currentUser && !gradeVal) {
-        const teacherName = (STATE.currentUser.name || '').toLowerCase();
-        const teacherPensum = (STATE.pensum || []).filter(p => (p.teacher || '').toLowerCase().includes(teacherName) || (p.teacherName || '').toLowerCase().includes(teacherName));
-        const assignedGrades = Array.from(new Set(teacherPensum.map(p => p.grade || p.gradeCode)));
-        if (assignedGrades.length > 0) {
-            list = list.filter(s => assignedGrades.includes(s.grade) || assignedGrades.some(g => (s.gradeLabel || '').includes(g)));
-        }
-    }
+    let list = authStudents;
 
     // Búsqueda inteligente por Texto (Global, multi-token y tolerante a tildes/mayúsculas)
     if (searchVal) {
@@ -13304,7 +13462,6 @@ function renderStudentsTable() {
 
     const canEdit = (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) || STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria';
     const canDelete = (typeof isSuperUserRole === 'function' && isSuperUserRole(STATE.currentRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(STATE.currentRole)) || STATE.currentRole === 'admin' || STATE.currentRole === 'director' || STATE.currentRole === 'secretaria';
-    const isDocente = (STATE.currentRole === 'docente');
 
     if (list.length === 0) {
         tbody.innerHTML = `
@@ -15716,6 +15873,14 @@ function openStudentProfileModal(id) {
     ));
     if (!student) return;
 
+    // 🛡️ REGLA ESTRICTA INSTITUCIONAL: Para docentes, restringir estrictamente a estudiantes asignados
+    if (STATE.currentRole === 'docente' && typeof isStudentAssignedToTeacher === 'function' && !isStudentAssignedToTeacher(student, STATE.currentUser)) {
+        if (typeof showToast === 'function') {
+            showToast('Acceso denegado: Este estudiante no pertenece a sus cátedras asignadas.', 'error');
+        }
+        return;
+    }
+
     const modalEl = document.getElementById('studentProfileModal');
     const wasAlreadyOpenForSame = !!(modalEl && (modalEl.classList.contains('active') || modalEl.style.display === 'flex') && String(STATE.selectedStudentId) === String(student.id));
 
@@ -16641,6 +16806,14 @@ function printStudentFullFicha(studentId) {
         return;
     }
 
+    // 🛡️ REGLA ESTRICTA INSTITUCIONAL: Para docentes, restringir estrictamente a estudiantes asignados
+    if (STATE.currentRole === 'docente' && typeof isStudentAssignedToTeacher === 'function' && !isStudentAssignedToTeacher(student, STATE.currentUser)) {
+        if (typeof showToast === 'function') {
+            showToast('Acceso denegado: No puede imprimir la ficha de un estudiante que no pertenece a sus cátedras.', 'error');
+        }
+        return;
+    }
+
     const fullRecord = getStudentFullAttendanceAndDisciplineData(student);
     const h = STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {}) || {};
     const schoolName = h.schoolName || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES';
@@ -16956,6 +17129,12 @@ function printStudentReportCardFromProfile(studentId) {
     const s = (STATE.students || []).find(x => x.id === studentId);
     if (!s) {
         showToast("Estudiante no encontrado para imprimir boletín.", "warning");
+        return;
+    }
+
+    // 🛡️ REGLA ESTRICTA INSTITUCIONAL: Para docentes, restringir estrictamente a estudiantes asignados
+    if (STATE.currentRole === 'docente' && typeof isStudentAssignedToTeacher === 'function' && !isStudentAssignedToTeacher(s, STATE.currentUser)) {
+        showToast("Acceso denegado: No puede imprimir el boletín de un estudiante no asignado a sus cátedras.", "error");
         return;
     }
 
@@ -18471,9 +18650,13 @@ function printGradebookOfficialList() {
     const isDocente = (STATE.currentRole === 'docente');
     const currentUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente');
 
+    if (isDocente && currentUser && targetPensum && !isCourseAssignedToTeacher(targetPensum, currentUser)) {
+        targetPensum = null;
+    }
+
     if (!targetPensum && isDocente && currentUser) {
         targetPensum = (STATE.pensum || []).find(p => isCourseAssignedToTeacher(p, currentUser));
-    } else if (!targetPensum) {
+    } else if (!targetPensum && !isDocente) {
         targetPensum = (STATE.pensum || [])[0];
     }
 
@@ -22843,7 +23026,11 @@ function runGlobalSpotlightSearch(rawQuery) {
     const cleanQ = q.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const qTokens = cleanQ.split(/\s+/).filter(Boolean);
 
-    const students = (STATE.students || []).filter(s => {
+    const baseStudents = (STATE.currentRole === 'docente' && typeof getAuthorizedStudents === 'function')
+        ? getAuthorizedStudents(STATE.currentUser, STATE.currentRole)
+        : (STATE.students || []);
+
+    const students = baseStudents.filter(s => {
         if (s.active === false) return false;
         const targetStr = `${s.name || ''} ${s.firstName || ''} ${s.lastName || ''} ${s.carne || ''} ${s.personalCode || ''} ${s.grade || ''} ${s.section || ''}`
             .normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -23288,27 +23475,42 @@ function populateReportStudentSelect() {
     const gradeFilter = document.getElementById('reportGradeFilter');
     const sectionFilter = document.getElementById('reportSectionFilter');
 
-    // Cargar opciones de Grado disponibles ordenadas pedagógicamente
-    const allStudents = STATE.students || [];
-    let distinctGrades = Array.from(new Set(allStudents.map(s => s.grade).filter(Boolean))).sort((a, b) => {
-        return (typeof getGradeWeight === 'function' ? getGradeWeight(a) - getGradeWeight(b) : 0) || a.localeCompare(b);
-    });
-    if (distinctGrades.length === 0) {
-        distinctGrades = ['4to Perito Contador', '5to Perito Contador', '6to Perito Contador'];
+    // Cargar opciones de Grado y Sección disponibles ordenadas pedagógicamente
+    let distinctGrades = [];
+    let distinctSections = [];
+    const isDocente = (STATE.currentRole === 'docente');
+
+    if (isDocente && typeof getTeacherAssignedGradesList === 'function') {
+        const myGradesList = getTeacherAssignedGradesList(STATE.currentUser);
+        distinctGrades = Array.from(new Set(myGradesList.map(g => g.name))).sort((a, b) => {
+            return (typeof getGradeWeight === 'function' ? getGradeWeight(a) - getGradeWeight(b) : 0) || a.localeCompare(b);
+        });
+        distinctSections = Array.from(new Set(myGradesList.map(g => g.section).filter(Boolean))).sort();
+    } else {
+        const allStudents = STATE.students || [];
+        distinctGrades = Array.from(new Set(allStudents.map(s => s.grade).filter(Boolean))).sort((a, b) => {
+            return (typeof getGradeWeight === 'function' ? getGradeWeight(a) - getGradeWeight(b) : 0) || a.localeCompare(b);
+        });
+        if (distinctGrades.length === 0) {
+            distinctGrades = ['4to Perito Contador', '5to Perito Contador', '6to Perito Contador'];
+        }
+        distinctSections = ['Sección A', 'Sección B', 'Sección C', 'Sección D'];
     }
 
     if (gradeFilter) {
-        const curGrade = gradeFilter.value;
-        gradeFilter.innerHTML = '<option value="">-- Todos los Grados --</option>' + 
+        let curGrade = gradeFilter.value;
+        if (isDocente && !curGrade && distinctGrades.length === 1) curGrade = distinctGrades[0];
+        gradeFilter.innerHTML = (isDocente ? '<option value="">-- Mis Grados Asignados --</option>' : '<option value="">-- Todos los Grados --</option>') + 
             distinctGrades.map(g => `<option value="${g}" ${g === curGrade ? 'selected' : ''}>${g}</option>`).join('');
+        if (curGrade) gradeFilter.value = curGrade;
     }
 
-    // Cargar opciones de Sección disponibles
-    const distinctSections = ['Sección A', 'Sección B', 'Sección C', 'Sección D'];
     if (sectionFilter) {
-        const curSection = sectionFilter.value;
-        sectionFilter.innerHTML = '<option value="">-- Todas las Secciones --</option>' + 
+        let curSection = sectionFilter.value;
+        if (isDocente && !curSection && distinctSections.length === 1) curSection = distinctSections[0];
+        sectionFilter.innerHTML = (isDocente ? '<option value="">-- Mis Secciones Asignadas --</option>' : '<option value="">-- Todas las Secciones --</option>') + 
             distinctSections.map(sec => `<option value="${sec}" ${sec === curSection ? 'selected' : ''}>${sec}</option>`).join('');
+        if (curSection) sectionFilter.value = curSection;
     }
     filterAndPopulateReportStudents();
 }
@@ -23325,29 +23527,14 @@ function onReportSectionFilterChange() {
 window.onReportSectionFilterChange = onReportSectionFilterChange;
 
 function getFilteredReportStudents() {
-    let students = STATE.students || [];
+    let students = (typeof getAuthorizedStudents === 'function')
+        ? getAuthorizedStudents(STATE.currentUser, STATE.currentRole)
+        : (STATE.students || []);
+
     // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les imprimen tarjetas / boletines
     students = students.filter(s => s && s.status !== 'Retirado' && s.status !== 'Inactivo');
     const gradeVal = document.getElementById('reportGradeFilter')?.value || '';
     const sectionVal = document.getElementById('reportSectionFilter')?.value || '';
-
-    if (STATE.currentRole === 'estudiante') {
-        const currentUserId = STATE.currentUser?.id;
-        const currentCarne = STATE.currentUser?.username || STATE.currentUser?.carne;
-        students = students.filter(s => s.id === currentUserId || (currentCarne && s.carne === currentCarne));
-    } else if (STATE.currentRole === 'docente') {
-        const currentUser = STATE.currentUser || STATE.users[0];
-        const teacherName = (currentUser.name || '').toLowerCase();
-        const teacherPensum = (STATE.pensum || []).filter(p => 
-            (p.teacherId && p.teacherId === currentUser.id) || 
-            (p.teacher && p.teacher.toLowerCase().includes(teacherName)) || 
-            (p.teacherName && p.teacherName.toLowerCase().includes(teacherName))
-        );
-        const myGrades = Array.from(new Set(teacherPensum.map(p => p.grade || p.gradeCode)));
-        if (myGrades.length > 0) {
-            students = students.filter(s => myGrades.includes(s.grade) || myGrades.some(g => (s.gradeLabel || '').includes(g) || (s.gradeCode || '').includes(g)));
-        }
-    }
 
     if (gradeVal) {
         students = students.filter(s => s.grade === gradeVal || (s.gradeLabel && s.gradeLabel.includes(gradeVal)));
@@ -23993,6 +24180,12 @@ function printStudentReportCardOfficial(targetStudentId) {
     const s = (STATE.students || []).find(x => x.id === studentId);
     if (!s) {
         showToast("Seleccione un estudiante para imprimir su boletín.", "warning");
+        return;
+    }
+
+    // 🛡️ REGLA ESTRICTA INSTITUCIONAL: Para docentes, restringir estrictamente a estudiantes asignados
+    if (STATE.currentRole === 'docente' && typeof isStudentAssignedToTeacher === 'function' && !isStudentAssignedToTeacher(s, STATE.currentUser)) {
+        showToast("Acceso denegado: No puede imprimir el boletín de un estudiante no asignado a sus cátedras.", "error");
         return;
     }
 
@@ -25255,6 +25448,19 @@ function toggleSelectAllGradebook(master, tabKey) {
 function getSortedGradebookStudents(gradeCode, targetPensum = null) {
     const targetGradeObj = (STATE.gradesList || []).find(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
 
+    const isDocente = (STATE.currentRole === 'docente');
+    const currentUser = STATE.currentUser;
+
+    if (isDocente && currentUser) {
+        if (targetPensum && typeof isCourseAssignedToTeacher === 'function' && !isCourseAssignedToTeacher(targetPensum, currentUser)) {
+            return [];
+        }
+    }
+
+    const baseStudents = (isDocente && currentUser && typeof getAuthorizedStudents === 'function')
+        ? getAuthorizedStudents(currentUser, 'docente')
+        : (STATE.students || []);
+
     const rawG = `${gradeCode || ''} ${targetGradeObj ? (targetGradeObj.name + ' ' + targetGradeObj.section) : ''} ${targetPensum ? (targetPensum.grade + ' ' + targetPensum.section + ' ' + (targetPensum.gradeCode || '')) : ''}`.toUpperCase();
     let gGradeNum = 0;
     if (rawG.includes('6') || rawG.includes('SEXTO') || rawG.includes('6TO')) gGradeNum = 6;
@@ -25263,7 +25469,7 @@ function getSortedGradebookStudents(gradeCode, targetPensum = null) {
 
     const gSec = getCleanSectionLetter(targetGradeObj ? targetGradeObj.section : (targetPensum ? (targetPensum.section || targetPensum.gradeCode) : gradeCode));
 
-    const students = (STATE.students || []).filter(s => {
+    const students = baseStudents.filter(s => {
         // Excluir estudiantes expresamente eliminados
         if (s.active === false) return false;
 
@@ -26579,6 +26785,11 @@ function loadTeacherGradebook() {
     const isDocente = (STATE.currentRole === 'docente');
     const currentUser = STATE.currentUser || STATE.users.find(u => u.role === 'docente') || STATE.users[0];
 
+    // Para docentes, si la clase seleccionada no le pertenece, invalidar targetPensum
+    if (isDocente && currentUser && targetPensum && !isCourseAssignedToTeacher(targetPensum, currentUser)) {
+        targetPensum = null;
+    }
+
     // Para docentes, si no hay clase seleccionada, buscar la primera clase asignada a este docente respetando el grado guardado
     if (isDocente && currentUser && !targetPensum) {
         if (savedGrade) {
@@ -27687,6 +27898,12 @@ async function saveGradebookChanges() {
     const selectedId = document.getElementById('teacherCourseSelect')?.value;
     const currentUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
     const targetPensum = (STATE.pensum || []).find(p => p.id === selectedId);
+
+    if (STATE.currentRole === 'docente' && targetPensum && typeof isCourseAssignedToTeacher === 'function' && !isCourseAssignedToTeacher(targetPensum, STATE.currentUser)) {
+        showToast("Acceso denegado: No tiene autorización para calificar una materia no asignada.", "danger");
+        return;
+    }
+
     const subjectName = targetPensum ? targetPensum.subject : null;
     const gradeCode = targetPensum ? (targetPensum.gradeCode || targetPensum.grade) : null;
 
@@ -28378,22 +28595,8 @@ function populateAttendanceSelects(resetSelection = false, filterTeacherId = nul
             });
             gradeOptionsHtml += `</optgroup>`;
 
-            const assignedCodes = new Set(uniqueGrades.keys());
-            const otherGrades = (STATE.gradesList || []).filter(g => !assignedCodes.has(g.code));
-            if (otherGrades.length > 0) {
-                gradeOptionsHtml += `<optgroup label="🏛️ Otros Grados Institucionales">`;
-                sortGrades(otherGrades).forEach(g => {
-                    gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
-                });
-                gradeOptionsHtml += `</optgroup>`;
-            }
         } else {
-            gradeOptionsHtml += `<optgroup label="⭐ Grados Institucionales (ENCO)">`;
-            const sortedGeneralGrades = sortGrades(STATE.gradesList || []);
-            sortedGeneralGrades.forEach(g => {
-                gradeOptionsHtml += `<option value="${g.code}">${g.name} (${g.section}) — ${g.career}</option>`;
-            });
-            gradeOptionsHtml += `</optgroup>`;
+            gradeOptionsHtml = `<option value="">-- No tiene cátedras asignadas --</option>`;
         }
     } else if (isAuthorityRole && activeTeacherObj) {
         // SUPERVISIÓN POR MAESTRO ESPECÍFICO
@@ -28529,7 +28732,7 @@ function updateAttendanceCoursesList() {
     else if (rawQ.includes('4') || rawQ.includes('CUARTO') || rawQ.includes('4TO')) qGradeNum = 4;
     const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : selGrade);
 
-    let coursesHtml = `<option value="GENERAL">📑 Control General de Asistencia (Jornada Diaria)</option>`;
+    let coursesHtml = (isDocente && !isAuthorityRole) ? '' : `<option value="GENERAL">📑 Control General de Asistencia (Jornada Diaria)</option>`;
     
     const allGradePensum = (STATE.pensum || []).filter(p => {
         const rawP = `${p.grade || ''} ${p.gradeCode || ''}`.toUpperCase();
@@ -28570,25 +28773,14 @@ function updateAttendanceCoursesList() {
             coursesHtml += `<option value="${p.id}">📘 ${p.subject}${isAuthorityRole ? teacherLabel : ''}</option>`;
         });
         coursesHtml += `</optgroup>`;
-
-        // Si el docente no tiene todas las materias del grado, ofrecer las restantes en segundo plano
-        if (isDocente && !isAuthorityRole && allGradePensum.length > matchingPensum.length) {
-            const myIds = new Set(matchingPensum.map(p => p.id));
-            const otherPensum = allGradePensum.filter(p => !myIds.has(p.id));
-            if (otherPensum.length > 0) {
-                coursesHtml += `<optgroup label="📚 Otras Clases del Grado">`;
-                otherPensum.forEach(p => {
-                    coursesHtml += `<option value="${p.id}">📘 ${p.subject}${p.teacher ? ` (${p.teacher})` : ''}</option>`;
-                });
-                coursesHtml += `</optgroup>`;
-            }
-        }
-    } else if (allGradePensum.length > 0) {
+    } else if (isAuthorityRole && allGradePensum.length > 0) {
         coursesHtml += `<optgroup label="📚 Clases Registradas para este Grado">`;
         allGradePensum.forEach(p => {
             coursesHtml += `<option value="${p.id}">📘 ${p.subject}${p.teacher ? ` (${p.teacher})` : ''}</option>`;
         });
         coursesHtml += `</optgroup>`;
+    } else if (isDocente && !isAuthorityRole) {
+        coursesHtml = `<option value="">-- No tiene cátedras asignadas en esta sección --</option>`;
     }
 
     const prevSelectedCourse = courseSelect.value || STATE.attendanceSelectedCourse || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ENCCO_SELECTED_ATTENDANCE_COURSE') : null);
@@ -29187,6 +29379,17 @@ function loadAttendanceList() {
     const isAuditRole = isSuper || (isDirectorOrAdmin || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar' || STATE.currentRole === 'auxiliatura');
     const isDocente = !isSuper && (STATE.currentRole === 'docente');
     const currentUser = STATE.currentUser || (STATE.users || [])[0];
+
+    // 🛡️ REGLA ESTRICTA INSTITUCIONAL: Docentes solo pueden consultar y registrar asistencia de sus grados asignados
+    if (isDocente && currentUser && !isAuditRole) {
+        const assignedGrades = typeof getTeacherAssignedGradesList === 'function' ? getTeacherAssignedGradesList(currentUser) : [];
+        const isAssignedGrade = assignedGrades.some(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
+        if (!isAssignedGrade && assignedGrades.length > 0) {
+            gradeCode = assignedGrades[0].code;
+            if (gradeSelect) gradeSelect.value = gradeCode;
+            STATE.attendanceSelectedGrade = gradeCode;
+        }
+    }
 
     // 🔒 ASOCIACIÓN INTELIGENTE DE CÁTEDRA: Conectar automáticamente a la clase del docente o permitir control general
     if (isDocente && currentUser && !isAuditRole) {
@@ -30640,6 +30843,35 @@ function saveAttendanceRecords(showToastMsg = true, e = null, recordKey = null) 
             localStorage.removeItem('ENCCO_ATTENDANCE_MASTER_BACKUP');
         }
     } catch(e) {}
+
+    // 🛡️ REGLA ESTRICTA INSTITUCIONAL: Validar que un docente solo pueda guardar asistencia en sus grados y cursos asignados
+    if (STATE.currentRole === 'docente') {
+        const currentUser = STATE.currentUser;
+        if (currentUser) {
+            const gradeSelect = (typeof document !== 'undefined') ? document.getElementById('attendanceGradeSelect') : null;
+            const courseSelect = (typeof document !== 'undefined') ? document.getElementById('attendanceCourseSelect') : null;
+            const gradeCode = gradeSelect ? gradeSelect.value : '';
+            const courseId = courseSelect ? courseSelect.value : 'GENERAL';
+
+            const assignedGrades = (typeof getTeacherAssignedGradesList === 'function') ? getTeacherAssignedGradesList(currentUser) : [];
+            const isGradeAssigned = assignedGrades.some(g => g.code === gradeCode || g.id === gradeCode || g.name === gradeCode);
+
+            let isAllowed = isGradeAssigned;
+            if (courseId && courseId !== 'GENERAL') {
+                const targetCourse = (STATE.pensum || []).find(p => p.id === courseId);
+                if (targetCourse && typeof isCourseAssignedToTeacher === 'function' && !isCourseAssignedToTeacher(targetCourse, currentUser)) {
+                    isAllowed = false;
+                }
+            }
+
+            if (!isAllowed) {
+                if (showToastMsg && typeof showToast === 'function') {
+                    showToast('Acceso denegado: No puede registrar asistencia para cursos o grados no asignados a su cátedra.', 'error');
+                }
+                return;
+            }
+        }
+    }
 
     const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
     if (isSuperOrDir) {
@@ -33253,47 +33485,67 @@ function populateHonorRollSelect() {
     const select = document.getElementById('honorRollTypeSelect');
     if (!select) return;
 
-    const curVal = select.value || 'ALL_BALANCED';
+    const isDocente = (STATE.currentRole === 'docente');
+    const curVal = select.value;
 
-    // ── Opciones estáticas generales ───────────────────────────────────────────
-    let opts = `
-        <option value="ALL_BALANCED">🌟 Cuadro de Honor General de Toda la Escuela (Promedio Nivelado Base 100)</option>
-        <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (10 Clases Niveladas a Base 100)</option>
-        <option value="GROUP_5TO">🥇 Cuadro de Honor Oficial: 5to Grado (9 Clases Niveladas a Base 100)</option>
-        <option value="GROUP_4TO">🥈 Cuadro de Honor Oficial: 4to Grado (9 Clases Niveladas a Base 100)</option>
-        <option value="GROUP_4TO_5TO">🏅 Cuadro de Honor Conjunto: 4to y 5to Grado (9 Clases Niveladas a Base 100)</option>
-    `;
+    let opts = '';
 
-    // ── Optgroup dinámico: Por Grado y Sección (desde STATE.gradesList) ────────
-    const grades = (STATE.gradesList || []).filter(g => g && g.code);
-    if (grades.length > 0) {
-        opts += `<optgroup label="📌 Por Grado y Sección">`;
-        grades.forEach(g => {
-            const label = [g.name, g.section].filter(Boolean).join(' — ');
-            opts += `<option value="GRADE_${g.code}">📘 ${label}</option>`;
-        });
-        opts += `</optgroup>`;
-    }
+    if (isDocente) {
+        const assignedGrades = typeof getTeacherAssignedGradesList === 'function' ? getTeacherAssignedGradesList(STATE.currentUser) : [];
+        if (assignedGrades.length > 0) {
+            opts += `<optgroup label="📌 Mis Grados y Secciones Asignados">`;
+            assignedGrades.forEach(g => {
+                const label = [g.name, g.section].filter(Boolean).join(' — ');
+                opts += `<option value="GRADE_${g.code}">📘 ${label}</option>`;
+            });
+            opts += `</optgroup>`;
+        } else {
+            opts += `<option value="">-- Sin grados asignados --</option>`;
+        }
+    } else {
+        // ── Opciones estáticas generales ───────────────────────────────────────────
+        opts = `
+            <option value="ALL_BALANCED">🌟 Cuadro de Honor General de Toda la Escuela (Promedio Nivelado Base 100)</option>
+            <option value="GROUP_6TO">🎓 Cuadro de Honor Oficial: 6to Grado (10 Clases Niveladas a Base 100)</option>
+            <option value="GROUP_5TO">🥇 Cuadro de Honor Oficial: 5to Grado (9 Clases Niveladas a Base 100)</option>
+            <option value="GROUP_4TO">🥈 Cuadro de Honor Oficial: 4to Grado (9 Clases Niveladas a Base 100)</option>
+            <option value="GROUP_4TO_5TO">🏅 Cuadro de Honor Conjunto: 4to y 5to Grado (9 Clases Niveladas a Base 100)</option>
+        `;
 
-    // ── Optgroup dinámico: Por Carrera (desde STATE.careers) ──────────────────
-    const careers = (STATE.careers || []).filter(c => c && c.name);
-    if (careers.length > 0) {
-        opts += `<optgroup label="🎓 Por Carrera">`;
-        careers.forEach(c => {
-            opts += `<option value="CAREER_${c.name}">🏅 ${c.name}</option>`;
-        });
-        opts += `</optgroup>`;
+        // ── Optgroup dinámico: Por Grado y Sección (desde STATE.gradesList) ────────
+        const grades = (STATE.gradesList || []).filter(g => g && g.code);
+        if (grades.length > 0) {
+            opts += `<optgroup label="📌 Por Grado y Sección">`;
+            grades.forEach(g => {
+                const label = [g.name, g.section].filter(Boolean).join(' — ');
+                opts += `<option value="GRADE_${g.code}">📘 ${label}</option>`;
+            });
+            opts += `</optgroup>`;
+        }
+
+        // ── Optgroup dinámico: Por Carrera (desde STATE.careers) ──────────────────
+        const careers = (STATE.careers || []).filter(c => c && c.name);
+        if (careers.length > 0) {
+            opts += `<optgroup label="🎓 Por Carrera">`;
+            careers.forEach(c => {
+                opts += `<option value="CAREER_${c.name}">🏅 ${c.name}</option>`;
+            });
+            opts += `</optgroup>`;
+        }
     }
 
     // Normalizar texto para comparación sin espacios superfluos
     const normalizedOpts = opts.replace(/\s+/g, ' ').trim();
     const normalizedCurrent = (select._renderedOpts || '').replace(/\s+/g, ' ').trim();
 
-    if (normalizedCurrent !== normalizedOpts || select.options.length <= 5) {
+    if (normalizedCurrent !== normalizedOpts || select.options.length <= 1) {
         select._renderedOpts = opts;
         select.innerHTML = opts;
-        select.value = curVal;
-        if (!select.value) select.value = 'ALL_BALANCED';
+        if (curVal && Array.from(select.options).some(o => o.value === curVal)) {
+            select.value = curVal;
+        } else if (select.options.length > 0) {
+            select.value = select.options[0].value;
+        }
     }
 
     if (typeof renderHonorRollCustomDropdown === 'function') {
@@ -33541,12 +33793,25 @@ function loadHonorRoll() {
     // Repoblar siempre el selector con las opciones actualizadas de Firestore
     populateHonorRollSelect();
 
+    const isDocente = (STATE.currentRole === 'docente');
+    if (isDocente) {
+        const assignedGrades = typeof getTeacherAssignedGradesList === 'function' ? getTeacherAssignedGradesList(STATE.currentUser) : [];
+        const validValues = assignedGrades.map(g => 'GRADE_' + g.code);
+        if (!validValues.includes(select.value) && validValues.length > 0) {
+            select.value = validValues[0];
+        }
+    }
+
     const type = select.value;
     const periodMode = (periodSelect && periodSelect.value) ? periodSelect.value : 'CONSOLIDATED_100';
     const periodBadgeText = _getHonorRollPeriodTitleBadge(periodMode);
     const onlyEligible = document.getElementById('honorRollOnlyEligibleCheck') ? document.getElementById('honorRollOnlyEligibleCheck').checked : true;
 
-    let list = (STATE.students || []).filter(s => isStudentActive(s));
+    const baseStudents = (isDocente && typeof getAuthorizedStudents === 'function')
+        ? getAuthorizedStudents(STATE.currentUser, STATE.currentRole)
+        : (STATE.students || []);
+
+    let list = baseStudents.filter(s => isStudentActive(s));
 
     if (type === 'ALL_BALANCED' || type === 'SCHOOL') {
         titleText.textContent = `CUADRO DE HONOR GENERAL — ${periodBadgeText}`;
@@ -33770,9 +34035,23 @@ function printHonorRoll() {
     const titleText = document.getElementById('honorRollTitleText')?.textContent || 'CUADRO DE HONOR OFICIAL';
     if (!select) return;
 
+    const isDocente = (STATE.currentRole === 'docente');
     const type = select.value;
+    if (isDocente) {
+        const assignedGrades = typeof getTeacherAssignedGradesList === 'function' ? getTeacherAssignedGradesList(STATE.currentUser) : [];
+        const validValues = assignedGrades.map(g => 'GRADE_' + g.code);
+        if (!validValues.includes(type)) {
+            showToast("Acceso denegado: Solo puede imprimir el cuadro de honor de sus grados asignados.", "danger");
+            return;
+        }
+    }
+
     const periodMode = (periodSelect && periodSelect.value) ? periodSelect.value : 'CONSOLIDATED_100';
-    let list = (STATE.students || []).filter(s => isStudentActive(s));
+    const baseStudents = (isDocente && typeof getAuthorizedStudents === 'function')
+        ? getAuthorizedStudents(STATE.currentUser, STATE.currentRole)
+        : (STATE.students || []);
+
+    let list = baseStudents.filter(s => isStudentActive(s));
 
     if (type === 'GROUP_6TO') {
         list = list.filter(s => getStudentAcademicInfo(s, periodMode).is6to);
@@ -34298,19 +34577,26 @@ function populateDisciplineGradeFilter() {
     const gradeSelect = document.getElementById('discGradeFilter');
     if (!gradeSelect) return;
 
-    const gradesList = Array.isArray(STATE.gradesList) && STATE.gradesList.length > 0 
-        ? STATE.gradesList 
-        : [
-            { code: '4to Perito Contador', name: '4to Perito Contador' },
-            { code: '5to Perito Contador', name: '5to Perito Contador' },
-            { code: '6to Perito Contador', name: '6to Perito Contador' }
-        ];
+    const isDocente = (STATE.currentRole === 'docente');
+    let gradesList = [];
+    if (isDocente && typeof getTeacherAssignedGradesList === 'function') {
+        gradesList = getTeacherAssignedGradesList(STATE.currentUser);
+    } else {
+        gradesList = Array.isArray(STATE.gradesList) && STATE.gradesList.length > 0 
+            ? STATE.gradesList 
+            : [
+                { code: '4to Perito Contador', name: '4to Perito Contador' },
+                { code: '5to Perito Contador', name: '5to Perito Contador' },
+                { code: '6to Perito Contador', name: '6to Perito Contador' }
+            ];
+    }
 
     const currentVal = gradeSelect.value || 'ALL';
-    let optionsHtml = '<option value="ALL">-- Todos los Grados --</option>';
+    let optionsHtml = isDocente ? '<option value="ALL">-- Mis Grados Asignados --</option>' : '<option value="ALL">-- Todos los Grados --</option>';
     gradesList.forEach(g => {
         const val = g.name || g.code;
-        optionsHtml += `<option value="${val}">${g.name} (${g.code})</option>`;
+        const secLabel = g.section ? ` - ${g.section}` : '';
+        optionsHtml += `<option value="${val}">${g.name} (${g.code})${secLabel}</option>`;
     });
 
     gradeSelect.innerHTML = optionsHtml;
@@ -34342,7 +34628,12 @@ function filterDisciplineStudentList() {
     const badge = document.getElementById('discStudentCountBadge');
     if (!select) return;
 
-    let students = (STATE.students || []).filter(s => isStudentActive(s));
+    const isDocente = (STATE.currentRole === 'docente');
+    const baseStudents = (isDocente && typeof getAuthorizedStudents === 'function')
+        ? getAuthorizedStudents(STATE.currentUser, STATE.currentRole)
+        : (STATE.students || []);
+
+    let students = baseStudents.filter(s => isStudentActive(s));
 
     // Filtro de grado
     if (gradeFilter && gradeFilter !== 'ALL') {
@@ -34509,6 +34800,12 @@ async function saveDisciplineForm(e) {
 
     if (!stuId || !reason) {
         showToast('Seleccione un estudiante e ingrese el motivo del reporte disciplinario.', 'warning');
+        return;
+    }
+
+    // 🛡️ REGLA ESTRICTA INSTITUCIONAL: Para docentes, restringir a estudiantes de sus cátedras asignadas
+    if (STATE.currentRole === 'docente' && student && typeof isStudentAssignedToTeacher === 'function' && !isStudentAssignedToTeacher(student, STATE.currentUser)) {
+        showToast('Acceso denegado: No puede registrar reportes disciplinarios para estudiantes no asignados a sus cátedras.', 'error');
         return;
     }
 
@@ -35612,9 +35909,13 @@ function exportGradebookOfficialExcel() {
     const isDocente = (STATE.currentRole === 'docente');
     const currentUser = STATE.currentUser || (STATE.users || []).find(u => u.role === 'docente');
 
+    if (isDocente && currentUser && targetPensum && !isCourseAssignedToTeacher(targetPensum, currentUser)) {
+        targetPensum = null;
+    }
+
     if (!targetPensum && isDocente && currentUser) {
         targetPensum = (STATE.pensum || []).find(p => isCourseAssignedToTeacher(p, currentUser));
-    } else if (!targetPensum) {
+    } else if (!targetPensum && !isDocente) {
         targetPensum = (STATE.pensum || [])[0];
     }
 
@@ -45995,6 +46296,13 @@ function addCourseBitacoraEntry(data) {
         return null;
     }
 
+    // 🛡️ REGLA ESTRICTA INSTITUCIONAL: Para docentes, restringir a estudiantes de sus cátedras asignadas
+    const student = (STATE.students || []).find(s => s && (s.id === data.studentId || s.carne === data.studentId));
+    if (currentRole === 'docente' && student && typeof isStudentAssignedToTeacher === 'function' && !isStudentAssignedToTeacher(student, currentUser)) {
+        showToast("Acceso denegado: El estudiante no pertenece a sus cátedras asignadas.", "error");
+        return null;
+    }
+
     const roleLabels = {
         'admin': 'Administrador',
         'super_usuario': 'Super Administrador',
@@ -46006,7 +46314,6 @@ function addCourseBitacoraEntry(data) {
     };
 
     const activeCycle = String(data.academicCycle || (window.STATE && (window.STATE.activeCycle || window.STATE.academicCycle)) || '2026').trim();
-    const student = (STATE.students || []).find(s => s && (s.id === data.studentId || s.carne === data.studentId));
     const studentName = student
         ? (`${student.lastName || student.apellidos || ''}, ${student.firstName || student.nombres || ''}`.trim() || student.name || 'Estudiante')
         : (data.studentName || 'Estudiante');
@@ -46433,13 +46740,21 @@ function openCourseBitacoraModal(preSelectedStudentId, preSelectedCourseId, init
     const currentCourseId = courseSelectEl ? courseSelectEl.value : '';
     const currentCourseObj = (STATE.pensum || []).find(p => p && p.id === currentCourseId);
 
-    const students = (typeof getAttendanceStudents === 'function')
+    let students = (typeof getAttendanceStudents === 'function')
         ? getAttendanceStudents(gradeCode, currentCourseObj)
         : (STATE.students || []).filter(s => {
             if (!s) return false;
             if (typeof isStudentActive === 'function' && !isStudentActive(s)) return false;
             return gradeCode ? (s.gradeCode === gradeCode || s.grade === gradeCode) : true;
         });
+
+    if (!hasGlobalAccess && currentRole === 'docente') {
+        const authorized = (typeof getAuthorizedStudents === 'function')
+            ? getAuthorizedStudents(currentUser, currentRole)
+            : (STATE.students || []).filter(s => (typeof isStudentAssignedToTeacher === 'function') ? isStudentAssignedToTeacher(s, currentUser) : true);
+        const authIds = new Set(authorized.map(s => s.id));
+        students = students.filter(s => authIds.has(s.id));
+    }
 
     students.sort((a, b) => {
         const nameA = `${a.lastName || a.apellidos || ''} ${a.firstName || a.nombres || ''}`.trim() || a.name || '';
@@ -47402,8 +47717,11 @@ function isStudentInGrade(student, gradeVal) {
     // Caso 1: Todas las clases asignadas al docente
     if (gradeVal === 'ALL_DOCENTE') {
         const currentUser = STATE.currentUser || (STATE.users || [])[0];
+        if (typeof isStudentAssignedToTeacher === 'function') {
+            return isStudentAssignedToTeacher(student, currentUser);
+        }
         const myClasses = (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(p, currentUser) : false);
-        if (myClasses.length === 0) return true;
+        if (myClasses.length === 0) return false;
         return myClasses.some(c => isStudentInGrade(student, c.id));
     }
 
@@ -47462,7 +47780,10 @@ function populateAnnotationStudentDropdown(selectedStudentId = null, forcedGrade
     const isAuthorityRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
     const isDocente = (currentRole === 'docente') && !isAuthorityRole;
 
-    const students = (STATE.students || []).filter(s => s && s.status !== 'Retirado');
+    const baseStudents = isDocente
+        ? ((typeof getAuthorizedStudents === 'function') ? getAuthorizedStudents(currentUser, currentRole) : (STATE.students || []).filter(s => (typeof isStudentAssignedToTeacher === 'function') ? isStudentAssignedToTeacher(s, currentUser) : true))
+        : (STATE.students || []);
+    const students = baseStudents.filter(s => s && s.status !== 'Retirado');
 
     // Llenar combo de grados según el rol del usuario autenticado (solo grados asignados para docentes, sin duplicación)
     if (gradeSelect) {
@@ -47758,6 +48079,16 @@ function saveQuickAnnotation() {
     const student = (STATE.students || []).find(s => s.id === studentId);
     const studentName = student ? ((typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(student, 'lastFirst') : student.name) : 'Estudiante';
 
+    const currentUser = STATE.currentUser || (STATE.users || [])[0];
+    const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
+    const isAuthorityRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
+    if (!isAuthorityRole && currentRole === 'docente') {
+        if (student && typeof isStudentAssignedToTeacher === 'function' && !isStudentAssignedToTeacher(student, currentUser)) {
+            showToast("Acceso denegado: No tiene asignado a este estudiante en sus cursos o grados.", "error");
+            return;
+        }
+    }
+
     // Detectar si hay una cátedra seleccionada en el filtro o asignada al docente
     const gradeSelect = document.getElementById('annotStudentGradeFilter');
     const chosenVal = gradeSelect ? gradeSelect.value : null;
@@ -47767,8 +48098,6 @@ function saveQuickAnnotation() {
         selectedCourse = (STATE.pensum || []).find(c => c && (c.id === cleanCourseId || c.id === chosenVal));
     }
     if (!selectedCourse) {
-        const currentUser = STATE.currentUser || (STATE.users || [])[0];
-        const currentRole = STATE.currentRole || (currentUser && currentUser.role) || '';
         const isDocente = (currentRole === 'docente');
         if (isDocente) {
             const myClasses = (STATE.pensum || []).filter(p => (typeof isCourseAssignedToTeacher === 'function') ? isCourseAssignedToTeacher(p, currentUser) : false);
@@ -48343,20 +48672,89 @@ window.closeWhatsAppIncidentModal = closeWhatsAppIncidentModal;
 // 🛡️ MÓDULO OFICIAL: LIBRO DE REGISTRO DE EXONERACIONES Y DETALLE PARA DOCENTE
 // ==========================================================================
 
-function openExonerationDetailModal(studentId, subjectName, unit) {
-    const student = (STATE.students || []).find(s => s.id === studentId);
-    if (!student) {
+function openExonerationDetailModalByIndex(idx) {
+    const list = window._lastRenderedExonsList || [];
+    const item = list[idx];
+    if (!item) {
+        showToast("No se pudo localizar el registro de exoneración seleccionado.", "warning");
+        return;
+    }
+    openExonerationDetailModal(item.studentId, item.subject, item.bimestre, item.rawExon ? item.rawExon.id : null, item);
+}
+window.openExonerationDetailModalByIndex = openExonerationDetailModalByIndex;
+
+function openExonerationDetailModal(studentId, subjectName, unit, exonId = null, directItem = null) {
+    let student = directItem?.student || null;
+    if (!student && studentId) {
+        student = (STATE.students || []).find(s => s && (
+            String(s.id) === String(studentId) ||
+            (s.carne && String(s.carne).toLowerCase() === String(studentId).toLowerCase()) ||
+            (s.personalCode && String(s.personalCode).toLowerCase() === String(studentId).toLowerCase()) ||
+            (s.cui && String(s.cui) === String(studentId))
+        ));
+    }
+
+    if (!student && !directItem) {
         showToast("No se pudo localizar el expediente del alumno.", "error");
         return;
     }
 
+    const currentUser = STATE.currentUser || (STATE.users || [])[0];
+    const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : (currentUser && currentUser.role) || 'guest')) || 'guest';
+    const isAuthorityRole = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(curRole.toLowerCase());
+    const isDocente = (curRole.toLowerCase() === 'docente') && !isAuthorityRole;
+
+    if (isDocente && student && typeof isStudentAssignedToTeacher === 'function') {
+        if (!isStudentAssignedToTeacher(student, currentUser)) {
+            showToast("Acceso denegado: El estudiante no pertenece a sus cátedras asignadas.", "error");
+            return;
+        }
+    }
+
     const modal = document.getElementById('exonerationDetailDocenteModal');
-    if (!modal) return;
+    if (!modal) {
+        showToast("Error técnico: La plantilla de constancia no está disponible en la vista actual.", "error");
+        return;
+    }
 
-    const studentFullName = formatStudentDisplayName(student, 'lastFirst').toUpperCase();
-    const carneText = student.carne || student.personalCode || 'Sin carné';
-    const gradeText = formatStudentGradeAndSection(student) || `${student.grade || student.gradeCode || ''} ${student.section || ''}`.trim();
+    const studentFullName = (directItem?.studentName || (student ? ((typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(student, 'lastFirst') : student.name) : 'Estudiante')).toUpperCase();
+    const carneText = directItem?.carne || (student ? (student.carne || student.personalCode || 'Sin carné') : '---');
+    const gradeText = directItem?.gradeLabel || (student ? ((typeof formatStudentGradeAndSection === 'function') ? formatStudentGradeAndSection(student) : `${student.grade || ''} ${student.section || ''}`.trim()) : '---');
 
+    // Buscar la exoneración específica si no vino en directItem
+    const exons = student ? ((typeof getStudentExonerationsList === 'function') ? getStudentExonerationsList(student) : (student.academicExceptions || [])) : [];
+    let matchedEx = directItem?.rawExon || null;
+    if (!matchedEx && Array.isArray(exons)) {
+        if (exonId) {
+            matchedEx = exons.find(ex => ex && ex.id === exonId);
+        }
+        if (!matchedEx) {
+            const cleanSubj = (subjectName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+            const uNum = parseInt(unit) || 0;
+            matchedEx = exons.find(ex => {
+                if (!ex) return false;
+                const exSubj = (ex.subject || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+                const matchSubj = (!ex.subject || ex.subject === 'ALL' || exSubj === 'all' || cleanSubj === exSubj || cleanSubj.includes(exSubj) || exSubj.includes(cleanSubj));
+                const matchB = (!ex.bimestre || ex.bimestre === 'ALL' || String(ex.bimestre).toUpperCase() === 'ALL' || parseInt(ex.bimestre) === uNum);
+                return matchSubj && matchB;
+            });
+        }
+        if (!matchedEx && exons.length > 0) {
+            matchedEx = exons[0];
+        }
+    }
+
+    const finalSubject = directItem?.subject || (matchedEx && matchedEx.subject) || subjectName || 'Todas las Asignaturas';
+    const finalBimestre = directItem?.bimestre || (matchedEx && matchedEx.bimestre) || unit || 'ALL';
+    let bimLabel = 'Todo el Ciclo (Anual)';
+    if (finalBimestre && String(finalBimestre).toUpperCase() !== 'ALL') {
+        bimLabel = `${finalBimestre}º Bimestre (Ciclo Escolar)`;
+    }
+    const finalReason = directItem?.reason || (matchedEx && (matchedEx.reason || matchedEx.details || matchedEx.observation)) || 'Exoneración y dispensa autorizada oficialmente por la Dirección del Plantel.';
+    const finalAuthorizedBy = directItem?.authorizedBy || (matchedEx && (matchedEx.authorizedBy || matchedEx.authorizer)) || 'Dirección del Plantel';
+    const finalDate = directItem?.date || (matchedEx && (matchedEx.date || matchedEx.createdAt)) || (STATE.activeCycle || '2026');
+
+    // Asignar a campos del modal
     const nameEl = document.getElementById('exonDocModalStudentName');
     const metaEl = document.getElementById('exonDocModalMeta');
     const subjEl = document.getElementById('exonDocModalSubject');
@@ -48364,45 +48762,416 @@ function openExonerationDetailModal(studentId, subjectName, unit) {
     const reasonEl = document.getElementById('exonDocModalReason');
     const authEl = document.getElementById('exonDocModalAuthorizedBy');
     const dateEl = document.getElementById('exonDocModalDate');
+    const folioEl = document.getElementById('exonDocModalFolio');
 
     if (nameEl) nameEl.textContent = studentFullName;
-    if (metaEl) metaEl.textContent = `Carné: ${carneText} | Grado: ${gradeText}`;
-    if (subjEl) subjEl.textContent = subjectName || 'Todas las Asignaturas';
-    if (bimEl) bimEl.textContent = unit ? `${unit}º Bimestre (Ciclo Escolar)` : 'Todo el Ciclo / Anual';
+    if (metaEl) metaEl.textContent = `Carné: ${carneText} | Grado: ${gradeText} | Carrera: Perito Contador`;
+    if (subjEl) subjEl.textContent = finalSubject;
+    if (bimEl) bimEl.textContent = bimLabel;
+    if (reasonEl) reasonEl.innerHTML = `<i class="fa-solid fa-file-circle-check" style="color:#d97706; margin-right:4px;"></i> ${escapeHtml(finalReason)}`;
+    if (authEl) authEl.textContent = finalAuthorizedBy;
+    if (dateEl) dateEl.textContent = finalDate;
+    if (folioEl) folioEl.textContent = `EXON-${(carneText !== 'Sin carné' ? carneText : (student?.id || '001')).replace(/[^a-zA-Z0-9]/g, '')}`;
 
-    // Buscar la exoneración específica
-    const exons = (typeof getStudentExonerationsList === 'function') ? getStudentExonerationsList(student) : (student.academicExceptions || []);
-    const cleanSubj = (subjectName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
-    const uNum = parseInt(unit) || 0;
+    // Guardar referencia en memoria para impresión oficial
+    window.CURRENT_VIEWING_EXONERATION = {
+        student: student,
+        studentId: student ? student.id : studentId,
+        studentName: studentFullName,
+        carne: carneText,
+        gradeLabel: gradeText,
+        subject: finalSubject,
+        bimestre: finalBimestre,
+        bimLabel: bimLabel,
+        reason: finalReason,
+        authorizedBy: finalAuthorizedBy,
+        date: finalDate,
+        rawExon: matchedEx
+    };
 
-    let matchedEx = null;
-    if (Array.isArray(exons)) {
-        matchedEx = exons.find(ex => {
-            if (!ex) return false;
-            const exSubj = (ex.subject || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
-            const matchSubj = (!ex.subject || ex.subject === 'ALL' || exSubj === 'all' || cleanSubj === exSubj || cleanSubj.includes(exSubj) || exSubj.includes(cleanSubj));
-            const matchB = (!ex.bimestre || ex.bimestre === 'ALL' || String(ex.bimestre).toUpperCase() === 'ALL' || parseInt(ex.bimestre) === uNum);
-            return matchSubj && matchB;
-        });
-    }
-
-    if (matchedEx) {
-        if (reasonEl) reasonEl.innerHTML = `<i class="fa-solid fa-file-circle-check" style="color:#d97706; margin-right:4px;"></i> ${escapeHtml(matchedEx.reason || matchedEx.details || matchedEx.observation || 'Exoneración y dispensa autorizada por la Dirección de la institución.')}`;
-        if (authEl) authEl.textContent = matchedEx.authorizedBy || matchedEx.authorizer || 'Dirección del Plantel / MINEDUC';
-        if (dateEl) dateEl.textContent = matchedEx.date || matchedEx.createdAt || (STATE.activeCycle || '2026');
+    // Desplegar modal mediante helper institucional showModalById y activar estilos
+    if (typeof showModalById === 'function') {
+        showModalById('exonerationDetailDocenteModal');
     } else {
-        if (reasonEl) reasonEl.innerHTML = `<i class="fa-solid fa-circle-info" style="color:#d97706; margin-right:4px;"></i> Estudiante con régimen de exoneración académica registrado en Dirección y Secretaría. Por disposición ministerial e institucional, la calificación no se computa numéricamente para este período.`;
-        if (authEl) authEl.textContent = 'Dirección del Plantel';
-        if (dateEl) dateEl.textContent = STATE.activeCycle || 'Ciclo Escolar Vigente';
+        modal.classList.add('active');
+        modal.style.setProperty('display', 'flex', 'important');
+        modal.style.display = 'flex';
+        modal.style.visibility = 'visible';
+        modal.style.opacity = '1';
     }
-
-    modal.style.setProperty('display', 'flex', 'important');
 }
 
 function closeExonerationDetailDocenteModal() {
     const modal = document.getElementById('exonerationDetailDocenteModal');
-    if (modal) modal.style.setProperty('display', 'none', 'important');
+    if (!modal) return;
+    if (typeof hideModalById === 'function') {
+        hideModalById('exonerationDetailDocenteModal');
+    } else {
+        modal.classList.remove('active');
+        modal.style.setProperty('display', 'none', 'important');
+        modal.style.display = 'none';
+        modal.style.visibility = 'hidden';
+        modal.style.opacity = '0';
+    }
 }
+
+function printCurrentExonerationCertificate() {
+    const data = window.CURRENT_VIEWING_EXONERATION;
+    if (!data) {
+        showToast("No hay datos de constancia cargados para imprimir.", "warning");
+        return;
+    }
+    printStudentExonerationOfficialCertificate(data);
+}
+window.printCurrentExonerationCertificate = printCurrentExonerationCertificate;
+
+function printStudentExonerationOfficialCertificate(data) {
+    if (!data) return;
+
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+        showToast("Ventana emergente bloqueada. Habilite las ventanas emergentes en su navegador para imprimir la constancia.", "warning");
+        return;
+    }
+
+    const cycle = STATE.activeCycle || '2026';
+    const baseUrl = window.location.href.split('#')[0].split('?')[0];
+    const folioCode = `CONST-EXON-${cycle}-${(data.carne || data.studentId || '001').replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase()}`;
+    const todayStr = new Date().toLocaleDateString('es-GT', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <base href="${escapeHtml(baseUrl)}">
+    <title>Constancia Oficial de Exoneración - ${escapeHtml(data.studentName)}</title>
+    <style>
+        @page {
+            size: letter portrait;
+            margin: 15mm 15mm 15mm 15mm;
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+            font-size: 10.5pt;
+            color: #0f172a;
+            background: #ffffff;
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+        .cert-container {
+            border: 3px double #0f766e;
+            border-radius: 8px;
+            padding: 24px 28px;
+            position: relative;
+            min-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid #0f766e;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+        .header-logo {
+            width: 75px;
+            height: auto;
+            max-height: 80px;
+        }
+        .header-text {
+            text-align: center;
+            flex: 1;
+            padding: 0 15px;
+        }
+        .mineduc-line {
+            font-size: 8.5pt;
+            font-weight: 800;
+            color: #0f766e;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .school-title {
+            font-size: 14pt;
+            font-weight: 900;
+            color: #0f172a;
+            margin: 2px 0;
+            text-transform: uppercase;
+        }
+        .school-meta {
+            font-size: 8.5pt;
+            color: #475569;
+        }
+        .folio-box {
+            border: 1.5px solid #0f766e;
+            background: #f0fdfa;
+            border-radius: 6px;
+            padding: 6px 10px;
+            text-align: center;
+            min-width: 130px;
+        }
+        .folio-label {
+            font-size: 7pt;
+            font-weight: 800;
+            color: #0f766e;
+            text-transform: uppercase;
+        }
+        .folio-value {
+            font-size: 8.5pt;
+            font-weight: 900;
+            color: #0f172a;
+        }
+        .doc-title-box {
+            text-align: center;
+            margin: 18px 0 22px 0;
+        }
+        .doc-title {
+            font-size: 13pt;
+            font-weight: 900;
+            color: #0f766e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0;
+        }
+        .doc-subtitle {
+            font-size: 9pt;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-top: 3px;
+        }
+        .preamble {
+            font-size: 10pt;
+            text-align: justify;
+            margin-bottom: 18px;
+            color: #1e293b;
+            line-height: 1.55;
+        }
+        .student-box {
+            background: #f8fafc;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 14px 18px;
+            margin-bottom: 18px;
+        }
+        .student-box table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .student-box td {
+            padding: 4px 6px;
+            font-size: 9.5pt;
+            vertical-align: middle;
+        }
+        .field-lbl {
+            font-weight: 700;
+            color: #475569;
+            width: 25%;
+            text-transform: uppercase;
+            font-size: 8.5pt;
+        }
+        .field-val {
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .details-box {
+            border: 1.5px solid #0f766e;
+            background: #ffffff;
+            border-radius: 6px;
+            margin-bottom: 18px;
+            overflow: hidden;
+        }
+        .details-box-header {
+            background: #f0fdfa;
+            border-bottom: 1px solid #99f6e4;
+            padding: 6px 14px;
+            font-size: 8.5pt;
+            font-weight: 800;
+            color: #0f766e;
+            text-transform: uppercase;
+        }
+        .details-box-content {
+            padding: 12px 14px;
+        }
+        .details-box-content table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .details-box-content td {
+            padding: 5px 6px;
+            font-size: 9.5pt;
+            vertical-align: top;
+        }
+        .instruction-box {
+            background: #f0fdf4;
+            border-left: 4px solid #16a34a;
+            padding: 10px 14px;
+            margin-bottom: 22px;
+            font-size: 8.8pt;
+            color: #166534;
+            line-height: 1.45;
+        }
+        .signatures {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 35px;
+            page-break-inside: avoid;
+        }
+        .sign-col {
+            width: 40%;
+            text-align: center;
+            font-size: 9pt;
+        }
+        .sign-line {
+            border-top: 1.5px solid #0f172a;
+            margin-bottom: 6px;
+        }
+        .footer-note {
+            text-align: center;
+            font-size: 7.5pt;
+            color: #94a3b8;
+            border-top: 1px dashed #cbd5e1;
+            padding-top: 10px;
+            margin-top: 25px;
+        }
+    </style>
+</head>
+<body>
+    <div class="cert-container">
+        <div>
+            <!-- ENCABEZADO -->
+            <div class="header">
+                <img src="logo.png" alt="Logo ENCCO" class="header-logo" onerror="this.style.display='none'">
+                <div class="header-text">
+                    <div class="mineduc-line">MINISTERIO DE EDUCACIÓN &bull; REPÚBLICA DE GUATEMALA</div>
+                    <div class="school-title">Escuela Nacional de Ciencias Comerciales</div>
+                    <div class="school-meta">Jutiapa, Guatemala &bull; Fundada en 1970 &bull; Ciclo Escolar Oficial ${escapeHtml(cycle)}</div>
+                    <div class="school-meta">Dirección General y Secretaría Académica</div>
+                </div>
+                <div class="folio-box">
+                    <div class="folio-label">Folio Oficial</div>
+                    <div class="folio-value">${escapeHtml(folioCode)}</div>
+                    <div style="font-size:6.5pt; color:#64748b; margin-top:2px;">Libro de Exoneraciones</div>
+                </div>
+            </div>
+
+            <!-- TÍTULO -->
+            <div class="doc-title-box">
+                <h1 class="doc-title">Constancia Oficial de Exoneración Académica</h1>
+                <div class="doc-subtitle">Certificación Institucional de Dispensa y Régimen Especial de Evaluación</div>
+            </div>
+
+            <!-- PREÁMBULO -->
+            <div class="preamble">
+                La Dirección General y Secretaría del Plantel de la <strong>Escuela Nacional de Ciencias Comerciales de Jutiapa</strong>, en cumplimiento del Reglamento de Evaluación de los Aprendizajes (Acuerdo Ministerial No. 1171-2010 y normativas institucionales complementarias):
+                <br><br>
+                <div style="text-align:center; font-weight:900; font-size:11pt; color:#0f766e; letter-spacing:1px;">HACE CONSTAR QUE:</div>
+            </div>
+
+            <!-- DATOS DEL ESTUDIANTE -->
+            <div class="student-box">
+                <table>
+                    <tr>
+                        <td class="field-lbl">Estudiante:</td>
+                        <td class="field-val" style="font-size:10.5pt; color:#0f766e;">${escapeHtml(data.studentName)}</td>
+                        <td class="field-lbl" style="width:18%;">Carné:</td>
+                        <td class="field-val" style="width:25%;"><code>${escapeHtml(data.carne)}</code></td>
+                    </tr>
+                    <tr>
+                        <td class="field-lbl">Grado y Sección:</td>
+                        <td class="field-val">${escapeHtml(data.gradeLabel)}</td>
+                        <td class="field-lbl">Ciclo Lectivo:</td>
+                        <td class="field-val">${escapeHtml(cycle)}</td>
+                    </tr>
+                    <tr>
+                        <td class="field-lbl">Carrera Oficial:</td>
+                        <td class="field-val" colspan="3">Perito Contador con Orientación en Computación Comercial (Jornada Vespertina)</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- DETALLES DE LA EXONERACIÓN -->
+            <div class="details-box">
+                <div class="details-box-header">
+                    Especificación de la Dispensa y Consideración Académica
+                </div>
+                <div class="details-box-content">
+                    <table>
+                        <tr>
+                            <td class="field-lbl">Asignatura(s):</td>
+                            <td class="field-val" style="color:#0f766e;"><strong>${escapeHtml(data.subject)}</strong></td>
+                            <td class="field-lbl">Período / Bimestre:</td>
+                            <td class="field-val">${escapeHtml(data.bimLabel || data.bimestre)}</td>
+                        </tr>
+                        <tr>
+                            <td class="field-lbl">Motivo / Resolución:</td>
+                            <td class="field-val" colspan="3" style="font-weight:600; color:#334155; line-height:1.4;">
+                                ${escapeHtml(data.reason)}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="field-lbl">Autorizado por:</td>
+                            <td class="field-val">${escapeHtml(data.authorizedBy)}</td>
+                            <td class="field-lbl">Fecha de Registro:</td>
+                            <td class="field-val">${escapeHtml(data.date)}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- DISPOSICIÓN INSTITUCIONAL -->
+            <div class="instruction-box">
+                <strong>Disposición Técnica y Validez Académica:</strong> El/La estudiante cuenta con dispensa formal debidamente inscrita en el Libro de Exoneraciones de la institución. Los catedráticos titulares de las asignaturas detalladas están expresamente notificados para no exigir evaluaciones ni asentar calificación numérica en dicho período, omitiéndose la materia del divisor general de promedios para garantizar la no afectación del récord escolar ni del derecho a promoción.
+            </div>
+        </div>
+
+        <div>
+            <!-- FIRMAS -->
+            <div class="signatures">
+                <div class="sign-col">
+                    <div class="sign-line"></div>
+                    <strong>Secretario(a) de la Institución</strong><br>
+                    <span style="font-size:7.5pt; color:#475569;">Registro Académico y Control Escolar</span><br>
+                    <span style="font-size:7.5pt; color:#64748b;">Escuela Nacional de Ciencias Comerciales</span>
+                </div>
+                <div class="sign-col">
+                    <div class="sign-line"></div>
+                    <strong>Director(a) General</strong><br>
+                    <span style="font-size:7.5pt; color:#475569;">Vo.Bo. Institucional y Administrativo</span><br>
+                    <span style="font-size:7.5pt; color:#64748b;">ENCCO - Jutiapa, Guatemala</span>
+                </div>
+            </div>
+
+            <!-- PIE DE PÁGINA -->
+            <div class="footer-note">
+                Documento emitido oficialmente en Jutiapa, Guatemala a los ${todayStr}.<br>
+                Plataforma de Control Escolar ENCCO &bull; Certificación válida sin enmiendas ni tachaduras.
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+    printWin.document.open();
+    printWin.document.write(htmlContent);
+    printWin.document.close();
+
+    setTimeout(() => {
+        try {
+            printWin.focus();
+            printWin.print();
+        } catch(e) {}
+    }, 450);
+}
+window.printStudentExonerationOfficialCertificate = printStudentExonerationOfficialCertificate;
 
 function openNewExonerationDialog(studentId = null) {
     const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
@@ -48420,7 +49189,11 @@ function openNewExonerationDialog(studentId = null) {
 
 function renderExoneracionesLogView() {
     const curRole = (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest';
-    const canManageExon = ['director', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
+    const isAuthorityRole = ['director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura', 'admin', 'super_usuario'].includes(curRole.toLowerCase());
+    const isDocente = (curRole.toLowerCase() === 'docente') && !isAuthorityRole;
+    const canManageExon = isAuthorityRole;
+    const currentUser = STATE.currentUser || (STATE.users || [])[0];
+
     const btnNewExo = document.getElementById('btnNewExoneracionToolbar');
     if (btnNewExo) {
         btnNewExo.style.display = canManageExon ? 'inline-flex' : 'none';
@@ -48433,32 +49206,53 @@ function renderExoneracionesLogView() {
 
     if (!tbody) return;
 
-    // Llenar select de grados si solo tiene 1 opción
-    if (gradeSelect && gradeSelect.options.length <= 1) {
-        let optHtml = '<option value="ALL">-- Todos los Grados --</option>';
-        (STATE.gradesList || []).forEach(g => {
-            optHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} - Sección ${escapeHtml(g.section || '')}</option>`;
-        });
-        gradeSelect.innerHTML = optHtml;
+    // Llenar select de grados según rol docente vs autoridad
+    if (gradeSelect) {
+        if (isDocente) {
+            const myGrades = (typeof getTeacherAssignedGradesList === 'function')
+                ? getTeacherAssignedGradesList(currentUser)
+                : [];
+            let optHtml = `<option value="ALL">-- Mis Grados Asignados (${myGrades.length}) --</option>`;
+            myGrades.forEach(g => {
+                const sSec = g.section ? ` - Sección ${g.section}` : '';
+                optHtml += `<option value="${escapeHtml(g.code || g.id)}">${escapeHtml(g.name || g.label || g.code)}${escapeHtml(sSec)}</option>`;
+            });
+            if (gradeSelect.options.length <= 1 || !gradeSelect.querySelector('option[value="ALL"]')) {
+                gradeSelect.innerHTML = optHtml;
+            }
+        } else if (gradeSelect.options.length <= 1) {
+            let optHtml = '<option value="ALL">-- Todos los Grados --</option>';
+            (STATE.gradesList || []).forEach(g => {
+                optHtml += `<option value="${escapeHtml(g.code)}">${escapeHtml(g.name)} - Sección ${escapeHtml(g.section || '')}</option>`;
+            });
+            gradeSelect.innerHTML = optHtml;
+        }
     }
 
     const selGrade = gradeSelect ? gradeSelect.value : 'ALL';
     const selBim = bimSelect ? bimSelect.value : 'ALL';
     const searchQuery = (searchInput ? searchInput.value : '').toLowerCase().trim();
 
-    // Recolectar todas las exoneraciones
+    // Recolectar estudiantes base según rol (Docente estrictamente limitado a asignados)
+    const baseStudents = isDocente
+        ? ((typeof getAuthorizedStudents === 'function') 
+            ? getAuthorizedStudents(currentUser, curRole) 
+            : (STATE.students || []).filter(s => (typeof isStudentAssignedToTeacher === 'function') ? isStudentAssignedToTeacher(s, currentUser) : true))
+        : (STATE.students || []);
+
     const allExonsList = [];
-    (STATE.students || []).forEach(s => {
+    baseStudents.forEach(s => {
+        if (!s || s.status === 'Retirado') return;
         const exons = (typeof getStudentExonerationsList === 'function') ? getStudentExonerationsList(s) : (s.academicExceptions || []);
         if (Array.isArray(exons) && exons.length > 0) {
             exons.forEach(ex => {
                 allExonsList.push({
                     student: s,
                     studentId: s.id,
-                    studentName: formatStudentDisplayName(s, 'lastFirst'),
+                    studentName: (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(s, 'lastFirst') : (s.name || 'Estudiante'),
                     carne: s.carne || s.personalCode || '---',
                     gradeCode: s.gradeCode || s.grade || '',
-                    gradeLabel: formatStudentGradeAndSection(s) || `${s.grade || ''} ${s.section || ''}`.trim(),
+                    gradeLabel: (typeof formatStudentGradeAndSection === 'function') ? formatStudentGradeAndSection(s) : `${s.grade || ''} ${s.section || ''}`.trim(),
                     subject: ex.subject || 'Todas las materias',
                     bimestre: ex.bimestre || 'ALL',
                     reason: ex.reason || ex.details || ex.observation || 'Exoneración y dispensa autorizada oficialmente.',
@@ -48488,6 +49282,9 @@ function renderExoneracionesLogView() {
 
     // Ordenar alfabéticamente por estudiante
     filtered.sort((a, b) => a.studentName.localeCompare(b.studentName, 'es', { sensitivity: 'base' }));
+
+    // Guardar lista renderizada para acceso indexado libre de errores
+    window._lastRenderedExonsList = filtered;
 
     if (filtered.length === 0) {
         tbody.innerHTML = `
@@ -48539,8 +49336,8 @@ function renderExoneracionesLogView() {
                 </td>
                 <td style="text-align:center;">
                     <div style="display:flex; gap:4px; justify-content:center; flex-wrap:wrap;">
-                        <button type="button" class="btn btn-xs btn-outline-info" onclick="openExonerationDetailModal('${item.studentId}', '${escapeHtml(item.subject)}', '${item.bimestre}')" style="font-size:0.75rem; padding:3px 8px; font-weight:700;" title="Ver constancia oficial de exoneración">
-                            <i class="fa-solid fa-eye"></i> Constancia
+                        <button type="button" class="btn btn-xs btn-outline-info" onclick="openExonerationDetailModalByIndex(${idx})" style="font-size:0.75rem; padding:3px 8px; font-weight:700; display:inline-flex; align-items:center; gap:4px;" title="Ver e imprimir constancia oficial de exoneración">
+                            <i class="fa-solid fa-file-shield"></i> Constancia
                         </button>
                         ${canManageExon ? `
                         <button type="button" class="btn btn-xs btn-outline-primary" onclick="openAcademicExonerationModal('${item.studentId}')" style="font-size:0.75rem; padding:3px 8px; font-weight:700;" title="Gestionar dispensa del alumno">
@@ -48733,7 +49530,10 @@ window.openNewExonerationDialog = openNewExonerationDialog;
 window.renderExoneracionesLogView = renderExoneracionesLogView;
 window.printExoneracionesLog = printExoneracionesLog;
 window.openExonerationDetailModal = openExonerationDetailModal;
+window.openExonerationDetailModalByIndex = openExonerationDetailModalByIndex;
 window.closeExonerationDetailDocenteModal = closeExonerationDetailDocenteModal;
+window.printCurrentExonerationCertificate = printCurrentExonerationCertificate;
+window.printStudentExonerationOfficialCertificate = printStudentExonerationOfficialCertificate;
 
 
 // ==========================================================================
