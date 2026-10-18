@@ -117,6 +117,24 @@ for (const kw of printKeywords) {
 }
 console.log('✅ PASS: La plantilla de impresión oficial contiene todos los membretes, sellos, firmas y declaraciones institucionales.');
 
+// TEST 9: Verificación de ajuste estricto a una sola página (Single-Page Print)
+console.log('\n--- Test 9: Verificación de configuración para impresión en una sola página ---');
+const singlePageRules = [
+    'size: letter portrait;',
+    'margin: 8mm 10mm 8mm 10mm;',
+    'page-break-inside: avoid',
+    '@media print',
+    'overflow: hidden !important;',
+    'height: calc(279.4mm - 16mm - 4px) !important;'
+];
+for (const rule of singlePageRules) {
+    if (!printCode.includes(rule)) {
+        console.error(`❌ ERROR: Falta regla CSS crítica para garantizar impresión en 1 página: ${rule}`);
+        process.exit(1);
+    }
+}
+console.log('✅ PASS: Reglas de impresión y dimensionamiento en una sola página verificadas correctamente.');
+
 console.log('\n========================================================================');
 console.log('🎉 ¡TODAS LAS VERIFICACIONES TÉCNICAS PASARON SATISFACTORIAMENTE!');
 console.log('========================================================================');

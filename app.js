@@ -48848,93 +48848,100 @@ function printStudentExonerationOfficialCertificate(data) {
     <style>
         @page {
             size: letter portrait;
-            margin: 15mm 15mm 15mm 15mm;
+            margin: 8mm 10mm 8mm 10mm;
         }
         * {
             box-sizing: border-box;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
-        body {
-            font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
-            font-size: 10.5pt;
-            color: #0f172a;
-            background: #ffffff;
+        html, body {
+            height: 100%;
             margin: 0;
             padding: 0;
-            line-height: 1.5;
+            background: #ffffff;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+            font-size: 8.8pt;
+            color: #0f172a;
+            line-height: 1.35;
         }
         .cert-container {
-            border: 3px double #0f766e;
-            border-radius: 8px;
-            padding: 24px 28px;
+            border: 2.5px double #0f766e;
+            border-radius: 6px;
+            padding: 14px 20px;
             position: relative;
-            min-height: 92vh;
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            min-height: calc(100vh - 16mm);
+            page-break-inside: avoid;
+            break-inside: avoid;
         }
         .header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             border-bottom: 2px solid #0f766e;
-            padding-bottom: 12px;
-            margin-bottom: 20px;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
         }
         .header-logo {
-            width: 75px;
+            width: 58px;
             height: auto;
-            max-height: 80px;
+            max-height: 62px;
         }
         .header-text {
             text-align: center;
             flex: 1;
-            padding: 0 15px;
+            padding: 0 10px;
         }
         .mineduc-line {
-            font-size: 8.5pt;
+            font-size: 7.5pt;
             font-weight: 800;
             color: #0f766e;
-            letter-spacing: 1px;
+            letter-spacing: 0.8px;
             text-transform: uppercase;
         }
         .school-title {
-            font-size: 14pt;
+            font-size: 12pt;
             font-weight: 900;
             color: #0f172a;
-            margin: 2px 0;
+            margin: 1px 0;
             text-transform: uppercase;
         }
         .school-meta {
-            font-size: 8.5pt;
+            font-size: 7.5pt;
             color: #475569;
+            line-height: 1.25;
         }
         .folio-box {
             border: 1.5px solid #0f766e;
             background: #f0fdfa;
-            border-radius: 6px;
-            padding: 6px 10px;
+            border-radius: 5px;
+            padding: 4px 8px;
             text-align: center;
-            min-width: 130px;
+            min-width: 125px;
         }
         .folio-label {
-            font-size: 7pt;
+            font-size: 6.5pt;
             font-weight: 800;
             color: #0f766e;
             text-transform: uppercase;
         }
         .folio-value {
-            font-size: 8.5pt;
+            font-size: 8pt;
             font-weight: 900;
             color: #0f172a;
         }
         .doc-title-box {
             text-align: center;
-            margin: 18px 0 22px 0;
+            margin: 6px 0 8px 0;
         }
         .doc-title {
-            font-size: 13pt;
+            font-size: 11.5pt;
             font-weight: 900;
             color: #0f766e;
             text-transform: uppercase;
@@ -48942,105 +48949,125 @@ function printStudentExonerationOfficialCertificate(data) {
             margin: 0;
         }
         .doc-subtitle {
-            font-size: 9pt;
+            font-size: 7.8pt;
             font-weight: 700;
             color: #64748b;
             text-transform: uppercase;
-            margin-top: 3px;
+            margin-top: 2px;
         }
         .preamble {
-            font-size: 10pt;
+            font-size: 8.5pt;
             text-align: justify;
-            margin-bottom: 18px;
+            margin-bottom: 8px;
             color: #1e293b;
-            line-height: 1.55;
+            line-height: 1.35;
         }
         .student-box {
             background: #f8fafc;
-            border: 1.5px solid #cbd5e1;
-            border-radius: 6px;
-            padding: 14px 18px;
-            margin-bottom: 18px;
+            border: 1.2px solid #cbd5e1;
+            border-radius: 5px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
         }
         .student-box table {
             width: 100%;
             border-collapse: collapse;
         }
         .student-box td {
-            padding: 4px 6px;
-            font-size: 9.5pt;
+            padding: 2.5px 4px;
+            font-size: 8.5pt;
             vertical-align: middle;
         }
         .field-lbl {
             font-weight: 700;
             color: #475569;
-            width: 25%;
+            width: 22%;
             text-transform: uppercase;
-            font-size: 8.5pt;
+            font-size: 7.5pt;
         }
         .field-val {
             font-weight: 800;
             color: #0f172a;
         }
         .details-box {
-            border: 1.5px solid #0f766e;
+            border: 1.2px solid #0f766e;
             background: #ffffff;
-            border-radius: 6px;
-            margin-bottom: 18px;
+            border-radius: 5px;
+            margin-bottom: 8px;
             overflow: hidden;
         }
         .details-box-header {
             background: #f0fdfa;
             border-bottom: 1px solid #99f6e4;
-            padding: 6px 14px;
-            font-size: 8.5pt;
+            padding: 4px 10px;
+            font-size: 7.5pt;
             font-weight: 800;
             color: #0f766e;
             text-transform: uppercase;
         }
         .details-box-content {
-            padding: 12px 14px;
+            padding: 7px 10px;
         }
         .details-box-content table {
             width: 100%;
             border-collapse: collapse;
         }
         .details-box-content td {
-            padding: 5px 6px;
-            font-size: 9.5pt;
+            padding: 3px 4px;
+            font-size: 8.5pt;
             vertical-align: top;
         }
         .instruction-box {
             background: #f0fdf4;
-            border-left: 4px solid #16a34a;
-            padding: 10px 14px;
-            margin-bottom: 22px;
-            font-size: 8.8pt;
+            border-left: 3.5px solid #16a34a;
+            padding: 6px 10px;
+            margin-bottom: 8px;
+            font-size: 7.4pt;
             color: #166534;
-            line-height: 1.45;
+            line-height: 1.3;
+            border-radius: 3px;
         }
         .signatures {
             display: flex;
             justify-content: space-around;
-            margin-top: 35px;
+            margin-top: 14px;
             page-break-inside: avoid;
+            break-inside: avoid;
         }
         .sign-col {
-            width: 40%;
+            width: 38%;
             text-align: center;
-            font-size: 9pt;
+            font-size: 8pt;
+            line-height: 1.25;
         }
         .sign-line {
-            border-top: 1.5px solid #0f172a;
-            margin-bottom: 6px;
+            border-top: 1.2px solid #0f172a;
+            margin-bottom: 4px;
         }
         .footer-note {
             text-align: center;
-            font-size: 7.5pt;
+            font-size: 6.8pt;
             color: #94a3b8;
             border-top: 1px dashed #cbd5e1;
-            padding-top: 10px;
-            margin-top: 25px;
+            padding-top: 5px;
+            margin-top: 8px;
+            line-height: 1.25;
+        }
+        @media print {
+            html, body {
+                height: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden !important;
+            }
+            .cert-container {
+                height: calc(279.4mm - 16mm - 4px) !important;
+                max-height: calc(279.4mm - 16mm - 4px) !important;
+                page-break-inside: avoid !important;
+                page-break-after: avoid !important;
+                page-break-before: avoid !important;
+                break-inside: avoid !important;
+            }
         }
     </style>
 </head>
@@ -49072,8 +49099,7 @@ function printStudentExonerationOfficialCertificate(data) {
             <!-- PREÁMBULO -->
             <div class="preamble">
                 La Dirección General y Secretaría del Plantel de la <strong>Escuela Nacional de Ciencias Comerciales de Jutiapa</strong>, en cumplimiento del Reglamento de Evaluación de los Aprendizajes (Acuerdo Ministerial No. 1171-2010 y normativas institucionales complementarias):
-                <br><br>
-                <div style="text-align:center; font-weight:900; font-size:11pt; color:#0f766e; letter-spacing:1px;">HACE CONSTAR QUE:</div>
+                <div style="text-align:center; font-weight:900; font-size:9.5pt; color:#0f766e; letter-spacing:1px; margin-top:5px;">HACE CONSTAR QUE:</div>
             </div>
 
             <!-- DATOS DEL ESTUDIANTE -->
@@ -49081,8 +49107,8 @@ function printStudentExonerationOfficialCertificate(data) {
                 <table>
                     <tr>
                         <td class="field-lbl">Estudiante:</td>
-                        <td class="field-val" style="font-size:10.5pt; color:#0f766e;">${escapeHtml(data.studentName)}</td>
-                        <td class="field-lbl" style="width:18%;">Carné:</td>
+                        <td class="field-val" style="font-size:9.5pt; color:#0f766e;">${escapeHtml(data.studentName)}</td>
+                        <td class="field-lbl" style="width:16%;">Carné:</td>
                         <td class="field-val" style="width:25%;"><code>${escapeHtml(data.carne)}</code></td>
                     </tr>
                     <tr>
@@ -49113,7 +49139,7 @@ function printStudentExonerationOfficialCertificate(data) {
                         </tr>
                         <tr>
                             <td class="field-lbl">Motivo / Resolución:</td>
-                            <td class="field-val" colspan="3" style="font-weight:600; color:#334155; line-height:1.4;">
+                            <td class="field-val" colspan="3" style="font-weight:600; color:#334155; line-height:1.35;">
                                 ${escapeHtml(data.reason)}
                             </td>
                         </tr>
@@ -49139,14 +49165,14 @@ function printStudentExonerationOfficialCertificate(data) {
                 <div class="sign-col">
                     <div class="sign-line"></div>
                     <strong>Secretario(a) de la Institución</strong><br>
-                    <span style="font-size:7.5pt; color:#475569;">Registro Académico y Control Escolar</span><br>
-                    <span style="font-size:7.5pt; color:#64748b;">Escuela Nacional de Ciencias Comerciales</span>
+                    <span style="font-size:7pt; color:#475569;">Registro Académico y Control Escolar</span><br>
+                    <span style="font-size:7pt; color:#64748b;">Escuela Nacional de Ciencias Comerciales</span>
                 </div>
                 <div class="sign-col">
                     <div class="sign-line"></div>
                     <strong>Director(a) General</strong><br>
-                    <span style="font-size:7.5pt; color:#475569;">Vo.Bo. Institucional y Administrativo</span><br>
-                    <span style="font-size:7.5pt; color:#64748b;">ENCCO - Jutiapa, Guatemala</span>
+                    <span style="font-size:7pt; color:#475569;">Vo.Bo. Institucional y Administrativo</span><br>
+                    <span style="font-size:7pt; color:#64748b;">ENCCO - Jutiapa, Guatemala</span>
                 </div>
             </div>
 
