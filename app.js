@@ -17850,30 +17850,44 @@ function generateOfficialPrintList(opts = null) {
 
             let tableHtml = '';
 
+            const getStudentStatusFlags = (s) => {
+                const normStatus = (s.status || '').trim().toLowerCase();
+                const isRet = (normStatus === 'retirado' || normStatus === 'inactivo' || s.active === false) && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                const isAus = (normStatus === 'ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                const isExon = !isRet && !isAus && (
+                    (finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) ||
+                    (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)) ||
+                    normStatus === 'exonerado'
+                );
+                const rowClass = isRet ? 'row-retirado' : (isAus ? 'row-ausente' : (isExon ? 'row-exonerado' : ''));
+                const rowBg = isRet ? 'background-color:#fee2e2 !important;' : (isAus ? 'background-color:#fef3c7 !important;' : (isExon ? 'background-color:#e0f2fe !important;' : ''));
+                const tagHtml = isRet ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">RETIRADO</span>' 
+                    : (isAus ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; margin-left:4px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">AUSENTE</span>' 
+                    : (isExon ? ` <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#0284c7; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; margin-left:4px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">EXONERADO (B${bNum})</span>` : ''));
+                return { isRet, isAus, isExon, rowClass, rowBg, tagHtml };
+            };
+
             if (modelType === 'NOMINA_OFICIAL') {
                 const rowsHtml = pageStudents.map((s, idx) => {
-                    const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
-                    const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
-                    const isExon = !isRet && ((finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
-                    const tagHtml = isRet ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px;">RETIRADO</span>' : (isAus ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; margin-left:4px;">AUSENTE</span>' : (isExon ? ` <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#0284c7; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; margin-left:4px;">EXONERADO (B${bNum})</span>` : ''));
+                    const { isRet, isAus, isExon, rowClass, rowBg, tagHtml } = getStudentStatusFlags(s);
                     const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
                     const claveVal = s.clave || (startNo + idx + 1);
                     const genderShort = (s.gender === 'Femenino' || s.genero === 'Femenino') ? 'F' : 'M';
                     const guardianName = isVacio ? '' : (s.guardianName || s.tutor || s.fatherName || s.motherName || 'No registrado');
                     const guardianDpi = isVacio ? '' : (s.guardianDpi || s.tutorDpi || s.fatherDpi || s.motherDpi || '-');
-                    const statusText = isVacio ? '' : (isRet ? '<span style="color:#b91c1c; font-weight:800; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; font-size:6.8px;">RETIRADO</span>' : (isAus ? '<span style="color:#b45309; font-weight:800; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; font-size:6.8px;">AUSENTE</span>' : (isExon ? `<span style="color:#0284c7; font-weight:800; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; font-size:6.8px;">EXONERADO B${bNum}</span>` : `<span style="color:#15803d; font-weight:700; font-size:6.8px;">${(s.status || 'Inscrito').toUpperCase()}</span>`)));
+                    const statusText = isVacio ? '' : (isRet ? '<span style="color:#b91c1c; font-weight:800; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; font-size:6.8px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">RETIRADO</span>' : (isAus ? '<span style="color:#b45309; font-weight:800; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; font-size:6.8px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">AUSENTE</span>' : (isExon ? `<span style="color:#0284c7; font-weight:800; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; font-size:6.8px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">EXONERADO B${bNum}</span>` : `<span style="color:#15803d; font-weight:700; font-size:6.8px;">${(s.status || 'Inscrito').toUpperCase()}</span>`)));
 
                     return `
-                    <tr style="height:${rowHeight}; ${isRet ? 'background:#fef2f2;' : (isAus ? 'background:#fffbeb;' : (isExon ? 'background:#f0f9ff;' : ''))}">
-                        <td style="text-align:center; font-weight:700; width:28px; padding:${cellPadding}; font-size:${rowFontSize};">${claveVal}</td>
-                        <td style="text-align:center; font-family:monospace; width:72px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
-                        <td style="text-align:center; font-family:monospace; width:88px; padding:${cellPadding}; font-size:${rowFontSize};">${s.cui || s.dpi || '-'}</td>
-                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
-                        <td style="text-align:center; font-weight:700; width:26px; padding:${cellPadding}; font-size:${rowFontSize};">${genderShort}</td>
-                        <td style="text-align:left; padding-left:4px; width:135px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${guardianName}</td>
-                        <td style="text-align:center; font-family:monospace; width:82px; padding:${cellPadding}; font-size:${rowFontSize};">${guardianDpi}</td>
-                        <td style="text-align:center; width:52px; padding:${cellPadding}; font-size:6.8px;">${statusText}</td>
-                        <td style="width:90px; padding:${cellPadding}; border-bottom:1px solid #94a3b8;"></td>
+                    <tr class="${rowClass}" style="height:${rowHeight}; ${rowBg}">
+                        <td style="text-align:center; font-weight:700; width:28px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${claveVal}</td>
+                        <td style="text-align:center; font-family:monospace; width:72px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${s.personalCode || s.carne || ''}</td>
+                        <td style="text-align:center; font-family:monospace; width:88px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${s.cui || s.dpi || '-'}</td>
+                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${fullNameDisplay}</td>
+                        <td style="text-align:center; font-weight:700; width:26px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${genderShort}</td>
+                        <td style="text-align:left; padding-left:4px; width:135px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${guardianName}</td>
+                        <td style="text-align:center; font-family:monospace; width:82px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${guardianDpi}</td>
+                        <td style="text-align:center; width:52px; padding:${cellPadding}; font-size:6.8px; ${rowBg}">${statusText}</td>
+                        <td style="width:90px; padding:${cellPadding}; border-bottom:1px solid #94a3b8; ${rowBg}"></td>
                     </tr>`;
                 }).join('');
 
@@ -17913,27 +17927,29 @@ function generateOfficialPrintList(opts = null) {
                 `).join('');
 
                 const rowsHtml = pageStudents.map((s, idx) => {
-                    const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
-                    const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
-                    const isExon = !isRet && ((finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
-                    const tagHtml = isRet ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px;">RETIRADO</span>' : (isAus ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; margin-left:4px;">AUSENTE</span>' : (isExon ? ` <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#0284c7; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; margin-left:4px;">EXON. (B${bNum})</span>` : ''));
+                    const { isRet, isAus, isExon, rowClass, rowBg, tagHtml } = getStudentStatusFlags(s);
+                    const isInactive = isRet || isAus;
                     const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
                     const daysCells = daysInfo.map(d => {
-                        const bgStyle = d.isWeekend ? 'background:#f1f5f9;' : (isRet ? 'background:#fef2f2; color:#94a3b8;' : (isAus ? 'background:#fffbeb; color:#94a3b8;' : (isExon ? 'background:#f0f9ff; color:#0284c7;' : '')));
+                        const bgStyle = d.isWeekend 
+                            ? 'background-color:#cbd5e1 !important; color:#334155;' 
+                            : (isRet ? 'background-color:#fee2e2 !important; color:#b91c1c; font-weight:bold;' 
+                            : (isAus ? 'background-color:#fef3c7 !important; color:#b45309; font-weight:bold;' 
+                            : (isExon ? 'background-color:#e0f2fe !important; color:#0284c7; font-weight:bold;' : '')));
                         const cellMark = (!isVacio && (isRet || isAus) && !d.isWeekend) ? '—' : ((!isVacio && isExon && !d.isWeekend) ? '—' : '');
                         return `<td style="width:16px; padding:0; text-align:center; font-size:7px; border:1px solid #94a3b8; ${bgStyle}">${cellMark}</td>`;
                     }).join('');
 
                     return `
-                    <tr style="height:18px; ${isRet ? 'background:#fef2f2;' : (isAus ? 'background:#fffbeb;' : (isExon ? 'background:#f0f9ff;' : ''))}">
-                        <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
-                        <td style="text-align:center; font-family:monospace; width:70px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
-                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:180px; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
+                    <tr class="${rowClass}" style="height:18px; ${rowBg}">
+                        <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${startNo + idx + 1}</td>
+                        <td style="text-align:center; font-family:monospace; width:70px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${s.personalCode || s.carne || ''}</td>
+                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:180px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${fullNameDisplay}</td>
                         ${daysCells}
-                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};">${(!isVacio && (isRet || isAus || isExon)) ? '—' : ''}</td>
-                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};">${(!isVacio && (isRet || isAus || isExon)) ? '—' : ''}</td>
-                        <td style="width:22px; text-align:center; font-weight:700; background:#f8fafc; font-size:${rowFontSize};">${(!isVacio && (isRet || isAus || isExon)) ? '—' : ''}</td>
-                        <td style="width:30px; text-align:center; font-weight:800; background:#f1f5f9; font-size:${rowFontSize};">${(!isVacio && isRet) ? '<span style="color:#b91c1c; font-size:5.5px; font-weight:800; background:#fee2e2; border:1px solid #fca5a5; padding:1px 2px; border-radius:2px;">RET.</span>' : ((!isVacio && isAus) ? '<span style="color:#b45309; font-size:5.5px; font-weight:800; background:#fef3c7; border:1px solid #fde68a; padding:1px 2px; border-radius:2px;">AUS.</span>' : ((!isVacio && isExon) ? '<span style="color:#0284c7; font-size:5.5px; font-weight:800; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 2px; border-radius:2px;">EXON.</span>' : ''))}</td>
+                        <td style="width:22px; text-align:center; font-weight:700; font-size:${rowFontSize}; ${isInactive || isExon ? rowBg : 'background:#f8fafc;'}">${(!isVacio && (isRet || isAus || isExon)) ? '—' : ''}</td>
+                        <td style="width:22px; text-align:center; font-weight:700; font-size:${rowFontSize}; ${isInactive || isExon ? rowBg : 'background:#f8fafc;'}">${(!isVacio && (isRet || isAus || isExon)) ? '—' : ''}</td>
+                        <td style="width:22px; text-align:center; font-weight:700; font-size:${rowFontSize}; ${isInactive || isExon ? rowBg : 'background:#f8fafc;'}">${(!isVacio && (isRet || isAus || isExon)) ? '—' : ''}</td>
+                        <td style="width:30px; text-align:center; font-weight:800; font-size:${rowFontSize}; ${isInactive || isExon ? rowBg : 'background:#f1f5f9;'}">${(!isVacio && isRet) ? '<span style="color:#b91c1c; font-size:5.5px; font-weight:800; background:#fee2e2; border:1px solid #fca5a5; padding:1px 2px; border-radius:2px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">RET.</span>' : ((!isVacio && isAus) ? '<span style="color:#b45309; font-size:5.5px; font-weight:800; background:#fef3c7; border:1px solid #fde68a; padding:1px 2px; border-radius:2px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">AUS.</span>' : ((!isVacio && isExon) ? '<span style="color:#0284c7; font-size:5.5px; font-weight:800; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 2px; border-radius:2px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">EXON.</span>' : ''))}</td>
                     </tr>`;
                 }).join('');
 
@@ -17960,11 +17976,8 @@ function generateOfficialPrintList(opts = null) {
 
             } else if (modelType === 'LISTA_COTEJO') {
                 const rowsHtml = pageStudents.map((s, idx) => {
-                    const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
-                    const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
+                    const { isRet, isAus, isExon, rowClass, rowBg, tagHtml } = getStudentStatusFlags(s);
                     const isInactive = isRet || isAus;
-                    const isExon = !isRet && ((finalSubjectName && typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
-                    const tagHtml = isRet ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px;">RETIRADO</span>' : (isAus ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; margin-left:4px;">AUSENTE</span>' : (isExon ? ` <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#0284c7; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; margin-left:4px;">EXONERADO (B${bNum})</span>` : ''));
                     const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
                     const uData = (s.gradebookDetails && s.gradebookDetails[finalSubjectName] && s.gradebookDetails[finalSubjectName][bNum])
                         ? s.gradebookDetails[finalSubjectName][bNum]
@@ -17977,7 +17990,7 @@ function generateOfficialPrintList(opts = null) {
                     const actCells = activitiesList.map((a, actIdx) => {
                         if (!isVacio) {
                             if (isInactive || isExon) {
-                                return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; color:#94a3b8;">—</td>`;
+                                return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; color:${isRet ? '#b91c1c' : (isAus ? '#b45309' : '#0284c7')}; ${rowBg}">—</td>`;
                             }
                             const score = acts[actIdx];
                             if (score !== undefined && score !== null && score !== '' && !isNaN(score)) {
@@ -17987,17 +18000,17 @@ function generateOfficialPrintList(opts = null) {
                                 return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; font-weight:700; color:#0f172a;">${numScore}</td>`;
                             }
                         }
-                        return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; color:#94a3b8;"></td>`;
+                        return `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; font-size:${rowFontSize}; color:#94a3b8; ${rowBg}"></td>`;
                     }).join('');
 
                     const zonaText = (!isVacio && (isInactive || isExon)) ? '—' : ((!isVacio && (hasAnyAct || sumZona > 0)) ? sumZona : '');
                     let complianceBadge = '';
                     if (!isVacio && isRet) {
-                        complianceBadge = `<span style="color:#b91c1c; font-size:6.5pt; font-weight:800; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px;">RETIRADO</span>`;
+                        complianceBadge = `<span style="color:#b91c1c; font-size:6.5pt; font-weight:800; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">RETIRADO</span>`;
                     } else if (!isVacio && isAus) {
-                        complianceBadge = `<span style="color:#b45309; font-size:6.5pt; font-weight:800; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px;">AUSENTE</span>`;
+                        complianceBadge = `<span style="color:#b45309; font-size:6.5pt; font-weight:800; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">AUSENTE</span>`;
                     } else if (!isVacio && isExon) {
-                        complianceBadge = `<span style="color:#0284c7; font-size:6.5pt; font-weight:800; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px;">EXONERADO</span>`;
+                        complianceBadge = `<span style="color:#0284c7; font-size:6.5pt; font-weight:800; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">EXONERADO (B${bNum})</span>`;
                     } else if (!isVacio && hasAnyAct) {
                         const percentCompliance = cfgZonaMax > 0 ? Math.round((sumZona / cfgZonaMax) * 100) : 0;
                         complianceBadge = percentCompliance >= 75
@@ -18006,15 +18019,17 @@ function generateOfficialPrintList(opts = null) {
                             : `<span style="color:#dc2626; font-size:6.8px;">${percentCompliance}% (BAJO)</span>`);
                     }
 
+                    const obsText = (!isVacio && isRet) ? 'Alumno Retirado en el Ciclo' : ((!isVacio && isAus) ? 'Alumno Ausente sin Justificación' : ((!isVacio && isExon) ? `Exonerado del Bimestre ${bNum}` : ''));
+
                     return `
-                    <tr style="height:${rowHeight}; ${isRet ? 'background:#fef2f2;' : (isAus ? 'background:#fffbeb;' : (isExon ? 'background:#f0f9ff;' : ''))}">
-                        <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
-                        <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
-                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
+                    <tr class="${rowClass}" style="height:${rowHeight}; ${rowBg}">
+                        <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${startNo + idx + 1}</td>
+                        <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${s.personalCode || s.carne || ''}</td>
+                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${fullNameDisplay}</td>
                         ${actCells}
-                        <td style="width:40px; background:#f0fdf4; padding:${cellPadding}; text-align:center; font-weight:800; font-size:${rowFontSize}; color:#15803d;">${zonaText}</td>
-                        <td style="width:65px; background:#f8fafc; padding:${cellPadding}; text-align:center;">${complianceBadge}</td>
-                        <td style="padding:${cellPadding}; border-bottom:1px solid #cbd5e1;"></td>
+                        <td style="width:40px; ${isInactive || isExon ? rowBg : 'background:#f0fdf4;'} padding:${cellPadding}; text-align:center; font-weight:800; font-size:${rowFontSize}; color:${isInactive || isExon ? (isRet ? '#b91c1c' : (isAus ? '#b45309' : '#0284c7')) : '#15803d'};">${zonaText}</td>
+                        <td style="width:65px; ${isInactive || isExon ? rowBg : 'background:#f8fafc;'} padding:${cellPadding}; text-align:center; ${rowBg}">${complianceBadge}</td>
+                        <td style="padding:${cellPadding}; border-bottom:1px solid #cbd5e1; font-size:${rowFontSize}; color:#475569; ${rowBg}">${obsText}</td>
                     </tr>`;
                 }).join('');
 
@@ -18040,14 +18055,13 @@ function generateOfficialPrintList(opts = null) {
             } else {
                 // FORMATO 1: CUADRO OFICIAL DE CONTROL DE ZONA (40 PTS) Y EVALUACIONES (60 PTS)
                 const rowsHtml = pageStudents.map((s, idx) => {
+                    const { isRet, isAus, isExon, rowClass, rowBg, tagHtml } = getStudentStatusFlags(s);
+                    const isInactive = isRet || isAus;
+                    const isExonerated = isExon;
+                    const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
                     const uData = (s.gradebookDetails && s.gradebookDetails[finalSubjectName] && s.gradebookDetails[finalSubjectName][bNum])
                         ? s.gradebookDetails[finalSubjectName][bNum]
                         : null;
-
-                    const isRet = (s.status === 'Retirado' || s.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
-                    const isAus = (s.status === 'Ausente') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(s, bNum) : true);
-                    const isInactive = isRet || isAus;
-                    const isExonerated = !isRet && ((typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(s, finalSubjectName, bNum)) || (typeof isStudentExonerated === 'function' && isStudentExonerated(s, bNum)));
 
                     let actCells = '';
                     let zonaVal = '';
@@ -18056,20 +18070,20 @@ function generateOfficialPrintList(opts = null) {
 
                     if (isVacio) {
                         // Modo VACÍO: Celdas limpias con bordes para uso en aula
-                        actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center;"></td>`).join('');
+                        actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; ${rowBg}"></td>`).join('');
                         zonaVal = '';
                         examVal = '';
                         totalVal = '';
                     } else if (isInactive) {
-                        actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#94a3b8; font-size:${rowFontSize};">-</td>`).join('');
+                        actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:${isRet ? '#b91c1c' : '#b45309'}; font-size:${rowFontSize}; ${rowBg}">-</td>`).join('');
                         zonaVal = '-';
                         examVal = '-';
-                        totalVal = `<span style="color:${isRet ? '#b91c1c' : '#b45309'}; font-size:6.5pt; font-weight:800; background:${isRet ? '#fee2e2' : '#fef3c7'}; border:1px solid ${isRet ? '#fca5a5' : '#fde68a'}; padding:1px 3px; border-radius:2px;">${isRet ? 'RETIRADO' : 'AUSENTE'}</span>`;
+                        totalVal = `<span style="color:${isRet ? '#b91c1c' : '#b45309'}; font-size:6.5pt; font-weight:800; background:${isRet ? '#fee2e2' : '#fef3c7'}; border:1px solid ${isRet ? '#fca5a5' : '#fde68a'}; padding:1px 3px; border-radius:2px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">${isRet ? 'RETIRADO' : 'AUSENTE'}</span>`;
                     } else if (isExonerated) {
-                        actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#0284c7; font-size:${rowFontSize};">-</td>`).join('');
+                        actCells = activitiesList.map(() => `<td style="width:${colWidth}px; padding:${cellPadding}; text-align:center; color:#0284c7; font-size:${rowFontSize}; font-weight:bold; ${rowBg}">-</td>`).join('');
                         zonaVal = '-';
                         examVal = '-';
-                        totalVal = `<span style="color:#0284c7; font-size:6.5pt; font-weight:800; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 3px; border-radius:2px;">EXONERADO</span>`;
+                        totalVal = `<span style="color:#0284c7; font-size:6.5pt; font-weight:800; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 3px; border-radius:2px; -webkit-print-color-adjust:exact; print-color-adjust:exact;">EXONERADO (B${bNum})</span>`;
                     } else if (uData) {
                         const acts = uData.activities || [];
                         let sumZona = 0;
@@ -18116,18 +18130,15 @@ function generateOfficialPrintList(opts = null) {
                         }
                     }
 
-                    const tagHtml = isRet ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b91c1c; background:#fee2e2; border:1px solid #fca5a5; padding:1px 4px; border-radius:3px; margin-left:4px;">RETIRADO</span>' : (isAus ? ' <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#b45309; background:#fef3c7; border:1px solid #fde68a; padding:1px 4px; border-radius:3px; margin-left:4px;">AUSENTE</span>' : (isExonerated ? ` <span style="display:inline-block; font-size:6.5pt; font-weight:900; color:#0284c7; background:#e0f2fe; border:1px solid #7dd3fc; padding:1px 4px; border-radius:3px; margin-left:4px;">EXON. (B${bNum})</span>` : ''));
-                    const fullNameDisplay = `${formatStudentDisplayName(s, 'lastFirst')}${tagHtml}`;
-
                     return `
-                    <tr style="height:${rowHeight}; ${isRet ? 'background:#fef2f2;' : (isAus ? 'background:#fffbeb;' : (isExonerated ? 'background:#f0f9ff;' : ''))}">
-                        <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize};">${startNo + idx + 1}</td>
-                        <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize};">${s.personalCode || s.carne || ''}</td>
-                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize};">${fullNameDisplay}</td>
+                    <tr class="${rowClass}" style="height:${rowHeight}; ${rowBg}">
+                        <td style="text-align:center; font-weight:bold; width:24px; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${startNo + idx + 1}</td>
+                        <td style="text-align:center; font-family:monospace; width:75px; font-weight:700; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${s.personalCode || s.carne || ''}</td>
+                        <td style="text-align:left; padding-left:4px; font-weight:600; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:${cellPadding}; font-size:${rowFontSize}; ${rowBg}">${fullNameDisplay}</td>
                         ${actCells}
-                        <td style="width:32px; background:#f8fafc; padding:${cellPadding}; text-align:center; font-weight:700; font-size:${rowFontSize};">${zonaVal}</td>
-                        <td style="width:32px; background:#f8fafc; padding:${cellPadding}; text-align:center; font-weight:700; font-size:${rowFontSize};">${examVal}</td>
-                        <td style="width:40px; background:#f1f5f9; text-align:center; padding:${cellPadding}; font-size:${rowFontSize};">${totalVal}</td>
+                        <td style="width:32px; ${isInactive || isExonerated ? rowBg : 'background:#f8fafc;'} padding:${cellPadding}; text-align:center; font-weight:700; font-size:${rowFontSize}; color:${isInactive || isExonerated ? (isRet ? '#b91c1c' : (isAus ? '#b45309' : '#0284c7')) : '#0f172a'};">${zonaVal}</td>
+                        <td style="width:32px; ${isInactive || isExonerated ? rowBg : 'background:#f8fafc;'} padding:${cellPadding}; text-align:center; font-weight:700; font-size:${rowFontSize}; color:${isInactive || isExonerated ? (isRet ? '#b91c1c' : (isAus ? '#b45309' : '#0284c7')) : '#0f172a'};">${examVal}</td>
+                        <td style="width:40px; ${isInactive || isExonerated ? rowBg : 'background:#f1f5f9;'} text-align:center; padding:${cellPadding}; font-size:${rowFontSize};">${totalVal}</td>
                     </tr>`;
                 }).join('');
 
@@ -18217,7 +18228,14 @@ function generateOfficialPrintList(opts = null) {
 
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px; padding-top:2px; border-top:1px dashed #cbd5e1; font-size:7pt; color:#475569;">
                             <span>Total Alumnos: <strong style="color:#15803d;">${totalStudents}</strong> (Varones: <strong style="color:#0284c7;">${countMale}</strong> | Mujeres: <strong style="color:#db2777;">${countFemale}</strong>)</span>
-                            <span>${instructivoText}</span>
+                            <span style="display:inline-flex; align-items:center; gap:6px;">
+                                <span>${instructivoText}</span>
+                                <span style="display:inline-flex; align-items:center; gap:4px; margin-left:6px; font-size:6.5pt;">
+                                    <span style="background:#e0f2fe; color:#0284c7; border:1px solid #7dd3fc; border-radius:2px; padding:0 3px; font-weight:700; -webkit-print-color-adjust:exact; print-color-adjust:exact;">● Exonerado</span>
+                                    <span style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; border-radius:2px; padding:0 3px; font-weight:700; -webkit-print-color-adjust:exact; print-color-adjust:exact;">● Ausente</span>
+                                    <span style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; border-radius:2px; padding:0 3px; font-weight:700; -webkit-print-color-adjust:exact; print-color-adjust:exact;">● Retirado</span>
+                                </span>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -18290,6 +18308,24 @@ function generateOfficialPrintList(opts = null) {
         .data-table td {
             border: 1px solid #334155;
             line-height: ${rowLineHeight};
+        }
+        .data-table tr.row-retirado, .data-table tr.row-retirado td {
+            background-color: #fee2e2 !important;
+            color: #b91c1c;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .data-table tr.row-ausente, .data-table tr.row-ausente td {
+            background-color: #fef3c7 !important;
+            color: #b45309;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .data-table tr.row-exonerado, .data-table tr.row-exonerado td {
+            background-color: #e0f2fe !important;
+            color: #0284c7;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
         @media print {
             html, body {
@@ -18727,9 +18763,13 @@ function generateOfficialExcelList(opts = null) {
                         { t: 's', v: s.personalCode || s.carne || '' },
                         fullNameDisplay
                     ];
-                    for (let d = 1; d <= 31; d++) row.push((!isVacio && isRet) ? '—' : '');
+                    for (let d = 1; d <= 31; d++) row.push((!isVacio && (isRet || isAus || isExon)) ? '—' : '');
                     if (!isVacio && isRet) {
                         row.push('—', '—', '—', 'RETIRADO');
+                    } else if (!isVacio && isAus) {
+                        row.push('—', '—', '—', 'AUSENTE');
+                    } else if (!isVacio && isExon) {
+                        row.push('—', '—', '—', `EXONERADO B${bNum}`);
                     } else {
                         row.push({ f: `COUNTIF(${dayColStart}${rowIdx}:${dayColEnd}${rowIdx}, "P")` });
                         row.push({ f: `COUNTIF(${dayColStart}${rowIdx}:${dayColEnd}${rowIdx}, "A")` });
@@ -37318,6 +37358,9 @@ function executeNativeDocumentPrint() {
                 table { width: 100%; border-collapse: collapse; margin-top: 6px; }
                 th, td { border: 1px solid #334155; padding: 5px 6px; }
                 th { background-color: #0369a1 !important; color: #ffffff !important; font-weight: bold; text-align: center; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .row-retirado, .row-retirado td, tr.row-retirado td { background-color: #fee2e2 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #b91c1c !important; }
+                .row-ausente, .row-ausente td, tr.row-ausente td { background-color: #fef3c7 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #b45309 !important; }
+                .row-exonerado, .row-exonerado td, tr.row-exonerado td { background-color: #e0f2fe !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #0284c7 !important; }
                 .encc-top-banner { background-color: #99b958 !important; border-bottom: 1.5px solid #000; display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 .badge { padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                 @media print {
