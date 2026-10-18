@@ -878,90 +878,10 @@ const EnccoAuthStore = {
                         (typeof isDirectorRole === 'function' && isDirectorRole(role)) ||
                         role === 'admin' || role === 'super_usuario' || role === 'director' || role === 'direccion';
 
-        // 2. Navegación lateral reactiva 100% dinámica
-        document.querySelectorAll('.nav-item').forEach(el => {
-            const targetView = el.dataset.view;
-            const permKey = el.dataset.perm || targetView;
-
-            let hasAccess = false;
-            if (isSuper) {
-                hasAccess = true;
-            } else if (permKey) {
-                hasAccess = hasRolePermission(permKey, role);
-            } else if (el.dataset.allowed) {
-                if (el.dataset.allowed === '*' || el.getAttribute('data-allowed') === '*') {
-                    hasAccess = true;
-                } else {
-                    const allowedList = el.dataset.allowed.split(',').map(r => r.trim().toLowerCase());
-                    const roleLower = role.toLowerCase();
-                    const isMatch = allowedList.includes(roleLower) ||
-                        (allowedList.includes('director') && roleLower === 'direccion') ||
-                        (allowedList.includes('profesor_auxiliar') && (roleLower === 'auxiliar' || roleLower === 'auxiliatura'));
-                    hasAccess = isMatch;
-                }
-            } else if (targetView) {
-                hasAccess = hasRolePermission(targetView, role);
-            }
-
-            if (hasAccess) {
-                el.style.removeProperty('display');
-                el.classList.remove('hidden');
-            } else {
-                el.style.setProperty('display', 'none', 'important');
-                el.classList.add('hidden');
-            }
-        });
-
-        // 2.5 Grupos colapsables (.nav-group): ocultar si ningún item hijo está visible
-        document.querySelectorAll('.nav-group').forEach(group => {
-            const items = group.querySelectorAll('.nav-item');
-            let hasVisible = false;
-            items.forEach(item => {
-                const isHidden = item.classList.contains('hidden') || 
-                                 item.style.display === 'none' || 
-                                 (item.getAttribute && (item.getAttribute('style') || '').includes('display: none'));
-                if (!isHidden) hasVisible = true;
-            });
-            if (hasVisible) {
-                group.style.removeProperty('display');
-                group.classList.remove('hidden');
-            } else {
-                group.style.setProperty('display', 'none', 'important');
-                group.classList.add('hidden');
-            }
-        });
-
-        // 3. Encabezados de sección (.nav-section-label): ocultar si no tienen ningún ítem visible
-        document.querySelectorAll('.nav-section-label').forEach(header => {
-            if (header.closest('.nav-group')) {
-            header.style.removeProperty('display');
-            header.style.setProperty('display', 'block', 'important');
-            header.classList.remove('hidden');
-            return;
+        // 2. Navegación lateral reactiva 100% dinámica con RBAC estricto
+        if (typeof renderDynamicSidebarRBAC === 'function') {
+            renderDynamicSidebarRBAC(role);
         }
-            let sibling = header.nextElementSibling;
-            let hasVisibleChild = false;
-            while (sibling && !sibling.classList.contains('nav-section-label')) {
-                if (sibling.classList.contains('nav-item')) {
-                    const isHidden = sibling.classList.contains('hidden') || 
-                                     sibling.style.display === 'none' || 
-                                     (sibling.getAttribute && (sibling.getAttribute('style') || '').includes('display: none'));
-                    if (!isHidden) {
-                        hasVisibleChild = true;
-                        break;
-                    }
-                }
-                sibling = sibling.nextElementSibling;
-            }
-
-            if (hasVisibleChild) {
-                header.style.removeProperty('display');
-                header.classList.remove('hidden');
-            } else {
-                header.style.setProperty('display', 'none', 'important');
-                header.classList.add('hidden');
-            }
-        });
 
         // 4. Secciones y elementos restringidos por roles
         document.querySelectorAll('.role-restricted, [data-perm]').forEach(el => {
@@ -1402,15 +1322,15 @@ function isStudentAuthorityRole(role = null) {
 window.isStudentAuthorityRole = isStudentAuthorityRole;
 
 function hasRolePermission(permKey, role = null) {
-    // 🛡️ Privilegios Globales Absolutos: Superusuario y Dirección tienen acceso irrestricto total
-    if (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) return true;
-    if (typeof isDirectorRole === 'function' && isDirectorRole(role)) return true;
-
     const targetRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
     
     // Si el rol es guest o indefinido, denegar terminantemente
     if (!targetRole || targetRole === 'guest') return false;
-    if (['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora'].includes(targetRole)) return true;
+
+    // 🛡️ Privilegios Globales Absolutos: Superusuario y Dirección tienen acceso irrestricto total (100% de módulos)
+    if (isSuperUserRole(targetRole) || isDirectorRole(targetRole) || ['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora'].includes(targetRole)) {
+        return true;
+    }
 
     if (!permKey) return false;
 
@@ -1444,13 +1364,13 @@ function hasRolePermission(permKey, role = null) {
 window.hasRolePermission = hasRolePermission;
 
 function canRoleModify(moduleKey, role = null) {
-    // 🛡️ Privilegios Globales Absolutos: Superusuario y Dirección tienen modificación irrestricta total
-    if (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) return true;
-    if (typeof isDirectorRole === 'function' && isDirectorRole(role)) return true;
-
     const targetRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : 'guest')) || 'guest').trim().toLowerCase();
     if (!targetRole || targetRole === 'guest') return false;
-    if (['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora'].includes(targetRole)) return true;
+
+    // 🛡️ Privilegios Globales Absolutos: Superusuario y Dirección tienen modificación irrestricta total
+    if (isSuperUserRole(targetRole) || isDirectorRole(targetRole) || ['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora'].includes(targetRole)) {
+        return true;
+    }
 
     if (!moduleKey) return false;
 
@@ -1527,6 +1447,114 @@ function canRoleUseWhatsApp(role = null) {
     return allowed.includes(rLower) || allowed.includes(userRole);
 }
 window.canRoleUseWhatsApp = canRoleUseWhatsApp;
+
+/**
+ * 🛡️ REGLA INAMOVIBLE DE RBAC Y RENDERIZADO DINÁMICO DEL MENÚ LATERAL
+ * 1. Superusuario y Dirección: 100% visible, habilitado e irrestricto.
+ * 2. Docentes, Secretaría, Auxiliatura, etc.: Visibilidad ESTRICTA según sus permisos activos.
+ *    Cualquier módulo deshabilitado se oculta por completo con display:none !important y clase .hidden.
+ * 3. Encabezados de sección (.nav-section-label): Se ocultan si todos sus ítems están invisibles.
+ * 4. Redirección reactiva instantánea: Si la vista activa actual está prohibida, redirigir de inmediato a dashboard.
+ * 5. Cero pérdida o alteración de datos de la base de datos real.
+ */
+function renderDynamicSidebarRBAC(role = null) {
+    if (typeof document === 'undefined') return;
+
+    const activeRole = (role || (window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function' ? window.EnccoAuthStore.getRole() : null) || (window.STATE ? STATE.currentRole : null) || 'guest').trim().toLowerCase();
+    const isSuper = isSuperUserRole(activeRole) || isDirectorRole(activeRole) || ['admin', 'super_usuario', 'superadmin', 'director', 'direccion', 'directora'].includes(activeRole);
+
+    // 1. Evaluar visibilidad de cada ítem de navegación del sidebar
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(el => {
+        const targetView = el.dataset.view;
+        const permKey = el.dataset.perm || targetView;
+
+        let hasAccess = false;
+        if (isSuper) {
+            hasAccess = true;
+        } else if (permKey) {
+            hasAccess = hasRolePermission(permKey, activeRole);
+        } else if (targetView) {
+            hasAccess = hasRolePermission(targetView, activeRole);
+        } else if (el.dataset.allowed) {
+            if (el.dataset.allowed === '*' || el.getAttribute('data-allowed') === '*') {
+                hasAccess = true;
+            } else {
+                const allowedList = el.dataset.allowed.split(',').map(r => r.trim().toLowerCase());
+                hasAccess = allowedList.includes(activeRole);
+            }
+        }
+
+        if (hasAccess) {
+            el.style.removeProperty('display');
+            el.classList.remove('hidden');
+        } else {
+            el.style.setProperty('display', 'none', 'important');
+            el.classList.add('hidden');
+        }
+    });
+
+    // 2. Grupos colapsables (.nav-group): ocultar si ningún item hijo está visible
+    document.querySelectorAll('.nav-group').forEach(group => {
+        const items = group.querySelectorAll('.nav-item');
+        let hasVisible = false;
+        items.forEach(item => {
+            const isHidden = item.classList.contains('hidden') || 
+                             item.style.display === 'none' || 
+                             (item.getAttribute && (item.getAttribute('style') || '').includes('display: none'));
+            if (!isHidden) hasVisible = true;
+        });
+        if (hasVisible) {
+            group.style.removeProperty('display');
+            group.classList.remove('hidden');
+        } else {
+            group.style.setProperty('display', 'none', 'important');
+            group.classList.add('hidden');
+        }
+    });
+
+    // 3. Encabezados de sección (.nav-section-label): ocultar si todos sus ítems están ocultos
+    document.querySelectorAll('.nav-section-label').forEach(header => {
+        if (header.closest('.nav-group')) {
+            header.style.removeProperty('display');
+            header.style.setProperty('display', 'block', 'important');
+            header.classList.remove('hidden');
+            return;
+        }
+        let sibling = header.nextElementSibling;
+        let hasVisibleChild = false;
+        while (sibling && !sibling.classList.contains('nav-section-label')) {
+            if (sibling.classList.contains('nav-item')) {
+                const isHidden = sibling.classList.contains('hidden') || 
+                                 sibling.style.display === 'none' || 
+                                 (sibling.getAttribute && (sibling.getAttribute('style') || '').includes('display: none'));
+                if (!isHidden) {
+                    hasVisibleChild = true;
+                    break;
+                }
+            }
+            sibling = sibling.nextElementSibling;
+        }
+
+        if (hasVisibleChild) {
+            header.style.removeProperty('display');
+            header.classList.remove('hidden');
+        } else {
+            header.style.setProperty('display', 'none', 'important');
+            header.classList.add('hidden');
+        }
+    });
+
+    // 4. Redirección reactiva si la vista actual no está autorizada para el rol
+    if (!isSuper && window.STATE && STATE.activeView && STATE.activeView !== 'dashboard') {
+        if (!hasRolePermission(STATE.activeView, activeRole)) {
+            if (typeof navigateTo === 'function') {
+                navigateTo('dashboard');
+            }
+        }
+    }
+}
+window.renderDynamicSidebarRBAC = renderDynamicSidebarRBAC;
 
 function renderActiveRolePermissionsGrid(activePerms = []) {
     const container = document.getElementById('activeRolePermissionsContainer');
@@ -1657,6 +1685,7 @@ function updatePermCardStyle(modKey, level) {
                 EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
             }
             if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
+            if (typeof renderDynamicSidebarRBAC === 'function') renderDynamicSidebarRBAC(STATE.currentRole);
             if (window.EnccoAuthStore && typeof window.EnccoAuthStore.applyReactivePermissions === 'function') {
                 window.EnccoAuthStore.applyReactivePermissions();
             }
@@ -1708,6 +1737,7 @@ function setAllPermissionsLevel(targetLevel = 'edit') {
             EnccoCloudSync.syncNode('rolesConfig', STATE.rolesConfig);
         }
         if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
+        if (typeof renderDynamicSidebarRBAC === 'function') renderDynamicSidebarRBAC(STATE.currentRole);
         if (window.EnccoAuthStore && typeof window.EnccoAuthStore.applyReactivePermissions === 'function') {
             window.EnccoAuthStore.applyReactivePermissions();
         }
@@ -3661,6 +3691,10 @@ async function guardarPermisosRol(e) {
         }
 
         if (typeof applyUserRole === 'function') applyUserRole(STATE.currentRole);
+        if (typeof renderDynamicSidebarRBAC === 'function') renderDynamicSidebarRBAC(STATE.currentRole);
+        if (window.EnccoAuthStore && typeof window.EnccoAuthStore.applyReactivePermissions === 'function') {
+            window.EnccoAuthStore.applyReactivePermissions();
+        }
         if (typeof renderRolesTable === 'function') renderRolesTable();
         if (typeof renderRolesManagementView === 'function') renderRolesManagementView();
         
@@ -10709,7 +10743,14 @@ function switchRole(role) {
         }
     }
 
+    if (window.EnccoAuthStore && window.EnccoAuthStore._state) {
+        window.EnccoAuthStore._state.role = role;
+    }
+
     applyUserRole(role);
+    if (typeof renderDynamicSidebarRBAC === 'function') {
+        renderDynamicSidebarRBAC(role);
+    }
 }
 
 // ==========================================================================
@@ -10744,6 +10785,16 @@ function impersonateUser(userId) {
     STATE.currentUser = targetUser;
     STATE.currentRole = targetUser.role;
 
+    if (window.EnccoAuthStore) {
+        if (window.EnccoAuthStore._state) {
+            window.EnccoAuthStore._state.user = targetUser;
+            window.EnccoAuthStore._state.role = targetUser.role;
+        }
+        if (typeof window.EnccoAuthStore.applyReactivePermissions === 'function') {
+            window.EnccoAuthStore.applyReactivePermissions();
+        }
+    }
+
     const banner = document.getElementById('impersonationBanner');
     const bName = document.getElementById('impersonatedUserName');
     const bRole = document.getElementById('impersonatedUserRole');
@@ -10755,6 +10806,9 @@ function impersonateUser(userId) {
 
     if (typeof syncPensumTeachersWithUsers === 'function') syncPensumTeachersWithUsers(false);
     switchRole(targetUser.role);
+    if (typeof renderDynamicSidebarRBAC === 'function') {
+        renderDynamicSidebarRBAC(targetUser.role);
+    }
     synchronizeGlobalDynamicUI();
 
     if (targetUser.role === 'docente') {
@@ -10782,10 +10836,23 @@ function exitImpersonation() {
     STATE.currentRole = restoredRole;
     STATE.impersonatorAdmin = null;
 
+    if (window.EnccoAuthStore) {
+        if (window.EnccoAuthStore._state) {
+            window.EnccoAuthStore._state.user = adminUser;
+            window.EnccoAuthStore._state.role = restoredRole;
+        }
+        if (typeof window.EnccoAuthStore.applyReactivePermissions === 'function') {
+            window.EnccoAuthStore.applyReactivePermissions();
+        }
+    }
+
     const banner = document.getElementById('impersonationBanner');
     if (banner) banner.style.display = 'none';
 
     switchRole(restoredRole);
+    if (typeof renderDynamicSidebarRBAC === 'function') {
+        renderDynamicSidebarRBAC(restoredRole);
+    }
     synchronizeGlobalDynamicUI();
     navigateTo('users');
 
@@ -28543,53 +28610,30 @@ function updateAttendanceCoursesList() {
 }
 
 function isSuperUserRole(role = null) {
-    if (typeof window !== 'undefined') {
-        if (window.EnccoAuthStore && typeof window.EnccoAuthStore.getUser === 'function') {
-            const u = window.EnccoAuthStore.getUser();
-            if (u && (u.id === 'usr-admin-01' || u.email === 'nehemias.salguero1982@gmail.com')) return true;
-            if (u && ['super_usuario', 'superadmin', 'super_admin', 'admin'].includes((u.role || '').toLowerCase())) return true;
-        }
-        if (window.STATE && window.STATE.currentUser) {
-            const u = window.STATE.currentUser;
-            if (u && (u.id === 'usr-admin-01' || u.email === 'nehemias.salguero1982@gmail.com')) return true;
-            if (u && ['super_usuario', 'superadmin', 'super_admin', 'admin'].includes((u.role || '').toLowerCase())) return true;
-        }
+    let targetRole = role;
+    if (targetRole === null || targetRole === undefined || targetRole === '') {
+        targetRole = (window.STATE && STATE.currentRole) 
+            || (window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function' ? window.EnccoAuthStore.getRole() : null)
+            || (window.STATE && STATE.currentUser && STATE.currentUser.role)
+            || '';
     }
-    let r = (role || '').toString().trim().toLowerCase();
-    if (!r && typeof window !== 'undefined') {
-        if (window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function') {
-            r = (window.EnccoAuthStore.getRole() || '').toString().trim().toLowerCase();
-        }
-        if (!r && window.STATE) {
-            r = (window.STATE.currentRole || (window.STATE.currentUser && window.STATE.currentUser.role) || '').toString().trim().toLowerCase();
-        }
-    }
+    if (!targetRole) return false;
+    const r = String(targetRole).trim().toLowerCase();
     return ['super_usuario', 'superadmin', 'super_admin', 'admin'].includes(r);
 }
 window.isSuperUserRole = isSuperUserRole;
 
 function isDirectorRole(role = null) {
-    if (isSuperUserRole(role)) return true;
-    if (typeof window !== 'undefined') {
-        if (window.EnccoAuthStore && typeof window.EnccoAuthStore.getUser === 'function') {
-            const u = window.EnccoAuthStore.getUser();
-            if (u && ['director', 'direccion', 'directora'].includes((u.role || '').toLowerCase())) return true;
-        }
-        if (window.STATE && window.STATE.currentUser) {
-            const u = window.STATE.currentUser;
-            if (u && ['director', 'direccion', 'directora'].includes((u.role || '').toLowerCase())) return true;
-        }
+    let targetRole = role;
+    if (targetRole === null || targetRole === undefined || targetRole === '') {
+        targetRole = (window.STATE && STATE.currentRole) 
+            || (window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function' ? window.EnccoAuthStore.getRole() : null)
+            || (window.STATE && STATE.currentUser && STATE.currentUser.role)
+            || '';
     }
-    let r = (role || '').toString().trim().toLowerCase();
-    if (!r && typeof window !== 'undefined') {
-        if (window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function') {
-            r = (window.EnccoAuthStore.getRole() || '').toString().trim().toLowerCase();
-        }
-        if (!r && window.STATE) {
-            r = (window.STATE.currentRole || (window.STATE.currentUser && window.STATE.currentUser.role) || '').toString().trim().toLowerCase();
-        }
-    }
-    return ['director', 'direccion', 'directora', 'super_usuario', 'superadmin', 'super_admin', 'admin'].includes(r);
+    if (!targetRole) return false;
+    const r = String(targetRole).trim().toLowerCase();
+    return isSuperUserRole(r) || ['director', 'direccion', 'directora'].includes(r);
 }
 window.isDirectorRole = isDirectorRole;
 
@@ -40406,86 +40450,10 @@ function applyUserRole(role = STATE.currentRole) {
                     (typeof isDirectorRole === 'function' && isDirectorRole(role)) || 
                     ['admin', 'super_usuario', 'superadmin', 'director', 'direccion', 'directora'].includes(role);
 
-    // 1. Navegación lateral reactiva 100% dinámica
-    document.querySelectorAll('.nav-item').forEach(el => {
-        const targetView = el.dataset.view;
-        const permKey = el.dataset.perm || targetView;
-
-        let hasAccess = false;
-        if (isSuper) {
-            hasAccess = true;
-        } else if (permKey) {
-            hasAccess = hasRolePermission(permKey, role);
-        } else if (el.dataset.allowed) {
-            if (el.dataset.allowed === '*' || el.getAttribute('data-allowed') === '*') {
-                hasAccess = true;
-            } else {
-                const allowedList = el.dataset.allowed.split(',').map(r => r.trim().toLowerCase());
-                hasAccess = allowedList.includes(role.toLowerCase());
-            }
-        } else if (targetView) {
-            hasAccess = hasRolePermission(targetView, role);
-        }
-
-        if (hasAccess) {
-            el.style.removeProperty('display');
-            el.classList.remove('hidden');
-        } else {
-            el.style.setProperty('display', 'none', 'important');
-            el.classList.add('hidden');
-        }
-    });
-
-        // Grupos colapsables (.nav-group): ocultar si ningún item hijo está visible
-    document.querySelectorAll('.nav-group').forEach(group => {
-        const items = group.querySelectorAll('.nav-item');
-        let hasVisible = false;
-        items.forEach(item => {
-            const isHidden = item.classList.contains('hidden') || 
-                             item.style.display === 'none' || 
-                             (item.getAttribute && (item.getAttribute('style') || '').includes('display: none'));
-            if (!isHidden) hasVisible = true;
-        });
-        if (hasVisible) {
-            group.style.removeProperty('display');
-            group.classList.remove('hidden');
-        } else {
-            group.style.setProperty('display', 'none', 'important');
-            group.classList.add('hidden');
-        }
-    });
-
-    // 2. Encabezados de sección (.nav-section-label): ocultar si no tienen ningún ítem visible
-    document.querySelectorAll('.nav-section-label').forEach(header => {
-        if (header.closest('.nav-group')) {
-            header.style.removeProperty('display');
-            header.style.setProperty('display', 'block', 'important');
-            header.classList.remove('hidden');
-            return;
-        }
-        let sibling = header.nextElementSibling;
-        let hasVisibleChild = false;
-        while (sibling && !sibling.classList.contains('nav-section-label')) {
-            if (sibling.classList.contains('nav-item')) {
-                const isHidden = sibling.classList.contains('hidden') || 
-                                 sibling.style.display === 'none' || 
-                                 (sibling.getAttribute && (sibling.getAttribute('style') || '').includes('display: none'));
-                if (!isHidden) {
-                    hasVisibleChild = true;
-                    break;
-                }
-            }
-            sibling = sibling.nextElementSibling;
-        }
-
-        if (hasVisibleChild) {
-            header.style.removeProperty('display');
-            header.classList.remove('hidden');
-        } else {
-            header.style.setProperty('display', 'none', 'important');
-            header.classList.add('hidden');
-        }
-    });
+    // 1. Renderizado Dinámico e Interactivo del Menú Lateral por RBAC
+    if (typeof renderDynamicSidebarRBAC === 'function') {
+        renderDynamicSidebarRBAC(role);
+    }
 
     // 3. Otros elementos restringidos de la interfaz
     document.querySelectorAll('.role-restricted, [data-perm]').forEach(el => {

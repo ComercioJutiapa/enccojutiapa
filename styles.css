@@ -555,7 +555,16 @@ body {
     font-size: 0.76rem;
 }
 
-.role-restricted.hidden { display: none !important; }
+.hidden,
+.role-restricted.hidden,
+.nav-item.hidden,
+.nav-section-label.hidden,
+.nav-item[style*="display: none"],
+.nav-item[style*="display:none"],
+.nav-section-label[style*="display: none"],
+.nav-section-label[style*="display:none"] {
+    display: none !important;
+}
 
 /* ==========================================================================
    3. HEADER & MAIN CONTENT
