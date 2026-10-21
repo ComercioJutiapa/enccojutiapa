@@ -27592,6 +27592,27 @@ window.handleGradeGridKeyDown = handleGradeGridKeyDown;
 const _gradeAutoSaveTimers = (typeof window !== 'undefined' && window._gradeAutoSaveTimers) || {};
 if (typeof window !== 'undefined') window._gradeAutoSaveTimers = _gradeAutoSaveTimers;
 
+// ⚡ OPTIMIZACIÓN ULTRA-RÁPIDA (0ms): Guardado atómico en segundo plano sin congelar la interfaz
+let _fullStateSaveDebounceTimer = null;
+function scheduleFullStateSaveDebounced() {
+    if (_fullStateSaveDebounceTimer) clearTimeout(_fullStateSaveDebounceTimer);
+    _fullStateSaveDebounceTimer = setTimeout(() => {
+        if (typeof saveStateToLocalStorage === 'function') {
+            saveStateToLocalStorage();
+        }
+    }, 5000);
+}
+
+let _liveKpiDebounceTimer = null;
+function scheduleDebouncedLiveKpis(subjectName, unit) {
+    if (_liveKpiDebounceTimer) clearTimeout(_liveKpiDebounceTimer);
+    _liveKpiDebounceTimer = setTimeout(() => {
+        if (typeof refreshLiveGradeProgressBadge === 'function') {
+            refreshLiveGradeProgressBadge(subjectName, unit);
+        }
+    }, 400);
+}
+
 function debounceStudentGradeSave(studentId, subjectName, unit, gradeData) {
     const timerKey = `${studentId}_${subjectName}_${unit}`;
     if (_gradeAutoSaveTimers[timerKey]) {
@@ -27604,9 +27625,7 @@ function debounceStudentGradeSave(studentId, subjectName, unit, gradeData) {
                 console.warn("Aviso en autosave de calificación:", e);
             });
         }
-        if (typeof saveStateToLocalStorage === 'function') {
-            saveStateToLocalStorage();
-        }
+        scheduleFullStateSaveDebounced();
     }, 300);
 }
 
@@ -27621,9 +27640,7 @@ function flushStudentGradeSave(studentId, subjectName, unit, gradeData) {
             console.warn("Aviso en autosave de calificación:", e);
         });
     }
-    if (typeof saveStateToLocalStorage === 'function') {
-        saveStateToLocalStorage();
-    }
+    scheduleFullStateSaveDebounced();
 }
 
 function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, student, subjectName, unit) {
@@ -27712,13 +27729,8 @@ function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, 
         }
     }
 
-    // 4. Actualizar barra e indicador de avance calificado en vivo de la sección
-    if (typeof refreshLiveGradeProgressBadge === 'function') {
-        refreshLiveGradeProgressBadge(subjectName, unit);
-    }
-    if (typeof updateGradebookLiveKpis === 'function') {
-        updateGradebookLiveKpis(subjectName, unit);
-    }
+    // 4. Actualizar barra e indicador de avance calificado con debounce inteligente (0ms en UI)
+    scheduleDebouncedLiveKpis(subjectName, unit);
 }
 
 function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, isCommit = false) {
@@ -27769,9 +27781,8 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
         updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
     }
 
-    // 🌟 Sincronización atómica asíncrona inmediata en Firebase y respaldo local
+    // 🌟 Sincronización atómica asíncrona inmediata en segundo plano
     if (isCommit) {
-        saveStateToLocalStorage();
         if (typeof updateGradebookSaveStatus === 'function') {
             updateGradebookSaveStatus(true);
         }
@@ -27817,9 +27828,8 @@ function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = 
         updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
     }
 
-    // 🌟 Sincronización atómica asíncrona inmediata en Firebase y respaldo local
+    // 🌟 Sincronización atómica asíncrona inmediata en segundo plano
     if (isCommit) {
-        saveStateToLocalStorage();
         if (typeof updateGradebookSaveStatus === 'function') {
             updateGradebookSaveStatus(true);
         }
@@ -27874,9 +27884,8 @@ function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = f
         updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
     }
 
-    // 🌟 Sincronización atómica asíncrona inmediata en Firebase y respaldo local
+    // 🌟 Sincronización atómica asíncrona inmediata en segundo plano
     if (isCommit) {
-        saveStateToLocalStorage();
         if (typeof updateGradebookSaveStatus === 'function') {
             updateGradebookSaveStatus(true);
         }
