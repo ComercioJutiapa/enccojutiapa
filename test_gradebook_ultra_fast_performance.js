@@ -38,6 +38,32 @@ const summaryDomFn = appJs.slice(appJs.indexOf('function updateStudentGradeRowSu
 assert(summaryDomFn.includes('scheduleDebouncedLiveKpis(subjectName, unit)'), 'updateStudentGradeRowSummaryDOM debe usar scheduleDebouncedLiveKpis');
 console.log('✅ PASS: Métricas de grupo desacopladas mediante retardo inteligente (0ms en UI).');
 
+// TEST 5: Verificación de selección y enfoque O(1) sin escaneo masivo del DOM
+console.log('\n--- Test 5: Verificación de enfoque y resaltado O(1) de fila activa ---');
+const focusFn = appJs.slice(appJs.indexOf('function handleGradeInputFocus'), appJs.indexOf('window.handleGradeInputFocus'));
+assert(!focusFn.includes('querySelectorAll'), 'handleGradeInputFocus NO debe realizar querySelectorAll en cada foco');
+assert(focusFn.includes('_currentActiveGradeRow'), 'handleGradeInputFocus debe utilizar puntero O(1) _currentActiveGradeRow');
+console.log('✅ PASS: Enfoque y resaltado de fila activa optimizado en O(1) sin lecturas masivas.');
+
+// TEST 6: Verificación de navegación fluida O(1) por punteros directos del DOM
+console.log('\n--- Test 6: Verificación de navegación por teclado O(1) ---');
+const gridNavFn = appJs.slice(appJs.indexOf('function handleGradeGridKeyDown'), appJs.indexOf('window.handleGradeGridKeyDown'));
+assert(!gridNavFn.includes('tbody.querySelectorAll'), 'handleGradeGridKeyDown NO debe escanear todas las filas con querySelectorAll');
+assert(gridNavFn.includes('nextElementSibling') && gridNavFn.includes('cellIndex'), 'handleGradeGridKeyDown debe usar punteros directos C++ (nextElementSibling, cellIndex)');
+console.log('✅ PASS: Navegación por teclado tipo Excel ejecutada en O(1) por punteros nativos directos.');
+
+// TEST 7: Desacoplamiento de localStorage en guardado atómico individual
+console.log('\n--- Test 7: Guardado atómico individual sin congelamiento de hilo ---');
+const atomicSaveFn = appJs.slice(appJs.indexOf('async function saveStudentSubjectGradeAtomic'), appJs.indexOf('window.saveStudentSubjectGradeAtomic'));
+assert(atomicSaveFn.includes('scheduleFullStateSaveDebounced()'), 'saveStudentSubjectGradeAtomic debe delegar persistencia masiva a scheduler');
+assert(!atomicSaveFn.includes('saveStateToLocalStorage();'), 'saveStudentSubjectGradeAtomic NO debe ejecutar saveStateToLocalStorage síncrono');
+console.log('✅ PASS: Persistencia individual completamente desacoplada de la serialización global.');
+
+// TEST 8: Debounce inteligente en captura continua y commit
+console.log('\n--- Test 8: Verificación de debounce inteligente en captura continua ---');
+assert(actChangeFn.includes('debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit], 600)'), 'Commit debe usar debounce inteligente de 600ms');
+console.log('✅ PASS: Prevención de ráfagas HTTP (Network Flooding) verificada con éxito.');
+
 console.log('\n========================================================================');
 console.log('🎉 ¡TODAS LAS PRUEBAS DE VELOCIDAD INSTANTÁNEA PASARON EXITOSAMENTE!');
 console.log('========================================================================');

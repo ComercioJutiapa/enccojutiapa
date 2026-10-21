@@ -25879,7 +25879,7 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
         }
     }
 
-    // 🌟 B. Actualización Atómica en Firebase Realtime Database
+    // 🌟 B. Actualización Atómica en Firebase Realtime Database (Optimizado a 2 llamadas sin inundar la red)
     const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
     if (firebaseUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
         try {
@@ -25887,13 +25887,8 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
             if (rtdbIdx !== -1) {
                 const studentGradesEndpoint = `${firebaseUrl}/encc_school_state/students/${rtdbIdx}/grades.json`;
                 const studentUnitDetailsEndpoint = `${firebaseUrl}/encc_school_state/students/${rtdbIdx}/gradebookDetails/${encodeURIComponent(subjectName)}/${uStr}.json`;
-                const timeEndpoint = `${firebaseUrl}/encc_school_state/lastModified.json`;
 
-                const rootGradesEndpoint = `${firebaseUrl}/students/${rtdbIdx}/grades.json`;
-                const rootUnitDetailsEndpoint = `${firebaseUrl}/students/${rtdbIdx}/gradebookDetails/${encodeURIComponent(subjectName)}/${uStr}.json`;
-                const rootTimeEndpoint = `${firebaseUrl}/lastModified.json`;
-
-                const [resGrades, resDetails, resTime] = await Promise.all([
+                const [resGrades, resDetails] = await Promise.all([
                     fetch(studentGradesEndpoint, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
@@ -25903,27 +25898,7 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(currentUnitDetails)
-                    }),
-                    fetch(timeEndpoint, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(now)
-                    }),
-                    fetch(rootGradesEndpoint, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ [subjectName]: student.grades[subjectName] })
-                    }).catch(() => {}),
-                    fetch(rootUnitDetailsEndpoint, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(currentUnitDetails)
-                    }).catch(() => {}),
-                    fetch(rootTimeEndpoint, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(now)
-                    }).catch(() => {})
+                    })
                 ]);
                 if (!resGrades.ok || !resDetails.ok) {
                     console.warn('Aviso en respuesta de Firebase RTDB para calificación:', resGrades.status, resDetails.status);
@@ -25937,7 +25912,7 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
     }
 
     if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.delete(student.id);
-    saveStateToLocalStorage();
+    scheduleFullStateSaveDebounced();
 
     if (typeof recordAuditLog === 'function') {
         recordAuditLog('GRADE_SAVE', 'Calificaciones', `Nota guardada para ${student.name || student.id}: ${subjectName} (${uNum}° Bimestre) Zona: ${currentUnitDetails.zona || 0}, Examen: ${currentUnitDetails.exam || 0}, Total: ${currentUnitDetails.total || 0}`, student.id);
@@ -27470,52 +27445,38 @@ if (typeof document !== 'undefined') {
     });
 }
 
-// 🌐 SELECCIÓN Y ENFOQUE UNIVERSAL CROSS-BROWSER CON GUÍA DE MIRA ACTIVA
+// 🌐 SELECCIÓN Y ENFOQUE UNIVERSAL CROSS-BROWSER CON GUÍA DE MIRA ACTIVA (O(1) Instantáneo)
+let _currentActiveGradeRow = null;
+
 function handleGradeInputFocus(input) {
     if (!input) return;
     input.classList.add('gb-input-focused');
     const tr = input.closest('tr');
-    if (tr) {
-        const tbody = tr.closest('tbody');
-        if (tbody) {
-            tbody.querySelectorAll('tr.gb-active-row').forEach(r => r.classList.remove('gb-active-row'));
+    if (tr && tr !== _currentActiveGradeRow) {
+        if (_currentActiveGradeRow && _currentActiveGradeRow.classList) {
+            _currentActiveGradeRow.classList.remove('gb-active-row');
         }
+        _currentActiveGradeRow = tr;
         tr.classList.add('gb-active-row');
     }
 
-    const selectText = () => {
-        try {
-            if (typeof input.select === 'function') {
-                input.select();
-            } else if (typeof input.setSelectionRange === 'function') {
-                input.setSelectionRange(0, (input.value || '').toString().length);
-            }
-        } catch (_) {}
-    };
-
-    selectText();
-    if (typeof window !== 'undefined' && window.requestAnimationFrame) {
-        window.requestAnimationFrame(selectText);
-    }
-    setTimeout(selectText, 15);
-
-    input.addEventListener('blur', function onBlur() {
-        input.classList.remove('gb-input-focused');
-        if (tr) tr.classList.remove('gb-active-row');
-        input.removeEventListener('blur', onBlur);
-    });
+    try {
+        if (typeof input.select === 'function') {
+            input.select();
+        } else if (typeof input.setSelectionRange === 'function') {
+            input.setSelectionRange(0, (input.value || '').toString().length);
+        }
+    } catch (_) {}
 }
 window.handleGradeInputFocus = handleGradeInputFocus;
 
 function handleGradeInputBlur(input) {
     if (!input) return;
     input.classList.remove('gb-input-focused');
-    const tr = input.closest('tr');
-    if (tr) tr.classList.remove('gb-active-row');
 }
 window.handleGradeInputBlur = handleGradeInputBlur;
 
-// ⚡ NAVEGACIÓN FLUIDA ESTILO EXCEL UNIVERSAL (Enter y Flechas en Planilla de Notas)
+// ⚡ NAVEGACIÓN FLUIDA ESTILO EXCEL UNIVERSAL (Enter y Flechas en Planilla de Notas - O(1) Instantáneo)
 function handleGradeGridKeyDown(e, input) {
     if (!input || !e) return;
     const key = e.key || '';
@@ -27531,52 +27492,56 @@ function handleGradeGridKeyDown(e, input) {
 
     const tr = input.closest('tr');
     if (!tr) return;
-    const tbody = tr.closest('tbody');
-    if (!tbody) return;
 
-    const rows = Array.from(tbody.querySelectorAll('tr[data-student-id]'));
-    const currRowIdx = rows.indexOf(tr);
-    if (currRowIdx === -1) return;
-
-    const currInputs = Array.from(tr.querySelectorAll('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])'));
-    const colIdx = currInputs.indexOf(input);
-
+    const currentTd = input.closest('td');
+    const colIdx = currentTd ? currentTd.cellIndex : -1;
     let targetInput = null;
 
     if (isEnter || isDown || isUp) {
         e.preventDefault();
         const moveUp = isUp || (isEnter && e.shiftKey);
-        const targetRowIdx = moveUp ? (currRowIdx - 1) : (currRowIdx + 1);
+        let targetRow = moveUp ? tr.previousElementSibling : tr.nextElementSibling;
+        while (targetRow && !targetRow.hasAttribute('data-student-id')) {
+            targetRow = moveUp ? targetRow.previousElementSibling : targetRow.nextElementSibling;
+        }
 
-        if (targetRowIdx >= 0 && targetRowIdx < rows.length) {
-            const targetRow = rows[targetRowIdx];
-            const targetInputs = Array.from(targetRow.querySelectorAll('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])'));
-            if (targetInputs.length > 0) {
-                targetInput = targetInputs[Math.min(colIdx >= 0 ? colIdx : 0, targetInputs.length - 1)];
+        if (targetRow) {
+            if (colIdx >= 0 && targetRow.cells && targetRow.cells[colIdx]) {
+                targetInput = targetRow.cells[colIdx].querySelector('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])');
+            }
+            if (!targetInput) {
+                targetInput = targetRow.querySelector('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])');
             }
         }
     } else if (isRight) {
-        if (colIdx >= 0 && colIdx + 1 < currInputs.length) {
-            e.preventDefault();
-            targetInput = currInputs[colIdx + 1];
-        } else if (currRowIdx + 1 < rows.length) {
-            const nextRowInputs = Array.from(rows[currRowIdx + 1].querySelectorAll('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])'));
-            if (nextRowInputs.length > 0) {
-                e.preventDefault();
-                targetInput = nextRowInputs[0];
+        let nextTd = currentTd ? currentTd.nextElementSibling : null;
+        while (nextTd && !targetInput) {
+            targetInput = nextTd.querySelector('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])');
+            nextTd = nextTd.nextElementSibling;
+        }
+        if (!targetInput) {
+            let nextRow = tr.nextElementSibling;
+            while (nextRow && !nextRow.hasAttribute('data-student-id')) nextRow = nextRow.nextElementSibling;
+            if (nextRow) {
+                targetInput = nextRow.querySelector('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])');
             }
         }
+        if (targetInput) e.preventDefault();
     } else if (isLeft) {
-        if (colIdx > 0) {
-            e.preventDefault();
-            targetInput = currInputs[colIdx - 1];
-        } else if (currRowIdx > 0) {
-            const prevRowInputs = Array.from(rows[currRowIdx - 1].querySelectorAll('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])'));
-            if (prevRowInputs.length > 0) {
-                e.preventDefault();
-                targetInput = prevRowInputs[prevRowInputs.length - 1];
+        let prevTd = currentTd ? currentTd.previousElementSibling : null;
+        while (prevTd && !targetInput) {
+            targetInput = prevTd.querySelector('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])');
+            prevTd = prevTd.previousElementSibling;
+        }
+        if (!targetInput) {
+            let prevRow = tr.previousElementSibling;
+            while (prevRow && !prevRow.hasAttribute('data-student-id')) prevRow = prevRow.previousElementSibling;
+            if (prevRow) {
+                const prevInputs = prevRow.querySelectorAll('input.grade-box-input:not([disabled]):not([readonly]), input.grade-box-input-exam:not([disabled]):not([readonly])');
+                if (prevInputs.length > 0) targetInput = prevInputs[prevInputs.length - 1];
             }
         }
+        if (targetInput) e.preventDefault();
     }
 
     if (targetInput) {
@@ -27613,7 +27578,7 @@ function scheduleDebouncedLiveKpis(subjectName, unit) {
     }, 400);
 }
 
-function debounceStudentGradeSave(studentId, subjectName, unit, gradeData) {
+function debounceStudentGradeSave(studentId, subjectName, unit, gradeData, delayMs = 600) {
     const timerKey = `${studentId}_${subjectName}_${unit}`;
     if (_gradeAutoSaveTimers[timerKey]) {
         clearTimeout(_gradeAutoSaveTimers[timerKey]);
@@ -27621,12 +27586,16 @@ function debounceStudentGradeSave(studentId, subjectName, unit, gradeData) {
     _gradeAutoSaveTimers[timerKey] = setTimeout(() => {
         delete _gradeAutoSaveTimers[timerKey];
         if (typeof saveStudentSubjectGradeAtomic === 'function') {
-            saveStudentSubjectGradeAtomic(studentId, subjectName, unit, gradeData).catch(e => {
+            saveStudentSubjectGradeAtomic(studentId, subjectName, unit, gradeData).then(() => {
+                if (typeof updateDbSyncStatus === 'function') {
+                    updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado en la nube (0ms)');
+                }
+            }).catch(e => {
                 console.warn("Aviso en autosave de calificación:", e);
             });
         }
         scheduleFullStateSaveDebounced();
-    }, 300);
+    }, delayMs);
 }
 
 function flushStudentGradeSave(studentId, subjectName, unit, gradeData) {
@@ -27636,7 +27605,11 @@ function flushStudentGradeSave(studentId, subjectName, unit, gradeData) {
         delete _gradeAutoSaveTimers[timerKey];
     }
     if (typeof saveStudentSubjectGradeAtomic === 'function') {
-        saveStudentSubjectGradeAtomic(studentId, subjectName, unit, gradeData).catch(e => {
+        saveStudentSubjectGradeAtomic(studentId, subjectName, unit, gradeData).then(() => {
+            if (typeof updateDbSyncStatus === 'function') {
+                updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado en la nube (0ms)');
+            }
+        }).catch(e => {
             console.warn("Aviso en autosave de calificación:", e);
         });
     }
@@ -27683,46 +27656,50 @@ function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, 
         }
     }
 
-    // 3. Actualizar fila en la pestaña de Promedios Totales si existe
-    const avgRow = document.querySelector(`#gradebookAveragesTableBody tr[data-student-id="${studentId}"]`);
-    if (avgRow) {
-        const avgCells = avgRow.querySelectorAll('td');
-        if (avgCells && avgCells.length >= 7) {
-            const subGrades = (typeof getReportCardSubjectGrades === 'function')
-                ? getReportCardSubjectGrades(student, subjectName)
-                : null;
-            if (subGrades) {
-                if (subGrades.isSpecialUnique) {
-                    if (avgCells[2]) avgCells[2].innerHTML = '<span style="color:#94a3b8;">—</span>';
-                    if (avgCells[3]) avgCells[3].innerHTML = '<span style="color:#94a3b8;">—</span>';
-                    if (avgCells[4]) avgCells[4].innerHTML = '<span style="color:#94a3b8;">—</span>';
-                    if (avgCells[5]) {
-                        avgCells[5].textContent = subGrades.b4 > 0 ? subGrades.b4 : '—';
-                        avgCells[5].className = subGrades.b4 < 60 ? 'grade-score-fail' : 'grade-score-pass';
-                    }
-                } else {
-                    const bimCell = avgCells[unit + 1];
-                    if (bimCell) {
-                        const isEx = subGrades[`isExon${unit}`];
-                        if (isEx) {
-                            bimCell.innerHTML = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; padding:2px 6px; border-radius:4px;"><i class="fa-solid fa-shield-check"></i> Exon.</span>`;
-                            bimCell.className = '';
-                        } else {
-                            const uScore = subGrades[`b${unit}`];
-                            bimCell.textContent = uScore > 0 ? uScore : '—';
-                            bimCell.className = uScore < 60 ? 'grade-score-fail' : 'grade-score-pass';
+    // 3. Actualizar fila en la pestaña de Promedios Totales solo si está visible
+    const avgContainer = document.getElementById('gradebookAveragesContainer');
+    const isAvgVisible = avgContainer && (avgContainer.offsetParent !== null || avgContainer.style.display !== 'none');
+    if (isAvgVisible) {
+        const avgRow = document.querySelector(`#gradebookAveragesTableBody tr[data-student-id="${studentId}"]`);
+        if (avgRow) {
+            const avgCells = avgRow.querySelectorAll('td');
+            if (avgCells && avgCells.length >= 7) {
+                const subGrades = (typeof getReportCardSubjectGrades === 'function')
+                    ? getReportCardSubjectGrades(student, subjectName)
+                    : null;
+                if (subGrades) {
+                    if (subGrades.isSpecialUnique) {
+                        if (avgCells[2]) avgCells[2].innerHTML = '<span style="color:#94a3b8;">—</span>';
+                        if (avgCells[3]) avgCells[3].innerHTML = '<span style="color:#94a3b8;">—</span>';
+                        if (avgCells[4]) avgCells[4].innerHTML = '<span style="color:#94a3b8;">—</span>';
+                        if (avgCells[5]) {
+                            avgCells[5].textContent = subGrades.b4 > 0 ? subGrades.b4 : '—';
+                            avgCells[5].className = subGrades.b4 < 60 ? 'grade-score-fail' : 'grade-score-pass';
+                        }
+                    } else {
+                        const bimCell = avgCells[unit + 1];
+                        if (bimCell) {
+                            const isEx = subGrades[`isExon${unit}`];
+                            if (isEx) {
+                                bimCell.innerHTML = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; padding:2px 6px; border-radius:4px;"><i class="fa-solid fa-shield-check"></i> Exon.</span>`;
+                                bimCell.className = '';
+                            } else {
+                                const uScore = subGrades[`b${unit}`];
+                                bimCell.textContent = uScore > 0 ? uScore : '—';
+                                bimCell.className = uScore < 60 ? 'grade-score-fail' : 'grade-score-pass';
+                            }
                         }
                     }
-                }
-                const finalCell = avgCells[6];
-                if (finalCell) {
-                    if (subGrades.isFullyExon) {
-                        finalCell.innerHTML = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem;">Exon.</span>`;
-                        finalCell.className = '';
-                    } else {
-                        const finalAvg = subGrades.avg;
-                        finalCell.textContent = finalAvg > 0 ? finalAvg : '—';
-                        finalCell.className = finalAvg < 60 ? 'grade-score-fail' : 'grade-score-pass';
+                    const finalCell = avgCells[6];
+                    if (finalCell) {
+                        if (subGrades.isFullyExon) {
+                            finalCell.innerHTML = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem;">Exon.</span>`;
+                            finalCell.className = '';
+                        } else {
+                            const finalAvg = subGrades.avg;
+                            finalCell.textContent = finalAvg > 0 ? finalAvg : '—';
+                            finalCell.className = finalAvg < 60 ? 'grade-score-fail' : 'grade-score-pass';
+                        }
                     }
                 }
             }
@@ -27781,14 +27758,14 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
         updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
     }
 
-    // 🌟 Sincronización atómica asíncrona inmediata en segundo plano
+    // 🌟 Sincronización atómica asíncrona inteligente en segundo plano (0ms en UI)
     if (isCommit) {
         if (typeof updateGradebookSaveStatus === 'function') {
-            updateGradebookSaveStatus(true);
+            updateGradebookSaveStatus(false);
         }
-        flushStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
+        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit], 600);
     } else {
-        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
+        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit], 1000);
     }
 }
 
@@ -27828,14 +27805,14 @@ function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = 
         updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
     }
 
-    // 🌟 Sincronización atómica asíncrona inmediata en segundo plano
+    // 🌟 Sincronización atómica asíncrona inteligente en segundo plano (0ms en UI)
     if (isCommit) {
         if (typeof updateGradebookSaveStatus === 'function') {
-            updateGradebookSaveStatus(true);
+            updateGradebookSaveStatus(false);
         }
-        flushStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
+        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit], 600);
     } else {
-        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
+        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit], 1000);
     }
 }
 
@@ -27884,14 +27861,14 @@ function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = f
         updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
     }
 
-    // 🌟 Sincronización atómica asíncrona inmediata en segundo plano
+    // 🌟 Sincronización atómica asíncrona inteligente en segundo plano (0ms en UI)
     if (isCommit) {
         if (typeof updateGradebookSaveStatus === 'function') {
-            updateGradebookSaveStatus(true);
+            updateGradebookSaveStatus(false);
         }
-        flushStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
+        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit], 600);
     } else {
-        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit]);
+        debounceStudentGradeSave(studentId, subjectName, unit, student.gradebookDetails[subjectName][unit], 1000);
     }
 }
 
