@@ -5030,7 +5030,22 @@ function initFirebaseRealtimeConnection() {
                         }
                     } else if (cleanPath === 'pensum') {
                         if (Array.isArray(nodeData)) {
-                            STATE.pensum = nodeData;
+                            const validIncoming = nodeData.filter(p => p && (p.subject || p.name) && (p.grade || p.gradeCode));
+                            if (validIncoming.length >= 28) {
+                                STATE.pensum = (typeof deduplicatePensumCollection === 'function') ? deduplicatePensumCollection(validIncoming) : validIncoming;
+                            } else if (Array.isArray(STATE.pensum) && STATE.pensum.length >= 28) {
+                                // Fusión granular: actualizar únicamente ponderaciones o docentes sin truncar las 112 cátedras
+                                nodeData.forEach(incP => {
+                                    if (incP && incP.id) {
+                                        const localP = STATE.pensum.find(p => p && p.id === incP.id);
+                                        if (localP) {
+                                            if (incP.gradingConfig) localP.gradingConfig = incP.gradingConfig;
+                                            if (incP.teacherId) localP.teacherId = incP.teacherId;
+                                            if (incP.teacherName) localP.teacherName = incP.teacherName;
+                                        }
+                                    }
+                                });
+                            }
                             if (typeof syncPensumTeachersWithUsers === 'function') syncPensumTeachersWithUsers(false);
                             // SINCRONIZACIÓN BIDIRECCIONAL EN TIEMPO REAL:
                             // Si se asigna o quita un docente en clases, actualizar editor de pensum inmediatamente sin recargar
@@ -5052,8 +5067,8 @@ function initFirebaseRealtimeConnection() {
                             if (typeof renderCurrentView === 'function' && (STATE.activeView === 'pensum' || STATE.activeView === 'class-assignments')) renderCurrentView();
                         }
                     } else if (cleanPath === 'users') {
-                        if (Array.isArray(nodeData) && nodeData.length > 0) {
-                            STATE.users = nodeData;
+                        if (Array.isArray(nodeData) && nodeData.length >= 20) {
+                            STATE.users = (typeof deduplicateUsersCollection === 'function') ? deduplicateUsersCollection(nodeData) : nodeData;
                             if (typeof syncPensumTeachersWithUsers === 'function') syncPensumTeachersWithUsers(true);
 
                             // ⚡ Sincronización reactiva del usuario activo si su rol o perfil cambió en la nube
@@ -5095,7 +5110,7 @@ function initFirebaseRealtimeConnection() {
                             if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
                         }
                     } else if (cleanPath === 'gradesList') {
-                        if (Array.isArray(nodeData)) {
+                        if (Array.isArray(nodeData) && nodeData.length >= 12) {
                             STATE.gradesList = nodeData;
                             if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
                             if (typeof renderGradesTable === 'function') renderGradesTable();
@@ -23499,10 +23514,22 @@ async function importDataBackupJSON(e) {
                 STATE.careers = data.careers || STATE.careers;
                 STATE.cycles = data.cycles || STATE.cycles || [];
                 STATE.activeCycle = data.activeCycle || STATE.activeCycle || '';
-                STATE.gradesList = data.gradesList || STATE.gradesList;
+                if (Array.isArray(data.gradesList) && data.gradesList.length >= 12) {
+                    STATE.gradesList = data.gradesList;
+                } else if (Array.isArray(data.gradesList) && data.gradesList.length > 0) {
+                    console.warn("🛡️ [Seguridad] Respaldo JSON contiene catálogo de secciones truncado. Se conservan las 12 secciones oficiales.");
+                }
                 STATE.pensumCatalog = data.pensumCatalog || STATE.pensumCatalog;
-                STATE.students = data.students || STATE.students;
-                STATE.pensum = data.pensum || STATE.pensum;
+                if (Array.isArray(data.students) && data.students.length >= 350) {
+                    STATE.students = (typeof deduplicateStudentsCollection === 'function') ? deduplicateStudentsCollection(data.students) : data.students;
+                } else if (Array.isArray(data.students) && data.students.length > 0) {
+                    console.warn("🛡️ [Seguridad] Respaldo JSON contiene menos de 350 estudiantes. Se conserva el padrón existente.");
+                }
+                if (Array.isArray(data.pensum) && data.pensum.length >= 28) {
+                    STATE.pensum = data.pensum;
+                } else if (Array.isArray(data.pensum) && data.pensum.length > 0) {
+                    console.warn("🛡️ [Seguridad] Respaldo JSON contiene pensum truncado. Se conserva la asignación existente.");
+                }
                 STATE.announcements = data.announcements || STATE.announcements;
                 STATE.disciplineReports = data.disciplineReports || STATE.disciplineReports;
                 STATE.attendanceRecords = data.attendanceRecords || STATE.attendanceRecords || {};
@@ -26483,7 +26510,20 @@ async function saveGradingConfigAtomic(targetPensum, unit, configObj) {
     if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
         try {
             const pRef = modular.doc(modular.db, 'pensum', targetPensum.id);
-            const pData = { gradingConfig: targetPensum.gradingConfig, lastModified: nowTime };
+            const pData = {
+                id: targetPensum.id,
+                subject: targetPensum.subject || targetPensum.name || '',
+                name: targetPensum.name || targetPensum.subject || '',
+                grade: targetPensum.grade || targetPensum.gradeCode || '',
+                gradeCode: targetPensum.gradeCode || targetPensum.grade || '',
+                section: targetPensum.section || '',
+                teacherId: targetPensum.teacherId || '',
+                teacherName: targetPensum.teacherName || '',
+                career: targetPensum.career || '',
+                shift: targetPensum.shift || '',
+                gradingConfig: targetPensum.gradingConfig || {},
+                lastModified: nowTime
+            };
             const fsAction = (typeof modular.updateDoc === 'function')
                 ? modular.updateDoc(pRef, pData).catch(() => modular.setDoc(pRef, pData, { merge: true }))
                 : modular.setDoc(pRef, pData, { merge: true });
@@ -44512,15 +44552,27 @@ function initFirestoreModularLiveListeners() {
             const unsubPensum = onSnapshot(collection(db, rutaColeccion), (snap) => {
                 if (!snap || snap.empty) return;
                 // Snapshot listener activo sin bloqueos locales
-                const items = [];
-                snap.forEach(d => items.push({ id: d.id, ...d.data() }));
-                if (items.length >= (STATE.pensum || []).length && items.length > 0) {
-                    STATE.pensum = items;
-                } else if (items.length > 0) {
-                    // Fusión inteligente para preservar nómina autoritativa de 112 cátedras
-                    const currentMap = new Map((STATE.pensum || []).map(p => [p.id, p]));
-                    items.forEach(item => currentMap.set(item.id, { ...(currentMap.get(item.id) || {}), ...item }));
-                    STATE.pensum = Array.from(currentMap.values());
+                const rawItems = [];
+                snap.forEach(d => rawItems.push({ id: d.id, ...d.data() }));
+                const validItems = rawItems.filter(p => p && (p.subject || p.name) && (p.grade || p.gradeCode));
+                if (validItems.length >= 100) {
+                    STATE.pensum = validItems;
+                } else if (rawItems.length > 0) {
+                    // Fusión inteligente: preservar nómina autoritativa de 112 cátedras enriqueciendo únicamente campos válidos
+                    if (!Array.isArray(STATE.pensum) || STATE.pensum.length < 28) {
+                        if (typeof ensureOfficialPensumAssignments === 'function') ensureOfficialPensumAssignments();
+                    }
+                    if (Array.isArray(STATE.pensum)) {
+                        rawItems.forEach(item => {
+                            if (!item || !item.id) return;
+                            const localP = STATE.pensum.find(p => p && p.id === item.id);
+                            if (localP) {
+                                if (item.gradingConfig) localP.gradingConfig = item.gradingConfig;
+                                if (item.teacherId) localP.teacherId = item.teacherId;
+                                if (item.teacherName) localP.teacherName = item.teacherName;
+                            }
+                        });
+                    }
                 }
                 if (typeof renderAssignmentsTable === 'function') renderAssignmentsTable();
                 if (typeof renderPensumCatalogTable === 'function') renderPensumCatalogTable();
