@@ -7764,6 +7764,58 @@ function ensureSireOfficialStudents() {
         sanitizeArevaloAttendanceRecords();
     }
 
+    // 🛡️ Normalización Canónica de Exoneraciones Oficiales (5to Perito Contador Sección A)
+    // 1. Emerson Adolfo Chacaj López NO está exonerado.
+    const chacajSt = (STATE.students || []).find(s => s && (
+        s.id === 'stu-sire-F373XHG' ||
+        s.personalCode === 'F373XHG' ||
+        (s.carne && s.carne.includes('2026-QA-008')) ||
+        (s.name && s.name.toUpperCase().includes('CHACAJ LÓPEZ') && s.name.toUpperCase().includes('EMERSON'))
+    ));
+    if (chacajSt) {
+        delete chacajSt.exoneraciones;
+        delete chacajSt.academicExceptions;
+        delete chacajSt.isExonerated;
+        delete chacajSt.exonerado;
+        delete chacajSt.exoneratedBimestre;
+    }
+
+    // 2. Méndez Méndez, Justin Enilson (Jostin Enilson) SÍ está exonerado en Bimestre 4.
+    const justinSt = (STATE.students || []).find(s => s && (
+        s.id === 'stu-sire-H652EZI' ||
+        s.personalCode === 'H652EZI' ||
+        (s.carne && s.carne.includes('2026-QA-031')) ||
+        (s.name && (s.name.toUpperCase().includes('MÉNDEZ MÉNDEZ') || s.name.toUpperCase().includes('MENDEZ MENDEZ')) &&
+         (s.name.toUpperCase().includes('ENILSON') || s.name.toUpperCase().includes('JUSTIN') || s.name.toUpperCase().includes('JOSTIN')))
+    ));
+    if (justinSt) {
+        const exonJustin = {
+            id: 'exon_stu-sire-H652EZI_all_4',
+            studentId: 'stu-sire-H652EZI',
+            personalCode: 'H652EZI',
+            carne: '2026-QA-031',
+            studentName: 'MÉNDEZ MÉNDEZ JOSTIN ENILSON',
+            grade: '5to Perito Contador',
+            section: 'Sección A',
+            gradeCode: '5to PC A',
+            bimestre: '4',
+            subject: 'ALL',
+            type: 'EXONERADO',
+            reason: 'Reposo de dos semanas según nota médica de fecha 14/10/2026',
+            date: '16/10/2026',
+            authorizedBy: 'Francisca Alcira González Zepeda',
+            active: true,
+            createdAt: '2026-10-16T16:20:43.947Z'
+        };
+        justinSt.academicExceptions = [exonJustin];
+        justinSt.exoneraciones = [exonJustin];
+        justinSt.isExonerated = true;
+        justinSt.exoneratedBimestre = '4';
+
+        if (!STATE.exoneraciones) STATE.exoneraciones = {};
+        STATE.exoneraciones['exon_stu-sire-H652EZI_all_4'] = exonJustin;
+    }
+
     // 🎓 Preservación absoluta de calificaciones: Firebase es la única fuente autoritativa
     // No se inyectan notas sintéticas ni datos semilla (modo producción estricto).
 }
