@@ -10005,7 +10005,7 @@ function applyBimestreAndLockConfig(configData, isBroadcaster = false) {
         populateGradebookBimestreSelect(bimChanged);
     }
 
-    if (STATE.activeView === 'gradebook') {
+    if (STATE.activeView === 'gradebook' && (bimChanged || lockChanged)) {
         const gSelect = document.getElementById('gradebookBimestreSelect');
         if (gSelect) {
             if (bimChanged || !gSelect.value || parseInt(gSelect.value) === prevBim) {
@@ -10014,9 +10014,6 @@ function applyBimestreAndLockConfig(configData, isBroadcaster = false) {
         }
         if (typeof loadTeacherGradebook === 'function') {
             loadTeacherGradebook();
-        }
-        if (typeof renderGradebookTable === 'function') {
-            renderGradebookTable();
         }
     }
 
@@ -26843,6 +26840,7 @@ function loadTeacherGradebook() {
 
     // Obtener la configuración de ponderación de Zona y Examen para este curso y bimestre
     const cfg = getGradingConfig(targetPensum, currentUnit);
+    window._activeGradebookConfigCache = cfg;
 
     // Actualizar barra informativa de ponderación
     const badgeZ = document.getElementById('badgeZonaMaxDisplay');
@@ -26858,6 +26856,8 @@ function loadTeacherGradebook() {
 
     const editPermission = isGradebookEditableForUser(targetPensum.id, currentUnit);
     const isEditable = editPermission.editable;
+    window._activeGradebookEditableCache = isEditable;
+    window._activeGradebookCourseCache = targetPensum;
 
     if (gbNotice && gbNoticeText) {
         gbNotice.style.display = 'block';
@@ -27635,13 +27635,17 @@ function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, 
     // 1. Actualizar celda de Suma de Zona en la pestaña de actividades (0ms instantáneo)
     const sumCell = document.getElementById(`zonaSum_${studentId}`);
     if (sumCell) {
-        const targetPensum = (STATE.pensum || []).find(p => p.subject === subjectName);
-        const cfg = (typeof getGradingConfig === 'function') ? getGradingConfig(targetPensum, unit) : { zonaMax: 40, examMax: 60 };
+        const cfg = window._activeGradebookConfigCache || ((typeof getGradingConfig === 'function') ? getGradingConfig(window._activeGradebookCourseCache || (STATE.pensum || []).find(p => p.subject === subjectName), unit) : { zonaMax: 40, examMax: 60 });
         const isLowZone = (zonaVal > 0 && zonaVal < 24);
-        const lowZoneBadge = isLowZone ? '<span title="Zona baja (&lt; 24 pts): Riesgo de reprobación" style="font-size:0.68rem; font-weight:800; color:#b45309; background:#fef3c7; border:1px solid #fde68a; border-radius:4px; padding:1px 4px; margin-left:3px; vertical-align:middle;">⚠️ &lt;24</span>' : '';
-        sumCell.innerHTML = `&Sigma; ${zonaVal} ${lowZoneBadge}`;
-        sumCell.style.color = (zonaVal > (cfg.zonaMax || 40)) ? '#b91c1c' : (isLowZone ? '#d97706' : '');
-        sumCell.style.background = isLowZone ? 'rgba(254,243,199,0.35)' : 'rgba(34,197,94,0.08)';
+        if (isLowZone) {
+            sumCell.innerHTML = `&Sigma; ${zonaVal} <span title="Zona baja (&lt; 24 pts): Riesgo de reprobación" style="font-size:0.68rem; font-weight:800; color:#b45309; background:#fef3c7; border:1px solid #fde68a; border-radius:4px; padding:1px 4px; margin-left:3px; vertical-align:middle;">⚠️ &lt;24</span>`;
+            sumCell.style.color = '#d97706';
+            sumCell.style.background = 'rgba(254,243,199,0.35)';
+        } else {
+            sumCell.textContent = `\u03A3 ${zonaVal}`;
+            sumCell.style.color = (zonaVal > (cfg.zonaMax || 40)) ? '#b91c1c' : '';
+            sumCell.style.background = 'rgba(34,197,94,0.08)';
+        }
     }
 
     // 2. Actualizar fila en la pestaña de Examen y Resumen solo si existe y está visible
@@ -27729,11 +27733,16 @@ function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, 
 
 function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, isCommit = false) {
     window._lastLocalGradeEditTime = Date.now();
-    const selectedId = document.getElementById('teacherCourseSelect')?.value;
-    const targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
-    const editCheck = isGradebookEditableForUser(targetPensum?.id, unit);
-    if (!editCheck.editable) {
-        showToast("Modificación Bloqueada: " + (editCheck.message || "Este bimestre se encuentra cerrado para edición directa."), "warning");
+    let isEditable = window._activeGradebookEditableCache;
+    let targetPensum = window._activeGradebookCourseCache;
+    if (isEditable === undefined || !targetPensum) {
+        const selectedId = document.getElementById('teacherCourseSelect')?.value;
+        targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
+        const editCheck = isGradebookEditableForUser(targetPensum?.id, unit);
+        isEditable = editCheck.editable;
+    }
+    if (!isEditable) {
+        showToast("Modificación Bloqueada: Este bimestre se encuentra cerrado para edición directa.", "warning");
         loadTeacherGradebook();
         return;
     }
@@ -27759,9 +27768,12 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
     const valNum = Math.max(0, parseInt(value) || 0);
     student.gradebookDetails[subjectName][unit].activities[actIndex] = valNum;
 
-    // Recalcular suma de zona
+    // Recalcular suma de zona O(1) sin recreación de funciones ni basura en memoria
     const acts = student.gradebookDetails[subjectName][unit].activities;
-    const zonaSum = acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
+    let zonaSum = 0;
+    for (let i = 0; i < 10; i++) {
+        zonaSum += (acts[i] || 0);
+    }
     student.gradebookDetails[subjectName][unit].zona = zonaSum;
 
     // Recalcular nota total
@@ -27786,11 +27798,16 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
 
 function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = false) {
     window._lastLocalGradeEditTime = Date.now();
-    const selectedId = document.getElementById('teacherCourseSelect')?.value;
-    const targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
-    const editCheck = isGradebookEditableForUser(targetPensum?.id, unit);
-    if (!editCheck.editable) {
-        showToast("Modificación Bloqueada: " + (editCheck.message || "Este bimestre se encuentra cerrado para edición directa."), "warning");
+    let isEditable = window._activeGradebookEditableCache;
+    let targetPensum = window._activeGradebookCourseCache;
+    if (isEditable === undefined || !targetPensum) {
+        const selectedId = document.getElementById('teacherCourseSelect')?.value;
+        targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
+        const editCheck = isGradebookEditableForUser(targetPensum?.id, unit);
+        isEditable = editCheck.editable;
+    }
+    if (!isEditable) {
+        showToast("Modificación Bloqueada: Este bimestre se encuentra cerrado para edición directa.", "warning");
         loadTeacherGradebook();
         return;
     }
@@ -27805,7 +27822,7 @@ function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = 
         return;
     }
     ensureStudentGradebookStructure(student, subjectName);
-    const cfg = getGradingConfig(targetPensum, unit);
+    const cfg = window._activeGradebookConfigCache || getGradingConfig(targetPensum, unit);
 
     if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.add(studentId);
     const valNum = Math.max(0, Math.min(cfg.zonaMax || 40, parseInt(value) || 0));
@@ -27832,11 +27849,16 @@ function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = 
 
 function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = false) {
     window._lastLocalGradeEditTime = Date.now();
-    const selectedId = document.getElementById('teacherCourseSelect')?.value;
-    const targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
-    const editCheck = isGradebookEditableForUser(targetPensum?.id, unit);
-    if (!editCheck.editable) {
-        showToast("Modificación Bloqueada: " + (editCheck.message || "Este bimestre se encuentra cerrado para edición directa."), "warning");
+    let isEditable = window._activeGradebookEditableCache;
+    let targetPensum = window._activeGradebookCourseCache;
+    if (isEditable === undefined || !targetPensum) {
+        const selectedId = document.getElementById('teacherCourseSelect')?.value;
+        targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
+        const editCheck = isGradebookEditableForUser(targetPensum?.id, unit);
+        isEditable = editCheck.editable;
+    }
+    if (!isEditable) {
+        showToast("Modificación Bloqueada: Este bimestre se encuentra cerrado para edición directa.", "warning");
         loadTeacherGradebook();
         return;
     }
@@ -27857,15 +27879,18 @@ function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = f
         return;
     }
     ensureStudentGradebookStructure(student, subjectName);
-    const cfg = getGradingConfig(targetPensum, unit);
+    const cfg = window._activeGradebookConfigCache || getGradingConfig(targetPensum, unit);
 
     if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.add(studentId);
     const examVal = Math.max(0, Math.min(cfg.examMax || 60, parseInt(value) || 0));
     student.gradebookDetails[subjectName][unit].exam = examVal;
 
-    // Obtener la zona sumada exactamente de las actividades
+    // Obtener la zona sumada exactamente de las actividades O(1)
     const acts = student.gradebookDetails[subjectName][unit].activities || [0,0,0,0,0,0,0,0,0,0];
-    const zonaSum = acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
+    let zonaSum = 0;
+    for (let i = 0; i < 10; i++) {
+        zonaSum += (acts[i] || 0);
+    }
     student.gradebookDetails[subjectName][unit].zona = zonaSum;
 
     const total = zonaSum + examVal;

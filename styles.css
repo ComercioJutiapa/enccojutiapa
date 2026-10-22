@@ -1108,7 +1108,7 @@ select.form-control-sm option {
     font-size: 0.85rem;
     color: #0f172a;
     padding: 2px;
-    transition: all 0.15s ease;
+    transition: none !important;
     background: #ffffff;
 }
 .grade-box-input:focus {
@@ -3568,8 +3568,8 @@ input.grade-box-input-exam:focus {
     font-weight: 800 !important;
     -webkit-transform: scale(1.04);
     transform: scale(1.04);
-    -webkit-transition: -webkit-transform 0.1s ease, box-shadow 0.1s ease;
-    transition: transform 0.1s ease, box-shadow 0.1s ease;
+    -webkit-transition: none !important;
+    transition: none !important;
 }
 
 /* ==========================================================================
@@ -5021,8 +5021,9 @@ body.theme-dark .empty-state-card p {
     border-color: #0284c7 !important;
     box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.25), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
     background-color: #f0f9ff !important;
+    -webkit-transform: scale(1.04);
     transform: scale(1.04);
-    transition: all 0.15s ease-out;
+    transition: none !important;
     z-index: 5;
 }
 
