@@ -7305,10 +7305,10 @@ function ensureSireOfficialStudents() {
         if (isDulce) {
             s.id = 'stu-sire-E195FVT';
             s.personalCode = 'E195FVT';
-            s.carne = s.carne || '2026-QD-025';
-            s.firstName = s.firstName || 'DULCE MARÍA';
-            s.lastName = s.lastName || 'RAMOS FLORIÁN';
-            s.name = s.name || 'RAMOS FLORIÁN DULCE MARÍA';
+            s.carne = '2026-QD-025';
+            s.firstName = 'DULCE MARÍA';
+            s.lastName = 'RAMOS FLORIÁN';
+            s.name = 'RAMOS FLORIÁN DULCE MARÍA';
             if (!s.editedByAuthority && (!s.grade || !s.section)) {
                 s.grade = '5to Perito Contador';
                 s.gradeCode = '5to PC D';
@@ -7334,10 +7334,10 @@ function ensureSireOfficialStudents() {
         if (isAlicia) {
             s.id = 'stu-sire-G482XGW';
             s.personalCode = 'G482XGW';
-            s.carne = s.carne || '2026-QA-035';
-            s.firstName = s.firstName || 'ALICIA CAROLINA';
-            s.lastName = s.lastName || 'RAMOS FLORIÁN';
-            s.name = s.name || 'RAMOS FLORIÁN ALICIA CAROLINA';
+            s.carne = '2026-QA-035';
+            s.firstName = 'ALICIA CAROLINA';
+            s.lastName = 'RAMOS FLORIÁN';
+            s.name = 'RAMOS FLORIÁN ALICIA CAROLINA';
             if (!s.editedByAuthority && (!s.grade || !s.section)) {
                 s.grade = '5to Perito Contador';
                 s.gradeCode = '5to PC A';
@@ -7354,6 +7354,25 @@ function ensureSireOfficialStudents() {
             } else {
                 s.active = false;
             }
+        }
+
+        // 🛡️ Auto-sanación canónica para Crúz González, Yoselin del Carmen (5to Perito Contador Sección A - Retirada)
+        const isYoselin = s.id === 'stu-sire-F194UTJ' || s.personalCode === 'F194UTJ' || (s.carne && s.carne.includes('2026-QA-010')) ||
+            (((s.lastName || '').toUpperCase().includes('CRÚZ GONZÁLEZ') || (s.lastName || '').toUpperCase().includes('CRUZ GONZALEZ')) &&
+             ((s.firstName || '').toUpperCase().includes('YOS') || (s.name || '').toUpperCase().includes('YOS')));
+        if (isYoselin) {
+            s.id = 'stu-sire-F194UTJ';
+            s.personalCode = 'F194UTJ';
+            s.carne = '2026-QA-010';
+            s.firstName = 'YOSELIN DEL CARMEN';
+            s.lastName = 'CRÚZ GONZÁLEZ';
+            s.name = 'CRÚZ GONZÁLEZ YOSELIN DEL CARMEN';
+            s.grade = '5to Perito Contador';
+            s.gradeCode = '5to PC A';
+            s.gradeLabel = '5to Perito Contador (Sección A)';
+            s.section = 'Sección A';
+            s.status = 'Retirado';
+            s.statusSire = 'RETIRADO';
         }
 
         if (!s.status || s.status === 'Inscrito' || s.statusSire === 'INSCRITO') {
@@ -25477,8 +25496,9 @@ function getSortedGradebookStudents(gradeCode, targetPensum = null) {
     const gSec = getCleanSectionLetter(targetGradeObj ? targetGradeObj.section : (targetPensum ? (targetPensum.section || targetPensum.gradeCode) : gradeCode));
 
     const students = baseStudents.filter(s => {
-        // Excluir estudiantes expresamente eliminados
-        if (s.active === false) return false;
+        // Excluir estudiantes expresamente eliminados de la nómina (los retirados deben mostrarse con su rótulo oficial)
+        if (s.deleted === true) return false;
+        if (Array.isArray(STATE.deletedStudentIds) && STATE.deletedStudentIds.includes(s.id)) return false;
 
         // Coincidencia directa por código exacto de grado
         if (s.grade === gradeCode || s.gradeCode === gradeCode || (targetGradeObj && (s.grade === targetGradeObj.code || s.gradeCode === targetGradeObj.code))) return true;
@@ -44144,7 +44164,32 @@ function initFirestoreModularLiveListeners() {
                     const sId = change.doc.id;
                     const fullStudent = { id: sId, ...sData };
 
-                    const idx = (STATE.students || []).findIndex(s => s.id === sId);
+                    // 🛡️ Blindaje de identidad canónica para prevenir colisiones de nombres o duplicados
+                    if (sId === 'stu-sire-E195FVT' || fullStudent.personalCode === 'E195FVT' || fullStudent.carne === '2026-QD-025') {
+                        fullStudent.name = 'RAMOS FLORIÁN DULCE MARÍA';
+                        fullStudent.firstName = 'DULCE MARÍA';
+                        fullStudent.lastName = 'RAMOS FLORIÁN';
+                        fullStudent.grade = '5to Perito Contador';
+                        fullStudent.section = 'Sección D';
+                        fullStudent.gradeCode = '5to PC D';
+                    } else if (sId === 'stu-sire-G482XGW' || fullStudent.personalCode === 'G482XGW' || fullStudent.carne === '2026-QA-035') {
+                        fullStudent.name = 'RAMOS FLORIÁN ALICIA CAROLINA';
+                        fullStudent.firstName = 'ALICIA CAROLINA';
+                        fullStudent.lastName = 'RAMOS FLORIÁN';
+                        fullStudent.grade = '5to Perito Contador';
+                        fullStudent.section = 'Sección A';
+                        fullStudent.gradeCode = '5to PC A';
+                    } else if (sId === 'stu-sire-F194UTJ' || fullStudent.personalCode === 'F194UTJ' || fullStudent.carne === '2026-QA-010') {
+                        fullStudent.name = 'CRÚZ GONZÁLEZ YOSELIN DEL CARMEN';
+                        fullStudent.firstName = 'YOSELIN DEL CARMEN';
+                        fullStudent.lastName = 'CRÚZ GONZÁLEZ';
+                        fullStudent.grade = '5to Perito Contador';
+                        fullStudent.section = 'Sección A';
+                        fullStudent.gradeCode = '5to PC A';
+                        fullStudent.status = 'Retirado';
+                    }
+
+                    const idx = (STATE.students || []).findIndex(s => s && (s.id === sId || (fullStudent.personalCode && s.personalCode === fullStudent.personalCode) || (fullStudent.carne && s.carne === fullStudent.carne)));
                     if (change.type === 'added' || change.type === 'modified') {
                         if (idx !== -1) {
                             // Fusión profunda y aislada por materia y unidad para no sobreescribir materias entre docentes
@@ -44178,6 +44223,13 @@ function initFirestoreModularLiveListeners() {
                         if (idx !== -1) STATE.students.splice(idx, 1);
                     }
                 });
+
+                if (typeof deduplicateStudentsCollection === 'function') {
+                    STATE.students = deduplicateStudentsCollection(STATE.students);
+                }
+                if (typeof ensureSireOfficialStudents === 'function') {
+                    ensureSireOfficialStudents();
+                }
 
                 // Actualizar interfaz reactiva en tiempo real sin recargar página (blindando el libro de notas activo contra parpadeos)
                 const isGradebookActive = (STATE.activeView === 'gradebook');
