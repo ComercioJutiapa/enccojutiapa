@@ -2874,6 +2874,17 @@ if (!window.STATE.auditLog) {
     }
 }
 
+let _auditLogSaveTimer = null;
+function scheduleAuditLogSaveDebounced() {
+    if (_auditLogSaveTimer) return;
+    _auditLogSaveTimer = setTimeout(() => {
+        _auditLogSaveTimer = null;
+        try {
+            localStorage.setItem('ENCCO_AUDIT_LOG_SNAPSHOT', JSON.stringify((STATE.auditLog || []).slice(0, 300)));
+        } catch(e) {}
+    }, 4000);
+}
+
 function recordAuditLog(action, category, details, targetId = '') {
     if (!STATE.auditLog) STATE.auditLog = [];
     const now = new Date();
@@ -2894,9 +2905,7 @@ function recordAuditLog(action, category, details, targetId = '') {
     if (STATE.auditLog.length > 2000) {
         STATE.auditLog = STATE.auditLog.slice(0, 2000);
     }
-    try {
-        localStorage.setItem('ENCCO_AUDIT_LOG_SNAPSHOT', JSON.stringify(STATE.auditLog.slice(0, 300)));
-    } catch(e) {}
+    scheduleAuditLogSaveDebounced();
     return logEntry;
 }
 window.recordAuditLog = recordAuditLog;
@@ -10575,15 +10584,16 @@ function applyIncomingCloudState(incomingState, force = false) {
 
     // 🔒 [Persistencia Única] No se guarda base local redundante en localStorage
 
-    // Refrescar vistas activas en tiempo real (evitando interrumpir clics rápidos en asistencia)
+    // Refrescar vistas activas en tiempo real (evitando interrumpir clics rápidos en asistencia y edición en notas)
     try {
-        if (typeof renderCurrentView === 'function' && !(STATE.activeView === 'attendance' && isActivelyClickingAttendance)) {
+        const isActivelyOnGradebook = (STATE.activeView === 'gradebook');
+        if (typeof renderCurrentView === 'function' && !(STATE.activeView === 'attendance' && isActivelyClickingAttendance) && !isActivelyOnGradebook) {
             renderCurrentView();
         }
         if (typeof populateGradebookBimestreSelect === 'function') populateGradebookBimestreSelect();
         if (typeof renderAssignmentsTable === "function" && document.getElementById("assignmentsTableBody")) renderAssignmentsTable();
         if (typeof renderUsersTable === "function" && document.getElementById("usersTableBody")) renderUsersTable();
-        if (typeof renderGradebookTable === "function" && document.getElementById("gradebookTable")) renderGradebookTable();
+        if (!isActivelyOnGradebook && typeof renderGradebookTable === "function" && document.getElementById("gradebookTable")) renderGradebookTable();
         if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
         if (typeof updateGradeSelects === 'function') updateGradeSelects();
         if (typeof updateCareerSelects === 'function') updateCareerSelects();
@@ -26944,6 +26954,9 @@ function loadTeacherGradebook() {
 
     const students = getSortedGradebookStudents(gradeCode, targetPensum);
 
+    if (!window._fastStudentMap) window._fastStudentMap = new Map();
+    students.forEach(s => { if (s && s.id) window._fastStudentMap.set(s.id, s); });
+
     if (students.length === 0) {
         ['gradebookActivitiesTableBody', 'gradebookSummaryTableBody', 'gradebookAveragesTableBody'].forEach(id => {
             const el = document.getElementById(id);
@@ -27619,7 +27632,7 @@ function flushStudentGradeSave(studentId, subjectName, unit, gradeData) {
 function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, student, subjectName, unit) {
     if (!studentId || !student) return;
 
-    // 1. Actualizar celda de Suma de Zona en la pestaña de actividades
+    // 1. Actualizar celda de Suma de Zona en la pestaña de actividades (0ms instantáneo)
     const sumCell = document.getElementById(`zonaSum_${studentId}`);
     if (sumCell) {
         const targetPensum = (STATE.pensum || []).find(p => p.subject === subjectName);
@@ -27627,31 +27640,35 @@ function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, 
         const isLowZone = (zonaVal > 0 && zonaVal < 24);
         const lowZoneBadge = isLowZone ? '<span title="Zona baja (&lt; 24 pts): Riesgo de reprobación" style="font-size:0.68rem; font-weight:800; color:#b45309; background:#fef3c7; border:1px solid #fde68a; border-radius:4px; padding:1px 4px; margin-left:3px; vertical-align:middle;">⚠️ &lt;24</span>' : '';
         sumCell.innerHTML = `&Sigma; ${zonaVal} ${lowZoneBadge}`;
-        sumCell.style.color = (zonaVal > cfg.zonaMax) ? '#b91c1c' : (isLowZone ? '#d97706' : '');
+        sumCell.style.color = (zonaVal > (cfg.zonaMax || 40)) ? '#b91c1c' : (isLowZone ? '#d97706' : '');
         sumCell.style.background = isLowZone ? 'rgba(254,243,199,0.35)' : 'rgba(34,197,94,0.08)';
     }
 
-    // 2. Actualizar fila en la pestaña de Examen y Resumen sin destruir el DOM
-    const sumRow = document.querySelector(`#gradebookSummaryTableBody tr[data-student-id="${studentId}"]`);
-    if (sumRow) {
-        const zonaInput = sumRow.querySelector('input.grade-box-input-exam[readonly]');
-        if (zonaInput) zonaInput.value = zonaVal;
+    // 2. Actualizar fila en la pestaña de Examen y Resumen solo si existe y está visible
+    const summaryContainer = document.getElementById('gradebookSummaryContainer');
+    const isSummaryVisible = summaryContainer && (summaryContainer.offsetParent !== null || summaryContainer.style.display !== 'none');
+    if (isSummaryVisible) {
+        const sumRow = document.querySelector(`#gradebookSummaryTableBody tr[data-student-id="${studentId}"]`);
+        if (sumRow) {
+            const zonaInput = sumRow.querySelector('input.grade-box-input-exam[readonly]');
+            if (zonaInput) zonaInput.value = zonaVal;
 
-        const cells = sumRow.querySelectorAll('td');
-        if (cells && cells.length >= 6) {
-            const totalCell = cells[4];
-            if (totalCell) {
-                totalCell.textContent = totalVal;
-                totalCell.className = (totalVal < 60 ? 'grade-score-fail' : 'grade-score-pass');
-            }
+            const cells = sumRow.cells;
+            if (cells && cells.length >= 6) {
+                const totalCell = cells[4];
+                if (totalCell) {
+                    totalCell.textContent = totalVal;
+                    totalCell.className = (totalVal < 60 ? 'grade-score-fail' : 'grade-score-pass');
+                }
 
-            const acumCell = cells[5];
-            if (acumCell) {
-                const isInactive = (student.status === 'Retirado' || student.status === 'Ausente' || student.status === 'Inactivo');
-                const gList = student.grades?.[subjectName] || [0, 0, 0, 0];
-                const activeGrades = gList.slice(0, unit);
-                const sumGrades = activeGrades.reduce((a, b) => a + (parseInt(b) || 0), 0);
-                acumCell.textContent = isInactive ? '—' : (sumGrades / unit).toFixed(2);
+                const acumCell = cells[5];
+                if (acumCell) {
+                    const isInactive = (student.status === 'Retirado' || student.status === 'Ausente' || student.status === 'Inactivo');
+                    const gList = student.grades?.[subjectName] || [0, 0, 0, 0];
+                    const activeGrades = gList.slice(0, unit);
+                    const sumGrades = activeGrades.reduce((a, b) => a + (parseInt(b) || 0), 0);
+                    acumCell.textContent = isInactive ? '—' : (sumGrades / unit).toFixed(2);
+                }
             }
         }
     }
@@ -27662,7 +27679,7 @@ function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, 
     if (isAvgVisible) {
         const avgRow = document.querySelector(`#gradebookAveragesTableBody tr[data-student-id="${studentId}"]`);
         if (avgRow) {
-            const avgCells = avgRow.querySelectorAll('td');
+            const avgCells = avgRow.cells;
             if (avgCells && avgCells.length >= 7) {
                 const subGrades = (typeof getReportCardSubjectGrades === 'function')
                     ? getReportCardSubjectGrades(student, subjectName)
@@ -27711,6 +27728,7 @@ function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, 
 }
 
 function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, isCommit = false) {
+    window._lastLocalGradeEditTime = Date.now();
     const selectedId = document.getElementById('teacherCourseSelect')?.value;
     const targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
     const editCheck = isGradebookEditableForUser(targetPensum?.id, unit);
@@ -27720,8 +27738,10 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
         return;
     }
 
-    const student = (STATE.students || []).find(s => s.id === studentId);
+    const student = (window._fastStudentMap && window._fastStudentMap.get(studentId)) || (STATE.students || []).find(s => s && s.id === studentId);
     if (!student) return;
+    if (window._fastStudentMap && !window._fastStudentMap.has(studentId)) window._fastStudentMap.set(studentId, student);
+
     // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les coloca nota
     if (student.status === 'Retirado' || student.status === 'Inactivo') {
         showToast("Estudiante Retirado: No se permite registrar calificaciones a alumnos retirados.", "warning");
@@ -27734,7 +27754,6 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
         return;
     }
     ensureStudentGradebookStructure(student, subjectName);
-    const cfg = getGradingConfig(targetPensum, unit);
 
     if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.add(studentId);
     const valNum = Math.max(0, parseInt(value) || 0);
@@ -27754,10 +27773,6 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
     // Actualización quirúrgica inmediata en DOM (0ms) sin destruir tabla
     updateStudentGradeRowSummaryDOM(studentId, zonaSum, exam, total, student, subjectName, unit);
 
-    if (typeof updateDbSyncStatus === 'function') {
-        updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
-    }
-
     // 🌟 Sincronización atómica asíncrona inteligente en segundo plano (0ms en UI)
     if (isCommit) {
         if (typeof updateGradebookSaveStatus === 'function') {
@@ -27770,6 +27785,7 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
 }
 
 function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = false) {
+    window._lastLocalGradeEditTime = Date.now();
     const selectedId = document.getElementById('teacherCourseSelect')?.value;
     const targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
     const editCheck = isGradebookEditableForUser(targetPensum?.id, unit);
@@ -27779,8 +27795,10 @@ function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = 
         return;
     }
 
-    const student = (STATE.students || []).find(s => s.id === studentId);
+    const student = (window._fastStudentMap && window._fastStudentMap.get(studentId)) || (STATE.students || []).find(s => s && s.id === studentId);
     if (!student) return;
+    if (window._fastStudentMap && !window._fastStudentMap.has(studentId)) window._fastStudentMap.set(studentId, student);
+
     if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(student, subjectName, unit)) {
         showToast("Estudiante Exonerado: Las notas de este bimestre no se registran ni aplican.", "warning");
         loadTeacherGradebook();
@@ -27801,10 +27819,6 @@ function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = 
 
     updateStudentGradeRowSummaryDOM(studentId, valNum, exam, total, student, subjectName, unit);
 
-    if (typeof updateDbSyncStatus === 'function') {
-        updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
-    }
-
     // 🌟 Sincronización atómica asíncrona inteligente en segundo plano (0ms en UI)
     if (isCommit) {
         if (typeof updateGradebookSaveStatus === 'function') {
@@ -27817,6 +27831,7 @@ function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = 
 }
 
 function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = false) {
+    window._lastLocalGradeEditTime = Date.now();
     const selectedId = document.getElementById('teacherCourseSelect')?.value;
     const targetPensum = (STATE.pensum || []).find(p => p.id === selectedId) || (STATE.pensum || []).find(p => p.subject === subjectName);
     const editCheck = isGradebookEditableForUser(targetPensum?.id, unit);
@@ -27826,8 +27841,10 @@ function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = f
         return;
     }
 
-    const student = (STATE.students || []).find(s => s.id === studentId);
+    const student = (window._fastStudentMap && window._fastStudentMap.get(studentId)) || (STATE.students || []).find(s => s && s.id === studentId);
     if (!student) return;
+    if (window._fastStudentMap && !window._fastStudentMap.has(studentId)) window._fastStudentMap.set(studentId, student);
+
     // 🛡️ REGLA INSTITUCIONAL: A los alumnos marcados como retirados NO se les coloca nota
     if (student.status === 'Retirado' || student.status === 'Inactivo') {
         showToast("Estudiante Retirado: No se permite registrar calificaciones a alumnos retirados.", "warning");
@@ -27856,10 +27873,6 @@ function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = f
     student.grades[subjectName][unit - 1] = total;
 
     updateStudentGradeRowSummaryDOM(studentId, zonaSum, examVal, total, student, subjectName, unit);
-
-    if (typeof updateDbSyncStatus === 'function') {
-        updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado (0ms)');
-    }
 
     // 🌟 Sincronización atómica asíncrona inteligente en segundo plano (0ms en UI)
     if (isCommit) {
@@ -44127,15 +44140,11 @@ function initFirestoreModularLiveListeners() {
                     }
                 });
 
-                // Actualizar interfaz reactiva en tiempo real sin recargar página (protegiendo foco activo del docente)
-                const isEditingGradebook = (typeof document !== 'undefined') && document.activeElement && 
-                    (document.activeElement.classList?.contains('grade-box-input') || 
-                     document.activeElement.classList?.contains('grade-box-input-exam') || 
-                     document.activeElement.closest?.('#gradebookActivitiesTable, #gradebookSummaryTable, #view-gradebook .clean-excel-table'));
+                // Actualizar interfaz reactiva en tiempo real sin recargar página (blindando el libro de notas activo contra parpadeos)
+                const isGradebookActive = (STATE.activeView === 'gradebook');
 
-                if (!isEditingGradebook) {
-                    if (typeof renderGradebookTable === 'function' && STATE.activeView === 'gradebook') renderGradebookTable();
-                    if (typeof loadTeacherGradebook === 'function' && STATE.activeView === 'gradebook') loadTeacherGradebook();
+                if (!isGradebookActive) {
+                    if (typeof renderGradebookTable === 'function') renderGradebookTable();
                 }
                 if (typeof renderStudentsTable === 'function' && STATE.activeView === 'students') renderStudentsTable();
                 if (typeof renderTeacherGradeProgressTable === 'function' && STATE.activeView === 'teacher-progress') renderTeacherGradeProgressTable();
