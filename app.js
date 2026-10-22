@@ -2060,7 +2060,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
 
     if (Array.isArray(STATE.pensumCatalog) && STATE.pensumCatalog.length > 0) cleanPayload.pensumCatalog = STATE.pensumCatalog;
     if (Array.isArray(STATE.students) && STATE.students.length >= 350) cleanPayload.students = STATE.students;
-    if (Array.isArray(STATE.pensum) && STATE.pensum.length > 0) cleanPayload.pensum = STATE.pensum;
+    if (Array.isArray(STATE.pensum) && STATE.pensum.length >= 28) cleanPayload.pensum = STATE.pensum;
     if (Array.isArray(STATE.announcements)) cleanPayload.announcements = STATE.announcements;
     if (Array.isArray(STATE.disciplineReports)) cleanPayload.disciplineReports = STATE.disciplineReports;
     if (Array.isArray(STATE.studentPermissions)) cleanPayload.studentPermissions = STATE.studentPermissions;
@@ -2275,6 +2275,10 @@ const EnccoCloudSync = {
                 ensureOfficialGradesList();
                 data = STATE.gradesList;
             }
+        }
+        if ((nodeName === 'pensum' || nodeName.startsWith('pensum')) && (!Array.isArray(data) || data.length < 28)) {
+            console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar colección de pensum truncada (${Array.isArray(data) ? data.length : typeof data} < 28). Operación cancelada para proteger asignaciones oficiales.`);
+            return false;
         }
         const firebaseUrl = this.getUrl();
         const now = Date.now();
@@ -8250,17 +8254,17 @@ window.ensureOfficialPensumAssignments = ensureOfficialPensumAssignments;
 async function loadPensumFromCloudFallback() {
     try {
         const fbUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
-        // Probar en orden: pensum_2026 (respaldo canónico 112 cátedras), pensum y encc_school_state/pensum
+        // Probar en orden: encc_school_state/pensum y pensum
         const endpoints = [
-            `${fbUrl}/pensum_2026.json?t=${Date.now()}`,
-            `${fbUrl}/pensum.json?t=${Date.now()}`,
-            `${fbUrl}/encc_school_state/pensum.json?t=${Date.now()}`
+            `${fbUrl}/encc_school_state/pensum.json?t=${Date.now()}`,
+            `${fbUrl}/pensum.json?t=${Date.now()}`
         ];
 
         for (const ep of endpoints) {
             try {
                 const res = await fetch(ep);
                 if (res.ok) {
+                    const data = await res.json();
                     const rawItems = Array.isArray(data) ? data : (data && typeof data === 'object' ? Object.values(data) : []);
                     const items = rawItems.filter(p => p && (p.subject || p.name) && (p.grade || p.gradeCode));
                     if (items.length >= 28) {
@@ -8726,6 +8730,28 @@ async function initApp() {
                 hasLoadedExistingUsers = true;
                 console.log(`🛡️ [Claustro Oficial] ${STATE.users.length} usuarios y docentes garantizados desde base institucional.`);
             }
+        }
+    }
+
+    // 🛡️ Blindaje de Respaldo de Nómina Completa de Asignaciones y Cátedras (112 Cursos Oficiales)
+    if (!Array.isArray(STATE.pensum) || STATE.pensum.length < 28) {
+        try {
+            const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== "undefined" ? ENCCO_OFFICIAL_FIREBASE_URL : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com");
+            let _pRes = await fetch(_fbUrl + "/encc_school_state/pensum.json?t=" + Date.now());
+            if (!_pRes || !_pRes.ok) {
+                _pRes = await fetch(_fbUrl + "/pensum.json?t=" + Date.now());
+            }
+            if (_pRes && _pRes.ok) {
+                const _pData = await _pRes.json();
+                const _pArray = Array.isArray(_pData) ? _pData : Object.values(_pData || {});
+                const _validItems = _pArray.filter(p => p && (p.subject || p.name) && (p.grade || p.gradeCode));
+                if (_validItems.length >= 28) {
+                    STATE.pensum = _validItems;
+                    console.log(`✅ [Pensum Oficial] ${_validItems.length} cátedras cargadas exitosamente desde Firebase.`);
+                }
+            }
+        } catch(_pErr) {
+            console.warn("⚠️ Aviso al descargar nómina de pensum de respaldo:", _pErr);
         }
     }
 
@@ -10308,9 +10334,33 @@ function applyIncomingCloudState(incomingState, force = false) {
         });
     };
     if (Array.isArray(incomingState.pensum) && incomingState.pensum.length >= 28) {
-        STATE.pensum = sanitizePensumArray(incomingState.pensum);
-    } else if (Array.isArray(incomingState.pensum) && incomingState.pensum.length > 0 && (!STATE.pensum || STATE.pensum.length === 0)) {
-        STATE.pensum = sanitizePensumArray(incomingState.pensum);
+        const sanitized = sanitizePensumArray(incomingState.pensum);
+        if (sanitized.length >= 28) {
+            STATE.pensum = sanitized;
+        } else if (Array.isArray(STATE.pensum) && STATE.pensum.length >= 28) {
+            incomingState.pensum.forEach(incP => {
+                if (incP && incP.id && incP.gradingConfig) {
+                    const localP = STATE.pensum.find(p => p && p.id === incP.id);
+                    if (localP) localP.gradingConfig = incP.gradingConfig;
+                }
+            });
+        }
+    } else if (Array.isArray(incomingState.pensum) && incomingState.pensum.length > 0) {
+        if (Array.isArray(STATE.pensum) && STATE.pensum.length >= 28) {
+            incomingState.pensum.forEach(incP => {
+                if (incP && incP.id && incP.gradingConfig) {
+                    const localP = STATE.pensum.find(p => p && p.id === incP.id);
+                    if (localP) localP.gradingConfig = incP.gradingConfig;
+                }
+            });
+        } else {
+            const sanitized = sanitizePensumArray(incomingState.pensum);
+            if (sanitized.length > 0) {
+                STATE.pensum = sanitized;
+            } else if (typeof ensureOfficialPensumAssignments === 'function') {
+                ensureOfficialPensumAssignments();
+            }
+        }
     } else if (!STATE.pensum || STATE.pensum.length < 28) {
         if (typeof ensureOfficialPensumAssignments === 'function') ensureOfficialPensumAssignments();
     }
