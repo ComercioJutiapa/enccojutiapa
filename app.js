@@ -27910,12 +27910,23 @@ function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = f
     }
 }
 
-async function saveGradebookChanges() {
+let _isSavingGradebookInProgress = false;
+async function saveGradebookChanges(e) {
+    if (e && e._enccoHandled) return;
+    if (e) e._enccoHandled = true;
+
+    // 🛡️ Bloqueo anti-doble clic / anti-rebote (Previene doble ejecución y doble mensaje de confirmación)
+    if (_isSavingGradebookInProgress) {
+        return false;
+    }
+    _isSavingGradebookInProgress = true;
+
     const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
     if (window.STATE && window.STATE.isLocalReadOnlyMode && !isSuperOrDir) {
         if (typeof showToast === 'function') {
             showToast("⚠️ Acción Bloqueada: La copia local está en modo SOLO LECTURA para evitar conflictos con el servidor central.", "warning");
         }
+        _isSavingGradebookInProgress = false;
         return;
     }
 
@@ -28004,6 +28015,9 @@ async function saveGradebookChanges() {
             submitBtn.disabled = false;
             submitBtn.innerHTML = origBtnHtml;
         }
+        setTimeout(() => {
+            _isSavingGradebookInProgress = false;
+        }, 800);
     }
 }
 window.saveGradebookChanges = saveGradebookChanges;
@@ -44902,6 +44916,12 @@ function initGlobalSaveDelegation() {
         let saveHandler = null;
         let handlerName = '';
         const btnOnclick = btn.getAttribute('onclick') || '';
+
+        // 🛡️ Si el botón ya tiene onclick nativo directo, el navegador ya ejecutó el handler;
+        // no re-despachar para evitar doble guardado y duplicación de mensajes (toasts).
+        if (btnOnclick && (btnOnclick.includes('saveGradebookChanges') || btnOnclick.includes('saveAttendanceRecords') || btnOnclick.includes('saveActiveRolePermissions'))) {
+            return;
+        }
 
         if (btn.id === 'userFormSubmitBtn' || btnOnclick.includes('submitUserForm') || btnOnclick.includes('saveUserForm')) {
             saveHandler = window.submitUserForm || window.saveUserForm;
