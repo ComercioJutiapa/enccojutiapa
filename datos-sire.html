@@ -372,7 +372,7 @@
                 } catch(e) {}
 
                 var roleLower = (authRole || '').trim().toLowerCase();
-                var allowedRoles = ['director', 'secretaria', 'admin', 'super_usuario'];
+                var allowedRoles = ['director', 'direccion', 'directora', 'secretaria', 'secretario', 'admin', 'super_usuario', 'superadmin', 'super_admin', 'profesor_auxiliar', 'docente', 'catedratico'];
 
                 // Redirigir a usuarios no autorizados (ej. docentes, alumnos)
                 if (!allowedRoles.includes(roleLower)) {

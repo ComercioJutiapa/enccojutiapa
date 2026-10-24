@@ -1284,9 +1284,10 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
     }
 
     if (key === 'datos-sire') {
-        const allowedSire = ['director', 'secretaria', 'admin', 'super_usuario'];
-        if (!allowedSire.includes(roleKey)) return 'none';
-        return 'edit';
+        const allowedSire = ['director', 'direccion', 'directora', 'secretaria', 'secretario', 'admin', 'super_usuario', 'superadmin', 'super_admin'];
+        if (allowedSire.includes(roleKey)) return 'edit';
+        if (roleKey === 'profesor_auxiliar' || roleKey === 'docente' || roleKey === 'catedratico') return 'view';
+        return 'view';
     }
 
     if (key === 'grade-stats' || key === 'honor-roll' || key === 'reports') {
@@ -11178,26 +11179,14 @@ function navigateTo(viewName, event = null) {
     var _sidebarEl = document.getElementById('sidebar');
     var _sidebarScrollTop = _sidebarEl ? _sidebarEl.scrollTop : 0;
 
-    // Redirección oficial al módulo independiente "Datos para Sire"
+    // Navegación oficial al módulo "Datos para Sire"
     if (viewName === 'datos-sire') {
-        const allowed = ['director', 'secretaria', 'admin', 'super_usuario'];
-        const currentRole = ((window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || '').toLowerCase();
-        if (allowed.includes(currentRole) || (typeof hasRolePermission === 'function' && hasRolePermission('datos-sire', currentRole))) {
-            if (typeof unsubscribeAllFirestoreListeners === "function") unsubscribeAllFirestoreListeners();
+        const sireViewEl = document.getElementById('view-datos-sire');
+        if (!sireViewEl) {
             window.location.href = 'datos-sire.html';
             return;
-        } else {
-            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                window.EnccoDialog.alert({
-                    title: 'Acceso Restringido',
-                    message: 'El módulo "Datos para Sire" es exclusivo de Dirección y Secretaría.',
-                    type: 'warning'
-                });
-            } else if (typeof showToast === 'function') {
-                showToast('Acceso Restringido: El módulo "Datos para Sire" es exclusivo de Dirección y Secretaría.', 'error');
-            }
-            return;
         }
+        // Si existe el contenedor integrado en plataforma.html, se activa normalmente en la vista integrada
     }
 
 
