@@ -11181,12 +11181,9 @@ function navigateTo(viewName, event = null) {
 
     // Navegación oficial al módulo "Datos para Sire"
     if (viewName === 'datos-sire') {
-        const sireViewEl = document.getElementById('view-datos-sire');
-        if (!sireViewEl) {
-            window.location.href = 'datos-sire.html';
-            return;
-        }
-        // Si existe el contenedor integrado en plataforma.html, se activa normalmente en la vista integrada
+        if (typeof unsubscribeAllFirestoreListeners === "function") unsubscribeAllFirestoreListeners();
+        window.location.href = 'datos-sire.html';
+        return;
     }
 
 
