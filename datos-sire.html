@@ -520,6 +520,89 @@
             }
         }
 
+        // 3c. Exportación Excel Tabular Oficial (4 Columnas Esquema SIRE: Codigo_Personal, Cod_Curso, Tipo_Cuadro, Nota)
+        function exportSireTabularExcel(targetGrade = 'ALL', targetSection = 'ALL') {
+            if (typeof XLSX === 'undefined') {
+                alert('La biblioteca Excel aún está cargando. Espere un momento.');
+                return;
+            }
+
+            const period = document.getElementById('filterPeriod')?.value || 'FINAL';
+            const studentsToProcess = getStudentsSafe();
+            if (!studentsToProcess || studentsToProcess.length === 0) {
+                alert('No hay estudiantes disponibles.');
+                return;
+            }
+
+            const tipoCuadro = (period === 'FINAL') ? 'F' : (period.startsWith('B') ? period.replace('B', '') : 'F');
+            const rows = [
+                ['Codigo_Personal', 'Cod_Curso', 'Tipo_Cuadro', 'Nota', 'Estudiante_Referencia', 'Curso_Referencia', 'Grado', 'Seccion']
+            ];
+
+            const grades = (targetGrade === 'ALL') ? ['4to', '5to', '6to'] : [targetGrade];
+
+            grades.forEach(gKey => {
+                const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[gKey]) || [];
+                const gradeStudents = studentsToProcess.filter(s => {
+                    const g = (s.grade || '').toLowerCase();
+                    const sec = (s.section || '').replace(/secci[oó]n/i, '').trim().toUpperCase();
+                    const isRetired = s.status === 'Retirado' || s.status === 'Inactivo';
+                    if (isRetired) return false;
+                    if (!g.includes(gKey)) return false;
+                    if (targetSection !== 'ALL' && sec !== targetSection.toUpperCase()) return false;
+                    return true;
+                });
+
+                gradeStudents.forEach((st, idx) => {
+                    const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim();
+                    if (!codPersonal) return;
+                    const stName = (st.apellidos ? (st.apellidos + ' ' + (st.nombres || '')) : (st.name || st.nombre || ('Estudiante ' + (idx + 1)))).trim();
+                    const stSec = (st.section || '').replace(/secci[oó]n/i, '').trim().toUpperCase();
+
+                    gradeSubjects.forEach(subj => {
+                        const score = (typeof getStudentSubjectScore === 'function')
+                            ? (getStudentSubjectScore(st, subj.name, period, subj.code) || 0)
+                            : 0;
+                        rows.push([
+                            codPersonal,
+                            subj.code,
+                            tipoCuadro,
+                            Math.round(score),
+                            stName,
+                            subj.name,
+                            gKey,
+                            stSec
+                        ]);
+                    });
+                });
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(rows);
+
+            ws['!cols'] = [
+                { wch: 18 }, // Codigo_Personal
+                { wch: 12 }, // Cod_Curso
+                { wch: 14 }, // Tipo_Cuadro
+                { wch: 8 },  // Nota
+                { wch: 35 }, // Estudiante_Referencia
+                { wch: 38 }, // Curso_Referencia
+                { wch: 8 },  // Grado
+                { wch: 8 }   // Seccion
+            ];
+
+            XLSX.utils.book_append_sheet(wb, ws, 'tablaCargaMasiva');
+
+            let fileSuffix = targetGrade !== 'ALL' ? targetGrade : 'Completo';
+            if (targetSection !== 'ALL') fileSuffix += '_Sec_' + targetSection;
+
+            XLSX.writeFile(wb, 'SIRE_MINEDUC_Plantilla_Tabular_' + fileSuffix + '_' + period + '_2026.xlsx');
+
+            if (typeof showToast === 'function') {
+                showToast('✅ Plantilla Excel Tabular SIRE generada (' + (rows.length - 1) + ' registros).', 'success');
+            }
+        }
+
         // 4. Exportación Padrón de Matrícula SIRE por Grado
         function exportSireEnrollmentByGrade() {
             if (typeof XLSX === 'undefined') {
@@ -3260,6 +3343,30 @@
                         <button type="button" class="btn-sire-outline" onclick="exportSireEnrollmentByGrade()" style="width:100%; justify-content:center; padding:10px 16px; font-size:0.88rem;">
                             <i class="fa-solid fa-download"></i> Descargar Padrón de Matrícula Excel
                         </button>
+                    </div>
+
+                    <!-- Opción 5: Plantilla Tabular Excel (4 Columnas Oficiales SIRE para Mapeo XML) -->
+                    <div style="background:#fff; border:1.5px solid #cbd5e1; border-radius:12px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                                <div style="background:#ede9fe; color:#7c3aed; width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                                    <i class="fa-solid fa-table-columns"></i>
+                                </div>
+                                <div>
+                                    <h4 style="margin:0; font-size:0.98rem; font-weight:800; color:#0f172a;">Excel Tabular SIRE (4 Columnas)</h4>
+                                    <span style="font-size:0.75rem; color:#7c3aed; font-weight:700;">Para Mapeo con Esquema Sire.xml en Excel</span>
+                                </div>
+                            </div>
+                            <p style="font-size:0.82rem; color:#475569; margin:8px 0 14px; line-height:1.4;">
+                                Genera la tabla con las 4 columnas canónicas (<strong>Codigo_Personal</strong>, <strong>Cod_Curso</strong>, <strong>Tipo_Cuadro</strong>, <strong>Nota</strong>) compatible con el tutorial de Excel y la pestaña Programador.
+                            </p>
+                        </div>
+                        <div style="display:flex; gap:6px;">
+                            <button type="button" class="btn-sire-outline" onclick="exportSireTabularExcel('4to')" style="flex:1; font-size:0.76rem; padding:8px 4px; border-color:#7c3aed; color:#7c3aed;">4to</button>
+                            <button type="button" class="btn-sire-outline" onclick="exportSireTabularExcel('5to')" style="flex:1; font-size:0.76rem; padding:8px 4px; border-color:#7c3aed; color:#7c3aed;">5to</button>
+                            <button type="button" class="btn-sire-outline" onclick="exportSireTabularExcel('6to')" style="flex:1; font-size:0.76rem; padding:8px 4px; border-color:#7c3aed; color:#7c3aed;">6to</button>
+                            <button type="button" class="btn-sire-outline" onclick="exportSireTabularExcel('ALL')" style="flex:1.5; font-size:0.76rem; padding:8px 4px; border-color:#7c3aed; color:#7c3aed;">Todo</button>
+                        </div>
                     </div>
 
                 </div>
