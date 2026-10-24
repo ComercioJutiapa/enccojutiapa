@@ -188,7 +188,7 @@
         };
     }
 
-    // 4. GENERADOR OFICIAL DE XML SIRE (<data-set>)
+    // 4. GENERADOR OFICIAL DE XML SIRE (<tablaCargaMasiva>)
     function escapeXml(unsafe) {
         if (unsafe === null || unsafe === undefined) return '';
         return String(unsafe)
@@ -203,8 +203,10 @@
         let recordsXml = '';
         let recordCount = 0;
         const studentsToProcess = (studentsList && studentsList.length > 0) ? studentsList : (window.STATE && window.STATE.students ? window.STATE.students : []);
+        const tipoCuadro = (period === 'FINAL') ? 'F' : (period && period.startsWith('B') ? period.replace('B', '') : 'F');
 
         studentsToProcess.forEach(st => {
+            if (st.status === 'Retirado' || st.status === 'Inactivo') return;
             const codPersonal = ensureStudentPersonalCode(st);
             const sireData = calculateSireFinalGrades(st);
             const subjects = Object.keys(sireData.subjects);
@@ -221,19 +223,19 @@
 
                 recordCount++;
                 recordsXml += `  <record>\n` +
-                              `    <codigo_personal>${escapeXml(codPersonal)}</codigo_personal>\n` +
-                              `    <codigo_curso>${escapeXml(subInfo.courseCode)}</codigo_curso>\n` +
-                              `    <calificacion>${escapeXml(score)}</calificacion>\n` +
-                              `    <resultado>${score >= 60 ? 'APROBADO' : 'REPROBADO'}</resultado>\n` +
+                              `    <Codigo_Personal>${escapeXml(codPersonal)}</Codigo_Personal>\n` +
+                              `    <Cod_Curso>${escapeXml(subInfo.courseCode)}</Cod_Curso>\n` +
+                              `    <Tipo_Cuadro>${escapeXml(tipoCuadro)}</Tipo_Cuadro>\n` +
+                              `    <Nota>${escapeXml(Math.round(score))}</Nota>\n` +
                               `  </record>\n`;
             });
         });
 
         const headerXml = `<?xml version="1.0" encoding="UTF-8"?>\n` +
-                          `<data-set xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n` +
+                          `<tablaCargaMasiva>\n` +
                           `  <!-- ENCCO 1970 - Exportación Oficial SIRE MINEDUC - Generado: ${new Date().toISOString()} -->\n` +
                           `  <!-- Total de Registros de Calificaciones: ${recordCount} -->\n`;
-        const footerXml = `</data-set>`;
+        const footerXml = `</tablaCargaMasiva>`;
 
         return headerXml + recordsXml + footerXml;
     }

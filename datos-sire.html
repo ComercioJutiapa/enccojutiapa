@@ -212,7 +212,7 @@
             if (typeof showToast === 'function') showToast('✅ Libro Excel Oficial por 12 Secciones descargado.', 'success');
         }
 
-        // 3. Exportación XML Oficial SIRE por Grado (<data-set>)
+        // 3. Exportación XML Oficial SIRE por Grado (<tablaCargaMasiva>)
         function exportSireXmlByGrade(targetGrade = 'ALL') {
             const period = document.getElementById('filterPeriod')?.value || 'FINAL';
             const studentsToProcess = (_sireStudents && _sireStudents.length > 0) ? _sireStudents : _filteredStudents;
@@ -226,10 +226,15 @@
 
             grades.forEach(gKey => {
                 const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[gKey]) || [];
-                const gradeStudents = studentsToProcess.filter(s => (s.grade || '').toLowerCase().includes(gKey));
+                const gradeStudents = studentsToProcess.filter(s => {
+                    const g = (s.grade || '').toLowerCase();
+                    const isRetired = s.status === 'Retirado' || s.status === 'Inactivo';
+                    return g.includes(gKey) && !isRetired;
+                });
 
                 let recordsXml = '';
                 let recordCount = 0;
+                const tipoCuadro = (period === 'FINAL') ? 'F' : (period.startsWith('B') ? period.replace('B', '') : 'F');
 
                 gradeStudents.forEach(st => {
                     const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim();
@@ -238,16 +243,17 @@
                         recordsXml += '  <record>\n' +
                             '    <Codigo_Personal>' + escapeXml(codPersonal) + '</Codigo_Personal>\n' +
                             '    <Cod_Curso>' + escapeXml(subj.code) + '</Cod_Curso>\n' +
-                            '    <Tipo_Cuadro>F</Tipo_Cuadro>\n' +
+                            '    <Tipo_Cuadro>' + escapeXml(tipoCuadro) + '</Tipo_Cuadro>\n' +
                             '    <Nota>' + Math.round(score) + '</Nota>\n' +
                             '  </record>\n';
                         recordCount++;
                     });
                 });
 
-                const fullXml = '<data-set xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n' +
+                const fullXml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+                    '<tablaCargaMasiva>\n' +
                     recordsXml +
-                    '</data-set>';
+                    '</tablaCargaMasiva>';
 
                 const blob = new Blob([fullXml], { type: 'application/xml;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
@@ -2434,8 +2440,10 @@
             let recordsXml = '';
             let recordCount = 0;
             const studentsToProcess = (studentsList && studentsList.length > 0) ? studentsList : _sireStudents;
+            const tipoCuadro = (period === 'FINAL') ? 'F' : (period && period.startsWith('B') ? period.replace('B', '') : 'F');
 
             studentsToProcess.forEach(st => {
+                if (st.status === 'Retirado' || st.status === 'Inactivo') return;
                 const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim();
                 const gradesMap = st.grades || {};
                 const subjects = Object.keys(gradesMap);
@@ -2471,7 +2479,7 @@
                         recordsXml += '  <record>\n' +
                             '    <Codigo_Personal>' + escapeXml(codPersonal) + '</Codigo_Personal>\n' +
                             '    <Cod_Curso>' + escapeXml(codCurso) + '</Cod_Curso>\n' +
-                            '    <Tipo_Cuadro>F</Tipo_Cuadro>\n' +
+                            '    <Tipo_Cuadro>' + escapeXml(tipoCuadro) + '</Tipo_Cuadro>\n' +
                             '    <Nota>' + Math.round(score) + '</Nota>\n' +
                             '  </record>\n';
                         recordCount++;
@@ -2481,16 +2489,17 @@
                     recordsXml += '  <record>\n' +
                         '    <Codigo_Personal>' + escapeXml(codPersonal) + '</Codigo_Personal>\n' +
                         '    <Cod_Curso>101</Cod_Curso>\n' +
-                        '    <Tipo_Cuadro>F</Tipo_Cuadro>\n' +
+                        '    <Tipo_Cuadro>' + escapeXml(tipoCuadro) + '</Tipo_Cuadro>\n' +
                         '    <Nota>' + Math.round(stats.average) + '</Nota>\n' +
                         '  </record>\n';
                     recordCount++;
                 }
             });
 
-            const fullXml = '<data-set xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n' +
+            const fullXml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+                '<tablaCargaMasiva>\n' +
                 recordsXml +
-                '</data-set>';
+                '</tablaCargaMasiva>';
 
             return {
                 xml: fullXml,
@@ -2696,7 +2705,7 @@
         <div class="modal-container" style="max-width:850px;">
             <div class="sire-card-header" style="background:#0c4a6e; color:#fff;">
                 <h3 style="color:#fff;">
-                    <i class="fa-solid fa-file-code"></i> Previsualización XML Oficial SIRE MINEDUC (&lt;data-set&gt;)
+                    <i class="fa-solid fa-file-code"></i> Previsualización XML Oficial SIRE MINEDUC (&lt;tablaCargaMasiva&gt;)
                 </h3>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span id="xmlPreviewCountBadge" class="badge" style="background:#10b981; color:#fff; font-weight:700; padding:4px 10px; border-radius:12px;">0 registros</span>
@@ -2705,7 +2714,7 @@
             </div>
             <div class="sire-card-body" style="padding:16px;">
                 <p style="margin:0 0 10px; font-size:0.85rem; color:#475569;">
-                    Sintaxis oficial generada bajo el esquema <code>&lt;data-set xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"&gt;</code>:
+                    Sintaxis oficial generada bajo el esquema XSD <code>&lt;tablaCargaMasiva&gt;</code> del MINEDUC:
                 </p>
                 <textarea id="xmlPreviewContent" readonly style="width:100%; height:380px; font-family:'Courier New', monospace; font-size:0.85rem; padding:12px; border-radius:8px; border:1.5px solid #cbd5e1; background:#0f172a; color:#38bdf8; box-sizing:border-box; resize:vertical;"></textarea>
             </div>
@@ -2804,7 +2813,7 @@
                                 </div>
                                 <div>
                                     <h4 style="margin:0; font-size:0.98rem; font-weight:800; color:#0f172a;">Archivos XML SIRE por Grado</h4>
-                                    <span style="font-size:0.75rem; color:#0284c7; font-weight:700;">Estructura &lt;data-set&gt; MINEDUC</span>
+                                    <span style="font-size:0.75rem; color:#0284c7; font-weight:700;">Estructura &lt;tablaCargaMasiva&gt; MINEDUC</span>
                                 </div>
                             </div>
                             <p style="font-size:0.82rem; color:#475569; margin:8px 0 14px; line-height:1.4;">

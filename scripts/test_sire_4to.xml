@@ -1,4 +1,5 @@
-<data-set xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<?xml version="1.0" encoding="UTF-8"?>
+<tablaCargaMasiva>
   <record>
     <Codigo_Personal>I228WGR</Codigo_Personal>
     <Cod_Curso>101</Cod_Curso>
@@ -7451,4 +7452,4 @@
     <Tipo_Cuadro>F</Tipo_Cuadro>
     <Nota>80</Nota>
   </record>
-</data-set>
+</tablaCargaMasiva>

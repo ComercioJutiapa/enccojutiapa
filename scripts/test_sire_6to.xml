@@ -1,4 +1,5 @@
-<data-set xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<?xml version="1.0" encoding="UTF-8"?>
+<tablaCargaMasiva>
   <record>
     <Codigo_Personal>F130CUN</Codigo_Personal>
     <Cod_Curso>301</Cod_Curso>
@@ -7679,4 +7680,4 @@
     <Tipo_Cuadro>F</Tipo_Cuadro>
     <Nota>96</Nota>
   </record>
-</data-set>
+</tablaCargaMasiva>

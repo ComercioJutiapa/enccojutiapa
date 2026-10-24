@@ -192,7 +192,7 @@ async function runTest() {
       });
     });
 
-    const xml = `<data-set xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n${recordsXml}</data-set>`;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<tablaCargaMasiva>\n${recordsXml}</tablaCargaMasiva>`;
     const xmlFile = `C:/Users/yalil/.gemini/antigravity/scratch/plataforma_escuela_comercio_completa/scripts/test_sire_${gradeKey}.xml`;
     fs.writeFileSync(xmlFile, xml, 'utf8');
     console.log(`✅ XML SIRE oficial para ${gradeKey} generado exitosamente (${recordCount} records, ${fs.statSync(xmlFile).size} bytes).`);
