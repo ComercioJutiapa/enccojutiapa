@@ -1329,7 +1329,7 @@ function hasRolePermission(permKey, role = null) {
     if (!targetRole || targetRole === 'guest') return false;
 
     // 🛡️ Privilegios Globales Absolutos: Superusuario y Dirección tienen acceso irrestricto total (100% de módulos)
-    if (isSuperUserRole(targetRole) || isDirectorRole(targetRole) || ['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora'].includes(targetRole)) {
+    if (((typeof isSuperUserRole === 'function' && isSuperUserRole(targetRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(targetRole)) || ['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora'].includes(targetRole))) {
         return true;
     }
 
@@ -1369,7 +1369,7 @@ function canRoleModify(moduleKey, role = null) {
     if (!targetRole || targetRole === 'guest') return false;
 
     // 🛡️ Privilegios Globales Absolutos: Superusuario y Dirección tienen modificación irrestricta total
-    if (isSuperUserRole(targetRole) || isDirectorRole(targetRole) || ['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora'].includes(targetRole)) {
+    if (((typeof isSuperUserRole === 'function' && isSuperUserRole(targetRole)) || (typeof isDirectorRole === 'function' && isDirectorRole(targetRole)) || ['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'directora'].includes(targetRole))) {
         return true;
     }
 
@@ -14752,7 +14752,7 @@ function isStudentExonerated(student, targetBimestre) {
     if (!student) return false;
     const effBim = (targetBimestre !== undefined && targetBimestre !== null) 
         ? targetBimestre 
-        : (parseInt(STATE?.config?.activeBimestre) || 1);
+        : (parseInt(typeof STATE !== 'undefined' ? STATE?.config?.activeBimestre : (typeof window !== 'undefined' && window.STATE ? window.STATE?.config?.activeBimestre : 1)) || 1);
 
     if (student.status === 'Exonerado' || student.isExonerated === true || student.exonerado === true) {
         if (!effBim || effBim === 'ALL') return true;
@@ -15667,7 +15667,9 @@ async function saveAcademicExoneration(e) {
 
     const allowedRoles = ['admin', 'super_usuario', 'director', 'direccion', 'secretaria', 'secretaria_general', 'secretaria_contador', 'secretaria_auxiliar', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'];
     const curRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || (window.STATE && window.STATE.currentRole) || (typeof window.EnccoAuthStore !== 'undefined' && window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
-    if (!isSuperUserRole(curRole) && !isDirectorRole(curRole) && !allowedRoles.includes(curRole)) {
+    const isSuper = (typeof isSuperUserRole === 'function') ? isSuperUserRole(curRole) : ['admin', 'super_usuario', 'superadmin', 'super_admin'].includes(curRole);
+    const isDirector = isSuper || ((typeof isDirectorRole === 'function') ? isDirectorRole(curRole) : ['director', 'direccion', 'directora'].includes(curRole));
+    if (!isSuper && !isDirector && !allowedRoles.includes(curRole)) {
         showToast("Acceso Denegado: La exoneración de estudiantes es facultad única y exclusiva de Dirección, Secretaría o Auxiliatura.", "danger");
         return;
     }
@@ -29544,10 +29546,11 @@ function loadAttendanceList() {
     let daysInMonth = new Date(year, month, 0).getDate();
     const dayNames = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
-    const isSuper = isSuperUserRole();
-    const isDirector = isSuper || isDirectorRole(STATE.currentRole);
+    const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || ((typeof window !== 'undefined' && window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function') ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
+    const isSuper = (typeof isSuperUserRole === 'function') ? isSuperUserRole(currentRole) : ['admin', 'super_usuario', 'superadmin', 'super_admin'].includes(currentRole);
+    const isDirector = isSuper || ((typeof isDirectorRole === 'function') ? isDirectorRole(currentRole) : ['director', 'direccion', 'directora'].includes(currentRole));
     const isDirectorOrAdmin = (isDirector || STATE.currentRole === 'secretaria');
-    const isAuditRole = isSuper || (isDirectorOrAdmin || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar' || STATE.currentRole === 'auxiliatura');
+    const isAuditRole = (isSuper || isDirectorOrAdmin || STATE.currentRole === 'profesor_auxiliar' || STATE.currentRole === 'auxiliar' || STATE.currentRole === 'auxiliatura' || STATE.currentRole === 'super_usuario');
     const isDocente = !isSuper && (STATE.currentRole === 'docente');
     const currentUser = STATE.currentUser || (STATE.users || [])[0];
 
@@ -30267,8 +30270,10 @@ const _cellSideEffectsTimers = {};
 
 function toggleAttendanceCell(studentId, day, forcedValue = null) {
     // ⚡ Registrar marca de tiempo inmediata para evitar que ecos de red reconstruyan el DOM durante clics rápidos
-    window._lastLocalAttendanceClickTime = Date.now();
-    if (!window._localDirtyAttendanceCells) window._localDirtyAttendanceCells = {};
+    if (typeof window !== 'undefined') {
+        window._lastLocalAttendanceClickTime = Date.now();
+        if (!window._localDirtyAttendanceCells) window._localDirtyAttendanceCells = {};
+    }
 
     const targetStudent = (STATE.students || []).find(s => String(s.id) === String(studentId));
 
@@ -30292,13 +30297,13 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
     const attBim = (typeof getBimestreFromMonth === 'function') ? getBimestreFromMonth(month) : 1;
     const isRetiredInBim = targetStudent && (targetStudent.status === 'Retirado' || targetStudent.status === 'Inactivo') && (typeof isStudentRetiredInBimestre === 'function' ? isStudentRetiredInBimestre(targetStudent, attBim) : true);
     const isDayRetired = isRetiredInBim && (typeof isStudentRetiredAtDate === 'function' ? isStudentRetiredAtDate(targetStudent, cycleYear, month, day) : true);
-    const isSuper = isSuperUserRole();
-    const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || (window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function' ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
-    const isDirector = isSuper || isDirectorRole(currentRole);
+    const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || ((typeof window !== 'undefined' && window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function') ? window.EnccoAuthStore.getRole() : '') || '').toLowerCase();
+    const isSuper = (typeof isSuperUserRole === 'function') ? isSuperUserRole(currentRole) : ['admin', 'super_usuario', 'superadmin', 'super_admin'].includes(currentRole);
+    const isDirector = isSuper || ((typeof isDirectorRole === 'function') ? isDirectorRole(currentRole) : ['director', 'direccion', 'directora'].includes(currentRole));
     const isAuditRole = isSuper || ['admin', 'super_usuario', 'superadmin', 'super_admin', 'director', 'direccion', 'secretaria', 'profesor_auxiliar', 'auxiliar', 'auxiliatura'].includes(currentRole);
     const isDocente = !isSuper && (currentRole === 'docente');
 
-    if (isDayRetired && !isSuper && !isDirector) {
+    if (isDayRetired) {
         const sName = (typeof formatStudentDisplayName === 'function') ? formatStudentDisplayName(targetStudent, 'lastFirst') : `${targetStudent.firstName || ''} ${targetStudent.lastName || ''}`;
         if (typeof showToast === 'function') {
             showToast(`⚠️ Alumno Retirado: No se puede tomar ni registrar asistencia para "${sName}" debido a que se encuentra retirado a partir de dicha fecha.`, 'warning');
@@ -30583,7 +30588,9 @@ function toggleAttendanceCell(studentId, day, forcedValue = null) {
         } catch(auditErr) {}
     }, 450);
 }
-window.toggleAttendanceCell = toggleAttendanceCell;
+if (typeof window !== 'undefined') {
+    window.toggleAttendanceCell = toggleAttendanceCell;
+}
 
 let _attendanceStatsRaf = null;
 

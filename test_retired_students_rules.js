@@ -108,6 +108,9 @@ const mockDoc = {
         if (id === 'carnetsSearchInput') return { value: '' };
         if (id === 'carnetsTeacherSearchInput') return { value: '' };
         if (id === 'carnetsTeacherRenglonFilter') return { value: 'ALL' };
+        if (id === 'attendanceGradeSelect') return { value: '4PC_A' };
+        if (id === 'attendanceMonthSelect') return { value: '8' };
+        if (id === 'attendanceCourseSelect') return { value: 'c-01' };
         return null;
     }
 };

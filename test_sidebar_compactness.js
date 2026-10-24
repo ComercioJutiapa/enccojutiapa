@@ -58,9 +58,9 @@ console.log(`✅ TEST 3: Todos los ${requiredNavItems.length} módulos y enlaces
 
 // 4. Verificar badges especiales
 assert(!htmlContent.includes('>CR80<'), 'Badge CR80 fue removido de la barra lateral según solicitud del usuario');
-assert(htmlContent.includes('IA/Riesgo'), 'Badge IA/Riesgo debe estar presente');
+assert(htmlContent.includes('Analítica y Riesgo Escolar') || htmlContent.includes('IA/Riesgo'), 'Módulo de Analítica y Riesgo debe estar presente');
 assert(htmlContent.includes('pendingGradeRequestsBadge'), 'Badge de solicitudes pendientes debe estar presente');
-console.log('✅ TEST 4: Badge CR80 removido exitosamente; distintivos IA/Riesgo y contador dinámico intactos');
+console.log('✅ TEST 4: Badge CR80 removido exitosamente; distintivo de Analítica y contador dinámico intactos');
 
 // 5. Verificar elementos de identidad y perfil
 assert(htmlContent.includes('school-brand'), 'school-brand presente');
