@@ -2059,8 +2059,15 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     }
 
     if (Array.isArray(STATE.pensumCatalog) && STATE.pensumCatalog.length > 0) cleanPayload.pensumCatalog = STATE.pensumCatalog;
-    if (Array.isArray(STATE.students) && STATE.students.length >= 350) cleanPayload.students = STATE.students;
-    if (Array.isArray(STATE.pensum) && STATE.pensum.length >= 28) cleanPayload.pensum = STATE.pensum;
+    if (Array.isArray(STATE.students) && STATE.students.length >= 350) {
+        cleanPayload.students = STATE.students.filter(s => s && s.id && s.name);
+    }
+    if (Array.isArray(STATE.pensum) && STATE.pensum.length >= 28) {
+        const validCourses = STATE.pensum.filter(p => p && (p.subject || p.name) && (p.grade || p.gradeCode));
+        if (validCourses.length >= 28) {
+            cleanPayload.pensum = validCourses;
+        }
+    }
     if (Array.isArray(STATE.announcements)) cleanPayload.announcements = STATE.announcements;
     if (Array.isArray(STATE.disciplineReports)) cleanPayload.disciplineReports = STATE.disciplineReports;
     if (Array.isArray(STATE.studentPermissions)) cleanPayload.studentPermissions = STATE.studentPermissions;
@@ -2276,9 +2283,17 @@ const EnccoCloudSync = {
                 data = STATE.gradesList;
             }
         }
-        if ((nodeName === 'pensum' || nodeName.startsWith('pensum')) && (!Array.isArray(data) || data.length < 28)) {
-            console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar colección de pensum truncada (${Array.isArray(data) ? data.length : typeof data} < 28). Operación cancelada para proteger asignaciones oficiales.`);
-            return false;
+        if (nodeName === 'pensum' || nodeName.startsWith('pensum')) {
+            if (!Array.isArray(data) || data.length < 28) {
+                console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar colección de pensum truncada (${Array.isArray(data) ? data.length : typeof data} < 28). Operación cancelada para proteger asignaciones oficiales.`);
+                return false;
+            }
+            const valid = data.filter(p => p && (p.subject || p.name) && (p.grade || p.gradeCode));
+            if (valid.length < 28) {
+                console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar pensum con elementos inválidos (${valid.length} válidos). Operación cancelada.`);
+                return false;
+            }
+            data = valid;
         }
         const firebaseUrl = this.getUrl();
         const now = Date.now();
@@ -10875,41 +10890,11 @@ function saveStateRecursively(options = { syncCloud: false, isAutoSave: false })
             STATE.users = [];
         }
 
-        // 1. Clonado y saneamiento recursivo íntegro de colecciones
-        const fullPayload = {
-            config: recursiveDeepClone(STATE.config || {}),
-            activeCycle: STATE.activeCycle || '2026',
-            cycles: recursiveDeepClone(STATE.cycles || []),
-            theme: STATE.theme || 'light',
-            users: recursiveDeepClone(STATE.users || []),
-            careers: recursiveDeepClone(STATE.careers || []),
-            gradesList: recursiveDeepClone((typeof ensureOfficialGradesList === 'function' ? ensureOfficialGradesList() : STATE.gradesList) || []),
-            pensumCatalog: recursiveDeepClone(STATE.pensumCatalog || []),
-            students: recursiveDeepClone(STATE.students || []),
-            pensum: recursiveDeepClone(STATE.pensum || []),
-            announcements: recursiveDeepClone(STATE.announcements || []),
-            disciplineReports: recursiveDeepClone(STATE.disciplineReports || []),
-            deletedDisciplineIds: recursiveDeepClone(STATE.deletedDisciplineIds || []),
-            studentPermissions: recursiveDeepClone(STATE.studentPermissions || []),
-            deletedPermissionIds: recursiveDeepClone(STATE.deletedPermissionIds || []),
-            attendancePermissionsMeta: recursiveDeepClone(STATE.attendancePermissionsMeta || {}),
-            attendanceRecords: recursiveDeepClone(STATE.attendanceRecords || {}),
-            studentAnnotations: recursiveDeepClone(STATE.studentAnnotations || []),
-            courseBitacora: recursiveDeepClone(STATE.courseBitacora || []),
-            dismissedAlerts: recursiveDeepClone(STATE.dismissedAlerts || {}),
-            rolesConfig: recursiveDeepClone(STATE.rolesConfig || (typeof initDefaultRolesConfig === 'function' ? initDefaultRolesConfig() : [])),
-            schoolHeader: recursiveDeepClone(STATE.schoolHeader || (typeof getInitialData === 'function' ? getInitialData().schoolHeader : {})),
-            lastModified: now
-        };
-
-        const jsonString = JSON.stringify(fullPayload);
-        const checksum = computeStateChecksum(jsonString);
-
-        // 2. [v189] Registro de tiempo de modificación (Sin bases secundarias en localStorage)
+        // 1. [v271] Optimización Ultra-Rápida O(1): Registro de tiempo de modificación (Sin clones masivos ni bloqueos del hilo)
         if (typeof localStorage !== 'undefined') {
             try {
                 localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now));
-                // Asegurar que no existan bases secundarias
+                // Asegurar que no existan bases secundarias obsoletas
                 localStorage.removeItem('ENCCO_DATABASE');
                 localStorage.removeItem('ENCCO_DATABASE_BACKUP');
                 localStorage.removeItem('ENCCO_PREV_STATE');
@@ -10926,12 +10911,12 @@ function saveStateRecursively(options = { syncCloud: false, isAutoSave: false })
             _isSavingLocallyTimeout = setTimeout(() => { _isSavingLocally = false; }, 3000);
         }
 
-        // 3. Transmisión Instantánea entre Pestañas (BroadcastChannel)
+        // 2. Transmisión Instantánea entre Pestañas (BroadcastChannel)
         if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
             try {
                 _enccBroadcastChannel.postMessage({
                     type: 'SYNC_STATE_UPDATE',
-                    state: fullPayload,
+                    state: STATE,
                     timestamp: now
                 });
             } catch(bcErr) {}
