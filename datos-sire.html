@@ -9,6 +9,58 @@
         }
 
         // ======================================================================
+        // CATALOGOS Y CONSTANTES CANONICAS GLOBALES SIRE MINEDUC
+        // ======================================================================
+        window.CANONICAL_PENSUM_BY_GRADE = window.CANONICAL_PENSUM_BY_GRADE || {
+            '4to': [
+                { name: 'Contabilidad de Sociedades', code: '101' },
+                { name: 'Matemática Comercial', code: '102' },
+                { name: 'Fundamentos de Derecho', code: '103' },
+                { name: 'Inglés Comercial I', code: '104' },
+                { name: 'Redacción y Correspondencia Mercantil', code: '105' },
+                { name: 'Introducción a la Economía', code: '106' },
+                { name: 'Ortografía y Caligrafía', code: '107' },
+                { name: 'Administración y Organización de Oficina', code: '108' },
+                { name: 'Computación I', code: '109' }
+            ],
+            '5to': [
+                { name: 'Contabilidad de Costos', code: '201' },
+                { name: 'Cálculo Mercantil y Financiero', code: '202' },
+                { name: 'Inglés Comercial II', code: '203' },
+                { name: 'Legislación Fiscal y Aduanal', code: '204' },
+                { name: 'Finanzas Públicas', code: '205' },
+                { name: 'Geografía Económica', code: '206' },
+                { name: 'Catalogación y Archivo', code: '207' },
+                { name: 'Mecanografía', code: '208' },
+                { name: 'Computación II', code: '209' }
+            ],
+            '6to': [
+                { name: 'Contabilidad Bancaria', code: '301' },
+                { name: 'Contabilidad Gubernamental Integrada', code: '302' },
+                { name: 'Estadística Comercial', code: '303' },
+                { name: 'Organización de Empresas', code: '304' },
+                { name: 'Ética Profesional y Relaciones Humanas', code: '305' },
+                { name: 'Práctica Supervisada', code: '306' },
+                { name: 'Auditoría', code: '307' },
+                { name: 'Derecho Mercantil y Nociones de Derecho Laboral', code: '308' },
+                { name: 'Computación III', code: '309' },
+                { name: 'Seminario sobre Problemas Socioeconómicos de Guatemala', code: '310' }
+            ]
+        };
+        var CANONICAL_PENSUM_BY_GRADE = window.CANONICAL_PENSUM_BY_GRADE;
+
+        window.escapeXml = window.escapeXml || function(unsafe) {
+            if (unsafe === null || unsafe === undefined) return '';
+            return String(unsafe)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        };
+        var escapeXml = window.escapeXml;
+
+        // ======================================================================
         // FUNCIONES OFICIALES DE CARGA MASIVA SIRE MINEDUC ESTRUCTURADA POR GRADO
         // ======================================================================
 
@@ -238,6 +290,7 @@
 
                 gradeStudents.forEach(st => {
                     const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim();
+                    if (!codPersonal) return;
                     gradeSubjects.forEach(subj => {
                         const score = getStudentSubjectScore(st, subj.name, period, subj.code) || 0;
                         recordsXml += '  <record>\n' +
@@ -1176,10 +1229,10 @@
                     <button type="button" class="btn-sire-outline" onclick="reloadSireDataFromFirebase()" title="Recargar lectura desde Firebase sin modificar datos">
                         <i class="fa-solid fa-rotate"></i> Recargar
                     </button>
-                    <button type="button" class="btn-sire-primary" onclick="exportSireXml()" style="background:#0284c7; color:#fff;" title="Exportar archivo XML oficial en formato <data-set> para SIRE MINEDUC">
+                    <button type="button" class="btn-sire-primary" onclick="exportSireXml()" style="background:#0284c7; color:#fff;" title="Exportar archivo XML oficial en formato <tablaCargaMasiva> para SIRE MINEDUC">
                         <i class="fa-solid fa-file-code"></i> Exportar a XML SIRE
                     </button>
-                    <button type="button" class="btn-sire-outline" onclick="previewSireXml()" title="Previsualizar estructura XML oficial <data-set> en pantalla">
+                    <button type="button" class="btn-sire-outline" onclick="previewSireXml()" title="Previsualizar estructura XML oficial <tablaCargaMasiva> en pantalla">
                         <i class="fa-solid fa-code"></i> Previsualizar XML
                     </button>
                     <button type="button" class="btn-sire-success" onclick="openSireMassModal()" style="background:#059669; color:#fff; font-weight:800; border-color:#047857;" title="Módulo Oficial de Carga Masiva para SIRE MINEDUC estructurada por Grado">
@@ -1699,7 +1752,7 @@
         };
 
         // Pensum canónico oficial ENCCO 2026 por grado (28 Asignaturas CNB)
-        const CANONICAL_PENSUM_BY_GRADE = {
+        var CANONICAL_PENSUM_BY_GRADE = window.CANONICAL_PENSUM_BY_GRADE || {
             '4to': [
                 { name: 'Contabilidad de Sociedades', code: '101' },
                 { name: 'Matemática Comercial', code: '102' },
