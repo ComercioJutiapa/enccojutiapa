@@ -7,6 +7,334 @@
         if (window.top !== window.self) {
             try { window.top.location = window.self.location; } catch(e) { window.location = window.self.location; }
         }
+
+        // ======================================================================
+        // FUNCIONES OFICIALES DE CARGA MASIVA SIRE MINEDUC ESTRUCTURADA POR GRADO
+        // ======================================================================
+
+        function openSireMassModal() {
+            const m = document.getElementById('sireMassModal');
+            if (m) m.style.display = 'flex';
+        }
+
+        function closeSireMassModal() {
+            const m = document.getElementById('sireMassModal');
+            if (m) m.style.display = 'none';
+        }
+
+        // 1. Exportación Excel Multi-Pestaña Estructurado por Grados (4to, 5to, 6to)
+        function exportSireMassWorkbookByGrade() {
+            if (typeof XLSX === 'undefined') {
+                alert('La biblioteca de exportación Excel aún está cargando. Espere un momento.');
+                return;
+            }
+
+            const period = document.getElementById('filterPeriod')?.value || 'FINAL';
+            const schoolCode = getFullEstablishmentCode() || '22-01-0014-46';
+            const studentsToProcess = (_sireStudents && _sireStudents.length > 0) ? _sireStudents : _filteredStudents;
+
+            if (!studentsToProcess || studentsToProcess.length === 0) {
+                alert('No hay estudiantes disponibles para exportar.');
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+
+            const gradesConfig = [
+                { key: '4to', title: '4to_Perito_Contador', label: 'Cuarto Grado Perito Contador' },
+                { key: '5to', title: '5to_Perito_Contador', label: 'Quinto Grado Perito Contador' },
+                { key: '6to', title: '6to_Perito_Contador', label: 'Sexto Grado Perito Contador' }
+            ];
+
+            gradesConfig.forEach(gCfg => {
+                const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[gCfg.key]) || [];
+                const gradeStudents = studentsToProcess.filter(s => (s.grade || '').toLowerCase().includes(gCfg.key));
+
+                const headers = [
+                    'No.',
+                    'Código Personal MINEDUC',
+                    'CUI / DPI',
+                    'Apellidos y Nombres',
+                    'Sección',
+                    'Carrera',
+                    ...gradeSubjects.map(s => s.name + ' (' + s.code + ')'),
+                    'Promedio General',
+                    'Materias Aprobadas',
+                    'Materias Reprobadas',
+                    'Resultado Oficial SIRE'
+                ];
+
+                const rows = [
+                    ['ESCUELA NACIONAL DE CIENCIAS COMERCIALES JUTIAPA - ENCCO (1970)'],
+                    ['MINISTERIO DE EDUCACIÓN DE GUATEMALA - SISTEMA DE REGISTROS EDUCATIVOS (SIRE)'],
+                    ['CUADRO OFICIAL DE CALIFICACIONES POR GRADO - CICLO ESCOLAR 2026'],
+                    ['CÓDIGO ESTABLECIMIENTO: ' + schoolCode + ' | ' + gCfg.label.toUpperCase() + ' | TOTAL ALUMNOS: ' + gradeStudents.length],
+                    ['PERIODO EVALUADO: ' + period + ' | FECHA DE GENERACIÓN: ' + new Date().toLocaleDateString('es-GT')],
+                    [],
+                    headers
+                ];
+
+                gradeStudents.forEach((st, idx) => {
+                    const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim() || ('S/' + (1000 + idx));
+                    const cui = (st.cui || st.dpi || st.docNumber || '').toString().trim();
+                    const fullName = (st.lastName && st.firstName)
+                        ? (st.lastName + ', ' + st.firstName).trim()
+                        : (st.apellidos ? st.apellidos + ', ' + st.nombres : (st.name || st.nombre || ('Estudiante ' + (idx + 1))));
+                    const seccion = (st.section || st.seccion || 'A').replace(/secci[oó]n/i, '').trim();
+                    const carrera = st.career || st.carrera || 'Perito Contador';
+
+                    const subjectScores = gradeSubjects.map(subj => {
+                        return getStudentSubjectScore(st, subj.name, period, subj.code) || 0;
+                    });
+
+                    const validScores = subjectScores.filter(s => s > 0);
+                    const avg = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : 0;
+                    const passed = subjectScores.filter(s => s >= 60).length;
+                    const failed = subjectScores.filter(s => s > 0 && s < 60).length;
+                    const status = (failed === 0 && avg >= 60) ? 'PROMOVIDO' : 'RECUPERACIÓN';
+
+                    rows.push([
+                        idx + 1,
+                        codPersonal,
+                        cui,
+                        fullName,
+                        seccion,
+                        carrera,
+                        ...subjectScores,
+                        avg,
+                        passed,
+                        failed,
+                        status
+                    ]);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                XLSX.utils.book_append_sheet(wb, ws, gCfg.title);
+            });
+
+            XLSX.writeFile(wb, 'SIRE_MINEDUC_ENCCO_Calificaciones_Por_Grado_2026.xlsx');
+            if (typeof showToast === 'function') showToast('✅ Libro Excel Oficial por Grados descargado exitosamente.', 'success');
+        }
+
+        // 2. Exportación Excel Multi-Pestaña por 12 Secciones (4to A-D, 5to A-D, 6to A-D)
+        function exportSireMassWorkbookBySection() {
+            if (typeof XLSX === 'undefined') {
+                alert('La biblioteca de exportación Excel aún está cargando. Espere un momento.');
+                return;
+            }
+
+            const period = document.getElementById('filterPeriod')?.value || 'FINAL';
+            const schoolCode = getFullEstablishmentCode() || '22-01-0014-46';
+            const studentsToProcess = (_sireStudents && _sireStudents.length > 0) ? _sireStudents : _filteredStudents;
+
+            if (!studentsToProcess || studentsToProcess.length === 0) {
+                alert('No hay estudiantes disponibles.');
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+            const grades = ['4to', '5to', '6to'];
+            const sections = ['A', 'B', 'C', 'D'];
+
+            grades.forEach(gKey => {
+                const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[gKey]) || [];
+                sections.forEach(sec => {
+                    const secStudents = studentsToProcess.filter(s => {
+                        const sGrade = (s.grade || '').toLowerCase();
+                        const sSec = (s.section || '').replace(/secci[oó]n/i, '').trim().toUpperCase();
+                        return sGrade.includes(gKey) && sSec === sec;
+                    });
+
+                    if (secStudents.length === 0) return;
+
+                    const sheetName = gKey + '_' + sec;
+                    const headers = [
+                        'No.',
+                        'Código Personal SIRE',
+                        'CUI / DPI',
+                        'Apellidos y Nombres',
+                        'Grado',
+                        'Sección',
+                        ...gradeSubjects.map(s => s.name + ' (' + s.code + ')'),
+                        'Promedio',
+                        'Aprobadas',
+                        'Reprobadas',
+                        'Resultado'
+                    ];
+
+                    const rows = [
+                        ['ESCUELA NACIONAL DE CIENCIAS COMERCIALES JUTIAPA - ENCCO 1970'],
+                        ['MINISTERIO DE EDUCACIÓN - SISTEMA SIRE - CUADRO OFICIAL DE SECCIÓN'],
+                        ['ESTABLECIMIENTO: ' + schoolCode + ' | ' + gKey.toUpperCase() + ' SECCIÓN ' + sec + ' | TOTAL: ' + secStudents.length + ' ALUMNOS'],
+                        ['PERIODO: ' + period + ' | FECHA: ' + new Date().toLocaleDateString('es-GT')],
+                        [],
+                        headers
+                    ];
+
+                    secStudents.forEach((st, idx) => {
+                        const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim() || ('S/' + (1000 + idx));
+                        const cui = (st.cui || st.dpi || st.docNumber || '').toString().trim();
+                        const fullName = (st.lastName && st.firstName)
+                            ? (st.lastName + ', ' + st.firstName).trim()
+                            : (st.apellidos ? st.apellidos + ', ' + st.nombres : (st.name || st.nombre || ('Estudiante ' + (idx + 1))));
+
+                        const subjectScores = gradeSubjects.map(subj => {
+                            return getStudentSubjectScore(st, subj.name, period, subj.code) || 0;
+                        });
+
+                        const validScores = subjectScores.filter(s => s > 0);
+                        const avg = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : 0;
+                        const passed = subjectScores.filter(s => s >= 60).length;
+                        const failed = subjectScores.filter(s => s > 0 && s < 60).length;
+                        const status = (failed === 0 && avg >= 60) ? 'PROMOVIDO' : 'RECUPERACIÓN';
+
+                        rows.push([
+                            idx + 1,
+                            codPersonal,
+                            cui,
+                            fullName,
+                            gKey + ' Perito Contador',
+                            sec,
+                            ...subjectScores,
+                            avg,
+                            passed,
+                            failed,
+                            status
+                        ]);
+                    });
+
+                    const ws = XLSX.utils.aoa_to_sheet(rows);
+                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                });
+            });
+
+            XLSX.writeFile(wb, 'SIRE_MINEDUC_ENCCO_Calificaciones_Por_12_Secciones_2026.xlsx');
+            if (typeof showToast === 'function') showToast('✅ Libro Excel Oficial por 12 Secciones descargado.', 'success');
+        }
+
+        // 3. Exportación XML Oficial SIRE por Grado (<data-set>)
+        function exportSireXmlByGrade(targetGrade = 'ALL') {
+            const period = document.getElementById('filterPeriod')?.value || 'FINAL';
+            const studentsToProcess = (_sireStudents && _sireStudents.length > 0) ? _sireStudents : _filteredStudents;
+
+            if (!studentsToProcess || studentsToProcess.length === 0) {
+                alert('No hay estudiantes disponibles.');
+                return;
+            }
+
+            const grades = (targetGrade === 'ALL') ? ['4to', '5to', '6to'] : [targetGrade];
+
+            grades.forEach(gKey => {
+                const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[gKey]) || [];
+                const gradeStudents = studentsToProcess.filter(s => (s.grade || '').toLowerCase().includes(gKey));
+
+                let recordsXml = '';
+                let recordCount = 0;
+
+                gradeStudents.forEach(st => {
+                    const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim();
+                    gradeSubjects.forEach(subj => {
+                        const score = getStudentSubjectScore(st, subj.name, period, subj.code) || 0;
+                        recordsXml += '  <record>\n' +
+                            '    <Codigo_Personal>' + escapeXml(codPersonal) + '</Codigo_Personal>\n' +
+                            '    <Cod_Curso>' + escapeXml(subj.code) + '</Cod_Curso>\n' +
+                            '    <Tipo_Cuadro>F</Tipo_Cuadro>\n' +
+                            '    <Nota>' + Math.round(score) + '</Nota>\n' +
+                            '  </record>\n';
+                        recordCount++;
+                    });
+                });
+
+                const fullXml = '<data-set xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n' +
+                    recordsXml +
+                    '</data-set>';
+
+                const blob = new Blob([fullXml], { type: 'application/xml;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'SIRE_MINEDUC_Cuadro_' + gKey + '_Perito_Contador_' + period + '_2026.xml';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            if (typeof showToast === 'function') showToast('✅ Archivos XML Oficiales SIRE por grado generados correctamente.', 'success');
+        }
+
+        // 4. Exportación Padrón de Matrícula SIRE por Grado
+        function exportSireEnrollmentByGrade() {
+            if (typeof XLSX === 'undefined') {
+                alert('Biblioteca Excel cargando...');
+                return;
+            }
+
+            const schoolCode = getFullEstablishmentCode() || '22-01-0014-46';
+            const studentsToProcess = (_sireStudents && _sireStudents.length > 0) ? _sireStudents : _filteredStudents;
+
+            const wb = XLSX.utils.book_new();
+            const grades = ['4to', '5to', '6to'];
+
+            grades.forEach(gKey => {
+                const gradeStudents = studentsToProcess.filter(s => (s.grade || '').toLowerCase().includes(gKey));
+
+                const headers = [
+                    'No.',
+                    'Código Personal MINEDUC',
+                    'CUI / DPI',
+                    'Apellidos',
+                    'Nombres',
+                    'Grado',
+                    'Sección',
+                    'Carrera',
+                    'Género',
+                    'Fecha Nacimiento',
+                    'Estado Matrícula SIRE'
+                ];
+
+                const rows = [
+                    ['ESCUELA NACIONAL DE CIENCIAS COMERCIALES JUTIAPA (1970)'],
+                    ['MINISTERIO DE EDUCACIÓN DE GUATEMALA - SISTEMA SIRE'],
+                    ['PADRÓN OFICIAL DE MATRÍCULA POR GRADO - CICLO ESCOLAR 2026'],
+                    ['ESTABLECIMIENTO: ' + schoolCode + ' | ' + gKey.toUpperCase() + ' PERITO CONTADOR | TOTAL: ' + gradeStudents.length],
+                    [],
+                    headers
+                ];
+
+                gradeStudents.forEach((st, idx) => {
+                    const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim() || ('S/' + (1000 + idx));
+                    const cui = (st.cui || st.dpi || st.docNumber || '').toString().trim();
+                    const apellidos = st.lastName || st.apellidos || '';
+                    const nombres = st.firstName || st.nombres || st.name || '';
+                    const seccion = (st.section || st.seccion || 'A').replace(/secci[oó]n/i, '').trim();
+                    const genero = st.gender || st.genero || st.sexo || '';
+                    const fechaNac = st.birthDate || st.fechaNacimiento || '';
+                    const estado = st.statusSire || 'INSCRITO';
+
+                    rows.push([
+                        idx + 1,
+                        codPersonal,
+                        cui,
+                        apellidos,
+                        nombres,
+                        gKey + ' Perito Contador',
+                        seccion,
+                        'Perito Contador',
+                        genero,
+                        fechaNac,
+                        estado
+                    ]);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                XLSX.utils.book_append_sheet(wb, ws, 'Matricula_' + gKey);
+            });
+
+            XLSX.writeFile(wb, 'SIRE_MINEDUC_ENCCO_Padron_Matricula_Por_Grado_2026.xlsx');
+            if (typeof showToast === 'function') showToast('✅ Padrón de Matrícula Oficial SIRE descargado.', 'success');
+        }
+
     </script>
 
     <!-- GUARDIA DE SESIÓN Y CONTROL DE ACCESO ESTRICTO (RBAC) -->
@@ -48,6 +376,7 @@
 
                 // Redirigir a usuarios no autorizados (ej. docentes, alumnos)
                 if (!allowedRoles.includes(roleLower)) {
+                    alert('ACCESO DENEGADO (403)\n\nEl módulo "Datos para Sire" está reservado exclusivamente para la Dirección y Secretaría de la ENCCO.\n\nSu rol (' + (authRole || 'Desconocido') + ') no cuenta con los privilegios requeridos.');
                     window.location.replace('plataforma.html?auth_denied=datos_sire_restricted');
                 }
             } catch(e) {
@@ -841,7 +1170,13 @@
                     <button type="button" class="btn-sire-outline" onclick="previewSireXml()" title="Previsualizar estructura XML oficial <data-set> en pantalla">
                         <i class="fa-solid fa-code"></i> Previsualizar XML
                     </button>
-                    <button type="button" class="btn-sire-success" onclick="exportSireExcel()" title="Exportar consolidado a Excel">
+                    <button type="button" class="btn-sire-success" onclick="openSireMassModal()" style="background:#059669; color:#fff; font-weight:800; border-color:#047857;" title="Módulo Oficial de Carga Masiva para SIRE MINEDUC estructurada por Grado">
+                        <i class="fa-solid fa-layer-group"></i> Carga Masiva SIRE por Grado
+                    </button>
+                    <button type="button" class="btn-sire-outline" onclick="exportSireMassWorkbookByGrade()" title="Descargar Libro Excel Oficial MINEDUC con pestañas por Grado y materias en columnas">
+                        <i class="fa-solid fa-file-excel" style="color:#16a34a;"></i> Excel por Grados
+                    </button>
+                    <button type="button" class="btn-sire-success" onclick="exportSireExcel()" title="Exportar consolidado actual a Excel">
                         <i class="fa-solid fa-file-excel"></i> Exportar a Excel SIRE
                     </button>
                     <button type="button" class="btn-sire-outline" onclick="window.print()" title="Imprimir cuadro oficial">
@@ -869,6 +1204,7 @@
                                 <option value="A">Sección A</option>
                                 <option value="B">Sección B</option>
                                 <option value="C">Sección C</option>
+                                <option value="D">Sección D</option>
                             </select>
                         </div>
 
@@ -983,7 +1319,6 @@
 
     <!-- SCRIPTS -->
     <script src="xlsx.full.min.js" charset="UTF-8"></script>
-    <script src="ui.js"></script>
     <script>
         // ESTADO VOLÁTIL EXCLUSIVO EN RAM (NO PERSISTE EN DISCO NI LOCALSTORAGE)
         window._sireSessionState = {
@@ -1925,12 +2260,7 @@
             const schoolCode = b1 + '-' + b2 + '-' + b3 + '-' + b4;
 
             if (b1.length !== 2 || b2.length !== 2 || b3.length !== 4 || b4.length !== 2) {
-                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                    window.EnccoDialog.alert({ title: 'Código de Establecimiento', message: 'Por favor complete las 4 casillas del código de establecimiento correctamente (ej. 22-01-0014-46).', type: 'warning' });
-                } else {
-                    if (typeof showToast === 'function') showToast('Por favor complete las 4 casillas del código de establecimiento correctamente (ej. 22-01-0014-46).', 'warning');
-                    else console.warn('Por favor complete las 4 casillas del código de establecimiento correctamente.');
-                }
+                alert('Por favor complete las 4 casillas del código de establecimiento correctamente (ej. 22-01-0014-46).');
                 return;
             }
 
@@ -1939,20 +2269,12 @@
             const role = document.getElementById('sireRoleSelect').value;
 
             if (dpi.length !== 13) {
-                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                    window.EnccoDialog.(typeof showToast === 'function' ? showToast({ title: 'Validación de DPI', message: 'El DPI debe contener exactamente 13 dígitos numéricos.', type: 'warning' }, 'warning') : console.warn({ title: 'Validación de DPI', message: 'El DPI debe contener exactamente 13 dígitos numéricos.', type: 'warning' }));
-                } else {
-        if (typeof showToast === 'function') showToast('El DPI debe contener exactamente 13 dígitos numéricos.', 'warning'); else console.warn('El DPI debe contener exactamente 13 dígitos numéricos.');
-    }
+                alert('El DPI debe contener exactamente 13 dígitos numéricos.');
                 return;
             }
 
             if (!pass) {
-                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                    window.EnccoDialog.(typeof showToast === 'function' ? showToast({ title: 'Contraseña Requerida', message: 'Por favor ingrese su contraseña de acceso a SIRE.', type: 'warning' }, 'warning') : console.warn({ title: 'Contraseña Requerida', message: 'Por favor ingrese su contraseña de acceso a SIRE.', type: 'warning' }));
-                } else {
-        if (typeof showToast === 'function') showToast('Por favor ingrese su contraseña de acceso a SIRE.', 'warning'); else console.warn('Por favor ingrese su contraseña de acceso a SIRE.');
-    }
+                alert('Por favor ingrese su contraseña de acceso a SIRE.');
                 return;
             }
 
@@ -1999,16 +2321,7 @@
                     document.getElementById('sirePassInput').readOnly = true;
                     document.getElementById('sireRoleSelect').disabled = true;
 
-                    if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                        window.EnccoDialog.alert({
-                            title: 'Conexión Exitosa',
-                            message: 'Inicio de sesión exitoso en SIRE MINEDUC.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role + '\nDPI: ' + dpi.slice(0, 4) + ' ••••• ' + dpi.slice(9) + '\nLas credenciales se mantienen en memoria RAM activa.',
-                            type: 'success'
-                        });
-                    } else {
-                        if (typeof showToast === 'function') showToast('Inicio de sesión exitoso en SIRE MINEDUC.', 'success');
-                        else console.log('Inicio de sesión exitoso en SIRE.');
-                    }
+                    alert('✅ Inicio de sesión exitoso en SIRE MINEDUC.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role + '\nDPI: ' + dpi.slice(0, 4) + ' ••••• ' + dpi.slice(9) + '\nLas credenciales se mantienen en memoria RAM activa.');
                 } else {
                     throw new Error(data.error || 'Credenciales no autorizadas en SIRE.');
                 }
@@ -2037,33 +2350,12 @@
                 document.getElementById('sirePassInput').readOnly = true;
                 document.getElementById('sireRoleSelect').disabled = true;
 
-                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                    window.EnccoDialog.(typeof showToast === 'function' ? showToast({
-                        title: 'Sesión SIRE en Memoria',
-                        message: 'Sesión segura en memoria iniciada correctamente.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role,
-                        type: 'success'
-                    }, 'warning') : console.warn({
-                        title: 'Sesión SIRE en Memoria',
-                        message: 'Sesión segura en memoria iniciada correctamente.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role,
-                        type: 'success'
-                    }));
-                } else {
-        if (typeof showToast === 'function') showToast('✅ Sesión segura en memoria iniciada correctamente.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role, 'warning'); else console.warn('✅ Sesión segura en memoria iniciada correctamente.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role);
-    }
+                alert('✅ Sesión segura en memoria iniciada correctamente.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role);
             }
         }
 
-        async function handleSireDisconnect() {
-            const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
-                ? await window.EnccoDialog.confirm({
-                    title: 'Desconectar SIRE',
-                    message: '¿Desea cerrar la conexión con el portal SIRE y purgar las credenciales en memoria RAM?',
-                    confirmText: 'Sí, desconectar y purgar',
-                    cancelText: 'Cancelar',
-                    type: 'danger'
-                })
-                : false;
-            if (!confirmed) return;
+        function handleSireDisconnect() {
+            if (!confirm('¿Desea cerrar la conexión con el portal SIRE y purgar las credenciales en memoria RAM?')) return;
 
             window._sireSessionState = {
                 isConnected: false,
@@ -2093,19 +2385,7 @@
 
             try { fetch('/api/sire/disconnect', { method: 'POST' }); } catch(e) {}
 
-            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                window.EnccoDialog.(typeof showToast === 'function' ? showToast({
-                    title: 'Sesión Finalizada',
-                    message: 'Sesión SIRE cerrada. Credenciales purgadas de la memoria volátil.',
-                    type: 'info'
-                }, 'warning') : console.warn({
-                    title: 'Sesión Finalizada',
-                    message: 'Sesión SIRE cerrada. Credenciales purgadas de la memoria volátil.',
-                    type: 'info'
-                }));
-            } else {
-        if (typeof showToast === 'function') showToast('🔒 Sesión SIRE cerrada. Credenciales purgadas de la memoria volátil.', 'warning'); else console.warn('🔒 Sesión SIRE cerrada. Credenciales purgadas de la memoria volátil.');
-    }
+            alert('🔒 Sesión SIRE cerrada. Credenciales purgadas de la memoria volátil.');
         }
 
         // 7. EXPORTACIÓN EXCEL EN FORMATO SIRE MINEDUC
@@ -2223,11 +2503,7 @@
             const studentsToExport = _filteredStudents.length > 0 ? _filteredStudents : _sireStudents;
 
             if (!studentsToExport || studentsToExport.length === 0) {
-                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                    window.EnccoDialog.(typeof showToast === 'function' ? showToast({ title: 'Exportación XML', message: 'No hay estudiantes disponibles para exportar a XML. Verifique que existan registros cargados en la tabla.', type: 'info' }, 'warning') : console.warn({ title: 'Exportación XML', message: 'No hay estudiantes disponibles para exportar a XML. Verifique que existan registros cargados en la tabla.', type: 'info' }));
-                } else {
-        if (typeof showToast === 'function') showToast('No hay estudiantes disponibles para exportar a XML. Verifique que existan registros cargados en la tabla.', 'warning'); else console.warn('No hay estudiantes disponibles para exportar a XML. Verifique que existan registros cargados en la tabla.');
-    }
+                alert('No hay estudiantes disponibles para exportar a XML. Verifique que existan registros cargados en la tabla.');
                 return;
             }
 
@@ -2243,19 +2519,7 @@
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                window.EnccoDialog.(typeof showToast === 'function' ? showToast({
-                    title: 'Exportación XML Exitosa',
-                    message: 'Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <data-set>\nTotal de registros exportados: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml',
-                    type: 'success'
-                }, 'warning') : console.warn({
-                    title: 'Exportación XML Exitosa',
-                    message: 'Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <data-set>\nTotal de registros exportados: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml',
-                    type: 'success'
-                }));
-            } else {
-        if (typeof showToast === 'function') showToast('✅ Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <data-set>\nTotal de registros exportados: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml', 'warning'); else console.warn('✅ Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <data-set>\nTotal de registros exportados: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml');
-    }
+            alert('✅ Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <data-set>\nTotal de registros exportados: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml');
         }
 
         function previewSireXml() {
@@ -2263,11 +2527,7 @@
             const studentsToExport = _filteredStudents.length > 0 ? _filteredStudents : _sireStudents;
 
             if (!studentsToExport || studentsToExport.length === 0) {
-                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                    window.EnccoDialog.(typeof showToast === 'function' ? showToast({ title: 'Previsualización XML', message: 'No hay estudiantes disponibles para previsualizar XML.', type: 'info' }, 'warning') : console.warn({ title: 'Previsualización XML', message: 'No hay estudiantes disponibles para previsualizar XML.', type: 'info' }));
-                } else {
-        if (typeof showToast === 'function') showToast('No hay estudiantes disponibles para previsualizar XML.', 'warning'); else console.warn('No hay estudiantes disponibles para previsualizar XML.');
-    }
+                alert('No hay estudiantes disponibles para previsualizar XML.');
                 return;
             }
 
@@ -2285,20 +2545,12 @@
             const textarea = document.getElementById('xmlPreviewContent');
             textarea.select();
             document.execCommand('copy');
-            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                window.EnccoDialog.(typeof showToast === 'function' ? showToast({ title: 'Portapapeles', message: 'XML copiado al portapapeles exitosamente.', type: 'success' }, 'warning') : console.warn({ title: 'Portapapeles', message: 'XML copiado al portapapeles exitosamente.', type: 'success' }));
-            } else {
-        if (typeof showToast === 'function') showToast('📋 XML copiado al portapapeles.', 'warning'); else console.warn('📋 XML copiado al portapapeles.');
-    }
+            alert('📋 XML copiado al portapapeles.');
         }
 
         function exportSireExcel() {
             if (typeof XLSX === 'undefined') {
-                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                    window.EnccoDialog.(typeof showToast === 'function' ? showToast({ title: 'Exportación Excel', message: 'La biblioteca de exportación Excel aún está cargando. Espere un momento.', type: 'info' }, 'warning') : console.warn({ title: 'Exportación Excel', message: 'La biblioteca de exportación Excel aún está cargando. Espere un momento.', type: 'info' }));
-                } else {
-        if (typeof showToast === 'function') showToast('La biblioteca de exportación Excel aún está cargando. Espere un momento.', 'warning'); else console.warn('La biblioteca de exportación Excel aún está cargando. Espere un momento.');
-    }
+                alert('La biblioteca de exportación Excel aún está cargando. Espere un momento.');
                 return;
             }
 
@@ -2413,26 +2665,11 @@
 
         function reloadSireDataFromFirebase() {
             initFirebaseDataReader();
-            if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                window.EnccoDialog.alert({ title: 'Sincronización', message: 'Datos actualizados directamente desde Firebase (Lectura Estricta).', type: 'info' });
-            } else {
-                if (typeof showToast === 'function') showToast('Datos actualizados directamente desde Firebase (Lectura Estricta).', 'info');
-                else console.log('Datos actualizados directamente desde Firebase.');
-            }
+            alert('🔄 Datos actualizados directamente desde Firebase (Lectura Estricta).');
         }
 
         async function handleLogout() {
-            const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
-                ? await window.EnccoDialog.confirm({
-                    title: 'Cerrar Sesión',
-                    message: '¿Desea cerrar la sesión del sistema ENCCO?',
-                    confirmText: 'Sí, salir',
-                    cancelText: 'Permanecer',
-                    type: 'question'
-                })
-                : false;
-
-            if (confirmed) {
+            if (confirm('¿Desea cerrar la sesión del sistema ENCCO?')) {
                 if (window.EnccoInactivityTimer && typeof window.EnccoInactivityTimer.stop === 'function') {
                     window.EnccoInactivityTimer.stop();
                 }
@@ -2482,6 +2719,140 @@
                     </button>
                     <button type="button" class="btn-sire-outline" onclick="closeXmlPreviewModal()">Cerrar</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL DE CARGA MASIVA SIRE MINEDUC ESTRUCTURADA POR GRADO -->
+    <div class="modal-overlay" id="sireMassModal" style="display:none;" onclick="if(event.target === this) closeSireMassModal()">
+        <div class="modal-container" style="max-width:860px; max-height:92vh;">
+            <div style="background:linear-gradient(135deg, #0c4a6e 0%, #0369a1 100%); color:#fff; padding:18px 24px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.15);">
+                <div>
+                    <h3 style="margin:0; font-size:1.2rem; font-weight:800; display:flex; align-items:center; gap:10px;">
+                        <i class="fa-solid fa-cloud-arrow-up" style="color:#38bdf8;"></i> Carga Masiva en SIRE MINEDUC (Estructurada por Grado)
+                    </h3>
+                    <p style="margin:4px 0 0; font-size:0.8rem; color:#bae6fd;">
+                        Formatos oficiales validados para la Dirección Departamental de Educación y Sistema SIRE
+                    </p>
+                </div>
+                <button type="button" onclick="closeSireMassModal()" style="background:rgba(255,255,255,0.15); border:none; color:#fff; width:34px; height:34px; border-radius:50%; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div style="padding:22px; overflow-y:auto; flex:1; background:#f8fafc;">
+                <!-- Explicación Ministerial -->
+                <div style="background:#e0f2fe; border:1px solid #7dd3fc; border-radius:10px; padding:14px 18px; margin-bottom:20px; display:flex; gap:14px; align-items:flex-start;">
+                    <i class="fa-solid fa-circle-info" style="color:#0284c7; font-size:1.4rem; margin-top:2px; flex-shrink:0;"></i>
+                    <div style="font-size:0.85rem; color:#0369a1; line-height:1.5;">
+                        <strong>Requerimiento Oficial MINEDUC / SIRE:</strong> El portal ministerial exige que los cuadros de calificaciones se procesen estructurados <strong>por Grado y Sección</strong>, asociando cada nota con el Código de Curso oficial del Currículo Nacional Base (CNB). La ENCCO cuenta con <strong>412 estudiantes</strong> y <strong>112 cátedras oficiales</strong> distribuidas en 12 secciones.
+                    </div>
+                </div>
+
+                <!-- Grid de Opciones de Descarga -->
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:16px;">
+                    
+                    <!-- Opción 1: Excel por Grados -->
+                    <div style="background:#fff; border:1.5px solid #cbd5e1; border-radius:12px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                                <div style="background:#dcfce7; color:#15803d; width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                                    <i class="fa-solid fa-file-excel"></i>
+                                </div>
+                                <div>
+                                    <h4 style="margin:0; font-size:0.98rem; font-weight:800; color:#0f172a;">Excel Multi-Pestaña por Grados</h4>
+                                    <span style="font-size:0.75rem; color:#16a34a; font-weight:700;">Recomendado Oficial MINEDUC</span>
+                                </div>
+                            </div>
+                            <p style="font-size:0.82rem; color:#475569; margin:8px 0 14px; line-height:1.4;">
+                                Genera un libro Excel con 3 pestañas (<strong>4to_Perito_Contador</strong>, <strong>5to_Perito_Contador</strong> y <strong>6to_Perito_Contador</strong>). Cada hoja incluye las columnas exactas de las materias oficiales del CNB de ese grado, notas, promedios y resultado legal.
+                            </p>
+                        </div>
+                        <button type="button" class="btn-sire-success" onclick="exportSireMassWorkbookByGrade()" style="width:100%; justify-content:center; padding:10px 16px; font-size:0.88rem;">
+                            <i class="fa-solid fa-download"></i> Descargar Excel por Grados (412 alumnos)
+                        </button>
+                    </div>
+
+                    <!-- Opción 2: Excel por 12 Secciones -->
+                    <div style="background:#fff; border:1.5px solid #cbd5e1; border-radius:12px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                                <div style="background:#fef3c7; color:#b45309; width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                                    <i class="fa-solid fa-folder-tree"></i>
+                                </div>
+                                <div>
+                                    <h4 style="margin:0; font-size:0.98rem; font-weight:800; color:#0f172a;">Excel por 12 Secciones (A-D)</h4>
+                                    <span style="font-size:0.75rem; color:#d97706; font-weight:700;">Para Carga Individual de Secretaría</span>
+                                </div>
+                            </div>
+                            <p style="font-size:0.82rem; color:#475569; margin:8px 0 14px; line-height:1.4;">
+                                Genera un libro Excel con 12 pestañas independientes (<strong>4to A, B, C, D</strong> • <strong>5to A, B, C, D</strong> • <strong>6to A, B, C, D</strong>). Ideal para cotejar y subir sección por sección al sistema SIRE.
+                            </p>
+                        </div>
+                        <button type="button" class="btn-sire-outline" onclick="exportSireMassWorkbookBySection()" style="width:100%; justify-content:center; padding:10px 16px; font-size:0.88rem; border-color:#d97706; color:#b45309;">
+                            <i class="fa-solid fa-download"></i> Descargar Excel 12 Secciones
+                        </button>
+                    </div>
+
+                    <!-- Opción 3: XML Oficiales SIRE por Grado -->
+                    <div style="background:#fff; border:1.5px solid #cbd5e1; border-radius:12px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                                <div style="background:#e0f2fe; color:#0284c7; width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                                    <i class="fa-solid fa-file-code"></i>
+                                </div>
+                                <div>
+                                    <h4 style="margin:0; font-size:0.98rem; font-weight:800; color:#0f172a;">Archivos XML SIRE por Grado</h4>
+                                    <span style="font-size:0.75rem; color:#0284c7; font-weight:700;">Estructura &lt;data-set&gt; MINEDUC</span>
+                                </div>
+                            </div>
+                            <p style="font-size:0.82rem; color:#475569; margin:8px 0 14px; line-height:1.4;">
+                                Archivos XML oficiales listos para el importador masivo del SIRE. Descargue por grado con los códigos de curso asignados:
+                            </p>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                                <button type="button" class="btn-sire-outline" onclick="exportSireXmlByGrade('4to')" style="flex:1; font-size:0.78rem; padding:6px 8px;">
+                                    <i class="fa-solid fa-download"></i> XML 4to (138 al.)
+                                </button>
+                                <button type="button" class="btn-sire-outline" onclick="exportSireXmlByGrade('5to')" style="flex:1; font-size:0.78rem; padding:6px 8px;">
+                                    <i class="fa-solid fa-download"></i> XML 5to (146 al.)
+                                </button>
+                                <button type="button" class="btn-sire-outline" onclick="exportSireXmlByGrade('6to')" style="flex:1; font-size:0.78rem; padding:6px 8px;">
+                                    <i class="fa-solid fa-download"></i> XML 6to (128 al.)
+                                </button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-sire-primary" onclick="exportSireXmlByGrade('ALL')" style="width:100%; justify-content:center; padding:10px 16px; font-size:0.88rem;">
+                            <i class="fa-solid fa-file-zipper"></i> Descargar XML Completo (3,836 registros)
+                        </button>
+                    </div>
+
+                    <!-- Opción 4: Padrón de Matrícula SIRE -->
+                    <div style="background:#fff; border:1.5px solid #cbd5e1; border-radius:12px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                                <div style="background:#f1f5f9; color:#475569; width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                                    <i class="fa-solid fa-id-card-clip"></i>
+                                </div>
+                                <div>
+                                    <h4 style="margin:0; font-size:0.98rem; font-weight:800; color:#0f172a;">Padrón de Matrícula SIRE</h4>
+                                    <span style="font-size:0.75rem; color:#475569; font-weight:700;">Datos Personales por Grado</span>
+                                </div>
+                            </div>
+                            <p style="font-size:0.82rem; color:#475569; margin:8px 0 14px; line-height:1.4;">
+                                Padrón oficial de estudiantes estructurado por grado y sección: Código Personal, CUI, Apellidos, Nombres, Grado, Sección y Estado legal (INSCRITO).
+                            </p>
+                        </div>
+                        <button type="button" class="btn-sire-outline" onclick="exportSireEnrollmentByGrade()" style="width:100%; justify-content:center; padding:10px 16px; font-size:0.88rem;">
+                            <i class="fa-solid fa-download"></i> Descargar Padrón de Matrícula Excel
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <div style="background:#f1f5f9; padding:12px 24px; display:flex; justify-content:flex-end; border-top:1px solid #e2e8f0;">
+                <button type="button" class="btn-sire-outline" onclick="closeSireMassModal()">Cerrar Ventana</button>
             </div>
         </div>
     </div>

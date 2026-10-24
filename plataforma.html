@@ -2161,48 +2161,12 @@
 
                             if (!user) {
                                 if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                                    await window.EnccoDialog.(typeof showToast === 'function' ? showToast({
-                                        title: 'Sesión Requerida',
-                                        message: 'Debe iniciar sesión para ingresar a este módulo.',
-                                        type: 'warning'
-                                    }, 'warning') : console.warn({
-                                        title: 'Sesión Requerida',
-                                        message: 'Debe iniciar sesión para ingresar a este módulo.',
-                                        type: 'warning'
-                                    }));
-                                } else if (typeof showToast === 'function') {
-                                    showToast('Debe iniciar sesión para ingresar a este módulo.', 'warning');
-                                } else {
-        if (typeof showToast === 'function') showToast('Debe iniciar sesión para ingresar a este módulo.', 'warning'); else console.warn('Debe iniciar sesión para ingresar a este módulo.');
-    }
-                                window.location.replace('index.html');
-                                return false;
-                            }
-
-                            var uName = (user.username || '').toLowerCase().trim();
-                            var normRole = (role || user.role || user.rol || '').toLowerCase().trim();
-                            var masterRoles = ['director', 'direccion', 'secretaria', 'admin', 'administrador', 'super_usuario'];
-                            var isAuthorized = masterRoles.includes(normRole) || ['nehemias', 'director', 'admin', 'secretaria'].includes(uName);
-
-                            if (!isAuthorized) {
-                                if (typeof hasRolePermission === 'function') isAuthorized = hasRolePermission(normRole, 'grade-lock');
-                                if (!isAuthorized && typeof getModulePermissionLevel === 'function') {
-                                    var lvl = getModulePermissionLevel('grade-lock');
-                                    isAuthorized = (lvl === 'edit' || lvl === 'view');
-                                }
-                                if (!isAuthorized && user.permissions && Array.isArray(user.permissions)) {
-                                    isAuthorized = user.permissions.includes('grade-lock') || user.permissions.includes('grade_lock');
-                                }
-                            }
-
-                            if (!isAuthorized) {
-                                if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
-                                    await window.EnccoDialog.alert({
-                                        title: 'Acceso Restringido (403)',
-                                        message: 'El usuario actual (' + (user.name || user.username || 'Usuario') + ') con rol [' + normRole + '] no cuenta con privilegios para el módulo de Bloqueo de Bimestres.',
-                                        type: 'danger'
-                                    });
-                                } else if (typeof showToast === 'function') {
+        window.EnccoDialog.alert({
+            title: 'Sesión Requerida',
+            message: 'Debe iniciar sesión para ingresar a este módulo.',
+            type: 'warning'
+        });
+    } else if (typeof showToast === 'function') {
                                     showToast('Acceso denegado: Privilegios insuficientes para Bloqueo de Bimestres.', 'danger');
                                 } else {
                                     console.warn('ACCESO RESTRINGIDO (403): Sin privilegios para Bloqueo de Bimestres.');
