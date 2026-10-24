@@ -219,6 +219,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         fillSireEnrollmentForm(msg.data);
         sendResponse({ success: true, message: 'Formulario SIRE prellenado' });
     }
+    if (msg.action === 'KEEP_ALIVE_TAB') {
+        sendResponse({ success: true, note: 'Pestaña SIRE protegida contra suspensión', timestamp: Date.now() });
+    }
 });
 
 // Comprobar inscripción pendiente en SIRE

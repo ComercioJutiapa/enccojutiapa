@@ -67,4 +67,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
         return true;
     }
+
+    // 4. Latido local de protección de pestaña SIRE (Anti-descarte de Chrome)
+    if (request.action === 'PING_SIRE_KEEP_ALIVE') {
+        sendResponse({ alive: true, timestamp: Date.now() });
+        return true;
+    }
 });
+
+// 🛡️ Mantener activa la pestaña del SIRE en el navegador para evitar suspensión por inactividad
+try {
+    if (chrome.alarms) {
+        chrome.alarms.create('sireTabAntiDiscardAlarm', { periodInMinutes: 2 });
+        chrome.alarms.onAlarm.addListener((alarm) => {
+            if (alarm.name === 'sireTabAntiDiscardAlarm') {
+                chrome.tabs.query({ url: '*://sire.mineduc.gob.gt/*' }, (tabs) => {
+                    tabs.forEach(t => {
+                        chrome.tabs.sendMessage(t.id, { action: 'KEEP_ALIVE_TAB' }).catch(() => {});
+                    });
+                });
+            }
+        });
+    }
+} catch(e) {}
