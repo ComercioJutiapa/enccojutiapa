@@ -11,6 +11,32 @@
         // ======================================================================
         // CATALOGOS Y CONSTANTES CANONICAS GLOBALES SIRE MINEDUC
         // ======================================================================
+        window._sireStudents = window._sireStudents || [];
+        window._filteredStudents = window._filteredStudents || [];
+        window._sireSubjects = window._sireSubjects || [];
+        window._sirePensumCatalog = window._sirePensumCatalog || [];
+        var _sireStudents = window._sireStudents;
+        var _filteredStudents = window._filteredStudents;
+        var _sireSubjects = window._sireSubjects;
+        var _sirePensumCatalog = window._sirePensumCatalog;
+
+        function getStudentsSafe() {
+            if (window._sireStudents && window._sireStudents.length > 0) return window._sireStudents;
+            if (window._filteredStudents && window._filteredStudents.length > 0) return window._filteredStudents;
+            if (typeof _sireStudents !== 'undefined' && _sireStudents && _sireStudents.length > 0) return _sireStudents;
+            if (typeof _filteredStudents !== 'undefined' && _filteredStudents && _filteredStudents.length > 0) return _filteredStudents;
+            return [];
+        }
+
+        window.getFullEstablishmentCode = window.getFullEstablishmentCode || function() {
+            const b1 = (document.getElementById('sireEst1')?.value || '22').trim();
+            const b2 = (document.getElementById('sireEst2')?.value || '01').trim();
+            const b3 = (document.getElementById('sireEst3')?.value || '0014').trim();
+            const b4 = (document.getElementById('sireEst4')?.value || '46').trim();
+            return (b1 && b2 && b3 && b4) ? (b1 + '-' + b2 + '-' + b3 + '-' + b4) : '22-01-0014-46';
+        };
+        var getFullEstablishmentCode = window.getFullEstablishmentCode;
+
         window.CANONICAL_PENSUM_BY_GRADE = window.CANONICAL_PENSUM_BY_GRADE || {
             '4to': [
                 { name: 'Contabilidad de Sociedades', code: '101' },
@@ -83,7 +109,7 @@
 
             const period = document.getElementById('filterPeriod')?.value || 'FINAL';
             const schoolCode = getFullEstablishmentCode() || '22-01-0014-46';
-            const studentsToProcess = (_sireStudents && _sireStudents.length > 0) ? _sireStudents : _filteredStudents;
+            const studentsToProcess = getStudentsSafe();
 
             if (!studentsToProcess || studentsToProcess.length === 0) {
                 alert('No hay estudiantes disponibles para exportar.');
@@ -177,7 +203,7 @@
 
             const period = document.getElementById('filterPeriod')?.value || 'FINAL';
             const schoolCode = getFullEstablishmentCode() || '22-01-0014-46';
-            const studentsToProcess = (_sireStudents && _sireStudents.length > 0) ? _sireStudents : _filteredStudents;
+            const studentsToProcess = getStudentsSafe();
 
             if (!studentsToProcess || studentsToProcess.length === 0) {
                 alert('No hay estudiantes disponibles.');
@@ -267,7 +293,7 @@
         // 3. Exportación XML Oficial SIRE por Grado (<tablaCargaMasiva>)
         function exportSireXmlByGrade(targetGrade = 'ALL') {
             const period = document.getElementById('filterPeriod')?.value || 'FINAL';
-            const studentsToProcess = (_sireStudents && _sireStudents.length > 0) ? _sireStudents : _filteredStudents;
+            const studentsToProcess = getStudentsSafe();
 
             if (!studentsToProcess || studentsToProcess.length === 0) {
                 alert('No hay estudiantes disponibles.');
@@ -332,7 +358,7 @@
             }
 
             const schoolCode = getFullEstablishmentCode() || '22-01-0014-46';
-            const studentsToProcess = (_sireStudents && _sireStudents.length > 0) ? _sireStudents : _filteredStudents;
+            const studentsToProcess = getStudentsSafe();
 
             const wb = XLSX.utils.book_new();
             const grades = ['4to', '5to', '6to'];
@@ -1402,10 +1428,10 @@
         };
 
         // ESTADO DE DATOS (LECTURA ESTRICTA DESDE FIREBASE)
-        let _sireStudents = [];
-        let _sireSubjects = [];
-        let _filteredStudents = [];
-        let _sirePensumCatalog = [];
+        var _sireStudents = window._sireStudents = window._sireStudents || [];
+        var _sireSubjects = window._sireSubjects = window._sireSubjects || [];
+        var _filteredStudents = window._filteredStudents = window._filteredStudents || [];
+        var _sirePensumCatalog = window._sirePensumCatalog = window._sirePensumCatalog || [];
 
         // 1. AUTO-TABULACIÓN Y GESTIÓN DE LAS 4 CASILLAS DE ESTABLECIMIENTO
         function handleSireBoxInput(currentInput, nextInputId, maxLen) {
@@ -2590,13 +2616,36 @@
         }
 
         function exportSireXml() {
-            // Abrir automáticamente el modal oficial de carga masiva por grado
-            openSireMassModal();
+            const period = document.getElementById('filterPeriod')?.value || 'FINAL';
+            const studentsToExport = (_filteredStudents && _filteredStudents.length > 0) ? _filteredStudents : getStudentsSafe();
+
+            if (!studentsToExport || studentsToExport.length === 0) {
+                alert('No hay estudiantes disponibles para exportar a XML. Por favor espere un momento o presione "Recargar".');
+                return;
+            }
+
+            const { xml, count } = generateSireXmlDataSet(studentsToExport, period);
+
+            const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'SIRE_MINEDUC_Cuadro_Oficial_ENCCO_' + period + '_2026.xml';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            if (typeof showToast === 'function') {
+                showToast('✅ Archivo XML SIRE generado con éxito (' + count + ' registros).', 'success');
+            } else {
+                alert('✅ Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <tablaCargaMasiva>\nTotal de registros: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_Oficial_ENCCO_' + period + '_2026.xml');
+            }
         }
 
         function previewSireXml() {
-            const period = document.getElementById('filterPeriod').value;
-            const studentsToExport = _filteredStudents.length > 0 ? _filteredStudents : _sireStudents;
+            const period = document.getElementById('filterPeriod')?.value || 'FINAL';
+            const studentsToExport = (_filteredStudents && _filteredStudents.length > 0) ? _filteredStudents : getStudentsSafe();
 
             if (!studentsToExport || studentsToExport.length === 0) {
                 alert('No hay estudiantes disponibles para previsualizar XML.');
@@ -2626,8 +2675,15 @@
                 return;
             }
 
-            const period = document.getElementById('filterPeriod').value;
+            const period = document.getElementById('filterPeriod')?.value || 'FINAL';
             const schoolCode = getFullEstablishmentCode() || '22-01-0014-46';
+            const studentsToExport = (_filteredStudents && _filteredStudents.length > 0) ? _filteredStudents : getStudentsSafe();
+
+            if (!studentsToExport || studentsToExport.length === 0) {
+                alert('No hay estudiantes disponibles para exportar a Excel.');
+                return;
+            }
+
             const rows = [
                 ['ESCUELA NACIONAL DE CIENCIAS COMERCIALES JUTIAPA (1970)'],
                 ['MINISTERIO DE EDUCACIÓN DE GUATEMALA - SISTEMA SIRE'],
@@ -2637,7 +2693,7 @@
                 ['No.', 'Código Personal SIRE', 'CUI / DPI', 'Apellidos y Nombres', 'Grado', 'Sección', 'Carrera', 'Promedio General', 'Materias Aprobadas', 'Materias Reprobadas', 'Estado Oficial SIRE']
             ];
 
-            _filteredStudents.forEach((st, idx) => {
+            studentsToExport.forEach((st, idx) => {
                 const stats = calculateStudentAverages(st, period);
                 const fullName = (st.lastName && st.firstName)
                     ? (st.lastName + ', ' + st.firstName).trim()
