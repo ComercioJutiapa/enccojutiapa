@@ -1429,42 +1429,6 @@
             color: #166534;
         }
 
-        /* Columnas Fijas (Sticky Columns) en la Sábana de Notas */
-        .sire-sticky-col-0 {
-            position: sticky;
-            left: 0;
-            background: #ffffff;
-            z-index: 5;
-        }
-
-        .sire-sticky-col-1 {
-            position: sticky;
-            left: 42px;
-            background: #ffffff;
-            z-index: 5;
-        }
-
-        .sire-sticky-col-2 {
-            position: sticky;
-            left: 145px;
-            background: #ffffff;
-            z-index: 5;
-            box-shadow: 3px 0 5px -2px rgba(0,0,0,0.06);
-        }
-
-        .sire-table thead th.sire-sticky-col-0,
-        .sire-table thead th.sire-sticky-col-1,
-        .sire-table thead th.sire-sticky-col-2 {
-            z-index: 15;
-            background: #f8fafc;
-        }
-
-        .sire-table tbody tr:hover td.sire-sticky-col-0,
-        .sire-table tbody tr:hover td.sire-sticky-col-1,
-        .sire-table tbody tr:hover td.sire-sticky-col-2 {
-            background: #f8fafc;
-        }
-
         .print-header, .print-signatures {
             display: none;
         }
@@ -1725,8 +1689,8 @@
         <div style="display:none;" aria-hidden="true">
             <select id="filterGrade">
                 <option value="4to" selected>4to Perito Contador</option>
-                <option value="5to Grado">5to Perito Contador</option>
-                <option value="6to Grado">6to Perito Contador</option>
+                <option value="5to">5to Perito Contador</option>
+                <option value="6to">6to Perito Contador</option>
                 <option value="ALL">Todos los Grados</option>
             </select>
             <select id="filterSection">
@@ -1746,10 +1710,10 @@
             <span id="filteredCountSpan">0</span>
         </div>
 
-        <!-- 6. CONTENEDOR DE LA SÁBANA DE NOTAS (TABLA DE PROMEDIOS CON COLUMNAS STICKY) -->
+        <!-- 6. CONTENEDOR DE LA SÁBANA DE NOTAS (TABLA DE PROMEDIOS) -->
         <div class="sire-card">
             <div class="sire-card-body" style="padding:0;">
-                <div class="table-responsive-sire" style="max-height:calc(100vh - 240px); overflow:auto;">
+                <div class="table-responsive-sire" style="overflow-x:auto;">
                     <table class="sire-table" id="sireStudentsTable">
                         <thead id="sireTableHead">
                             <tr>
@@ -1919,22 +1883,22 @@
         // 3. LECTURA ESTRICTA Y SINCRONIZACIÓN PERSISTENTE DE FIREBASE (CERO DESCONEXIÓN)
         async function initFirebaseDataReader() {
             try {
-                // 1. Lectura modular desde Firestore (Memoria RAM exclusiva)
-                if (window.FirebaseModular && window.FirebaseModular.db) {
+                // 1. Cargar nómina oficial en tiempo real desde Firebase RTDB REST (el backend activo oficial)
+                const rtdbSuccess = await fetchFromRtdbRest();
+                
+                // 2. Si RTDB no devolvió datos y Firestore está disponible, intentar Firestore
+                if ((!rtdbSuccess || _sireStudents.length === 0) && window.FirebaseModular && window.FirebaseModular.db) {
                     await fetchFromFirestore(window.FirebaseModular.db);
-                } else {
+                } else if (!rtdbSuccess && _sireStudents.length === 0) {
                     window.addEventListener('SireFirebaseReady', async () => {
-                        await fetchFromFirestore(window.FirebaseModular.db);
-                    });
-                }
-
-                // 2. Si Firestore devolvió 0 alumnos, intentar Realtime Database REST (Lectura pura GET)
-                if (_sireStudents.length === 0) {
-                    await fetchFromRtdbRest();
+                        if (!_sireStudents || _sireStudents.length === 0) {
+                            await fetchFromFirestore(window.FirebaseModular.db);
+                        }
+                    }, { once: true });
                 }
 
                 // 3. Fallback seguro en memoria de ventana padre
-                if (_sireStudents.length === 0) {
+                if (!_sireStudents || _sireStudents.length === 0) {
                     fallbackFetchStudents();
                 }
 
@@ -1947,7 +1911,7 @@
                         const bc = new BroadcastChannel('ENCCO_STATE_CHANNEL');
                         bc.onmessage = (ev) => {
                             if (ev.data && ev.data.type === 'SYNC_STATE_UPDATE' && ev.data.state && Array.isArray(ev.data.state.students)) {
-                                _sireStudents = ev.data.state.students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo');
+                                _sireStudents = window._sireStudents = ev.data.state.students.filter(s => s.status !== 'Retirado' && s.status !== 'Inactivo');
                                 applySireFilters();
                                 updateFirebaseLiveBadge(true, _sireStudents.length);
                             }
@@ -2066,42 +2030,29 @@
                 });
 
                 if (list.length > 0) {
-                    _sireStudents = list;
+                    _sireStudents = window._sireStudents = list;
                     console.log("✅ [Datos para Sire] Alumnos cargados directamente desde Firestore:", list.length);
                     applySireFilters();
                     return;
                 }
             } catch(e) {
-                console.warn("Error leyendo directamente de Firestore, usando fallback seguro:", e);
+                console.warn("Aviso leyendo directamente de Firestore:", e);
             }
-            fallbackFetchStudents();
+            if (!_sireStudents || _sireStudents.length === 0) {
+                fallbackFetchStudents();
+            }
         }
 
         function fallbackFetchStudents() {
-            if (window.opener && window.opener.STATE) {
-                if (Array.isArray(window.opener.STATE.students)) {
-                    _sireStudents = window.opener.STATE.students;
-                }
+            if (_sireStudents && _sireStudents.length > 0) {
+                return; // Alumnos ya presentes en memoria, NUNCA sobreescribir ni vaciar
+            }
+            if (window.opener && window.opener.STATE && Array.isArray(window.opener.STATE.students) && window.opener.STATE.students.length > 0) {
+                _sireStudents = window._sireStudents = window.opener.STATE.students;
                 if (Array.isArray(window.opener.STATE.pensumCatalog)) {
                     _sirePensumCatalog = [...window.opener.STATE.pensumCatalog].sort((a, b) => parseInt(a.sortOrder || a.order || 99) - parseInt(b.sortOrder || b.order || 99));
                 }
                 applySireFilters();
-            } else {
-                fetch('/api/sire/averages?role=director')
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data && data.success && Array.isArray(data.students)) {
-                            _sireStudents = data.students;
-                        } else {
-                            // [Directiva Estricta] Estado vacío oficial de Firebase (cero datos sintéticos)
-                            _sireStudents = [];
-                        }
-                        applySireFilters();
-                    })
-                    .catch(() => {
-                        _sireStudents = [];
-                        applySireFilters();
-                    });
             }
         }
 
@@ -2639,28 +2590,45 @@
 
         // 5. FILTRADO Y RENDERIZADO REACTIVO DE LA MATRIZ SIRE
         function applySireFilters() {
-            const gradeFilter = document.getElementById('filterGrade').value;
-            const sectionFilter = document.getElementById('filterSection').value;
-            const periodFilter = document.getElementById('filterPeriod').value;
-            const searchTerm = (document.getElementById('filterSearch').value || '').trim().toLowerCase();
+            const gradeFilter = (document.getElementById('filterGrade')?.value || '4to').trim();
+            const sectionFilter = (document.getElementById('filterSection')?.value || 'ALL').trim();
+            const periodFilter = (document.getElementById('filterPeriod')?.value || 'FINAL').trim();
+            const searchTerm = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
 
             _filteredStudents = _sireStudents.filter(s => {
+                if (s.status === 'Retirado' || s.status === 'Inactivo') return false;
+
+                // 1. Filtro de Grado
                 if (gradeFilter !== 'ALL') {
-                    const sGrade = (s.grado || s.grade || s.carrera || '').toLowerCase();
+                    const sGrade = (s.grade || s.grado || s.carrera || s.gradeCode || '').toLowerCase();
                     const fGrade = gradeFilter.toLowerCase();
-                    let match = sGrade.includes(fGrade);
-                    if (!match) {
-                        if ((fGrade.includes('4') || fGrade.includes('cuarto')) && (sGrade.includes('4') || sGrade.includes('cuarto'))) match = true;
-                        if ((fGrade.includes('5') || fGrade.includes('quinto')) && (sGrade.includes('5') || sGrade.includes('quinto'))) match = true;
-                        if ((fGrade.includes('6') || fGrade.includes('sexto')) && (sGrade.includes('6') || sGrade.includes('sexto'))) match = true;
-                    }
-                    if (!match) return false;
+                    
+                    const is4 = sGrade.includes('4') || sGrade.includes('cuarto');
+                    const is5 = sGrade.includes('5') || sGrade.includes('quinto');
+                    const is6 = sGrade.includes('6') || sGrade.includes('sexto');
+
+                    if ((fGrade.includes('4') || fGrade.includes('cuarto')) && !is4) return false;
+                    if ((fGrade.includes('5') || fGrade.includes('quinto')) && !is5) return false;
+                    if ((fGrade.includes('6') || fGrade.includes('sexto')) && !is6) return false;
                 }
+
+                // 2. Filtro de Sección
                 if (sectionFilter !== 'ALL') {
-                    const sSec = (s.seccion || s.section || s.grado || s.grade || '').toLowerCase();
-                    const fSec = sectionFilter.toLowerCase().replace(/secci[oó]n/g, '').trim();
-                    if (!sSec.includes(fSec)) return false;
+                    const rawSec = (s.section || s.seccion || '').toString().toLowerCase();
+                    const cleanSec = rawSec.replace(/secci[oó]n/gi, '').replace(/[^a-d]/gi, '').trim().toUpperCase();
+                    const targetSec = sectionFilter.replace(/secci[oó]n/gi, '').replace(/[^a-d]/gi, '').trim().toUpperCase();
+                    
+                    let matchSec = (cleanSec === targetSec);
+                    if (!matchSec) {
+                        const gradeCode = (s.gradeCode || '').toUpperCase();
+                        if (gradeCode.endsWith(' ' + targetSec) || gradeCode.endsWith(targetSec)) {
+                            matchSec = true;
+                        }
+                    }
+                    if (!matchSec) return false;
                 }
+
+                // 3. Filtro de Búsqueda
                 if (searchTerm) {
                     const name = (s.fullName || s.nombre || (s.lastName ? s.lastName + ' ' + s.firstName : (s.apellidos ? s.apellidos + ' ' + s.nombres : '')) || '').toLowerCase();
                     const code = (s.personalCode || s.codigoPersonal || s.codigo || s.carne || '').toLowerCase();
@@ -2679,18 +2647,19 @@
         function renderSireTable(period) {
             const thead = document.getElementById('sireTableHead');
             const tbody = document.getElementById('sireTableBody');
-            document.getElementById('filteredCountSpan').textContent = _filteredStudents.length;
+            const countSpan = document.getElementById('filteredCountSpan');
+            if (countSpan) countSpan.textContent = _filteredStudents.length;
 
-            const gradeFilter = document.getElementById('filterGrade').value;
+            const gradeFilter = document.getElementById('filterGrade')?.value || '4to';
             const subjects = getActiveGradeSubjects(gradeFilter, _filteredStudents);
 
             // 1. Renderizado dinámico de encabezados con materias y códigos SIRE / CNB
             if (thead) {
                 let theadHtml = '<tr>' +
-                    '<th class="sire-sticky-col-0" style="width:40px; text-align:center;">#</th>' +
-                    '<th class="sire-sticky-col-1" style="width:105px;">Código Personal</th>' +
-                    '<th class="sire-sticky-col-2" style="min-width:190px;">Apellidos y Nombres</th>' +
-                    '<th style="width:125px;">CUI / DPI</th>';
+                    '<th style="width:40px; text-align:center;">#</th>' +
+                    '<th style="width:115px; text-align:center;">Código Personal</th>' +
+                    '<th style="width:125px;">CUI / DPI</th>' +
+                    '<th style="min-width:200px;">Apellidos y Nombres</th>';
 
                 subjects.forEach(s => {
                     const resolvedCode = resolveCourseSireCode(s.name) || s.code;
@@ -2780,10 +2749,10 @@
                 const rowBg = hasCuiError ? 'style="background-color:#fffbeb;"' : '';
 
                 tbodyHtml += '<tr ' + rowBg + '>' +
-                    '<td class="sire-sticky-col-0" style="text-align:center; font-weight:700; color:#64748b;">' + (idx + 1) + '</td>' +
-                    '<td class="sire-sticky-col-1" style="font-family:monospace; font-weight:700; color:#0369a1;">' + codPersonal + '</td>' +
-                    '<td class="sire-sticky-col-2" style="font-weight:700; color:#0f172a;">' + fullName + gradeBadge + (hasCuiError ? ' <i class="fa-solid fa-triangle-exclamation" style="color:#d97706; font-size:0.8rem;" title="Requiere completar CUI antes de carga SIRE"></i>' : '') + '</td>' +
-                    '<td style="white-space:nowrap;">' + cuiHtml + '</td>';
+                    '<td style="text-align:center; font-weight:700; color:#64748b;">' + (idx + 1) + '</td>' +
+                    '<td style="font-family:monospace; font-weight:700; color:#0369a1; text-align:center;">' + codPersonal + '</td>' +
+                    '<td style="white-space:nowrap;">' + cuiHtml + '</td>' +
+                    '<td style="font-weight:700; color:#0f172a;">' + fullName + gradeBadge + (hasCuiError ? ' <i class="fa-solid fa-triangle-exclamation" style="color:#d97706; font-size:0.8rem;" title="Requiere completar CUI antes de carga SIRE"></i>' : '') + '</td>';
 
                 // Celdas de calificación por materia en la matriz
                 subjects.forEach(subj => {
