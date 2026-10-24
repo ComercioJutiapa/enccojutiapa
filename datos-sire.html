@@ -28,6 +28,46 @@
             return [];
         }
 
+        // Función universal unificada de filtrado de cohorte (Grado y Sección) para visualización y exportación
+        window.matchStudentCohort = function(student, targetGrade, targetSection, includeInactive = false) {
+            if (!student) return false;
+            if (!includeInactive && (student.status === 'Retirado' || student.status === 'Inactivo')) {
+                return false;
+            }
+
+            // 1. Filtro de Grado
+            if (targetGrade && targetGrade !== 'ALL') {
+                const rawGrade = (student.grade || student.grado || student.carrera || student.gradeCode || '').toLowerCase();
+                const is4 = rawGrade.includes('4') || rawGrade.includes('cuarto');
+                const is5 = rawGrade.includes('5') || rawGrade.includes('quinto');
+                const is6 = rawGrade.includes('6') || rawGrade.includes('sexto');
+
+                const tg = targetGrade.toLowerCase();
+                if ((tg.includes('4') || tg.includes('cuarto')) && !is4) return false;
+                if ((tg.includes('5') || tg.includes('quinto')) && !is5) return false;
+                if ((tg.includes('6') || tg.includes('sexto')) && !is6) return false;
+            }
+
+            // 2. Filtro de Sección
+            if (targetSection && targetSection !== 'ALL') {
+                const rawSec = (student.section || student.seccion || '').toString().toLowerCase();
+                const cleanSec = rawSec.replace(/secci[oó]n/gi, '').replace(/[^a-d]/gi, '').trim().toUpperCase();
+                const targetSec = targetSection.replace(/secci[oó]n/gi, '').replace(/[^a-d]/gi, '').trim().toUpperCase();
+
+                let matchSec = (cleanSec === targetSec);
+                if (!matchSec) {
+                    const gradeCode = (student.gradeCode || '').toUpperCase();
+                    if (gradeCode.endsWith(' ' + targetSec) || gradeCode.endsWith(targetSec)) {
+                        matchSec = true;
+                    }
+                }
+                if (!matchSec) return false;
+            }
+
+            return true;
+        };
+        var matchStudentCohort = window.matchStudentCohort;
+
         window.getFullEstablishmentCode = window.getFullEstablishmentCode || function() {
             const b1 = (document.getElementById('sireEst1')?.value || '22').trim();
             const b2 = (document.getElementById('sireEst2')?.value || '01').trim();
@@ -214,7 +254,7 @@
 
             gradesConfig.forEach(gCfg => {
                 const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[gCfg.key]) || [];
-                const gradeStudents = studentsToProcess.filter(s => (s.grade || '').toLowerCase().includes(gCfg.key));
+                const gradeStudents = studentsToProcess.filter(s => matchStudentCohort(s, gCfg.key, 'ALL', false));
 
                 const headers = [
                     'No.',
@@ -305,11 +345,7 @@
             grades.forEach(gKey => {
                 const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[gKey]) || [];
                 sections.forEach(sec => {
-                    const secStudents = studentsToProcess.filter(s => {
-                        const sGrade = (s.grade || '').toLowerCase();
-                        const sSec = (s.section || '').replace(/secci[oó]n/i, '').trim().toUpperCase();
-                        return sGrade.includes(gKey) && sSec === sec;
-                    });
+                    const secStudents = studentsToProcess.filter(s => matchStudentCohort(s, gKey, sec, false));
 
                     if (secStudents.length === 0) return;
 
@@ -392,11 +428,7 @@
 
             grades.forEach(gKey => {
                 const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[gKey]) || [];
-                const gradeStudents = studentsToProcess.filter(s => {
-                    const g = (s.grade || '').toLowerCase();
-                    const isRetired = s.status === 'Retirado' || s.status === 'Inactivo';
-                    return g.includes(gKey) && !isRetired;
-                });
+                const gradeStudents = studentsToProcess.filter(s => matchStudentCohort(s, gKey, 'ALL', false));
 
                 let recordsXml = '';
                 let recordCount = 0;
@@ -449,12 +481,7 @@
             }
 
             const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[targetGrade]) || [];
-            const secStudents = studentsToProcess.filter(s => {
-                const sGrade = (s.grade || '').toLowerCase();
-                const sSec = (s.section || '').replace(/secci[oó]n/i, '').trim().toUpperCase();
-                const isRetired = s.status === 'Retirado' || s.status === 'Inactivo';
-                return sGrade.includes(targetGrade) && sSec === targetSection.toUpperCase() && !isRetired;
-            });
+            const secStudents = studentsToProcess.filter(s => matchStudentCohort(s, targetGrade, targetSection, false));
 
             if (secStudents.length === 0) {
                 alert('No se encontraron estudiantes activos en ' + targetGrade + ' Sección ' + targetSection);
@@ -543,15 +570,7 @@
 
             grades.forEach(gKey => {
                 const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[gKey]) || [];
-                const gradeStudents = studentsToProcess.filter(s => {
-                    const g = (s.grade || '').toLowerCase();
-                    const sec = (s.section || '').replace(/secci[oó]n/i, '').trim().toUpperCase();
-                    const isRetired = s.status === 'Retirado' || s.status === 'Inactivo';
-                    if (isRetired) return false;
-                    if (!g.includes(gKey)) return false;
-                    if (targetSection !== 'ALL' && sec !== targetSection.toUpperCase()) return false;
-                    return true;
-                });
+                const gradeStudents = studentsToProcess.filter(s => matchStudentCohort(s, gKey, targetSection, false));
 
                 gradeStudents.forEach((st, idx) => {
                     const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim();
@@ -1880,10 +1899,27 @@
             initFirebaseDataReader();
         });
 
-        // 3. LECTURA ESTRICTA Y SINCRONIZACIÓN PERSISTENTE DE FIREBASE (CERO DESCONEXIÓN)
+        // 3. LECTURA ESTRICTA Y SINCRONIZACIÓN PERSISTENTE DE FIREBASE (CERO DESCONEXIÓN - 100% SOLO LECTURA)
         async function initFirebaseDataReader() {
             try {
-                // 1. Cargar nómina oficial en tiempo real desde Firebase RTDB REST (el backend activo oficial)
+                // 0. Renderizado instantáneo (0ms) desde caché de sesión si ya fue consultada
+                try {
+                    const cachedRaw = sessionStorage.getItem('ENCCO_SIRE_STUDENTS_CACHE');
+                    const cachedPensumRaw = sessionStorage.getItem('ENCCO_SIRE_PENSUM_CACHE');
+                    if (cachedRaw) {
+                        const parsed = JSON.parse(cachedRaw);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            _sireStudents = window._sireStudents = parsed;
+                            if (cachedPensumRaw) {
+                                try { _sirePensumCatalog = JSON.parse(cachedPensumRaw); } catch(pe) {}
+                            }
+                            applySireFilters();
+                            updateFirebaseLiveBadge(true, _sireStudents.length);
+                        }
+                    }
+                } catch(cacheErr) {}
+
+                // 1. Cargar nómina oficial en tiempo real desde Firebase RTDB REST (el backend activo oficial) en paralelo
                 const rtdbSuccess = await fetchFromRtdbRest();
                 
                 // 2. Si RTDB no devolvió datos y Firestore está disponible, intentar Firestore
@@ -1955,52 +1991,42 @@
 
         async function fetchFromRtdbRest() {
             try {
-                // Lectura complementaria de pensumCatalog si existe en RTDB (GET pura lectura con fallback resiliente)
-                try {
-                    let pensumRes = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/pensumCatalog.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
-                    if (!pensumRes.ok) {
-                        pensumRes = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/pensumCatalog.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
-                    }
-                    if (pensumRes.ok) {
-                        let pData = await pensumRes.json();
-                        if (!pData) {
-                            const pFallback = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/pensumCatalog.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
-                            if (pFallback.ok) pData = await pFallback.json();
-                        }
-                        if (pData) {
-                            if (Array.isArray(pData)) _sirePensumCatalog = pData.filter(Boolean);
-                            else if (typeof pData === 'object') _sirePensumCatalog = Object.keys(pData).map(k => ({ id: k, ...pData[k] }));
-                            if (Array.isArray(_sirePensumCatalog)) {
-                                _sirePensumCatalog.sort((a, b) => parseInt(a.sortOrder || a.order || 99) - parseInt(b.sortOrder || b.order || 99));
-                            }
-                        }
-                    }
-                } catch(e) {}
+                // Lectura ultrarrápida paralela y de SOLO LECTURA estricta (GET pura)
+                const pensumPromise = fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/pensumCatalog.json', { 
+                    method: 'GET', 
+                    headers: { 'Accept': 'application/json' } 
+                }).then(async r => {
+                    if (!r.ok) r = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/pensumCatalog.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                    return r.ok ? await r.json() : null;
+                }).catch(() => null);
 
-                // Lectura de estudiantes con redundancia institucional (root y encc_school_state)
-                let res = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
-                if (!res.ok) {
-                    res = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
-                }
-                if (res.ok) {
-                    let data = await res.json();
-                    if (!data) {
-                        const sFallback = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
-                        if (sFallback.ok) data = await sFallback.json();
+                const studentsPromise = fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json', { 
+                    method: 'GET', 
+                    headers: { 'Accept': 'application/json' } 
+                }).then(async r => {
+                    if (!r.ok) r = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                    return r.ok ? await r.json() : null;
+                }).catch(() => null);
+
+                const [pData, sData] = await Promise.all([pensumPromise, studentsPromise]);
+
+                if (pData) {
+                    let pList = Array.isArray(pData) ? pData.filter(Boolean) : (typeof pData === 'object' ? Object.keys(pData).map(k => ({ id: k, ...pData[k] })) : []);
+                    if (pList.length > 0) {
+                        pList.sort((a, b) => parseInt(a.sortOrder || a.order || 99) - parseInt(b.sortOrder || b.order || 99));
+                        _sirePensumCatalog = pList;
+                        try { sessionStorage.setItem('ENCCO_SIRE_PENSUM_CACHE', JSON.stringify(pList)); } catch(pe) {}
                     }
-                    if (data) {
-                        let list = [];
-                        if (Array.isArray(data)) {
-                            list = data.filter(Boolean);
-                        } else if (typeof data === 'object') {
-                            list = Object.keys(data).map(k => ({ id: k, ...data[k] }));
-                        }
-                        if (list.length > 0) {
-                            _sireStudents = list;
-                            console.log("✅ [Datos para Sire] Alumnos cargados desde Firebase Realtime Database (REST):", list.length);
-                            applySireFilters();
-                            return true;
-                        }
+                }
+
+                if (sData) {
+                    let list = Array.isArray(sData) ? sData.filter(Boolean) : (typeof sData === 'object' ? Object.keys(sData).map(k => ({ id: k, ...sData[k] })) : []);
+                    if (list.length > 0) {
+                        _sireStudents = window._sireStudents = list;
+                        try { sessionStorage.setItem('ENCCO_SIRE_STUDENTS_CACHE', JSON.stringify(list)); } catch(se) {}
+                        console.log("✅ [Datos para Sire] Alumnos cargados desde Firebase Realtime Database (REST):", list.length);
+                        applySireFilters();
+                        return true;
                     }
                 }
             } catch(err) {
@@ -2596,37 +2622,8 @@
             const searchTerm = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
 
             _filteredStudents = _sireStudents.filter(s => {
-                if (s.status === 'Retirado' || s.status === 'Inactivo') return false;
-
-                // 1. Filtro de Grado
-                if (gradeFilter !== 'ALL') {
-                    const sGrade = (s.grade || s.grado || s.carrera || s.gradeCode || '').toLowerCase();
-                    const fGrade = gradeFilter.toLowerCase();
-                    
-                    const is4 = sGrade.includes('4') || sGrade.includes('cuarto');
-                    const is5 = sGrade.includes('5') || sGrade.includes('quinto');
-                    const is6 = sGrade.includes('6') || sGrade.includes('sexto');
-
-                    if ((fGrade.includes('4') || fGrade.includes('cuarto')) && !is4) return false;
-                    if ((fGrade.includes('5') || fGrade.includes('quinto')) && !is5) return false;
-                    if ((fGrade.includes('6') || fGrade.includes('sexto')) && !is6) return false;
-                }
-
-                // 2. Filtro de Sección
-                if (sectionFilter !== 'ALL') {
-                    const rawSec = (s.section || s.seccion || '').toString().toLowerCase();
-                    const cleanSec = rawSec.replace(/secci[oó]n/gi, '').replace(/[^a-d]/gi, '').trim().toUpperCase();
-                    const targetSec = sectionFilter.replace(/secci[oó]n/gi, '').replace(/[^a-d]/gi, '').trim().toUpperCase();
-                    
-                    let matchSec = (cleanSec === targetSec);
-                    if (!matchSec) {
-                        const gradeCode = (s.gradeCode || '').toUpperCase();
-                        if (gradeCode.endsWith(' ' + targetSec) || gradeCode.endsWith(targetSec)) {
-                            matchSec = true;
-                        }
-                    }
-                    if (!matchSec) return false;
-                }
+                // 1 y 2. Filtro de Grado y Sección Unificado
+                if (!matchStudentCohort(s, gradeFilter, sectionFilter, false)) return false;
 
                 // 3. Filtro de Búsqueda
                 if (searchTerm) {
