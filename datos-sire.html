@@ -292,19 +292,21 @@
                     const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim();
                     if (!codPersonal) return;
                     gradeSubjects.forEach(subj => {
-                        const score = getStudentSubjectScore(st, subj.name, period, subj.code) || 0;
-                        recordsXml += '  <record>\n' +
-                            '    <Codigo_Personal>' + escapeXml(codPersonal) + '</Codigo_Personal>\n' +
-                            '    <Cod_Curso>' + escapeXml(subj.code) + '</Cod_Curso>\n' +
-                            '    <Tipo_Cuadro>' + escapeXml(tipoCuadro) + '</Tipo_Cuadro>\n' +
-                            '    <Nota>' + Math.round(score) + '</Nota>\n' +
-                            '  </record>\n';
+                        const score = (typeof getStudentSubjectScore === 'function')
+                            ? (getStudentSubjectScore(st, subj.name, period, subj.code) || 0)
+                            : 0;
+                        recordsXml += '  <record>\r\n' +
+                            '    <Codigo_Personal>' + escapeXml(codPersonal) + '</Codigo_Personal>\r\n' +
+                            '    <Cod_Curso>' + escapeXml(subj.code) + '</Cod_Curso>\r\n' +
+                            '    <Tipo_Cuadro>' + escapeXml(tipoCuadro) + '</Tipo_Cuadro>\r\n' +
+                            '    <Nota>' + Math.round(score) + '</Nota>\r\n' +
+                            '  </record>\r\n';
                         recordCount++;
                     });
                 });
 
-                const fullXml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
-                    '<tablaCargaMasiva>\n' +
+                const fullXml = '<?xml version="1.0" encoding="UTF-8"?>\r\n' +
+                    '<tablaCargaMasiva>\r\n' +
                     recordsXml +
                     '</tablaCargaMasiva>';
 
@@ -2552,59 +2554,32 @@
             studentsToProcess.forEach(st => {
                 if (st.status === 'Retirado' || st.status === 'Inactivo') return;
                 const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim();
-                const gradesMap = st.grades || {};
-                const subjects = Object.keys(gradesMap);
+                if (!codPersonal) return;
 
-                if (subjects.length > 0) {
-                    subjects.forEach((subj, sIdx) => {
-                        const codCurso = getSireCourseCode(subj, sIdx + 1);
-                        const g = gradesMap[subj];
-                        let score = 0;
+                const stGrade = (st.grade || '').toLowerCase();
+                let gKey = '4to';
+                if (stGrade.includes('5to')) gKey = '5to';
+                else if (stGrade.includes('6to')) gKey = '6to';
 
-                        if (Array.isArray(g)) {
-                            if (period === 'B1') score = g[0] || 0;
-                            else if (period === 'B2') score = g[1] || 0;
-                            else if (period === 'B3') score = g[2] || 0;
-                            else if (period === 'B4') score = g[3] || 0;
-                            else {
-                                const valid = g.filter(v => typeof v === 'number' && v > 0);
-                                score = valid.length > 0 ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : 0;
-                            }
-                        } else if (typeof g === 'object' && g !== null) {
-                            if (period === 'B1') score = g.b1 || g['1'] || 0;
-                            else if (period === 'B2') score = g.b2 || g['2'] || 0;
-                            else if (period === 'B3') score = g.b3 || g['3'] || 0;
-                            else if (period === 'B4') score = g.b4 || g['4'] || 0;
-                            else {
-                                const scores = [g.b1 || g['1'], g.b2 || g['2'], g.b3 || g['3'], g.b4 || g['4']].filter(x => typeof x === 'number' && x > 0);
-                                score = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
-                            }
-                        } else if (typeof g === 'number') {
-                            score = g;
-                        }
-
-                        recordsXml += '  <record>\n' +
-                            '    <Codigo_Personal>' + escapeXml(codPersonal) + '</Codigo_Personal>\n' +
-                            '    <Cod_Curso>' + escapeXml(codCurso) + '</Cod_Curso>\n' +
-                            '    <Tipo_Cuadro>' + escapeXml(tipoCuadro) + '</Tipo_Cuadro>\n' +
-                            '    <Nota>' + Math.round(score) + '</Nota>\n' +
-                            '  </record>\n';
+                const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[gKey]) || [];
+                if (gradeSubjects.length > 0) {
+                    gradeSubjects.forEach(subj => {
+                        const score = (typeof getStudentSubjectScore === 'function')
+                            ? (getStudentSubjectScore(st, subj.name, period, subj.code) || 0)
+                            : 0;
+                        recordsXml += '  <record>\r\n' +
+                            '    <Codigo_Personal>' + escapeXml(codPersonal) + '</Codigo_Personal>\r\n' +
+                            '    <Cod_Curso>' + escapeXml(subj.code) + '</Cod_Curso>\r\n' +
+                            '    <Tipo_Cuadro>' + escapeXml(tipoCuadro) + '</Tipo_Cuadro>\r\n' +
+                            '    <Nota>' + Math.round(score) + '</Nota>\r\n' +
+                            '  </record>\r\n';
                         recordCount++;
                     });
-                } else {
-                    const stats = calculateStudentAverages(st, period);
-                    recordsXml += '  <record>\n' +
-                        '    <Codigo_Personal>' + escapeXml(codPersonal) + '</Codigo_Personal>\n' +
-                        '    <Cod_Curso>101</Cod_Curso>\n' +
-                        '    <Tipo_Cuadro>' + escapeXml(tipoCuadro) + '</Tipo_Cuadro>\n' +
-                        '    <Nota>' + Math.round(stats.average) + '</Nota>\n' +
-                        '  </record>\n';
-                    recordCount++;
                 }
             });
 
-            const fullXml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
-                '<tablaCargaMasiva>\n' +
+            const fullXml = '<?xml version="1.0" encoding="UTF-8"?>\r\n' +
+                '<tablaCargaMasiva>\r\n' +
                 recordsXml +
                 '</tablaCargaMasiva>';
 
@@ -2615,27 +2590,8 @@
         }
 
         function exportSireXml() {
-            const period = document.getElementById('filterPeriod').value;
-            const studentsToExport = _filteredStudents.length > 0 ? _filteredStudents : _sireStudents;
-
-            if (!studentsToExport || studentsToExport.length === 0) {
-                alert('No hay estudiantes disponibles para exportar a XML. Verifique que existan registros cargados en la tabla.');
-                return;
-            }
-
-            const { xml, count } = generateSireXmlDataSet(studentsToExport, period);
-
-            const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            alert('✅ Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <data-set>\nTotal de registros exportados: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_F_' + period + '_2026.xml');
+            // Abrir automáticamente el modal oficial de carga masiva por grado
+            openSireMassModal();
         }
 
         function previewSireXml() {
@@ -2859,10 +2815,18 @@
 
             <div style="padding:22px; overflow-y:auto; flex:1; background:#f8fafc;">
                 <!-- Explicación Ministerial -->
-                <div style="background:#e0f2fe; border:1px solid #7dd3fc; border-radius:10px; padding:14px 18px; margin-bottom:20px; display:flex; gap:14px; align-items:flex-start;">
+                <div style="background:#e0f2fe; border:1px solid #7dd3fc; border-radius:10px; padding:14px 18px; margin-bottom:14px; display:flex; gap:14px; align-items:flex-start;">
                     <i class="fa-solid fa-circle-info" style="color:#0284c7; font-size:1.4rem; margin-top:2px; flex-shrink:0;"></i>
                     <div style="font-size:0.85rem; color:#0369a1; line-height:1.5;">
                         <strong>Requerimiento Oficial MINEDUC / SIRE:</strong> El portal ministerial exige que los cuadros de calificaciones se procesen estructurados <strong>por Grado y Sección</strong>, asociando cada nota con el Código de Curso oficial del Currículo Nacional Base (CNB). La ENCCO cuenta con <strong>412 estudiantes</strong> y <strong>112 cátedras oficiales</strong> distribuidas en 12 secciones.
+                    </div>
+                </div>
+
+                <!-- Alerta Técnica Preventiva: Error Root element is missing en SIRE -->
+                <div style="background:#fff7ed; border:1.5px solid #fdba74; border-radius:10px; padding:12px 16px; margin-bottom:18px; display:flex; gap:12px; align-items:flex-start;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color:#ea580c; font-size:1.3rem; margin-top:2px; flex-shrink:0;"></i>
+                    <div style="font-size:0.83rem; color:#9a3412; line-height:1.45;">
+                        <strong>⚠️ Protocolo contra el error ministerial "Root element is missing":</strong> En el portal oficial del SIRE (MINEDUC), seleccione <strong>PRIMERO</strong> todos los campos desplegables (Grado, Sección y Bimestre/Final). Nunca seleccione el archivo XML antes de ajustar los filtros, porque cada selector recarga parcialmente el formulario del SIRE y vacía el archivo adjunto. Asegúrese de cargar en SIRE el XML específico del grado seleccionado (ej. <em>XML 4to</em> si seleccionó 4to).
                     </div>
                 </div>
 
