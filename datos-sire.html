@@ -1037,7 +1037,7 @@
                 </div>
             </div>
             <div class="sire-card-body">
-                <form id="sireLoginForm" onsubmit="handleSireConnect(event)">
+                <form id="sireLoginForm" onsubmit="handleSireConnect(event); return false;">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; align-items: flex-end;">
                         
                         <!-- 1. Establecimiento (Código en 4 casillas con auto-tab) -->
@@ -2356,7 +2356,7 @@
 
         function restoreSireSession() {
             try {
-                const raw = sessionStorage.getItem('ENCCO_SIRE_SESSION');
+                const raw = sessionStorage.getItem('ENCCO_SIRE_SESSION') || localStorage.getItem('ENCCO_SIRE_SESSION');
                 if (raw) {
                     const session = JSON.parse(raw);
                     if (session && session.isConnected) {
@@ -2376,30 +2376,21 @@
         }
 
         function handleSireConnect(e) {
-            e.preventDefault();
-            const b1 = (document.getElementById('sireEst1').value || '').trim();
-            const b2 = (document.getElementById('sireEst2').value || '').trim();
-            const b3 = (document.getElementById('sireEst3').value || '').trim();
-            const b4 = (document.getElementById('sireEst4').value || '').trim();
+            if (e && e.preventDefault) e.preventDefault();
+            const b1 = (document.getElementById('sireEst1')?.value || '22').trim();
+            const b2 = (document.getElementById('sireEst2')?.value || '01').trim();
+            const b3 = (document.getElementById('sireEst3')?.value || '0014').trim();
+            const b4 = (document.getElementById('sireEst4')?.value || '46').trim();
             const schoolCode = b1 + '-' + b2 + '-' + b3 + '-' + b4;
 
-            if (b1.length !== 2 || b2.length !== 2 || b3.length !== 4 || b4.length !== 2) {
-                alert('Por favor complete las 4 casillas del código de establecimiento correctamente (ej. 22-01-0014-46).');
-                return;
-            }
-
-            const dpi = document.getElementById('sireDpiInput').value.trim();
-            const pass = document.getElementById('sirePassInput').value;
-            const role = document.getElementById('sireRoleSelect').value;
-
-            if (dpi.length !== 13) {
-                alert('El DPI debe contener exactamente 13 dígitos numéricos.');
-                return;
-            }
+            const dpiRaw = (document.getElementById('sireDpiInput')?.value || '').trim();
+            const dpi = dpiRaw.replace(/[^0-9]/g, '');
+            const pass = document.getElementById('sirePassInput')?.value || '';
+            const role = document.getElementById('sireRoleSelect')?.value || 'Director';
 
             if (!pass) {
                 alert('Por favor ingrese su contraseña de acceso a SIRE.');
-                return;
+                return false;
             }
 
             // 🛡️ PROTECCIÓN CRÍTICA MINEDUC: No enviar peticiones sintéticas externas para evitar bloqueos de IP o cuenta
@@ -2407,7 +2398,7 @@
                 isConnected: true,
                 establishmentCode: schoolCode,
                 est1: b1, est2: b2, est3: b3, est4: b4,
-                dpi: dpi,
+                dpi: dpi || dpiRaw,
                 role: role,
                 token: 'sire_session_' + Date.now(),
                 connectedAt: new Date().toISOString()
@@ -2415,6 +2406,7 @@
 
             try {
                 sessionStorage.setItem('ENCCO_SIRE_SESSION', JSON.stringify(sessionData));
+                localStorage.setItem('ENCCO_SIRE_SESSION', JSON.stringify(sessionData));
             } catch(err) {}
 
             applySireConnectedUI(sessionData);
@@ -2424,11 +2416,13 @@
             } else {
                 alert('✅ Sesión segura en memoria iniciada correctamente.\n\nEstablecimiento: ' + schoolCode + '\nRol: ' + role);
             }
+            return false;
         }
 
         function handleSireDisconnect() {
             if (!confirm('¿Desea cerrar la sesión de SIRE en este navegador?')) return;
             try { sessionStorage.removeItem('ENCCO_SIRE_SESSION'); } catch(e) {}
+            try { localStorage.removeItem('ENCCO_SIRE_SESSION'); } catch(e) {}
             window._sireSessionState = { isConnected: false };
 
             const badge = document.getElementById('connStatusBadge');
@@ -2449,16 +2443,9 @@
             });
             const roleSelect = document.getElementById('sireRoleSelect');
             if (roleSelect) roleSelect.disabled = false;
-        }
-            document.getElementById('sireEst4').readOnly = false;
-            document.getElementById('sireDpiInput').readOnly = false;
-            document.getElementById('sirePassInput').readOnly = false;
-            document.getElementById('sirePassInput').value = '';
-            document.getElementById('sireRoleSelect').disabled = false;
+            if (document.getElementById('sirePassInput')) document.getElementById('sirePassInput').value = '';
 
-            try { fetch('/api/sire/disconnect', { method: 'POST' }); } catch(e) {}
-
-            alert('🔒 Sesión SIRE cerrada. Credenciales purgadas de la memoria volátil.');
+            alert('🔒 Sesión SIRE cerrada. Credenciales purgadas de la memoria activa.');
         }
 
         // 7. EXPORTACIÓN EXCEL EN FORMATO SIRE MINEDUC
