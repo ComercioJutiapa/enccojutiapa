@@ -39,7 +39,7 @@ async function runTests() {
     
     // 1. Fetch live students from Firebase RTDB
     console.log("1. Descargando nómina en vivo desde Firebase RTDB...");
-    const liveStudents = await fetchJson('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json');
+    const liveStudents = await fetchJson(`https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json?t=${Date.now()}`);
     
     assert(Array.isArray(liveStudents), "students debe ser un Array");
     console.log(`- Total de elementos en array: ${liveStudents.length}`);
