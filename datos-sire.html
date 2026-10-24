@@ -419,8 +419,8 @@
                     });
                 });
 
-                const fullXml = '<?xml version="1.0" encoding="UTF-8"?>\r\n' +
-                    '<tablaCargaMasiva>\r\n' +
+                const fullXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' +
+                    '<tablaCargaMasiva xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\r\n' +
                     recordsXml +
                     '</tablaCargaMasiva>';
 
@@ -482,8 +482,8 @@
                 });
             });
 
-            const fullXml = '<?xml version="1.0" encoding="UTF-8"?>\r\n' +
-                '<tablaCargaMasiva>\r\n' +
+            const fullXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' +
+                '<tablaCargaMasiva xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\r\n' +
                 recordsXml +
                 '</tablaCargaMasiva>';
 
@@ -3176,8 +3176,8 @@
                 }
             });
 
-            const fullXml = '<?xml version="1.0" encoding="UTF-8"?>\r\n' +
-                '<tablaCargaMasiva>\r\n' +
+            const fullXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' +
+                '<tablaCargaMasiva xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\r\n' +
                 recordsXml +
                 '</tablaCargaMasiva>';
 
@@ -3250,6 +3250,85 @@
             textarea.select();
             document.execCommand('copy');
             alert('📋 XML copiado al portapapeles.');
+        }
+
+        // Descarga directa del Esquema XSD Oficial (Esquema Sire.xml)
+        function downloadOfficialSireSchema() {
+            const schemaContent = '<?xml version="1.0" encoding="UTF-8"?>\r\n' +
+'<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">\r\n' +
+'    <xs:element name="tablaCargaMasiva">\r\n' +
+'        <xs:complexType>\r\n' +
+'            <xs:sequence>\r\n' +
+'                <xs:element ref="record" minOccurs="0" maxOccurs="unbounded"/>\r\n' +
+'            </xs:sequence>\r\n' +
+'        </xs:complexType>\r\n' +
+'    </xs:element>\r\n' +
+'    <xs:element name="record">\r\n' +
+'        <xs:complexType>\r\n' +
+'            <xs:sequence>\r\n' +
+'                <xs:element name="Codigo_Personal" type="xs:string"/>\r\n' +
+'                <xs:element name="Cod_Curso" type="xs:string"/>\r\n' +
+'                <xs:element name="Tipo_Cuadro" type="xs:string"/>\r\n' +
+'                <xs:element name="Nota" type="xs:string"/>\r\n' +
+'            </xs:sequence>\r\n' +
+'        </xs:complexType>\r\n' +
+'    </xs:element>\r\n' +
+'</xs:schema>';
+            const blob = new Blob([schemaContent], { type: 'application/xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Esquema Sire.xml';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            if (typeof showToast === 'function') showToast('📥 Esquema Sire.xml (XSD Oficial MINEDUC) descargado.', 'info');
+        }
+
+        // Genera XML con Esquema XSD Embebido (Formato DataSet .NET)
+        function downloadSireXmlWithInlineSchema() {
+            const period = document.getElementById('filterPeriod')?.value || 'FINAL';
+            const studentsToExport = (_filteredStudents && _filteredStudents.length > 0) ? _filteredStudents : getStudentsSafe();
+            const { xml, count } = generateSireXmlDataSet(studentsToExport, period);
+            
+            const inlineSchema = '  <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">\r\n' +
+'    <xs:element name="tablaCargaMasiva">\r\n' +
+'      <xs:complexType>\r\n' +
+'        <xs:sequence>\r\n' +
+'          <xs:element ref="record" minOccurs="0" maxOccurs="unbounded"/>\r\n' +
+'        </xs:sequence>\r\n' +
+'      </xs:complexType>\r\n' +
+'    </xs:element>\r\n' +
+'    <xs:element name="record">\r\n' +
+'      <xs:complexType>\r\n' +
+'        <xs:sequence>\r\n' +
+'          <xs:element name="Codigo_Personal" type="xs:string"/>\r\n' +
+'          <xs:element name="Cod_Curso" type="xs:string"/>\r\n' +
+'          <xs:element name="Tipo_Cuadro" type="xs:string"/>\r\n' +
+'          <xs:element name="Nota" type="xs:string"/>\r\n' +
+'        </xs:sequence>\r\n' +
+'      </xs:complexType>\r\n' +
+'    </xs:element>\r\n' +
+'  </xs:schema>\r\n';
+
+            const recordsOnly = xml.replace(/^[\s\S]*?<tablaCargaMasiva[^>]*>\r?\n?/, '').replace(/<\/tablaCargaMasiva>[\s\S]*$/, '');
+            const fullXmlWithSchema = '<?xml version="1.0" encoding="UTF-8"?>\r\n' +
+'<tablaCargaMasiva xmlns:xs="http://www.w3.org/2001/XMLSchema">\r\n' +
+inlineSchema +
+recordsOnly +
+'</tablaCargaMasiva>';
+
+            const blob = new Blob([fullXmlWithSchema], { type: 'application/xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'SIRE_MINEDUC_Calificaciones_Con_Esquema_Embebido_2026.xml';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            if (typeof showToast === 'function') showToast('📥 XML con Esquema Embebido descargado.', 'success');
         }
 
         function exportSireExcel() {
@@ -3420,13 +3499,21 @@
                 </p>
                 <textarea id="xmlPreviewContent" readonly style="width:100%; height:380px; font-family:'Courier New', monospace; font-size:0.85rem; padding:12px; border-radius:8px; border:1.5px solid #cbd5e1; background:#0f172a; color:#38bdf8; box-sizing:border-box; resize:vertical;"></textarea>
             </div>
-            <div style="padding:14px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
-                <button type="button" class="btn-sire-outline" onclick="copyXmlToClipboard()">
-                    <i class="fa-solid fa-copy"></i> Copiar XML
-                </button>
-                <div style="display:flex; gap:10px;">
-                    <button type="button" class="btn-sire-primary" onclick="exportSireXml(); closeXmlPreviewModal();">
-                        <i class="fa-solid fa-download"></i> Descargar XML (.xml)
+            <div style="padding:14px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button type="button" class="btn-sire-outline" onclick="copyXmlToClipboard()">
+                        <i class="fa-solid fa-copy"></i> Copiar XML
+                    </button>
+                    <button type="button" class="btn-sire-outline" onclick="downloadOfficialSireSchema()" style="color:#0369a1; border-color:#7dd3fc;" title="Descargar el archivo Esquema Sire.xml (XSD) original del MINEDUC para abrir en Excel">
+                        <i class="fa-solid fa-file-code"></i> Esquema Sire.xml (XSD)
+                    </button>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="btn-sire-outline" onclick="downloadSireXmlWithInlineSchema()" style="font-size:0.8rem; padding:8px 12px;" title="Descargar XML con esquema XSD embebido (Formato DataSet .NET)">
+                        <i class="fa-solid fa-file-shield"></i> Con Esquema Embebido
+                    </button>
+                    <button type="button" class="btn-sire-primary" onclick="exportSireXml(); closeXmlPreviewModal();" style="font-size:0.82rem; padding:8px 16px;">
+                        <i class="fa-solid fa-download"></i> Descargar XML Estándar SIRE
                     </button>
                     <button type="button" class="btn-sire-outline" onclick="closeXmlPreviewModal()">Cerrar</button>
                 </div>

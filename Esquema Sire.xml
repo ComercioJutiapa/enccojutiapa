@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="tablaCargaMasiva">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element ref="record" minOccurs="0" maxOccurs="unbounded"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+    <xs:element name="record">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="Codigo_Personal" type="xs:string"/>
+                <xs:element name="Cod_Curso" type="xs:string"/>
+                <xs:element name="Tipo_Cuadro" type="xs:string"/>
+                <xs:element name="Nota" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>
