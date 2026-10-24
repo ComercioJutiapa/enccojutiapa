@@ -37,43 +37,131 @@
         };
         var getFullEstablishmentCode = window.getFullEstablishmentCode;
 
-        window.CANONICAL_PENSUM_BY_GRADE = window.CANONICAL_PENSUM_BY_GRADE || {
+        // Catálogo Canónico Oficial SIRE MINEDUC (Validado con Reporte Oficial de Cursos ENCCO 2201001446)
+        window.CANONICAL_PENSUM_BY_GRADE = {
             '4to': [
-                { name: 'Contabilidad de Sociedades', code: '101' },
-                { name: 'Matemática Comercial', code: '102' },
-                { name: 'Fundamentos de Derecho', code: '103' },
-                { name: 'Inglés Comercial I', code: '104' },
-                { name: 'Redacción y Correspondencia Mercantil', code: '105' },
-                { name: 'Introducción a la Economía', code: '106' },
-                { name: 'Ortografía y Caligrafía', code: '107' },
-                { name: 'Administración y Organización de Oficina', code: '108' },
-                { name: 'Computación I', code: '109' }
+                { name: 'Contabilidad de Sociedades', code: '338' },
+                { name: 'Matemática Comercial', code: '339' },
+                { name: 'Fundamentos de Derecho', code: '340' },
+                { name: 'Inglés Comercial I', code: '341' },
+                { name: 'Redacción y Correspondencia Mercantil', code: '342' },
+                { name: 'Introducción a la Economía', code: '343' },
+                { name: 'Ortografía y Caligrafía', code: '344' },
+                { name: 'Administración y Organización de Oficina', code: '345' },
+                { name: 'Computación I', code: '346' }
             ],
             '5to': [
-                { name: 'Contabilidad de Costos', code: '201' },
-                { name: 'Cálculo Mercantil y Financiero', code: '202' },
-                { name: 'Inglés Comercial II', code: '203' },
-                { name: 'Legislación Fiscal y Aduanal', code: '204' },
-                { name: 'Finanzas Públicas', code: '205' },
-                { name: 'Geografía Económica', code: '206' },
-                { name: 'Catalogación y Archivo', code: '207' },
-                { name: 'Mecanografía', code: '208' },
-                { name: 'Computación II', code: '209' }
+                { name: 'Contabilidad de Costos', code: '347' },
+                { name: 'Cálculo Mercantil y Financiero', code: '348' },
+                { name: 'Inglés Comercial II', code: '349' },
+                { name: 'Legislación Fiscal y Aduanal', code: '366' },
+                { name: 'Finanzas Públicas', code: '367' },
+                { name: 'Geografía Económica', code: '352' },
+                { name: 'Catalogación y Archivo', code: '368' },
+                { name: 'Mecanografía', code: '354' },
+                { name: 'Computación II', code: '355' }
             ],
             '6to': [
-                { name: 'Contabilidad Bancaria', code: '301' },
-                { name: 'Contabilidad Gubernamental Integrada', code: '302' },
-                { name: 'Estadística Comercial', code: '303' },
-                { name: 'Organización de Empresas', code: '304' },
-                { name: 'Ética Profesional y Relaciones Humanas', code: '305' },
-                { name: 'Práctica Supervisada', code: '306' },
-                { name: 'Auditoría', code: '307' },
-                { name: 'Derecho Mercantil y Nociones de Derecho Laboral', code: '308' },
-                { name: 'Computación III', code: '309' },
-                { name: 'Seminario sobre Problemas Socioeconómicos de Guatemala', code: '310' }
+                { name: 'Contabilidad Bancaria', code: '356' },
+                { name: 'Contabilidad Gubernamental Integrada', code: '369' },
+                { name: 'Estadística Comercial', code: '357' },
+                { name: 'Organización de Empresas', code: '359' },
+                { name: 'Ética Profesional y Relaciones Humanas', code: '550' },
+                { name: 'Práctica Supervisada', code: '361' },
+                { name: 'Auditoría', code: '362' },
+                { name: 'Derecho Mercantil y Nociones de Derecho Laboral', code: '363' },
+                { name: 'Computación III', code: '364' },
+                { name: 'Seminario sobre Problemas Socioeconómicos de Guatemala', code: '365' }
             ]
         };
         var CANONICAL_PENSUM_BY_GRADE = window.CANONICAL_PENSUM_BY_GRADE;
+
+        // Catálogo Global Oficial de Códigos Numéricos de Curso SIRE (MINEDUC ENCCO)
+        window.SIRE_COURSE_CODES = {
+            // 4to Perito Contador (338-346)
+            'contabilidad de sociedades': '338',
+            'contabilidad general': '338',
+            'matemática comercial': '339',
+            'matematica comercial': '339',
+            'fundamentos de derecho': '340',
+            'inglés comercial i': '341',
+            'ingles comercial i': '341',
+            'inglés comercial': '341',
+            'ingles comercial': '341',
+            'ingles tecnico': '341',
+            'inglés técnico i': '341',
+            'redacción y correspondencia mercantil': '342',
+            'redaccion y correspondencia mercantil': '342',
+            'redacción y correspondencia': '342',
+            'redaccion y correspondencia': '342',
+            'introducción a la economía': '343',
+            'introduccion a la economia': '343',
+            'ortografía y caligrafía': '344',
+            'ortografia y caligrafia': '344',
+            'caligrafía y ortografía': '344',
+            'caligrafia y ortografia': '344',
+            'administración y organización de oficina': '345',
+            'administracion y organizacion de oficina': '345',
+            'administración y organización de empresas': '345',
+            'administracion y organizacion de empresas': '345',
+            'computación i': '346',
+            'computacion i': '346',
+            'computación': '346',
+            'computacion': '346',
+
+            // 5to Perito Contador (347-368)
+            'contabilidad de costos': '347',
+            'cálculo mercantil y financiero': '348',
+            'calculo mercantil y financiero': '348',
+            'inglés comercial ii': '349',
+            'ingles comercial ii': '349',
+            'geografía económica': '352',
+            'geografia economica': '352',
+            'mecanografía': '354',
+            'mecanografia': '354',
+            'computación ii': '355',
+            'computacion ii': '355',
+            'legislación fiscal y aduanal': '366',
+            'legislacion fiscal y aduanal': '366',
+            'legislación fiscal y aduanera': '366',
+            'legislacion fiscal y aduanera': '366',
+            'legislación fiscal': '366',
+            'legislacion fiscal': '366',
+            'finanzas públicas': '367',
+            'finanzas publicas': '367',
+            'catalogación y archivo': '368',
+            'catalogacion y archivo': '368',
+
+            // 6to Perito Contador (356-365, 550)
+            'contabilidad bancaria': '356',
+            'estadística comercial': '357',
+            'estadistica comercial': '357',
+            'organización de empresas': '359',
+            'organizacion de empresas': '359',
+            'organización de empresas y técnicas de oficina': '359',
+            'organizacion de empresas y tecnicas de oficina': '359',
+            'práctica supervisada': '361',
+            'practica supervisada': '361',
+            'auditoría': '362',
+            'auditoria': '362',
+            'derecho mercantil y nociones de derecho laboral': '363',
+            'derecho mercantil y legislación laboral': '363',
+            'derecho mercantil y legislacion laboral': '363',
+            'derecho mercantil': '363',
+            'computación iii': '364',
+            'computacion iii': '364',
+            'seminario': '365',
+            'seminario sobre problemas socioeconómicos de guatemala': '365',
+            'seminario sobre problemas socioeconomicos de guatemala': '365',
+            'contabilidad gubernamental integrada': '369',
+            'contabilidad gubernamental e integrada': '369',
+            'contabilidad gubernamental': '369',
+            'ética profesional y relaciones humanas': '550',
+            'etica profesional y relaciones humanas': '550',
+            'ética profesional': '550',
+            'etica profesional': '550'
+        };
+        var SIRE_COURSE_CODES = window.SIRE_COURSE_CODES;
 
         window.escapeXml = window.escapeXml || function(unsafe) {
             if (unsafe === null || unsafe === undefined) return '';
@@ -348,6 +436,88 @@
             });
 
             if (typeof showToast === 'function') showToast('✅ Archivos XML Oficiales SIRE por grado generados correctamente.', 'success');
+        }
+
+        // 3b. Exportación XML Oficial SIRE por Sección Individual (<tablaCargaMasiva>)
+        function exportSireXmlBySection(targetGrade = '4to', targetSection = 'A') {
+            const period = document.getElementById('filterPeriod')?.value || 'FINAL';
+            const studentsToProcess = getStudentsSafe();
+
+            if (!studentsToProcess || studentsToProcess.length === 0) {
+                alert('No hay estudiantes disponibles.');
+                return;
+            }
+
+            const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[targetGrade]) || [];
+            const secStudents = studentsToProcess.filter(s => {
+                const sGrade = (s.grade || '').toLowerCase();
+                const sSec = (s.section || '').replace(/secci[oó]n/i, '').trim().toUpperCase();
+                const isRetired = s.status === 'Retirado' || s.status === 'Inactivo';
+                return sGrade.includes(targetGrade) && sSec === targetSection.toUpperCase() && !isRetired;
+            });
+
+            if (secStudents.length === 0) {
+                alert('No se encontraron estudiantes activos en ' + targetGrade + ' Sección ' + targetSection);
+                return;
+            }
+
+            let recordsXml = '';
+            let recordCount = 0;
+            const tipoCuadro = (period === 'FINAL') ? 'F' : (period.startsWith('B') ? period.replace('B', '') : 'F');
+
+            secStudents.forEach(st => {
+                const codPersonal = (st.personalCode || st.codigoPersonal || st.codigo || st.carne || '').toString().trim();
+                if (!codPersonal) return;
+                gradeSubjects.forEach(subj => {
+                    const score = (typeof getStudentSubjectScore === 'function')
+                        ? (getStudentSubjectScore(st, subj.name, period, subj.code) || 0)
+                        : 0;
+                    recordsXml += '  <record>\r\n' +
+                        '    <Codigo_Personal>' + escapeXml(codPersonal) + '</Codigo_Personal>\r\n' +
+                        '    <Cod_Curso>' + escapeXml(subj.code) + '</Cod_Curso>\r\n' +
+                        '    <Tipo_Cuadro>' + escapeXml(tipoCuadro) + '</Tipo_Cuadro>\r\n' +
+                        '    <Nota>' + Math.round(score) + '</Nota>\r\n' +
+                        '  </record>\r\n';
+                    recordCount++;
+                });
+            });
+
+            const fullXml = '<?xml version="1.0" encoding="UTF-8"?>\r\n' +
+                '<tablaCargaMasiva>\r\n' +
+                recordsXml +
+                '</tablaCargaMasiva>';
+
+            const blob = new Blob([fullXml], { type: 'application/xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'SIRE_MINEDUC_Cuadro_' + targetGrade + '_Sec_' + targetSection + '_' + period + '_2026.xml';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            if (typeof showToast === 'function') {
+                showToast('✅ XML SIRE de ' + targetGrade + ' Sección ' + targetSection + ' generado (' + recordCount + ' notas, ' + secStudents.length + ' alumnos).', 'success');
+            }
+        }
+
+        // Descarga masiva de los 12 archivos XML de sección
+        function exportAllSectionsSireXml() {
+            const grades = ['4to', '5to', '6to'];
+            const sections = ['A', 'B', 'C', 'D'];
+            let delay = 0;
+            grades.forEach(g => {
+                sections.forEach(s => {
+                    setTimeout(() => {
+                        exportSireXmlBySection(g, s);
+                    }, delay);
+                    delay += 400;
+                });
+            });
+            if (typeof showToast === 'function') {
+                showToast('🚀 Iniciando descarga de 12 archivos XML por sección para SIRE MINEDUC...', 'info');
+            }
         }
 
         // 4. Exportación Padrón de Matrícula SIRE por Grado
@@ -1707,113 +1877,126 @@
             'ética profesional': 'CNB-EP-303'
         };
 
-        const SIRE_COURSE_CODES = {
-            'contabilidad de sociedades': '101',
-            'contabilidad general': '101',
-            'matemática comercial': '102',
-            'matematica comercial': '102',
-            'fundamentos de derecho': '103',
-            'inglés comercial i': '104',
-            'ingles comercial i': '104',
-            'inglés comercial': '104',
-            'ingles comercial': '104',
-            'ingles tecnico': '104',
-            'inglés técnico i': '104',
-            'redacción y correspondencia mercantil': '105',
-            'redaccion y correspondencia mercantil': '105',
-            'redacción y correspondencia': '105',
-            'redaccion y correspondencia': '105',
-            'introducción a la economía': '106',
-            'introduccion a la economia': '106',
-            'ortografía y caligrafía': '107',
-            'ortografia y caligrafia': '107',
-            'caligrafía y ortografía': '107',
-            'caligrafia y ortografia': '107',
-            'administración y organización de oficina': '108',
-            'administracion y organizacion de oficina': '108',
-            'administración y organización de empresas': '108',
-            'administracion y organizacion de empresas': '108',
-            'computación i': '109',
-            'computacion i': '109',
-            'computación': '109',
-            'computacion': '109',
-            'contabilidad de costos': '201',
-            'cálculo mercantil y financiero': '202',
-            'calculo mercantil y financiero': '202',
-            'inglés comercial ii': '203',
-            'ingles comercial ii': '203',
-            'legislación fiscal y aduanal': '204',
-            'legislacion fiscal y aduanal': '204',
-            'legislación fiscal': '204',
-            'legislacion fiscal': '204',
-            'finanzas públicas': '205',
-            'finanzas publicas': '205',
-            'geografía económica': '206',
-            'geografia economica': '206',
-            'catalogación y archivo': '207',
-            'catalogacion y archivo': '207',
-            'mecanografía': '208',
-            'mecanografia': '208',
-            'computación ii': '209',
-            'computacion ii': '209',
-            'contabilidad bancaria': '301',
-            'contabilidad gubernamental integrada': '302',
-            'contabilidad gubernamental': '302',
-            'estadística comercial': '303',
-            'estadistica comercial': '303',
-            'organización de empresas': '304',
-            'organizacion de empresas': '304',
-            'ética profesional y relaciones humanas': '305',
-            'etica profesional y relaciones humanas': '305',
-            'ética profesional': '305',
-            'etica profesional': '305',
-            'práctica supervisada': '306',
-            'practica supervisada': '306',
-            'auditoría': '307',
-            'auditoria': '307',
-            'derecho mercantil y nociones de derecho laboral': '308',
-            'derecho mercantil': '308',
-            'computación iii': '309',
-            'computacion iii': '309',
-            'seminario': '310',
-            'seminario sobre problemas socioeconómicos de guatemala': '310'
+        var SIRE_COURSE_CODES = window.SIRE_COURSE_CODES = window.SIRE_COURSE_CODES || {
+            // 4to Perito Contador (338-346)
+            'contabilidad de sociedades': '338',
+            'contabilidad general': '338',
+            'matemática comercial': '339',
+            'matematica comercial': '339',
+            'fundamentos de derecho': '340',
+            'inglés comercial i': '341',
+            'ingles comercial i': '341',
+            'inglés comercial': '341',
+            'ingles comercial': '341',
+            'ingles tecnico': '341',
+            'inglés técnico i': '341',
+            'redacción y correspondencia mercantil': '342',
+            'redaccion y correspondencia mercantil': '342',
+            'redacción y correspondencia': '342',
+            'redaccion y correspondencia': '342',
+            'introducción a la economía': '343',
+            'introduccion a la economia': '343',
+            'ortografía y caligrafía': '344',
+            'ortografia y caligrafia': '344',
+            'caligrafía y ortografía': '344',
+            'caligrafia y ortografia': '344',
+            'administración y organización de oficina': '345',
+            'administracion y organizacion de oficina': '345',
+            'administración y organización de empresas': '345',
+            'administracion y organizacion de empresas': '345',
+            'computación i': '346',
+            'computacion i': '346',
+            'computación': '346',
+            'computacion': '346',
+
+            // 5to Perito Contador (347-368)
+            'contabilidad de costos': '347',
+            'cálculo mercantil y financiero': '348',
+            'calculo mercantil y financiero': '348',
+            'inglés comercial ii': '349',
+            'ingles comercial ii': '349',
+            'geografía económica': '352',
+            'geografia economica': '352',
+            'mecanografía': '354',
+            'mecanografia': '354',
+            'computación ii': '355',
+            'computacion ii': '355',
+            'legislación fiscal y aduanal': '366',
+            'legislacion fiscal y aduanal': '366',
+            'legislación fiscal y aduanera': '366',
+            'legislacion fiscal y aduanera': '366',
+            'legislación fiscal': '366',
+            'legislacion fiscal': '366',
+            'finanzas públicas': '367',
+            'finanzas publicas': '367',
+            'catalogación y archivo': '368',
+            'catalogacion y archivo': '368',
+
+            // 6to Perito Contador (356-365, 550)
+            'contabilidad bancaria': '356',
+            'estadística comercial': '357',
+            'estadistica comercial': '357',
+            'organización de empresas': '359',
+            'organizacion de empresas': '359',
+            'organización de empresas y técnicas de oficina': '359',
+            'organizacion de empresas y tecnicas de oficina': '359',
+            'práctica supervisada': '361',
+            'practica supervisada': '361',
+            'auditoría': '362',
+            'auditoria': '362',
+            'derecho mercantil y nociones de derecho laboral': '363',
+            'derecho mercantil y legislación laboral': '363',
+            'derecho mercantil y legislacion laboral': '363',
+            'derecho mercantil': '363',
+            'computación iii': '364',
+            'computacion iii': '364',
+            'seminario': '365',
+            'seminario sobre problemas socioeconómicos de guatemala': '365',
+            'seminario sobre problemas socioeconomicos de guatemala': '365',
+            'contabilidad gubernamental integrada': '369',
+            'contabilidad gubernamental e integrada': '369',
+            'contabilidad gubernamental': '369',
+            'ética profesional y relaciones humanas': '550',
+            'etica profesional y relaciones humanas': '550',
+            'ética profesional': '550',
+            'etica profesional': '550'
         };
 
-        // Pensum canónico oficial ENCCO 2026 por grado (28 Asignaturas CNB)
+        // Pensum canónico oficial ENCCO 2026 por grado (Códigos Oficiales SIRE MINEDUC)
         var CANONICAL_PENSUM_BY_GRADE = window.CANONICAL_PENSUM_BY_GRADE || {
             '4to': [
-                { name: 'Contabilidad de Sociedades', code: '101' },
-                { name: 'Matemática Comercial', code: '102' },
-                { name: 'Fundamentos de Derecho', code: '103' },
-                { name: 'Inglés Comercial I', code: '104' },
-                { name: 'Redacción y Correspondencia Mercantil', code: '105' },
-                { name: 'Introducción a la Economía', code: '106' },
-                { name: 'Ortografía y Caligrafía', code: '107' },
-                { name: 'Administración y Organización de Oficina', code: '108' },
-                { name: 'Computación I', code: '109' }
+                { name: 'Contabilidad de Sociedades', code: '338' },
+                { name: 'Matemática Comercial', code: '339' },
+                { name: 'Fundamentos de Derecho', code: '340' },
+                { name: 'Inglés Comercial I', code: '341' },
+                { name: 'Redacción y Correspondencia Mercantil', code: '342' },
+                { name: 'Introducción a la Economía', code: '343' },
+                { name: 'Ortografía y Caligrafía', code: '344' },
+                { name: 'Administración y Organización de Oficina', code: '345' },
+                { name: 'Computación I', code: '346' }
             ],
             '5to': [
-                { name: 'Contabilidad de Costos', code: '201' },
-                { name: 'Cálculo Mercantil y Financiero', code: '202' },
-                { name: 'Inglés Comercial II', code: '203' },
-                { name: 'Legislación Fiscal y Aduanal', code: '204' },
-                { name: 'Finanzas Públicas', code: '205' },
-                { name: 'Geografía Económica', code: '206' },
-                { name: 'Catalogación y Archivo', code: '207' },
-                { name: 'Mecanografía', code: '208' },
-                { name: 'Computación II', code: '209' }
+                { name: 'Contabilidad de Costos', code: '347' },
+                { name: 'Cálculo Mercantil y Financiero', code: '348' },
+                { name: 'Inglés Comercial II', code: '349' },
+                { name: 'Legislación Fiscal y Aduanal', code: '366' },
+                { name: 'Finanzas Públicas', code: '367' },
+                { name: 'Geografía Económica', code: '352' },
+                { name: 'Catalogación y Archivo', code: '368' },
+                { name: 'Mecanografía', code: '354' },
+                { name: 'Computación II', code: '355' }
             ],
             '6to': [
-                { name: 'Contabilidad Bancaria', code: '301' },
-                { name: 'Contabilidad Gubernamental Integrada', code: '302' },
-                { name: 'Estadística Comercial', code: '303' },
-                { name: 'Organización de Empresas', code: '304' },
-                { name: 'Ética Profesional y Relaciones Humanas', code: '305' },
-                { name: 'Práctica Supervisada', code: '306' },
-                { name: 'Auditoría', code: '307' },
-                { name: 'Derecho Mercantil y Nociones de Derecho Laboral', code: '308' },
-                { name: 'Computación III', code: '309' },
-                { name: 'Seminario sobre Problemas Socioeconómicos de Guatemala', code: '310' }
+                { name: 'Contabilidad Bancaria', code: '356' },
+                { name: 'Contabilidad Gubernamental Integrada', code: '369' },
+                { name: 'Estadística Comercial', code: '357' },
+                { name: 'Organización de Empresas', code: '359' },
+                { name: 'Ética Profesional y Relaciones Humanas', code: '550' },
+                { name: 'Práctica Supervisada', code: '361' },
+                { name: 'Auditoría', code: '362' },
+                { name: 'Derecho Mercantil y Nociones de Derecho Laboral', code: '363' },
+                { name: 'Computación III', code: '364' },
+                { name: 'Seminario sobre Problemas Socioeconómicos de Guatemala', code: '365' }
             ]
         };
 
@@ -1869,7 +2052,18 @@
                 }
             }
 
-            // 3. Catálogo CNB MINEDUC
+            // 3. Catálogo Canónico por Grados ENCCO
+            if (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined') {
+                for (const gList of Object.values(CANONICAL_PENSUM_BY_GRADE)) {
+                    const match = gList.find(s => {
+                        const sNorm = (s.name || '').toLowerCase().trim();
+                        return sNorm === norm || sNorm.includes(norm) || norm.includes(sNorm);
+                    });
+                    if (match && match.code) return String(match.code);
+                }
+            }
+
+            // 4. Catálogo CNB MINEDUC
             if (typeof getOfficialCnbCode === 'function') {
                 const cnb = getOfficialCnbCode(subjName);
                 if (cnb) {
@@ -2574,7 +2768,7 @@
         function generateSireXmlDataSet(studentsList, period) {
             let recordsXml = '';
             let recordCount = 0;
-            const studentsToProcess = (studentsList && studentsList.length > 0) ? studentsList : _sireStudents;
+            const studentsToProcess = (studentsList && studentsList.length > 0) ? studentsList : getStudentsSafe();
             const tipoCuadro = (period === 'FINAL') ? 'F' : (period && period.startsWith('B') ? period.replace('B', '') : 'F');
 
             studentsToProcess.forEach(st => {
@@ -2584,8 +2778,8 @@
 
                 const stGrade = (st.grade || '').toLowerCase();
                 let gKey = '4to';
-                if (stGrade.includes('5to')) gKey = '5to';
-                else if (stGrade.includes('6to')) gKey = '6to';
+                if (stGrade.includes('5') || stGrade.includes('quinto')) gKey = '5to';
+                else if (stGrade.includes('6') || stGrade.includes('sexto')) gKey = '6to';
 
                 const gradeSubjects = (typeof CANONICAL_PENSUM_BY_GRADE !== 'undefined' && CANONICAL_PENSUM_BY_GRADE[gKey]) || [];
                 if (gradeSubjects.length > 0) {
@@ -2617,6 +2811,8 @@
 
         function exportSireXml() {
             const period = document.getElementById('filterPeriod')?.value || 'FINAL';
+            const gradeFilter = document.getElementById('filterGrade')?.value || 'ALL';
+            const sectionFilter = document.getElementById('filterSection')?.value || 'ALL';
             const studentsToExport = (_filteredStudents && _filteredStudents.length > 0) ? _filteredStudents : getStudentsSafe();
 
             if (!studentsToExport || studentsToExport.length === 0) {
@@ -2626,11 +2822,20 @@
 
             const { xml, count } = generateSireXmlDataSet(studentsToExport, period);
 
+            let fileNameSuffix = 'Oficial_ENCCO';
+            if (gradeFilter !== 'ALL') {
+                const gClean = gradeFilter.replace(/[^a-zA-Z0-9]/g, '');
+                fileNameSuffix = gClean;
+            }
+            if (sectionFilter !== 'ALL') {
+                fileNameSuffix += '_Sec_' + sectionFilter;
+            }
+
             const blob = new Blob([xml], { type: 'application/xml;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'SIRE_MINEDUC_Cuadro_Oficial_ENCCO_' + period + '_2026.xml';
+            a.download = 'SIRE_MINEDUC_Cuadro_' + fileNameSuffix + '_' + period + '_2026.xml';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -2639,7 +2844,7 @@
             if (typeof showToast === 'function') {
                 showToast('✅ Archivo XML SIRE generado con éxito (' + count + ' registros).', 'success');
             } else {
-                alert('✅ Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <tablaCargaMasiva>\nTotal de registros: ' + count + '\nArchivo: SIRE_MINEDUC_Cuadro_Oficial_ENCCO_' + period + '_2026.xml');
+                alert('✅ Archivo XML SIRE generado con éxito.\n\nEstructura Oficial: <tablaCargaMasiva>\nTotal de registros: ' + count + '\nArchivo: ' + a.download);
             }
         }
 
@@ -2879,15 +3084,88 @@
                 </div>
 
                 <!-- Alerta Técnica Preventiva: Error Root element is missing en SIRE -->
-                <div style="background:#fff7ed; border:1.5px solid #fdba74; border-radius:10px; padding:12px 16px; margin-bottom:18px; display:flex; gap:12px; align-items:flex-start;">
-                    <i class="fa-solid fa-triangle-exclamation" style="color:#ea580c; font-size:1.3rem; margin-top:2px; flex-shrink:0;"></i>
-                    <div style="font-size:0.83rem; color:#9a3412; line-height:1.45;">
-                        <strong>⚠️ Protocolo contra el error ministerial "Root element is missing":</strong> En el portal oficial del SIRE (MINEDUC), seleccione <strong>PRIMERO</strong> todos los campos desplegables (Grado, Sección y Bimestre/Final). Nunca seleccione el archivo XML antes de ajustar los filtros, porque cada selector recarga parcialmente el formulario del SIRE y vacía el archivo adjunto. Asegúrese de cargar en SIRE el XML específico del grado seleccionado (ej. <em>XML 4to</em> si seleccionó 4to).
+                <div style="background:#fff7ed; border:1.5px solid #fdba74; border-radius:10px; padding:14px 18px; margin-bottom:18px; display:flex; gap:14px; align-items:flex-start;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color:#ea580c; font-size:1.5rem; margin-top:2px; flex-shrink:0;"></i>
+                    <div style="font-size:0.84rem; color:#9a3412; line-height:1.5;">
+                        <strong style="font-size:0.92rem; display:block; margin-bottom:4px;">⚠️ Solución Oficial al error "Root element is missing" de sire.mineduc.gob.gt:</strong>
+                        Este error ocurre en el servidor de MINEDUC cuando el archivo XML se envía vacío (0 bytes), usualmente porque la página del SIRE recarga sus listas desplegables y borra el archivo seleccionado.
+                        <div style="margin-top:6px; background:rgba(255,255,255,0.7); border-radius:6px; padding:8px 12px; border:1px dashed #fdba74; font-size:0.80rem;">
+                            <strong>Procedimiento Obligatorio en SIRE:</strong><br>
+                            1️⃣ Seleccione <strong>PRIMERO</strong> en el SIRE: Grado, Sección y Tipo de Evaluación.<br>
+                            2️⃣ Espere 2 segundos a que el SIRE termine de recargar la pantalla.<br>
+                            3️⃣ Haga clic en <strong>"Examinar" / "Seleccionar archivo"</strong> y elija el XML específico de <strong>ESA sección</strong> (ej. <em>XML 4to Sec. A</em>).<br>
+                            4️⃣ Haga clic de inmediato en <strong>"Cargar Archivo"</strong> sin tocar ningún otro selector.
+                        </div>
                     </div>
                 </div>
 
                 <!-- Grid de Opciones de Descarga -->
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:16px;">
+
+                    <!-- Opción Destacada: XML Oficiales SIRE por Sección (12 Secciones) -->
+                    <div style="background:#fff; border:2px solid #0284c7; border-radius:12px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 3px 10px rgba(2,132,199,0.08); grid-column:1 / -1;">
+                        <div>
+                            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:10px;">
+                                <div style="display:flex; align-items:center; gap:10px;">
+                                    <div style="background:#e0f2fe; color:#0284c7; width:42px; height:42px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.3rem;">
+                                        <i class="fa-solid fa-file-code"></i>
+                                    </div>
+                                    <div>
+                                        <h4 style="margin:0; font-size:1.05rem; font-weight:800; color:#0f172a;">Archivos XML SIRE por Sección (12 Secciones Individuales)</h4>
+                                        <span style="font-size:0.75rem; color:#0284c7; font-weight:700;">Recomendado Oficial MINEDUC • Evita errores de carga por alumno no matriculado</span>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn-sire-primary" onclick="exportAllSectionsSireXml()" style="font-size:0.82rem; padding:8px 16px;">
+                                    <i class="fa-solid fa-download"></i> Descargar las 12 Secciones en XML
+                                </button>
+                            </div>
+                            <p style="font-size:0.82rem; color:#475569; margin:4px 0 12px; line-height:1.4;">
+                                El importador del SIRE procesa las notas <strong>sección por sección</strong>. Haga clic en la sección que tiene actualmente abierta en el portal SIRE:
+                            </p>
+                            <!-- Grid de Botones por Grado y Sección -->
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px;">
+                                <!-- 4to -->
+                                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:12px;">
+                                    <div style="font-size:0.82rem; font-weight:800; color:#0369a1; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+                                        <span>4to Perito Contador</span>
+                                        <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem; font-weight:700;">Cursos 338-346</span>
+                                    </div>
+                                    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px;">
+                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('4to', 'A')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. A (34 al.)</button>
+                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('4to', 'B')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. B (36 al.)</button>
+                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('4to', 'C')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. C (33 al.)</button>
+                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('4to', 'D')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. D (35 al.)</button>
+                                    </div>
+                                </div>
+                                <!-- 5to -->
+                                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:12px;">
+                                    <div style="font-size:0.82rem; font-weight:800; color:#0369a1; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+                                        <span>5to Perito Contador</span>
+                                        <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem; font-weight:700;">Cursos 347-368</span>
+                                    </div>
+                                    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px;">
+                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('5to', 'A')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. A (37 al.)</button>
+                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('5to', 'B')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. B (36 al.)</button>
+                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('5to', 'C')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. C (37 al.)</button>
+                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('5to', 'D')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. D (36 al.)</button>
+                                    </div>
+                                </div>
+                                <!-- 6to -->
+                                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:12px;">
+                                    <div style="font-size:0.82rem; font-weight:800; color:#0369a1; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between;">
+                                        <span>6to Perito Contador</span>
+                                        <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem; font-weight:700;">Cursos 356-365</span>
+                                    </div>
+                                    <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:6px;">
+                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('6to', 'A')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. A (32 al.)</button>
+                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('6to', 'B')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. B (35 al.)</button>
+                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('6to', 'C')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. C (33 al.)</button>
+                                        <button type="button" class="btn-sire-outline" onclick="exportSireXmlBySection('6to', 'D')" style="font-size:0.76rem; padding:6px 4px; justify-content:center;">Sec. D (28 al.)</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
                     <!-- Opción 1: Excel por Grados -->
                     <div style="background:#fff; border:1.5px solid #cbd5e1; border-radius:12px; padding:18px; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 2px 6px rgba(0,0,0,0.03);">

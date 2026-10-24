@@ -18,57 +18,86 @@
 (function(window) {
     'use strict';
 
-    // 1. CATÁLOGO OFICIAL DE CÓDIGOS NUMÉRICOS DE CURSOS MINEDUC
+    // 1. CATÁLOGO OFICIAL DE CÓDIGOS NUMÉRICOS DE CURSOS MINEDUC (ENCCO 22-01-0014-46)
     const SIRE_COURSE_CODES = {
-        "administracion y organizacion de empresas": "351",
-        "administración y organización de empresas": "351",
-        "calculo mercantil y financiero": "352",
-        "cálculo mercantil y financiero": "352",
-        "caligrafia y ortografia": "353",
-        "caligrafía y ortografía": "353",
-        "computacion i": "354",
-        "computación i": "354",
+        // 4to Perito Contador (338-346)
+        "contabilidad de sociedades": "338",
+        "contabilidad general": "338",
+        "matematica comercial": "339",
+        "matemática comercial": "339",
+        "fundamentos de derecho": "340",
+        "ingles comercial i": "341",
+        "inglés comercial i": "341",
+        "redaccion y correspondencia mercantil": "342",
+        "redacción y correspondencia mercantil": "342",
+        "redacción y correspondencia": "342",
+        "redaccion y correspondencia": "342",
+        "introduccion a la economia": "343",
+        "introducción a la economía": "343",
+        "economia": "343",
+        "economía": "343",
+        "ortografia y caligrafia": "344",
+        "ortografía y caligrafía": "344",
+        "caligrafia y ortografia": "344",
+        "caligrafía y ortografía": "344",
+        "administracion y organizacion de oficina": "345",
+        "administración y organización de oficina": "345",
+        "administracion y organizacion de empresas": "345",
+        "administración y organización de empresas": "345",
+        "computacion i": "346",
+        "computación i": "346",
+
+        // 5to Perito Contador (347-368)
+        "contabilidad de costos": "347",
+        "calculo mercantil y financiero": "348",
+        "cálculo mercantil y financiero": "348",
+        "ingles comercial ii": "349",
+        "inglés comercial ii": "349",
+        "geografia economica": "352",
+        "geografía económica": "352",
+        "mecanografia": "354",
+        "mecanografía": "354",
         "computacion ii": "355",
         "computación ii": "355",
-        "computacion iii": "356",
-        "computación iii": "356",
-        "contabilidad bancaria": "361",
-        "contabilidad de costos": "362",
-        "contabilidad de sociedades": "363",
-        "contabilidad gubernamental integrada": "364",
-        "derecho mercantil y legislacion laboral": "365",
-        "derecho mercantil y legislación laboral": "365",
-        "economia": "366",
-        "economía": "366",
+        "legislacion fiscal y aduanal": "366",
+        "legislación fiscal y aduanal": "366",
+        "legislacion fiscal y aduanera": "366",
+        "legislación fiscal y aduanera": "366",
+        "legislacion fiscal": "366",
+        "legislación fiscal": "366",
+        "finanzas publicas": "367",
+        "finanzas públicas": "367",
+        "catalogacion y archivo": "368",
+        "catalogación y archivo": "368",
+
+        // 6to Perito Contador (356-365, 550)
+        "contabilidad bancaria": "356",
         "estadistica comercial": "357",
         "estadística comercial": "357",
-        "etica profesional y relaciones humanas": "367",
-        "ética profesional y relaciones humanas": "367",
-        "finanzas publicas": "368",
-        "finanzas públicas": "368",
-        "fundamentos de derecho": "369",
-        "geografia economica": "370",
-        "geografía económica": "370",
-        "ingles comercial i": "358",
-        "inglés comercial i": "358",
-        "ingles comercial ii": "359",
-        "inglés comercial ii": "359",
-        "ingles comercial iii": "360",
-        "inglés comercial iii": "360",
-        "introduccion a la economia": "366",
-        "introducción a la economía": "366",
-        "legislacion fiscal y aduanal": "371",
-        "legislación fiscal y aduanal": "371",
-        "matematica comercial": "372",
-        "matemática comercial": "372",
-        "organizacion de empresas": "351",
-        "organización de empresas": "351",
-        "practica supervisada": "373",
-        "práctica supervisada": "373",
-        "redaccion y correspondencia mercantil": "374",
-        "redacción y correspondencia mercantil": "374",
-        "seminario sobre problemas socioeconomicos de guatemala": "375",
-        "seminario sobre problemas socioeconómicos de guatemala": "375"
+        "organizacion de empresas": "359",
+        "organización de empresas": "359",
+        "organizacion de empresas y tecnicas de oficina": "359",
+        "organización de empresas y técnicas de oficina": "359",
+        "practica supervisada": "361",
+        "práctica supervisada": "361",
+        "auditoria": "362",
+        "auditoría": "362",
+        "derecho mercantil y nociones de derecho laboral": "363",
+        "derecho mercantil y legislacion laboral": "363",
+        "derecho mercantil y legislación laboral": "363",
+        "derecho mercantil": "363",
+        "computacion iii": "364",
+        "computación iii": "364",
+        "seminario sobre problemas socioeconomicos de guatemala": "365",
+        "seminario sobre problemas socioeconómicos de guatemala": "365",
+        "seminario": "365",
+        "contabilidad gubernamental integrada": "369",
+        "contabilidad gubernamental e integrada": "369",
+        "contabilidad gubernamental": "369",
+        "etica profesional y relaciones humanas": "550",
+        "ética profesional y relaciones humanas": "550",
+        "etica profesional": "550",
+        "ética profesional": "550"
     };
 
     function getSireCourseCode(subjName, defaultIdx = 1) {
@@ -231,10 +260,8 @@
             });
         });
 
-        const headerXml = `<?xml version="1.0" encoding="UTF-8"?>\n` +
-                          `<tablaCargaMasiva>\n` +
-                          `  <!-- ENCCO 1970 - Exportación Oficial SIRE MINEDUC - Generado: ${new Date().toISOString()} -->\n` +
-                          `  <!-- Total de Registros de Calificaciones: ${recordCount} -->\n`;
+        const headerXml = `<?xml version="1.0" encoding="UTF-8"?>\r\n` +
+                          `<tablaCargaMasiva>\r\n`;
         const footerXml = `</tablaCargaMasiva>`;
 
         return headerXml + recordsXml + footerXml;
