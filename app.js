@@ -37221,9 +37221,12 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         return common.length >= 2 && (common.length / minTokens >= 0.50);
     };
 
-    // Parser seguro para celdas numéricas (soporta números, textos con decimales o sufijos como "35 pts" e ignora textos como "APROBADO")
+    // Parser seguro para celdas numéricas (soporta números, objetos de fórmula SheetJS {v: ...}, textos con decimales o sufijos como "35 pts" e ignora textos como "APROBADO")
     const parseNumericScore = (val) => {
         if (val === undefined || val === null || val === '') return null;
+        if (typeof val === 'object' && val !== null && val.v !== undefined) {
+            val = val.v;
+        }
         if (typeof val === 'number') return isNaN(val) ? null : val;
         const str = String(val).trim();
         if (!str || /^[a-zA-Z\u00C0-\u017F\s—\-]+$/.test(str)) return null;
@@ -37313,13 +37316,8 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         ensureStudentGradebookStructure(matched, effectiveSubject);
         const gDetail = matched.gradebookDetails[effectiveSubject][effectiveUnit];
 
-        // 🛡️ RE-SUBIDA SEGURA: Preservar actividades existentes para no perder información al actualizar por segunda vez
-        const existingActs = (Array.isArray(gDetail.activities) && gDetail.activities.length > 0)
-            ? [...gDetail.activities]
-            : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-        while (existingActs.length < 10) existingActs.push(0);
-
-        const newActs = [...existingActs];
+        // 🛡️ RE-SUBIDA CON SOBREESCRITURA TOTAL: Las notas del nuevo archivo sobreescriben los valores previos
+        const newActs = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let hasActValues = false;
 
         actColumns.forEach((act, actIdx) => {
@@ -37333,53 +37331,58 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             }
         });
 
-        // 🛡️ RE-SUBIDA SEGURA: Preservar examen previo si la columna no viene en el archivo o viene vacía en esta fila
-        let examScore = (Number(gDetail.exam) || 0);
+        // Examen: Si existe columna de examen en el archivo, sobreescribe con el valor del archivo
+        let examScore = 0;
         if (colIdxExam !== -1) {
             const parsedExam = parseNumericScore(row[colIdxExam]);
             if (parsedExam !== null) {
                 examScore = Math.max(0, parsedExam);
             }
+        } else {
+            // Solo si el archivo NO incluye columna de examen (ej. Lista de Cotejo de zona pura), mantener examen previo
+            examScore = Number(gDetail.exam) || 0;
         }
 
-        // Cálculo o preservación de Zona
-        let sumZona = newActs.reduce((a, b) => a + (Number(b) || 0), 0);
+        // Zona: Si hay actividades desglosadas, es la suma; si viene columna directa de Zona, sobreescribe
+        let sumZona = hasActValues ? newActs.reduce((a, b) => a + (Number(b) || 0), 0) : 0;
         let finalZona = sumZona;
         if (colIdxZona !== -1) {
             const parsedZona = parseNumericScore(row[colIdxZona]);
             if (parsedZona !== null) {
-                const directColZona = Math.max(0, parsedZona);
-                if (!hasActValues && directColZona > 0) {
-                    finalZona = directColZona;
-                    if (newActs.every(v => v === 0)) {
-                        newActs[0] = finalZona;
-                    }
-                } else if (hasActValues) {
-                    finalZona = sumZona;
+                finalZona = Math.max(0, parsedZona);
+                if (!hasActValues && newActs.every(v => v === 0)) {
+                    newActs[0] = finalZona;
                 }
-            } else if (!hasActValues && gDetail.zona > 0) {
-                finalZona = Number(gDetail.zona) || 0;
             }
         } else if (!hasActValues && gDetail.zona > 0) {
             finalZona = Number(gDetail.zona) || 0;
         }
 
+        // Total Bimestre: Si viene columna directa de Total, verificar coherencia o sobreescribir
         let finalTotal = finalZona + examScore;
         if (colIdxTotal !== -1) {
             const parsedTotal = parseNumericScore(row[colIdxTotal]);
-            if (parsedTotal !== null && parsedTotal > 0 && finalZona === 0 && examScore === 0) {
-                finalTotal = Math.max(0, parsedTotal);
+            if (parsedTotal !== null) {
+                const directTotal = Math.max(0, parsedTotal);
+                if (directTotal > 0 && finalZona === 0 && examScore === 0) {
+                    finalTotal = directTotal;
+                } else if (directTotal > 0 && Math.abs(directTotal - (finalZona + examScore)) > 0) {
+                    finalTotal = directTotal;
+                }
             }
         }
 
+        // Sobreescribir las notas del estudiante con los nuevos valores del archivo
         gDetail.activities = newActs;
         gDetail.zona = finalZona;
         gDetail.exam = examScore;
         gDetail.total = finalTotal;
+
         if (!matched.grades[effectiveSubject]) {
             matched.grades[effectiveSubject] = [0, 0, 0, 0];
         }
         matched.grades[effectiveSubject][effectiveUnit - 1] = finalTotal;
+
         if (!actuallyUpdatedStudents.some(st => st.id === matched.id)) {
             actuallyUpdatedStudents.push(matched);
         }
@@ -37408,9 +37411,12 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     } else if (typeof renderGradebookTable === 'function') {
         renderGradebookTable();
     }
+    if (typeof renderTeacherCourseCards === 'function') {
+        renderTeacherCourseCards();
+    }
 
     const omittedMsg = omittedCount > 0 ? ` (${omittedCount} fila(s) omitida(s) por no coincidir el nombre)` : '';
-    showToast(`¡Notas importadas con éxito (${detectedFormat})! Se actualizaron ${updatedCount} estudiantes en ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}, Bimestre ${effectiveUnit})${omittedMsg}.`, "success");
+    showToast(`¡Notas actualizadas y sobreescritas con éxito (${detectedFormat})! Se sincronizaron ${updatedCount} estudiantes en ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}, Bimestre ${effectiveUnit})${omittedMsg}.`, "success");
 
     // 9. 🛡️ Sincronización atómica en la nube de ÚNICAMENTE los estudiantes procesados en el Excel
     const studentsToSync = (actuallyUpdatedStudents.length > 0) ? actuallyUpdatedStudents : courseStudents;
