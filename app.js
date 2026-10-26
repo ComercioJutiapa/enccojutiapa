@@ -2230,16 +2230,20 @@ const EnccoCloudSync = {
             const nodeEndpoint = `${firebaseUrl}/encc_school_state/${nodeName}.json`;
             const rootNodeEndpoint = `${firebaseUrl}/${nodeName}.json`;
             const timeEndpoint = `${firebaseUrl}/encc_school_state/lastModified.json`;
+            const payloadToPatch = Array.isArray(partialData)
+                ? Object.assign({}, partialData)
+                : partialData;
+            const bodyStr = JSON.stringify(payloadToPatch);
             const [resNode, resTime] = await Promise.all([
                 fetch(nodeEndpoint, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(partialData)
+                    body: bodyStr
                 }),
                 fetch(rootNodeEndpoint, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(partialData)
+                    body: bodyStr
                 }).catch(() => null),
                 fetch(timeEndpoint, {
                     method: 'PUT',
@@ -8887,7 +8891,7 @@ async function initApp() {
     ensureOfficialCycles();
 
     // 5. Guardias de guardado al recargar o cerrar pestaña (SOLO en plataforma.html, NUNCA en login.html ni durante logout)
-    const isPlatformActive = typeof window !== 'undefined' && (window.location.pathname.includes('plataforma.html') || window.location.href.includes('plataforma.html'));
+    const isPlatformActive = typeof window !== 'undefined' && ((window.location?.pathname && window.location.pathname.includes('plataforma.html')) || (window.location?.href && window.location.href.includes('plataforma.html')));
     if (isPlatformActive) {
         window.addEventListener('beforeunload', () => {
             if (!window._isLoggingOut && typeof saveStateToLocalStorage === 'function') {
@@ -8954,13 +8958,17 @@ async function initApp() {
     }
 
     // 6. Si estamos en plataforma.html, verificar sesión
-    if (window.location.pathname.includes('plataforma.html') || window.location.href.includes('plataforma.html')) {
+    if ((window.location?.pathname && window.location.pathname.includes('plataforma.html')) || (window.location?.href && window.location.href.includes('plataforma.html'))) {
         const authUserStr = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
         const authRoleStr = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
         
         if (!authUserStr) {
-            const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
-            window.location.replace(baseUrl + '/index.html');
+            const baseUrl = (window.location?.origin || '') + (window.location?.pathname || '').replace(/\/[^\/]*$/, '');
+            if (typeof window.location?.replace === 'function') {
+                window.location.replace(baseUrl + '/index.html');
+            } else if (window.location) {
+                window.location.href = baseUrl + '/index.html';
+            }
             return;
         }
         try {
@@ -27274,11 +27282,35 @@ function loadTeacherGradebook() {
                 `;
             }
 
+            // Sincronizar en memoria la nota y total del bimestre actual en grades[] y uData
+            if (!s.grades[subjectName]) s.grades[subjectName] = [0, 0, 0, 0];
+            if (!isInactive && !isExon) {
+                s.grades[subjectName][currentUnit - 1] = total;
+                uData.total = total;
+                uData.zona = zonaSum;
+            }
+
             // Calcular acumulado
-            const gList = s.grades[subjectName] || [0, 0, 0, 0];
-            const activeGrades = gList.slice(0, currentUnit);
-            const sumGrades = activeGrades.reduce((a, b) => a + (parseInt(b) || 0), 0);
-            const acumulado = isInactive ? '—' : (sumGrades / currentUnit).toFixed(2);
+            const isSpecialGradSubj = (typeof isMateriaEspecialGraduacion === 'function') ? isMateriaEspecialGraduacion(subjectName) : false;
+            let acumulado = '—';
+            if (isInactive) {
+                acumulado = '—';
+            } else if (isSpecialGradSubj) {
+                acumulado = total > 0 ? String(total) : '—';
+            } else {
+                const gList = s.grades[subjectName] || [0, 0, 0, 0];
+                let validUnits = 0;
+                let sumGrades = 0;
+                for (let u = 1; u <= currentUnit; u++) {
+                    const isEx = (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, u);
+                    if (!isEx) {
+                        const val = parseInt(gList[u - 1]) || 0;
+                        sumGrades += val;
+                        validUnits++;
+                    }
+                }
+                acumulado = validUnits > 0 ? (sumGrades / validUnits).toFixed(2) : '—';
+            }
 
             // Zona bloqueada con suma automática de actividades e icono de bloqueo
             const lockedZonaInput = isInactive ? 
@@ -36437,13 +36469,30 @@ async function handleGradebookExcelImport(e) {
                 // Buscar la hoja más adecuada con datos de calificaciones
                 let chosenSheet = null;
                 let chosenRawRows = [];
+                // 1. Priorizar la hoja cuyo nombre mencione el bimestre activo
                 for (const sName of workbook.SheetNames) {
-                    const sheet = workbook.Sheets[sName];
-                    const rows = xlsxLib.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-                    if (rows && rows.length > 5) {
-                        chosenSheet = sName;
-                        chosenRawRows = rows;
-                        break;
+                    const sNorm = sName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    const isBimMatch = sNorm.includes(`b${currentUnit}`) || sNorm.includes(`bimestre ${currentUnit}`) || sNorm.includes(`bimestre${currentUnit}`) || sNorm.includes(`${currentUnit}o bimestre`) || sNorm.includes(`unidad ${currentUnit}`);
+                    if (isBimMatch) {
+                        const sheet = workbook.Sheets[sName];
+                        const rows = xlsxLib.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                        if (rows && rows.length > 5) {
+                            chosenSheet = sName;
+                            chosenRawRows = rows;
+                            break;
+                        }
+                    }
+                }
+                // 2. Si no hubo coincidencia por nombre de hoja, buscar la primera hoja con filas de datos
+                if (!chosenRawRows || chosenRawRows.length === 0) {
+                    for (const sName of workbook.SheetNames) {
+                        const sheet = workbook.Sheets[sName];
+                        const rows = xlsxLib.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                        if (rows && rows.length > 5) {
+                            chosenSheet = sName;
+                            chosenRawRows = rows;
+                            break;
+                        }
                     }
                 }
                 if (!chosenRawRows || chosenRawRows.length === 0) {
@@ -37017,7 +37066,11 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         const h = getColHeader(c);
         if (!h) continue;
         if (h.includes('resultado') || h.includes('logro') || h.includes('observacion') || h.includes('estado')) continue;
-        if ((h.includes('total') && !h.includes('zona')) || h.includes('notafinal') || h.includes('promediobimestre') || h.includes('punteofinal') || h.includes('totalbimestre')) {
+        if ((h.includes('total') && !h.includes('zona') && !h.includes('examen') && !h.includes('evalua')) || 
+            h.includes('notafinal') || h.includes('promediobimestre') || h.includes('punteofinal') || 
+            h.includes('totalbimestre') || h.includes('totalbimestral') || h === 'nota' || h.startsWith('nota') || 
+            h === 'punteo' || h.startsWith('punteo') || h.includes('calificacion') || h.includes('total100') || 
+            h.includes('100pts') || h.includes('100p') || h.includes('100puntos')) {
             colIdxTotal = c;
             break;
         }
@@ -37029,7 +37082,11 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         const h = getColHeader(c);
         if (!h) continue;
         if (h.includes('resultado') || h.includes('logro') || h.includes('observacion')) continue;
-        if (h.includes('examen') || h.includes('prueba') || h.includes('evaluacion') || h.includes('evalua') || h.includes('eval') || h.includes('bimestral') || h.includes('exam')) {
+        if (h.includes('examen') || h.includes('prueba') || h.includes('evaluacion') || h.includes('evalua') || 
+            h.includes('eval') || h.includes('bimestral') || h.includes('exam') || h.includes('60pts') || 
+            h.includes('60p') || h.includes('60puntos') || h.endsWith('60') || h === 'ev' || h.startsWith('ev') || 
+            h === 'ex' || h.startsWith('ex') || h.includes('test') || h.includes('notadeexamen') || 
+            h.includes('punteodeexamen') || h.includes('notaexamen') || h.includes('totalevaluacion') || h.includes('totalexamen')) {
             colIdxExam = c;
             break;
         }
@@ -37039,7 +37096,9 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         for (let c = maxCols - 1; c >= 0; c--) {
             if (c === colIdxTotal) continue;
             const h = getColHeader(c);
-            if (h && (h.includes('examen') || h.includes('prueba') || h.includes('evalua') || h.includes('exam'))) {
+            if (h && (h.includes('examen') || h.includes('prueba') || h.includes('evaluacion') || h.includes('evalua') || 
+                h.includes('eval') || h.includes('exam') || h.includes('60pts') || h.includes('60p') || 
+                h.includes('60puntos') || h === 'ev' || h.startsWith('ev') || h === 'ex' || h.startsWith('ex'))) {
                 colIdxExam = c;
                 break;
             }
@@ -37052,7 +37111,8 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         const h = getColHeader(c);
         if (!h) continue;
         if (h.includes('resultado') || h.includes('logro') || h.includes('observacion')) continue;
-        if (h.includes('zona') || h.includes('acumulado') || h.includes('totalzona') || h.includes('zonatotal')) {
+        if (h.includes('zona') || h.includes('acumulado') || h.includes('totalzona') || h.includes('zonatotal') || 
+            h.includes('zonabimestral') || h.includes('40pts') || h.includes('40p') || h.includes('40puntos')) {
             colIdxZona = c;
             break;
         }
@@ -37062,7 +37122,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         for (let c = maxCols - 1; c >= 0; c--) {
             if (c === colIdxTotal || c === colIdxExam) continue;
             const h = getColHeader(c);
-            if (h && (h.includes('zona') || h.includes('acumulado'))) {
+            if (h && (h.includes('zona') || h.includes('acumulado') || h.includes('40pts') || h.includes('40p'))) {
                 colIdxZona = c;
                 break;
             }
@@ -37240,11 +37300,17 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         return common.length >= 2 && (common.length / minTokens >= 0.50);
     };
 
-    // Parser seguro para celdas numéricas (soporta números, objetos de fórmula SheetJS {v: ...}, textos con decimales o sufijos como "35 pts" e ignora textos como "APROBADO")
+    // Parser seguro para celdas numéricas (soporta números, objetos de fórmula SheetJS {v, w, f}, textos con decimales o sufijos como "35 pts" e ignora textos como "APROBADO")
     const parseNumericScore = (val) => {
         if (val === undefined || val === null || val === '') return null;
-        if (typeof val === 'object' && val !== null && val.v !== undefined) {
-            val = val.v;
+        if (typeof val === 'object' && val !== null) {
+            if (val.v !== undefined && val.v !== null && val.v !== '') {
+                val = val.v;
+            } else if (val.w !== undefined && val.w !== null && val.w !== '') {
+                val = val.w;
+            } else if (val.f !== undefined && val.f !== null) {
+                val = val.f;
+            }
         }
         if (typeof val === 'number') return isNaN(val) ? null : val;
         let str = String(val).trim();
@@ -37356,70 +37422,85 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             });
         }
 
-        // Zona: Si hay actividades desglosadas, es la suma; si viene columna directa de Zona, sobreescribe
+        // Zona: Si hay actividades desglosadas, es la suma; si viene columna directa de Zona con valor > 0, sobreescribe
         let sumZona = hasActValues ? newActs.reduce((a, b) => a + (Number(b) || 0), 0) : 0;
         let finalZona = sumZona;
         if (colIdxZona !== -1) {
             const parsedZona = parseNumericScore(row[colIdxZona]);
-            if (parsedZona !== null) {
+            if (parsedZona !== null && parsedZona > 0) {
                 finalZona = Math.max(0, parsedZona);
                 if (!hasActValues) {
                     newActs[0] = finalZona;
                     sumZona = finalZona;
                 }
-            } else if (!hasActValues) {
+            } else if (parsedZona !== null && !hasActValues) {
                 finalZona = 0;
                 newActs[0] = 0;
+            } else if (!hasActValues) {
+                finalZona = 0;
             }
         } else if (!hasActValues) {
             finalZona = 0;
         }
 
-        // 🎯 GESTIÓN AUTORITATIVA DEL EXAMEN: Sobreescribe con el nuevo examen del archivo o preserva el existente (nunca borra a 0)
-        let examScore = Number(gDetail.exam) || 0;
+        // 🎯 GESTIÓN AUTORITATIVA DEL EXAMEN Y TOTAL CON SOBREESCRITURA TOTAL
+        let examScore = 0;
         let examExplicitlyInFile = false;
+        let directExamVal = null;
 
         if (colIdxExam !== -1) {
             const parsedExam = parseNumericScore(row[colIdxExam]);
             if (parsedExam !== null) {
-                // Sobreescribir autoritativamente con el nuevo examen del archivo (incluso 0 si el docente ingresó 0)
-                examScore = Math.max(0, parsedExam);
+                directExamVal = Math.max(0, parsedExam);
                 examExplicitlyInFile = true;
             }
-            // Si la celda en el archivo está vacía, se preserva el examen previo de gDetail.exam para evitar borrarlo
         }
 
-        // Total Bimestre: Si viene columna directa de Total, sincronizar coherentemente
-        let finalTotal = finalZona + examScore;
+        let directTotal = null;
         if (colIdxTotal !== -1) {
             const parsedTotal = parseNumericScore(row[colIdxTotal]);
-            if (parsedTotal !== null) {
-                const directTotal = Math.max(0, parsedTotal);
-                if (!hasActValues && colIdxZona === -1 && colIdxExam === -1) {
-                    // El archivo sólo traía columna de Total (sin desglose)
-                    const maxZ = (targetPensum?.gradingConfig?.[`b${effectiveUnit}`]?.zonaMax) || 40;
-                    finalZona = Math.min(maxZ, directTotal);
-                    examScore = Math.max(0, directTotal - finalZona);
-                    newActs[0] = finalZona;
-                    finalTotal = directTotal;
-                } else if (!examExplicitlyInFile && colIdxExam === -1 && directTotal > finalZona) {
-                    // El archivo trae Zona y Total pero no columna de examen -> El examen es la diferencia
-                    examScore = Math.max(0, directTotal - finalZona);
-                    finalTotal = directTotal;
-                } else if (Math.abs(directTotal - (finalZona + examScore)) > 0) {
-                    if (examExplicitlyInFile) {
-                        // Si el examen venía explícito en el archivo, se respeta el examen y el total es la suma
-                        finalTotal = finalZona + examScore;
-                    } else if (directTotal >= finalZona) {
-                        examScore = Math.max(0, directTotal - finalZona);
-                        finalTotal = directTotal;
-                    } else {
-                        finalTotal = directTotal;
-                    }
-                } else {
-                    finalTotal = directTotal;
-                }
+            if (parsedTotal !== null && parsedTotal > 0) {
+                directTotal = parsedTotal;
             }
+        }
+
+        let finalTotal = finalZona;
+
+        // Resolución armónica e inteligente de calificaciones:
+        if (directTotal !== null && directTotal > 0) {
+            // El archivo contiene una columna de Total con nota > 0
+            if (directExamVal !== null && directExamVal > 0) {
+                // Ambos (Examen y Total) vienen con valores mayores a 0
+                examScore = directExamVal;
+                finalTotal = Math.max(directTotal, finalZona + examScore);
+            } else if (directTotal >= finalZona) {
+                // El total es mayor o igual a la zona (ej. Total 75 u 80, Zona 40)
+                // Aunque Examen en el archivo venga en 0 o vacío, el examen real es Total - Zona
+                examScore = Math.max(0, directTotal - finalZona);
+                finalTotal = directTotal;
+            } else {
+                finalTotal = directTotal;
+                examScore = (directExamVal !== null) ? directExamVal : 0;
+            }
+        } else if (directExamVal !== null) {
+            // No hay columna de Total (o Total es 0/vacío), pero sí hay valor de Examen
+            examScore = directExamVal;
+            finalTotal = finalZona + examScore;
+        } else if (actColumns.length > 0 && colIdxZona === -1 && colIdxTotal === -1 && colIdxExam === -1) {
+            // Archivo de actividades puras (Lista de Cotejo sin examen ni total): preservar examen previo
+            examScore = Number(gDetail.exam) || 0;
+            finalTotal = finalZona + examScore;
+        } else {
+            // Respaldo seguro: mantener examen previo si existía y no hay conflicto
+            examScore = Number(gDetail.exam) || 0;
+            finalTotal = finalZona + examScore;
+        }
+
+        // 🛡️ REGLA MATEMÁTICA INSTITUCIONAL ENCCO: Total = Zona + Examen
+        if (finalTotal > finalZona && examScore === 0) {
+            examScore = finalTotal - finalZona;
+        } else if (finalTotal < finalZona) {
+            finalTotal = finalZona + examScore;
         }
 
         // Sobreescribir las notas del estudiante con los nuevos valores del archivo
@@ -37492,7 +37573,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     }
 
     const omittedMsg = omittedCount > 0 ? ` (${omittedCount} fila(s) omitida(s) por no coincidir el nombre)` : '';
-    showToast(`¡Notas actualizadas y sobreescritas con éxito (${detectedFormat})! Se sincronizaron ${updatedCount} estudiantes en ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}, Bimestre ${effectiveUnit})${omittedMsg}.`, "success");
+    showToast(`¡Notas importadas con éxito (${detectedFormat})! Se sincronizaron ${updatedCount} estudiantes en ${effectiveSubject} (${targetPensum.grade} ${targetPensum.section}, Bimestre ${effectiveUnit})${omittedMsg}.`, "success");
 
     // 9. 🛡️ Sincronización atómica en la nube de ÚNICAMENTE los estudiantes procesados en el Excel
     const studentsToSync = (actuallyUpdatedStudents.length > 0) ? actuallyUpdatedStudents : courseStudents;

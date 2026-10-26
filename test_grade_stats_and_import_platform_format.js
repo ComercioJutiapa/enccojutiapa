@@ -213,7 +213,8 @@ async function runTests() {
         ]
     ];
 
-    await processGradebookImportRows(rowsFormat2, STATE.pensum[3], 1, 'Cuadro_Calificaciones_5A.xlsx');
+    elements['gradebookBimestreSelect'] = { value: '2' };
+    await processGradebookImportRows(rowsFormat2, STATE.pensum[3], 2, 'Cuadro_Calificaciones_5A.xlsx');
 
     const det5B2 = stu5.gradebookDetails['Contabilidad de Costos'][2];
     assert.strictEqual(det5B2.zona, 36, 'Zona importada en Formato 2 (2º Bimestre autodetectado) debe ser 36');
