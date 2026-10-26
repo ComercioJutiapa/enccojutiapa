@@ -26243,6 +26243,16 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
                     body: JSON.stringify(multiPathPayload)
                 }).catch(() => {})
             ]);
+
+            // Respaldo de sincronización individual directa por estudiante en RTDB
+            if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.patchNode) {
+                for (const item of gradeRecords) {
+                    if (item.rtdbIdx !== -1) {
+                        EnccoCloudSync.patchNode(`students/${item.rtdbIdx}/gradebookDetails/${effectiveSubject}/${effectiveUnit}`, item.student.gradebookDetails[effectiveSubject][effectiveUnit]).catch(() => {});
+                        EnccoCloudSync.patchNode(`students/${item.rtdbIdx}/grades/${effectiveSubject}`, item.student.grades[effectiveSubject]).catch(() => {});
+                    }
+                }
+            }
         } catch(re) {
             console.warn("Aviso al persistir calificaciones en batch en RTDB:", re);
         }
@@ -37252,7 +37262,10 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
 
         // 1. Por No. de lista SIRE / Clave CON verificación de coincidencia de identidad
         if (claveVal !== null && claveVal !== undefined && claveVal !== '') {
-            const byClave = courseStudents.find(s => Number(s.no !== undefined ? s.no : s.clave) === Number(claveVal));
+            let byClave = courseStudents.find(s => Number(s.no !== undefined ? s.no : s.clave) === Number(claveVal));
+            if (!byClave && Number(claveVal) >= 1 && Number(claveVal) <= courseStudents.length) {
+                byClave = courseStudents[Number(claveVal) - 1];
+            }
             if (byClave) {
                 const fullTarget = `${byClave.lastName || ''} ${byClave.firstName || ''} ${byClave.name || ''}`;
                 const tRow = normalizeTokens(nameVal);
@@ -37300,10 +37313,14 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         ensureStudentGradebookStructure(matched, effectiveSubject);
         const gDetail = matched.gradebookDetails[effectiveSubject][effectiveUnit];
 
-        // Extracción de actividades (B.2)
-        let sumZona = 0;
+        // 🛡️ RE-SUBIDA SEGURA: Preservar actividades existentes para no perder información al actualizar por segunda vez
+        const existingActs = (Array.isArray(gDetail.activities) && gDetail.activities.length > 0)
+            ? [...gDetail.activities]
+            : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        while (existingActs.length < 10) existingActs.push(0);
+
+        const newActs = [...existingActs];
         let hasActValues = false;
-        const newActs = [0,0,0,0,0,0,0,0,0,0];
 
         actColumns.forEach((act, actIdx) => {
             if (actIdx < 10 && act.colIdx !== -1) {
@@ -37311,14 +37328,13 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
                 if (parsedScore !== null) {
                     const score = Math.max(0, parsedScore);
                     newActs[actIdx] = score;
-                    sumZona += score;
-                    if (score > 0) hasActValues = true;
+                    hasActValues = true;
                 }
             }
         });
 
-        // Si el formato tiene columna de Examen, leerla; si es Lista de Cotejo (sin columna de Examen), preservar el examen existente
-        let examScore = (colIdxExam === -1) ? (Number(gDetail.exam) || 0) : 0;
+        // 🛡️ RE-SUBIDA SEGURA: Preservar examen previo si la columna no viene en el archivo o viene vacía en esta fila
+        let examScore = (Number(gDetail.exam) || 0);
         if (colIdxExam !== -1) {
             const parsedExam = parseNumericScore(row[colIdxExam]);
             if (parsedExam !== null) {
@@ -37326,6 +37342,8 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             }
         }
 
+        // Cálculo o preservación de Zona
+        let sumZona = newActs.reduce((a, b) => a + (Number(b) || 0), 0);
         let finalZona = sumZona;
         if (colIdxZona !== -1) {
             const parsedZona = parseNumericScore(row[colIdxZona]);
@@ -37339,7 +37357,11 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
                 } else if (hasActValues) {
                     finalZona = sumZona;
                 }
+            } else if (!hasActValues && gDetail.zona > 0) {
+                finalZona = Number(gDetail.zona) || 0;
             }
+        } else if (!hasActValues && gDetail.zona > 0) {
+            finalZona = Number(gDetail.zona) || 0;
         }
 
         let finalTotal = finalZona + examScore;
@@ -37354,6 +37376,9 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         gDetail.zona = finalZona;
         gDetail.exam = examScore;
         gDetail.total = finalTotal;
+        if (!matched.grades[effectiveSubject]) {
+            matched.grades[effectiveSubject] = [0, 0, 0, 0];
+        }
         matched.grades[effectiveSubject][effectiveUnit - 1] = finalTotal;
         if (!actuallyUpdatedStudents.some(st => st.id === matched.id)) {
             actuallyUpdatedStudents.push(matched);
@@ -37409,6 +37434,16 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             }
         }
     }
+
+    // 10. Actualizar cachés locales de sesión y disparar sincronización instantánea
+    try {
+        if (typeof sessionStorage !== 'undefined' && STATE && Array.isArray(STATE.students)) {
+            sessionStorage.setItem('ENCCO_SIRE_STUDENTS_CACHE', JSON.stringify(STATE.students));
+        }
+        if (typeof triggerInstantCloudPush === 'function') {
+            triggerInstantCloudPush();
+        }
+    } catch(e) {}
 }
 
 
