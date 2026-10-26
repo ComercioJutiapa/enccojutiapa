@@ -37004,36 +37004,54 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     }
 
     const hdrRow = (rawRows[headerRowIdx] || []).map(c => String(c !== undefined && c !== null ? c : '').trim());
+    const maxCols = Math.max(hdrRow.length, actsRow ? actsRow.length : 0);
+    const getColHeader = (c) => {
+        const h1 = hdrRow[c] !== undefined ? cleanStr(hdrRow[c]) : '';
+        const h2 = (actsRow && actsRow[c] !== undefined) ? cleanStr(actsRow[c]) : '';
+        return (h1 + ' ' + h2).trim();
+    };
 
     // A. Identificar columnas de resumen buscando de DERECHA a IZQUIERDA (evita falsos positivos en actividades a la izquierda)
     // 1. Total Final / Total Bimestre (NUNCA confundir con 'Resultado', 'Nivel de Logro' u 'Observaciones')
-    for (let c = hdrRow.length - 1; c >= 0; c--) {
-        const h = cleanStr(hdrRow[c]);
+    for (let c = maxCols - 1; c >= 0; c--) {
+        const h = getColHeader(c);
         if (!h) continue;
         if (h.includes('resultado') || h.includes('logro') || h.includes('observacion') || h.includes('estado')) continue;
-        if ((h.includes('total') && !h.includes('zona')) || h.includes('notafinal') || h.includes('promediobimestre')) {
+        if ((h.includes('total') && !h.includes('zona')) || h.includes('notafinal') || h.includes('promediobimestre') || h.includes('punteofinal') || h.includes('totalbimestre')) {
             colIdxTotal = c;
             break;
         }
     }
 
     // 2. Examen / Evaluación / Prueba Bimestral
-    const examSearchLimit = (colIdxTotal !== -1) ? colIdxTotal - 1 : hdrRow.length - 1;
+    const examSearchLimit = (colIdxTotal !== -1) ? colIdxTotal - 1 : maxCols - 1;
     for (let c = examSearchLimit; c >= 0; c--) {
-        const h = cleanStr(hdrRow[c]);
+        const h = getColHeader(c);
         if (!h) continue;
         if (h.includes('resultado') || h.includes('logro') || h.includes('observacion')) continue;
-        if (h.includes('examen') || h.includes('prueba') || h.includes('evaluacion') || h.includes('eval') || h.includes('bimestral')) {
+        if (h.includes('examen') || h.includes('prueba') || h.includes('evaluacion') || h.includes('evalua') || h.includes('eval') || h.includes('bimestral') || h.includes('exam')) {
             colIdxExam = c;
             break;
         }
     }
+    // Búsqueda de respaldo para Examen si no se halló a la izquierda de Total
+    if (colIdxExam === -1) {
+        for (let c = maxCols - 1; c >= 0; c--) {
+            if (c === colIdxTotal) continue;
+            const h = getColHeader(c);
+            if (h && (h.includes('examen') || h.includes('prueba') || h.includes('evalua') || h.includes('exam'))) {
+                colIdxExam = c;
+                break;
+            }
+        }
+    }
 
     // 3. Zona / Acumulado / Total Zona
-    const zonaSearchLimit = (colIdxExam !== -1) ? colIdxExam - 1 : ((colIdxTotal !== -1) ? colIdxTotal - 1 : hdrRow.length - 1);
+    const zonaSearchLimit = (colIdxExam !== -1) ? colIdxExam - 1 : ((colIdxTotal !== -1) ? colIdxTotal - 1 : maxCols - 1);
     for (let c = zonaSearchLimit; c >= 0; c--) {
-        const h = cleanStr(hdrRow[c]);
+        const h = getColHeader(c);
         if (!h) continue;
+        if (h.includes('resultado') || h.includes('logro') || h.includes('observacion')) continue;
         if (h.includes('zona') || h.includes('acumulado') || h.includes('totalzona') || h.includes('zonatotal')) {
             colIdxZona = c;
             break;
@@ -37041,9 +37059,10 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
     }
     // Búsqueda de respaldo para Zona si no se halló a la izquierda de Examen
     if (colIdxZona === -1) {
-        for (let c = hdrRow.length - 1; c >= 0; c--) {
-            const h = cleanStr(hdrRow[c]);
-            if (h && (h.includes('zona') || h.includes('acumulado')) && c !== colIdxTotal && c !== colIdxExam) {
+        for (let c = maxCols - 1; c >= 0; c--) {
+            if (c === colIdxTotal || c === colIdxExam) continue;
+            const h = getColHeader(c);
+            if (h && (h.includes('zona') || h.includes('acumulado'))) {
                 colIdxZona = c;
                 break;
             }
@@ -37228,8 +37247,11 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             val = val.v;
         }
         if (typeof val === 'number') return isNaN(val) ? null : val;
-        const str = String(val).trim();
+        let str = String(val).trim();
         if (!str || /^[a-zA-Z\u00C0-\u017F\s—\-]+$/.test(str)) return null;
+        if (str.includes('/')) {
+            str = str.split('/')[0].trim();
+        }
         const cleaned = str.replace(/,/g, '.').replace(/[^0-9.\-]/g, '');
         if (!cleaned) return null;
         const num = Number(cleaned);
@@ -37353,35 +37375,47 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             finalZona = 0;
         }
 
-        // Examen: Si existe columna de examen en el archivo, sobreescribe con el valor del archivo
-        let examScore = 0;
+        // 🎯 GESTIÓN AUTORITATIVA DEL EXAMEN: Sobreescribe con el nuevo examen del archivo o preserva el existente (nunca borra a 0)
+        let examScore = Number(gDetail.exam) || 0;
+        let examExplicitlyInFile = false;
+
         if (colIdxExam !== -1) {
             const parsedExam = parseNumericScore(row[colIdxExam]);
-            examScore = (parsedExam !== null) ? Math.max(0, parsedExam) : 0;
-        } else if (actColumns.length > 0 && colIdxZona === -1 && colIdxTotal === -1) {
-            // Solo si el archivo es estrictamente una Lista de Cotejo de actividades puras (sin examen ni total), conservar examen previo
-            examScore = Number(gDetail.exam) || 0;
-        } else {
-            examScore = 0;
+            if (parsedExam !== null) {
+                // Sobreescribir autoritativamente con el nuevo examen del archivo (incluso 0 si el docente ingresó 0)
+                examScore = Math.max(0, parsedExam);
+                examExplicitlyInFile = true;
+            }
+            // Si la celda en el archivo está vacía, se preserva el examen previo de gDetail.exam para evitar borrarlo
         }
 
-        // Total Bimestre: Si viene columna directa de Total, verificar coherencia o sobreescribir
+        // Total Bimestre: Si viene columna directa de Total, sincronizar coherentemente
         let finalTotal = finalZona + examScore;
         if (colIdxTotal !== -1) {
             const parsedTotal = parseNumericScore(row[colIdxTotal]);
             if (parsedTotal !== null) {
                 const directTotal = Math.max(0, parsedTotal);
                 if (!hasActValues && colIdxZona === -1 && colIdxExam === -1) {
+                    // El archivo sólo traía columna de Total (sin desglose)
                     const maxZ = (targetPensum?.gradingConfig?.[`b${effectiveUnit}`]?.zonaMax) || 40;
                     finalZona = Math.min(maxZ, directTotal);
                     examScore = Math.max(0, directTotal - finalZona);
                     newActs[0] = finalZona;
                     finalTotal = directTotal;
-                } else if (Math.abs(directTotal - (finalZona + examScore)) > 0) {
-                    if (colIdxExam !== -1) {
-                        examScore = Math.max(0, directTotal - finalZona);
-                    }
+                } else if (!examExplicitlyInFile && colIdxExam === -1 && directTotal > finalZona) {
+                    // El archivo trae Zona y Total pero no columna de examen -> El examen es la diferencia
+                    examScore = Math.max(0, directTotal - finalZona);
                     finalTotal = directTotal;
+                } else if (Math.abs(directTotal - (finalZona + examScore)) > 0) {
+                    if (examExplicitlyInFile) {
+                        // Si el examen venía explícito en el archivo, se respeta el examen y el total es la suma
+                        finalTotal = finalZona + examScore;
+                    } else if (directTotal >= finalZona) {
+                        examScore = Math.max(0, directTotal - finalZona);
+                        finalTotal = directTotal;
+                    } else {
+                        finalTotal = directTotal;
+                    }
                 } else {
                     finalTotal = directTotal;
                 }
