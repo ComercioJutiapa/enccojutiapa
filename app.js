@@ -22134,7 +22134,7 @@ function showToast(msg, type = 'info', duration = 4000) {
     if (!container) return;
 
     // 🛡️ Anti-apilamiento estricto: máximo 2 toasts visibles para no cubrir la ventana
-    while (container.children.length >= 2) {
+    while (container.children && container.children.length >= 2) {
         if (container.firstElementChild) {
             container.firstElementChild.remove();
         } else {
@@ -25047,10 +25047,11 @@ function populateTeacherCourseSelect(preferredCourseId = null) {
 
     // 🔒 Restauración estricta y fijación del curso/grado seleccionado
     let targetVal = null;
-    if (prevCourseId && Array.from(select.options).some(o => o.value === prevCourseId)) {
+    const optsArr = select.options ? Array.from(select.options) : [];
+    if (prevCourseId && optsArr.some(o => o.value === prevCourseId)) {
         targetVal = prevCourseId;
     } else if (prevGrade) {
-        const matchOpt = Array.from(select.options).find(o => {
+        const matchOpt = optsArr.find(o => {
             const p = (STATE.pensum || []).find(x => x.id === o.value);
             return p && (p.grade === prevGrade || (p.gradeCode && p.gradeCode.includes(prevGrade)));
         });
@@ -25059,7 +25060,7 @@ function populateTeacherCourseSelect(preferredCourseId = null) {
 
     if (targetVal) {
         select.value = targetVal;
-    } else if (select.options.length > 0 && !select.value) {
+    } else if (optsArr.length > 0 && !select.value) {
         select.selectedIndex = 0;
     }
 
@@ -26116,16 +26117,15 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
         const activitiesArr = Array.isArray(currentData.activities) ? currentData.activities.slice(0, 10) : [0,0,0,0,0,0,0,0,0,0];
         while (activitiesArr.length < 10) activitiesArr.push(0);
 
-        let calculatedZona = activitiesArr.reduce((a, b) => a + (parseInt(b) || 0), 0);
-        // 🛡️ Si no hay actividades individuales desglosadas pero existía zona directa, preservarla
-        if (calculatedZona === 0 && currentData.zona > 0) {
-            calculatedZona = parseInt(currentData.zona) || 0;
-        }
-        const examScore = parseInt(currentData.exam) || 0;
-        let totalScore = calculatedZona + examScore;
-        if (totalScore === 0 && currentData.total > 0) {
-            totalScore = parseInt(currentData.total) || 0;
-        }
+        const calculatedZona = (currentData.zona !== undefined && currentData.zona !== null) 
+            ? Math.max(0, parseInt(currentData.zona) || 0) 
+            : activitiesArr.reduce((a, b) => a + (parseInt(b) || 0), 0);
+        const examScore = (currentData.exam !== undefined && currentData.exam !== null) 
+            ? Math.max(0, parseInt(currentData.exam) || 0) 
+            : 0;
+        const totalScore = (currentData.total !== undefined && currentData.total !== null) 
+            ? Math.max(0, parseInt(currentData.total) || 0) 
+            : (calculatedZona + examScore);
 
         const compositeGradeKey = `${student.id}_${cleanSubj}_b${effectiveUnit}`;
 
@@ -28210,11 +28210,11 @@ function renderTeacherCourseCards() {
     }
 
     if (!myCourses || myCourses.length === 0) {
-        if (bar) bar.style.display = 'none';
+        if (bar && bar.style) bar.style.display = 'none';
         return;
     }
 
-    if (bar) bar.style.display = 'block';
+    if (bar && bar.style) bar.style.display = 'block';
 
     const currentSelectedId = document.getElementById('teacherCourseSelect')?.value || STATE.selectedGradebookCourseId;
     const currentUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
@@ -37320,27 +37320,18 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         const newActs = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         let hasActValues = false;
 
-        actColumns.forEach((act, actIdx) => {
-            if (actIdx < 10 && act.colIdx !== -1) {
-                const parsedScore = parseNumericScore(row[act.colIdx]);
-                if (parsedScore !== null) {
-                    const score = Math.max(0, parsedScore);
-                    newActs[actIdx] = score;
-                    hasActValues = true;
+        if (actColumns.length > 0) {
+            actColumns.forEach((act, actIdx) => {
+                if (actIdx < 10 && act.colIdx !== -1) {
+                    const parsedScore = parseNumericScore(row[act.colIdx]);
+                    if (parsedScore !== null) {
+                        newActs[actIdx] = Math.max(0, parsedScore);
+                        hasActValues = true;
+                    } else {
+                        newActs[actIdx] = 0;
+                    }
                 }
-            }
-        });
-
-        // Examen: Si existe columna de examen en el archivo, sobreescribe con el valor del archivo
-        let examScore = 0;
-        if (colIdxExam !== -1) {
-            const parsedExam = parseNumericScore(row[colIdxExam]);
-            if (parsedExam !== null) {
-                examScore = Math.max(0, parsedExam);
-            }
-        } else {
-            // Solo si el archivo NO incluye columna de examen (ej. Lista de Cotejo de zona pura), mantener examen previo
-            examScore = Number(gDetail.exam) || 0;
+            });
         }
 
         // Zona: Si hay actividades desglosadas, es la suma; si viene columna directa de Zona, sobreescribe
@@ -37350,12 +37341,28 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             const parsedZona = parseNumericScore(row[colIdxZona]);
             if (parsedZona !== null) {
                 finalZona = Math.max(0, parsedZona);
-                if (!hasActValues && newActs.every(v => v === 0)) {
+                if (!hasActValues) {
                     newActs[0] = finalZona;
+                    sumZona = finalZona;
                 }
+            } else if (!hasActValues) {
+                finalZona = 0;
+                newActs[0] = 0;
             }
-        } else if (!hasActValues && gDetail.zona > 0) {
-            finalZona = Number(gDetail.zona) || 0;
+        } else if (!hasActValues) {
+            finalZona = 0;
+        }
+
+        // Examen: Si existe columna de examen en el archivo, sobreescribe con el valor del archivo
+        let examScore = 0;
+        if (colIdxExam !== -1) {
+            const parsedExam = parseNumericScore(row[colIdxExam]);
+            examScore = (parsedExam !== null) ? Math.max(0, parsedExam) : 0;
+        } else if (actColumns.length > 0 && colIdxZona === -1 && colIdxTotal === -1) {
+            // Solo si el archivo es estrictamente una Lista de Cotejo de actividades puras (sin examen ni total), conservar examen previo
+            examScore = Number(gDetail.exam) || 0;
+        } else {
+            examScore = 0;
         }
 
         // Total Bimestre: Si viene columna directa de Total, verificar coherencia o sobreescribir
@@ -37364,9 +37371,18 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             const parsedTotal = parseNumericScore(row[colIdxTotal]);
             if (parsedTotal !== null) {
                 const directTotal = Math.max(0, parsedTotal);
-                if (directTotal > 0 && finalZona === 0 && examScore === 0) {
+                if (!hasActValues && colIdxZona === -1 && colIdxExam === -1) {
+                    const maxZ = (targetPensum?.gradingConfig?.[`b${effectiveUnit}`]?.zonaMax) || 40;
+                    finalZona = Math.min(maxZ, directTotal);
+                    examScore = Math.max(0, directTotal - finalZona);
+                    newActs[0] = finalZona;
                     finalTotal = directTotal;
-                } else if (directTotal > 0 && Math.abs(directTotal - (finalZona + examScore)) > 0) {
+                } else if (Math.abs(directTotal - (finalZona + examScore)) > 0) {
+                    if (colIdxExam !== -1) {
+                        examScore = Math.max(0, directTotal - finalZona);
+                    }
+                    finalTotal = directTotal;
+                } else {
                     finalTotal = directTotal;
                 }
             }
@@ -37382,6 +37398,20 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             matched.grades[effectiveSubject] = [0, 0, 0, 0];
         }
         matched.grades[effectiveSubject][effectiveUnit - 1] = finalTotal;
+
+        // Asegurar actualización en la instancia canónica de STATE.students si matched es un clon
+        const canonStudent = (STATE.students || []).find(st => st && st.id === matched.id);
+        if (canonStudent && canonStudent !== matched) {
+            ensureStudentGradebookStructure(canonStudent, effectiveSubject);
+            canonStudent.gradebookDetails[effectiveSubject][effectiveUnit] = {
+                activities: [...newActs],
+                zona: finalZona,
+                exam: examScore,
+                total: finalTotal
+            };
+            if (!canonStudent.grades[effectiveSubject]) canonStudent.grades[effectiveSubject] = [0, 0, 0, 0];
+            canonStudent.grades[effectiveSubject][effectiveUnit - 1] = finalTotal;
+        }
 
         if (!actuallyUpdatedStudents.some(st => st.id === matched.id)) {
             actuallyUpdatedStudents.push(matched);
@@ -37405,7 +37435,19 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         bSelect.value = String(effectiveUnit);
     }
 
+    STATE.selectedGradebookCourseId = targetPensum.id;
+    STATE.selectedGradebookGrade = targetPensum.grade;
+    try {
+        sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', targetPensum.id);
+        localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', targetPensum.id);
+        sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', String(effectiveUnit));
+        localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', String(effectiveUnit));
+    } catch(e) {}
+
     saveStateToLocalStorage();
+    if (typeof populateTeacherCourseSelect === 'function') {
+        populateTeacherCourseSelect(targetPensum.id);
+    }
     if (typeof loadTeacherGradebook === 'function') {
         loadTeacherGradebook();
     } else if (typeof renderGradebookTable === 'function') {
