@@ -771,12 +771,21 @@ const EnccoAuthStore = {
                 return;
             }
 
-            // Normalización defensiva con Principio de Menor Privilegio:
-            let resolvedRole = (role || user.role || 'guest').trim().toLowerCase();
+            // Normalización defensiva con Principio de Menor Privilegio y tolerancia a sinónimos oficiales:
+            let rawRole = (role || user.role || 'guest').trim().toLowerCase();
+            if (rawRole === 'auxiliar' || rawRole === 'auxiliatura') rawRole = 'profesor_auxiliar';
+            if (rawRole === 'direccion' || rawRole === 'directora') rawRole = 'director';
+            if (rawRole === 'superadmin' || rawRole === 'super_admin') rawRole = 'admin';
+            if (rawRole === 'catedratico') rawRole = 'docente';
+            if (rawRole.startsWith('secretari')) rawRole = 'secretaria';
+            let resolvedRole = rawRole;
             const validRoles = ['admin', 'super_usuario', 'director', 'secretaria', 'docente', 'profesor_auxiliar', 'estudiante', 'guest'];
             if (!validRoles.includes(resolvedRole)) {
-                console.warn(`⚠️ [AuthStore] Rol no reconocido '${resolvedRole}'. Aplicando Principio de Menor Privilegio (guest).`);
-                resolvedRole = 'guest';
+                const isCustom = (typeof STATE !== 'undefined' && Array.isArray(STATE.rolesConfig)) ? STATE.rolesConfig.some(r => r.key === resolvedRole) : false;
+                if (!isCustom) {
+                    console.warn(`⚠️ [AuthStore] Rol no reconocido '${resolvedRole}'. Aplicando Principio de Menor Privilegio (guest).`);
+                    resolvedRole = 'guest';
+                }
             }
 
             this._state.status = 'authenticated';
@@ -2697,7 +2706,8 @@ window.loadRoleIntoPermissionsPanel = loadRoleIntoPermissionsPanel;
 
 
 let _isSavingActiveRolePermissions = false;
-async function saveActiveRolePermissions(e) {
+async function saveActiveRolePermissions() {
+    const e = arguments[0];
     const evt = e || (typeof window !== 'undefined' ? window.event : null);
     if (evt) {
         if (evt._enccoHandled) return;
@@ -3240,6 +3250,7 @@ var SYSTEM_MODULES_LIST = [
 window.SYSTEM_MODULES_LIST = SYSTEM_MODULES_LIST;
 
 function getAvailablePermissionsList() {
+    // Permisos disponibles institucionales: { key: 'excel-import', label: 'Plantillas y Listas Excel' }
     return SYSTEM_MODULES_LIST;
 }
 window.getAvailablePermissionsList = getAvailablePermissionsList;
@@ -8662,10 +8673,13 @@ async function initApp() {
                 const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== "undefined" ? ENCCO_OFFICIAL_FIREBASE_URL : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com");
                 if (_fbUrl && (typeof navigator === "undefined" || navigator.onLine !== false)) {
                     console.log("⚡ [v189] Descargando usuarios y roles en tiempo real desde Firebase...");
+                    const _ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+                    const _tid = _ctrl ? setTimeout(() => _ctrl.abort(), 3500) : null;
                     const [uRes, rRes] = await Promise.all([
-                        fetch(_fbUrl + "/encc_school_state/users.json?t=" + Date.now()),
-                        fetch(_fbUrl + "/encc_school_state/rolesConfig.json?t=" + Date.now())
+                        fetch(_fbUrl + "/encc_school_state/users.json?t=" + Date.now(), { signal: _ctrl ? _ctrl.signal : undefined }),
+                        fetch(_fbUrl + "/encc_school_state/rolesConfig.json?t=" + Date.now(), { signal: _ctrl ? _ctrl.signal : undefined })
                     ]);
+                    if (_tid) clearTimeout(_tid);
                     if (uRes.ok) {
                         const uData = await uRes.json();
                         if (Array.isArray(uData) && uData.length >= 20) {
@@ -8689,6 +8703,84 @@ async function initApp() {
         }
     }
 
+    // ⚡ [Arranque Ultra-Rápido 0ms] Verificación de sesión y carga optimista instantánea
+    const isPlatformActive = typeof window !== 'undefined' && ((window.location?.pathname && window.location.pathname.includes('plataforma.html')) || (window.location?.href && window.location.href.includes('plataforma.html')));
+    if (isPlatformActive) {
+        const authUserStr = (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ENCCO_AUTH_USER') : null) || 
+                            (typeof localStorage !== 'undefined' ? localStorage.getItem('ENCCO_AUTH_USER') : null);
+        const authRoleStr = (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ENCCO_AUTH_ROLE') : null) || 
+                            (typeof localStorage !== 'undefined' ? localStorage.getItem('ENCCO_AUTH_ROLE') : null);
+
+        if (!authUserStr) {
+            const baseUrl = (window.location?.origin || '') + (window.location?.pathname || '').replace(/\/[^\/]*$/, '');
+            if (typeof window.location?.replace === 'function') {
+                window.location.replace(baseUrl + '/index.html');
+            } else if (window.location) {
+                window.location.href = baseUrl + '/index.html';
+            }
+            return;
+        }
+
+        try {
+            const parsedAuth = JSON.parse(authUserStr);
+            let rawRole = (authRoleStr || parsedAuth.role || 'guest').trim().toLowerCase();
+            if (rawRole === 'auxiliar' || rawRole === 'auxiliatura') rawRole = 'profesor_auxiliar';
+            if (rawRole === 'direccion' || rawRole === 'directora') rawRole = 'director';
+            if (rawRole === 'superadmin' || rawRole === 'super_admin') rawRole = 'admin';
+            if (rawRole === 'catedratico') rawRole = 'docente';
+            if (rawRole.startsWith('secretari')) rawRole = 'secretaria';
+
+            STATE.currentUser = parsedAuth;
+            STATE.currentRole = rawRole;
+            STATE.isLoggedIn = true;
+
+            // Asegurar que la estructura institucional básica esté disponible
+            if (!Array.isArray(STATE.students) || STATE.students.length === 0 || !Array.isArray(STATE.users) || STATE.users.length === 0) {
+                if (typeof loadDefaults === 'function') loadDefaults(false);
+            }
+            if (typeof normalizeSchoolAcademicData === "function") normalizeSchoolAcademicData(STATE);
+            if (typeof normalizeRolesConfig === "function") normalizeRolesConfig();
+
+            // Hidratación reactiva e inmediata del layout en 0ms
+            if (window.EnccoAuthStore && typeof window.EnccoAuthStore.setHydrated === 'function') {
+                window.EnccoAuthStore.setHydrated(STATE.currentUser, STATE.currentRole);
+            }
+            if (typeof window.dismissAppHydrationOverlay === 'function') {
+                window.dismissAppHydrationOverlay();
+            } else {
+                const _topBar = typeof document !== 'undefined' ? document.getElementById('topRoleBar') : null;
+                const _mainLayout = typeof document !== 'undefined' ? document.getElementById('appMainLayout') : null;
+                if (_topBar) _topBar.style.display = 'block';
+                if (_mainLayout) _mainLayout.style.display = 'flex';
+                const _overlay = typeof document !== 'undefined' ? document.getElementById('appHydrationOverlay') : null;
+                if (_overlay) {
+                    _overlay.style.opacity = '0';
+                    _overlay.style.pointerEvents = 'none';
+                    setTimeout(() => { _overlay.style.display = 'none'; }, 150);
+                }
+            }
+
+            if (typeof applyUserRole === 'function') {
+                applyUserRole(STATE.currentRole);
+            }
+            if (typeof navigateTo === 'function') {
+                navigateTo(STATE.activeView || 'dashboard');
+            }
+
+            if (window.EnccoInactivityTimer && typeof window.EnccoInactivityTimer.init === 'function') {
+                window.EnccoInactivityTimer.init();
+            }
+            if (window.EnccoFirebaseCacheEngine && typeof window.EnccoFirebaseCacheEngine.applyCachePolicy === 'function') {
+                window.EnccoFirebaseCacheEngine.applyCachePolicy(STATE.currentUser, STATE.currentRole);
+            }
+        } catch(e) {
+            console.error("Error al parsear credenciales:", e);
+            if (window.EnccoAuthStore) window.EnccoAuthStore.setError(e);
+            window.location.replace('index.html');
+            return;
+        }
+    }
+
     // 🧹 Limpieza preventiva de almacenamiento local huérfano para evitar saturación de memoria
     try {
         if (typeof localStorage !== 'undefined') {
@@ -8702,19 +8794,15 @@ async function initApp() {
         }
     } catch(e) {}
 
-    // ⏳ Iniciar ciclo de hidratación: mostrar overlay y bloquear UI hasta carga completa (TASK 1)
-    if (window.EnccoAuthStore && typeof window.EnccoAuthStore.setHydrating === 'function') {
-        window.EnccoAuthStore.setHydrating('Cargando base institucional y verificando perfil...');
-    }
-
     if (window.SecurityEngine) window.SecurityEngine.initInactivityGuard();
     if (typeof normalizeSchoolAcademicData === "function") normalizeSchoolAcademicData(STATE);
     if (typeof normalizeRolesConfig === "function") normalizeRolesConfig();
+
     // 🌟 Sincronización Inicial de Estado desde Firebase para configuracion/sistema
     if (window.FirebaseModular && window.FirebaseModular.db) {
         try {
             const { db, doc, getDoc } = window.FirebaseModular;
-            const snapSys = await withTimeout(getDoc(doc(db, "configuracion", "sistema")), 4000).catch(() => null);
+            const snapSys = await withTimeout(getDoc(doc(db, "configuracion", "sistema")), 3000).catch(() => null);
             if (snapSys && snapSys.exists()) {
                 const sData = snapSys.data();
                 const bNum = parseInt(sData.bimestreActivoOficial || sData.activeBimestre);
@@ -8731,9 +8819,7 @@ async function initApp() {
         } catch(e) {}
     }
 
-
-    // ⚡ [v189] PULL AUTORITATIVO EXCLUSIVO DESDE FIREBASE REALTIME DB
-    // Firebase es la ÚNICA fuente de verdad autoritativa. Cero lectura de bases locales.
+    // ⚡ [v189] PULL AUTORITATIVO DESDE FIREBASE REALTIME DB (CON TIMEOUT DEFENSIVO DE 4000ms)
     let hasLoadedExistingUsers = false;
     try {
         const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== "undefined" ? ENCCO_OFFICIAL_FIREBASE_URL : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com");
@@ -8743,7 +8829,7 @@ async function initApp() {
             let _cloudRes = null;
             try {
                 const _abortCtrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-                const _timeoutId = _abortCtrl ? setTimeout(() => _abortCtrl.abort(), 12000) : null;
+                const _timeoutId = _abortCtrl ? setTimeout(() => _abortCtrl.abort(), 4000) : null;
                 _cloudRes = await fetch(_fbUrl + "/encc_school_state.json?t=" + Date.now(), { 
                     method: "GET", 
                     headers: { "Accept": "application/json" },
@@ -8891,7 +8977,6 @@ async function initApp() {
     ensureOfficialCycles();
 
     // 5. Guardias de guardado al recargar o cerrar pestaña (SOLO en plataforma.html, NUNCA en login.html ni durante logout)
-    const isPlatformActive = typeof window !== 'undefined' && ((window.location?.pathname && window.location.pathname.includes('plataforma.html')) || (window.location?.href && window.location.href.includes('plataforma.html')));
     if (isPlatformActive) {
         window.addEventListener('beforeunload', () => {
             if (!window._isLoggingOut && typeof saveStateToLocalStorage === 'function') {
@@ -8957,53 +9042,16 @@ async function initApp() {
         });
     }
 
-    // 6. Si estamos en plataforma.html, verificar sesión
-    if ((window.location?.pathname && window.location.pathname.includes('plataforma.html')) || (window.location?.href && window.location.href.includes('plataforma.html'))) {
-        const authUserStr = sessionStorage.getItem('ENCCO_AUTH_USER') || localStorage.getItem('ENCCO_AUTH_USER');
-        const authRoleStr = sessionStorage.getItem('ENCCO_AUTH_ROLE') || localStorage.getItem('ENCCO_AUTH_ROLE');
-        
-        if (!authUserStr) {
-            const baseUrl = (window.location?.origin || '') + (window.location?.pathname || '').replace(/\/[^\/]*$/, '');
-            if (typeof window.location?.replace === 'function') {
-                window.location.replace(baseUrl + '/index.html');
-            } else if (window.location) {
-                window.location.href = baseUrl + '/index.html';
+    // 6. Si estamos en plataforma.html, sincronizar usuario actualizado desde la base institucional
+    if (isPlatformActive && STATE.currentUser) {
+        if (Array.isArray(STATE.users) && STATE.users.length > 0) {
+            const freshUser = STATE.users.find(u => u.id === STATE.currentUser.id || (u.email && STATE.currentUser.email && u.email.toLowerCase() === STATE.currentUser.email.toLowerCase()));
+            if (freshUser) {
+                STATE.currentUser = freshUser;
+                if (typeof sessionStorage !== 'undefined') {
+                    sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(freshUser));
+                }
             }
-            return;
-        }
-        try {
-            const parsedAuth = JSON.parse(authUserStr);
-            // Si el usuario existe en STATE.users (base de datos cargada), usar el objeto más actualizado
-            const freshUser = (Array.isArray(STATE.users) && STATE.users.length > 0)
-                ? (STATE.users.find(u => u.id === parsedAuth.id || (u.email && parsedAuth.email && u.email.toLowerCase() === parsedAuth.email.toLowerCase())) || parsedAuth)
-                : parsedAuth;
-
-            STATE.currentUser = freshUser;
-            STATE.currentRole = authRoleStr || freshUser.role || 'admin';
-            STATE.isLoggedIn = true;
-            sessionStorage.setItem('ENCCO_AUTH_USER', JSON.stringify(freshUser));
-            if (authRoleStr) {
-                sessionStorage.setItem('ENCCO_AUTH_ROLE', authRoleStr);
-            }
-            // Destruir rastro persistente en localStorage para asegurar browserSessionPersistence
-            localStorage.removeItem('ENCCO_AUTH_USER');
-            localStorage.removeItem('ENCCO_AUTH_ROLE');
-            localStorage.removeItem('ENCCO_AUTH_REMEMBER');
-
-            // Iniciar temporizador global de inactividad de 20 minutos (1,200,000 ms)
-            if (window.EnccoInactivityTimer && typeof window.EnccoInactivityTimer.init === 'function') {
-                window.EnccoInactivityTimer.init();
-            }
-
-            // Aplicar motor de caché según el rol (memoryLocalCache para docentes/estudiantes, persistentLocalCache para Súper Usuario)
-            if (window.EnccoFirebaseCacheEngine && typeof window.EnccoFirebaseCacheEngine.applyCachePolicy === 'function') {
-                window.EnccoFirebaseCacheEngine.applyCachePolicy(STATE.currentUser, STATE.currentRole);
-            }
-        } catch(e) {
-            console.error("Error al parsear credenciales:", e);
-            if (window.EnccoAuthStore) window.EnccoAuthStore.setError(e);
-            window.location.replace('index.html');
-            return;
         }
     }
 
@@ -32325,7 +32373,7 @@ function saveStudentPermissionForm(e) {
 
     const editingId = (document.getElementById('permEditingId')?.value || '').trim();
     if (editingId) {
-        if (!canManageStudentPermissions()) {
+        if (!isDirectorOrSuperAdmin() && !canManageStudentPermissions()) {
             showToast('Acceso Restringido: La edición de permisos de ausencia está reservada a Auxiliatura, Dirección y Secretaría.', 'warning');
             return;
         }
@@ -32368,7 +32416,11 @@ function saveStudentPermissionForm(e) {
         perm.reasonDetail = reasonDetail;
         perm.attendanceCode = getPermissionAttendanceCode(perm);
         perm.lastEditedAt = new Date().toISOString();
-        perm.lastEditedBy = (STATE.currentUser && STATE.currentUser.name) ? STATE.currentUser.name : (STATE.currentRole === 'profesor_auxiliar' ? 'Auxiliatura' : 'Dirección General');
+        if (isDirectorOrSuperAdmin()) {
+            perm.lastEditedBy = 'Dirección General';
+        } else {
+            perm.lastEditedBy = (STATE.currentUser && STATE.currentUser.name) ? STATE.currentUser.name : (STATE.currentRole === 'profesor_auxiliar' ? 'Auxiliatura' : 'Dirección General');
+        }
 
         // 3. Re-aplicar nuevo rango a la asistencia institucional
         applyStudentPermission(perm);
@@ -33246,7 +33298,7 @@ function renderPermissionsHistoryTable() {
                     <button type="button" class="btn btn-outline-primary btn-xs" onclick="printStudentPermissionPass('${p.id}')" title="Imprimir Comprobante Oficial" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
                         <i class="fa-solid fa-print"></i> Pase
                     </button>
-                    ${canManagePerms ? `
+                    ${isDirectorOrSuperAdmin() ? `
                     <button type="button" class="btn btn-outline-warning btn-xs" onclick="openEditStudentPermissionModal('${p.id}')" title="Editar este permiso (Auxiliatura / Dirección)" style="padding:3px 8px; font-size:0.75rem; font-weight:700; margin-left:4px; color:#b45309; border-color:#f59e0b; background:#fffbeb;">
                         <i class="fa-solid fa-pen-to-square"></i> Editar
                     </button>
@@ -33263,7 +33315,7 @@ window.renderPermissionsHistoryTable = renderPermissionsHistoryTable;
 function revokeStudentPermission(permId) {
     if (!permId) return;
     const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
-    if (!isDirectorRole(currentRole)) {
+    if (!isDirectorOrSuperAdmin() && !isDirectorRole(currentRole)) {
         showToast("🔒 Registro Bloqueado: Las justificaciones y permisos registrados por las autoridades únicamente pueden ser anulados o revocados por Dirección.", "warning", 5500);
         return;
     }
@@ -50156,7 +50208,8 @@ function clearPermissionsFilters() {
 }
 window.clearPermissionsFilters = clearPermissionsFilters;
 
-function renderPermissionsHistoryView(forceReset = false) {
+function renderPermissionsHistoryView() {
+    const forceReset = arguments[0] === true;
     const gradeSelect = document.getElementById('permissionsLogGradeFilter');
     const catSelect = document.getElementById('permissionsLogCategoryFilter');
     const fromInput = document.getElementById('permissionsLogDateFrom');
@@ -50380,7 +50433,7 @@ function renderPermissionsHistoryView(forceReset = false) {
                         <button type="button" class="btn btn-xs btn-outline-primary" onclick="printStudentPermissionPass('${p.id}')" title="Imprimir Comprobante Oficial de Permiso" style="padding:3px 8px; font-size:0.75rem; font-weight:700;">
                             <i class="fa-solid fa-print"></i> Pase
                         </button>
-                        ${canManageStudentPermissions() ? `
+                        ${isDirectorOrSuperAdmin() ? `
                         <button type="button" class="btn btn-xs btn-outline-warning" onclick="openEditStudentPermissionModal('${p.id}')" title="Editar este permiso de ausencia" style="padding:3px 8px; font-size:0.75rem; font-weight:700; color:#b45309; border-color:#f59e0b; background:#fffbeb;">
                             <i class="fa-solid fa-pen-to-square"></i> Editar
                         </button>
