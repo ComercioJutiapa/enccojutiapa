@@ -239,13 +239,14 @@ function renderGradeStatsView() {
             if (matchedKey && student.gradebookDetails && student.gradebookDetails[matchedKey]) {
                 const uData = student.gradebookDetails[matchedKey][u];
                 if (uData && (uData.total > 0 || uData.zona > 0 || uData.exam > 0 || (Array.isArray(uData.activities) && uData.activities.some(a => a > 0)))) {
-                    return uData.total !== undefined ? Number(uData.total) : (Number(uData.zona || 0) + Number(uData.exam || 0));
+                    const rawVal = uData.total !== undefined ? Number(uData.total) : (Number(uData.zona || 0) + Number(uData.exam || 0));
+                    return Math.min(100, Math.max(0, rawVal));
                 }
             }
             if (matchedKey && student.grades && student.grades[matchedKey]) {
                 const arr = student.grades[matchedKey];
                 const val = Array.isArray(arr) ? Number(arr[u - 1] ?? 0) : 0;
-                if (val > 0) return val;
+                if (val > 0) return Math.min(100, Math.max(0, val));
             }
             return null;
         }

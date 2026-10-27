@@ -1255,7 +1255,7 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
             if (r.permissions.includes(key + '_edit')) return 'edit';
             if (r.permissions.includes(key + '_view')) return 'view';
             if (r.permissions.includes(key)) {
-                if (roleKey === 'docente' && ['guide-teachers', 'students', 'reports', 'honor-roll', 'grade-stats', 'users'].includes(key)) return 'view';
+                if (roleKey === 'docente' && ['guide-teachers', 'students', 'reports', 'honor-roll', 'grade-stats'].includes(key)) return 'view';
                 if (roleKey === 'estudiante') return 'view';
                 return 'edit';
             }
@@ -1267,7 +1267,7 @@ function getModulePermissionLevel(moduleKey, roleKey = STATE.currentRole) {
     // 2. Fallbacks de seguridad institucional por defecto (únicamente si el rol no tiene configuración en rolesConfig)
     if (key === 'users') {
         const allowedFull = ['director', 'direccion', 'secretaria', 'admin', 'super_usuario'];
-        const allowedView = ['profesor_auxiliar', 'auxiliar', 'auxiliatura', 'docente', 'catedratico'];
+        const allowedView = ['profesor_auxiliar', 'auxiliar', 'auxiliatura'];
         if (allowedFull.includes(roleKey)) return 'edit';
         if (allowedView.includes(roleKey)) return 'view';
         return 'none';
@@ -3296,7 +3296,7 @@ function initDefaultRolesConfig() {
             description: 'Ingreso de calificaciones, control de asistencia y seguimiento pedagógico',
             color: '#0891b2',
             isSystem: true,
-            permissions: ['dashboard', 'students', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'exoneraciones-log', 'permissions-history', 'users']
+            permissions: ['dashboard', 'students', 'guide-teachers', 'gradebook', 'attendance', 'discipline', 'honor-roll', 'reports', 'grade-stats', 'exoneraciones-log', 'permissions-history']
         },
         {
             key: 'estudiante',
@@ -3381,8 +3381,7 @@ function normalizeRolesConfig() {
                 'attendance': 'edit',
                 'discipline': 'edit',
                 'exoneraciones-log': 'view',
-                'permissions-history': 'view',
-                'users': 'view'
+                'permissions-history': 'view'
             };
             Object.keys(docenteDefaults).forEach(p => {
                 if (typeof roleObj.permissionLevels[p] === 'undefined') {
@@ -8210,7 +8209,7 @@ var STATE = (typeof window !== 'undefined' && window.STATE) ? window.STATE : {
     courseBitacora: [],
     gradeEditRequests: [],
     schoolHeader: { schoolName: 'Escuela Nacional de Ciencias Comerciales', schoolCode: '22-01-0014-46', location: 'Jutiapa, Guatemala' },
-    config: { activeBimestre: 1, activeUnits: [1], globalLocked: false, minPassingScore: 60, teacherBypass: {} }
+    config: { activeBimestre: 1, activeUnits: [1], globalLocked: false, minPassingScore: 60, maxAllowedScore: 100, enforceMax100Norm: true, teacherBypass: {} }
 };
 if (typeof window !== 'undefined') {
     window.STATE = STATE;
@@ -10087,7 +10086,9 @@ function loadDefaults(autoSave = false) {
     if (!Array.isArray(STATE.cycles)) STATE.cycles = [];
     if (!Array.isArray(STATE.rolesConfig)) STATE.rolesConfig = [];
     if (!Array.isArray(STATE.pensumCatalog)) STATE.pensumCatalog = [];
-    if (!STATE.config) STATE.config = { activeBimestre: 1, activeUnits: [1], globalLocked: false, minPassingScore: 60, teacherBypass: {} };
+    if (!STATE.config) STATE.config = { activeBimestre: 1, activeUnits: [1], globalLocked: false, minPassingScore: 60, maxAllowedScore: 100, enforceMax100Norm: true, teacherBypass: {} };
+    if (STATE.config.maxAllowedScore === undefined) STATE.config.maxAllowedScore = 100;
+    if (STATE.config.enforceMax100Norm === undefined) STATE.config.enforceMax100Norm = true;
     if (!Array.isArray(STATE.config.activeUnits)) STATE.config.activeUnits = [STATE.config.activeBimestre || 1];
     if (!STATE.schoolHeader) STATE.schoolHeader = { schoolName: 'Escuela Nacional de Ciencias Comerciales', schoolCode: '22-01-0014-46', location: 'Jutiapa' };
 }
@@ -24067,6 +24068,12 @@ function getReportCardSubjectGrades(student, subject) {
         }
     }
 
+    // 🛡️ REGLA ESTRICTA INSTITUCIONAL ENCCO: Todas las notas que se excedan de 100 se normalizan a 100.
+    b1 = Math.min(100, Math.max(0, b1));
+    b2 = Math.min(100, Math.max(0, b2));
+    b3 = Math.min(100, Math.max(0, b3));
+    b4 = Math.min(100, Math.max(0, b4));
+
     // 🌟 REGLA INSTITUCIONAL DE GRADUACIÓN (6to Grado):
     // Práctica Supervisada y Seminario tienen notas únicas almacenadas en el 4to Bimestre.
     // Son calificaciones totales y NO llevan promedio (su nota final es el total directo de B4).
@@ -24130,6 +24137,9 @@ function getReportCardSubjectGrades(student, subject) {
         const divisor = Math.max(1, 4 - exonUnitsCount);
         avg = bimasVals.length > 0 ? Math.round(bimasVals.reduce((a, b) => a + b, 0) / divisor) : 0;
     }
+
+    // 🛡️ REGLA ESTRICTA INSTITUCIONAL ENCCO: El promedio nunca puede exceder 100 puntos
+    avg = Math.min(100, Math.max(0, avg));
 
     // 3. Pura LECTURA: jamás mutar student.grades ni student.gradebookDetails
     return { b1, b2, b3, b4, avg, isExon1, isExon2, isExon3, isExon4, isFullyExon, isSpecialUnique };
@@ -25808,7 +25818,7 @@ function getStudentSubjectGrade(studentIdentifier, subjectIdentifier, unit = nul
                 activities,
                 zona,
                 exam,
-                total: total || fallbackGrade
+                total: Math.min(100, Math.max(0, total || fallbackGrade))
             };
         }
         return {
@@ -25987,12 +25997,14 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
         if (Array.isArray(gradeData.activities)) currentUnitDetails.activities = [...gradeData.activities];
         if (gradeData.zona !== undefined) currentUnitDetails.zona = parseInt(gradeData.zona) || 0;
         if (gradeData.exam !== undefined) currentUnitDetails.exam = parseInt(gradeData.exam) || 0;
-        if (gradeData.total !== undefined) currentUnitDetails.total = parseInt(gradeData.total) || 0;
-        else currentUnitDetails.total = currentUnitDetails.zona + currentUnitDetails.exam;
+        if (gradeData.total !== undefined) currentUnitDetails.total = Math.min(100, Math.max(0, parseInt(gradeData.total) || 0));
+        else currentUnitDetails.total = Math.min(100, Math.max(0, currentUnitDetails.zona + currentUnitDetails.exam));
     }
 
+    // 🛡️ REGLA ESTRICTA ENCCO: Cualquier nota que exceda 100 se normaliza a 100
+    currentUnitDetails.total = Math.min(100, Math.max(0, currentUnitDetails.total));
     student.gradebookDetails[subjectName][uStr] = currentUnitDetails;
-    student.grades[subjectName][uNum - 1] = currentUnitDetails.total;
+    student.grades[subjectName][uNum - 1] = Math.min(100, Math.max(0, currentUnitDetails.total));
 
     const now = Date.now();
     STATE.lastModified = now;
@@ -27278,8 +27290,9 @@ function loadTeacherGradebook() {
             const isExon = !isInactive && (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, currentUnit);
             const zonaSum = (isInactive || isExon) ? 0 : acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
             const exam = (isInactive || isExon) ? 0 : (parseInt(uData.exam) || 0);
-            const total = zonaSum + exam;
-            if (!isInactive && !isExon && (exam > cfg.examMax || total > 100)) hasOverLimit = true;
+            const rawSum = zonaSum + exam;
+            const total = Math.min(100, Math.max(0, rawSum));
+            if (!isInactive && !isExon && (exam > cfg.examMax || rawSum > 100)) hasOverLimit = true;
 
             const studentFullName = escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase());
 
@@ -27330,11 +27343,12 @@ function loadTeacherGradebook() {
                 `;
             }
 
-            // Sincronizar en memoria la nota y total del bimestre actual en grades[] y uData
+            // Sincronizar en memoria la nota y total del bimestre actual en grades[] y uData (Normalizado a máx 100)
             if (!s.grades[subjectName]) s.grades[subjectName] = [0, 0, 0, 0];
             if (!isInactive && !isExon) {
-                s.grades[subjectName][currentUnit - 1] = total;
-                uData.total = total;
+                const boundedTotal = Math.min(100, Math.max(0, total));
+                s.grades[subjectName][currentUnit - 1] = boundedTotal;
+                uData.total = boundedTotal;
                 uData.zona = zonaSum;
             }
 
@@ -28001,9 +28015,9 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
     }
     student.gradebookDetails[subjectName][unit].zona = zonaSum;
 
-    // Recalcular nota total
+    // Recalcular nota total (Regla estricta institucional ENCCO: Máximo 100 puntos)
     const exam = parseInt(student.gradebookDetails[subjectName][unit].exam) || 0;
-    const total = zonaSum + exam;
+    const total = Math.min(100, Math.max(0, zonaSum + exam));
     student.gradebookDetails[subjectName][unit].total = total;
     student.grades[subjectName][unit - 1] = total;
 
@@ -28053,9 +28067,9 @@ function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = 
     const valNum = Math.max(0, Math.min(cfg.zonaMax || 40, parseInt(value) || 0));
     student.gradebookDetails[subjectName][unit].zona = valNum;
 
-    // Recalcular nota total
+    // Recalcular nota total (Regla estricta institucional ENCCO: Máximo 100 puntos)
     const exam = parseInt(student.gradebookDetails[subjectName][unit].exam) || 0;
-    const total = valNum + exam;
+    const total = Math.min(100, Math.max(0, valNum + exam));
     student.gradebookDetails[subjectName][unit].total = total;
     student.grades[subjectName][unit - 1] = total;
 
@@ -28118,7 +28132,8 @@ function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = f
     }
     student.gradebookDetails[subjectName][unit].zona = zonaSum;
 
-    const total = zonaSum + examVal;
+    // Recalcular nota total (Regla estricta institucional ENCCO: Máximo 100 puntos)
+    const total = Math.min(100, Math.max(0, zonaSum + examVal));
     student.gradebookDetails[subjectName][unit].total = total;
     student.grades[subjectName][unit - 1] = total;
 
@@ -37555,6 +37570,10 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             finalTotal = finalZona + examScore;
         }
 
+        // 🛡️ REGLA ESTRICTA INSTITUCIONAL ENCCO: Todas las notas que se excedan de 100, se normalizan a 100.
+        // Aunque se coloquen actividades que se excedan, el total nunca puede superar 100 puntos.
+        finalTotal = Math.min(100, Math.max(0, finalTotal));
+
         // Sobreescribir las notas del estudiante con los nuevos valores del archivo
         gDetail.activities = newActs;
         gDetail.zona = finalZona;
@@ -41900,7 +41919,7 @@ function getCnbAreaInfo(subjectName = '') {
 window.getCnbAreaInfo = getCnbAreaInfo;
 
 function isAssignmentUnassigned(a) {
-    if (!a || (!a.subject && !a.name) || (!a.grade && !a.gradeCode)) return false;
+    if (!a) return false;
     const t = (a.teacher || a.teacherName || '').trim().toLowerCase();
     if (!t) return true;
     if (t === 'sin asignar' || t === 'sin catedratico' || t === 'sin catedrático' || t === 'pendiente' || t === 'no asignado') return true;

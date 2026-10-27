@@ -164,15 +164,15 @@
             let b1 = 0, b2 = 0, b3 = 0, b4 = 0;
 
             if (Array.isArray(g)) {
-                b1 = parseInt(g[0]) || 0;
-                b2 = parseInt(g[1]) || 0;
-                b3 = parseInt(g[2]) || 0;
-                b4 = parseInt(g[3]) || 0;
+                b1 = Math.min(100, Math.max(0, parseInt(g[0]) || 0));
+                b2 = Math.min(100, Math.max(0, parseInt(g[1]) || 0));
+                b3 = Math.min(100, Math.max(0, parseInt(g[2]) || 0));
+                b4 = Math.min(100, Math.max(0, parseInt(g[3]) || 0));
             } else if (typeof g === 'object' && g !== null) {
-                b1 = parseInt(g.b1 || g['1']) || 0;
-                b2 = parseInt(g.b2 || g['2']) || 0;
-                b3 = parseInt(g.b3 || g['3']) || 0;
-                b4 = parseInt(g.b4 || g['4']) || 0;
+                b1 = Math.min(100, Math.max(0, parseInt(g.b1 || g['1']) || 0));
+                b2 = Math.min(100, Math.max(0, parseInt(g.b2 || g['2']) || 0));
+                b3 = Math.min(100, Math.max(0, parseInt(g.b3 || g['3']) || 0));
+                b4 = Math.min(100, Math.max(0, parseInt(g.b4 || g['4']) || 0));
             }
 
             // Exoneraciones
@@ -186,7 +186,7 @@
             if (b3 > 0 && !exonB3) validScores.push(b3);
             if (b4 > 0 && !exonB4) validScores.push(b4);
 
-            const subjectAverage = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length) : 0;
+            const subjectAverage = validScores.length > 0 ? Math.min(100, Math.max(0, Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length))) : 0;
             const courseCode = getSireCourseCode(subj, idx + 1);
 
             calculatedSubjects[subj] = {
