@@ -17227,14 +17227,23 @@ function renderStudentProfileGrades(student) {
 
         const isFail = (finalAvg > 0 && finalAvg < 60);
 
-        const formatGradeCell = (val, isExon, isSpecialUnset) => {
+        const formatGradeCell = (val, isExon, isSpecialUnset, bimNum = 1) => {
             if (isSpecialUnset) {
                 return '<span style="color:#94a3b8;">—</span>';
             }
             if (isExon) {
                 return '<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; padding:2px 6px; border-radius:4px;" title="Materia Exonerada en este bimestre"><i class="fa-solid fa-shield-check"></i> Exon.</span>';
             }
-            return val > 0 ? val : '<span style="color:#94a3b8;">—</span>';
+            const activeBim = parseInt(STATE.config?.activeBimestre) || 4;
+            if (bimNum > activeBim) {
+                return '<span style="color:#94a3b8;">—</span>';
+            }
+            if (val !== undefined && val !== null) {
+                const num = Number(val);
+                const isFailing = num < 60;
+                return `<span style="font-weight:${isFailing ? "800" : "700"}; color:${isFailing ? "#dc2626" : "#000000"};">${num}</span>`;
+            }
+            return '<span style="color:#94a3b8;">—</span>';
         };
 
         let statusBadge = '';
@@ -17258,10 +17267,10 @@ function renderStudentProfileGrades(student) {
                     ${escapeHtml(sub)}
                     ${isSpecial ? ' <span class="badge" style="font-size:0.7rem; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; margin-left:4px;">Nota Única B4</span>' : ''}
                 </td>
-                <td style="text-align:center; font-weight:600;">${formatGradeCell(g1, isExon1, isSpecial)}</td>
-                <td style="text-align:center; font-weight:600;">${formatGradeCell(g2, isExon2, isSpecial)}</td>
-                <td style="text-align:center; font-weight:600;">${formatGradeCell(g3, isExon3, isSpecial)}</td>
-                <td style="text-align:center; font-weight:600;">${formatGradeCell(g4, isExon4, false)}</td>
+                <td style="text-align:center; font-weight:600;">${formatGradeCell(g1, isExon1, isSpecial, 1)}</td>
+                <td style="text-align:center; font-weight:600;">${formatGradeCell(g2, isExon2, isSpecial, 2)}</td>
+                <td style="text-align:center; font-weight:600;">${formatGradeCell(g3, isExon3, isSpecial, 3)}</td>
+                <td style="text-align:center; font-weight:600;">${formatGradeCell(g4, isExon4, false, 4)}</td>
                 <td style="text-align:center; font-weight:800; font-size:0.95rem; ${isFail ? 'color:#b91c1c; background:#fee2e2;' : (finalAvg >= 60 ? 'color:#15803d; background:#dcfce7;' : (isFullyExon ? 'color:#0369a1; background:#f0f9ff;' : 'color:#0369a1;'))}" title="${avgTitle}">${finalAvg > 0 ? finalAvg : (isFullyExon ? 'Exon.' : '—')}</td>
                 <td style="text-align:center;">
                     ${statusBadge}
@@ -24198,23 +24207,30 @@ function buildStudentReportCardInnerHtml(s) {
             resultColor = "#dc2626";
         }
 
-        const formatBimCell = (score, isFail, isExon, isDashOnly = false) => {
+        const formatBimCell = (score, isFail, isExon, isDashOnly = false, bimNum = 1) => {
             if (isDashOnly) {
                 return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:700; color:#94a3b8; border:1px solid #000000; width:40px;">—</td>`;
             }
             if (isExon) {
                 return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:900; color:#0369a1; border:1px solid #000000; width:40px;">—</td>`;
             }
-            return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:${isFail ? "900" : "800"}; color:${isFail ? "#dc2626" : (score > 0 ? "#000000" : "#64748b")}; border:1px solid #000000; width:40px;">${score > 0 ? score : "—"}</td>`;
+            // Si el bimestre aún no ha ocurrido (bimNum > activeBim), se muestra guión "—"
+            if (bimNum > activeBim) {
+                return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:700; color:#94a3b8; border:1px solid #000000; width:40px;">—</td>`;
+            }
+            // Si el bimestre ya ocurrió o está activo, se muestra la nota numérica exacta (incluyendo 0 en rojo para notas reprobadas)
+            const numScore = (score !== undefined && score !== null) ? Number(score) : 0;
+            const isFailing = isFail || numScore < 60;
+            return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:${isFailing ? "900" : "800"}; color:${isFailing ? "#dc2626" : "#000000"}; border:1px solid #000000; width:40px;">${numScore}</td>`;
         };
 
         // En materias especiales de 6to (Seminario / Práctica Supervisada):
         // La nota es ÚNICA y se almacena en el 4to Bimestre. Las unidades 1, 2 y 3 no aplican (—).
         // La columna de Promedio muestra la NOTA TOTAL directa (sin promedio).
-        const cellB1 = isSpecial ? formatBimCell(0, false, false, true) : formatBimCell(g.b1, isB1Fail, g.isExon1);
-        const cellB2 = isSpecial ? formatBimCell(0, false, false, true) : formatBimCell(g.b2, isB2Fail, g.isExon2);
-        const cellB3 = isSpecial ? formatBimCell(0, false, false, true) : formatBimCell(g.b3, isB3Fail, g.isExon3);
-        const cellB4 = formatBimCell(g.b4, isB4Fail, g.isExon4);
+        const cellB1 = isSpecial ? formatBimCell(0, false, false, true, 1) : formatBimCell(g.b1, isB1Fail, g.isExon1, false, 1);
+        const cellB2 = isSpecial ? formatBimCell(0, false, false, true, 2) : formatBimCell(g.b2, isB2Fail, g.isExon2, false, 2);
+        const cellB3 = isSpecial ? formatBimCell(0, false, false, true, 3) : formatBimCell(g.b3, isB3Fail, g.isExon3, false, 3);
+        const cellB4 = formatBimCell(g.b4, isB4Fail, g.isExon4, false, 4);
 
         const avgDisplay = isSpecial
             ? (g.b4 > 0 ? g.b4 : "—")
