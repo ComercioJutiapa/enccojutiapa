@@ -4940,6 +4940,9 @@ async function pullStateFromFirebaseCloud(force = false) {
         if (response.ok) {
             const cloudState = await response.json();
             if (cloudState && typeof cloudState === 'object' && (cloudState.students || cloudState.users)) {
+                if (cloudState.calificaciones && typeof cloudState.calificaciones === 'object') {
+                    STATE.calificaciones = { ...(STATE.calificaciones || {}), ...cloudState.calificaciones };
+                }
                 const applied = applyIncomingCloudState(cloudState, force);
                 if (applied) {
                     updateDbSyncStatus('synced');
@@ -10315,6 +10318,10 @@ function applyIncomingCloudState(incomingState, force = false) {
         }
     }
 
+    if (incomingState.calificaciones && typeof incomingState.calificaciones === 'object') {
+        STATE.calificaciones = { ...(STATE.calificaciones || {}), ...incomingState.calificaciones };
+    }
+
     // 2. Roles y Permisos (Matriz de 3 niveles: Modificar, Solo Ver y Bloqueado)
     let incomingRoles = incomingState.rolesConfig;
     if (incomingRoles && typeof incomingRoles === 'object' && !Array.isArray(incomingRoles)) {
@@ -10384,42 +10391,73 @@ function applyIncomingCloudState(incomingState, force = false) {
                     // 🛡️ [Anti-Reversión de Notas] Fusión inteligente protegida contra sobrescritura por caché o latencia
                     const localGrades = localSt.grades || {};
                     const incGrades = incSt.grades || {};
-                    const mergedGrades = { ...incGrades, ...localGrades };
+                    const allSubjKeys = new Set([...Object.keys(incGrades), ...Object.keys(localGrades)]);
+                    const mergedGrades = {};
 
-                    Object.keys(localGrades).forEach(subj => {
-                        if (Array.isArray(localGrades[subj])) {
-                            if (!mergedGrades[subj]) {
-                                mergedGrades[subj] = [...localGrades[subj]];
-                            } else {
-                                for (let u = 0; u < 4; u++) {
-                                    const lVal = Number(localGrades[subj][u]) || 0;
-                                    const iVal = Number(incGrades[subj] && incGrades[subj][u]) || 0;
-                                    // Si local tiene una nota ingresada (> 0) y la nube viene en 0 o vacía, preservar la local
-                                    if (lVal > 0 && iVal === 0) {
-                                        mergedGrades[subj][u] = lVal;
-                                    }
-                                }
+                    allSubjKeys.forEach(subj => {
+                        const lArr = Array.isArray(localGrades[subj]) ? localGrades[subj] : [0, 0, 0, 0];
+                        const iArr = Array.isArray(incGrades[subj]) ? incGrades[subj] : [0, 0, 0, 0];
+                        mergedGrades[subj] = [0, 0, 0, 0];
+                        for (let u = 0; u < 4; u++) {
+                            const lVal = Math.min(100, Math.max(0, Number(lArr[u]) || 0));
+                            const iVal = Math.min(100, Math.max(0, Number(iArr[u]) || 0));
+                            if (lVal > 0 && iVal === 0) {
+                                mergedGrades[subj][u] = lVal;
+                            } else if (iVal > 0 && lVal === 0) {
+                                mergedGrades[subj][u] = iVal;
+                            } else if (lVal > 0 && iVal > 0) {
+                                mergedGrades[subj][u] = (localMod > incMod && localDirty.has(key)) ? lVal : iVal;
                             }
                         }
                     });
 
-                    const mergedDetails = { ...(incSt.gradebookDetails || {}) };
-                    if (localSt.gradebookDetails) {
-                        Object.keys(localSt.gradebookDetails).forEach(subj => {
-                            if (!mergedDetails[subj]) {
-                                mergedDetails[subj] = { ...(localSt.gradebookDetails[subj] || {}) };
+                    const allSubjDetails = new Set([
+                        ...Object.keys(incSt.gradebookDetails || {}),
+                        ...Object.keys(localSt.gradebookDetails || {})
+                    ]);
+                    const mergedDetails = {};
+
+                    allSubjDetails.forEach(subj => {
+                        const lD = localSt.gradebookDetails ? localSt.gradebookDetails[subj] : null;
+                        const iD = incSt.gradebookDetails ? incSt.gradebookDetails[subj] : null;
+
+                        if (Array.isArray(iD)) {
+                            mergedDetails[subj] = [...iD];
+                        } else if (Array.isArray(lD)) {
+                            mergedDetails[subj] = [...lD];
+                        } else {
+                            mergedDetails[subj] = { ...(iD || {}), ...(lD || {}) };
+                        }
+
+                        for (let u = 1; u <= 4; u++) {
+                            const uStr = String(u);
+                            const lObj = lD ? (Array.isArray(lD) ? lD[u] : (lD[uStr] || lD[u])) : null;
+                            const iObj = iD ? (Array.isArray(iD) ? iD[u] : (iD[uStr] || iD[u])) : null;
+
+                            const lTot = lObj ? Math.min(100, Math.max(0, Number(lObj.total || 0))) : 0;
+                            const iTot = iObj ? Math.min(100, Math.max(0, Number(iObj.total || 0))) : 0;
+
+                            let chosen = null;
+                            if (iTot > 0 && lTot === 0) {
+                                chosen = iObj;
+                            } else if (lTot > 0 && iTot === 0) {
+                                chosen = lObj;
+                            } else if (lTot > 0 && iTot > 0) {
+                                chosen = (localMod > incMod && localDirty.has(key)) ? lObj : iObj;
                             } else {
-                                for (let u = 1; u <= 4; u++) {
-                                    const uStr = String(u);
-                                    const lDet = localSt.gradebookDetails[subj] && localSt.gradebookDetails[subj][uStr];
-                                    const iDet = incSt.gradebookDetails && incSt.gradebookDetails[subj] && incSt.gradebookDetails[subj][uStr];
-                                    if (lDet && (!iDet || ((lDet.total || 0) > 0 && (iDet.total || 0) === 0))) {
-                                        mergedDetails[subj][uStr] = { ...lDet };
-                                    }
+                                chosen = iObj || lObj;
+                            }
+
+                            if (chosen) {
+                                if (Array.isArray(mergedDetails[subj])) {
+                                    while (mergedDetails[subj].length <= u) mergedDetails[subj].push(null);
+                                    mergedDetails[subj][u] = { ...chosen };
+                                } else {
+                                    mergedDetails[subj][uStr] = { ...chosen };
                                 }
                             }
-                        });
-                    }
+                        }
+                    });
 
                     const localMod = localSt.lastModified || localSt._localModifiedAt || 0;
                     const incMod = incSt.lastModified || 0;
@@ -24112,6 +24150,54 @@ function getReportCardSubjectGrades(student, subject) {
             if (b2 === 0 && (gArr.b2 || gArr[2] || gArr['2'])) b2 = parseInt(gArr.b2 || gArr[2] || gArr['2']) || 0;
             if (b3 === 0 && (gArr.b3 || gArr[3] || gArr['3'])) b3 = parseInt(gArr.b3 || gArr[3] || gArr['3']) || 0;
             if (b4 === 0 && (gArr.b4 || gArr[4] || gArr['4'])) b4 = parseInt(gArr.b4 || gArr[4] || gArr['4']) || 0;
+        }
+    }
+
+    // 3. Lectura complementaria de respaldo desde STATE.calificaciones (por clave unívoca)
+    if ((b1 === 0 || b2 === 0 || b3 === 0 || b4 === 0) && window.STATE && window.STATE.calificaciones && typeof window.STATE.calificaciones === 'object') {
+        const sid = student.id;
+        const scode = student.personalCode;
+        const scarne = student.carne;
+        for (let b = 1; b <= 4; b++) {
+            const currentBVal = (b === 1) ? b1 : (b === 2) ? b2 : (b === 3) ? b3 : b4;
+            if (currentBVal === 0) {
+                const keysToTry = [
+                    `${sid}_${cleanTarget}_b${b}`,
+                    scode ? `${scode}_${cleanTarget}_b${b}` : null,
+                    scarne ? `${scarne}_${cleanTarget}_b${b}` : null
+                ].filter(Boolean);
+
+                let califRec = null;
+                for (const k of keysToTry) {
+                    if (window.STATE.calificaciones[k]) {
+                        califRec = window.STATE.calificaciones[k];
+                        break;
+                    }
+                }
+                if (!califRec) {
+                    for (const [cKey, rec] of Object.entries(window.STATE.calificaciones)) {
+                        if ((cKey.startsWith(sid + '_') || (scode && cKey.startsWith(scode + '_'))) && cKey.endsWith(`_b${b}`)) {
+                            const cPart = cKey.replace(sid + '_', '').replace(scode + '_', '').replace(`_b${b}`, '');
+                            if (cPart === cleanTarget || (cPart.length >= 6 && cleanTarget.includes(cPart)) || (cleanTarget.length >= 6 && cPart.includes(cleanTarget))) {
+                                califRec = rec;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (califRec) {
+                    const tot = (califRec.total !== undefined && califRec.total !== null && califRec.total !== '')
+                        ? (parseInt(califRec.total) || 0)
+                        : ((parseInt(califRec.zona) || 0) + (parseInt(califRec.examen) || 0));
+                    if (tot > 0) {
+                        const capped = Math.min(100, Math.max(0, tot));
+                        if (b === 1) b1 = capped;
+                        else if (b === 2) b2 = capped;
+                        else if (b === 3) b3 = capped;
+                        else if (b === 4) b4 = capped;
+                    }
+                }
+            }
         }
     }
 
