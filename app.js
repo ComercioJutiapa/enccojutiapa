@@ -23692,7 +23692,7 @@ function populateReportStudentSelect() {
     }
 
     if (gradeFilter) {
-        let curGrade = gradeFilter.value;
+        let curGrade = gradeFilter.value || sessionStorage.getItem('ENCCO_SELECTED_REPORT_GRADE') || '';
         if (isDocente && !curGrade && distinctGrades.length === 1) curGrade = distinctGrades[0];
         gradeFilter.innerHTML = (isDocente ? '<option value="">-- Mis Grados Asignados --</option>' : '<option value="">-- Todos los Grados --</option>') + 
             distinctGrades.map(g => `<option value="${g}" ${g === curGrade ? 'selected' : ''}>${g}</option>`).join('');
@@ -23700,23 +23700,31 @@ function populateReportStudentSelect() {
     }
 
     if (sectionFilter) {
-        let curSection = sectionFilter.value;
+        let curSection = sectionFilter.value || sessionStorage.getItem('ENCCO_SELECTED_REPORT_SECTION') || '';
         if (isDocente && !curSection && distinctSections.length === 1) curSection = distinctSections[0];
         sectionFilter.innerHTML = (isDocente ? '<option value="">-- Mis Secciones Asignadas --</option>' : '<option value="">-- Todas las Secciones --</option>') + 
             distinctSections.map(sec => `<option value="${sec}" ${sec === curSection ? 'selected' : ''}>${sec}</option>`).join('');
         if (curSection) sectionFilter.value = curSection;
     }
-    filterAndPopulateReportStudents();
+    filterAndPopulateReportStudents(true);
 }
 window.populateReportStudentSelect = populateReportStudentSelect;
 
 function onReportGradeFilterChange() {
-    filterAndPopulateReportStudents();
+    const gf = document.getElementById('reportGradeFilter');
+    if (gf) {
+        try { sessionStorage.setItem('ENCCO_SELECTED_REPORT_GRADE', gf.value); } catch(e) {}
+    }
+    filterAndPopulateReportStudents(false);
 }
 window.onReportGradeFilterChange = onReportGradeFilterChange;
 
 function onReportSectionFilterChange() {
-    filterAndPopulateReportStudents();
+    const sf = document.getElementById('reportSectionFilter');
+    if (sf) {
+        try { sessionStorage.setItem('ENCCO_SELECTED_REPORT_SECTION', sf.value); } catch(e) {}
+    }
+    filterAndPopulateReportStudents(false);
 }
 window.onReportSectionFilterChange = onReportSectionFilterChange;
 
@@ -23763,7 +23771,7 @@ function getFilteredReportStudents() {
 }
 window.getFilteredReportStudents = getFilteredReportStudents;
 
-function filterAndPopulateReportStudents() {
+function filterAndPopulateReportStudents(preserveSelection = true) {
     const select = document.getElementById('reportStudentSelect');
     const searchInput = document.getElementById('reportStudentSearchInput');
     const searchVal = (searchInput?.value || '').trim().toLowerCase();
@@ -23789,11 +23797,41 @@ function filterAndPopulateReportStudents() {
         return;
     }
 
-    select.innerHTML = students.map(s => `
-        <option value="${s.id}">${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))} (${s.carne || s.personalCode || '—'}) - ${formatStudentGradeAndSection(s)}</option>
-    `).join('');
+    // 🔒 Preservar estrictamente el estudiante seleccionado:
+    // Nunca reiniciar a students[0] si el usuario ya seleccionó un alumno o si el dropdown ya tiene valor
+    let currentId = null;
+    if (preserveSelection) {
+        currentId = (select.value && select.value !== '') ? select.value : null;
+        if (!currentId) currentId = STATE.selectedReportStudentId;
+        if (!currentId) {
+            try {
+                currentId = sessionStorage.getItem('ENCCO_SELECTED_REPORT_STUDENT') || localStorage.getItem('ENCCO_SELECTED_REPORT_STUDENT');
+            } catch(e) {}
+        }
+    }
 
-    previewStudentReportCard(students[0].id);
+    const targetStudent = (currentId && students.find(s => s.id === currentId)) || students[0];
+    const targetId = targetStudent.id;
+    STATE.selectedReportStudentId = targetId;
+    try {
+        sessionStorage.setItem('ENCCO_SELECTED_REPORT_STUDENT', targetId);
+        localStorage.setItem('ENCCO_SELECTED_REPORT_STUDENT', targetId);
+    } catch(e) {}
+
+    // Si la lista de estudiantes desplegada no ha cambiado, evitar recrear el innerHTML para no causar parpadeo
+    const currentOptions = Array.from(select.options).map(o => o.value).join(',');
+    const newOptions = students.map(s => s.id).join(',');
+    if (currentOptions !== newOptions) {
+        select.innerHTML = students.map(s => `
+            <option value="${s.id}" ${s.id === targetId ? 'selected' : ''}>${escapeHtml(formatStudentDisplayName(s, 'lastFirst'))} (${s.carne || s.personalCode || '—'}) - ${formatStudentGradeAndSection(s)}</option>
+        `).join('');
+    }
+
+    if (select.value !== targetId) {
+        select.value = targetId;
+    }
+
+    previewStudentReportCard(targetId);
 }
 window.filterAndPopulateReportStudents = filterAndPopulateReportStudents;
 
@@ -24348,6 +24386,17 @@ function buildStudentReportCardInnerHtml(s) {
 window.buildStudentReportCardInnerHtml = buildStudentReportCardInnerHtml;
 
 function previewStudentReportCard(studentId) {
+    if (studentId) {
+        STATE.selectedReportStudentId = studentId;
+        try {
+            sessionStorage.setItem('ENCCO_SELECTED_REPORT_STUDENT', studentId);
+            localStorage.setItem('ENCCO_SELECTED_REPORT_STUDENT', studentId);
+        } catch(e) {}
+    }
+    const select = document.getElementById('reportStudentSelect');
+    if (select && studentId && select.value !== studentId) {
+        select.value = studentId;
+    }
     const s = (STATE.students || []).find(x => x.id === studentId);
     const container = document.getElementById('reportCardPrintArea');
     if (!container) return;
