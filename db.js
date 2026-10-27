@@ -237,9 +237,20 @@
         const activitiesArr = Array.isArray(currentData.activities) ? currentData.activities.slice(0, 10) : [0,0,0,0,0,0,0,0,0,0];
         while (activitiesArr.length < 10) activitiesArr.push(0);
 
-        const calculatedZona = activitiesArr.reduce((a, b) => a + (parseInt(b) || 0), 0);
-        const examScore = parseInt(currentData.exam) || 0;
-        const totalScore = calculatedZona + examScore;
+        const calculatedZona = (currentData.zona !== undefined && currentData.zona !== null && parseInt(currentData.zona) > 0)
+            ? parseInt(currentData.zona)
+            : activitiesArr.reduce((a, b) => a + (parseInt(b) || 0), 0);
+        let examScore = parseInt(currentData.exam) || 0;
+        let totalScore = (currentData.total !== undefined && currentData.total !== null && parseInt(currentData.total) > 0)
+            ? Math.min(100, Math.max(0, parseInt(currentData.total)))
+            : (student.grades && student.grades[effectiveSubject] && student.grades[effectiveSubject][effectiveUnit - 1])
+                ? Math.min(100, Math.max(0, parseInt(student.grades[effectiveSubject][effectiveUnit - 1]) || 0))
+                : (calculatedZona + examScore);
+
+        if (examScore === 0 && totalScore > calculatedZona) {
+            examScore = totalScore - calculatedZona;
+        }
+        totalScore = Math.min(100, Math.max(0, totalScore > 0 ? totalScore : (calculatedZona + examScore)));
 
         const gradePayload = {
             id: compositeGradeKey,
@@ -376,9 +387,21 @@
             const activitiesArr = Array.isArray(currentData.activities) ? currentData.activities.slice(0, 10) : [0,0,0,0,0,0,0,0,0,0];
             while (activitiesArr.length < 10) activitiesArr.push(0);
 
-            const calculatedZona = activitiesArr.reduce((a, b) => a + (parseInt(b) || 0), 0);
-            const examScore = parseInt(currentData.exam) || 0;
-            const totalScore = calculatedZona + examScore;
+            const calculatedZona = (currentData.zona !== undefined && currentData.zona !== null && parseInt(currentData.zona) > 0)
+                ? parseInt(currentData.zona)
+                : activitiesArr.reduce((a, b) => a + (parseInt(b) || 0), 0);
+            let examScore = parseInt(currentData.exam) || 0;
+            let totalScore = (currentData.total !== undefined && currentData.total !== null && parseInt(currentData.total) > 0)
+                ? Math.min(100, Math.max(0, parseInt(currentData.total)))
+                : (student.grades && student.grades[effectiveSubject] && student.grades[effectiveSubject][effectiveUnit - 1])
+                    ? Math.min(100, Math.max(0, parseInt(student.grades[effectiveSubject][effectiveUnit - 1]) || 0))
+                    : (calculatedZona + examScore);
+
+            // 🛡️ REGLA INSTITUCIONAL ANTI-REVERSIÓN A ZONA:
+            if (examScore === 0 && totalScore > calculatedZona) {
+                examScore = totalScore - calculatedZona;
+            }
+            totalScore = Math.min(100, Math.max(0, totalScore > 0 ? totalScore : (calculatedZona + examScore)));
 
             const gradePayload = {
                 id: compositeGradeKey,

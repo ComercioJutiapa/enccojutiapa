@@ -25729,17 +25729,34 @@ function ensureStudentGradebookStructure(student, subjectName) {
     // 🌟 Inicialización limpia de las 4 unidades (respetando calificaciones existentes sin inyectar datos de prueba o caché)
     for (let u = 1; u <= 4; u++) {
         const uStr = String(u);
-        if (!student.gradebookDetails[subjectName][uStr]) {
+        const existingSlot = Array.isArray(student.gradebookDetails[subjectName])
+            ? student.gradebookDetails[subjectName][u]
+            : student.gradebookDetails[subjectName][uStr];
+
+        if (!existingSlot) {
             const existingTotal = (Array.isArray(student.grades[subjectName]) && student.grades[subjectName][u - 1]) 
                 ? parseInt(student.grades[subjectName][u - 1]) || 0 
                 : 0;
 
-            student.gradebookDetails[subjectName][uStr] = {
+            const cfg = (typeof getGradingConfig === 'function') ? getGradingConfig(null, u) : { zonaMax: 40, examMax: 60 };
+            const defaultZona = Math.min(cfg.zonaMax || 40, existingTotal);
+            const defaultExam = Math.max(0, existingTotal - defaultZona);
+
+            const newUnitData = {
                 activities: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                zona: existingTotal > 0 ? existingTotal : 0,
-                exam: 0,
-                total: existingTotal
+                zona: defaultZona,
+                exam: defaultExam,
+                total: Math.min(100, existingTotal)
             };
+
+            if (Array.isArray(student.gradebookDetails[subjectName])) {
+                while (student.gradebookDetails[subjectName].length <= u) {
+                    student.gradebookDetails[subjectName].push(null);
+                }
+                student.gradebookDetails[subjectName][u] = newUnitData;
+            } else {
+                student.gradebookDetails[subjectName][uStr] = newUnitData;
+            }
         }
     }
 }
@@ -26188,12 +26205,22 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
         const calculatedZona = (currentData.zona !== undefined && currentData.zona !== null) 
             ? Math.max(0, parseInt(currentData.zona) || 0) 
             : activitiesArr.reduce((a, b) => a + (parseInt(b) || 0), 0);
-        const examScore = (currentData.exam !== undefined && currentData.exam !== null) 
+        let examScore = (currentData.exam !== undefined && currentData.exam !== null) 
             ? Math.max(0, parseInt(currentData.exam) || 0) 
             : 0;
-        const totalScore = (currentData.total !== undefined && currentData.total !== null) 
+        let totalScore = (currentData.total !== undefined && currentData.total !== null && parseInt(currentData.total) > 0) 
             ? Math.max(0, parseInt(currentData.total) || 0) 
-            : (calculatedZona + examScore);
+            : (student.grades && student.grades[effectiveSubject] && student.grades[effectiveSubject][effectiveUnit - 1])
+                ? (parseInt(student.grades[effectiveSubject][effectiveUnit - 1]) || 0)
+                : (calculatedZona + examScore);
+
+        // 🛡️ REGLA INSTITUCIONAL ANTI-REVERSIÓN A ZONA:
+        // Si el examen viene en 0 pero la nota total es mayor a la zona (ej. total 83 vs zona 40),
+        // deducir autoritativamente el examen como total - zona, NUNCA colapsar la nota a 40.
+        if (examScore === 0 && totalScore > calculatedZona) {
+            examScore = totalScore - calculatedZona;
+        }
+        totalScore = Math.min(100, Math.max(0, totalScore > 0 ? totalScore : (calculatedZona + examScore)));
 
         const compositeGradeKey = `${student.id}_${cleanSubj}_b${effectiveUnit}`;
 
@@ -27264,12 +27291,29 @@ function loadTeacherGradebook() {
             const zonaColorStyle = (zonaSum > cfg.zonaMax) ? 'color:#b91c1c;' : (isLowZone ? 'color:#d97706;' : '');
             const lowZoneBadge = isLowZone ? '<span title="Zona baja (&lt; 24 pts): Riesgo de reprobación" style="font-size:0.68rem; font-weight:800; color:#b45309; background:#fef3c7; border:1px solid #fde68a; border-radius:4px; padding:1px 4px; margin-left:3px; vertical-align:middle;">⚠️ &lt;24</span>' : '';
 
+            let examForDisplay = (isInactive || isExon) ? 0 : (parseInt(uData.exam) || 0);
+            const existingTotalGrade = (s.grades && s.grades[subjectName] && s.grades[subjectName][currentUnit - 1]) 
+                ? (parseInt(s.grades[subjectName][currentUnit - 1]) || 0) 
+                : ((uData.total !== undefined && uData.total !== null) ? parseInt(uData.total) || 0 : 0);
+            if (!isInactive && !isExon && examForDisplay === 0 && existingTotalGrade > zonaSum) {
+                examForDisplay = Math.min(cfg.examMax || 60, existingTotalGrade - zonaSum);
+                uData.exam = examForDisplay;
+            }
+            const currentTotalDisplay = Math.min(100, Math.max(0, zonaSum + examForDisplay));
+
             return `
                 <tr data-student-id="${s.id}" style="${isInactive ? 'background:rgba(241,245,249,0.6); opacity:0.85;' : ''}">
                     <td style="text-align:center;"><input type="checkbox" ${isInactive ? 'disabled' : ''}></td>
                     <td><strong>${idx + 1}. ${studentFullName}</strong>${statusTag}</td>
                     <td style="text-align:center; background:${isInactive ? '#f1f5f9' : (isLowZone ? 'rgba(254,243,199,0.35)' : 'rgba(34,197,94,0.08)')}; font-weight:800; font-size:0.95rem; ${zonaColorStyle}" class="zona-sum-cell" id="zonaSum_${s.id}">
-                        ${isInactive ? `<span style="color:#94a3b8; font-size:0.8rem;">${isAusenteBim ? 'Ausente' : 'Retirado'}</span>` : `&Sigma; ${zonaSum} ${lowZoneBadge}`}
+                        ${isInactive ? `<span style="color:#94a3b8; font-size:0.8rem;">${isAusenteBim ? 'Ausente' : 'Retirado'}</span>` : `
+                            <div style="line-height:1.2;">
+                                <span>&Sigma; ${zonaSum}</span>${lowZoneBadge}
+                                <small style="display:block; font-size:0.72rem; color:var(--text-muted); font-weight:600;" title="Examen: ${examForDisplay} pts | Total Bimestre ${currentUnit}: ${currentTotalDisplay} pts">
+                                    Total: <strong style="color:${currentTotalDisplay < 60 ? '#b91c1c' : '#059669'}; font-size:0.8rem;">${currentTotalDisplay}</strong>
+                                </small>
+                            </div>
+                        `}
                     </td>
                     ${actInputs}
                 </tr>
@@ -27289,7 +27333,19 @@ function loadTeacherGradebook() {
             const isInactive = isRetiradoBim || isAusenteBim;
             const isExon = !isInactive && (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, currentUnit);
             const zonaSum = (isInactive || isExon) ? 0 : acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
-            const exam = (isInactive || isExon) ? 0 : (parseInt(uData.exam) || 0);
+            let exam = (isInactive || isExon) ? 0 : (parseInt(uData.exam) || 0);
+
+            // 🛡️ REGLA INSTITUCIONAL ANTI-REVERSIÓN A ZONA:
+            // Si el examen viene en 0 pero el alumno tiene una nota mayor a la zona en s.grades o uData.total,
+            // deducir autoritativamente el examen como (total - zona) y preservar la nota en vez de colapsarla a 40.
+            const existingTotal = (s.grades && s.grades[subjectName] && s.grades[subjectName][currentUnit - 1])
+                ? (parseInt(s.grades[subjectName][currentUnit - 1]) || 0)
+                : ((uData.total !== undefined && uData.total !== null) ? parseInt(uData.total) || 0 : 0);
+            if (!isInactive && !isExon && exam === 0 && existingTotal > zonaSum) {
+                exam = Math.min(cfg.examMax || 60, existingTotal - zonaSum);
+                uData.exam = exam;
+            }
+
             const rawSum = zonaSum + exam;
             const total = Math.min(100, Math.max(0, rawSum));
             if (!isInactive && !isExon && (exam > cfg.examMax || rawSum > 100)) hasOverLimit = true;
@@ -27876,14 +27932,21 @@ function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, 
     if (sumCell) {
         const cfg = window._activeGradebookConfigCache || ((typeof getGradingConfig === 'function') ? getGradingConfig(window._activeGradebookCourseCache || (STATE.pensum || []).find(p => p.subject === subjectName), unit) : { zonaMax: 40, examMax: 60 });
         const isLowZone = (zonaVal > 0 && zonaVal < 24);
-        if (isLowZone) {
-            sumCell.innerHTML = `&Sigma; ${zonaVal} <span title="Zona baja (&lt; 24 pts): Riesgo de reprobación" style="font-size:0.68rem; font-weight:800; color:#b45309; background:#fef3c7; border:1px solid #fde68a; border-radius:4px; padding:1px 4px; margin-left:3px; vertical-align:middle;">⚠️ &lt;24</span>`;
-            sumCell.style.color = '#d97706';
-            sumCell.style.background = 'rgba(254,243,199,0.35)';
+        const lowBadge = isLowZone ? `<span title="Zona baja (&lt; 24 pts): Riesgo de reprobación" style="font-size:0.68rem; font-weight:800; color:#b45309; background:#fef3c7; border:1px solid #fde68a; border-radius:4px; padding:1px 4px; margin-left:3px; vertical-align:middle;">⚠️ &lt;24</span>` : '';
+        const isInactive = (student.status === 'Retirado' || student.status === 'Inactivo' || student.status === 'Ausente');
+        if (isInactive) {
+            sumCell.innerHTML = `<span style="color:#94a3b8; font-size:0.8rem;">Retirado</span>`;
         } else {
-            sumCell.textContent = `\u03A3 ${zonaVal}`;
+            sumCell.innerHTML = `
+                <div style="line-height:1.2;">
+                    <span>&Sigma; ${zonaVal}</span>${lowBadge}
+                    <small style="display:block; font-size:0.72rem; color:var(--text-muted); font-weight:600;" title="Examen: ${examVal} pts | Total Bimestre ${unit}: ${totalVal} pts">
+                        Total: <strong style="color:${totalVal < 60 ? '#b91c1c' : '#059669'}; font-size:0.8rem;">${totalVal}</strong>
+                    </small>
+                </div>
+            `;
             sumCell.style.color = (zonaVal > (cfg.zonaMax || 40)) ? '#b91c1c' : '';
-            sumCell.style.background = 'rgba(34,197,94,0.08)';
+            sumCell.style.background = isLowZone ? 'rgba(254,243,199,0.35)' : 'rgba(34,197,94,0.08)';
         }
     }
 
@@ -28016,7 +28079,13 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
     student.gradebookDetails[subjectName][unit].zona = zonaSum;
 
     // Recalcular nota total (Regla estricta institucional ENCCO: Máximo 100 puntos)
-    const exam = parseInt(student.gradebookDetails[subjectName][unit].exam) || 0;
+    let exam = parseInt(student.gradebookDetails[subjectName][unit].exam) || 0;
+    const existingGrade = (student.grades && student.grades[subjectName] && student.grades[subjectName][unit - 1]) 
+        ? (parseInt(student.grades[subjectName][unit - 1]) || 0) : 0;
+    if (exam === 0 && existingGrade > zonaSum) {
+        exam = existingGrade - zonaSum;
+        student.gradebookDetails[subjectName][unit].exam = exam;
+    }
     const total = Math.min(100, Math.max(0, zonaSum + exam));
     student.gradebookDetails[subjectName][unit].total = total;
     student.grades[subjectName][unit - 1] = total;
@@ -28068,7 +28137,13 @@ function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = 
     student.gradebookDetails[subjectName][unit].zona = valNum;
 
     // Recalcular nota total (Regla estricta institucional ENCCO: Máximo 100 puntos)
-    const exam = parseInt(student.gradebookDetails[subjectName][unit].exam) || 0;
+    let exam = parseInt(student.gradebookDetails[subjectName][unit].exam) || 0;
+    const existingGrade = (student.grades && student.grades[subjectName] && student.grades[subjectName][unit - 1]) 
+        ? (parseInt(student.grades[subjectName][unit - 1]) || 0) : 0;
+    if (exam === 0 && existingGrade > valNum) {
+        exam = existingGrade - valNum;
+        student.gradebookDetails[subjectName][unit].exam = exam;
+    }
     const total = Math.min(100, Math.max(0, valNum + exam));
     student.gradebookDetails[subjectName][unit].total = total;
     student.grades[subjectName][unit - 1] = total;
