@@ -37909,7 +37909,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             finalZona = 0;
         }
 
-        // 🎯 GESTIÓN AUTORITATIVA DEL EXAMEN Y TOTAL CON SOBREESCRITURA TOTAL
+        // 🎯 GESTIÓN AUTORITATIVA DEL EXAMEN Y TOTAL CON PRESERVACIÓN DEL EXAMEN FINAL
         let examScore = 0;
         let examExplicitlyInFile = false;
         let directExamVal = null;
@@ -37930,43 +37930,43 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             }
         }
 
+        // 🛡️ Obtener historial de notas previas del alumno para NUNCA borrar el examen final existente
+        const prevExam = (gDetail && gDetail.exam !== undefined && gDetail.exam !== null && !isNaN(Number(gDetail.exam))) ? Number(gDetail.exam) : 0;
+        const prevTotal = (matched.grades && matched.grades[effectiveSubject] && matched.grades[effectiveSubject][effectiveUnit - 1] !== undefined) 
+            ? (Number(matched.grades[effectiveSubject][effectiveUnit - 1]) || 0) 
+            : ((gDetail && gDetail.total !== undefined && gDetail.total !== null) ? (Number(gDetail.total) || 0) : 0);
+        const prevZona = (gDetail && gDetail.zona !== undefined && gDetail.zona !== null) ? (Number(gDetail.zona) || 0) : 0;
+        const effectivePrevExam = (prevExam > 0) ? prevExam : (prevTotal > prevZona ? (prevTotal - prevZona) : 0);
+
         let finalTotal = finalZona;
 
-        // Resolución armónica e inteligente de calificaciones (Sobreescritura Autoritativa):
-        if (directTotal !== null) {
-            // El archivo contiene una columna de Total explícita (incluso si es 0)
-            finalTotal = directTotal;
-            if (directExamVal !== null) {
-                examScore = directExamVal;
-            } else if (directTotal >= finalZona) {
-                examScore = Math.max(0, directTotal - finalZona);
-            } else {
-                examScore = 0;
-            }
-        } else if (directExamVal !== null) {
-            // No hay columna de Total explícita, pero sí hay valor de Examen
+        // Resolución armónica e inteligente de calificaciones:
+        if (directExamVal !== null && directExamVal > 0) {
+            // A. El archivo trae una nota explícita de examen > 0: actualizar con la nota del archivo
             examScore = directExamVal;
-            finalTotal = finalZona + examScore;
-        } else if (actColumns.length > 0 && colIdxZona === -1 && colIdxTotal === -1 && colIdxExam === -1) {
-            // Archivo de actividades puras (Lista de Cotejo sin examen ni total): preservar examen previo
-            examScore = Number(gDetail.exam) || 0;
+            if (directTotal !== null && directTotal > finalZona) {
+                finalTotal = Math.max(directTotal, finalZona + examScore);
+            } else {
+                finalTotal = finalZona + examScore;
+            }
+        } else if (directTotal !== null && directTotal > finalZona) {
+            // B. El archivo trae una columna de Total que supera a la zona (ej. Total 80, Zona 40): examen = Total - Zona
+            examScore = directTotal - finalZona;
+            finalTotal = directTotal;
+        } else if (effectivePrevExam > 0) {
+            // C. 🛡️ PRESERVACIÓN ESTRICTA DEL EXAMEN FINAL:
+            // Si el archivo no trae examen (o viene vacío, en 0 o solo con columnas de actividades/zona),
+            // NUNCA borrar ni poner en 0 el campo de examen final previamente registrado en la plataforma.
+            examScore = effectivePrevExam;
             finalTotal = finalZona + examScore;
         } else {
-            // Respaldo seguro: mantener examen previo si existía y no hay conflicto
-            examScore = Number(gDetail.exam) || 0;
-            finalTotal = finalZona + examScore;
+            // D. Sin examen previo y sin examen en el archivo
+            examScore = (directExamVal !== null && directExamVal > 0) ? directExamVal : 0;
+            finalTotal = (directTotal !== null && directTotal > 0) ? directTotal : (finalZona + examScore);
         }
 
-        // 🛡️ REGLA MATEMÁTICA INSTITUCIONAL ENCCO: Total = Zona + Examen
-        if (finalTotal > finalZona && examScore === 0) {
-            examScore = finalTotal - finalZona;
-        } else if (finalTotal < finalZona && directTotal === null) {
-            finalTotal = finalZona + examScore;
-        }
-
-        // 🛡️ REGLA ESTRICTA INSTITUCIONAL ENCCO: Todas las notas que se excedan de 100, se normalizan a 100.
-        // Aunque se coloquen actividades que se excedan, el total nunca puede superar 100 puntos.
-        finalTotal = Math.min(100, Math.max(0, finalTotal));
+        // 🛡️ REGLA MATEMÁTICA INSTITUCIONAL ENCCO: Total = Zona + Examen (Normalizado a máx 100)
+        finalTotal = Math.min(100, Math.max(0, finalZona + examScore));
 
         // Sobreescribir las notas del estudiante con los nuevos valores del archivo
         gDetail.activities = newActs;
