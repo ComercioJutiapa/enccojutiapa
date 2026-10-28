@@ -5271,6 +5271,153 @@ body.theme-dark .custom-table tbody tr:hover {
     padding: 12px 14px !important;
 }
 
+/* =============================================================================
+   OPTIMIZACIÓN TÁCTIL Y RESPONSIVA: BLACKVIEW ZENO 10 5G Y TABLETS 10.1"
+   Pantalla: 10.1 Pulgadas IPS (16:10) | Viewports: 960px-1280px (Landscape), 600px-800px (Portrait)
+   ============================================================================= */
+
+@media (max-width: 1280px) and (min-width: 600px), (pointer: coarse) {
+    /* 1. Touch targets ergonómicos para dedos en pantalla de 10.1" */
+    .btn,
+    .btn-primary,
+    .btn-secondary,
+    .btn-success,
+    .btn-danger,
+    .btn-outline,
+    .sire-pill,
+    .sire-grade-tab,
+    button[type="button"],
+    button[type="submit"] {
+        min-height: 40px !important;
+        padding-top: 6px !important;
+        padding-bottom: 6px !important;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(2, 132, 199, 0.15);
+    }
+
+    /* 2. Prevenir auto-zoom de Android Chrome al enfocar campos */
+    input[type="text"],
+    input[type="password"],
+    input[type="number"],
+    input[type="search"],
+    select,
+    textarea,
+    .form-control,
+    .form-control-sire {
+        font-size: 16px !important;
+        min-height: 42px !important;
+        touch-action: manipulation;
+    }
+
+    /* 3. Desplazamiento inercial suave para tablas en pantallas táctiles */
+    .table-responsive,
+    .table-responsive-sire,
+    .attendance-table-container,
+    .sire-grade-nav-bar,
+    .modal-body {
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-x: contain !important;
+        scrollbar-width: thin;
+    }
+
+    /* 4. Adaptabilidad de barras de controles adherentes (Sticky) */
+    .sire-controls-wrapper,
+    .section-toolbar,
+    .filter-bar {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        padding: 6px 8px !important;
+        gap: 6px !important;
+    }
+
+    /* 5. Optimización de Modales en Tablet (94% de ancho, scroll interno) */
+    .modal-container {
+        width: 95% !important;
+        max-width: 950px !important;
+        max-height: 92vh !important;
+        margin: 10px auto !important;
+        border-radius: 12px !important;
+    }
+
+    .modal-body {
+        max-height: calc(92vh - 110px) !important;
+        overflow-y: auto !important;
+    }
+
+    /* 6. Pestañas de Grado y Píldoras de Sección en modo táctil */
+    .sire-grade-nav-bar {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 4px 2px 8px 2px;
+    }
+
+    .sire-grade-tab {
+        flex: 0 0 auto;
+        font-size: 0.84rem !important;
+        padding: 8px 14px !important;
+    }
+
+    .sire-subfilter-bar {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        padding: 8px 10px !important;
+    }
+
+    .pills-group {
+        padding: 3px !important;
+    }
+
+    .sire-pill {
+        padding: 6px 12px !important;
+        font-size: 0.82rem !important;
+    }
+
+    /* 7. Columnas congeladas para sábana de notas en tablet */
+    .sire-col-sticky-num {
+        width: 32px !important;
+    }
+    .sire-col-sticky-cod {
+        width: 86px !important;
+    }
+    .sire-col-sticky-name {
+        min-width: 160px !important;
+        max-width: 175px !important;
+    }
+
+    /* 8. Previsualización de boletines / tarjetas en tablet */
+    .report-half-letter-sheet {
+        zoom: 0.96;
+    }
+}
+
+/* Orientación vertical (Portrait) de la tablet (600px - 850px) */
+@media (max-width: 850px) and (min-width: 600px) {
+    .sire-topbar-inner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .sire-subfilter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .sire-subfilter-bar > div {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .kpi-row,
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+
 
 
 

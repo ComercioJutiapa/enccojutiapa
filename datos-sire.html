@@ -1526,6 +1526,34 @@
         .print-header, .print-signatures {
             display: none;
         }
+
+        /* Optimización Táctil y Pantalla 10.1" (Blackview Zeno 10 5G) */
+        @media (max-width: 1280px) and (min-width: 600px), (pointer: coarse) {
+            .btn-sire-primary, .btn-sire-outline, .btn-sire-success, .sire-pill, .sire-grade-tab {
+                min-height: 38px;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: rgba(2, 132, 199, 0.15);
+            }
+            .form-control-sire {
+                font-size: 15px !important;
+                min-height: 38px;
+            }
+            .table-responsive-sire {
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior-x: contain;
+            }
+            .sire-controls-wrapper {
+                padding: 4px 6px;
+            }
+            .sire-grade-nav-bar {
+                scrollbar-width: thin;
+                gap: 6px;
+            }
+            .sire-col-sticky-name {
+                min-width: 155px;
+                max-width: 175px;
+            }
+        }
     </style>
 </head>
 <body>
