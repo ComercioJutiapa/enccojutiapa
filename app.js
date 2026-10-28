@@ -24336,7 +24336,7 @@ function buildStudentReportCardInnerHtml(s) {
                 return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:700; color:#94a3b8; border:1px solid #000000; width:40px;">—</td>`;
             }
             if (isExon) {
-                return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:900; color:#0369a1; border:1px solid #000000; width:40px;">—</td>`;
+                return `<td style="text-align:center; font-size:9.5px; font-weight:900; color:#0284c7; border:1px solid #000000; width:40px; background:#f0f9ff; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;" title="Exoneración Oficial Autorizada">Exon.</td>`;
             }
             // Si el bimestre aún no ha ocurrido (bimNum > activeBim), se muestra guión "—"
             if (bimNum > activeBim) {
@@ -24389,6 +24389,17 @@ function buildStudentReportCardInnerHtml(s) {
     const promedioFooterLabel = is6to 
         ? "PROMEDIO GENERAL ACUMULADO (6TO GRADUANDOS - 3 UNIDADES / NOTA ÚNICA B4):" 
         : "PROMEDIO GENERAL ACUMULADO (4 UNIDADES):";
+
+    const activeExons = (typeof getStudentExonerationsList === 'function')
+        ? getStudentExonerationsList(s)
+        : (s.academicExceptions || s.exoneraciones || []);
+    const hasAnyExon = (activeExons && activeExons.length > 0) || s.isExonerated === true || s.exonerado === true;
+
+    const exonNoticeHtml = hasAnyExon
+        ? `<div style="margin:2px 0; padding:2px 6px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:3px; font-size:8px; color:#0369a1; font-weight:700; display:flex; justify-content:space-between; align-items:center; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;">
+            <span><i class="fa-solid fa-file-shield"></i> <strong>CONSIDERACIÓN ACADÉMICA OFICIAL:</strong> Alumno con dispensa/exoneración administrativa autorizada. Las unidades marcadas con <strong>[Exon.]</strong> no penalizan el promedio acumulado.</span>
+           </div>`
+        : '';
 
     return `
         <div class="report-half-letter-sheet" style="background:#ffffff; color:#000000; width:100%; height:100%; max-height:100%; box-sizing:border-box; font-family:'Segoe UI', Roboto, Helvetica, Arial, sans-serif; display:flex; flex-direction:column; justify-content:space-between; margin:0 auto; overflow:hidden;">
@@ -24447,6 +24458,8 @@ function buildStudentReportCardInnerHtml(s) {
                         </tr>
                     </tfoot>
                 </table>
+
+                ${exonNoticeHtml}
 
                 <!-- BLOQUE DE FIRMA ÚNICA EXCLUSIVA DE LA DIRECCIÓN -->
                 <div style="display:flex; justify-content:center; align-items:flex-end; margin-top:2px; padding-bottom:1px;">
