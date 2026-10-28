@@ -30,7 +30,8 @@ const CRITICAL_SUITES = [
     'test_excel_bimester_consistency.js',
     'tests/test_docente_permissions_and_auxiliaturas.js',
     'tests/test_calculo_5a_integrity.js',
-    'tests/test_report_card_hydration.js'
+    'tests/test_report_card_hydration.js',
+    'tests/test_sire_seminario.js'
 ];
 
 console.log('================================================================================');

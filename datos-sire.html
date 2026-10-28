@@ -2014,11 +2014,13 @@
             try {
                 // 0. Renderizado instantáneo (0ms) desde caché de sesión si ya fue consultada
                 try {
-                    const cachedRaw = sessionStorage.getItem('ENCCO_SIRE_STUDENTS_CACHE');
+                    const cachedRaw = sessionStorage.getItem('ENCCO_SIRE_STUDENTS_CACHE_V2') || sessionStorage.getItem('ENCCO_SIRE_STUDENTS_CACHE');
                     const cachedPensumRaw = sessionStorage.getItem('ENCCO_SIRE_PENSUM_CACHE');
                     if (cachedRaw) {
                         const parsed = JSON.parse(cachedRaw);
-                        if (Array.isArray(parsed) && parsed.length > 0) {
+                        // Evitar usar caché obsoleto si los alumnos de 6to no tienen notas de Seminario
+                        const hasStaleSeminario = Array.isArray(parsed) && parsed.some(s => s && s.grade && s.grade.includes('6') && (!s.grades || !s.grades['Seminario sobre Problemas Socioeconómicos de Guatemala'] || (Array.isArray(s.grades['Seminario sobre Problemas Socioeconómicos de Guatemala']) && s.grades['Seminario sobre Problemas Socioeconómicos de Guatemala'].every(x => x === 0))));
+                        if (Array.isArray(parsed) && parsed.length > 0 && !hasStaleSeminario) {
                             _sireStudents = window._sireStudents = parsed;
                             if (cachedPensumRaw) {
                                 try { _sirePensumCatalog = JSON.parse(cachedPensumRaw); } catch(pe) {}
@@ -2102,19 +2104,20 @@
         async function fetchFromRtdbRest() {
             try {
                 // Lectura ultrarrápida paralela y de SOLO LECTURA estricta (GET pura)
-                const pensumPromise = fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/pensumCatalog.json', { 
+                // Priorizar /encc_school_state/ que contiene el estado oficial y en tiempo real con calificaciones completas
+                const pensumPromise = fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/pensumCatalog.json', { 
                     method: 'GET', 
                     headers: { 'Accept': 'application/json' } 
                 }).then(async r => {
-                    if (!r.ok) r = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/pensumCatalog.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                    if (!r.ok) r = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/pensumCatalog.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
                     return r.ok ? await r.json() : null;
                 }).catch(() => null);
 
-                const studentsPromise = fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json', { 
+                const studentsPromise = fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json', { 
                     method: 'GET', 
                     headers: { 'Accept': 'application/json' } 
                 }).then(async r => {
-                    if (!r.ok) r = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
+                    if (!r.ok) r = await fetch('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json', { method: 'GET', headers: { 'Accept': 'application/json' } });
                     return r.ok ? await r.json() : null;
                 }).catch(() => null);
 
@@ -2133,7 +2136,10 @@
                     let list = Array.isArray(sData) ? sData.filter(Boolean) : (typeof sData === 'object' ? Object.keys(sData).map(k => ({ id: k, ...sData[k] })) : []);
                     if (list.length > 0) {
                         _sireStudents = window._sireStudents = list;
-                        try { sessionStorage.setItem('ENCCO_SIRE_STUDENTS_CACHE', JSON.stringify(list)); } catch(se) {}
+                        try { 
+                            sessionStorage.setItem('ENCCO_SIRE_STUDENTS_CACHE_V2', JSON.stringify(list));
+                            sessionStorage.setItem('ENCCO_SIRE_STUDENTS_CACHE', JSON.stringify(list)); 
+                        } catch(se) {}
                         console.log("✅ [Datos para Sire] Alumnos cargados desde Firebase Realtime Database (REST):", list.length);
                         applySireFilters();
                         return true;
@@ -2608,6 +2614,30 @@
             }
 
             if (entry === undefined || entry === null) return null;
+
+            // Regla Institucional de Graduación (6to Grado): Seminario y Práctica Supervisada
+            // Tienen nota única total registrada en el 4to Bimestre (o consolidada), SIN PROMEDIO.
+            const cleanSubj = (subjectName || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const isGraduationSpecial = cleanSubj.includes('seminario') || cleanSubj.includes('practica');
+
+            if (isGraduationSpecial && (period === 'FINAL' || period === 'B4')) {
+                let gradScore = null;
+                if (Array.isArray(entry)) {
+                    if (entry.length > 0 && typeof entry[0] === 'object' && entry[0] !== null) {
+                        const numArr = entry.map(x => (x && typeof x.total === 'number') ? x.total : 0);
+                        gradScore = numArr[3] || numArr[2] || numArr[1] || numArr[0] || null;
+                    } else {
+                        gradScore = entry[3] || entry[2] || entry[1] || entry[0] || null;
+                    }
+                } else if (typeof entry === 'object') {
+                    gradScore = entry.b4 || entry['4'] || entry.b3 || entry['3'] || entry.b2 || entry['2'] || entry.b1 || entry['1'] || null;
+                } else if (typeof entry === 'number') {
+                    gradScore = entry;
+                }
+                if (typeof gradScore === 'number' && gradScore > 0) {
+                    return gradScore;
+                }
+            }
 
             let score = null;
             if (Array.isArray(entry)) {
