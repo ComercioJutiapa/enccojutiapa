@@ -2125,7 +2125,25 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
                             body: JSON.stringify(cleanPayload[nodeKey])
                         }).catch(e => console.warn(`Aviso al sincronizar colección ${nodeKey}:`, e))
                     );
+                    if (nodeKey === 'students') {
+                        syncPromises.push(
+                            fetch(`${firebaseUrl}/students.json`, {
+                                method: "PUT",
+                                headers: headers,
+                                body: JSON.stringify(cleanPayload.students)
+                            }).catch(e => console.warn(`Aviso al sincronizar colección raíz students:`, e))
+                        );
+                    }
                 }
+            }
+            if (cleanPayload.lastModified !== undefined) {
+                syncPromises.push(
+                    fetch(`${firebaseUrl}/encc_school_state/lastModified.json`, {
+                        method: "PUT",
+                        headers: headers,
+                        body: JSON.stringify(cleanPayload.lastModified)
+                    }).catch(() => {})
+                );
             }
             if (cleanPayload.exoneraciones !== undefined) {
                 syncPromises.push(
@@ -2141,7 +2159,9 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
             if (typeof EnccoDDoSProtection !== "undefined" && EnccoDDoSProtection.recordSuccess) {
                 EnccoDDoSProtection.recordSuccess();
             }
-            if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.clear();
+            setTimeout(() => {
+                if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.clear();
+            }, 10000);
             updateDbSyncStatus("synced", "⚡ Tiempo Real: Sincronizado (0ms)");
             if (showToastNotification && typeof showToast === "function") {
                 showToast("Sincronizado con Google Firebase exitosamente.", "success");
@@ -4189,6 +4209,12 @@ async function syncUsersToDatabaseImmediate(showToastNotification = true) {
     const firebaseUrl = getFirebaseDatabaseUrl();
     const now = Date.now();
     STATE.lastModified = now;
+    STATE._lastSavedLocally = now;
+    student._localModifiedAt = now;
+    student.lastModified = now;
+    window._lastLocalGradeEditTime = now;
+    if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
+    window._locallyDirtyStudentIds.add(student.id);
     if (typeof localStorage !== 'undefined') {
         try { localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(now)); } catch(e) {}
     }
@@ -5228,14 +5254,23 @@ function initFirebaseRealtimeConnection() {
                                     const localSt = studentMap.get(key);
                                     if (!localSt) {
                                         studentMap.set(key, incSt);
-                                    } else if (!localDirty.has(key)) {
-                                        const mergedGrades = { ...(localSt.grades || {}), ...(incSt.grades || {}) };
-                                        const mergedDetails = { ...(localSt.gradebookDetails || {}) };
-                                        if (incSt.gradebookDetails) {
-                                            Object.keys(incSt.gradebookDetails).forEach(subj => {
+                                    } else {
+                                        const localMod = localSt.lastModified || localSt._localModifiedAt || 0;
+                                        const incMod = incSt.lastModified || 0;
+                                        const isLocalProtected = localDirty.has(key) || localDirty.has(localSt.id) || (localMod >= incMod && localMod > 0);
+
+                                        if (isLocalProtected) {
+                                            // 🛡️ [Anti-Reversión Estricta] El estudiante tiene modificaciones locales recientes: PRESERVAR 100%
+                                            return;
+                                        }
+
+                                        const mergedGrades = { ...(incSt.grades || {}), ...(localSt.grades || {}) };
+                                        const mergedDetails = { ...(incSt.gradebookDetails || {}) };
+                                        if (localSt.gradebookDetails) {
+                                            Object.keys(localSt.gradebookDetails).forEach(subj => {
                                                 mergedDetails[subj] = {
                                                     ...(mergedDetails[subj] || {}),
-                                                    ...(incSt.gradebookDetails[subj] || {})
+                                                    ...(localSt.gradebookDetails[subj] || {})
                                                 };
                                             });
                                         }
@@ -5249,8 +5284,9 @@ function initFirebaseRealtimeConnection() {
                             } else {
                                 STATE.students = deduplicateStudentsCollection(incomingList);
                             }
+                            const isActivelyEditing = (Date.now() - (window._lastLocalGradeEditTime || 0)) < 10000;
                             if (typeof ensureSireOfficialStudents === 'function') ensureSireOfficialStudents();
-                            if (typeof renderGradebookTable === 'function' && STATE.activeView === 'gradebook') renderGradebookTable();
+                            if (!isActivelyEditing && typeof renderGradebookTable === 'function' && STATE.activeView === 'gradebook') renderGradebookTable();
                             if (typeof renderStudentsTable === 'function' && STATE.activeView === 'students') renderStudentsTable();
                             if (typeof renderTeacherGradeProgressTable === 'function' && STATE.activeView === 'teacher-progress') renderTeacherGradeProgressTable();
                             if (typeof loadAttendanceList === 'function' && STATE.activeView === 'attendance') loadAttendanceList();
@@ -5274,7 +5310,10 @@ function initFirebaseRealtimeConnection() {
                         }
 
                         if (targetStudent) {
-                            if (window._locallyDirtyStudentIds && window._locallyDirtyStudentIds.has(targetStudent.id)) {
+                            const localMod = targetStudent.lastModified || targetStudent._localModifiedAt || 0;
+                            const isDirty = window._locallyDirtyStudentIds && (window._locallyDirtyStudentIds.has(targetStudent.id) || window._locallyDirtyStudentIds.has(targetStudent.personalCode));
+                            const isRecentlyEdited = (Date.now() - (window._lastLocalGradeEditTime || 0)) < 15000;
+                            if (isDirty || (localMod > 0 && isRecentlyEdited)) {
                                 return;
                             }
                             if (subParts.length === 2) {
@@ -10387,7 +10426,16 @@ function applyIncomingCloudState(incomingState, force = false) {
                 const localSt = studentMap.get(key);
                 if (!localSt) {
                     studentMap.set(key, incSt);
-                } else if (!localDirty.has(key)) {
+                } else {
+                    const localMod = localSt.lastModified || localSt._localModifiedAt || 0;
+                    const incMod = incSt.lastModified || 0;
+                    const isLocalProtected = localDirty.has(key) || localDirty.has(localSt.id) || (localMod >= incMod && localMod > 0);
+
+                    if (isLocalProtected) {
+                        // 🛡️ [Anti-Reversión Estricta] El estudiante tiene modificaciones locales recientes o pendientes: PRESERVAR 100%
+                        return;
+                    }
+
                     // 🛡️ [Anti-Reversión de Notas] Fusión inteligente protegida contra sobrescritura por caché o latencia
                     const localGrades = localSt.grades || {};
                     const incGrades = incSt.grades || {};
@@ -10402,11 +10450,11 @@ function applyIncomingCloudState(incomingState, force = false) {
                             const lVal = Math.min(100, Math.max(0, Number(lArr[u]) || 0));
                             const iVal = Math.min(100, Math.max(0, Number(iArr[u]) || 0));
                             if (lVal > 0 && iVal === 0) {
-                                mergedGrades[subj][u] = lVal;
+                                mergedGrades[subj][u] = (localMod >= incMod) ? lVal : iVal;
                             } else if (iVal > 0 && lVal === 0) {
-                                mergedGrades[subj][u] = iVal;
+                                mergedGrades[subj][u] = (localMod >= incMod && localMod > 0) ? lVal : iVal;
                             } else if (lVal > 0 && iVal > 0) {
-                                mergedGrades[subj][u] = (localMod > incMod && localDirty.has(key)) ? lVal : iVal;
+                                mergedGrades[subj][u] = (localMod >= incMod) ? lVal : iVal;
                             }
                         }
                     });
@@ -10439,13 +10487,13 @@ function applyIncomingCloudState(incomingState, force = false) {
 
                             let chosen = null;
                             if (iTot > 0 && lTot === 0) {
-                                chosen = iObj;
+                                chosen = (localMod >= incMod && localMod > 0) ? lObj : iObj;
                             } else if (lTot > 0 && iTot === 0) {
-                                chosen = lObj;
+                                chosen = (localMod >= incMod) ? lObj : iObj;
                             } else if (lTot > 0 && iTot > 0) {
-                                chosen = (localMod > incMod && localDirty.has(key)) ? lObj : iObj;
+                                chosen = (localMod >= incMod) ? lObj : iObj;
                             } else {
-                                chosen = iObj || lObj;
+                                chosen = (localMod >= incMod && localMod > 0) ? (lObj || iObj) : (iObj || lObj);
                             }
 
                             if (chosen) {
@@ -10459,9 +10507,7 @@ function applyIncomingCloudState(incomingState, force = false) {
                         }
                     });
 
-                    const localMod = localSt.lastModified || localSt._localModifiedAt || 0;
-                    const incMod = incSt.lastModified || 0;
-                    if (localMod > incMod) {
+                    if (localMod >= incMod) {
                         // Preservar datos locales del estudiante (nombre, estado, grado, etc.) modificados recientemente
                         Object.assign(localSt, {
                             grades: mergedGrades,
@@ -26263,6 +26309,12 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
 
     const now = Date.now();
     STATE.lastModified = now;
+    STATE._lastSavedLocally = now;
+    student._localModifiedAt = now;
+    student.lastModified = now;
+    window._lastLocalGradeEditTime = now;
+    if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
+    window._locallyDirtyStudentIds.add(student.id);
 
     // 🌟 A. Actualización Atómica en Google Cloud Firestore
     const modular = window.FirebaseModular;
@@ -26394,6 +26446,11 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
         .replace(/[^a-z0-9]/g, '');
     const cleanSubj = cleanStr(effectiveSubject);
     const now = Date.now();
+    if (window.STATE) {
+        window.STATE.lastModified = now;
+        window.STATE._lastSavedLocally = now;
+    }
+    window._lastLocalGradeEditTime = now;
     const updatedBy = (window.STATE && window.STATE.currentUser) ? window.STATE.currentUser.id : 'sistema';
 
     const gradeRecords = [];
@@ -26490,6 +26547,8 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
         student.grades = student.grades || {};
         student.grades[effectiveSubject] = student.grades[effectiveSubject] || [0, 0, 0, 0];
         student.grades[effectiveSubject][effectiveUnit - 1] = totalScore;
+        student._localModifiedAt = now;
+        student.lastModified = now;
 
         let rtdbIdx = -1;
         if (window._rtdbStudentIndexMap && window._rtdbStudentIndexMap.has(student.id)) {
@@ -26560,9 +26619,11 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
                 if (item.rtdbIdx !== -1) {
                     multiPathPayload[`students/${item.rtdbIdx}/gradebookDetails/${effectiveSubject}/${effectiveUnit}`] = item.student.gradebookDetails[effectiveSubject][effectiveUnit];
                     multiPathPayload[`students/${item.rtdbIdx}/grades/${effectiveSubject}/${effectiveUnit - 1}`] = item.totalScore;
+                    multiPathPayload[`students/${item.rtdbIdx}/lastModified`] = now;
                 }
             }
             multiPathPayload['config/lastModified'] = now;
+            multiPathPayload['lastModified'] = now;
 
             await Promise.all([
                 fetch(`${firebaseUrl}/encc_school_state.json`, {
@@ -28327,6 +28388,11 @@ function handleActivityBoxChange(studentId, actIndex, value, subjectName, unit, 
     const total = Math.min(100, Math.max(0, zonaSum + exam));
     student.gradebookDetails[subjectName][unit].total = total;
     student.grades[subjectName][unit - 1] = total;
+    const nowTs = Date.now();
+    student._localModifiedAt = nowTs;
+    student.lastModified = nowTs;
+    STATE.lastModified = nowTs;
+    STATE._lastSavedLocally = nowTs;
 
     // Actualización quirúrgica inmediata en DOM (0ms) sin destruir tabla
     updateStudentGradeRowSummaryDOM(studentId, zonaSum, exam, total, student, subjectName, unit);
@@ -28385,6 +28451,11 @@ function handleDirectZonaChange(studentId, value, subjectName, unit, isCommit = 
     const total = Math.min(100, Math.max(0, valNum + exam));
     student.gradebookDetails[subjectName][unit].total = total;
     student.grades[subjectName][unit - 1] = total;
+    const nowTs = Date.now();
+    student._localModifiedAt = nowTs;
+    student.lastModified = nowTs;
+    STATE.lastModified = nowTs;
+    STATE._lastSavedLocally = nowTs;
 
     updateStudentGradeRowSummaryDOM(studentId, valNum, exam, total, student, subjectName, unit);
 
@@ -28449,6 +28520,11 @@ function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = f
     const total = Math.min(100, Math.max(0, zonaSum + examVal));
     student.gradebookDetails[subjectName][unit].total = total;
     student.grades[subjectName][unit - 1] = total;
+    const nowTs = Date.now();
+    student._localModifiedAt = nowTs;
+    student.lastModified = nowTs;
+    STATE.lastModified = nowTs;
+    STATE._lastSavedLocally = nowTs;
 
     updateStudentGradeRowSummaryDOM(studentId, zonaSum, examVal, total, student, subjectName, unit);
 
@@ -28517,10 +28593,15 @@ async function saveGradebookChanges(e) {
         // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
         const now = Date.now();
         STATE.lastModified = now;
+        STATE._lastSavedLocally = now;
+        window._lastLocalGradeEditTime = now;
 
-        if (window._locallyDirtyStudentIds) {
-            courseStudents.forEach(s => window._locallyDirtyStudentIds.delete(s.id));
-        }
+        if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
+        courseStudents.forEach(s => {
+            s._localModifiedAt = now;
+            s.lastModified = now;
+            window._locallyDirtyStudentIds.add(s.id);
+        });
 
         saveStateToLocalStorage();
         if (typeof updateDbSyncStatus === 'function') {
@@ -28551,6 +28632,11 @@ async function saveGradebookChanges(e) {
                     body: JSON.stringify(Date.now())
                 }).catch(() => {});
             }
+            setTimeout(() => {
+                if (window._locallyDirtyStudentIds) {
+                    courseStudents.forEach(s => window._locallyDirtyStudentIds.delete(s.id));
+                }
+            }, 15000);
             if (typeof updateDbSyncStatus === 'function') {
                 updateDbSyncStatus('synced', '⚡ Tiempo Real: Sincronizado en la nube (0ms)');
             }
@@ -37839,31 +37925,26 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         let directTotal = null;
         if (colIdxTotal !== -1) {
             const parsedTotal = parseNumericScore(row[colIdxTotal]);
-            if (parsedTotal !== null && parsedTotal > 0) {
-                directTotal = parsedTotal;
+            if (parsedTotal !== null) {
+                directTotal = Math.max(0, parsedTotal);
             }
         }
 
         let finalTotal = finalZona;
 
-        // Resolución armónica e inteligente de calificaciones:
-        if (directTotal !== null && directTotal > 0) {
-            // El archivo contiene una columna de Total con nota > 0
-            if (directExamVal !== null && directExamVal > 0) {
-                // Ambos (Examen y Total) vienen con valores mayores a 0
+        // Resolución armónica e inteligente de calificaciones (Sobreescritura Autoritativa):
+        if (directTotal !== null) {
+            // El archivo contiene una columna de Total explícita (incluso si es 0)
+            finalTotal = directTotal;
+            if (directExamVal !== null) {
                 examScore = directExamVal;
-                finalTotal = Math.max(directTotal, finalZona + examScore);
             } else if (directTotal >= finalZona) {
-                // El total es mayor o igual a la zona (ej. Total 75 u 80, Zona 40)
-                // Aunque Examen en el archivo venga en 0 o vacío, el examen real es Total - Zona
                 examScore = Math.max(0, directTotal - finalZona);
-                finalTotal = directTotal;
             } else {
-                finalTotal = directTotal;
-                examScore = (directExamVal !== null) ? directExamVal : 0;
+                examScore = 0;
             }
         } else if (directExamVal !== null) {
-            // No hay columna de Total (o Total es 0/vacío), pero sí hay valor de Examen
+            // No hay columna de Total explícita, pero sí hay valor de Examen
             examScore = directExamVal;
             finalTotal = finalZona + examScore;
         } else if (actColumns.length > 0 && colIdxZona === -1 && colIdxTotal === -1 && colIdxExam === -1) {
@@ -37879,7 +37960,7 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         // 🛡️ REGLA MATEMÁTICA INSTITUCIONAL ENCCO: Total = Zona + Examen
         if (finalTotal > finalZona && examScore === 0) {
             examScore = finalTotal - finalZona;
-        } else if (finalTotal < finalZona) {
+        } else if (finalTotal < finalZona && directTotal === null) {
             finalTotal = finalZona + examScore;
         }
 
@@ -37898,6 +37979,10 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         }
         matched.grades[effectiveSubject][effectiveUnit - 1] = finalTotal;
 
+        const importTimestamp = Date.now();
+        matched._localModifiedAt = importTimestamp;
+        matched.lastModified = importTimestamp;
+
         // Asegurar actualización en la instancia canónica de STATE.students si matched es un clon
         const canonStudent = (STATE.students || []).find(st => st && st.id === matched.id);
         if (canonStudent && canonStudent !== matched) {
@@ -37910,6 +37995,8 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
             };
             if (!canonStudent.grades[effectiveSubject]) canonStudent.grades[effectiveSubject] = [0, 0, 0, 0];
             canonStudent.grades[effectiveSubject][effectiveUnit - 1] = finalTotal;
+            canonStudent._localModifiedAt = importTimestamp;
+            canonStudent.lastModified = importTimestamp;
         }
 
         if (!actuallyUpdatedStudents.some(st => st.id === matched.id)) {
@@ -37936,11 +38023,16 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
 
     STATE.selectedGradebookCourseId = targetPensum.id;
     STATE.selectedGradebookGrade = targetPensum.grade;
+    const importNow = Date.now();
+    STATE.lastModified = importNow;
+    STATE._lastSavedLocally = importNow;
+    window._lastLocalGradeEditTime = importNow;
     try {
         sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', targetPensum.id);
         localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_COURSE', targetPensum.id);
         sessionStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', String(effectiveUnit));
         localStorage.setItem('ENCCO_SELECTED_GRADEBOOK_BIMESTRE', String(effectiveUnit));
+        localStorage.setItem('ENCCO_LAST_LOCAL_MODIFIED', String(importNow));
     } catch(e) {}
 
     saveStateToLocalStorage();

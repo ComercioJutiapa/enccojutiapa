@@ -31,7 +31,8 @@ const CRITICAL_SUITES = [
     'tests/test_docente_permissions_and_auxiliaturas.js',
     'tests/test_calculo_5a_integrity.js',
     'tests/test_report_card_hydration.js',
-    'tests/test_sire_seminario.js'
+    'tests/test_sire_seminario.js',
+    'tests/test_grade_anti_reversion.js'
 ];
 
 console.log('================================================================================');
