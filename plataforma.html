@@ -977,13 +977,16 @@
 
                     <div class="dashboard-grid">
                         <div class="dash-card card-main">
-                            <div class="card-header">
-                                <h3 id="dashCardMainTitle"><i class="fa-solid fa-chart-simple"></i> Resumen de Actividad Reciente</h3>
+                            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+                                <h3 id="dashCardMainTitle" style="margin:0;"><i class="fa-solid fa-chart-simple"></i> Resumen de Actividad Reciente</h3>
+                                <button type="button" class="btn btn-xs btn-outline-secondary" onclick="showNotificationToast()" style="font-size:0.75rem; padding:4px 10px; display:inline-flex; align-items:center; gap:6px; border-radius:6px;" title="Ver notificaciones y avisos del sistema">
+                                    <i class="fa-solid fa-bell" style="color:var(--brand-green);"></i> <span>Avisos</span> <span class="badge" id="dashHeaderNotifBadge" style="display:none; background:#dc2626; color:#ffffff; font-size:0.65rem; padding:1px 6px; border-radius:10px; font-weight:800;">0</span>
+                                </button>
                             </div>
                             <div class="card-body" id="dashCardMainBody"></div>
                         </div>
 
-                        <div class="dash-card card-side" id="dashAnnouncementsCard">
+                        <div class="dash-card card-side" id="dashAnnouncementsCard" style="display:none !important;">
                             <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
                                 <h3 style="margin:0;"><i class="fa-solid fa-bullhorn" style="color:var(--brand-green);"></i> Centro de Alertas y Avisos</h3>
                                 <button type="button" class="btn btn-xs btn-outline-secondary" onclick="toggleDashAlertsCard()" style="font-size:0.72rem; padding:2px 8px;" title="Ocultar o mostrar el panel de alertas">

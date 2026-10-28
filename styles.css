@@ -621,7 +621,8 @@ body {
 .kpi-icon.orange { background: var(--brand-orange-bg); color: var(--brand-orange); }
 .kpi-icon.blue { background: var(--brand-blue-bg); color: var(--brand-blue); }
 
-.dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+.dashboard-grid { display: grid; grid-template-columns: 1fr; gap: 24px; width: 100%; }
+#dashAnnouncementsCard { display: none !important; }
 .dash-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); overflow: hidden; }
 .card-header { padding: 16px 20px; border-bottom: 2px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; background: var(--bg-main); }
 .card-header h3 { font-size: 1rem; font-weight: 800; color: var(--brand-green-dark); display: flex; align-items: center; gap: 8px; }
@@ -5444,9 +5445,12 @@ body.theme-dark .custom-table tbody tr:hover {
         justify-content: space-between;
     }
 
-    .kpi-row,
-    .dashboard-grid {
+    .kpi-row {
         grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr !important;
     }
 }
 

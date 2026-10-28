@@ -23091,6 +23091,13 @@ function updateUserAlertsUI() {
         badge.style.background = alerts.some(a => a.type === 'danger') ? '#dc2626' : (alerts.some(a => a.type === 'warning') ? '#ea580c' : '#15803d');
     }
 
+    const dashBadge = document.getElementById('dashHeaderNotifBadge');
+    if (dashBadge) {
+        dashBadge.textContent = alerts.length;
+        dashBadge.style.display = alerts.length > 0 ? 'inline-block' : 'none';
+        dashBadge.style.background = alerts.some(a => a.type === 'danger') ? '#dc2626' : (alerts.some(a => a.type === 'warning') ? '#ea580c' : '#15803d');
+    }
+
     const container = document.getElementById('notificationsListContainer');
     const userLabel = document.getElementById('notifModalUserLabel');
     const currentUser = STATE.currentUser || STATE.users[0];
