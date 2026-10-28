@@ -14746,9 +14746,19 @@ function isSubjectBimestreExonerated(student, subjectName, bimestreNum) {
     const isGraduationSubject = cleanSubj.includes('practica') || cleanSubj.includes('seminario');
     if (isGraduationSubject) return false;
 
-    if (student.isExonerated === true || student.exonerated === true) return true;
-
     const b = parseInt(bimestreNum) || 0;
+
+    // 🌟 EVALUACIÓN ESTRICTA DE EXONERACIÓN A NIVEL ESTUDIANTE / CICLO:
+    // Si el estudiante tiene exoneración global o para un bimestre específico (ej. reposo médico en B4):
+    if (student.status === 'Exonerado' || student.isExonerated === true || student.exonerado === true) {
+        const exBim = student.exoneratedBimestre;
+        if (!exBim || String(exBim).toUpperCase() === 'ALL' || String(exBim).toUpperCase() === 'TODOS') {
+            return true;
+        }
+        if (parseInt(exBim) === b) {
+            return true;
+        }
+    }
 
     // 1. Revisar flag directo en gradebookDetails para esta materia y bimestre
     if (student.gradebookDetails && typeof student.gradebookDetails === 'object') {
@@ -15433,7 +15443,8 @@ function getStudentAcademicInfo(student, periodOverride = null) {
     // 2. Debe tener su carga académica evaluada (en 6to: 10 clases si ya tiene B4, u 8 si B4 aún no ha sido ingresado; en B4_ONLY: 2 clases; en 4to/5to: 9 clases)
     // 3. NO debe tener ninguna clase perdida (hasFailedGrade === false, todas las notas >= 60)
     const isRetired = (student.status === 'Retirado' || student.status === 'Inactivo');
-    const hasGlobalExoneration = (student.isExonerated === true || student.exonerated === true);
+    const hasGlobalExoneration = (student.status === 'Exonerado') ||
+        ((student.isExonerated === true || student.exonerado === true) && (!student.exoneratedBimestre || String(student.exoneratedBimestre).toUpperCase() === 'ALL' || String(student.exoneratedBimestre).toUpperCase() === 'TODOS'));
     const baseMinLoad = is6to
         ? (periodMode === 'B4_ONLY' ? 2 : 8)
         : 9;
@@ -22230,10 +22241,27 @@ function filterUsersTable(val) {
 // ==========================================================================
 
 
+const _recentToastsCache = new Map();
 function showToast(msg, type = 'info', duration = 4000) {
     if (typeof window !== 'undefined' && typeof window.showToast === 'function' && window.showToast !== showToast) {
         return window.showToast(msg, type, duration);
     }
+    if (!msg) return;
+
+    // 🛡️ DEDUPLICACIÓN INTELIGENTE ANTI-SPAM:
+    // Si exactamente el mismo mensaje fue emitido en los últimos 2000ms, descartar el duplicado
+    const cleanMsg = String(msg).trim();
+    const now = Date.now();
+    if (_recentToastsCache.has(cleanMsg) && (now - _recentToastsCache.get(cleanMsg) < 2000)) {
+        return;
+    }
+    _recentToastsCache.set(cleanMsg, now);
+    if (_recentToastsCache.size > 25) {
+        for (const [k, t] of _recentToastsCache.entries()) {
+            if (now - t > 10000) _recentToastsCache.delete(k);
+        }
+    }
+
     const container = document.getElementById('toastContainer');
     if (!container) return;
 
@@ -22250,10 +22278,16 @@ function showToast(msg, type = 'info', duration = 4000) {
     toast.className = `toast toast-${type}`;
     toast.style.display = 'flex';
     toast.style.alignItems = 'center';
-    toast.style.gap = '8px';
+    toast.style.gap = '10px';
     toast.style.pointerEvents = 'auto';
-    toast.style.animation = 'fadeIn 0.2s ease-out';
-    toast.innerHTML = `<i class="fa-solid fa-bell"></i> <span style="flex:1;">${msg}</span><button type="button" onclick="this.closest('.toast').remove()" style="background:none; border:none; color:inherit; font-size:1.1rem; font-weight:700; cursor:pointer; padding:0 4px; line-height:1; margin-left:8px; opacity:0.8;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'" title="Cerrar aviso">&times;</button>`;
+
+    let iconClass = 'fa-circle-info';
+    let iconColor = '#0284c7';
+    if (type === 'success') { iconClass = 'fa-circle-check'; iconColor = '#10b981'; }
+    else if (type === 'error' || type === 'danger') { iconClass = 'fa-triangle-exclamation'; iconColor = '#ef4444'; }
+    else if (type === 'warning') { iconClass = 'fa-circle-exclamation'; iconColor = '#f59e0b'; }
+
+    toast.innerHTML = `<i class="fa-solid ${iconClass}" style="color:${iconColor}; font-size:1.15rem; flex-shrink:0;"></i> <span style="flex:1; line-height:1.35; font-size:0.88rem;">${msg}</span><button type="button" onclick="this.closest('.toast').remove()" style="background:none; border:none; color:inherit; font-size:1.15rem; font-weight:700; cursor:pointer; padding:0 4px; line-height:1; margin-left:6px; opacity:0.65;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.65'" title="Cerrar aviso">&times;</button>`;
     if (container && typeof container.appendChild === 'function') container.appendChild(toast);
     
     const timeoutMs = (typeof duration === 'number' && duration > 0) ? Math.min(duration, 4500) : 4000;
@@ -24380,7 +24414,9 @@ function buildStudentReportCardInnerHtml(s) {
 
     const overallAvg = subjectCount > 0 ? Math.round(totalAvgSum / subjectCount) : 0;
     const isOverallFail = (overallAvg > 0 && overallAvg < 60);
-    const isGlobalExonerated = (s.isExonerated === true || s.exonerated === true || (subjectCount === 0 && subjects.length > 0 && subjects.every(sub => getReportCardSubjectGrades(s, sub).isFullyExon)));
+    const isGlobalExonerated = (s.status === 'Exonerado') ||
+        ((s.isExonerated === true || s.exonerated === true) && (!s.exoneratedBimestre || String(s.exoneratedBimestre).toUpperCase() === 'ALL' || String(s.exoneratedBimestre).toUpperCase() === 'TODOS')) ||
+        (subjectCount === 0 && subjects.length > 0 && subjects.every(sub => getReportCardSubjectGrades(s, sub).isFullyExon));
 
     const directorUser = (STATE.users || []).find(u => u.role === "director");
     const dirName = (directorUser && directorUser.name) ? directorUser.name : (STATE.schoolHeader?.directorName || "Licda. Mirza Elizabeth Aragón Polanco de Hernández");
@@ -45526,7 +45562,13 @@ function initGlobalSaveDelegation() {
         const form = e.target;
         if (!form || !form.tagName || form.tagName.toUpperCase() !== 'FORM') return;
 
-        if (e._enccoHandled) return;
+        if (e._enccoHandled || form._enccoSubmitting) return;
+
+        // Si el formulario ya tiene un controlador onsubmit inline directo, el navegador ya lo ejecutó;
+        // no re-despachar para evitar duplicación de guardados y toasts repetidos.
+        if (form.getAttribute('onsubmit')) {
+            return;
+        }
 
         let saveHandler = null;
         let handlerName = '';
@@ -45611,7 +45653,7 @@ function initGlobalSaveDelegation() {
 
         // 🛡️ Si el botón ya tiene onclick nativo directo, el navegador ya ejecutó el handler;
         // no re-despachar para evitar doble guardado y duplicación de mensajes (toasts).
-        if (btnOnclick && (btnOnclick.includes('saveGradebookChanges') || btnOnclick.includes('saveAttendanceRecords') || btnOnclick.includes('saveActiveRolePermissions'))) {
+        if (btnOnclick && btnOnclick.trim().length > 0) {
             return;
         }
 

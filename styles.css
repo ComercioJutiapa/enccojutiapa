@@ -5076,15 +5076,48 @@ body.theme-dark .custom-table tbody tr:hover {
     box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
 }
 
-/* F. Notificaciones Toast Flotantes Estilizadas */
+/* F. Notificaciones Toast Flotantes Estilizadas con Diseño Moderno y Ergonómico */
 .toast {
-    box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.18), 0 4px 8px -2px rgba(15, 23, 42, 0.08) !important;
-    border-radius: 10px !important;
+    box-shadow: 0 14px 32px -4px rgba(15, 23, 42, 0.2), 0 6px 12px -2px rgba(15, 23, 42, 0.08) !important;
+    border-radius: 12px !important;
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease !important;
+    animation: toastEntryAnim 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    backdrop-filter: blur(8px) !important;
+    font-size: 0.88rem !important;
+    font-weight: 700 !important;
+    padding: 12px 18px !important;
 }
 
 .toast:hover {
     transform: translateY(-2px);
+    box-shadow: 0 18px 36px -4px rgba(15, 23, 42, 0.24), 0 8px 14px -2px rgba(15, 23, 42, 0.1) !important;
+}
+
+.toast.toast-success {
+    border-left: 5px solid #10b981 !important;
+}
+
+.toast.toast-error, .toast.toast-danger {
+    border-left: 5px solid #ef4444 !important;
+}
+
+.toast.toast-warning {
+    border-left: 5px solid #f59e0b !important;
+}
+
+.toast.toast-info {
+    border-left: 5px solid #0284c7 !important;
+}
+
+@keyframes toastEntryAnim {
+    from {
+        transform: translateY(12px) scale(0.97);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
 }
 
 /* G. Botones con Respuesta Visual de Micro-Elevación */
