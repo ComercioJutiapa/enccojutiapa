@@ -5417,8 +5417,11 @@ body.theme-dark .custom-table tbody tr:hover {
         width: 86px !important;
     }
     .sire-col-sticky-name {
-        min-width: 160px !important;
-        max-width: 175px !important;
+        min-width: 280px !important;
+        max-width: none !important;
+        white-space: nowrap !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
     }
 
     /* 8. Previsualización de boletines / tarjetas en tablet */
