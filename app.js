@@ -23740,6 +23740,28 @@ async function importDataBackupJSON(e) {
     e.target.value = '';
 }
 
+function getCanonicalReportGradeName(raw) {
+    if (!raw) return '';
+    let clean = (typeof getStudentAssignment === 'function') 
+        ? getStudentAssignment({ grade: raw }).grade 
+        : String(raw).replace(/\s*[-–(]?\s*Secci[oó]n\s+[A-D]\)?/gi, '').trim();
+    const up = clean.toUpperCase();
+    if (up.includes('4') || up.includes('CUARTO') || up.includes('4TO')) return '4to Perito Contador';
+    if (up.includes('5') || up.includes('QUINTO') || up.includes('5TO')) return '5to Perito Contador';
+    if (up.includes('6') || up.includes('SEXTO') || up.includes('6TO')) return '6to Perito Contador';
+    return clean;
+}
+window.getCanonicalReportGradeName = getCanonicalReportGradeName;
+
+function getCanonicalReportSectionLetter(raw) {
+    if (!raw) return '';
+    const letter = (typeof getCleanSectionLetter === 'function') 
+        ? getCleanSectionLetter(raw) 
+        : (String(raw).match(/[A-D]/i)?.[0]?.toUpperCase() || '');
+    return letter ? `Sección ${letter}` : raw;
+}
+window.getCanonicalReportSectionLetter = getCanonicalReportSectionLetter;
+
 function populateReportStudentSelect() {
     if (!hasRolePermission('reports', STATE.currentRole)) {
         return;
@@ -23748,20 +23770,20 @@ function populateReportStudentSelect() {
     const gradeFilter = document.getElementById('reportGradeFilter');
     const sectionFilter = document.getElementById('reportSectionFilter');
 
-    // Cargar opciones de Grado y Sección disponibles ordenadas pedagógicamente
+    // Cargar opciones canónicas de Grado y Sección disponibles ordenadas pedagógicamente
     let distinctGrades = [];
     let distinctSections = [];
     const isDocente = (STATE.currentRole === 'docente');
 
     if (isDocente && typeof getTeacherAssignedGradesList === 'function') {
         const myGradesList = getTeacherAssignedGradesList(STATE.currentUser);
-        distinctGrades = Array.from(new Set(myGradesList.map(g => g.name))).sort((a, b) => {
+        distinctGrades = Array.from(new Set(myGradesList.map(g => getCanonicalReportGradeName(g.name || g.grade || '')))).filter(Boolean).sort((a, b) => {
             return (typeof getGradeWeight === 'function' ? getGradeWeight(a) - getGradeWeight(b) : 0) || a.localeCompare(b);
         });
-        distinctSections = Array.from(new Set(myGradesList.map(g => g.section).filter(Boolean))).sort();
+        distinctSections = Array.from(new Set(myGradesList.map(g => getCanonicalReportSectionLetter(g.section || g.gradeCode || g.code || '')))).filter(Boolean).sort();
     } else {
         const allStudents = STATE.students || [];
-        distinctGrades = Array.from(new Set(allStudents.map(s => s.grade).filter(Boolean))).sort((a, b) => {
+        distinctGrades = Array.from(new Set(allStudents.map(s => getCanonicalReportGradeName(s.grade || s.gradeLabel || s.gradeCode || '')))).filter(Boolean).sort((a, b) => {
             return (typeof getGradeWeight === 'function' ? getGradeWeight(a) - getGradeWeight(b) : 0) || a.localeCompare(b);
         });
         if (distinctGrades.length === 0) {
@@ -23772,6 +23794,7 @@ function populateReportStudentSelect() {
 
     if (gradeFilter) {
         let curGrade = gradeFilter.value || sessionStorage.getItem('ENCCO_SELECTED_REPORT_GRADE') || '';
+        curGrade = getCanonicalReportGradeName(curGrade);
         if (isDocente && !curGrade && distinctGrades.length === 1) curGrade = distinctGrades[0];
         gradeFilter.innerHTML = (isDocente ? '<option value="">-- Mis Grados Asignados --</option>' : '<option value="">-- Todos los Grados --</option>') + 
             distinctGrades.map(g => `<option value="${g}" ${g === curGrade ? 'selected' : ''}>${g}</option>`).join('');
@@ -23818,10 +23841,18 @@ function getFilteredReportStudents() {
     const sectionVal = document.getElementById('reportSectionFilter')?.value || '';
 
     if (gradeVal) {
-        students = students.filter(s => s.grade === gradeVal || (s.gradeLabel && s.gradeLabel.includes(gradeVal)));
+        const cleanTargetGrade = getCanonicalReportGradeName(gradeVal);
+        students = students.filter(s => {
+            const sCleanGrade = getCanonicalReportGradeName(s.grade || s.gradeLabel || s.gradeCode || '');
+            return sCleanGrade === cleanTargetGrade;
+        });
     }
     if (sectionVal) {
-        students = students.filter(s => s.section === sectionVal || (s.gradeLabel && s.gradeLabel.includes(sectionVal)));
+        const targetLetter = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(sectionVal) : sectionVal;
+        students = students.filter(s => {
+            const sLetter = (typeof getCleanSectionLetter === 'function') ? getCleanSectionLetter(s.section || s.gradeLabel || s.gradeCode || s.grade || '') : '';
+            return sLetter === targetLetter;
+        });
     }
 
     // Filtro adicional: Solo estudiantes con materias pendientes (< 60 pts)
