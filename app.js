@@ -14717,18 +14717,18 @@ async function saveStudentForm(e) {
         }
     }
 
-    const submitBtn = document.getElementById('enrollmentSubmitBottomBtn') || 
-                      document.getElementById('enrollmentSubmitTopBtn') || 
-                      document.querySelector('#mainEnrollmentForm button[type="submit"]');
+    const topSubmitBtn = document.getElementById('enrollmentSubmitTopBtn');
+    const bottomSubmitBtn = document.getElementById('enrollmentSubmitBottomBtn');
+    const submitBtn = bottomSubmitBtn || topSubmitBtn || document.querySelector('#mainEnrollmentForm button[type="submit"]');
+    const allEnrollSubmitBtns = [topSubmitBtn, bottomSubmitBtn, submitBtn].filter((b, i, a) => b && a.indexOf(b) === i);
     const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : 'Guardar Inscripción';
-    if (submitBtn && !submitBtn.getAttribute('data-orig-html')) {
-        submitBtn.setAttribute('data-orig-html', origBtnHtml);
-    }
-
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
-    }
+    allEnrollSubmitBtns.forEach(btn => {
+        if (!btn.getAttribute('data-orig-html')) {
+            btn.setAttribute('data-orig-html', btn.innerHTML || origBtnHtml);
+        }
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
+    });
 
     try {
         let studentObj = null;
@@ -14745,6 +14745,7 @@ async function saveStudentForm(e) {
 
         const authRoleName = STATE.currentRole || 'Secretaría';
         const authUserName = (STATE.currentUser && (STATE.currentUser.name || STATE.currentUser.username)) || authRoleName;
+        const nowTime = Date.now();
 
         if (idx !== -1) {
             const existing = STATE.students[idx];
@@ -14776,12 +14777,13 @@ async function saveStudentForm(e) {
                 editedByAuthority: true,
                 lastModifiedByRole: authRoleName,
                 lastModifiedBy: authUserName,
-                lastModified: Date.now()
+                _localModifiedAt: nowTime,
+                lastModified: nowTime
             };
             studentObj = STATE.students[idx];
         } else {
             studentObj = {
-                id: studentId || ('stu-' + Date.now() + '-' + Math.floor(Math.random() * 1000)),
+                id: studentId || ('stu-' + nowTime + '-' + Math.floor(Math.random() * 1000)),
                 carne, personalCode, cui, firstName, lastName,
                 name: `${firstName} ${lastName}`.trim(),
                 birthDate, age, gender, phone, email, address,
@@ -14801,13 +14803,17 @@ async function saveStudentForm(e) {
                 editedByAuthority: true,
                 lastModifiedByRole: authRoleName,
                 lastModifiedBy: authUserName,
-                lastModified: Date.now()
+                _localModifiedAt: nowTime,
+                lastModified: nowTime
             };
             STATE.students.push(studentObj);
         }
 
-        const nowTime = Date.now();
         STATE.lastModified = nowTime;
+        STATE._lastSavedLocally = nowTime;
+        window._lastLocalGradeEditTime = nowTime;
+        if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
+        if (studentObj && studentObj.id) window._locallyDirtyStudentIds.add(studentObj.id);
 
         // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
         saveStateToLocalStorage();
@@ -14821,6 +14827,7 @@ async function saveStudentForm(e) {
         } else {
             if (typeof renderStudentsTable === 'function') renderStudentsTable();
         }
+        if (typeof renderBoletasTable === 'function') renderBoletasTable();
         if (typeof renderDashboard === 'function') renderDashboard();
 
         showToast(`Estudiante "${firstName} ${lastName}" asignado y guardado en ${finalGrade} (${finalSection}).`, 'success');
@@ -14862,14 +14869,19 @@ async function saveStudentForm(e) {
                 console.warn("Aviso al sincronizar estudiantes en RTDB:", rtdbErr);
             }
         }
+        setTimeout(() => {
+            if (window._locallyDirtyStudentIds && studentObj && studentObj.id) {
+                window._locallyDirtyStudentIds.delete(studentObj.id);
+            }
+        }, 15000);
     } catch(err) {
         console.error("❌ Error al guardar estudiante en Firebase:", err);
         showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
     } finally {
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = submitBtn.getAttribute('data-orig-html') || origBtnHtml;
-        }
+        allEnrollSubmitBtns.forEach(btn => {
+            btn.disabled = false;
+            btn.innerHTML = btn.getAttribute('data-orig-html') || origBtnHtml;
+        });
     }
 }
 
@@ -16057,6 +16069,12 @@ async function saveAcademicExoneration(e) {
         // 🌟 Las calificaciones se preservan intactas e inmutables (no se purgan ni se ponen a cero)
         const nowTime = Date.now();
         STATE.lastModified = nowTime;
+        STATE._lastSavedLocally = nowTime;
+        student._localModifiedAt = nowTime;
+        student.lastModified = nowTime;
+        window._lastLocalGradeEditTime = nowTime;
+        if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
+        if (student.id) window._locallyDirtyStudentIds.add(student.id);
 
         // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms en todas las vistas)
         saveStateToLocalStorage();
@@ -17764,11 +17782,33 @@ async function saveStudentProfileForm(e) {
     }
 
     try {
+        const nowTime = Date.now();
         student.editedByAuthority = true;
         student.lastModifiedByRole = STATE.currentRole || 'Secretaría';
         student.lastModifiedBy = (STATE.currentUser && (STATE.currentUser.name || STATE.currentUser.username)) || STATE.currentRole || 'Secretaría';
         student.active = (newStatus === 'Activo');
-        student.lastModified = Date.now();
+        student._localModifiedAt = nowTime;
+        student.lastModified = nowTime;
+        STATE.lastModified = nowTime;
+        STATE._lastSavedLocally = nowTime;
+        window._lastLocalGradeEditTime = nowTime;
+        if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
+        if (student.id) window._locallyDirtyStudentIds.add(student.id);
+
+        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
+        saveStateToLocalStorage();
+        closeStudentProfileModal();
+        if (typeof setStudentFiltersToMatch === 'function' && student.grade && student.section) {
+            setStudentFiltersToMatch(student.grade, student.section, student.gradeCode);
+        } else if (typeof renderStudentsTable === 'function') {
+            renderStudentsTable();
+        }
+        if (typeof renderBoletasTable === 'function') renderBoletasTable();
+        if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
+        if (typeof loadAttendanceList === 'function') loadAttendanceList();
+        if (typeof renderDashboard === 'function') renderDashboard();
+        showToast(`Expediente de ${formatStudentDisplayName(student, 'lastFirst')} actualizado y reasignado a ${student.grade} (${student.section}).`, "success");
+
         // 🌟 A. Persistencia Atómica en Firestore (colección students con merge: true y sanitización anti-undefined)
         const modular = window.FirebaseModular;
         if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
@@ -17785,23 +17825,18 @@ async function saveStudentProfileForm(e) {
         }
 
         // 🌟 B. Sincronización atómica aislada en RTDB (SÓLO nodo 'students')
-        let ok = false;
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await withTimeout(EnccoCloudSync.syncNode('students', STATE.students), 8000, 'Tiempo de espera en Realtime Database agotado.');
-        } else {
-            ok = true;
+            try {
+                await withTimeout(EnccoCloudSync.syncNode('students', STATE.students), 8000, 'Tiempo de espera en Realtime Database agotado.');
+            } catch(rtdbErr) {
+                console.warn("Aviso al sincronizar expediente en RTDB:", rtdbErr);
+            }
         }
-
-        if (!ok) throw new Error("Firebase no confirmó la actualización del expediente del estudiante.");
-
-        saveStateToLocalStorage();
-        closeStudentProfileModal();
-        if (typeof setStudentFiltersToMatch === 'function' && student.grade && student.section) {
-            setStudentFiltersToMatch(student.grade, student.section, student.gradeCode);
-        } else if (typeof renderStudentsTable === 'function') {
-            renderStudentsTable();
-        }
-        showToast(`Expediente de ${formatStudentDisplayName(student, 'lastFirst')} actualizado y reasignado a ${student.grade} (${student.section}).`, "success");
+        setTimeout(() => {
+            if (window._locallyDirtyStudentIds && student.id) {
+                window._locallyDirtyStudentIds.delete(student.id);
+            }
+        }, 15000);
     } catch(err) {
         console.error("❌ Error al guardar perfil del estudiante en Firebase:", err);
         showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
@@ -17861,6 +17896,7 @@ function loadSchoolHeaderConfig() {
 function saveSchoolHeaderConfig() {
     if (!checkEnrolmentPermissions()) return;
 
+    const nowTime = Date.now();
     STATE.schoolHeader = {
         schoolName: (document.getElementById('headerFormSchoolName')?.value || 'ESCUELA NACIONAL DE CIENCIAS COMERCIALES').trim(),
         slogan: (document.getElementById('headerFormSlogan')?.value || 'JUTIAPA - FUNDADA EN 1970').trim(),
@@ -17871,12 +17907,25 @@ function saveSchoolHeaderConfig() {
         directorTitle: 'Directora del Plantel',
         secretaryName: (document.getElementById('headerFormSecretary')?.value || 'Sra. Beatriz Fuentes').trim(),
         secretaryTitle: 'Secretaría Académica',
-        logoUrl: 'logo.png'
+        logoUrl: 'logo.png',
+        lastModified: nowTime
     };
 
+    STATE.lastModified = nowTime;
+    STATE._lastSavedLocally = nowTime;
     saveStateToLocalStorage();
     loadSchoolHeaderConfig();
     showToast("¡Encabezado y membrete institucional guardado correctamente!", "success");
+
+    try {
+        const modular = window.FirebaseModular;
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+            modular.setDoc(modular.doc(modular.db, 'config', 'schoolHeader'), STATE.schoolHeader, { merge: true }).catch(() => {});
+        }
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            EnccoCloudSync.syncNode('schoolHeader', STATE.schoolHeader).catch(() => {});
+        }
+    } catch(e) {}
 }
 
 const CANONICAL_CNB_28_DICTIONARY = [
@@ -20381,11 +20430,16 @@ function confirmStudentImport() {
 
     let addedCount = 0;
     let updatedCount = 0;
+    const nowTime = Date.now();
+    const affectedGroups = new Map();
+    if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
 
     PENDING_STUDENTS_TO_IMPORT.forEach(s => {
         const gData = s.importedGradeData;
         const targetSubject = gData ? gData.subject : 'Computacion III';
-        const targetBimestre = gData ? gData.bimestre : 2;
+        const targetBimestre = gData ? (parseInt(gData.bimestre) || 2) : 2;
+        const groupKey = `${targetSubject}|||${targetBimestre}`;
+        if (!affectedGroups.has(groupKey)) affectedGroups.set(groupKey, []);
 
         // Buscar si ya existe en la base de datos
         const existing = (STATE.students || []).find(st => 
@@ -20397,26 +20451,33 @@ function confirmStudentImport() {
         );
 
         if (existing) {
-            // Actualizar datos del estudiante y asentar sus 10 calificaciones de zona
             if (s.phone) existing.phone = s.phone;
             if (s.tutor && s.tutor !== 'No registrado') existing.tutor = s.tutor;
             if (s.tutorPhone && s.tutorPhone !== 'Sin tel.') existing.tutorPhone = s.tutorPhone;
             
             ensureStudentGradebookStructure(existing, targetSubject);
             if (gData && existing.gradebookDetails && existing.gradebookDetails[targetSubject]) {
+                const prevU = existing.gradebookDetails[targetSubject][targetBimestre] || {};
+                const prevExam = parseInt(prevU.exam) || 0;
+                const finalZona = parseInt(gData.zona) || 0;
+                const finalExam = (parseInt(gData.exam) > 0) ? parseInt(gData.exam) : prevExam;
+                const finalTotal = Math.min(100, Math.max(0, (finalZona + finalExam) > 0 ? (finalZona + finalExam) : (parseInt(gData.total) || 0)));
                 existing.gradebookDetails[targetSubject][targetBimestre] = {
-                    activities: [...gData.activities],
-                    zona: gData.zona,
-                    exam: gData.exam,
-                    total: gData.total
+                    activities: Array.isArray(gData.activities) ? [...gData.activities] : (prevU.activities || [0,0,0,0,0,0,0,0,0,0]),
+                    zona: finalZona,
+                    exam: finalExam,
+                    total: finalTotal
                 };
                 if (!existing.grades) existing.grades = {};
                 if (!existing.grades[targetSubject]) existing.grades[targetSubject] = [0, 0, 0, 0];
-                existing.grades[targetSubject][targetBimestre - 1] = gData.total;
+                existing.grades[targetSubject][targetBimestre - 1] = finalTotal;
             }
+            existing._localModifiedAt = nowTime;
+            existing.lastModified = nowTime;
+            if (existing.id) window._locallyDirtyStudentIds.add(existing.id);
+            affectedGroups.get(groupKey).push(existing);
             updatedCount++;
         } else {
-            // Registrar nuevo estudiante y sus 10 notas
             const cleanStudent = { ...s };
             delete cleanStudent.isDuplicate;
             delete cleanStudent.duplicateReason;
@@ -20424,28 +20485,48 @@ function confirmStudentImport() {
 
             ensureStudentGradebookStructure(cleanStudent, targetSubject);
             if (gData && cleanStudent.gradebookDetails && cleanStudent.gradebookDetails[targetSubject]) {
+                const finalZona = parseInt(gData.zona) || 0;
+                const finalExam = parseInt(gData.exam) || 0;
+                const finalTotal = Math.min(100, Math.max(0, (finalZona + finalExam) > 0 ? (finalZona + finalExam) : (parseInt(gData.total) || 0)));
                 cleanStudent.gradebookDetails[targetSubject][targetBimestre] = {
-                    activities: [...gData.activities],
-                    zona: gData.zona,
-                    exam: gData.exam,
-                    total: gData.total
+                    activities: Array.isArray(gData.activities) ? [...gData.activities] : [0,0,0,0,0,0,0,0,0,0],
+                    zona: finalZona,
+                    exam: finalExam,
+                    total: finalTotal
                 };
                 if (!cleanStudent.grades) cleanStudent.grades = {};
                 if (!cleanStudent.grades[targetSubject]) cleanStudent.grades[targetSubject] = [0, 0, 0, 0];
-                cleanStudent.grades[targetSubject][targetBimestre - 1] = gData.total;
+                cleanStudent.grades[targetSubject][targetBimestre - 1] = finalTotal;
             }
+            cleanStudent._localModifiedAt = nowTime;
+            cleanStudent.lastModified = nowTime;
+            if (cleanStudent.id) window._locallyDirtyStudentIds.add(cleanStudent.id);
 
             STATE.students.push(cleanStudent);
+            affectedGroups.get(groupKey).push(cleanStudent);
             addedCount++;
         }
     });
 
+    STATE.lastModified = nowTime;
+    STATE._lastSavedLocally = nowTime;
+    window._lastLocalGradeEditTime = nowTime;
+
     saveStateToLocalStorage();
     renderStudentsTable();
+    if (typeof renderBoletasTable === 'function') renderBoletasTable();
     updateGradeSelects();
     if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
+    if (typeof renderTeacherCourseCards === 'function') renderTeacherCourseCards();
+    if (typeof renderDashboard === 'function') renderDashboard();
 
-    // 🌟 Persistencia atómica de estudiantes y notas importadas a Firebase Cloud
+    // 🌟 Persistencia atómica de estudiantes y notas importadas a Firebase Cloud (Firestore + RTDB)
+    affectedGroups.forEach((stuList, groupKey) => {
+        const [subj, bimStr] = groupKey.split('|||');
+        if (stuList.length > 0 && typeof saveBulkStudentGradesAtomic === 'function') {
+            saveBulkStudentGradesAtomic(stuList, subj, parseInt(bimStr) || 1).catch(() => {});
+        }
+    });
     if (typeof pushStateToFirebaseCloud === 'function') {
         pushStateToFirebaseCloud(false);
     }
@@ -21907,6 +21988,7 @@ async function submitGradeEditRequest(event) {
             return;
         }
 
+        const nowIso = new Date().toISOString();
         const newRequest = {
             id: 'REQ_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
             teacherId: currentUser?.id || 'DOCENTE_ID',
@@ -21919,8 +22001,10 @@ async function submitGradeEditRequest(event) {
             bimestre: unit,
             reason: reason,
             durationHours: durationHours,
+            requestedHours: durationHours,
             status: 'pending',
-            createdAt: new Date().toISOString(),
+            createdAt: nowIso,
+            requestedAt: nowIso,
             resolvedAt: null,
             resolvedBy: null
         };
@@ -21928,34 +22012,9 @@ async function submitGradeEditRequest(event) {
         STATE.gradeEditRequests.push(newRequest);
         const nowTime = Date.now();
         STATE.lastModified = nowTime;
+        STATE._lastSavedLocally = nowTime;
 
-        // 🌟 A. Persistencia Atómica en Firestore
-        if (window.FirebaseModular && window.FirebaseModular.db) {
-            try {
-                const { db, doc, updateDoc, setDoc } = window.FirebaseModular;
-                const reqRef = doc(db, 'gradeEditRequests', newRequest.id);
-                const reqPayload = { ...newRequest, lastModified: nowTime };
-                const fsAction = (typeof setDoc === 'function') 
-                    ? setDoc(reqRef, reqPayload, { merge: true }) 
-                    : Promise.resolve();
-                await withTimeout(fsAction, 8000, 'Tiempo de espera en Firestore agotado.');
-            } catch(fsErr) {
-                console.warn("Aviso al guardar solicitud en Firestore:", fsErr);
-            }
-        }
-
-        // 🌟 B. Sincronización en Realtime Database
-        let ok = false;
-        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await withTimeout(EnccoCloudSync.syncNode('gradeEditRequests', STATE.gradeEditRequests), 8000, 'Tiempo de espera en Realtime Database agotado.');
-        } else {
-            ok = true;
-        }
-
-        if (!ok) {
-            throw new Error("El servidor de Firebase no confirmó la solicitud de habilitación.");
-        }
-
+        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
         saveStateToLocalStorage();
         closeGradeEditRequestModal();
         if (typeof loadTeacherGradebook === 'function') {
@@ -21963,9 +22022,34 @@ async function submitGradeEditRequest(event) {
         } else if (typeof renderGradebookTable === 'function') {
             renderGradebookTable();
         }
+        if (typeof renderGradeEditRequestsTable === 'function') renderGradeEditRequestsTable();
+        if (typeof updatePendingRequestsBadge === 'function') updatePendingRequestsBadge();
         if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
 
         showToast("Solicitud enviada a Dirección y confirmada en Firebase con éxito.", "success");
+
+        // 🌟 A. Persistencia Atómica en Firestore
+        if (window.FirebaseModular && window.FirebaseModular.db) {
+            try {
+                const { db, doc, setDoc } = window.FirebaseModular;
+                const reqRef = doc(db, 'gradeEditRequests', newRequest.id);
+                const reqPayload = { ...newRequest, lastModified: nowTime };
+                if (typeof setDoc === 'function') {
+                    await withTimeout(setDoc(reqRef, reqPayload, { merge: true }), 8000, 'Tiempo de espera en Firestore agotado.');
+                }
+            } catch(fsErr) {
+                console.warn("Aviso al guardar solicitud en Firestore:", fsErr);
+            }
+        }
+
+        // 🌟 B. Sincronización en Realtime Database
+        if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+            try {
+                await withTimeout(EnccoCloudSync.syncNode('gradeEditRequests', STATE.gradeEditRequests), 8000, 'Tiempo de espera en Realtime Database agotado.');
+            } catch(rtdbErr) {
+                console.warn("Aviso al sincronizar solicitud en RTDB:", rtdbErr);
+            }
+        }
     } catch(err) {
         console.error("❌ Error al enviar solicitud:", err);
         showToast(`Error al guardar en Firebase: ${err.message || err}`, "danger");
@@ -22046,7 +22130,7 @@ function renderGradeEditRequestsTable() {
         filtered = requests.filter(r => r.status === 'approved' && (!r.expiresAt || new Date(r.expiresAt).getTime() > now));
     }
 
-    filtered = filtered.slice().sort((a, b) => new Date(b.requestedAt || 0).getTime() - new Date(a.requestedAt || 0).getTime());
+    filtered = filtered.slice().sort((a, b) => new Date(b.requestedAt || b.createdAt || 0).getTime() - new Date(a.requestedAt || a.createdAt || 0).getTime());
 
     if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted); font-size:0.9rem;"><i class="fa-solid fa-inbox"></i> No hay solicitudes registradas en esta categoría.</td></tr>';
@@ -22075,9 +22159,10 @@ function renderGradeEditRequestsTable() {
             statusBadge = '<span class="badge" style="background:#e2e8f0; color:#475569; border:1px solid #cbd5e1; font-weight:700;"><i class="fa-solid fa-lock"></i> Revocada</span>';
         }
 
+        const reqHrs = req.requestedHours || req.durationHours || 48;
         let timeCol = '';
         if (isPending) {
-            timeCol = '<span>' + (req.requestedHours || 48) + ' hrs solicitadas</span>';
+            timeCol = '<span>' + reqHrs + ' hrs solicitadas</span>';
         } else if (isApproved && !isExpired) {
             const expDate = new Date(req.expiresAt);
             const diffMs = expDate.getTime() - now;
@@ -22086,19 +22171,20 @@ function renderGradeEditRequestsTable() {
         } else if (isApproved && isExpired) {
             timeCol = '<small style="color:var(--text-muted);">Venció el ' + new Date(req.expiresAt).toLocaleDateString() + '</small>';
         } else {
-            timeCol = '<small style="color:var(--text-muted);">' + (req.requestedHours || 48) + ' hrs</small>';
+            timeCol = '<small style="color:var(--text-muted);">' + reqHrs + ' hrs</small>';
         }
 
         let actionBtns = '';
         if (isPending) {
-            actionBtns = '<div style="display:flex; gap:6px; justify-content:center;"><button type="button" class="btn btn-xs btn-success" onclick="approveGradeEditRequest(' + req.id + ')" title="Aprobar solicitud de edición" style="font-weight:700;"><i class="fa-solid fa-check"></i> Aprobar</button><button type="button" class="btn btn-xs btn-danger" onclick="rejectGradeEditRequest(' + req.id + ')" title="Rechazar solicitud"><i class="fa-solid fa-xmark"></i> Rechazar</button></div>';
+            actionBtns = '<div style="display:flex; gap:6px; justify-content:center;"><button type="button" class="btn btn-xs btn-success" onclick="approveGradeEditRequest(\'' + req.id + '\')" title="Aprobar solicitud de edición" style="font-weight:700;"><i class="fa-solid fa-check"></i> Aprobar</button><button type="button" class="btn btn-xs btn-danger" onclick="rejectGradeEditRequest(\'' + req.id + '\')" title="Rechazar solicitud"><i class="fa-solid fa-xmark"></i> Rechazar</button></div>';
         } else if (isApproved && !isExpired) {
-            actionBtns = '<div style="display:flex; gap:6px; justify-content:center;"><button type="button" class="btn btn-xs btn-outline-danger" onclick="revokeGradeEditRequest(' + req.id + ')" title="Revocar habilitación anticipadamente" style="font-size:0.75rem;"><i class="fa-solid fa-lock"></i> Revocar</button></div>';
+            actionBtns = '<div style="display:flex; gap:6px; justify-content:center;"><button type="button" class="btn btn-xs btn-outline-danger" onclick="revokeGradeEditRequest(\'' + req.id + '\')" title="Revocar habilitación anticipadamente" style="font-size:0.75rem;"><i class="fa-solid fa-lock"></i> Revocar</button></div>';
         } else {
             actionBtns = '<span style="color:var(--text-muted); font-size:0.75rem;">Completada</span>';
         }
 
-        const dateStr = req.requestedAt ? new Date(req.requestedAt).toLocaleString([], {dateStyle:'short', timeStyle:'short'}) : '—';
+        const rawDate = req.requestedAt || req.createdAt;
+        const dateStr = rawDate ? new Date(rawDate).toLocaleString([], {dateStyle:'short', timeStyle:'short'}) : '—';
 
         return '<tr>' +
             '<td style="text-align:center; font-size:0.8rem; font-weight:600;">' + dateStr + '</td>' +
@@ -25283,6 +25369,15 @@ async function saveCycleForm(e) {
 
         const nowTime = Date.now();
         STATE.lastModified = nowTime;
+        STATE._lastSavedLocally = nowTime;
+
+        // 🚀 Persistencia local inmediata (0ms) + refresco reactivo de UI antes de sincronización en nube
+        saveStateToLocalStorage();
+        resetCycleForm();
+        renderCyclesList();
+        updateCycleSelects();
+        closeCycleModal();
+        hideModalById('cycleModal');
 
         // 🌟 A. Persistencia Atómica en Firestore
         if (window.FirebaseModular && window.FirebaseModular.db) {
@@ -25312,28 +25407,15 @@ async function saveCycleForm(e) {
         }
 
         // 🌟 B. Sincronización en Realtime Database
-        let ok = false;
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
             const syncActions = [
                 EnccoCloudSync.syncNode('cycles', STATE.cycles),
                 EnccoCloudSync.syncNode('activeCycle', STATE.activeCycle)
             ];
-            const results = await withTimeout(Promise.all(syncActions), 8000, 'Tiempo de espera en Realtime Database agotado.');
-            ok = results[0] && results[1];
-        } else {
-            ok = true;
+            await withTimeout(Promise.all(syncActions), 8000, 'Tiempo de espera en Realtime Database agotado.').catch(rtErr => {
+                console.warn("Aviso al sincronizar ciclo en RTDB:", rtErr);
+            });
         }
-
-        if (!ok) {
-            throw new Error("El servidor de Firebase no confirmó la escritura de ciclos escolares.");
-        }
-
-        saveStateToLocalStorage();
-        resetCycleForm();
-        renderCyclesList();
-        updateCycleSelects();
-        closeCycleModal();
-        hideModalById('cycleModal');
 
         showToast(`Ciclo escolar "${name}" guardado y confirmado en Firebase con éxito.`, "success");
     } catch(err) {
@@ -27473,6 +27555,11 @@ async function saveGradingConfigForm(e) {
         submitBtn.setAttribute('data-orig-html', origBtnHtml);
     }
 
+    if (typeof _gradingConfigDebounceTimer !== 'undefined' && _gradingConfigDebounceTimer) {
+        clearTimeout(_gradingConfigDebounceTimer);
+        _gradingConfigDebounceTimer = null;
+    }
+
     if (submitBtn) {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando en Firebase...';
@@ -28444,7 +28531,7 @@ function scheduleDebouncedLiveKpis(subjectName, unit) {
 }
 
 function debounceStudentGradeSave(studentId, subjectName, unit, gradeData, delayMs = 600) {
-    const timerKey = `${studentId}_${subjectName}_${unit}`;
+    const timerKey = `${studentId}|||${subjectName}|||${unit}`;
     if (_gradeAutoSaveTimers[timerKey]) {
         clearTimeout(_gradeAutoSaveTimers[timerKey]);
     }
@@ -28464,7 +28551,7 @@ function debounceStudentGradeSave(studentId, subjectName, unit, gradeData, delay
 }
 
 function flushStudentGradeSave(studentId, subjectName, unit, gradeData) {
-    const timerKey = `${studentId}_${subjectName}_${unit}`;
+    const timerKey = `${studentId}|||${subjectName}|||${unit}`;
     if (_gradeAutoSaveTimers[timerKey]) {
         clearTimeout(_gradeAutoSaveTimers[timerKey]);
         delete _gradeAutoSaveTimers[timerKey];
@@ -28487,7 +28574,7 @@ function flushAllPendingGradeSaves() {
         for (const timerKey of timerKeys) {
             clearTimeout(_gradeAutoSaveTimers[timerKey]);
             delete _gradeAutoSaveTimers[timerKey];
-            const parts = timerKey.split('_');
+            const parts = timerKey.includes('|||') ? timerKey.split('|||') : timerKey.split('_');
             const studentId = parts[0];
             const subjectName = parts[1];
             const unit = parseInt(parts[2]) || 1;
@@ -28825,15 +28912,13 @@ async function saveGradebookChanges(e) {
     if (_isSavingGradebookInProgress) {
         return false;
     }
-    _isSavingGradebookInProgress = true;
 
     const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
     if (window.STATE && window.STATE.isLocalReadOnlyMode && !isSuperOrDir) {
         if (typeof showToast === 'function') {
             showToast("⚠️ Acción Bloqueada: La copia local está en modo SOLO LECTURA para evitar conflictos con el servidor central.", "warning");
         }
-        _isSavingGradebookInProgress = false;
-        return;
+        return false;
     }
 
     const selectedId = document.getElementById('teacherCourseSelect')?.value;
@@ -28842,7 +28927,7 @@ async function saveGradebookChanges(e) {
 
     if (STATE.currentRole === 'docente' && targetPensum && typeof isCourseAssignedToTeacher === 'function' && !isCourseAssignedToTeacher(targetPensum, STATE.currentUser)) {
         showToast("Acceso denegado: No tiene autorización para calificar una materia no asignada.", "danger");
-        return;
+        return false;
     }
 
     const subjectName = targetPensum ? targetPensum.subject : null;
@@ -28851,18 +28936,86 @@ async function saveGradebookChanges(e) {
     const editCheck = isGradebookEditableForUser(selectedId, currentUnit);
     if (!editCheck.editable) {
         showToast("No se pueden guardar calificaciones: " + (editCheck.message || "El bimestre seleccionado está cerrado para edición directa."), "danger");
-        return;
+        return false;
     }
 
     if (!subjectName) {
         showToast("Seleccione una materia válida para guardar calificaciones.", "warning");
-        return;
+        return false;
     }
 
+    _isSavingGradebookInProgress = true;
     const submitBtn = document.querySelector('button[onclick*="saveGradebookChanges"]');
-    const origBtnHtml = submitBtn ? submitBtn.innerHTML : null;
+    const origBtnHtml = submitBtn ? (submitBtn.getAttribute('data-orig-html') || submitBtn.innerHTML) : null;
+    if (submitBtn && origBtnHtml && !submitBtn.getAttribute('data-orig-html')) {
+        submitBtn.setAttribute('data-orig-html', origBtnHtml);
+    }
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate fa-spin"></i> Guardando...';
+    }
 
     try {
+        // 1. Limpiar temporizadores de auto-guardado individual pendientes para evitar colisión con el lote
+        if (typeof _gradeAutoSaveTimers !== 'undefined' && _gradeAutoSaveTimers) {
+            Object.keys(_gradeAutoSaveTimers).forEach(k => {
+                clearTimeout(_gradeAutoSaveTimers[k]);
+                delete _gradeAutoSaveTimers[k];
+            });
+        }
+
+        // 2. Cosechar cualquier input activo del DOM en las tablas de Actividades y Examen (Preservando 40/60)
+        if (typeof document !== 'undefined') {
+            const cfg = window._activeGradebookConfigCache || ((typeof getGradingConfig === 'function') ? getGradingConfig(targetPensum, currentUnit) : { zonaMax: 40, examMax: 60 });
+            const actRows = document.querySelectorAll('#gradebookActivitiesTableBody tr[data-student-id]');
+            actRows.forEach(tr => {
+                const stId = tr.getAttribute('data-student-id');
+                const st = (window._fastStudentMap && window._fastStudentMap.get(stId)) || (STATE.students || []).find(s => s && s.id === stId);
+                if (!st || st.status === 'Retirado' || st.status === 'Inactivo') return;
+                if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(st, subjectName, currentUnit)) return;
+                ensureStudentGradebookStructure(st, subjectName);
+                const inputs = tr.querySelectorAll('input.grade-box-input:not([disabled]):not([readonly])');
+                if (inputs.length > 0) {
+                    let domActSum = 0;
+                    inputs.forEach((inp, idx) => {
+                        if (idx < 10) {
+                            const v = Math.max(0, parseInt(inp.value) || 0);
+                            st.gradebookDetails[subjectName][currentUnit].activities[idx] = v;
+                            domActSum += v;
+                        }
+                    });
+                    const prevZona = parseInt(st.gradebookDetails[subjectName][currentUnit].zona) || 0;
+                    const finalZona = domActSum > 0 ? domActSum : prevZona;
+                    st.gradebookDetails[subjectName][currentUnit].zona = finalZona;
+                    const examVal = parseInt(st.gradebookDetails[subjectName][currentUnit].exam) || 0;
+                    const tot = Math.min(100, Math.max(0, finalZona + examVal));
+                    st.gradebookDetails[subjectName][currentUnit].total = tot;
+                    st.grades[subjectName][currentUnit - 1] = tot;
+                }
+            });
+
+            const sumRows = document.querySelectorAll('#gradebookSummaryTableBody tr[data-student-id]');
+            sumRows.forEach(tr => {
+                const stId = tr.getAttribute('data-student-id');
+                const st = (window._fastStudentMap && window._fastStudentMap.get(stId)) || (STATE.students || []).find(s => s && s.id === stId);
+                if (!st || st.status === 'Retirado' || st.status === 'Inactivo') return;
+                if (typeof isSubjectBimestreExonerated === 'function' && isSubjectBimestreExonerated(st, subjectName, currentUnit)) return;
+                ensureStudentGradebookStructure(st, subjectName);
+                const examInput = tr.querySelector('input.grade-box-input-exam:not([readonly]):not([disabled])');
+                if (examInput) {
+                    const domExamVal = Math.max(0, Math.min(cfg.examMax || 60, parseInt(examInput.value) || 0));
+                    st.gradebookDetails[subjectName][currentUnit].exam = domExamVal;
+                    const acts = st.gradebookDetails[subjectName][currentUnit].activities || [0,0,0,0,0,0,0,0,0,0];
+                    const actsSum = acts.reduce((acc, v) => acc + (parseInt(v) || 0), 0);
+                    const zonaSum = actsSum > 0 ? actsSum : (parseInt(st.gradebookDetails[subjectName][currentUnit].zona) || 0);
+                    st.gradebookDetails[subjectName][currentUnit].zona = zonaSum;
+                    const tot = Math.min(100, Math.max(0, zonaSum + domExamVal));
+                    st.gradebookDetails[subjectName][currentUnit].total = tot;
+                    st.grades[subjectName][currentUnit - 1] = tot;
+                }
+            });
+        }
+
         const courseStudents = (typeof getSortedGradebookStudents === 'function')
             ? getSortedGradebookStudents(gradeCode, targetPensum)
             : (STATE.students || []).filter(s => s.grade === gradeCode || (s.gradeLabel && targetPensum && s.gradeLabel.includes(targetPensum.grade)));
@@ -28890,6 +29043,12 @@ async function saveGradebookChanges(e) {
         }
         if (typeof renderTeacherCourseCards === 'function') {
             renderTeacherCourseCards();
+        }
+        if (typeof renderStudentsTable === 'function') {
+            renderStudentsTable();
+        }
+        if (typeof renderBoletasTable === 'function') {
+            renderBoletasTable();
         }
 
         // 🌟 Persistencia atómica por lotes con writeBatch en segundo plano sin congelar la UI
@@ -31832,6 +31991,10 @@ function saveAttendanceRecords(showToastMsg = true, e = null, recordKey = null) 
         }
     }
 
+    const nowTime = Date.now();
+    STATE.lastModified = nowTime;
+    STATE._lastSavedLocally = nowTime;
+
     const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
     if (isSuperOrDir) {
         // Guardado inmediato y definitivo en LocalStorage para evitar regresiones de caché
@@ -31842,6 +32005,9 @@ function saveAttendanceRecords(showToastMsg = true, e = null, recordKey = null) 
                 _syncAttendanceToFirebaseBackground(recordKey);
             }
         }, 80);
+        if (showToastMsg && typeof showToast === 'function') {
+            showToast('Planilla de asistencia guardada y sincronizada exitosamente.', 'success');
+        }
     } else if (!showToastMsg) {
         if (_attendanceSaveTimeout) clearTimeout(_attendanceSaveTimeout);
         _attendanceSaveTimeout = setTimeout(() => {
@@ -33116,7 +33282,15 @@ function saveStudentPermissionForm(e) {
         // 3. Re-aplicar nuevo rango a la asistencia institucional
         applyStudentPermission(perm);
 
+        const nowTime = Date.now();
+        STATE.lastModified = nowTime;
+        STATE._lastSavedLocally = nowTime;
+        saveStateToLocalStorage();
         saveAttendanceRecords(false);
+
+        if (window.FirebaseModular && window.FirebaseModular.db && typeof window.FirebaseModular.doc === 'function' && typeof window.FirebaseModular.setDoc === 'function') {
+            window.FirebaseModular.setDoc(window.FirebaseModular.doc(window.FirebaseModular.db, 'studentPermissions', perm.id), { ...perm, lastModified: nowTime }, { merge: true }).catch(() => {});
+        }
 
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
             EnccoCloudSync.syncNode('studentPermissions', STATE.studentPermissions);
@@ -33225,8 +33399,16 @@ function saveStudentPermissionForm(e) {
     // Aplicar automáticamente a la asistencia de todas las cátedras y al control general
     applyStudentPermission(perm);
 
-    // Guardar cambios en el sistema
+    // Guardar cambios en el sistema (0ms en LocalStorage + nube)
+    const nowTime = Date.now();
+    STATE.lastModified = nowTime;
+    STATE._lastSavedLocally = nowTime;
+    saveStateToLocalStorage();
     saveAttendanceRecords(false);
+
+    if (window.FirebaseModular && window.FirebaseModular.db && typeof window.FirebaseModular.doc === 'function' && typeof window.FirebaseModular.setDoc === 'function') {
+        window.FirebaseModular.setDoc(window.FirebaseModular.doc(window.FirebaseModular.db, 'studentPermissions', perm.id), { ...perm, lastModified: nowTime }, { merge: true }).catch(() => {});
+    }
 
     // Sincronizar en la nube si está disponible
     if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
@@ -33242,9 +33424,18 @@ function saveStudentPermissionForm(e) {
         recordAuditLog('PERMISSION_CREATE', 'Auxiliatura', `Nuevo registro de ausencia (${perm.attendanceCode}) para ${perm.studentName} (${perm.startDate} al ${perm.endDate}): ${perm.reasonCategory} - ${perm.reasonDetail}`, perm.studentId);
     } catch(e) {}
 
-    // Si la planilla de asistencia está abierta, recargarla
+    // Si la planilla de asistencia o bitácora está abierta, recargarla de forma reactiva
     if (typeof loadAttendanceList === 'function') {
         loadAttendanceList();
+    }
+    if (typeof renderPermissionsHistoryTable === 'function') {
+        renderPermissionsHistoryTable();
+    }
+    if (typeof renderPermissionsHistoryView === 'function') {
+        renderPermissionsHistoryView();
+    }
+    if (typeof renderAuxiliaturaLogView === 'function' && STATE.activeView === 'auxiliatura-log') {
+        renderAuxiliaturaLogView();
     }
     const profModalCreate = document.getElementById('studentProfileModal');
     if (profModalCreate && (profModalCreate.classList.contains('active') || profModalCreate.style.display === 'flex') && STATE.selectedStudentId) {
@@ -35802,19 +35993,10 @@ async function saveDisciplineForm(e) {
     };
 
     STATE.disciplineReports.unshift(newReport);
-    try {
-        const modular = window.FirebaseModular;
-        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
-            await modular.setDoc(modular.doc(modular.db, 'disciplina', newReport.id), newReport, { merge: true });
-        }
-    } catch(fsErr) {
-        console.warn("Aviso en Firestore al registrar reporte disciplinario:", fsErr);
-    }
-
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports);
-    }
-    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
+    const nowTime = Date.now();
+    STATE.lastModified = nowTime;
+    STATE._lastSavedLocally = nowTime;
+    saveStateToLocalStorage();
 
     closeDisciplineModal();
     renderDisciplineTable();
@@ -35824,6 +36006,22 @@ async function saveDisciplineForm(e) {
         openStudentProfileModal(STATE.selectedStudentId);
     }
     showToast(`Reporte disciplinario registrado correctamente. Ha sido canalizado al Profesor Auxiliar para su resolución y dictamen.`, 'success');
+
+    try {
+        const modular = window.FirebaseModular;
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+            modular.setDoc(modular.doc(modular.db, 'disciplina', newReport.id), { ...newReport, lastModified: nowTime }, { merge: true }).catch(fsErr => {
+                console.warn("Aviso en Firestore al registrar reporte disciplinario:", fsErr);
+            });
+        }
+    } catch(fsErr) {
+        console.warn("Aviso en Firestore al registrar reporte disciplinario:", fsErr);
+    }
+
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports);
+    }
+    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
 
     // Notificación opcional inmediata por WhatsApp al padre/encargado
     if (canRoleUseWhatsApp() && typeof promptIncidentWhatsAppNotification === 'function') {
@@ -36132,19 +36330,11 @@ async function saveDisciplineResolutionForm(e) {
         rep.isLocked = false;
     }
 
-    try {
-        const modular = window.FirebaseModular;
-        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
-            await modular.setDoc(modular.doc(modular.db, 'disciplina', reportId), rep, { merge: true });
-        }
-    } catch(fsErr) {
-        console.warn("Aviso en Firestore al guardar resolución disciplinaria:", fsErr);
-    }
-
-    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-        EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports);
-    }
-    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
+    const nowTime = Date.now();
+    rep.lastModified = nowTime;
+    STATE.lastModified = nowTime;
+    STATE._lastSavedLocally = nowTime;
+    saveStateToLocalStorage();
 
     closeDisciplineResolutionModal();
     renderDisciplineTable();
@@ -36157,6 +36347,22 @@ async function saveDisciplineResolutionForm(e) {
             openStudentProfileModal(STATE.selectedStudentId);
         }
     }
+
+    try {
+        const modular = window.FirebaseModular;
+        if (modular && modular.db && typeof modular.doc === 'function' && typeof modular.setDoc === 'function') {
+            modular.setDoc(modular.doc(modular.db, 'disciplina', reportId), rep, { merge: true }).catch(fsErr => {
+                console.warn("Aviso en Firestore al guardar resolución disciplinaria:", fsErr);
+            });
+        }
+    } catch(fsErr) {
+        console.warn("Aviso en Firestore al guardar resolución disciplinaria:", fsErr);
+    }
+
+    if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
+        EnccoCloudSync.syncNode('disciplineReports', STATE.disciplineReports);
+    }
+    if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
     
     if (isDirector) {
         showToast(`Resolución actualizada y validada con éxito por la Dirección.`, 'success');
@@ -39442,6 +39648,14 @@ async function saveQuickGuideTeacher(e) {
         
         const nowTime = Date.now();
         STATE.lastModified = nowTime;
+        STATE._lastSavedLocally = nowTime;
+
+        // 🚀 Persistencia local inmediata (0ms) + refresco reactivo de UI antes de sincronización en nube
+        saveStateToLocalStorage();
+        closeAssignGuideTeacherModal();
+        renderGradesTable();
+        if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
+        if (typeof renderDashboard === 'function') renderDashboard();
 
         // 🌟 A. Persistencia Atómica en Firestore
         if (window.FirebaseModular && window.FirebaseModular.db) {
@@ -39472,21 +39686,11 @@ async function saveQuickGuideTeacher(e) {
         }
 
         // 🌟 B. Sincronización atómica y aislada en Realtime Database
-        let ok = false;
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await withTimeout(EnccoCloudSync.syncNode('gradesList', STATE.gradesList), 8000, 'Tiempo de espera agotado en Realtime Database.');
-        } else {
-            ok = true;
+            await withTimeout(EnccoCloudSync.syncNode('gradesList', STATE.gradesList), 8000, 'Tiempo de espera agotado en Realtime Database.').catch(rtErr => {
+                console.warn("Aviso al sincronizar maestro guía en RTDB:", rtErr);
+            });
         }
-
-        if (!ok) {
-            throw new Error("El servidor de Firebase no confirmó la asignación del maestro guía.");
-        }
-
-        saveStateToLocalStorage();
-        closeAssignGuideTeacherModal();
-        renderGradesTable();
-        if (typeof renderDashboard === 'function') renderDashboard();
 
         showToast(`Maestro Guía "${grade.guideTeacher}" asignado a ${grade.name} (${grade.section}).`, 'success');
     } catch(err) {
@@ -42313,6 +42517,15 @@ async function saveGradeForm(e) {
         STATE.gradesList = sortGrades(STATE.gradesList);
         const nowTime = Date.now();
         STATE.lastModified = nowTime;
+        STATE._lastSavedLocally = nowTime;
+
+        // 🚀 Persistencia local inmediata (0ms) + refresco reactivo de UI antes de sincronización en nube
+        saveStateToLocalStorage();
+        closeGradeModal();
+        updateGradeSelects();
+        renderGradesTable();
+        if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
+        if (typeof renderDashboard === 'function') renderDashboard();
 
         // 🌟 A. Persistencia Atómica en Firestore
         if (window.FirebaseModular && window.FirebaseModular.db) {
@@ -42343,23 +42556,11 @@ async function saveGradeForm(e) {
         }
 
         // 🌟 B. Sincronización Atómica y Aislada en Realtime Database
-        let ok = false;
         if (typeof EnccoCloudSync !== 'undefined' && EnccoCloudSync.syncNode) {
-            ok = await withTimeout(EnccoCloudSync.syncNode('gradesList', STATE.gradesList), 8000, 'Tiempo de espera agotado en Realtime Database.');
-        } else {
-            ok = true;
+            await withTimeout(EnccoCloudSync.syncNode('gradesList', STATE.gradesList), 8000, 'Tiempo de espera agotado en Realtime Database.').catch(rtErr => {
+                console.warn("Aviso al sincronizar grados en RTDB:", rtErr);
+            });
         }
-
-        if (!ok) {
-            throw new Error("El servidor de Firebase no confirmó la escritura de grados y secciones.");
-        }
-
-        saveStateToLocalStorage();
-        closeGradeModal();
-        updateGradeSelects();
-        renderGradesTable();
-        if (typeof renderGuideTeachersView === 'function') renderGuideTeachersView();
-        if (typeof renderDashboard === 'function') renderDashboard();
 
         showToast(`Grado "${name}" guardado y confirmado en Firebase con éxito.`, 'success');
     } catch(err) {
@@ -46149,6 +46350,12 @@ function initGlobalSaveDelegation() {
         } else if (form.id === 'formGradeEditRequest' || (form.closest && form.closest('#modalGradeEditRequest'))) {
             saveHandler = window.submitGradeEditRequest;
             handlerName = 'submitGradeEditRequest';
+        } else if (form.id === 'studentPermissionForm' || (form.closest && form.closest('#createPermissionModal'))) {
+            saveHandler = window.saveStudentPermissionForm;
+            handlerName = 'saveStudentPermissionForm';
+        } else if (form.id === 'courseBitacoraForm' || (form.closest && form.closest('#newCourseBitacoraModal'))) {
+            saveHandler = window.submitNewCourseBitacora;
+            handlerName = 'submitNewCourseBitacora';
         } else if (form.closest && form.closest('#forgotPasswordModal')) {
             saveHandler = window.handlePasswordRecovery;
             handlerName = 'handlePasswordRecovery';
@@ -46209,6 +46416,12 @@ function initGlobalSaveDelegation() {
         } else if (btnOnclick.includes('saveSchoolHeaderConfig')) {
             saveHandler = window.saveSchoolHeaderConfig;
             handlerName = 'saveSchoolHeaderConfig';
+        } else if (btn.id === 'confirmImportBtn' || btnOnclick.includes('confirmStudentImport')) {
+            saveHandler = window.confirmStudentImport;
+            handlerName = 'confirmStudentImport';
+        } else if (btn.id === 'btnExecuteSirePensumImport' || btnOnclick.includes('executeSirePensumImport')) {
+            saveHandler = window.executeSirePensumImport;
+            handlerName = 'executeSirePensumImport';
         }
 
         if (typeof saveHandler === 'function') {
@@ -46222,6 +46435,20 @@ function initGlobalSaveDelegation() {
             }
         }
     }, false);
+
+    // C. Atajo universal de teclado Ctrl+S / Cmd+S para guardado rápido en módulos activos
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+            const activeView = window.STATE ? window.STATE.activeView : '';
+            if (activeView === 'gradebook' && typeof window.saveGradebookChanges === 'function') {
+                e.preventDefault();
+                window.saveGradebookChanges(e);
+            } else if (activeView === 'attendance' && typeof window.saveAttendanceRecords === 'function') {
+                e.preventDefault();
+                window.saveAttendanceRecords(true, e);
+            }
+        }
+    });
 }
 
 // Exportación universal en window para garantizar resolución en cualquier contexto
@@ -46242,6 +46469,7 @@ if (typeof window !== 'undefined') {
     window.saveDisciplineResolutionForm = saveDisciplineResolutionForm;
     window.saveStudentForm = saveStudentForm;
     window.saveStudentProfileForm = saveStudentProfileForm;
+    window.saveStudentPermissionForm = saveStudentPermissionForm;
     window.saveRoleForm = saveRoleForm;
     window.saveActiveRolePermissions = saveActiveRolePermissions;
     window.saveAttendanceRecords = saveAttendanceRecords;

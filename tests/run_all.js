@@ -32,7 +32,8 @@ const CRITICAL_SUITES = [
     'tests/test_calculo_5a_integrity.js',
     'tests/test_report_card_hydration.js',
     'tests/test_sire_seminario.js',
-    'tests/test_grade_anti_reversion.js'
+    'tests/test_grade_anti_reversion.js',
+    'tests/test_save_buttons_reactivity_integrity.js'
 ];
 
 console.log('================================================================================');
