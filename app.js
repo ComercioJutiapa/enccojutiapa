@@ -5351,7 +5351,19 @@ function initFirebaseRealtimeConnection() {
                                     targetStudent.gradebookDetails[subj][unitStr] = nodeData;
                                 }
                             }
-                            if (typeof renderGradebookTable === 'function' && STATE.activeView === 'gradebook') renderGradebookTable();
+                            const activeEl = (typeof document !== 'undefined') ? document.activeElement : null;
+                            const isTyping = activeEl && activeEl.tagName === 'INPUT' && (activeEl.classList.contains('grade-box-input') || activeEl.classList.contains('grade-box-input-exam'));
+                            if (isTyping) {
+                                const curCourse = window._activeGradebookCourseCache || (STATE.pensum || []).find(p => p.id === STATE.selectedGradebookCourseId);
+                                const curUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+                                const subName = curCourse?.subject;
+                                if (subName && targetStudent.gradebookDetails?.[subName]?.[curUnit] && typeof updateStudentGradeRowSummaryDOM === 'function') {
+                                    const uD = targetStudent.gradebookDetails[subName][curUnit];
+                                    updateStudentGradeRowSummaryDOM(targetStudent.id, uD.zona || 0, uD.exam || 0, uD.total || 0, targetStudent, subName, curUnit);
+                                }
+                            } else if (!isRecentlyEdited && typeof renderGradebookTable === 'function' && STATE.activeView === 'gradebook') {
+                                renderGradebookTable();
+                            }
                             if (typeof renderStudentsTable === 'function' && STATE.activeView === 'students') renderStudentsTable();
                             if (typeof renderTeacherGradeProgressTable === 'function' && STATE.activeView === 'teacher-progress') renderTeacherGradeProgressTable();
                             if (typeof loadAttendanceList === 'function' && STATE.activeView === 'attendance') loadAttendanceList();
@@ -9048,6 +9060,9 @@ async function initApp() {
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
                 // Página oculta (usuario cambió de app / bloqueó teléfono)
+                if (typeof flushAllPendingGradeSaves === 'function') {
+                    flushAllPendingGradeSaves();
+                }
                 if (!window._isLoggingOut && typeof saveStateToLocalStorage === 'function') {
                     saveStateToLocalStorage();
                 }
@@ -9066,7 +9081,7 @@ async function initApp() {
                         initFirebaseRealtimeConnection();
                     }
                     if (typeof pullStateFromFirebaseCloud === 'function') {
-                        setTimeout(() => pullStateFromFirebaseCloud(true), 500);
+                        setTimeout(() => pullStateFromFirebaseCloud(false), 500);
                     }
                 } catch(e) {
                     console.warn('⚠️ [v186] Error en reconexión por visibilitychange:', e);
@@ -10282,6 +10297,50 @@ try {
                 } else if (event.data.type === 'BIMESTRE_CHANGED' && event.data.data) {
                     console.log("⚡ [Inter-Pestaña] Notificación de cambio de bimestre recibida.");
                     applyBimestreAndLockConfig(event.data.data, false);
+                } else if (event.data.type === 'GRADE_UPDATED') {
+                    const { studentId, subjectName, unit, details, grades, total } = event.data;
+                    const st = (STATE.students || []).find(s => s && s.id === studentId);
+                    if (st) {
+                        if (!st.grades) st.grades = {};
+                        if (grades) st.grades[subjectName] = grades;
+                        if (!st.gradebookDetails) st.gradebookDetails = {};
+                        if (!st.gradebookDetails[subjectName]) st.gradebookDetails[subjectName] = {};
+                        if (details) st.gradebookDetails[subjectName][unit] = details;
+
+                        const curCourse = window._activeGradebookCourseCache || (STATE.pensum || []).find(p => p.id === STATE.selectedGradebookCourseId);
+                        const curUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+                        if (STATE.activeView === 'gradebook' && curCourse && curCourse.subject === subjectName && curUnit === unit) {
+                            if (typeof updateStudentGradeRowSummaryDOM === 'function') {
+                                updateStudentGradeRowSummaryDOM(studentId, details?.zona || 0, details?.exam || 0, total || details?.total || 0, st, subjectName, unit);
+                            }
+                        }
+                        if (typeof updateTeacherGradeProgressTable === 'function' && STATE.activeView === 'teacher-progress') {
+                            updateTeacherGradeProgressTable();
+                        }
+                    }
+                } else if (event.data.type === 'BULK_GRADES_UPDATED') {
+                    const { subject, unit, records } = event.data;
+                    if (Array.isArray(records)) {
+                        records.forEach(rec => {
+                            const st = (STATE.students || []).find(s => s && s.id === rec.studentId);
+                            if (st) {
+                                if (!st.grades) st.grades = {};
+                                if (rec.grades) st.grades[subject] = rec.grades;
+                                if (!st.gradebookDetails) st.gradebookDetails = {};
+                                if (!st.gradebookDetails[subject]) st.gradebookDetails[subject] = {};
+                                if (rec.details) st.gradebookDetails[subject][unit] = rec.details;
+                            }
+                        });
+                        const curCourse = window._activeGradebookCourseCache || (STATE.pensum || []).find(p => p.id === STATE.selectedGradebookCourseId);
+                        const curUnit = parseInt(document.getElementById('gradebookBimestreSelect')?.value) || parseInt(STATE.config?.activeBimestre) || 1;
+                        if (STATE.activeView === 'gradebook' && curCourse && curCourse.subject === subject && curUnit === unit) {
+                            const activeEl = (typeof document !== 'undefined') ? document.activeElement : null;
+                            const isTyping = activeEl && activeEl.tagName === 'INPUT' && (activeEl.classList.contains('grade-box-input') || activeEl.classList.contains('grade-box-input-exam'));
+                            if (!isTyping && typeof renderGradebookTable === 'function') {
+                                renderGradebookTable();
+                            }
+                        }
+                    }
                 } else if (event.data.type === 'ATTENDANCE_ALERT' || (event.data.type === 'NODE_PATCHED' && event.data.node && event.data.node.startsWith('attendanceAlerts'))) {
                     const incomingAlert = event.data.alert || event.data.data;
                     if (incomingAlert && incomingAlert.id) {
@@ -10885,13 +10944,19 @@ function applyIncomingCloudState(incomingState, force = false) {
     // Refrescar vistas activas en tiempo real (evitando interrumpir clics rápidos en asistencia y edición en notas)
     try {
         const isActivelyOnGradebook = (STATE.activeView === 'gradebook');
-        if (typeof renderCurrentView === 'function' && !(STATE.activeView === 'attendance' && isActivelyClickingAttendance) && !isActivelyOnGradebook) {
+        const activeEl = (typeof document !== 'undefined') ? document.activeElement : null;
+        const isUserTypingInGradebook = isActivelyOnGradebook && activeEl && activeEl.tagName === 'INPUT' && (activeEl.classList.contains('grade-box-input') || activeEl.classList.contains('grade-box-input-exam'));
+        const isRecentlyEditingGrade = (Date.now() - (window._lastLocalGradeEditTime || 0)) < 10000;
+
+        if (typeof renderCurrentView === 'function' && !(STATE.activeView === 'attendance' && isActivelyClickingAttendance) && !isUserTypingInGradebook) {
             renderCurrentView();
         }
         if (typeof populateGradebookBimestreSelect === 'function') populateGradebookBimestreSelect();
         if (typeof renderAssignmentsTable === "function" && document.getElementById("assignmentsTableBody")) renderAssignmentsTable();
         if (typeof renderUsersTable === "function" && document.getElementById("usersTableBody")) renderUsersTable();
-        if (!isActivelyOnGradebook && typeof renderGradebookTable === "function" && document.getElementById("gradebookTable")) renderGradebookTable();
+        if (STATE.activeView === 'gradebook' && !isUserTypingInGradebook && !isRecentlyEditingGrade && typeof renderGradebookTable === "function") {
+            renderGradebookTable();
+        }
         if (typeof updateTopRoleBar === 'function') updateTopRoleBar();
         if (typeof updateGradeSelects === 'function') updateGradeSelects();
         if (typeof updateCareerSelects === 'function') updateCareerSelects();
@@ -10944,6 +11009,9 @@ if (typeof window !== 'undefined' && !window._enccoBeforeUnloadRegistered) {
     window._enccoBeforeUnloadRegistered = true;
     window.addEventListener('beforeunload', function() {
         try {
+            if (typeof flushAllPendingGradeSaves === 'function') {
+                flushAllPendingGradeSaves();
+            }
             const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
             if (window.STATE && (!window.STATE.isLocalReadOnlyMode || isSuperOrDir)) {
                 // Flush local inmediato
@@ -10954,7 +11022,7 @@ if (typeof window !== 'undefined' && !window._enccoBeforeUnloadRegistered) {
                     // [v189] No local database snapshot written
                 }
                 // Intento de push sync a Firebase (best-effort antes de cerrar)
-                if (typeof pushStateToFirebaseCloud === 'function') {
+                if (typeof pushStateToFirebaseCloud === 'function' && window._locallyDirtyStudentIds && window._locallyDirtyStudentIds.size > 0) {
                     pushStateToFirebaseCloud(false);
                 }
             }
@@ -26456,6 +26524,21 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
     }, 15000);
     scheduleFullStateSaveDebounced();
 
+    if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+        try {
+            _enccBroadcastChannel.postMessage({
+                type: 'GRADE_UPDATED',
+                studentId: student.id,
+                subjectName: subjectName,
+                unit: uNum,
+                details: currentUnitDetails,
+                total: currentUnitDetails.total,
+                grades: student.grades[subjectName],
+                timestamp: now
+            });
+        } catch(bcErr) {}
+    }
+
     if (typeof recordAuditLog === 'function') {
         recordAuditLog('GRADE_SAVE', 'Calificaciones', `Nota guardada para ${student.name || student.id}: ${subjectName} (${uNum}° Bimestre) Zona: ${currentUnitDetails.zona || 0}, Examen: ${currentUnitDetails.exam || 0}, Total: ${currentUnitDetails.total || 0}`, student.id);
     }
@@ -26701,6 +26784,24 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
     window.dispatchEvent(new CustomEvent('EnccoGradesBulkUpdated', {
         detail: { count: gradeRecords.length, subject: effectiveSubject, unit: effectiveUnit }
     }));
+
+    if (typeof _enccBroadcastChannel !== 'undefined' && _enccBroadcastChannel) {
+        try {
+            _enccBroadcastChannel.postMessage({
+                type: 'BULK_GRADES_UPDATED',
+                subject: effectiveSubject,
+                unit: effectiveUnit,
+                count: gradeRecords.length,
+                records: gradeRecords.map(r => ({
+                    studentId: r.student.id,
+                    total: r.totalScore,
+                    details: r.student.gradebookDetails[effectiveSubject][effectiveUnit],
+                    grades: r.student.grades[effectiveSubject]
+                })),
+                timestamp: now
+            });
+        } catch(bcErr) {}
+    }
 
     return true;
 }
@@ -28259,6 +28360,27 @@ function flushStudentGradeSave(studentId, subjectName, unit, gradeData) {
     }
     scheduleFullStateSaveDebounced();
 }
+
+function flushAllPendingGradeSaves() {
+    if (typeof _gradeAutoSaveTimers !== 'undefined' && _gradeAutoSaveTimers) {
+        const timerKeys = Object.keys(_gradeAutoSaveTimers);
+        for (const timerKey of timerKeys) {
+            clearTimeout(_gradeAutoSaveTimers[timerKey]);
+            delete _gradeAutoSaveTimers[timerKey];
+            const parts = timerKey.split('_');
+            const studentId = parts[0];
+            const subjectName = parts[1];
+            const unit = parseInt(parts[2]) || 1;
+            const st = (window._fastStudentMap && window._fastStudentMap.get(studentId)) || (STATE.students || []).find(s => s && s.id === studentId);
+            if (st && st.gradebookDetails && st.gradebookDetails[subjectName] && st.gradebookDetails[subjectName][unit]) {
+                if (typeof saveStudentSubjectGradeAtomic === 'function') {
+                    saveStudentSubjectGradeAtomic(studentId, subjectName, unit, st.gradebookDetails[subjectName][unit]).catch(() => {});
+                }
+            }
+        }
+    }
+}
+window.flushAllPendingGradeSaves = flushAllPendingGradeSaves;
 
 function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, student, subjectName, unit) {
     if (!studentId || !student) return;
