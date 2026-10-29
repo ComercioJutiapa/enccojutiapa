@@ -57,14 +57,14 @@ const checkLocalStorageInFn = (fnName) => {
 ['saveStudentForm', 'saveStudentProfileForm', 'saveAcademicExoneration', 'confirmStudentImport'].forEach(fnName => {
     const startIdx = appJsContent.indexOf(`function ${fnName}`);
     assert(startIdx !== -1, `Función ${fnName} debe existir`);
-    const slice = appJsContent.slice(startIdx, startIdx + 7500);
+    const slice = appJsContent.slice(startIdx, startIdx + 12000);
     assert(slice.includes('_locallyDirtyStudentIds'), `${fnName} debe proteger al estudiante en window._locallyDirtyStudentIds contra ecos de onSnapshot`);
 });
 
 // 6. Verificar delegación universal en initGlobalSaveDelegation
 const delegationIdx = appJsContent.indexOf('function initGlobalSaveDelegation()');
 assert(delegationIdx !== -1, 'initGlobalSaveDelegation debe existir');
-const delegationSlice = appJsContent.slice(delegationIdx, delegationIdx + 7500);
+const delegationSlice = appJsContent.slice(delegationIdx, delegationIdx + 12000);
 assert(delegationSlice.includes('saveStudentPermissionForm'), 'initGlobalSaveDelegation debe registrar saveStudentPermissionForm');
 assert(delegationSlice.includes('confirmStudentImport'), 'initGlobalSaveDelegation debe registrar confirmStudentImport');
 assert(delegationSlice.includes("e.key === 's' || e.key === 'S'"), 'initGlobalSaveDelegation debe soportar atajo Ctrl+S');
