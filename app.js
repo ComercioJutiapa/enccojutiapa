@@ -17415,6 +17415,12 @@ function renderStudentProfileGrades(student) {
             if (isExon) {
                 return '<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; padding:2px 6px; border-radius:4px;" title="Materia Exonerada en este bimestre"><i class="fa-solid fa-shield-check"></i> Exon.</span>';
             }
+            // 🛡️ Si el estudiante ya tiene nota registrada (>0), mostrarla siempre sin importar el activeBimestre
+            if (val !== undefined && val !== null && Number(val) > 0) {
+                const num = Number(val);
+                const isFailing = num < 60;
+                return `<span style="font-weight:${isFailing ? "800" : "700"}; color:${isFailing ? "#dc2626" : "#000000"};">${num}</span>`;
+            }
             const activeBim = parseInt(STATE.config?.activeBimestre) || 4;
             if (bimNum > activeBim) {
                 return '<span style="color:#94a3b8;">—</span>';
@@ -24542,14 +24548,19 @@ function buildStudentReportCardInnerHtml(s) {
             if (isExon) {
                 return `<td style="text-align:center; font-size:9.5px; font-weight:900; color:#0284c7; border:1px solid #000000; width:40px; background:#f0f9ff; -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;" title="Exoneración Oficial Autorizada">Exon.</td>`;
             }
-            // Si el bimestre aún no ha ocurrido (bimNum > activeBim), se muestra guión "—"
+            const numScore = (score !== undefined && score !== null) ? Number(score) : 0;
+            // 🛡️ REGLA INSTITUCIONAL: Si el estudiante ya cuenta con nota asentada (> 0), mostrarla siempre.
+            // Jamás ocultar calificaciones legítimas por el indicador de bimestre activo.
+            if (numScore > 0) {
+                const isFailing = isFail || numScore < 60;
+                return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:${isFailing ? "900" : "800"}; color:${isFailing ? "#dc2626" : "#000000"}; border:1px solid #000000; width:40px;">${numScore}</td>`;
+            }
+            // Si el bimestre aún no ha ocurrido (bimNum > activeBim) y no tiene nota (>0), se muestra guión "—"
             if (bimNum > activeBim) {
                 return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:700; color:#94a3b8; border:1px solid #000000; width:40px;">—</td>`;
             }
-            // Si el bimestre ya ocurrió o está activo, se muestra la nota numérica exacta (incluyendo 0 en rojo para notas reprobadas)
-            const numScore = (score !== undefined && score !== null) ? Number(score) : 0;
-            const isFailing = isFail || numScore < 60;
-            return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:${isFailing ? "900" : "800"}; color:${isFailing ? "#dc2626" : "#000000"}; border:1px solid #000000; width:40px;">${numScore}</td>`;
+            // Si el bimestre ya ocurrió o está activo y la nota es 0, mostrar 0 reprobado
+            return `<td style="text-align:center; font-size:${scoreFontSize}; font-weight:900; color:#dc2626; border:1px solid #000000; width:40px;">0</td>`;
         };
 
         // En materias especiales de 6to (Seminario / Práctica Supervisada):
