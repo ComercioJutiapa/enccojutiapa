@@ -2088,6 +2088,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     if (Array.isArray(STATE.rolesConfig) && STATE.rolesConfig.length > 0) cleanPayload.rolesConfig = STATE.rolesConfig;
     if (STATE.schoolHeader && Object.keys(STATE.schoolHeader).length > 0) cleanPayload.schoolHeader = STATE.schoolHeader;
     if (STATE.exoneraciones && typeof STATE.exoneraciones === 'object') cleanPayload.exoneraciones = STATE.exoneraciones;
+    if (STATE.calificaciones && typeof STATE.calificaciones === 'object' && Object.keys(STATE.calificaciones).length > 0) cleanPayload.calificaciones = STATE.calificaciones;
 
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
         updateDbSyncStatus("disconnected", "⚠️ Sin conexión a Internet");
@@ -2152,6 +2153,15 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
                         headers: headers,
                         body: JSON.stringify(cleanPayload.exoneraciones)
                     }).catch(e => console.warn(`Aviso al sincronizar exoneraciones:`, e))
+                );
+            }
+            if (cleanPayload.calificaciones !== undefined) {
+                syncPromises.push(
+                    fetch(`${firebaseUrl}/encc_school_state/calificaciones.json`, {
+                        method: "PATCH",
+                        headers: headers,
+                        body: JSON.stringify(cleanPayload.calificaciones)
+                    }).catch(e => console.warn(`Aviso al sincronizar calificaciones:`, e))
                 );
             }
             await Promise.all(syncPromises);
@@ -24382,7 +24392,7 @@ function getReportCardSubjectGrades(student, subject) {
                 if (califRec) {
                     const tot = (califRec.total !== undefined && califRec.total !== null && califRec.total !== '')
                         ? (parseInt(califRec.total) || 0)
-                        : ((parseInt(califRec.zona) || 0) + (parseInt(califRec.examen) || 0));
+                        : ((parseInt(califRec.zona) || 0) + (parseInt(califRec.exam !== undefined ? califRec.exam : califRec.examen) || 0));
                     if (tot > 0) {
                         const capped = Math.min(100, Math.max(0, tot));
                         if (b === 1) b1 = capped;
@@ -26477,6 +26487,8 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
                 total: currentUnitDetails.total || 0,
                 lastModified: now
             };
+            if (!STATE.calificaciones) STATE.calificaciones = {};
+            STATE.calificaciones[califKey] = califPayload;
 
             const promises = [
                 fetch(`${firebaseUrl}/encc_school_state/calificaciones/${califKey}.json`, {
@@ -26654,6 +26666,8 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
             updatedAt: new Date().toISOString(),
             updatedBy: updatedBy
         };
+        if (!STATE.calificaciones) STATE.calificaciones = {};
+        STATE.calificaciones[compositeGradeKey] = gradePayload;
 
         // Actualizar en memoria en student
         student.gradebookDetails[effectiveSubject][effectiveUnit] = {
