@@ -5032,11 +5032,19 @@ function initFirebaseRealtimeConnection() {
     // Escuchadores de eventos de conectividad de red del navegador
     if (typeof window !== 'undefined' && !window._hasNetworkSyncListeners) {
         window._hasNetworkSyncListeners = true;
-        window.addEventListener('online', () => {
+        window.addEventListener('online', async () => {
             console.log("🌐 [Red] Conexión a Internet detectada.");
             updateDbSyncStatus('synced');
-            pullStateFromFirebaseCloud(false);
-            if (typeof triggerInstantCloudPush === 'function') triggerInstantCloudPush();
+            try {
+                if (typeof pullStateFromFirebaseCloud === 'function') {
+                    await pullStateFromFirebaseCloud(false);
+                }
+            } catch(e) {
+                console.warn("Aviso en pull al reconectar:", e);
+            }
+            if (typeof triggerInstantCloudPush === 'function' && window._locallyDirtyStudentIds && window._locallyDirtyStudentIds.size > 0) {
+                triggerInstantCloudPush();
+            }
         });
         window.addEventListener('offline', () => {
             console.warn("⚠️ [Red] Sin conexión a Internet.");
@@ -26384,39 +26392,68 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
         }
     }
 
-    // 🌟 B. Actualización Atómica en Firebase Realtime Database (Optimizado a 2 llamadas sin inundar la red)
+    // 🌟 B. Actualización Atómica en Firebase Realtime Database (Optimizado con sincronización completa de calificaciones y timestamp)
     const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
     if (firebaseUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
         try {
             const rtdbIdx = await getRtdbStudentIndex(student.id);
-            if (rtdbIdx !== -1) {
-                const studentGradesEndpoint = `${firebaseUrl}/encc_school_state/students/${rtdbIdx}/grades.json`;
-                const studentUnitDetailsEndpoint = `${firebaseUrl}/encc_school_state/students/${rtdbIdx}/gradebookDetails/${encodeURIComponent(subjectName)}/${uStr}.json`;
+            const cleanSub = String(subjectName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+            const califKey = `${student.id}_${cleanSub}_b${uNum}`;
+            const califPayload = {
+                studentId: student.id,
+                studentName: student.name || `${student.lastName || ''} ${student.firstName || ''}`.trim(),
+                subject: subjectName,
+                unit: uNum,
+                zona: currentUnitDetails.zona || 0,
+                exam: currentUnitDetails.exam || 0,
+                total: currentUnitDetails.total || 0,
+                lastModified: now
+            };
 
-                const [resGrades, resDetails] = await Promise.all([
-                    fetch(studentGradesEndpoint, {
+            const promises = [
+                fetch(`${firebaseUrl}/encc_school_state/calificaciones/${califKey}.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(califPayload)
+                }).catch(() => {})
+            ];
+
+            if (rtdbIdx !== -1) {
+                promises.push(
+                    fetch(`${firebaseUrl}/encc_school_state/students/${rtdbIdx}/grades.json`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ [subjectName]: student.grades[subjectName] })
                     }),
-                    fetch(studentUnitDetailsEndpoint, {
+                    fetch(`${firebaseUrl}/encc_school_state/students/${rtdbIdx}/gradebookDetails/${encodeURIComponent(subjectName)}/${uStr}.json`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(currentUnitDetails)
+                    }),
+                    fetch(`${firebaseUrl}/encc_school_state/students/${rtdbIdx}/lastModified.json`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(now)
                     })
-                ]);
-                if (!resGrades.ok || !resDetails.ok) {
-                    console.warn('Aviso en respuesta de Firebase RTDB para calificación:', resGrades.status, resDetails.status);
-                }
+                );
             } else {
                 console.warn(`[RTDB] No se encontró el índice del estudiante ${student.id} en RTDB.`);
+            }
+
+            const results = await Promise.all(promises);
+            for (const res of results) {
+                if (res && res.status && !res.ok) {
+                    console.warn('Aviso en respuesta de Firebase RTDB para calificación:', res.status);
+                }
             }
         } catch(rtdbErr) {
             console.warn("Aviso en RTDB individual:", rtdbErr);
         }
     }
 
-    if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.delete(student.id);
+    setTimeout(() => {
+        if (window._locallyDirtyStudentIds) window._locallyDirtyStudentIds.delete(student.id);
+    }, 15000);
     scheduleFullStateSaveDebounced();
 
     if (typeof recordAuditLog === 'function') {
