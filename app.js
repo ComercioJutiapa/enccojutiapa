@@ -8669,6 +8669,7 @@ function normalizeSchoolAcademicData(targetState) {
 
     // 2. Normalizar materias y notas de cada estudiante
     (sState.students || []).forEach(s => {
+        if (!s || typeof s !== 'object') return;
         const rawGrade = (s.grade || s.gradeLabel || s.gradeCode || '').toUpperCase();
         let gradeNum = 4;
         if (rawGrade.includes('6') || rawGrade.includes('SEXTO')) gradeNum = 6;
@@ -8677,8 +8678,51 @@ function normalizeSchoolAcademicData(targetState) {
         const expectedCourses = OFFICIAL_CANONICAL_COURSES[gradeNum];
         if (!expectedCourses) return;
 
-        const oldGrades = s.grades || {};
-        const oldDetails = s.gradebookDetails || {};
+        const oldGrades = (s.grades && typeof s.grades === 'object') ? { ...s.grades } : {};
+        const oldDetails = (s.gradebookDetails && typeof s.gradebookDetails === 'object') ? { ...s.gradebookDetails } : {};
+
+        // 🛡️ Rescatar y limpiar cualquier campo plano con notación de punto creado por setDoc/batch.set previo
+        Object.keys(s).forEach(topKey => {
+            if (topKey.startsWith('grades.') && topKey.length > 7) {
+                const subKey = topKey.slice(7);
+                const val = s[topKey];
+                if (Array.isArray(val)) {
+                    const prev = Array.isArray(oldGrades[subKey]) ? oldGrades[subKey] : [0, 0, 0, 0];
+                    oldGrades[subKey] = [0, 1, 2, 3].map(i => Math.max(parseInt(prev[i]) || 0, parseInt(val[i]) || 0));
+                }
+                delete s[topKey];
+            } else if (topKey.startsWith('gradebookDetails.') && topKey.length > 17) {
+                const rest = topKey.slice(17);
+                const lastDot = rest.lastIndexOf('.');
+                if (lastDot > 0) {
+                    const subKey = rest.slice(0, lastDot);
+                    const unitKey = rest.slice(lastDot + 1);
+                    const val = s[topKey];
+                    if (val && typeof val === 'object') {
+                        if (!oldDetails[subKey] || typeof oldDetails[subKey] !== 'object' || Array.isArray(oldDetails[subKey])) {
+                            const existingSub = oldDetails[subKey];
+                            oldDetails[subKey] = {};
+                            if (Array.isArray(existingSub)) {
+                                for (let u = 1; u <= 4; u++) {
+                                    if (existingSub[u]) oldDetails[subKey][String(u)] = existingSub[u];
+                                }
+                            }
+                        } else {
+                            oldDetails[subKey] = { ...oldDetails[subKey] };
+                        }
+                        const curU = oldDetails[subKey][unitKey];
+                        const curTot = curU ? Math.max(parseInt(curU.total) || 0, (parseInt(curU.zona) || 0) + (parseInt(curU.exam) || 0)) : 0;
+                        const incTot = Math.max(parseInt(val.total) || 0, (parseInt(val.zona) || 0) + (parseInt(val.exam) || 0));
+                        const curEx = curU ? (parseInt(curU.exam) || 0) : 0;
+                        const incEx = parseInt(val.exam) || 0;
+                        if (!curU || incTot > curTot || (incTot === curTot && incEx > curEx)) {
+                            oldDetails[subKey][unitKey] = JSON.parse(JSON.stringify(val));
+                        }
+                    }
+                }
+                delete s[topKey];
+            }
+        });
 
         const cleanGrades = {};
         const cleanDetails = {};
@@ -8710,18 +8754,45 @@ function normalizeSchoolAcademicData(targetState) {
                 if (bDetails && typeof bDetails === 'object') {
                     for (let b = 1; b <= 4; b++) {
                         const u = String(b);
-                        if (bDetails[u]) {
+                        const candidate = Array.isArray(bDetails) ? bDetails[b] : (bDetails[u] || bDetails[b]);
+                        if (candidate && typeof candidate === 'object') {
                             if (!cleanDetails[canonical][u]) {
-                                cleanDetails[canonical][u] = JSON.parse(JSON.stringify(bDetails[u]));
+                                cleanDetails[canonical][u] = JSON.parse(JSON.stringify(candidate));
                             } else {
-                                const oldTot = (parseInt(bDetails[u].zona) || 0) + (parseInt(bDetails[u].exam) || 0);
-                                const curTot = (parseInt(cleanDetails[canonical][u].zona) || 0) + (parseInt(cleanDetails[canonical][u].exam) || 0);
+                                const oldTot = Math.max(parseInt(candidate.total) || 0, (parseInt(candidate.zona) || 0) + (parseInt(candidate.exam) || 0));
+                                const curTot = Math.max(parseInt(cleanDetails[canonical][u].total) || 0, (parseInt(cleanDetails[canonical][u].zona) || 0) + (parseInt(cleanDetails[canonical][u].exam) || 0));
                                 if (oldTot > curTot) {
-                                    cleanDetails[canonical][u] = JSON.parse(JSON.stringify(bDetails[u]));
+                                    cleanDetails[canonical][u] = JSON.parse(JSON.stringify(candidate));
                                 }
                             }
                         }
                     }
+                }
+            }
+        });
+
+        // 🛡️ Reconciliación bidireccional Anti-Reversión entre cleanGrades y cleanDetails
+        expectedCourses.forEach(c => {
+            const subj = c.name;
+            for (let b = 0; b < 4; b++) {
+                const u = String(b + 1);
+                const gScore = Math.min(100, Math.max(0, parseInt(cleanGrades[subj][b]) || 0));
+                const uDet = cleanDetails[subj][u];
+                if (uDet && typeof uDet === 'object') {
+                    const acts = Array.isArray(uDet.activities) ? uDet.activities : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+                    const actsSum = acts.reduce((acc, v) => acc + (parseInt(v) || 0), 0);
+                    const zVal = Math.max(0, actsSum > 0 ? actsSum : (parseInt(uDet.zona) || 0));
+                    let exVal = Math.max(0, parseInt(uDet.exam) || 0);
+                    let dTot = Math.min(100, Math.max(0, parseInt(uDet.total) || 0, zVal + exVal));
+                    const bestTot = Math.min(100, Math.max(gScore, dTot));
+                    if (exVal === 0 && bestTot > zVal) {
+                        exVal = Math.min(60, bestTot - zVal);
+                    }
+                    const finalTot = Math.min(100, (zVal + exVal) > 0 ? (zVal + exVal) : bestTot);
+                    uDet.zona = zVal;
+                    uDet.exam = exVal;
+                    uDet.total = finalTot;
+                    cleanGrades[subj][b] = finalTot;
                 }
             }
         });
@@ -26106,20 +26177,25 @@ function ensureStudentGradebookStructure(student, subjectName) {
     if (!student.gradebookDetails[subjectName]) {
         student.gradebookDetails[subjectName] = student.gradebookDetails[aliasSubject] ? JSON.parse(JSON.stringify(student.gradebookDetails[aliasSubject])) : {};
     }
+    if (Array.isArray(student.gradebookDetails[subjectName])) {
+        const arrSlot = student.gradebookDetails[subjectName];
+        const objSlot = {};
+        for (let u = 1; u <= 4; u++) {
+            if (arrSlot[u]) objSlot[String(u)] = arrSlot[u];
+        }
+        student.gradebookDetails[subjectName] = objSlot;
+    }
 
     // 🌟 Inicialización limpia de las 4 unidades (respetando calificaciones existentes sin inyectar datos de prueba o caché)
     for (let u = 1; u <= 4; u++) {
         const uStr = String(u);
-        const existingSlot = Array.isArray(student.gradebookDetails[subjectName])
-            ? student.gradebookDetails[subjectName][u]
-            : student.gradebookDetails[subjectName][uStr];
+        const existingSlot = student.gradebookDetails[subjectName][uStr] || student.gradebookDetails[subjectName][u];
+        const existingTotal = (Array.isArray(student.grades[subjectName]) && student.grades[subjectName][u - 1]) 
+            ? parseInt(student.grades[subjectName][u - 1]) || 0 
+            : 0;
+        const cfg = (typeof getGradingConfig === 'function') ? getGradingConfig(null, u) : { zonaMax: 40, examMax: 60 };
 
         if (!existingSlot) {
-            const existingTotal = (Array.isArray(student.grades[subjectName]) && student.grades[subjectName][u - 1]) 
-                ? parseInt(student.grades[subjectName][u - 1]) || 0 
-                : 0;
-
-            const cfg = (typeof getGradingConfig === 'function') ? getGradingConfig(null, u) : { zonaMax: 40, examMax: 60 };
             const defaultZona = Math.min(cfg.zonaMax || 40, existingTotal);
             const defaultExam = Math.max(0, existingTotal - defaultZona);
 
@@ -26130,14 +26206,21 @@ function ensureStudentGradebookStructure(student, subjectName) {
                 total: Math.min(100, existingTotal)
             };
 
-            if (Array.isArray(student.gradebookDetails[subjectName])) {
-                while (student.gradebookDetails[subjectName].length <= u) {
-                    student.gradebookDetails[subjectName].push(null);
-                }
-                student.gradebookDetails[subjectName][u] = newUnitData;
-            } else {
-                student.gradebookDetails[subjectName][uStr] = newUnitData;
+            student.gradebookDetails[subjectName][uStr] = newUnitData;
+        } else {
+            const acts = Array.isArray(existingSlot.activities) ? existingSlot.activities : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+            const actsSum = acts.reduce((acc, v) => acc + (parseInt(v) || 0), 0);
+            const curZona = actsSum > 0 ? actsSum : (parseInt(existingSlot.zona) || 0);
+            let curExam = parseInt(existingSlot.exam) || 0;
+            const curTotal = Math.max(existingTotal, parseInt(existingSlot.total) || 0, curZona + curExam);
+            // 🛡️ REGLA INSTITUCIONAL ANTI-REVERSIÓN A ZONA:
+            if (curExam === 0 && curTotal > curZona) {
+                curExam = Math.min(cfg.examMax || 60, curTotal - curZona);
+                existingSlot.exam = curExam;
             }
+            existingSlot.zona = curZona;
+            existingSlot.total = Math.min(100, (curZona + curExam) > 0 ? (curZona + curExam) : curTotal);
+            student.gradebookDetails[subjectName][uStr] = existingSlot;
         }
     }
 }
@@ -26400,7 +26483,10 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
     }
 
     // 🛡️ REGLA ESTRICTA ENCCO: Cualquier nota que exceda 100 se normaliza a 100
-    currentUnitDetails.total = Math.min(100, Math.max(0, currentUnitDetails.total));
+    if ((currentUnitDetails.exam || 0) === 0 && (currentUnitDetails.total || 0) > (currentUnitDetails.zona || 0)) {
+        currentUnitDetails.exam = currentUnitDetails.total - (currentUnitDetails.zona || 0);
+    }
+    currentUnitDetails.total = Math.min(100, Math.max(0, (currentUnitDetails.zona || 0) + (currentUnitDetails.exam || 0) > 0 ? ((currentUnitDetails.zona || 0) + (currentUnitDetails.exam || 0)) : (currentUnitDetails.total || 0)));
     student.gradebookDetails[subjectName][uStr] = currentUnitDetails;
     student.grades[subjectName][uNum - 1] = Math.min(100, Math.max(0, currentUnitDetails.total));
 
@@ -26413,40 +26499,30 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
     if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
     window._locallyDirtyStudentIds.add(student.id);
 
-    // 🌟 A. Actualización Atómica en Google Cloud Firestore
+    // 🌟 A. Actualización Atómica en Google Cloud Firestore (estructura anidada pura sin claves con puntos)
     const modular = window.FirebaseModular;
     if (modular && modular.db && modular.doc) {
         try {
             const studentRef = modular.doc(modular.db, 'students', student.id);
-            const fields = {
-                [`grades.${subjectName}`]: student.grades[subjectName],
-                [`gradebookDetails.${subjectName}.${uStr}`]: currentUnitDetails,
+            const nestedPayload = {
+                grades: {
+                    [subjectName]: student.grades[subjectName]
+                },
+                gradebookDetails: {
+                    [subjectName]: {
+                        [uStr]: currentUnitDetails
+                    }
+                },
                 lastModified: now
             };
-            try {
-                if (typeof modular.updateDoc === 'function') {
-                    await modular.updateDoc(studentRef, fields);
-                } else {
-                    throw new Error('updateDoc unavailable');
-                }
-            } catch(upErr) {
-                if (typeof modular.setDoc === 'function') {
-                    // Si el documento aún no existe, setDoc con el mapa completo de materias para garantizar integridad
-                    await modular.setDoc(studentRef, {
-                        id: student.id,
-                        firstName: student.firstName || '',
-                        lastName: student.lastName || '',
-                        name: student.name || `${student.lastName || ''} ${student.firstName || ''}`.trim(),
-                        grade: student.grade || '',
-                        section: student.section || '',
-                        carne: student.carne || '',
-                        personalCode: student.personalCode || '',
-                        status: student.status || 'Activo',
-                        grades: student.grades || {},
-                        gradebookDetails: student.gradebookDetails || {},
-                        lastModified: now
-                    }, { merge: true });
-                }
+            if (typeof modular.setDoc === 'function') {
+                await modular.setDoc(studentRef, nestedPayload, { merge: true });
+            } else if (typeof modular.updateDoc === 'function') {
+                await modular.updateDoc(studentRef, {
+                    [`grades.${subjectName}`]: student.grades[subjectName],
+                    [`gradebookDetails.${subjectName}.${uStr}`]: currentUnitDetails,
+                    lastModified: now
+                });
             }
 
             // 🌟 A2. Estructura de Calificaciones por Clave Compuesta {materiaId_bimestreId}
@@ -26658,7 +26734,7 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
         if (examScore === 0 && totalScore > calculatedZona) {
             examScore = totalScore - calculatedZona;
         }
-        totalScore = Math.min(100, Math.max(0, totalScore > 0 ? totalScore : (calculatedZona + examScore)));
+        totalScore = Math.min(100, Math.max(0, (calculatedZona + examScore) > 0 ? (calculatedZona + examScore) : totalScore));
 
         const compositeGradeKey = `${student.id}_${cleanSubj}_b${effectiveUnit}`;
 
@@ -26713,10 +26789,15 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
 
     if (gradeRecords.length === 0) return true;
 
-    // 1. Persistencia Atómica en Firestore con writeBatch y { merge: true }
+    // 🛡️ Proteger inmediatamente en _locallyDirtyStudentIds ANTES de emitir escrituras a Firestore/RTDB
+    if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
+    gradeRecords.forEach(item => window._locallyDirtyStudentIds.add(item.student.id));
+
+    // 1. Persistencia Atómica en Firestore con writeBatch y { merge: true } (estructura anidada pura sin claves con puntos)
     if (window.FirebaseModular && window.FirebaseModular.db) {
         try {
             const { db, doc, writeBatch, setDoc } = window.FirebaseModular;
+            const uStr = String(effectiveUnit);
             if (typeof writeBatch === 'function') {
                 const chunkSize = 200;
                 for (let i = 0; i < gradeRecords.length; i += chunkSize) {
@@ -26728,8 +26809,14 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
 
                         const studentDocRef = doc(db, 'students', item.student.id);
                         batch.set(studentDocRef, {
-                            [`grades.${effectiveSubject}`]: item.student.grades[effectiveSubject],
-                            [`gradebookDetails.${effectiveSubject}.${effectiveUnit}`]: item.student.gradebookDetails[effectiveSubject][effectiveUnit],
+                            grades: {
+                                [effectiveSubject]: item.student.grades[effectiveSubject]
+                            },
+                            gradebookDetails: {
+                                [effectiveSubject]: {
+                                    [uStr]: item.student.gradebookDetails[effectiveSubject][effectiveUnit]
+                                }
+                            },
                             lastModified: now
                         }, { merge: true });
                     }
@@ -26742,8 +26829,14 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
                     return Promise.all([
                         setDoc(gradeDocRef, item.gradePayload, { merge: true }),
                         setDoc(studentDocRef, {
-                            [`grades.${effectiveSubject}`]: item.student.grades[effectiveSubject],
-                            [`gradebookDetails.${effectiveSubject}.${effectiveUnit}`]: item.student.gradebookDetails[effectiveSubject][effectiveUnit],
+                            grades: {
+                                [effectiveSubject]: item.student.grades[effectiveSubject]
+                            },
+                            gradebookDetails: {
+                                [effectiveSubject]: {
+                                    [uStr]: item.student.gradebookDetails[effectiveSubject][effectiveUnit]
+                                }
+                            },
                             lastModified: now
                         }, { merge: true })
                     ]);
@@ -27683,7 +27776,8 @@ function loadTeacherGradebook() {
             const isAusenteBim = (s.status === 'Ausente') && isBimRetiredOrAusente;
             const isInactive = isRetiradoBim || isAusenteBim;
             const isExon = !isInactive && (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, currentUnit);
-            const zonaSum = (isInactive || isExon) ? 0 : acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
+            const actsSum = acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
+            const zonaSum = (isInactive || isExon) ? 0 : (actsSum > 0 ? actsSum : (parseInt(uData.zona) || 0));
             if (!isInactive && !isExon && zonaSum > cfg.zonaMax) hasOverLimit = true;
 
             const studentFullName = escapeHtml(formatStudentDisplayName(s, 'lastFirst').toUpperCase());
@@ -27794,7 +27888,8 @@ function loadTeacherGradebook() {
             const isAusenteBim = (s.status === 'Ausente') && isBimRetiredOrAusente;
             const isInactive = isRetiradoBim || isAusenteBim;
             const isExon = !isInactive && (typeof isSubjectBimestreExonerated === 'function') && isSubjectBimestreExonerated(s, subjectName, currentUnit);
-            const zonaSum = (isInactive || isExon) ? 0 : acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
+            const actsSum = acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
+            const zonaSum = (isInactive || isExon) ? 0 : (actsSum > 0 ? actsSum : (parseInt(uData.zona) || 0));
             let exam = (isInactive || isExon) ? 0 : (parseInt(uData.exam) || 0);
 
             // 🛡️ REGLA INSTITUCIONAL ANTI-REVERSIÓN A ZONA:
@@ -28433,79 +28528,76 @@ function updateStudentGradeRowSummaryDOM(studentId, zonaVal, examVal, totalVal, 
         }
     }
 
-    // 2. Actualizar fila en la pestaña de Examen y Resumen solo si existe y está visible
-    const summaryContainer = document.getElementById('gradebookSummaryContainer');
-    const isSummaryVisible = summaryContainer && (summaryContainer.offsetParent !== null || summaryContainer.style.display !== 'none');
-    if (isSummaryVisible) {
-        const sumRow = document.querySelector(`#gradebookSummaryTableBody tr[data-student-id="${studentId}"]`);
-        if (sumRow) {
-            const zonaInput = sumRow.querySelector('input.grade-box-input-exam[readonly]');
-            if (zonaInput) zonaInput.value = zonaVal;
+    // 2. Actualizar fila en la pestaña de Examen y Resumen si existe en el DOM
+    const sumRow = document.querySelector(`#gradebookSummaryTableBody tr[data-student-id="${studentId}"]`);
+    if (sumRow) {
+        const zonaInput = sumRow.querySelector('input.grade-box-input-exam[readonly]');
+        if (zonaInput) zonaInput.value = zonaVal;
 
-            const cells = sumRow.cells;
-            if (cells && cells.length >= 6) {
-                const totalCell = cells[4];
-                if (totalCell) {
-                    totalCell.textContent = totalVal;
-                    totalCell.className = (totalVal < 60 ? 'grade-score-fail' : 'grade-score-pass');
-                }
+        const examInput = sumRow.querySelector('input.grade-box-input-exam:not([readonly])');
+        if (examInput && document.activeElement !== examInput) {
+            examInput.value = examVal;
+        }
 
-                const acumCell = cells[5];
-                if (acumCell) {
-                    const isInactive = (student.status === 'Retirado' || student.status === 'Ausente' || student.status === 'Inactivo');
-                    const gList = student.grades?.[subjectName] || [0, 0, 0, 0];
-                    const activeGrades = gList.slice(0, unit);
-                    const sumGrades = activeGrades.reduce((a, b) => a + (parseInt(b) || 0), 0);
-                    acumCell.textContent = isInactive ? '—' : (sumGrades / unit).toFixed(2);
-                }
+        const cells = sumRow.cells;
+        if (cells && cells.length >= 6) {
+            const totalCell = cells[4];
+            if (totalCell) {
+                totalCell.textContent = totalVal;
+                totalCell.className = (totalVal < 60 ? 'grade-score-fail' : 'grade-score-pass');
+            }
+
+            const acumCell = cells[5];
+            if (acumCell) {
+                const isInactive = (student.status === 'Retirado' || student.status === 'Ausente' || student.status === 'Inactivo');
+                const gList = student.grades?.[subjectName] || [0, 0, 0, 0];
+                const activeGrades = gList.slice(0, unit);
+                const sumGrades = activeGrades.reduce((a, b) => a + (parseInt(b) || 0), 0);
+                acumCell.textContent = isInactive ? '—' : (sumGrades / unit).toFixed(2);
             }
         }
     }
 
-    // 3. Actualizar fila en la pestaña de Promedios Totales solo si está visible
-    const avgContainer = document.getElementById('gradebookAveragesContainer');
-    const isAvgVisible = avgContainer && (avgContainer.offsetParent !== null || avgContainer.style.display !== 'none');
-    if (isAvgVisible) {
-        const avgRow = document.querySelector(`#gradebookAveragesTableBody tr[data-student-id="${studentId}"]`);
-        if (avgRow) {
-            const avgCells = avgRow.cells;
-            if (avgCells && avgCells.length >= 7) {
-                const subGrades = (typeof getReportCardSubjectGrades === 'function')
-                    ? getReportCardSubjectGrades(student, subjectName)
-                    : null;
-                if (subGrades) {
-                    if (subGrades.isSpecialUnique) {
-                        if (avgCells[2]) avgCells[2].innerHTML = '<span style="color:#94a3b8;">—</span>';
-                        if (avgCells[3]) avgCells[3].innerHTML = '<span style="color:#94a3b8;">—</span>';
-                        if (avgCells[4]) avgCells[4].innerHTML = '<span style="color:#94a3b8;">—</span>';
-                        if (avgCells[5]) {
-                            avgCells[5].textContent = subGrades.b4 > 0 ? subGrades.b4 : '—';
-                            avgCells[5].className = subGrades.b4 < 60 ? 'grade-score-fail' : 'grade-score-pass';
-                        }
-                    } else {
-                        const bimCell = avgCells[unit + 1];
-                        if (bimCell) {
-                            const isEx = subGrades[`isExon${unit}`];
-                            if (isEx) {
-                                bimCell.innerHTML = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; padding:2px 6px; border-radius:4px;"><i class="fa-solid fa-shield-check"></i> Exon.</span>`;
-                                bimCell.className = '';
-                            } else {
-                                const uScore = subGrades[`b${unit}`];
-                                bimCell.textContent = uScore > 0 ? uScore : '—';
-                                bimCell.className = uScore < 60 ? 'grade-score-fail' : 'grade-score-pass';
-                            }
+    // 3. Actualizar fila en la pestaña de Promedios Totales si existe en el DOM
+    const avgRow = document.querySelector(`#gradebookAveragesTableBody tr[data-student-id="${studentId}"]`);
+    if (avgRow) {
+        const avgCells = avgRow.cells;
+        if (avgCells && avgCells.length >= 7) {
+            const subGrades = (typeof getReportCardSubjectGrades === 'function')
+                ? getReportCardSubjectGrades(student, subjectName)
+                : null;
+            if (subGrades) {
+                if (subGrades.isSpecialUnique) {
+                    if (avgCells[2]) avgCells[2].innerHTML = '<span style="color:#94a3b8;">—</span>';
+                    if (avgCells[3]) avgCells[3].innerHTML = '<span style="color:#94a3b8;">—</span>';
+                    if (avgCells[4]) avgCells[4].innerHTML = '<span style="color:#94a3b8;">—</span>';
+                    if (avgCells[5]) {
+                        avgCells[5].textContent = subGrades.b4 > 0 ? subGrades.b4 : '—';
+                        avgCells[5].className = subGrades.b4 < 60 ? 'grade-score-fail' : 'grade-score-pass';
+                    }
+                } else {
+                    const bimCell = avgCells[unit + 1];
+                    if (bimCell) {
+                        const isEx = subGrades[`isExon${unit}`];
+                        if (isEx) {
+                            bimCell.innerHTML = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem; padding:2px 6px; border-radius:4px;"><i class="fa-solid fa-shield-check"></i> Exon.</span>`;
+                            bimCell.className = '';
+                        } else {
+                            const uScore = subGrades[`b${unit}`];
+                            bimCell.textContent = uScore > 0 ? uScore : '—';
+                            bimCell.className = uScore < 60 ? 'grade-score-fail' : 'grade-score-pass';
                         }
                     }
-                    const finalCell = avgCells[6];
-                    if (finalCell) {
-                        if (subGrades.isFullyExon) {
-                            finalCell.innerHTML = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem;">Exon.</span>`;
-                            finalCell.className = '';
-                        } else {
-                            const finalAvg = subGrades.avg;
-                            finalCell.textContent = finalAvg > 0 ? finalAvg : '—';
-                            finalCell.className = finalAvg < 60 ? 'grade-score-fail' : 'grade-score-pass';
-                        }
+                }
+                const finalCell = avgCells[6];
+                if (finalCell) {
+                    if (subGrades.isFullyExon) {
+                        finalCell.innerHTML = `<span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.75rem;">Exon.</span>`;
+                        finalCell.className = '';
+                    } else {
+                        const finalAvg = subGrades.avg;
+                        finalCell.textContent = finalAvg > 0 ? finalAvg : '—';
+                        finalCell.className = finalAvg < 60 ? 'grade-score-fail' : 'grade-score-pass';
                     }
                 }
             }
@@ -28692,12 +28784,13 @@ function handleExamScoreChange(studentId, value, subjectName, unit, isCommit = f
     const examVal = Math.max(0, Math.min(cfg.examMax || 60, parseInt(value) || 0));
     student.gradebookDetails[subjectName][unit].exam = examVal;
 
-    // Obtener la zona sumada exactamente de las actividades O(1)
+    // Obtener la zona sumada exactamente de las actividades O(1) (con preservación si la zona viene directa sin desglose)
     const acts = student.gradebookDetails[subjectName][unit].activities || [0,0,0,0,0,0,0,0,0,0];
-    let zonaSum = 0;
+    let actsSum = 0;
     for (let i = 0; i < 10; i++) {
-        zonaSum += (acts[i] || 0);
+        actsSum += (parseInt(acts[i]) || 0);
     }
+    const zonaSum = actsSum > 0 ? actsSum : (parseInt(student.gradebookDetails[subjectName][unit].zona) || 0);
     student.gradebookDetails[subjectName][unit].zona = zonaSum;
 
     // Recalcular nota total (Regla estricta institucional ENCCO: Máximo 100 puntos)
@@ -37107,7 +37200,13 @@ async function handleGradebookExcelImport(e) {
 
     showToast("Analizando y validando archivo de calificaciones...", "info");
 
-    const xlsxLib = (typeof window !== 'undefined' && window.XLSX) ? window.XLSX : (typeof XLSX !== 'undefined' ? XLSX : null);
+    let xlsxLib = (typeof window !== 'undefined' && window.XLSX) ? window.XLSX : (typeof XLSX !== 'undefined' ? XLSX : null);
+    if (!xlsxLib && typeof window !== 'undefined' && typeof window._ensureXLSXLoaded === 'function') {
+        try {
+            await window._ensureXLSXLoaded();
+            xlsxLib = window.XLSX || (typeof XLSX !== 'undefined' ? XLSX : null);
+        } catch(e) {}
+    }
 
     if (xlsxLib) {
         const reader = new FileReader();
@@ -45142,6 +45241,53 @@ function initFirestoreModularLiveListeners() {
                     const sId = change.doc.id;
                     const fullStudent = { id: sId, ...sData };
 
+                    // 🛡️ Rescatar y depurar claves planas con puntos ('grades.Materia', 'gradebookDetails.Materia.4')
+                    if (!fullStudent.grades || typeof fullStudent.grades !== 'object') fullStudent.grades = {};
+                    else fullStudent.grades = { ...fullStudent.grades };
+                    if (!fullStudent.gradebookDetails || typeof fullStudent.gradebookDetails !== 'object') fullStudent.gradebookDetails = {};
+                    else fullStudent.gradebookDetails = { ...fullStudent.gradebookDetails };
+
+                    Object.keys(fullStudent).forEach(topKey => {
+                        if (topKey.startsWith('grades.') && topKey.length > 7) {
+                            const subKey = topKey.slice(7);
+                            const val = fullStudent[topKey];
+                            if (Array.isArray(val)) {
+                                const prev = Array.isArray(fullStudent.grades[subKey]) ? fullStudent.grades[subKey] : [0, 0, 0, 0];
+                                fullStudent.grades[subKey] = [0, 1, 2, 3].map(i => Math.max(parseInt(prev[i]) || 0, parseInt(val[i]) || 0));
+                            }
+                            delete fullStudent[topKey];
+                        } else if (topKey.startsWith('gradebookDetails.') && topKey.length > 17) {
+                            const rest = topKey.slice(17);
+                            const lastDot = rest.lastIndexOf('.');
+                            if (lastDot > 0) {
+                                const subKey = rest.slice(0, lastDot);
+                                const unitKey = rest.slice(lastDot + 1);
+                                const val = fullStudent[topKey];
+                                if (val && typeof val === 'object') {
+                                    const existingSub = fullStudent.gradebookDetails[subKey];
+                                    const subObj = {};
+                                    if (Array.isArray(existingSub)) {
+                                        for (let u = 1; u <= 4; u++) {
+                                            if (existingSub[u]) subObj[String(u)] = existingSub[u];
+                                        }
+                                    } else if (existingSub && typeof existingSub === 'object') {
+                                        Object.assign(subObj, existingSub);
+                                    }
+                                    const curU = subObj[unitKey];
+                                    const curTot = curU ? Math.max(parseInt(curU.total) || 0, (parseInt(curU.zona) || 0) + (parseInt(curU.exam) || 0)) : 0;
+                                    const incTot = Math.max(parseInt(val.total) || 0, (parseInt(val.zona) || 0) + (parseInt(val.exam) || 0));
+                                    const curEx = curU ? (parseInt(curU.exam) || 0) : 0;
+                                    const incEx = parseInt(val.exam) || 0;
+                                    if (!curU || incTot > curTot || (incTot === curTot && incEx > curEx)) {
+                                        subObj[unitKey] = { ...val };
+                                    }
+                                    fullStudent.gradebookDetails[subKey] = subObj;
+                                }
+                            }
+                            delete fullStudent[topKey];
+                        }
+                    });
+
                     // 🛡️ Blindaje de identidad canónica para prevenir colisiones de nombres o duplicados
                     if (sId === 'stu-sire-E195FVT' || fullStudent.personalCode === 'E195FVT' || fullStudent.carne === '2026-QD-025') {
                         fullStudent.name = 'RAMOS FLORIÁN DULCE MARÍA';
@@ -45170,26 +45316,97 @@ function initFirestoreModularLiveListeners() {
                     const idx = (STATE.students || []).findIndex(s => s && (s.id === sId || (fullStudent.personalCode && s.personalCode === fullStudent.personalCode) || (fullStudent.carne && s.carne === fullStudent.carne)));
                     if (change.type === 'added' || change.type === 'modified') {
                         if (idx !== -1) {
-                            // Fusión profunda y aislada por materia y unidad para no sobreescribir materias entre docentes
-                            const existingGrades = STATE.students[idx].grades || {};
-                            const newGrades = fullStudent.grades || {};
-                            const mergedGrades = { ...existingGrades, ...newGrades };
+                            const existingStudent = STATE.students[idx];
+                            const localMod = Math.max(Number(existingStudent._localModifiedAt) || 0, Number(existingStudent.lastModified) || 0);
+                            const incMod = Number(fullStudent.lastModified) || 0;
+                            const isDirtyLocal = Boolean(
+                                (window._locallyDirtyStudentIds && (window._locallyDirtyStudentIds.has(sId) || window._locallyDirtyStudentIds.has(existingStudent.id) || (existingStudent.personalCode && window._locallyDirtyStudentIds.has(existingStudent.personalCode)))) ||
+                                ((Date.now() - (window._lastLocalGradeEditTime || 0)) < 15000 && localMod >= incMod && localMod > 0)
+                            );
+                            const preferLocal = isDirtyLocal || (localMod >= incMod && localMod > 0);
 
-                            const existingDetails = STATE.students[idx].gradebookDetails || {};
+                            // Fusión profunda y aislada por materia y unidad con protección Anti-Reversión 40/60
+                            const existingGrades = existingStudent.grades || {};
+                            const newGrades = fullStudent.grades || {};
+                            const existingDetails = existingStudent.gradebookDetails || {};
                             const newDetails = fullStudent.gradebookDetails || {};
-                            const mergedDetails = { ...existingDetails };
-                            Object.keys(newDetails).forEach(subj => {
-                                mergedDetails[subj] = {
-                                    ...(mergedDetails[subj] || {}),
-                                    ...(newDetails[subj] || {})
-                                };
+
+                            const allSubjs = new Set([
+                                ...Object.keys(existingGrades),
+                                ...Object.keys(newGrades),
+                                ...Object.keys(existingDetails),
+                                ...Object.keys(newDetails)
+                            ]);
+
+                            const mergedGrades = {};
+                            const mergedDetails = {};
+
+                            allSubjs.forEach(subj => {
+                                const lArr = Array.isArray(existingGrades[subj]) ? existingGrades[subj] : [0, 0, 0, 0];
+                                const iArr = Array.isArray(newGrades[subj]) ? newGrades[subj] : [0, 0, 0, 0];
+                                mergedGrades[subj] = [0, 0, 0, 0];
+
+                                const lDetSub = existingDetails[subj] || {};
+                                const iDetSub = newDetails[subj] || {};
+                                mergedDetails[subj] = {};
+
+                                for (let u = 1; u <= 4; u++) {
+                                    const uStr = String(u);
+                                    const bIdx = u - 1;
+                                    const lG = Math.min(100, Math.max(0, parseInt(lArr[bIdx]) || 0));
+                                    const iG = Math.min(100, Math.max(0, parseInt(iArr[bIdx]) || 0));
+
+                                    const rawL = Array.isArray(lDetSub) ? lDetSub[u] : (lDetSub[uStr] || lDetSub[u]);
+                                    const rawI = Array.isArray(iDetSub) ? iDetSub[u] : (iDetSub[uStr] || iDetSub[u]);
+
+                                    const normUnit = (uObj, gFallback) => {
+                                        if (!uObj || typeof uObj !== 'object') return null;
+                                        const acts = Array.isArray(uObj.activities) ? [...uObj.activities] : [0,0,0,0,0,0,0,0,0,0];
+                                        const actsSum = acts.reduce((a, b) => a + (parseInt(b) || 0), 0);
+                                        const z = Math.max(0, actsSum > 0 ? actsSum : (parseInt(uObj.zona) || 0));
+                                        let ex = Math.max(0, parseInt(uObj.exam) || 0);
+                                        let tot = Math.min(100, Math.max(0, parseInt(uObj.total) || 0, gFallback || 0, z + ex));
+                                        if (ex === 0 && tot > z) {
+                                            ex = Math.min(60, tot - z);
+                                        }
+                                        tot = Math.min(100, (z + ex) > 0 ? (z + ex) : tot);
+                                        return { ...uObj, activities: acts, zona: z, exam: ex, total: tot };
+                                    };
+
+                                    const lUnit = normUnit(rawL, lG);
+                                    const iUnit = normUnit(rawI, iG);
+
+                                    let chosenUnit = null;
+                                    if (lUnit && iUnit) {
+                                        if (preferLocal) {
+                                            chosenUnit = (lUnit.total > 0 || lUnit.zona > 0 || lUnit.exam > 0) ? lUnit : iUnit;
+                                        } else if (lUnit.exam > 0 && iUnit.exam === 0 && iUnit.total <= iUnit.zona) {
+                                            // 🛡️ Anti-Reversión 40/60: No permitir que un estado obsoleto de solo-zona borre el examen local
+                                            chosenUnit = lUnit;
+                                        } else {
+                                            chosenUnit = (iUnit.total > 0 || iUnit.zona > 0 || iUnit.exam > 0) ? iUnit : lUnit;
+                                        }
+                                    } else {
+                                        chosenUnit = preferLocal ? (lUnit || iUnit) : (iUnit || lUnit);
+                                    }
+
+                                    if (chosenUnit) {
+                                        mergedDetails[subj][uStr] = chosenUnit;
+                                        mergedGrades[subj][bIdx] = chosenUnit.total;
+                                    } else {
+                                        mergedGrades[subj][bIdx] = preferLocal ? (lG > 0 ? lG : iG) : (iG > 0 ? iG : lG);
+                                    }
+                                }
                             });
 
                             STATE.students[idx] = {
-                                ...STATE.students[idx],
-                                ...fullStudent,
+                                ...existingStudent,
+                                ...(preferLocal ? {} : fullStudent),
+                                id: existingStudent.id || sId,
                                 grades: mergedGrades,
-                                gradebookDetails: mergedDetails
+                                gradebookDetails: mergedDetails,
+                                lastModified: Math.max(localMod, incMod),
+                                _localModifiedAt: existingStudent._localModifiedAt || localMod
                             };
                         } else {
                             if (!STATE.students) STATE.students = [];

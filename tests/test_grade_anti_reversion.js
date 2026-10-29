@@ -158,4 +158,19 @@ assert.strictEqual(examScoreSim, 45, "El examen final debe preservarse en 45 pts
 assert.strictEqual(finalTotalSim, 85, "La nota total debe ser 40 (zona nueva) + 45 (examen preservado) = 85");
 console.log("✅ Simulación funcional superada: Examen 45 preservado y nota total calculada dinámicamente en 85.");
 
+// 5. Verificar estructura anidada pura en Firestore (sin claves con puntos en batch.set / setDoc) y blindaje en onSnapshot
+console.log("\n[Paso 5] Verificando estructura anidada en Firestore (batch.set / setDoc) y blindaje en onSnapshot...");
+const saveBulkMatch = appSource.match(/async function saveBulkStudentGradesAtomic[\s\S]*?\nwindow\.saveBulkStudentGradesAtomic/);
+assert(saveBulkMatch, "saveBulkStudentGradesAtomic debe existir");
+const saveBulkBody = saveBulkMatch[0];
+assert(!saveBulkBody.includes("[`gradebookDetails.${effectiveSubject}.${effectiveUnit}`]"), "saveBulkStudentGradesAtomic NO debe usar claves planas con puntos en batch.set/setDoc");
+assert(saveBulkBody.includes("gradebookDetails: {"), "saveBulkStudentGradesAtomic debe usar mapa anidado gradebookDetails en batch.set/setDoc");
+
+const onSnapStudentsMatch = appSource.match(/onSnapshot\(collection\(db,\s*'students'\),[\s\S]*?err\s*=>\s*console\.warn\('Aviso en onSnapshot students:'/);
+assert(onSnapStudentsMatch, "onSnapshot de students debe existir");
+const onSnapBody = onSnapStudentsMatch[0];
+assert(onSnapBody.includes("preferLocal"), "onSnapshot de students debe evaluar preferLocal (protección local y timestamps)");
+assert(onSnapBody.includes("lUnit.exam > 0 && iUnit.exam === 0"), "onSnapshot de students debe impedir que un estado obsoleto con exam===0 borre un examen local > 0");
+console.log("✅ Estructura anidada de Firestore y blindaje Anti-Reversión en onSnapshot verificados.");
+
 console.log("\n🎉 ¡TODAS LAS PRUEBAS ANTI-REVERSIÓN APROBADAS AL 100%!");
