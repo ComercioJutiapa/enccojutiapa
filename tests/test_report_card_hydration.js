@@ -102,9 +102,10 @@ async function runTests() {
     console.log(`   🌟 Promedio General de Jenifer Alvarez: ${overallAvg} puntos (APROBADO)`);
     assert(overallAvg >= 65, "Promedio general debe ser satisfactorio");
 
-    // 4. Verificar Student 54 (Londri Chiquin)
-    console.log("3. Verificando Student 54 (Londri Chiquin)...");
-    const londri = students[54];
+    // 4. Verificar Student Londri Chiquin (stu-sire-F733HXY)
+    console.log("3. Verificando Student Londri Chiquin (stu-sire-F733HXY)...");
+    const londri = students.find(s => s && s.id === 'stu-sire-F733HXY');
+    assert(londri, "Londri Chiquin debe existir en la lista de estudiantes");
     assert.strictEqual(londri.id, 'stu-sire-F733HXY');
     const compuLondri = sandbox.getReportCardSubjectGrades(londri, 'Computación II');
     console.log(`   💻 Computación II Londri: B1=${compuLondri.b1}, B2=${compuLondri.b2}, B3=${compuLondri.b3}, B4=${compuLondri.b4}`);

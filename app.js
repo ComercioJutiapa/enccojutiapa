@@ -38120,7 +38120,8 @@ async function processGradebookImportRows(rawRows, fallbackPensum, fallbackUnit,
         }
 
         const cH = cleanStr(actTitle);
-        if (cH.includes('observacion') || cH.includes('resultado') || cH.includes('logro') || cH.includes('estado') || cH.includes('promedio')) continue;
+        const isBoundedBeforeSummary = (colIdxZona !== -1 && c < colIdxZona) || (colIdxExam !== -1 && c < colIdxExam) || (colIdxTotal !== -1 && c < colIdxTotal);
+        if (cH.includes('observacion') || cH.includes('logro') || cH.includes('promedio') || (!isBoundedBeforeSummary && (cH === 'resultado' || cH === 'estado' || cH === 'estadoalumno'))) continue;
 
         if (actColumns.length < 10) {
             const ptsMatch = actTitle.match(/\((\d+)\s*(?:pts|puntos|p)?\)/i) ||
