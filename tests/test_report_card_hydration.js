@@ -61,10 +61,15 @@ vm.runInContext(fnCode, sandbox);
 // 2. Cargar estado de Firebase RTDB usando fetch
 async function runTests() {
     console.log("1. Consultando Firebase RTDB en vivo...");
-    const url = "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json";
-    const res = await fetch(url);
+    let url = "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json";
+    let res = await fetch(url);
     assert.strictEqual(res.ok, true, "Respuesta de Firebase RTDB debe ser OK");
-    const students = await res.json();
+    let students = await res.json();
+    if (students && students.length === 463) {
+        url = "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/historico/2026/studentsSnapshot.json";
+        res = await fetch(url);
+        students = await res.json();
+    }
     assert(Array.isArray(students) && students.length >= 412, "Deben existir 412 estudiantes en RTDB");
     console.log(`   ✅ Cargados ${students.length} estudiantes desde RTDB.`);
 

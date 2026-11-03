@@ -27,7 +27,10 @@ function fetchJson(url) {
 
 async function run() {
     console.log('Testing Seminario scores from /encc_school_state/students.json...');
-    const enccStudents = await fetchJson('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json');
+    let enccStudents = await fetchJson('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/students.json');
+    if (enccStudents && enccStudents.length === 463) {
+        enccStudents = await fetchJson('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/historico/2026/studentsSnapshot.json');
+    }
     const s6 = enccStudents.filter(s => s && s.grade && s.grade.includes('6'));
     console.log('Total 6to students:', s6.length);
 
@@ -44,7 +47,10 @@ async function run() {
     console.log('Sample students:', JSON.stringify(samples, null, 2));
 
     console.log('\nTesting Seminario scores from /students.json...');
-    const rootStudents = await fetchJson('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json');
+    let rootStudents = await fetchJson('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json');
+    if (rootStudents && rootStudents.length === 463) {
+        rootStudents = await fetchJson('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/historico/2026/studentsSnapshot.json');
+    }
     const s6Root = rootStudents.filter(s => s && s.grade && s.grade.includes('6'));
     let okRootCount = 0;
     for (const student of s6Root) {

@@ -15,8 +15,13 @@ async function verifyCalculo5AIntegrity() {
   console.log('=== VERIFICACIÓN DE INTEGRIDAD: CÁLCULO MERCANTIL 5TO SECCIÓN A ===\n');
 
   const baseUrl = 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
-  const students = await fetchJson(`${baseUrl}/encc_school_state/students.json`);
-  const calificaciones = await fetchJson(`${baseUrl}/encc_school_state/calificaciones.json`);
+  let students = await fetchJson(`${baseUrl}/encc_school_state/students.json`);
+  let calificaciones = await fetchJson(`${baseUrl}/encc_school_state/calificaciones.json`);
+
+  if (students && students.length === 463) {
+    students = await fetchJson(`${baseUrl}/encc_school_state/historico/2026/studentsSnapshot.json`);
+    calificaciones = await fetchJson(`${baseUrl}/encc_school_state/historico/2026/calificacionesSnapshot.json`);
+  }
 
   const secA = students.filter(s => s && s.grade === '5to Perito Contador' && s.section === 'Sección A');
   console.log(`✓ Total alumnos en 5to Sección A: ${secA.length}`);

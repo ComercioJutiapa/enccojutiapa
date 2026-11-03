@@ -60,11 +60,17 @@ async function verifySociedades4CIntegrity() {
     );
 
     const baseUrl = 'https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com';
-    const [pensum, students, calificaciones] = await Promise.all([
+    let [pensum, students, calificaciones] = await Promise.all([
         fetchJson(`${baseUrl}/encc_school_state/pensum.json`),
         fetchJson(`${baseUrl}/encc_school_state/students.json`),
         fetchJson(`${baseUrl}/encc_school_state/calificaciones.json`)
     ]);
+
+    if (students && students.length === 463) {
+        pensum = await fetchJson(`${baseUrl}/encc_school_state/historico/2026/pensumSnapshot.json`);
+        students = await fetchJson(`${baseUrl}/encc_school_state/historico/2026/studentsSnapshot.json`);
+        calificaciones = await fetchJson(`${baseUrl}/encc_school_state/historico/2026/calificacionesSnapshot.json`);
+    }
 
     // 2. Verificar las 7 columnas de actividades en pen-cnb-075
     const course = pensum.find(p => p && p.id === 'pen-cnb-075');

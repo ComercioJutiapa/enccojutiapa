@@ -11189,9 +11189,13 @@ function computeStateChecksum(dataStr) {
 window.computeStateChecksum = computeStateChecksum;
 
 function saveStateRecursively(options = { syncCloud: false, isAutoSave: false }) {
+    if (window.STATE && window.STATE.isHistoricalReadOnlyMode) {
+        console.warn("🛡️ [Solo Lectura] Guardado cancelado: modo consulta histórica activo.");
+        return false;
+    }
     const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
-    if (window.STATE && (window.STATE.isLocalReadOnlyMode || window.STATE.isHistoricalReadOnlyMode) && !isSuperOrDir) {
-        console.warn("🛡️ [Solo Lectura] Guardado cancelado: modo consulta histórica o inspección activo.");
+    if (window.STATE && window.STATE.isLocalReadOnlyMode && !isSuperOrDir) {
+        console.warn("🛡️ [Solo Lectura] Guardado cancelado: modo inspección activo.");
         return false;
     }
 
@@ -26528,7 +26532,16 @@ function getStudentBimestreStatusInfo(s, bimestreNum = 1, subjectName = null) {
 window.getStudentBimestreStatusInfo = getStudentBimestreStatusInfo;
 
 async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifier, unit, gradeData) {
-    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    const isHistorical = !!(window.STATE && window.STATE.isHistoricalReadOnlyMode);
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole()) || ['director', 'direccion', 'admin'].includes(((window.STATE && window.STATE.currentRole) || '').toLowerCase());
+
+    if (isHistorical && !isSuperOrDir) {
+        if (typeof showToast === 'function') {
+            showToast(`El ciclo ${window.STATE.historicalViewingCycle || 'histórico'} está archivado (Solo Lectura). Solo Dirección y Administración pueden corregir registros históricos.`, "warning");
+        }
+        return false;
+    }
+
     if (window.STATE && window.STATE.isLocalReadOnlyMode && !isSuperOrDir) {
         if (typeof showToast === 'function') {
             showToast("⚠️ Acción Bloqueada: La copia local está en modo SOLO LECTURA.", "warning");
@@ -26611,6 +26624,85 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
     window._lastLocalGradeEditTime = now;
     if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
     window._locallyDirtyStudentIds.add(student.id);
+
+    // 🏛️ REGLA HISTÓRICA ENCCO: Si estamos en modo de consulta histórica (ej: Ciclo 2026),
+    // persistir la corrección autorizada directamente en el archivo histórico sin tocar la base activa 2027.
+    if (isHistorical) {
+        const histCycle = String(window.STATE.historicalViewingCycle || window.STATE.activeCycle || '2026');
+        const cleanSub = String(subjectName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, '');
+        const califKey = `${student.id}_${cleanSub}_b${uNum}`;
+        const califPayload = {
+            studentId: student.id,
+            studentName: student.name || `${student.lastName || ''} ${student.firstName || ''}`.trim(),
+            subject: subjectName,
+            unit: uNum,
+            zona: currentUnitDetails.zona || 0,
+            exam: currentUnitDetails.exam || 0,
+            total: currentUnitDetails.total || 0,
+            lastModified: now
+        };
+        if (!STATE.calificaciones) STATE.calificaciones = {};
+        STATE.calificaciones[califKey] = califPayload;
+
+        const fbUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
+        if (fbUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+            try {
+                const histIdx = (STATE.students || []).findIndex(s => s && s.id === student.id);
+                const promises = [
+                    fetch(`${fbUrl}/encc_school_state/historico/${histCycle}/calificacionesSnapshot/${califKey}.json`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(califPayload)
+                    }).catch(() => {})
+                ];
+                if (histIdx !== -1) {
+                    promises.push(
+                        fetch(`${fbUrl}/encc_school_state/historico/${histCycle}/studentsSnapshot/${histIdx}/grades/${encodeURIComponent(subjectName)}.json`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(student.grades[subjectName])
+                        }).catch(() => {}),
+                        fetch(`${fbUrl}/encc_school_state/historico/${histCycle}/studentsSnapshot/${histIdx}/gradebookDetails/${encodeURIComponent(subjectName)}/${uStr}.json`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(currentUnitDetails)
+                        }).catch(() => {})
+                    );
+                }
+                Promise.all(promises).catch(hErr => console.warn("[Histórico] Aviso guardando nota histórica:", hErr));
+            } catch(hErr) {
+                console.warn("[Histórico] Error persistiendo nota histórica:", hErr);
+            }
+        }
+
+        // Actualizar caché de localStorage para este ciclo histórico
+        if (typeof localStorage !== 'undefined') {
+            try {
+                const cacheRaw = localStorage.getItem(`ENCCO_HISTORICO_${histCycle}`);
+                if (cacheRaw) {
+                    const cacheObj = JSON.parse(cacheRaw);
+                    if (cacheObj) {
+                        if (!cacheObj.calificacionesSnapshot) cacheObj.calificacionesSnapshot = {};
+                        cacheObj.calificacionesSnapshot[califKey] = califPayload;
+                        const cIdx = (cacheObj.studentsSnapshot || []).findIndex(s => s && s.id === student.id);
+                        if (cIdx !== -1) {
+                            if (!cacheObj.studentsSnapshot[cIdx].grades) cacheObj.studentsSnapshot[cIdx].grades = {};
+                            if (!cacheObj.studentsSnapshot[cIdx].gradebookDetails) cacheObj.studentsSnapshot[cIdx].gradebookDetails = {};
+                            cacheObj.studentsSnapshot[cIdx].grades[subjectName] = student.grades[subjectName];
+                            if (!cacheObj.studentsSnapshot[cIdx].gradebookDetails[subjectName]) cacheObj.studentsSnapshot[cIdx].gradebookDetails[subjectName] = {};
+                            cacheObj.studentsSnapshot[cIdx].gradebookDetails[subjectName][uStr] = currentUnitDetails;
+                        }
+                        localStorage.setItem(`ENCCO_HISTORICO_${histCycle}`, JSON.stringify(cacheObj));
+                    }
+                }
+            } catch(cErr) {}
+        }
+
+        if (typeof showToast === 'function') {
+            showToast(`Nota histórica del Ciclo ${histCycle} guardada permanentemente en el archivo oficial.`, "success");
+        }
+        return true;
+    }
 
     // 🌟 A. Actualización Atómica en Google Cloud Firestore (estructura anidada pura sin claves con puntos)
     const modular = window.FirebaseModular;
@@ -26761,7 +26853,16 @@ window.saveStudentSubjectGradeAtomic = saveStudentSubjectGradeAtomic;
 window.ensureStudentGradebookStructure = ensureStudentGradebookStructure;
 
 async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, unit) {
-    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole());
+    const isHistorical = !!(window.STATE && window.STATE.isHistoricalReadOnlyMode);
+    const isSuperOrDir = (typeof isSuperUserRole === 'function' && isSuperUserRole()) || (typeof isDirectorRole === 'function' && isDirectorRole()) || ['director', 'direccion', 'admin'].includes(((window.STATE && window.STATE.currentRole) || '').toLowerCase());
+
+    if (isHistorical && !isSuperOrDir) {
+        if (typeof showToast === 'function') {
+            showToast(`El ciclo ${window.STATE.historicalViewingCycle || 'histórico'} está archivado (Solo Lectura). Solo Dirección y Administración pueden corregir registros históricos.`, "warning");
+        }
+        return false;
+    }
+
     if (window.STATE && window.STATE.isLocalReadOnlyMode && !isSuperOrDir) {
         if (typeof showToast === 'function') {
             showToast("⚠️ Acción Bloqueada: La copia local está en modo SOLO LECTURA.", "warning");
@@ -26905,6 +27006,73 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
     // 🛡️ Proteger inmediatamente en _locallyDirtyStudentIds ANTES de emitir escrituras a Firestore/RTDB
     if (!window._locallyDirtyStudentIds) window._locallyDirtyStudentIds = new Set();
     gradeRecords.forEach(item => window._locallyDirtyStudentIds.add(item.student.id));
+
+    // 🏛️ REGLA HISTÓRICA ENCCO: Si estamos en modo de consulta histórica (ej: Ciclo 2026),
+    // persistir el lote autorizado directamente en el archivo histórico sin tocar la base activa 2027.
+    if (isHistorical) {
+        const histCycle = String(window.STATE.historicalViewingCycle || window.STATE.activeCycle || '2026');
+        const fbUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : null;
+        if (fbUrl && (typeof navigator === 'undefined' || navigator.onLine !== false)) {
+            try {
+                const patchCalifs = {};
+                gradeRecords.forEach(item => {
+                    patchCalifs[item.compositeGradeKey] = item.gradePayload;
+                });
+                const promises = [
+                    fetch(`${fbUrl}/encc_school_state/historico/${histCycle}/calificacionesSnapshot.json`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(patchCalifs)
+                    }).catch(() => {})
+                ];
+                gradeRecords.forEach(item => {
+                    const hIdx = (STATE.students || []).findIndex(s => s && s.id === item.student.id);
+                    if (hIdx !== -1) {
+                        promises.push(
+                            fetch(`${fbUrl}/encc_school_state/historico/${histCycle}/studentsSnapshot/${hIdx}/grades/${encodeURIComponent(effectiveSubject)}.json`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(item.student.grades[effectiveSubject])
+                            }).catch(() => {}),
+                            fetch(`${fbUrl}/encc_school_state/historico/${histCycle}/studentsSnapshot/${hIdx}/gradebookDetails/${encodeURIComponent(effectiveSubject)}/${effectiveUnit}.json`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(item.student.gradebookDetails[effectiveSubject][effectiveUnit])
+                            }).catch(() => {})
+                        );
+                    }
+                });
+                Promise.all(promises).catch(hErr => console.warn("[Histórico Bulk] Aviso guardando notas:", hErr));
+            } catch(hErr) {
+                console.warn("[Histórico Bulk] Error persistiendo notas:", hErr);
+            }
+        }
+        // Actualizar caché de localStorage para este ciclo histórico
+        if (typeof localStorage !== 'undefined') {
+            try {
+                const cacheRaw = localStorage.getItem(`ENCCO_HISTORICO_${histCycle}`);
+                if (cacheRaw) {
+                    const cacheObj = JSON.parse(cacheRaw);
+                    if (cacheObj) {
+                        if (!cacheObj.calificacionesSnapshot) cacheObj.calificacionesSnapshot = {};
+                        gradeRecords.forEach(item => {
+                            cacheObj.calificacionesSnapshot[item.compositeGradeKey] = item.gradePayload;
+                            const cIdx = (cacheObj.studentsSnapshot || []).findIndex(s => s && s.id === item.student.id);
+                            if (cIdx !== -1) {
+                                if (!cacheObj.studentsSnapshot[cIdx].grades) cacheObj.studentsSnapshot[cIdx].grades = {};
+                                if (!cacheObj.studentsSnapshot[cIdx].gradebookDetails) cacheObj.studentsSnapshot[cIdx].gradebookDetails = {};
+                                cacheObj.studentsSnapshot[cIdx].grades[effectiveSubject] = item.student.grades[effectiveSubject];
+                                if (!cacheObj.studentsSnapshot[cIdx].gradebookDetails[effectiveSubject]) cacheObj.studentsSnapshot[cIdx].gradebookDetails[effectiveSubject] = {};
+                                cacheObj.studentsSnapshot[cIdx].gradebookDetails[effectiveSubject][effectiveUnit] = item.student.gradebookDetails[effectiveSubject][effectiveUnit];
+                            }
+                        });
+                        localStorage.setItem(`ENCCO_HISTORICO_${histCycle}`, JSON.stringify(cacheObj));
+                    }
+                }
+            } catch(cErr) {}
+        }
+        return true;
+    }
 
     // 1. Persistencia Atómica en Firestore con writeBatch y { merge: true } (estructura anidada pura sin claves con puntos)
     if (window.FirebaseModular && window.FirebaseModular.db) {

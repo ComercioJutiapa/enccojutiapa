@@ -545,58 +545,87 @@
             try {
                 let archivedData = null;
 
-                // 1. Intentar desde caché local primero
+                // 1. Intentar desde caché local primero (validando que tenga registros reales)
                 if (typeof localStorage !== 'undefined') {
                     try {
                         const localCached = localStorage.getItem(`ENCCO_HISTORICO_${targetCycle}`);
                         if (localCached) {
                             const parsed = JSON.parse(localCached);
-                            if (parsed && (parsed.studentsSnapshot || parsed.students)) {
-                                archivedData = parsed;
+                            const stList = (parsed && (parsed.studentsSnapshot || parsed.students));
+                            if (Array.isArray(stList) && stList.length > 0) {
+                                // Descartar dummy residual corrupto sin nombres válidos o de <= 3 registros en ciclo 2026
+                                if (targetCycle === '2026' && stList.length <= 3 && (!stList[0] || !stList[0].name)) {
+                                    localStorage.removeItem(`ENCCO_HISTORICO_${targetCycle}`);
+                                } else {
+                                    archivedData = parsed;
+                                }
                             }
                         }
                     } catch(e) {}
                 }
 
-                // 2. Descargar bajo demanda desde Firebase RTDB (/historico/{targetCycle}.json o /encc_school_state/historico/{targetCycle}.json)
+                // 2. Descargar bajo demanda desde Firebase RTDB (/encc_school_state/historico/{targetCycle}.json como ruta canónica prioritaria)
                 if (!archivedData && typeof fetch === 'function') {
                     const fbUrl = this.getFirebaseUrl();
+                    // Prioridad 1: Nodo canónico oficial en encc_school_state
                     try {
-                        const res = await fetch(`${fbUrl}/historico/${targetCycle}.json?t=${Date.now()}`);
-                        if (res.ok) {
-                            archivedData = await res.json();
+                        const res1 = await fetch(`${fbUrl}/encc_school_state/historico/${targetCycle}.json?t=${Date.now()}`);
+                        if (res1.ok) {
+                            const data1 = await res1.json();
+                            const stList1 = data1 && (data1.studentsSnapshot || data1.students);
+                            if (Array.isArray(stList1) && stList1.length > 0) {
+                                archivedData = data1;
+                            }
                         }
                     } catch(e) {}
+
+                    // Prioridad 2 (Fallback): Nodo secundario /historico/ solo si el archivo es íntegro y no el dummy
                     if (!archivedData) {
                         try {
-                            const res2 = await fetch(`${fbUrl}/encc_school_state/historico/${targetCycle}.json?t=${Date.now()}`);
+                            const res2 = await fetch(`${fbUrl}/historico/${targetCycle}.json?t=${Date.now()}`);
                             if (res2.ok) {
-                                archivedData = await res2.json();
+                                const data2 = await res2.json();
+                                const stList2 = data2 && (data2.studentsSnapshot || data2.students);
+                                if (Array.isArray(stList2) && stList2.length > 3) {
+                                    archivedData = data2;
+                                }
                             }
                         } catch(e) {}
                     }
                 }
 
                 if (!archivedData || (!archivedData.studentsSnapshot && !archivedData.students)) {
-                    throw new Error(`No se encontraron registros archivados para el ciclo ${targetCycle}.`);
+                    throw new Error(`No se encontraron registros archivados oficiales para el ciclo ${targetCycle}.`);
                 }
 
-                // Guardar respaldo íntegro del estado activo antes de entrar a modo histórico
-                if (!this._originalStateBeforeHistory && window.STATE) {
+                // Actualizar inmediatamente la caché local válida
+                if (typeof localStorage !== 'undefined') {
+                    try {
+                        localStorage.setItem(`ENCCO_HISTORICO_${targetCycle}`, JSON.stringify(archivedData));
+                    } catch(e) {}
+                }
+
+                // Guardar respaldo íntegro del estado activo antes de entrar a modo histórico (memoria + sessionStorage)
+                if (!this._originalStateBeforeHistory && window.STATE && !window.STATE.isHistoricalReadOnlyMode) {
                     this._originalStateBeforeHistory = {
                         activeCycle: window.STATE.activeCycle,
                         academicCycle: window.STATE.academicCycle,
-                        students: window.STATE.students,
-                        attendanceRecords: window.STATE.attendanceRecords,
-                        disciplineReports: window.STATE.disciplineReports,
-                        studentPermissions: window.STATE.studentPermissions,
-                        pensum: window.STATE.pensum,
-                        calificaciones: window.STATE.calificaciones,
-                        gradingConfigs: window.STATE.gradingConfigs,
-                        academicExonerations: window.STATE.academicExonerations,
-                        exoneraciones: window.STATE.exoneraciones,
+                        students: JSON.parse(JSON.stringify(window.STATE.students || [])),
+                        attendanceRecords: JSON.parse(JSON.stringify(window.STATE.attendanceRecords || {})),
+                        disciplineReports: JSON.parse(JSON.stringify(window.STATE.disciplineReports || [])),
+                        studentPermissions: JSON.parse(JSON.stringify(window.STATE.studentPermissions || [])),
+                        pensum: JSON.parse(JSON.stringify(window.STATE.pensum || [])),
+                        calificaciones: JSON.parse(JSON.stringify(window.STATE.calificaciones || {})),
+                        gradingConfigs: JSON.parse(JSON.stringify(window.STATE.gradingConfigs || {})),
+                        academicExonerations: JSON.parse(JSON.stringify(window.STATE.academicExonerations || [])),
+                        exoneraciones: JSON.parse(JSON.stringify(window.STATE.exoneraciones || {})),
                         config: window.STATE.config ? JSON.parse(JSON.stringify(window.STATE.config)) : {}
                     };
+                    try {
+                        if (typeof sessionStorage !== 'undefined') {
+                            sessionStorage.setItem('ENCCO_STATE_BEFORE_HISTORICAL', JSON.stringify(this._originalStateBeforeHistory));
+                        }
+                    } catch(e) {}
                 }
 
                 // Inyectar datos históricos en memoria de solo lectura
@@ -662,22 +691,43 @@
             if (!window.STATE || !window.STATE.isHistoricalReadOnlyMode) return { success: false, message: 'No en modo histórico' };
 
             console.log("🔙 [Consulta Histórica] Regresando al ciclo lectivo activo...");
-            if (this._originalStateBeforeHistory) {
-                window.STATE.activeCycle = this._originalStateBeforeHistory.activeCycle;
-                window.STATE.academicCycle = this._originalStateBeforeHistory.academicCycle || this._originalStateBeforeHistory.activeCycle;
-                window.STATE.students = this._originalStateBeforeHistory.students;
-                window.STATE.attendanceRecords = this._originalStateBeforeHistory.attendanceRecords;
-                window.STATE.disciplineReports = this._originalStateBeforeHistory.disciplineReports;
-                window.STATE.studentPermissions = this._originalStateBeforeHistory.studentPermissions;
-                window.STATE.pensum = this._originalStateBeforeHistory.pensum;
-                window.STATE.calificaciones = this._originalStateBeforeHistory.calificaciones || {};
-                window.STATE.gradingConfigs = this._originalStateBeforeHistory.gradingConfigs || {};
-                window.STATE.academicExonerations = this._originalStateBeforeHistory.academicExonerations || [];
-                window.STATE.exoneraciones = this._originalStateBeforeHistory.exoneraciones || {};
-                if (this._originalStateBeforeHistory.config) {
-                    window.STATE.config = this._originalStateBeforeHistory.config;
+            let restoredState = this._originalStateBeforeHistory;
+            if (!restoredState && typeof sessionStorage !== 'undefined') {
+                try {
+                    const sessionRaw = sessionStorage.getItem('ENCCO_STATE_BEFORE_HISTORICAL');
+                    if (sessionRaw) restoredState = JSON.parse(sessionRaw);
+                } catch(e) {}
+            }
+
+            if (restoredState && Array.isArray(restoredState.students) && restoredState.students.length > 0) {
+                window.STATE.activeCycle = restoredState.activeCycle || '2027';
+                window.STATE.academicCycle = restoredState.academicCycle || restoredState.activeCycle || '2027';
+                window.STATE.students = restoredState.students;
+                window.STATE.attendanceRecords = restoredState.attendanceRecords || {};
+                window.STATE.disciplineReports = restoredState.disciplineReports || [];
+                window.STATE.studentPermissions = restoredState.studentPermissions || [];
+                window.STATE.pensum = restoredState.pensum || [];
+                window.STATE.calificaciones = restoredState.calificaciones || {};
+                window.STATE.gradingConfigs = restoredState.gradingConfigs || {};
+                window.STATE.academicExonerations = restoredState.academicExonerations || [];
+                window.STATE.exoneraciones = restoredState.exoneraciones || {};
+                if (restoredState.config) {
+                    window.STATE.config = restoredState.config;
                 }
                 this._originalStateBeforeHistory = null;
+                if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('ENCCO_STATE_BEFORE_HISTORICAL');
+            } else {
+                const fbUrl = this.getFirebaseUrl();
+                fetch(`${fbUrl}/encc_school_state/students.json`).then(r => r.json()).then(cloudStudents => {
+                    if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
+                        window.STATE.students = cloudStudents;
+                        if (typeof renderStudentsTable === 'function') renderStudentsTable();
+                        if (typeof renderBoletasTable === 'function') renderBoletasTable();
+                        if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
+                    }
+                }).catch(() => {});
+                window.STATE.activeCycle = '2027';
+                window.STATE.academicCycle = '2027';
             }
 
             window.STATE.isHistoricalReadOnlyMode = false;
@@ -900,24 +950,48 @@
                 for (const yr of yearsToCheck) {
                     let archiveData = null;
 
-                    // Primero intentar desde localStorage (sin consumir cuota de Firebase)
+                    // Primero intentar desde localStorage (validando que tenga registros válidos)
                     if (typeof localStorage !== 'undefined') {
                         const localKey = `ENCCO_HISTORICO_${yr}`;
                         const localRaw = localStorage.getItem(localKey);
                         if (localRaw) {
-                            try { archiveData = JSON.parse(localRaw); } catch(e) { /* continúa */ }
+                            try {
+                                const parsed = JSON.parse(localRaw);
+                                const stList = parsed && (parsed.studentsSnapshot || parsed.students);
+                                if (Array.isArray(stList) && stList.length > 0) {
+                                    if (yr === '2026' && stList.length <= 3 && (!stList[0] || !stList[0].name)) {
+                                        // ignorar dummy residual
+                                    } else {
+                                        archiveData = parsed;
+                                    }
+                                }
+                            } catch(e) { /* continúa */ }
                         }
                     }
 
-                    // Si no está en localStorage, intentar Firebase
+                    // Si no está en localStorage válido, intentar Firebase (Prioridad: /encc_school_state/historico/{yr}.json)
                     if (!archiveData && typeof fetch === 'function') {
                         try {
                             const dbUrl = this.getFirebaseUrl();
                             const token = (typeof getFirebaseIdToken === 'function') ? await getFirebaseIdToken() : null;
                             const authSuffix = token ? `?auth=${token}` : '';
-                            const resp = await fetch(`${dbUrl}/historico/${yr}.json${authSuffix}`);
-                            if (resp.ok) {
-                                archiveData = await resp.json();
+                            const resp1 = await fetch(`${dbUrl}/encc_school_state/historico/${yr}.json${authSuffix}`);
+                            if (resp1.ok) {
+                                const d1 = await resp1.json();
+                                const c1 = d1 && (d1.studentsSnapshot || d1.students);
+                                if (Array.isArray(c1) && c1.length > 0) {
+                                    archiveData = d1;
+                                }
+                            }
+                            if (!archiveData) {
+                                const resp2 = await fetch(`${dbUrl}/historico/${yr}.json${authSuffix}`);
+                                if (resp2.ok) {
+                                    const d2 = await resp2.json();
+                                    const c2 = d2 && (d2.studentsSnapshot || d2.students);
+                                    if (Array.isArray(c2) && c2.length > 3) {
+                                        archiveData = d2;
+                                    }
+                                }
                             }
                         } catch(fetchErr) {
                             // Firebase no disponible para este año, continúa

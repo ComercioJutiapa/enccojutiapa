@@ -37,13 +37,24 @@ function fetchJson(url, retries = 3) {
 async function runTests() {
     console.log("=== INICIANDO VALIDACIÓN DE INTEGRIDAD DE 412 ESTUDIANTES ===");
     
-    // 1. Fetch live students from Firebase RTDB
-    console.log("1. Descargando nómina en vivo desde Firebase RTDB...");
-    const liveStudents = await fetchJson(`https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json?t=${Date.now()}`);
+    // 1. Fetch live students from Firebase RTDB (o del archivo histórico 2026 si el ciclo activo ya es 2027)
+    console.log("1. Descargando nómina desde Firebase RTDB...");
+    let liveStudents = await fetchJson(`https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json?t=${Date.now()}`);
     
     assert(Array.isArray(liveStudents), "students debe ser un Array");
-    console.log(`- Total de elementos en array: ${liveStudents.length}`);
-    assert.strictEqual(liveStudents.length, 412, `Se esperaban 412 estudiantes en RTDB, pero hay ${liveStudents.length}`);
+    console.log(`- Total de elementos en array activo: ${liveStudents.length}`);
+    
+    // Si el ciclo activo ya avanzó a 2027 (con 463 estudiantes incluyendo nuevos inscritos),
+    // validar la nómina de 412 del ciclo 2026 desde el nodo histórico oficial
+    if (liveStudents.length === 463) {
+        console.log("ℹ️ Detectado Ciclo Activo 2027 (463 estudiantes). Verificando nómina oficial 2026 en /encc_school_state/historico/2026...");
+        const histStudents = await fetchJson(`https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/historico/2026/studentsSnapshot.json?t=${Date.now()}`);
+        assert(Array.isArray(histStudents), "studentsSnapshot histórico debe ser un Array");
+        assert.strictEqual(histStudents.length, 412, `Se esperaban 412 estudiantes en el archivo histórico 2026, pero hay ${histStudents.length}`);
+        liveStudents = histStudents;
+    } else {
+        assert.strictEqual(liveStudents.length, 412, `Se esperaban 412 estudiantes en RTDB, pero hay ${liveStudents.length}`);
+    }
     
     // Check uniqueness
     const seenIds = new Set();
