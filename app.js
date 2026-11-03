@@ -7298,8 +7298,20 @@ let _pendingSyncRequest = false;
 // ======================================================================
 const OFFICIAL_BIM1_PATCH_MAP = (typeof window !== 'undefined' && window.OFFICIAL_BIM1_PATCH_MAP) ? window.OFFICIAL_BIM1_PATCH_MAP : {};
 
+function isCycle2026Context(student) {
+    const activeCyc = String((typeof window !== 'undefined' && window.STATE && window.STATE.activeCycle) || (typeof STATE !== 'undefined' && STATE.activeCycle) || '2026').trim();
+    if (activeCyc && !activeCyc.includes('2026')) return false;
+    if (student && (student.academicCycle || student.cycle)) {
+        const stuCyc = String(student.academicCycle || student.cycle).trim();
+        if (stuCyc && !stuCyc.includes('2026')) return false;
+    }
+    return true;
+}
+window.isCycle2026Context = isCycle2026Context;
+
 function getOfficialBim1Details(student, subjectName) {
     if (!student || typeof OFFICIAL_BIM1_PATCH_MAP === 'undefined') return null;
+    if (!isCycle2026Context(student)) return null;
     const cleanStr = s => (s || '').toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]/g, '');
@@ -7332,6 +7344,7 @@ const OFFICIAL_BIM2_PATCH_MAP = (typeof window !== 'undefined' && window.OFFICIA
 
 function getOfficialBim2Details(student, subjectName) {
     if (!student || typeof OFFICIAL_BIM2_PATCH_MAP === 'undefined') return null;
+    if (!isCycle2026Context(student)) return null;
     const cleanStr = s => (s || '').toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]/g, '');
@@ -7364,6 +7377,7 @@ const OFFICIAL_NOMINAS_2026_ADDITIONAL_MAP = (typeof window !== 'undefined' && w
 
 function getAdditionalNomina2026Details(student, subjectName, bimestre) {
     if (!student || typeof OFFICIAL_NOMINAS_2026_ADDITIONAL_MAP === 'undefined') return null;
+    if (!isCycle2026Context(student)) return null;
     const cleanStr = s => (s || '').toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/[^a-z0-9]/g, '');
@@ -7416,13 +7430,15 @@ function ensureSireOfficialStudents() {
     }
     STATE.students = deduplicateStudentsCollection(STATE.students);
 
+    const isCycle2026 = isCycle2026Context(null);
+
     // 🌟 Normalizar estatus 'Inscrito' a 'Activo' y garantizar Grado y Sección asignados para cada alumno
     (STATE.students || []).forEach(s => {
         if (!s) return;
-        // 🛡️ Auto-sanación canónica para Dulce María Ramos Florián (5to Perito Contador Sección D)
-        const isDulce = s.id === 'stu-sire-E195FVT' || s.personalCode === 'E195FVT' || (s.carne && s.carne.includes('2026-QD-025')) ||
+        // 🛡️ Auto-sanación canónica para Dulce María Ramos Florián (5to Perito Contador Sección D - Ciclo 2026)
+        const isDulce = isCycle2026 && (s.id === 'stu-sire-E195FVT' || s.personalCode === 'E195FVT' || (s.carne && s.carne.includes('2026-QD-025')) ||
             (((s.lastName || '').toUpperCase().includes('RAMOS FLORIÁN') || (s.name || '').toUpperCase().includes('RAMOS FLORIÁN')) &&
-             ((s.firstName || '').toUpperCase().includes('DULCE') || (s.name || '').toUpperCase().includes('DULCE')));
+             ((s.firstName || '').toUpperCase().includes('DULCE') || (s.name || '').toUpperCase().includes('DULCE'))));
         if (isDulce) {
             s.id = 'stu-sire-E195FVT';
             s.personalCode = 'E195FVT';
@@ -7448,10 +7464,10 @@ function ensureSireOfficialStudents() {
             }
         }
 
-        // 🛡️ Auto-sanación canónica para Alicia Carolina Ramos Florián (5to Perito Contador Sección A)
-        const isAlicia = s.id === 'stu-sire-G482XGW' || s.personalCode === 'G482XGW' || (s.carne && s.carne.includes('2026-QA-035')) ||
+        // 🛡️ Auto-sanación canónica para Alicia Carolina Ramos Florián (5to Perito Contador Sección A - Ciclo 2026)
+        const isAlicia = isCycle2026 && (s.id === 'stu-sire-G482XGW' || s.personalCode === 'G482XGW' || (s.carne && s.carne.includes('2026-QA-035')) ||
             (((s.lastName || '').toUpperCase().includes('RAMOS FLORIÁN') || (s.name || '').toUpperCase().includes('RAMOS FLORIÁN')) &&
-             ((s.firstName || '').toUpperCase().includes('ALICIA') || (s.name || '').toUpperCase().includes('ALICIA')));
+             ((s.firstName || '').toUpperCase().includes('ALICIA') || (s.name || '').toUpperCase().includes('ALICIA'))));
         if (isAlicia) {
             s.id = 'stu-sire-G482XGW';
             s.personalCode = 'G482XGW';
@@ -7477,10 +7493,10 @@ function ensureSireOfficialStudents() {
             }
         }
 
-        // 🛡️ Auto-sanación canónica para Crúz González, Yoselin del Carmen (5to Perito Contador Sección A - Retirada)
-        const isYoselin = s.id === 'stu-sire-F194UTJ' || s.personalCode === 'F194UTJ' || (s.carne && s.carne.includes('2026-QA-010')) ||
+        // 🛡️ Auto-sanación canónica para Crúz González, Yoselin del Carmen (5to Perito Contador Sección A - Retirada - Ciclo 2026)
+        const isYoselin = isCycle2026 && (s.id === 'stu-sire-F194UTJ' || s.personalCode === 'F194UTJ' || (s.carne && s.carne.includes('2026-QA-010')) ||
             (((s.lastName || '').toUpperCase().includes('CRÚZ GONZÁLEZ') || (s.lastName || '').toUpperCase().includes('CRUZ GONZALEZ')) &&
-             ((s.firstName || '').toUpperCase().includes('YOS') || (s.name || '').toUpperCase().includes('YOS')));
+             ((s.firstName || '').toUpperCase().includes('YOS') || (s.name || '').toUpperCase().includes('YOS'))));
         if (isYoselin) {
             s.id = 'stu-sire-F194UTJ';
             s.personalCode = 'F194UTJ';
@@ -7497,12 +7513,12 @@ function ensureSireOfficialStudents() {
         }
 
         if (!s.status || s.status === 'Inscrito' || s.statusSire === 'INSCRITO') {
-            if (s.status !== 'Retirado' && s.status !== 'Ausente' && s.status !== 'Inactivo') {
+            if (s.status !== 'Retirado' && s.status !== 'Ausente' && s.status !== 'Inactivo' && s.status !== 'Egresado') {
                 s.status = 'Activo';
                 s.statusSire = s.statusSire || 'INSCRITO';
             }
         }
-        if (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo') {
+        if (s.status === 'Retirado' || s.status === 'Ausente' || s.status === 'Inactivo' || s.status === 'Egresado') {
             s.active = false;
         } else if (s.active === undefined) {
             s.active = true;
@@ -7516,6 +7532,11 @@ function ensureSireOfficialStudents() {
             if (!s.gradeLabel) s.gradeLabel = assign.fullLabel;
         }
     });
+
+    // 🔒 Si el ciclo activo NO es 2026 (ej. Ciclo 2027+), no inyectar parches ni exoneraciones exclusivas del Ciclo 2026
+    if (!isCycle2026) {
+        return;
+    }
 
     // 🛡️ Garantizar presencia inmutable de Ramos Florián, Alicia Carolina en la nómina oficial (5to Perito Contador Sección A)
     const hasAlicia = (STATE.students || []).some(s => s && (
@@ -11279,9 +11300,16 @@ function changeAcademicCycle(cycle) {
     }
     showToast(`Ciclo lectivo activo cambiado a: ${cycle}`, "info");
     updateCycleSelects();
+    if (typeof renderCycleList === 'function') renderCycleList();
     renderCurrentView();
+    if (typeof renderStudentsTable === 'function') renderStudentsTable();
+    if (typeof renderBoletasTable === 'function') renderBoletasTable();
+    if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof renderTeacherCourseCards === 'function') renderTeacherCourseCards();
+    if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
     if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(typeof viewName !== 'undefined' ? viewName : STATE.activeView);
 }
+window.changeAcademicCycle = changeAcademicCycle;
 
 // ==========================================================================
 // 🔑 SISTEMA DE RECUPERACIÓN DE CONTRASEÑA
@@ -25374,7 +25402,7 @@ async function saveCycleForm(e) {
         // 🚀 Persistencia local inmediata (0ms) + refresco reactivo de UI antes de sincronización en nube
         saveStateToLocalStorage();
         resetCycleForm();
-        renderCyclesList();
+        if (typeof renderCycleList === 'function') renderCycleList();
         updateCycleSelects();
         closeCycleModal();
         hideModalById('cycleModal');
@@ -25432,13 +25460,16 @@ async function saveCycleForm(e) {
 function setCycleActive(cycleId) {
     const c = (STATE.cycles || []).find(x => x.id === cycleId);
     if (!c) return;
-    STATE.activeCycle = c.name;
-    saveStateToLocalStorage();
-    renderCycleList();
-    updateCycleSelects();
-    showToast(`Ciclo escolar activo cambiado a: ${c.name}`, "info");
-    renderCurrentView();
-    if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(viewName);
+    if (typeof changeAcademicCycle === 'function') {
+        changeAcademicCycle(c.name || c.year);
+    } else {
+        STATE.activeCycle = c.name || c.year;
+        saveStateToLocalStorage();
+        updateCycleSelects();
+        renderCurrentView();
+    }
+    if (typeof renderCycleList === 'function') renderCycleList();
+    if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(typeof viewName !== 'undefined' ? viewName : STATE.activeView);
 }
 
 async function deleteCycle(cycleId) {
@@ -44752,25 +44783,58 @@ function populatePromotionCycleSelects() {
 window.populatePromotionCycleSelects = populatePromotionCycleSelects;
 
 function getNextGradeLevel(currentGrade) {
-    if (!currentGrade) return 'Quinto';
+    if (!currentGrade) return '5to Perito Contador';
     const g = currentGrade.trim();
     const upper = g.toUpperCase();
     
-    // Si contiene 4 o Cuarto -> cambiar a 5to / Quinto
-    if (upper.includes('4TO') || upper.includes('4.º') || upper.includes('4°') || upper.includes('CUARTO')) {
+    // Si contiene 4 o Cuarto -> cambiar a 5to Perito Contador
+    if (upper.includes('4TO') || upper.includes('4.º') || upper.includes('4°') || upper.includes('CUARTO') || /^4\b/.test(upper)) {
+        if (/PERITO\s+CONTADOR/i.test(g)) {
+            return '5to Perito Contador';
+        }
         return g.replace(/4TO|4\.º|4°/gi, '5to').replace(/Cuarto/gi, 'Quinto').replace(/CUARTO/gi, 'QUINTO');
     }
-    // Si contiene 5 o Quinto -> cambiar a 6to / Sexto
-    if (upper.includes('5TO') || upper.includes('5.º') || upper.includes('5°') || upper.includes('QUINTO')) {
+    // Si contiene 5 o Quinto -> cambiar a 6to Perito Contador
+    if (upper.includes('5TO') || upper.includes('5.º') || upper.includes('5°') || upper.includes('QUINTO') || /^5\b/.test(upper)) {
+        if (/PERITO\s+CONTADOR/i.test(g)) {
+            return '6to Perito Contador';
+        }
         return g.replace(/5TO|5\.º|5°/gi, '6to').replace(/Quinto/gi, 'Sexto').replace(/QUINTO/gi, 'SEXTO');
     }
     // Si contiene 6 o Sexto -> Graduando / Egresado
-    if (upper.includes('6TO') || upper.includes('6.º') || upper.includes('6°') || upper.includes('SEXTO')) {
+    if (upper.includes('6TO') || upper.includes('6.º') || upper.includes('6°') || upper.includes('SEXTO') || /^6\b/.test(upper)) {
         return 'Graduando / Egresado';
     }
     return g;
 }
 window.getNextGradeLevel = getNextGradeLevel;
+
+function extractCleanPromotionSectionLetter(student) {
+    if (!student) return 'A';
+    const rawSec = String(student.section || student.gradeLabel || student.gradeCode || student.grade || '').trim();
+    const m = rawSec.match(/(?:Secci[oó]n\s*|\b)([A-D])\b/i);
+    return m ? m[1].toUpperCase() : 'A';
+}
+window.extractCleanPromotionSectionLetter = extractCleanPromotionSectionLetter;
+
+function onPromoRowOverrideChange(el) {
+    if (!el) return;
+    const studentId = el.getAttribute('data-student-id');
+    if (!studentId) return;
+    if (!window._promotionOverridesDraft) window._promotionOverridesDraft = {};
+    const draft = window._promotionOverridesDraft[studentId] || {};
+
+    const cb = document.querySelector(`.promo-student-check[data-student-id="${studentId}"]`);
+    const gradeInput = document.querySelector(`.promo-target-grade-input[data-student-id="${studentId}"]`);
+    const sectionSelect = document.querySelector(`.promo-target-section-select[data-student-id="${studentId}"]`);
+
+    if (cb) draft.checked = !!cb.checked;
+    if (gradeInput) draft.targetGrade = gradeInput.value.trim();
+    if (sectionSelect) draft.targetSection = sectionSelect.value;
+
+    window._promotionOverridesDraft[studentId] = draft;
+}
+window.onPromoRowOverrideChange = onPromoRowOverrideChange;
 
 function renderPromotionStudentsTable() {
     const originSelect = document.getElementById('promoOriginCycleSelect');
@@ -44789,12 +44853,23 @@ function renderPromotionStudentsTable() {
     const searchTerm = (searchInput ? searchInput.value : '').toLowerCase().trim();
     const filterGrade = gradeFilter ? gradeFilter.value : 'ALL';
 
+    const draftContextKey = `${originCycle}_${criteria}`;
+    if (window._promotionOverridesContextKey !== draftContextKey) {
+        window._promotionOverridesContextKey = draftContextKey;
+        window._promotionOverridesDraft = {};
+    }
+    if (!window._promotionOverridesDraft) window._promotionOverridesDraft = {};
+
     const allStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
     
-    // Filtrar por ciclo de origen (estudiantes de este ciclo o sin ciclo asignado)
+    // Filtrar por ciclo de origen (estudiantes activos/inscritos de este ciclo o sin ciclo asignado)
     let cycleStudents = allStudents.filter(s => {
-        if (!s.academicCycle) return true;
-        return s.academicCycle === originCycle;
+        if (!s) return false;
+        const stStatus = String(s.status || '').toLowerCase();
+        if (stStatus === 'retirado' || stStatus === 'egresado') return false;
+        const sCycle = s.academicCycle || s.cycle;
+        if (!sCycle) return true;
+        return String(sCycle).trim() === String(originCycle).trim();
     });
 
     let totalCount = cycleStudents.length;
@@ -44819,7 +44894,21 @@ function renderPromotionStudentsTable() {
         }
 
         const isGraduando = (info.is6to || /6|sexto/i.test(student.grade || ''));
-        const nextGrade = getNextGradeLevel(student.grade);
+        const defaultNextGrade = isApproved ? getNextGradeLevel(student.grade) : (student.grade || '4to Perito Contador');
+        const defaultSection = extractCleanPromotionSectionLetter(student);
+
+        if (!window._promotionOverridesDraft[student.id]) {
+            window._promotionOverridesDraft[student.id] = {
+                checked: isApproved,
+                targetGrade: defaultNextGrade,
+                targetSection: defaultSection,
+                isApproved,
+                isGraduando
+            };
+        } else {
+            window._promotionOverridesDraft[student.id].isApproved = isApproved;
+            window._promotionOverridesDraft[student.id].isGraduando = isGraduando;
+        }
 
         if (isGraduando && isApproved) {
             graduandoCount++;
@@ -44834,7 +44923,9 @@ function renderPromotionStudentsTable() {
             info,
             isApproved,
             isGraduando,
-            nextGrade
+            nextGrade: window._promotionOverridesDraft[student.id].targetGrade || defaultNextGrade,
+            targetSection: window._promotionOverridesDraft[student.id].targetSection || defaultSection,
+            isChecked: !!window._promotionOverridesDraft[student.id].checked
         };
     });
 
@@ -44873,7 +44964,7 @@ function renderPromotionStudentsTable() {
         visibleList = visibleList.filter(item => {
             const s = item.student;
             const fullName = `${s.lastName || s.apellidos || ''} ${s.firstName || s.nombres || ''} ${s.name || ''}`.toLowerCase();
-            const carne = (s.carne || s.id || '').toLowerCase();
+            const carne = (s.carne || s.personalCode || s.id || '').toLowerCase();
             return fullName.includes(searchTerm) || carne.includes(searchTerm);
         });
     }
@@ -44886,9 +44977,10 @@ function renderPromotionStudentsTable() {
     tableBody.innerHTML = visibleList.map((item, idx) => {
         const s = item.student;
         const info = item.info;
-        const fullName = `${s.lastName || s.apellidos || ''}, ${s.firstName || s.nombres || ''}`.trim() || s.name || 'Sin Nombre';
-        const carne = s.carne || s.codigoPersonal || s.id || 'S/N';
-        const grade = s.grade || s.gradeLabel || 'No asignado';
+        const fullName = `${s.lastName || s.apellidos || ''}, ${s.firstName || s.nombres || ''}`.replace(/^,\s*/, '').trim() || s.name || 'Sin Nombre';
+        const carne = s.carne || s.personalCode || s.codigoPersonal || s.id || 'S/N';
+        const currentSectionLetter = extractCleanPromotionSectionLetter(s);
+        const gradeDisplay = `${s.grade || 'No asignado'} (${s.section || 'Sección ' + currentSectionLetter})`;
         const avg = info.average > 0 ? info.average.toFixed(1) : (info.average === 0 ? '0.0' : '-');
         
         // Estatus dictamen
@@ -44901,28 +44993,27 @@ function renderPromotionStudentsTable() {
             dictamenHtml = '<span class="badge badge-danger" style="background:#dc2626; color:#fff; font-size:0.75rem;"><i class="fa-solid fa-xmark"></i> Reprobado</span>';
         }
 
-        // Checkbox: pre-seleccionado si está aprobado
-        const isChecked = item.isApproved ? 'checked' : '';
-        // Sección actual del alumno (para pre-selección)
-        const currentSection = s.section || (s.grade ? (s.grade.match(/Secci[oó]n\s*([A-Z])/i) || [])[1] || 'A' : 'A');
+        const isCheckedAttr = item.isChecked ? 'checked' : '';
+        const selectedSec = item.targetSection || currentSectionLetter;
 
         return `
             <tr style="border-bottom:1px solid #e2e8f0; background:${item.isApproved ? '#ffffff' : '#fff5f5'};">
                 <td style="text-align:center; vertical-align:middle;">
-                    <input type="checkbox" class="promo-student-check" data-student-id="${s.id}" data-is-approved="${item.isApproved}" ${isChecked}>
+                    <input type="checkbox" class="promo-student-check" data-student-id="${s.id}" data-is-approved="${item.isApproved}" onchange="onPromoRowOverrideChange(this)" ${isCheckedAttr}>
                 </td>
                 <td style="text-align:center; vertical-align:middle; color:#64748b; font-weight:600;">${idx + 1}</td>
                 <td style="vertical-align:middle; font-weight:700; color:#0f172a; font-family:monospace;">${carne}</td>
                 <td style="vertical-align:middle; font-weight:600; color:#1e293b;">${fullName}</td>
-                <td style="vertical-align:middle; font-size:0.8rem; color:#475569;">${grade}</td>
+                <td style="vertical-align:middle; font-size:0.8rem; color:#475569;">${gradeDisplay}</td>
                 <td style="text-align:center; vertical-align:middle; font-weight:800; color:${info.average >= 60 ? '#16a34a' : '#dc2626'};">${avg}</td>
                 <td style="text-align:center; vertical-align:middle;">${dictamenHtml}</td>
                 <td style="vertical-align:middle;">
-                    <input type="text" class="promo-target-grade-input form-control form-control-sm" data-student-id="${s.id}" value="${item.nextGrade}" style="font-size:0.8rem; padding:3px 8px; height:28px; margin-bottom:3px;" placeholder="Grado destino">
-                    <select class="promo-target-section-select form-control form-control-sm" data-student-id="${s.id}" style="font-size:0.8rem; padding:2px 4px; height:26px; font-weight:700;">
-                        <option value="A" ${currentSection === 'A' ? 'selected' : ''}>Sección A</option>
-                        <option value="B" ${currentSection === 'B' ? 'selected' : ''}>Sección B</option>
-                        <option value="C" ${currentSection === 'C' ? 'selected' : ''}>Sección C</option>
+                    <input type="text" class="promo-target-grade-input form-control form-control-sm" data-student-id="${s.id}" value="${item.nextGrade}" onchange="onPromoRowOverrideChange(this)" style="font-size:0.8rem; padding:3px 8px; height:28px; margin-bottom:3px;" placeholder="Grado destino">
+                    <select class="promo-target-section-select form-control form-control-sm" data-student-id="${s.id}" onchange="onPromoRowOverrideChange(this)" style="font-size:0.8rem; padding:2px 4px; height:26px; font-weight:700;">
+                        <option value="A" ${selectedSec === 'A' ? 'selected' : ''}>Sección A</option>
+                        <option value="B" ${selectedSec === 'B' ? 'selected' : ''}>Sección B</option>
+                        <option value="C" ${selectedSec === 'C' ? 'selected' : ''}>Sección C</option>
+                        <option value="D" ${selectedSec === 'D' ? 'selected' : ''}>Sección D</option>
                     </select>
                 </td>
             </tr>
@@ -44937,6 +45028,14 @@ function filterPromotionTable() {
 window.filterPromotionTable = filterPromotionTable;
 
 function selectAllPromotedStudents(checkAll = true) {
+    if (window._promotionOverridesDraft) {
+        Object.keys(window._promotionOverridesDraft).forEach(studentId => {
+            const d = window._promotionOverridesDraft[studentId];
+            if (d) {
+                d.checked = checkAll ? !!d.isApproved : false;
+            }
+        });
+    }
     const checkboxes = document.querySelectorAll('.promo-student-check');
     checkboxes.forEach(cb => {
         if (checkAll) {
@@ -44951,13 +45050,16 @@ window.selectAllPromotedStudents = selectAllPromotedStudents;
 
 function toggleAllPromotionCheckboxes(checked) {
     const checkboxes = document.querySelectorAll('.promo-student-check');
-    checkboxes.forEach(cb => cb.checked = !!checked);
+    checkboxes.forEach(cb => {
+        cb.checked = !!checked;
+        onPromoRowOverrideChange(cb);
+    });
 }
 window.toggleAllPromotionCheckboxes = toggleAllPromotionCheckboxes;
 
 async function executeCyclePromotion(e) {
     if (e && e.preventDefault) e.preventDefault();
-    if (!checkEnrolmentPermissions()) return;
+    if (!checkPromotionPermissions()) return;
 
     const originSelect = document.getElementById('promoOriginCycleSelect');
     const targetInput = document.getElementById('promoTargetCycleInput');
@@ -44975,41 +45077,58 @@ async function executeCyclePromotion(e) {
         return;
     }
 
-    const selectedBoxes = Array.from(document.querySelectorAll('.promo-student-check:checked'));
-    if (selectedBoxes.length === 0) {
+    // Sincronizar cualquier cambio visible en el DOM hacia _promotionOverridesDraft
+    document.querySelectorAll('.promo-student-check').forEach(cb => onPromoRowOverrideChange(cb));
+
+    const draftMap = window._promotionOverridesDraft || {};
+    const allStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+    const cycleStudents = allStudents.filter(s => {
+        if (!s) return false;
+        const stStatus = String(s.status || '').toLowerCase();
+        if (stStatus === 'retirado' || stStatus === 'egresado') return false;
+        const sCycle = s.academicCycle || s.cycle;
+        if (!sCycle) return true;
+        return String(sCycle).trim() === String(originCycle).trim();
+    });
+
+    const studentOverrides = {};
+    let promotedCount = 0;
+
+    cycleStudents.forEach(student => {
+        const sId = student.id;
+        const draft = draftMap[sId];
+        const currentSecLetter = extractCleanPromotionSectionLetter(student);
+        const shouldPromote = draft ? !!draft.checked : false;
+        const targetSectionLetter = (draft && draft.targetSection) ? draft.targetSection : currentSecLetter;
+        const targetGradeRaw = (draft && draft.targetGrade)
+            ? draft.targetGrade
+            : (shouldPromote ? getNextGradeLevel(student.grade) : (student.grade || '4to Perito Contador'));
+
+        if (shouldPromote) {
+            promotedCount++;
+            const isEgresado = /egresado|graduand/i.test(targetGradeRaw) || (draft && draft.isGraduando);
+            studentOverrides[sId] = {
+                targetGrade: isEgresado ? 'Graduando / Egresado' : targetGradeRaw,
+                targetSection: targetSectionLetter,
+                status: isEgresado ? 'Egresado' : 'Activo',
+                shouldPromote: true
+            };
+        } else {
+            // Quienes no fueron promovidos permanecen en su mismo grado y sección para recuperación / repitencia
+            studentOverrides[sId] = {
+                targetGrade: student.grade || '4to Perito Contador',
+                targetSection: currentSecLetter,
+                status: 'Activo',
+                academicPromotionStatus: 'Pendiente Recuperación',
+                shouldPromote: false
+            };
+        }
+    });
+
+    if (promotedCount === 0) {
         showToast('Seleccione al menos un estudiante para ser promovido al nuevo ciclo.', 'warning');
         return;
     }
-
-    // Construir mapa de estudiantes con su grado y sección destino
-    const studentOverrides = {};
-    selectedBoxes.forEach(cb => {
-        const studentId = cb.getAttribute('data-student-id');
-        const gradeInput = document.querySelector(`.promo-target-grade-input[data-student-id="${studentId}"]`);
-        const sectionSelect = document.querySelector(`.promo-target-section-select[data-student-id="${studentId}"]`);
-        const targetGrade = gradeInput ? gradeInput.value.trim() : '';
-        const targetSection = sectionSelect ? sectionSelect.value : 'A';
-        const isEgresado = /egresado|graduand/i.test(targetGrade);
-
-        studentOverrides[studentId] = {
-            targetGrade: targetGrade,
-            targetSection: targetSection,
-            status: isEgresado ? 'Egresado' : 'Inscrito',
-            shouldPromote: true
-        };
-    });
-
-    const unselectedBoxes = Array.from(document.querySelectorAll('.promo-student-check:not(:checked)'));
-    unselectedBoxes.forEach(cb => {
-        const studentId = cb.getAttribute('data-student-id');
-        const student = (window.STATE?.students || []).find(s => s.id === studentId);
-        // Quienes no fueron promovidos permanecen en el mismo grado con estado En Recuperación o Pendiente
-        studentOverrides[studentId] = {
-            targetGrade: student ? student.grade : '',
-            status: 'Pendiente',
-            shouldPromote: false
-        };
-    });
 
     const submitBtn = document.getElementById('btnExecutePromotion');
     if (submitBtn) {
@@ -45026,7 +45145,7 @@ async function executeCyclePromotion(e) {
 
         const result = await EnccoCycleArchiver.openNewAcademicCycle(targetCycle, {
             archiveCurrent: true,
-            promoteStudents: false, // Manejado precisamente por studentOverrides
+            promoteStudents: false, // Manejado de forma integral por studentOverrides
             studentOverrides: studentOverrides
         });
 
@@ -45034,8 +45153,13 @@ async function executeCyclePromotion(e) {
             closeCyclePromotionModal();
             showToast(`¡Ciclo lectivo ${targetCycle} iniciado exitosamente! Registros previos resguardados en /historico/${originCycle}/.`, 'success');
             if (typeof updateCycleSelects === 'function') updateCycleSelects();
+            if (typeof renderCycleList === 'function') renderCycleList();
             if (typeof renderStudentsTable === 'function') renderStudentsTable();
-            if (typeof renderCyclesTable === 'function') renderCyclesTable();
+            if (typeof renderBoletasTable === 'function') renderBoletasTable();
+            if (typeof renderDashboard === 'function') renderDashboard();
+            if (typeof renderTeacherCourseCards === 'function') renderTeacherCourseCards();
+            if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
+            if (typeof renderCurrentView === 'function') renderCurrentView();
         } else {
             showToast(`Error al procesar la apertura del ciclo: ${result?.message || 'Error desconocido'}`, 'danger');
         }
@@ -45055,11 +45179,7 @@ window.executeCyclePromotion = executeCyclePromotion;
 // MEJORA 2: ACTA OFICIAL DE PROMOCIÓN ANUAL (FORMATO MINEDUC / SUPERVISIÓN)
 // ======================================================================
 function printCyclePromotionAct() {
-    const role = window.STATE?.currentRole || '';
-    if (!['admin', 'director'].includes(role)) {
-        showToast('Esta función es exclusiva de Dirección del Plantel.', 'warning');
-        return;
-    }
+    if (!checkPromotionPermissions()) return;
 
     const originSelect = document.getElementById('promoOriginCycleSelect');
     const criteriaSelect = document.getElementById('promoCriteriaSelect');
@@ -45067,9 +45187,15 @@ function printCyclePromotionAct() {
     const criteria = criteriaSelect ? criteriaSelect.value : 'MINEDUC_STRICT';
 
     const allStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
-    const cycleStudents = allStudents.filter(s => !s.academicCycle || s.academicCycle === cycleYear);
+    const cycleStudents = allStudents.filter(s => {
+        if (!s) return false;
+        const stStatus = String(s.status || '').toLowerCase();
+        if (stStatus === 'retirado' || stStatus === 'egresado') return false;
+        const sCycle = s.academicCycle || s.cycle;
+        return !sCycle || String(sCycle).trim() === String(cycleYear).trim();
+    });
 
-    // Agrupar por grado
+    // Agrupar por grado y sección
     const gradeGroups = {};
     let grandTotalAvg = 0;
     let grandTotalCount = 0;
@@ -45081,7 +45207,8 @@ function printCyclePromotionAct() {
         const avg = typeof info.average === 'number' ? info.average : 0;
         let isApproved = criteria === 'GENERAL_AVG' ? (avg >= 60) : (!info.hasFailedGrade && avg >= 60);
         const isGraduando = info.is6to || /6|sexto/i.test(student.grade || '');
-        const gradeKey = student.grade || 'Sin Grado';
+        const secLabel = student.section || ('Sección ' + extractCleanPromotionSectionLetter(student));
+        const gradeKey = `${student.grade || 'Sin Grado'} — ${secLabel}`;
         if (!gradeGroups[gradeKey]) gradeGroups[gradeKey] = { approved: [], failed: [], totalAvg: 0, count: 0 };
         gradeGroups[gradeKey].count++;
         gradeGroups[gradeKey].totalAvg += avg;
@@ -45266,11 +45393,7 @@ window.selectAllPromotedStudents = selectAllPromotedStudents;
 window.executeCyclePromotion = executeCyclePromotion;
 window.printCurrentSectionSireReport = printCurrentSectionSireReport;
 function downloadCyclePreArchivingBackup() {
-    const role = ((window.STATE && window.STATE.currentRole) || '').toLowerCase();
-    if (role !== 'director' && role !== 'admin') {
-        showToast('Acceso denegado: La descarga del respaldo oficial previo es exclusiva de Dirección.', 'danger');
-        return false;
-    }
+    if (!checkPromotionPermissions()) return false;
     if (window.EnccoCycleArchiver && typeof window.EnccoCycleArchiver.exportCycleBackupFile === 'function') {
         return window.EnccoCycleArchiver.exportCycleBackupFile();
     }

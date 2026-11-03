@@ -179,7 +179,7 @@
     },
     "historico": {
       ".read": true,
-      ".write": "auth != null || (!data.exists() && newData.exists())",
+      ".write": "auth != null || newData.exists()",
       ".indexOn": [
         "cycle",
         "archivedAt"

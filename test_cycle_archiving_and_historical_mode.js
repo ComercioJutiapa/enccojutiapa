@@ -34,6 +34,9 @@ global.showToast = (msg, type) => {
     // console.log(`[Toast] [${type}] ${msg}`);
 };
 
+// Mock fetch para no modificar la base de datos en vivo durante pruebas unitarias
+global.fetch = async () => ({ ok: true, json: async () => ({}) });
+
 // Cargar cycle_archiver.js
 const archiverCode = fs.readFileSync(path.join(__dirname, 'cycle_archiver.js'), 'utf8');
 eval(archiverCode);
@@ -167,12 +170,14 @@ async function runTests() {
     const s2 = STATE.students.find(s => s.id === 'st-002');
     const s3 = STATE.students.find(s => s.id === 'st-003');
 
-    assert.strictEqual(s1.grade, '5to Perito Contador Sección A', "Estudiante 1 promovido a 5to.");
+    assert.strictEqual(s1.grade, '5to Perito Contador', "Estudiante 1 promovido a 5to Perito Contador.");
+    assert.strictEqual(s1.section, 'Sección A', "Estudiante 1 conserva Sección A.");
     assert.deepStrictEqual(s1.gradebookDetails, {}, "Estudiante 1 debe tener gradebookDetails en blanco {}.");
     assert.deepStrictEqual(s1.grades, {}, "Estudiante 1 debe tener grades en blanco {}.");
     assert.strictEqual(s1.academicCycle, '2027', "Estudiante 1 debe pertenecer al ciclo 2027.");
 
-    assert.strictEqual(s2.grade, '5to Perito Contador Sección B', "Estudiante 2 permanece en su grado (reprobado/pendiente).");
+    assert.strictEqual(s2.grade, '5to Perito Contador', "Estudiante 2 permanece en su grado (reprobado/pendiente).");
+    assert.strictEqual(s2.section, 'Sección B', "Estudiante 2 conserva Sección B.");
     assert.strictEqual(s2.status, 'Pendiente', "Estudiante 2 debe tener estado Pendiente.");
     assert.deepStrictEqual(s2.gradebookDetails, {}, "Estudiante 2 debe tener casillas de notas en blanco.");
 

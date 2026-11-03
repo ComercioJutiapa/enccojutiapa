@@ -1,11 +1,11 @@
 /**
  * cycle_archiver.js
- * Módulo Oficial de Archivado Histórico de Ciclos Lectivos ENCCO 1970
+ * Módulo Oficial de Archivado Histórico y Promoción de Ciclos Lectivos ENCCO 1970
  * 
  * Funcionalidades:
- * 1. Archivar el ciclo lectivo actual en /historico/{ciclo}/ (Firebase RTDB + Firestore).
- * 2. Aperturar un nuevo ciclo lectivo con base activa limpia (< 1 MB), reseteando notas y asistencia pero preservando alumnos.
- * 3. Modo de Consulta Histórica de Solo Lectura para inspeccionar cualquier ciclo pasado sin alterar los datos activos.
+ * 1. Archivar el ciclo lectivo actual en /historico/{ciclo}/ y /encc_school_state/historico/{ciclo}/ (Firebase RTDB + Firestore).
+ * 2. Aperturar un nuevo ciclo lectivo con base activa limpia (< 1 MB), promoviendo alumnos canónicamente, reseteando notas/asistencia/exoneraciones y preservando asignaciones docentes.
+ * 3. Modo de Consulta Histórica de Solo Lectura reactivo y coherente para inspeccionar cualquier ciclo pasado sin alterar los datos activos.
  */
 
 (function(window) {
@@ -30,6 +30,65 @@
         },
 
         /**
+         * Normaliza Grado, Sección, Código de Grado y Etiqueta Canónica ENCCO
+         */
+        normalizeCanonicalGradeAndSection(rawGrade, rawSection) {
+            const secStr = String(rawSection || rawGrade || '').trim();
+            const secMatch = secStr.match(/(?:Secci[oó]n\s*|\b)([A-D])\b/i);
+            const secLetter = secMatch ? secMatch[1].toUpperCase() : 'A';
+            const canonicalSection = `Sección ${secLetter}`;
+
+            const gStr = String(rawGrade || '').trim();
+            const gUpper = gStr.toUpperCase();
+
+            if (/EGRESAD|GRADUAND/i.test(gUpper)) {
+                return {
+                    grade: 'Graduando / Egresado',
+                    section: canonicalSection,
+                    sectionLetter: secLetter,
+                    gradeCode: 'EGRESADO',
+                    gradeLabel: `Graduando / Egresado (${canonicalSection})`,
+                    gradeNum: null,
+                    isEgresado: true
+                };
+            }
+
+            if (gUpper.includes('6') || gUpper.includes('SEXTO')) {
+                return {
+                    grade: '6to Perito Contador',
+                    section: canonicalSection,
+                    sectionLetter: secLetter,
+                    gradeCode: `6to ${secLetter}`,
+                    gradeLabel: `6to Perito Contador (${canonicalSection})`,
+                    gradeNum: '6',
+                    isEgresado: false
+                };
+            }
+
+            if (gUpper.includes('5') || gUpper.includes('QUINTO')) {
+                return {
+                    grade: '5to Perito Contador',
+                    section: canonicalSection,
+                    sectionLetter: secLetter,
+                    gradeCode: `5to ${secLetter}`,
+                    gradeLabel: `5to Perito Contador (${canonicalSection})`,
+                    gradeNum: '5',
+                    isEgresado: false
+                };
+            }
+
+            return {
+                grade: '4to Perito Contador',
+                section: canonicalSection,
+                sectionLetter: secLetter,
+                gradeCode: `4to ${secLetter}`,
+                gradeLabel: `4to Perito Contador (${canonicalSection})`,
+                gradeNum: '4',
+                isEgresado: false
+            };
+        },
+
+        /**
          * Empaqueta los datos del ciclo actual y los guarda en /historico/{cycleYear}
          */
         async archiveCycleData(cycleYear = null, options = {}) {
@@ -51,7 +110,19 @@
                 const pensum = (window.STATE && Array.isArray(window.STATE.pensum)) ? window.STATE.pensum : [];
                 const gradesList = (window.STATE && Array.isArray(window.STATE.gradesList)) ? window.STATE.gradesList : [];
                 const exoneraciones = (window.STATE && Array.isArray(window.STATE.academicExonerations)) ? window.STATE.academicExonerations : [];
+                const exoneracionesMap = (window.STATE && window.STATE.exoneraciones && typeof window.STATE.exoneraciones === 'object') ? window.STATE.exoneraciones : {};
                 const studentAnnotations = (window.STATE && Array.isArray(window.STATE.studentAnnotations)) ? window.STATE.studentAnnotations : [];
+                const calificaciones = (window.STATE && window.STATE.calificaciones && typeof window.STATE.calificaciones === 'object') ? window.STATE.calificaciones : {};
+                const gradingConfigs = (window.STATE && window.STATE.gradingConfigs && typeof window.STATE.gradingConfigs === 'object') ? window.STATE.gradingConfigs : {};
+                const configSnapshot = (window.STATE && window.STATE.config && typeof window.STATE.config === 'object') ? window.STATE.config : {};
+
+                const archivedNotesCount = students.reduce((acc, st) => {
+                    if (!st) return acc;
+                    const detailsKeys = (st.gradebookDetails && typeof st.gradebookDetails === 'object') ? Object.keys(st.gradebookDetails) : [];
+                    const gradesKeys = (st.grades && typeof st.grades === 'object') ? Object.keys(st.grades) : [];
+                    const uniqueSubjs = new Set([...detailsKeys, ...gradesKeys]);
+                    return acc + uniqueSubjs.size;
+                }, 0);
 
                 const archivePayload = {
                     cycle: targetCycle,
@@ -67,34 +138,44 @@
                     pensumSnapshot: JSON.parse(JSON.stringify(pensum)),
                     gradesSnapshot: JSON.parse(JSON.stringify(gradesList)),
                     exoneracionesSnapshot: JSON.parse(JSON.stringify(exoneraciones)),
+                    exoneracionesMapSnapshot: JSON.parse(JSON.stringify(exoneracionesMap)),
                     annotationsSnapshot: JSON.parse(JSON.stringify(studentAnnotations)),
+                    calificacionesSnapshot: JSON.parse(JSON.stringify(calificaciones)),
+                    gradingConfigsSnapshot: JSON.parse(JSON.stringify(gradingConfigs)),
+                    configSnapshot: JSON.parse(JSON.stringify(configSnapshot)),
                     summary: {
                         totalStudents: students.length,
                         totalAttendanceDates: Object.keys(attendance).length,
                         totalDisciplineReports: discipline.length,
                         totalPermissions: permissions.length,
                         totalPensumCourses: pensum.length,
-                        archivedNotesCount: students.reduce((acc, st) => {
-                            if (st.gradebookDetails && typeof st.gradebookDetails === 'object') {
-                                return acc + Object.keys(st.gradebookDetails).length;
-                            }
-                            return acc;
-                        }, 0),
+                        archivedNotesCount: archivedNotesCount,
+                        archivedAt: Date.now(),
                         activeBimestreAtClose: (window.STATE && window.STATE.config) ? (window.STATE.config.bimestreActivoOficial || 4) : 4
                     }
                 };
 
                 const fbUrl = this.getFirebaseUrl();
 
-                // 1. Guardar en Firebase Realtime Database: /historico/{targetCycle}.json
-                const rtdbPromise = fetch(`${fbUrl}/historico/${targetCycle}.json`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(archivePayload)
-                }).then(res => res.ok).catch(e => {
-                    console.warn(`Aviso en RTDB /historico/${targetCycle}:`, e);
-                    return false;
-                });
+                // 1. Guardar en Firebase Realtime Database: /historico/{targetCycle}.json y /encc_school_state/historico/{targetCycle}.json
+                const rtdbRootPromise = (typeof fetch === 'function')
+                    ? fetch(`${fbUrl}/historico/${targetCycle}.json`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(archivePayload)
+                    }).then(res => res.ok).catch(e => {
+                        console.warn(`Aviso en RTDB /historico/${targetCycle}:`, e);
+                        return false;
+                    })
+                    : Promise.resolve(true);
+
+                const rtdbStatePromise = (typeof fetch === 'function')
+                    ? fetch(`${fbUrl}/encc_school_state/historico/${targetCycle}.json`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(archivePayload)
+                    }).then(res => res.ok).catch(() => false)
+                    : Promise.resolve(true);
 
                 // 2. Guardar en Firestore si está disponible: colección 'historico', documento targetCycle
                 let firestorePromise = Promise.resolve(true);
@@ -105,6 +186,7 @@
                         firestorePromise = setDoc(histRef, {
                             cycle: targetCycle,
                             archivedAt: archivePayload.archivedAt,
+                            archivedDateISO: archivePayload.archivedDateISO,
                             archivedBy: archivePayload.archivedBy,
                             summary: archivePayload.summary,
                             lastModified: Date.now()
@@ -118,21 +200,23 @@
                 }
 
                 // 3. Respaldo local de contingencia
-                try {
-                    localStorage.setItem(`ENCCO_HISTORICO_${targetCycle}`, JSON.stringify(archivePayload));
-                } catch(lsErr) {
+                if (typeof localStorage !== 'undefined') {
                     try {
-                        localStorage.setItem(`ENCCO_HISTORICO_${targetCycle}`, JSON.stringify({
-                            cycle: targetCycle,
-                            archivedAt: archivePayload.archivedAt,
-                            summary: archivePayload.summary
-                        }));
-                    } catch(e) {}
+                        localStorage.setItem(`ENCCO_HISTORICO_${targetCycle}`, JSON.stringify(archivePayload));
+                    } catch(lsErr) {
+                        try {
+                            localStorage.setItem(`ENCCO_HISTORICO_${targetCycle}`, JSON.stringify({
+                                cycle: targetCycle,
+                                archivedAt: archivePayload.archivedAt,
+                                summary: archivePayload.summary
+                            }));
+                        } catch(e) {}
+                    }
                 }
 
                 // Esperar escritura con límite de 10 segundos
                 await Promise.race([
-                    Promise.all([rtdbPromise, firestorePromise]),
+                    Promise.all([rtdbRootPromise, rtdbStatePromise, firestorePromise]),
                     new Promise(r => setTimeout(r, 10000))
                 ]);
 
@@ -160,7 +244,7 @@
                     showToast(`Ciclo ${targetCycle} archivado con éxito en /historico/${targetCycle}/.`, 'success');
                 }
 
-                return { success: true, cycle: targetCycle, summary: archivePayload.summary };
+                return { success: true, cycle: targetCycle, summary: archivePayload.summary, payload: archivePayload };
             } catch(error) {
                 console.error(`❌ [Archivado Histórico] Error al archivar ciclo ${targetCycle}:`, error);
                 if (typeof showToast === 'function') {
@@ -186,7 +270,7 @@
                 return { success: false, message: 'Año de ciclo inválido.' };
             }
 
-            const currentActiveCycle = (window.STATE && window.STATE.activeCycle) || '2026';
+            const currentActiveCycle = String((window.STATE && window.STATE.activeCycle) || '2026').trim();
             if (targetNewCycle === currentActiveCycle) {
                 if (typeof showToast === 'function') {
                     showToast(`El ciclo ${targetNewCycle} ya es el ciclo actualmente activo.`, 'warning');
@@ -194,11 +278,16 @@
                 return { success: false, message: 'El ciclo ya está activo.' };
             }
 
+            // Si estaba en modo de consulta histórica, salir primero al ciclo activo antes de archivar/promover
+            if (window.STATE && window.STATE.isHistoricalReadOnlyMode) {
+                this.exitHistoricalView();
+            }
+
             // 1. Archivar el ciclo actual si se requiere
             if (archiveCurrent) {
                 const archiveResult = await this.archiveCycleData(currentActiveCycle);
                 if (!archiveResult.success) {
-                    console.warn("Aviso: No se pudo completar el archivado previo, continuando con resguardo de seguridad.");
+                    console.warn("Aviso: No se pudo completar el archivado previo en nube, continuando con resguardo local.");
                 }
             }
 
@@ -208,57 +297,107 @@
             }
 
             try {
-                // 2. Limpieza y preparación de estudiantes para el nuevo ciclo escolar
+                // 2. Limpieza y preparación canónica de estudiantes para el nuevo ciclo escolar
                 const currentStudents = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
+                let promotedCount = 0;
+                let graduatedCount = 0;
+                let retainedCount = 0;
+
                 const promotedStudents = currentStudents.map(st => {
+                    if (!st) return st;
                     const cloned = JSON.parse(JSON.stringify(st));
-                    
-                    // Reseteo de planillas académicas para el nuevo ciclo (BASE LIMPIA < 1 MB)
+                    const prevGrade = st.grade || '4to Perito Contador';
+                    const prevSection = st.section || '';
+
+                    // Preservar estado de alumnos ya retirados en ciclos previos sin promoverlos
+                    const stStatusLower = String(st.status || '').toLowerCase();
+                    if (stStatusLower === 'retirado' || stStatusLower === 'egresado') {
+                        cloned.academicCycle = st.academicCycle || st.cycle || currentActiveCycle;
+                        cloned.cycle = cloned.academicCycle;
+                        cloned.active = false;
+                        return cloned;
+                    }
+
+                    // Reseteo total de planillas académicas y exoneraciones para el nuevo ciclo (BASE LIMPIA < 1 MB)
                     cloned.gradebookDetails = {};
                     cloned.grades = {};
+                    cloned.academicExceptions = [];
+                    cloned.exoneraciones = [];
+                    delete cloned.isExonerated;
+                    delete cloned.exonerado;
+                    delete cloned.exoneratedBimestre;
+
                     cloned.academicCycle = targetNewCycle;
+                    cloned.cycle = targetNewCycle;
+                    cloned.previousCycle = currentActiveCycle;
+                    cloned.previousGrade = prevGrade;
+                    cloned.previousSection = prevSection;
+                    cloned.editedByAuthority = true;
                     cloned.lastModified = Date.now();
 
                     const override = options.studentOverrides && options.studentOverrides[st.id];
+                    let targetGradeInput = prevGrade;
+                    let targetSectionInput = prevSection;
+                    let wasPromoted = false;
 
                     if (override) {
-                        if (override.targetGrade) {
-                            cloned.grade = override.targetGrade;
-                            if (/5|quinto/i.test(override.targetGrade)) cloned.gradeCode = '5TO';
-                            else if (/6|sexto/i.test(override.targetGrade)) cloned.gradeCode = '6TO';
-                            else if (/egresado|graduand/i.test(override.targetGrade)) cloned.gradeCode = 'EGRESADO';
-                        }
-                        if (override.status) {
-                            cloned.status = override.status;
-                        } else if (/egresado|graduand/i.test(cloned.grade || '')) {
-                            cloned.status = 'Egresado';
-                        } else {
-                            cloned.status = 'Inscrito';
-                        }
+                        wasPromoted = !!override.shouldPromote;
+                        targetGradeInput = override.targetGrade || (wasPromoted && typeof window.getNextGradeLevel === 'function' ? window.getNextGradeLevel(prevGrade) : prevGrade);
+                        targetSectionInput = override.targetSection || prevSection;
                     } else if (promoteStudents) {
-                        const rawGrade = (cloned.grade || cloned.gradeCode || '').toUpperCase();
-                        if (rawGrade.includes('4') || rawGrade.includes('CUARTO')) {
-                            cloned.grade = 'Quinto';
-                            cloned.gradeCode = '5TO';
-                            cloned.status = 'Inscrito';
-                        } else if (rawGrade.includes('5') || rawGrade.includes('QUINTO')) {
-                            cloned.grade = 'Sexto';
-                            cloned.gradeCode = '6TO';
-                            cloned.status = 'Inscrito';
-                        } else if (rawGrade.includes('6') || rawGrade.includes('SEXTO')) {
-                            cloned.status = 'Egresado';
+                        wasPromoted = true;
+                        const rawUpper = String(prevGrade || prevSection).toUpperCase();
+                        if (rawUpper.includes('4') || rawUpper.includes('CUARTO')) {
+                            targetGradeInput = '5to Perito Contador';
+                        } else if (rawUpper.includes('5') || rawUpper.includes('QUINTO')) {
+                            targetGradeInput = '6to Perito Contador';
+                        } else if (rawUpper.includes('6') || rawUpper.includes('SEXTO')) {
+                            targetGradeInput = 'Graduando / Egresado';
                         }
+                    }
+
+                    const normalized = this.normalizeCanonicalGradeAndSection(targetGradeInput, targetSectionInput);
+
+                    if (normalized.isEgresado || (override && override.status === 'Egresado')) {
+                        cloned.grade = 'Graduando / Egresado';
+                        cloned.section = normalized.section;
+                        cloned.gradeCode = 'EGRESADO';
+                        cloned.gradeLabel = `Graduando / Egresado (${normalized.section})`;
+                        cloned.status = 'Egresado';
+                        cloned.statusSire = 'EGRESADO';
+                        cloned.active = false;
+                        cloned.graduationCycle = currentActiveCycle;
+                        graduatedCount++;
                     } else {
-                        cloned.status = 'Inscrito';
+                        cloned.grade = normalized.grade;
+                        cloned.section = normalized.section;
+                        cloned.gradeCode = normalized.gradeCode;
+                        cloned.gradeLabel = normalized.gradeLabel;
+                        cloned.status = (override && override.status === 'Pendiente') ? 'Pendiente' : 'Activo';
+                        cloned.statusSire = 'INSCRITO';
+                        cloned.active = true;
+                        if (wasPromoted) {
+                            cloned.academicPromotionStatus = 'Promovido';
+                            promotedCount++;
+                        } else {
+                            cloned.academicPromotionStatus = (override && override.academicPromotionStatus) || 'Pendiente Recuperación';
+                            retainedCount++;
+                        }
+
+                        // Inicializar estructura limpia de cursos para el nuevo grado (si el catálogo existe)
+                        if (window.OFFICIAL_GRADE_SUBJECTS && normalized.gradeNum && Array.isArray(window.OFFICIAL_GRADE_SUBJECTS[normalized.gradeNum])) {
+                            window.OFFICIAL_GRADE_SUBJECTS[normalized.gradeNum].forEach(subjName => {
+                                cloned.grades[subjName] = [0, 0, 0, 0];
+                            });
+                        }
                     }
 
                     return cloned;
                 });
 
-                // 3. Resetear registros temporales y transaccionales del año anterior preservando la bitácora acumulativa
+                // 3. Resetear registros temporales y transaccionales del año anterior preservando la bitácora acumulativa y asignaciones docentes
                 if (window.STATE) {
                     window.STATE.students = promotedStudents;
-                    // Resguardar siempre las asistencias acumuladas en respaldo maestro permanente
                     try {
                         if (window.STATE.attendanceRecords && Object.keys(window.STATE.attendanceRecords).length > 0) {
                             if (typeof localStorage !== 'undefined') {
@@ -266,19 +405,41 @@
                             }
                         }
                     } catch(e) {}
+
                     window.STATE.attendanceRecords = {};
                     window.STATE.studentPermissions = [];
                     window.STATE.disciplineReports = [];
+                    window.STATE.academicExonerations = [];
+                    window.STATE.exoneraciones = {};
+                    window.STATE.calificaciones = {};
+                    window.STATE.gradingConfigs = {};
                     window.STATE.dismissedAlerts = {};
                     window.STATE.academicCycle = targetNewCycle;
                     window.STATE.activeCycle = targetNewCycle;
+
+                    // Reiniciar cabeceras de actividades personalizadas del pensum a 40/60 limpio (Act. 1..10) preservando al 100% los docentes asignados
+                    if (Array.isArray(window.STATE.pensum)) {
+                        window.STATE.pensum.forEach(course => {
+                            if (!course) return;
+                            course.gradingConfig = {
+                                zonaWeight: 60,
+                                examWeight: 40,
+                                activitiesCount: 6,
+                                activities: Array.from({ length: 10 }, (_, idx) => ({
+                                    name: `Act. ${idx + 1}`,
+                                    maxScore: 10
+                                })),
+                                bimestres: {}
+                            };
+                        });
+                    }
 
                     // Preservar la bitácora acumulativa de los estudiantes para los siguientes años
                     if (!Array.isArray(window.STATE.studentAnnotations)) {
                         window.STATE.studentAnnotations = [];
                     }
                     window.STATE.studentAnnotations.forEach(a => {
-                        if (!a.academicCycle) a.academicCycle = currentActiveCycle;
+                        if (a && !a.academicCycle) a.academicCycle = currentActiveCycle;
                     });
 
                     if (!Array.isArray(window.STATE.cycles)) {
@@ -289,27 +450,32 @@
                     const prevC = window.STATE.cycles.find(c => c.name === currentActiveCycle || c.year === currentActiveCycle);
                     if (prevC) {
                         prevC.status = 'Histórico';
+                        prevC.isArchived = true;
                     }
 
                     // Registrar y activar el nuevo ciclo
                     const existingNew = window.STATE.cycles.find(c => c.name === targetNewCycle || c.year === targetNewCycle);
                     if (existingNew) {
                         existingNew.status = 'Activo';
+                        existingNew.isArchived = false;
                     } else {
                         window.STATE.cycles.push({
                             id: `cyc-${targetNewCycle}`,
                             name: targetNewCycle,
                             year: targetNewCycle,
                             status: 'Activo',
+                            isArchived: false,
                             description: `Ciclo Escolar Oficial ${targetNewCycle}`,
                             createdAt: Date.now()
                         });
                     }
 
-                    // Configurar bimestre de inicio en 1° Bimestre
+                    // Configurar bimestre de inicio en 1° Bimestre con todos los bimestres desbloqueados
                     if (!window.STATE.config) window.STATE.config = {};
                     window.STATE.config.bimestreActivoOficial = 1;
                     window.STATE.config.activeBimestre = 1;
+                    window.STATE.config.lockedBimestres = { 1: false, 2: false, 3: false, 4: false };
+                    window.STATE.currentGradebookBimestre = '1';
                     window.STATE.lastModified = Date.now();
                 }
 
@@ -325,21 +491,36 @@
                     EnccoCloudSync.syncNode('activeCycle', targetNewCycle);
                     EnccoCloudSync.syncNode('cycles', window.STATE.cycles);
                     EnccoCloudSync.syncNode('students', window.STATE.students);
+                    EnccoCloudSync.syncNode('pensum', window.STATE.pensum);
+                    EnccoCloudSync.syncNode('calificaciones', {});
+                    EnccoCloudSync.syncNode('gradingConfigs', {});
+                    EnccoCloudSync.syncNode('academicExonerations', []);
                     EnccoCloudSync.syncNode('studentPermissions', []);
                     EnccoCloudSync.syncNode('disciplineReports', []);
+                    EnccoCloudSync.syncNode('config', window.STATE.config);
                 }
 
                 // 5. Actualizar la interfaz de usuario en tiempo real
                 if (typeof updateCycleSelects === 'function') updateCycleSelects();
+                if (typeof renderCycleList === 'function') renderCycleList();
+                if (typeof renderStudentsTable === 'function') renderStudentsTable();
+                if (typeof renderBoletasTable === 'function') renderBoletasTable();
+                if (typeof renderTeacherCourseCards === 'function') renderTeacherCourseCards();
+                if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
                 if (typeof renderCurrentView === 'function') renderCurrentView();
                 if (typeof renderDashboard === 'function') renderDashboard();
 
-                console.log(`🎉 [Nuevo Ciclo] Ciclo ${targetNewCycle} inicializado con éxito. Base activa fresca y optimizada (< 1 MB).`);
+                console.log(`🎉 [Nuevo Ciclo] Ciclo ${targetNewCycle} inicializado con éxito (Promovidos: ${promotedCount}, Graduados: ${graduatedCount}, Retenidos: ${retainedCount}).`);
                 if (typeof showToast === 'function') {
                     showToast(`¡Ciclo Lectivo ${targetNewCycle} aperturado con éxito! Base de datos limpia y lista para calificar.`, 'success');
                 }
 
-                return { success: true, newCycle: targetNewCycle };
+                return {
+                    success: true,
+                    newCycle: targetNewCycle,
+                    previousCycle: currentActiveCycle,
+                    stats: { promotedCount, graduatedCount, retainedCount }
+                };
             } catch(err) {
                 console.error("❌ Error al aperturar nuevo ciclo:", err);
                 if (typeof showToast === 'function') {
@@ -365,22 +546,34 @@
                 let archivedData = null;
 
                 // 1. Intentar desde caché local primero
-                try {
-                    const localCached = localStorage.getItem(`ENCCO_HISTORICO_${targetCycle}`);
-                    if (localCached) {
-                        const parsed = JSON.parse(localCached);
-                        if (parsed.studentsSnapshot) {
-                            archivedData = parsed;
+                if (typeof localStorage !== 'undefined') {
+                    try {
+                        const localCached = localStorage.getItem(`ENCCO_HISTORICO_${targetCycle}`);
+                        if (localCached) {
+                            const parsed = JSON.parse(localCached);
+                            if (parsed && (parsed.studentsSnapshot || parsed.students)) {
+                                archivedData = parsed;
+                            }
                         }
-                    }
-                } catch(e) {}
+                    } catch(e) {}
+                }
 
-                // 2. Descargar bajo demanda desde Firebase RTDB /historico/{targetCycle}.json
-                if (!archivedData) {
+                // 2. Descargar bajo demanda desde Firebase RTDB (/historico/{targetCycle}.json o /encc_school_state/historico/{targetCycle}.json)
+                if (!archivedData && typeof fetch === 'function') {
                     const fbUrl = this.getFirebaseUrl();
-                    const res = await fetch(`${fbUrl}/historico/${targetCycle}.json?t=${Date.now()}`);
-                    if (res.ok) {
-                        archivedData = await res.json();
+                    try {
+                        const res = await fetch(`${fbUrl}/historico/${targetCycle}.json?t=${Date.now()}`);
+                        if (res.ok) {
+                            archivedData = await res.json();
+                        }
+                    } catch(e) {}
+                    if (!archivedData) {
+                        try {
+                            const res2 = await fetch(`${fbUrl}/encc_school_state/historico/${targetCycle}.json?t=${Date.now()}`);
+                            if (res2.ok) {
+                                archivedData = await res2.json();
+                            }
+                        } catch(e) {}
                     }
                 }
 
@@ -388,15 +581,21 @@
                     throw new Error(`No se encontraron registros archivados para el ciclo ${targetCycle}.`);
                 }
 
-                // Guardar respaldo del estado activo antes de entrar a modo histórico
+                // Guardar respaldo íntegro del estado activo antes de entrar a modo histórico
                 if (!this._originalStateBeforeHistory && window.STATE) {
                     this._originalStateBeforeHistory = {
                         activeCycle: window.STATE.activeCycle,
+                        academicCycle: window.STATE.academicCycle,
                         students: window.STATE.students,
                         attendanceRecords: window.STATE.attendanceRecords,
                         disciplineReports: window.STATE.disciplineReports,
                         studentPermissions: window.STATE.studentPermissions,
-                        pensum: window.STATE.pensum
+                        pensum: window.STATE.pensum,
+                        calificaciones: window.STATE.calificaciones,
+                        gradingConfigs: window.STATE.gradingConfigs,
+                        academicExonerations: window.STATE.academicExonerations,
+                        exoneraciones: window.STATE.exoneraciones,
+                        config: window.STATE.config ? JSON.parse(JSON.stringify(window.STATE.config)) : {}
                     };
                 }
 
@@ -406,15 +605,25 @@
                 const histDiscipline = archivedData.disciplineSnapshot || archivedData.disciplineReports || [];
                 const histPermissions = archivedData.permissionsSnapshot || archivedData.studentPermissions || [];
                 const histPensum = archivedData.pensumSnapshot || archivedData.pensum || [];
+                const histCalificaciones = archivedData.calificacionesSnapshot || archivedData.calificaciones || {};
+                const histGradingConfigs = archivedData.gradingConfigsSnapshot || archivedData.gradingConfigs || {};
+                const histExoneraciones = archivedData.exoneracionesSnapshot || archivedData.academicExonerations || [];
+                const histExoneracionesMap = archivedData.exoneracionesMapSnapshot || archivedData.exoneraciones || {};
 
                 window.STATE.isHistoricalReadOnlyMode = true;
                 window.STATE.historicalViewingCycle = targetCycle;
                 window.STATE.viewingHistoricalCycle = targetCycle;
-                window.STATE.students = histStudents;
-                window.STATE.attendanceRecords = histAttendance;
-                window.STATE.disciplineReports = histDiscipline;
-                window.STATE.studentPermissions = histPermissions;
-                if (histPensum.length > 0) window.STATE.pensum = histPensum;
+                window.STATE.activeCycle = targetCycle;
+                window.STATE.academicCycle = targetCycle;
+                window.STATE.students = JSON.parse(JSON.stringify(histStudents));
+                window.STATE.attendanceRecords = JSON.parse(JSON.stringify(histAttendance));
+                window.STATE.disciplineReports = JSON.parse(JSON.stringify(histDiscipline));
+                window.STATE.studentPermissions = JSON.parse(JSON.stringify(histPermissions));
+                window.STATE.calificaciones = JSON.parse(JSON.stringify(histCalificaciones));
+                window.STATE.gradingConfigs = JSON.parse(JSON.stringify(histGradingConfigs));
+                window.STATE.academicExonerations = JSON.parse(JSON.stringify(histExoneraciones));
+                window.STATE.exoneraciones = JSON.parse(JSON.stringify(histExoneracionesMap));
+                if (histPensum.length > 0) window.STATE.pensum = JSON.parse(JSON.stringify(histPensum));
 
                 // Renderizar banner informativo de modo histórico
                 this.renderHistoricalBanner(targetCycle, archivedData.archivedBy, archivedData.archivedDateISO);
@@ -422,7 +631,16 @@
                 // Bloquear acciones de escritura en la interfaz
                 this.enforceReadOnlyControls(true);
 
+                if (typeof updateCycleSelects === 'function') updateCycleSelects();
+                if (typeof renderCycleList === 'function') renderCycleList();
+                if (typeof renderStudentsTable === 'function') renderStudentsTable();
+                if (typeof renderBoletasTable === 'function') renderBoletasTable();
+                if (typeof renderTeacherCourseCards === 'function') renderTeacherCourseCards();
+                if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
                 if (typeof renderCurrentView === 'function') renderCurrentView();
+                if (typeof renderDashboard === 'function') renderDashboard();
+                if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(window.STATE.activeView);
+
                 if (typeof showToast === 'function') {
                     showToast(`Modo Histórico Activo: Visualizando ciclo ${targetCycle} (Solo Lectura).`, 'warning');
                 }
@@ -445,11 +663,20 @@
 
             console.log("🔙 [Consulta Histórica] Regresando al ciclo lectivo activo...");
             if (this._originalStateBeforeHistory) {
+                window.STATE.activeCycle = this._originalStateBeforeHistory.activeCycle;
+                window.STATE.academicCycle = this._originalStateBeforeHistory.academicCycle || this._originalStateBeforeHistory.activeCycle;
                 window.STATE.students = this._originalStateBeforeHistory.students;
                 window.STATE.attendanceRecords = this._originalStateBeforeHistory.attendanceRecords;
                 window.STATE.disciplineReports = this._originalStateBeforeHistory.disciplineReports;
                 window.STATE.studentPermissions = this._originalStateBeforeHistory.studentPermissions;
                 window.STATE.pensum = this._originalStateBeforeHistory.pensum;
+                window.STATE.calificaciones = this._originalStateBeforeHistory.calificaciones || {};
+                window.STATE.gradingConfigs = this._originalStateBeforeHistory.gradingConfigs || {};
+                window.STATE.academicExonerations = this._originalStateBeforeHistory.academicExonerations || [];
+                window.STATE.exoneraciones = this._originalStateBeforeHistory.exoneraciones || {};
+                if (this._originalStateBeforeHistory.config) {
+                    window.STATE.config = this._originalStateBeforeHistory.config;
+                }
                 this._originalStateBeforeHistory = null;
             }
 
@@ -458,14 +685,22 @@
             window.STATE.viewingHistoricalCycle = null;
 
             // Remover banner
-            const banner = document.getElementById('enccoHistoricalBanner');
+            const banner = (typeof document !== 'undefined') ? document.getElementById('enccoHistoricalBanner') : null;
             if (banner) banner.remove();
 
             // Desbloquear controles
             this.enforceReadOnlyControls(false);
 
             if (typeof updateCycleSelects === 'function') updateCycleSelects();
+            if (typeof renderCycleList === 'function') renderCycleList();
+            if (typeof renderStudentsTable === 'function') renderStudentsTable();
+            if (typeof renderBoletasTable === 'function') renderBoletasTable();
+            if (typeof renderTeacherCourseCards === 'function') renderTeacherCourseCards();
+            if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
             if (typeof renderCurrentView === 'function') renderCurrentView();
+            if (typeof renderDashboard === 'function') renderDashboard();
+            if (typeof enforceViewReadOnlyMode === 'function') enforceViewReadOnlyMode(window.STATE.activeView);
+
             if (typeof showToast === 'function') {
                 showToast(`Retornado al Ciclo Activo ${window.STATE.activeCycle}. Modo edición disponible.`, 'success');
             }
@@ -477,6 +712,7 @@
          * Renderiza banner superior persistente que indica modo histórico
          */
         renderHistoricalBanner(cycleYear, archivedBy = 'Administración', dateISO = null) {
+            if (typeof document === 'undefined') return;
             let banner = document.getElementById('enccoHistoricalBanner');
             if (!banner) {
                 banner = document.createElement('div');
@@ -493,7 +729,9 @@
                 }
             }
 
-            const formattedDate = dateISO ? new Date(dateISO).toLocaleDateString('es-GT', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+            const origCycleLabel = (this._originalStateBeforeHistory && this._originalStateBeforeHistory.activeCycle)
+                ? this._originalStateBeforeHistory.activeCycle
+                : (window.STATE ? window.STATE.activeCycle : '2026');
             banner.innerHTML = `
                 <div style="display:flex; align-items:center; gap:12px;">
                     <div style="width:34px; height:34px; border-radius:50%; background:#f59e0b; color:#0f172a; display:flex; align-items:center; justify-content:center; font-size:1.1rem; font-weight:900;">
@@ -510,7 +748,7 @@
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
                     <button type="button" class="btn btn-sm btn-warning" onclick="EnccoCycleArchiver.exitHistoricalView()" style="font-weight:800; border-radius:6px; padding:6px 14px; box-shadow:0 1px 3px rgba(0,0,0,0.2);">
-                        <i class="fa-solid fa-arrow-left"></i> Salir y Volver al Ciclo Activo (${window.STATE ? window.STATE.activeCycle : '2026'})
+                        <i class="fa-solid fa-arrow-left"></i> Salir y Volver al Ciclo Activo (${origCycleLabel})
                     </button>
                 </div>
             `;
@@ -521,8 +759,10 @@
          * Aplica o remueve bloqueo de solo lectura en formularios y botones
          */
         enforceReadOnlyControls(isReadOnly) {
+            if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
             const forms = document.querySelectorAll('form:not(#searchForm):not(#filterForm)');
             forms.forEach(f => {
+                if (!f || typeof f.querySelectorAll !== 'function') return;
                 const submitBtns = f.querySelectorAll('button[type="submit"]');
                 submitBtns.forEach(btn => {
                     btn.disabled = isReadOnly;
@@ -545,14 +785,17 @@
          */
         exportCycleBackupFile(cycleYear = null) {
             const role = ((window.STATE && window.STATE.currentRole) || '').toLowerCase();
-            if (role !== 'director' && role !== 'admin') {
+            const isAllowed = (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) ||
+                              (typeof isDirectorRole === 'function' && isDirectorRole(role)) ||
+                              ['director', 'direccion', 'admin'].includes(role);
+            if (!isAllowed) {
                 if (typeof showToast === 'function') {
                     showToast('Acceso restringido: La descarga de respaldo institucional es una potestad exclusiva de Dirección.', 'danger');
                 }
                 return false;
             }
 
-            const originSelect = document.getElementById('promoOriginCycleSelect');
+            const originSelect = (typeof document !== 'undefined') ? document.getElementById('promoOriginCycleSelect') : null;
             const targetCycle = String(cycleYear || (originSelect ? originSelect.value : '') || (window.STATE && window.STATE.activeCycle) || '2026').trim();
 
             const students = (window.STATE && Array.isArray(window.STATE.students)) ? window.STATE.students : [];
@@ -561,6 +804,8 @@
             const permissions = (window.STATE && Array.isArray(window.STATE.studentPermissions)) ? window.STATE.studentPermissions : [];
             const pensum = (window.STATE && Array.isArray(window.STATE.pensum)) ? window.STATE.pensum : [];
             const gradesList = (window.STATE && Array.isArray(window.STATE.gradesList)) ? window.STATE.gradesList : [];
+            const calificaciones = (window.STATE && window.STATE.calificaciones) ? window.STATE.calificaciones : {};
+            const gradingConfigs = (window.STATE && window.STATE.gradingConfigs) ? window.STATE.gradingConfigs : {};
 
             const backupPayload = {
                 institution: "Escuela Nacional de Ciencias Comerciales Jutiapa (ENCCO)",
@@ -584,18 +829,22 @@
                 disciplineSnapshot: discipline,
                 permissionsSnapshot: permissions,
                 pensumSnapshot: pensum,
-                gradesListSnapshot: gradesList
+                gradesListSnapshot: gradesList,
+                calificacionesSnapshot: calificaciones,
+                gradingConfigsSnapshot: gradingConfigs
             };
 
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPayload, null, 2));
-            const downloadAnchor = document.createElement('a');
-            const dateStr = new Date().toISOString().slice(0, 10);
-            downloadAnchor.setAttribute("href", dataStr);
-            downloadAnchor.setAttribute("download", `ENCCO_RESPALDO_OFICIAL_CICLO_${targetCycle}_${dateStr}.json`);
-            if (document.body) {
-                document.body.appendChild(downloadAnchor);
-                downloadAnchor.click();
-                downloadAnchor.remove();
+            if (typeof document !== 'undefined') {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupPayload, null, 2));
+                const downloadAnchor = document.createElement('a');
+                const dateStr = new Date().toISOString().slice(0, 10);
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `ENCCO_RESPALDO_OFICIAL_CICLO_${targetCycle}_${dateStr}.json`);
+                if (document.body) {
+                    document.body.appendChild(downloadAnchor);
+                    downloadAnchor.click();
+                    downloadAnchor.remove();
+                }
             }
 
             if (typeof showToast === 'function') {
@@ -609,8 +858,8 @@
         // Consulta silenciosamente todos los ciclos archivados y filtra por alumno.
         // ======================================================================
         async loadStudentHistoricalRecord(studentId) {
-            const loadingEl = document.getElementById('profHistoricoLoading');
-            const contentEl = document.getElementById('profHistoricoContent');
+            const loadingEl = (typeof document !== 'undefined') ? document.getElementById('profHistoricoLoading') : null;
+            const contentEl = (typeof document !== 'undefined') ? document.getElementById('profHistoricoContent') : null;
             if (!studentId || !contentEl) return;
 
             if (loadingEl) loadingEl.style.display = 'block';
@@ -619,19 +868,21 @@
             try {
                 // 1. Obtener lista de ciclos históricos disponibles desde STATE o localStorage
                 const STATE = window.STATE || {};
-                const cycles = (STATE.cycles || []).filter(c => c.status === 'Histórico' || c.isHistorico);
+                const cycles = (STATE.cycles || []).filter(c => c && (c.status === 'Histórico' || c.isArchived || c.isHistorico));
                 
                 // También buscar claves de localStorage con prefijo ENCCO_HISTORICO_
-                const localCycles = new Set(cycles.map(c => String(c.year || c.id || '')));
-                for (let i = 0; i < localStorage.length; i++) {
-                    const key = localStorage.key(i);
-                    if (key && key.startsWith('ENCCO_HISTORICO_')) {
-                        const yr = key.replace('ENCCO_HISTORICO_', '');
-                        localCycles.add(yr);
+                const localCycles = new Set(cycles.map(c => String(c.year || c.name || c.id || '').replace(/^cyc-/, '')).filter(Boolean));
+                if (typeof localStorage !== 'undefined') {
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && key.startsWith('ENCCO_HISTORICO_')) {
+                            const yr = key.replace('ENCCO_HISTORICO_', '');
+                            if (yr) localCycles.add(yr);
+                        }
                     }
                 }
 
-                const yearsToCheck = Array.from(localCycles).sort((a, b) => b - a); // más reciente primero
+                const yearsToCheck = Array.from(localCycles).sort((a, b) => Number(b) - Number(a)); // más reciente primero
 
                 if (yearsToCheck.length === 0) {
                     contentEl.innerHTML = `
@@ -650,14 +901,16 @@
                     let archiveData = null;
 
                     // Primero intentar desde localStorage (sin consumir cuota de Firebase)
-                    const localKey = `ENCCO_HISTORICO_${yr}`;
-                    const localRaw = localStorage.getItem(localKey);
-                    if (localRaw) {
-                        try { archiveData = JSON.parse(localRaw); } catch(e) { /* continúa */ }
+                    if (typeof localStorage !== 'undefined') {
+                        const localKey = `ENCCO_HISTORICO_${yr}`;
+                        const localRaw = localStorage.getItem(localKey);
+                        if (localRaw) {
+                            try { archiveData = JSON.parse(localRaw); } catch(e) { /* continúa */ }
+                        }
                     }
 
                     // Si no está en localStorage, intentar Firebase
-                    if (!archiveData) {
+                    if (!archiveData && typeof fetch === 'function') {
                         try {
                             const dbUrl = this.getFirebaseUrl();
                             const token = (typeof getFirebaseIdToken === 'function') ? await getFirebaseIdToken() : null;
@@ -673,47 +926,80 @@
 
                     if (!archiveData) continue;
 
-                    // Buscar registros del estudiante en el snapshot
-                    const studentsSnap = archiveData.studentsSnapshot || archiveData.students || {};
-                    const studentRecord = studentsSnap[studentId] || null;
+                    // Buscar registros del estudiante en el snapshot (soporta Array o Mapa de objetos)
+                    const studentsSnap = archiveData.studentsSnapshot || archiveData.students || [];
+                    let studentRecord = null;
+                    if (Array.isArray(studentsSnap)) {
+                        studentRecord = studentsSnap.find(s => s && (
+                            s.id === studentId ||
+                            s.personalCode === studentId ||
+                            s.carne === studentId
+                        )) || null;
+                    } else if (studentsSnap && typeof studentsSnap === 'object') {
+                        studentRecord = studentsSnap[studentId] || Object.values(studentsSnap).find(s => s && (
+                            s.id === studentId ||
+                            s.personalCode === studentId ||
+                            s.carne === studentId
+                        )) || null;
+                    }
 
                     if (!studentRecord) continue;
                     foundAny = true;
 
-                    // Notas del alumno en ese ciclo
-                    const grades = studentRecord.gradebookDetails || studentRecord.grades || {};
-                    const avg = studentRecord.finalAverage || studentRecord.average || null;
+                    // Combinar asignaturas tanto de grades (array [b1,b2,b3,b4]) como de gradebookDetails
+                    const rawGradesObj = (studentRecord.grades && typeof studentRecord.grades === 'object') ? studentRecord.grades : {};
+                    const rawDetailsObj = (studentRecord.gradebookDetails && typeof studentRecord.gradebookDetails === 'object') ? studentRecord.gradebookDetails : {};
+                    const allSubjKeys = Array.from(new Set([...Object.keys(rawGradesObj), ...Object.keys(rawDetailsObj)]));
+
                     const status = studentRecord.status || 'N/D';
-                    const grade = studentRecord.grade || 'N/D';
+                    const grade = `${studentRecord.grade || 'N/D'}${studentRecord.section ? ' (' + studentRecord.section + ')' : ''}`;
                     const archivedAt = archiveData.summary ? archiveData.summary.archivedAt : (archiveData.archivedAt || '');
                     const archivedDate = archivedAt ? new Date(archivedAt).toLocaleDateString('es-GT') : 'Fecha N/D';
 
-                    // Construir tabla de notas
+                    // Construir tabla de notas y promedio general del ciclo
                     let subjectRows = '';
-                    const subjects = Object.keys(grades);
-                    if (subjects.length > 0) {
-                        subjects.forEach(subj => {
-                            const subjGrades = grades[subj];
-                            // Soporte para gradebookDetails {b1: {zona,exam}, ...} y grades simples {b1, b2, b3, b4}
-                            let b1, b2, b3, b4, subjAvg;
-                            if (subjGrades && typeof subjGrades === 'object' && subjGrades['1'] && typeof subjGrades['1'] === 'object') {
-                                // Formato gradebookDetails: {1: {zona, exam}, 2: ...}
-                                const calcBim = (b) => {
-                                    const bData = subjGrades[b] || {};
-                                    const z = parseFloat(bData.zona || 0);
-                                    const e = parseFloat(bData.exam || 0);
-                                    return (z + e) > 0 ? (z + e) : null;
-                                };
-                                b1 = calcBim('1'); b2 = calcBim('2'); b3 = calcBim('3'); b4 = calcBim('4');
-                            } else if (subjGrades && typeof subjGrades === 'object') {
-                                b1 = parseFloat(subjGrades.b1 || subjGrades['1'] || 0) || null;
-                                b2 = parseFloat(subjGrades.b2 || subjGrades['2'] || 0) || null;
-                                b3 = parseFloat(subjGrades.b3 || subjGrades['3'] || 0) || null;
-                                b4 = parseFloat(subjGrades.b4 || subjGrades['4'] || 0) || null;
-                            }
+                    let sumSubjAvgs = 0;
+                    let countSubjAvgs = 0;
+
+                    if (allSubjKeys.length > 0) {
+                        allSubjKeys.forEach(subj => {
+                            const gArr = rawGradesObj[subj];
+                            const dObj = rawDetailsObj[subj];
+                            let b1 = null, b2 = null, b3 = null, b4 = null;
+
+                            const extractBimScore = (bimNum) => {
+                                const bKey = String(bimNum);
+                                if (dObj && typeof dObj === 'object' && dObj[bKey] && typeof dObj[bKey] === 'object') {
+                                    const bData = dObj[bKey];
+                                    if (typeof bData.total === 'number' && bData.total > 0) return bData.total;
+                                    const z = parseFloat(bData.zona || 0) || 0;
+                                    const e = parseFloat(bData.exam || 0) || 0;
+                                    if ((z + e) > 0) return z + e;
+                                }
+                                if (Array.isArray(gArr)) {
+                                    const v = parseFloat(gArr[bimNum - 1]);
+                                    if (!isNaN(v) && v > 0) return v;
+                                } else if (gArr && typeof gArr === 'object') {
+                                    const v = parseFloat(gArr[`b${bimNum}`] || gArr[bKey] || 0);
+                                    if (!isNaN(v) && v > 0) return v;
+                                }
+                                return null;
+                            };
+
+                            b1 = extractBimScore(1);
+                            b2 = extractBimScore(2);
+                            b3 = extractBimScore(3);
+                            b4 = extractBimScore(4);
+
                             const validGrades = [b1, b2, b3, b4].filter(v => v !== null && v > 0);
-                            subjAvg = validGrades.length > 0 ? (validGrades.reduce((a, b) => a + b, 0) / validGrades.length).toFixed(1) : '-';
-                            const fmtGrade = (v) => v !== null && v > 0 ? v.toFixed(1) : '-';
+                            let subjAvg = '-';
+                            if (validGrades.length > 0) {
+                                const numAvg = validGrades.reduce((a, b) => a + b, 0) / validGrades.length;
+                                subjAvg = numAvg.toFixed(1);
+                                sumSubjAvgs += numAvg;
+                                countSubjAvgs++;
+                            }
+                            const fmtGrade = (v) => v !== null && v > 0 ? v.toFixed(0) : '-';
                             const color = parseFloat(subjAvg) >= 60 ? '#166534' : (subjAvg === '-' ? '#64748b' : '#991b1b');
                             subjectRows += `<tr>
                                 <td style="padding:4px 8px; font-weight:600;">${subj}</td>
@@ -728,6 +1014,7 @@
                         subjectRows = `<tr><td colspan="6" style="text-align:center; padding:12px; color:#64748b;">Sin calificaciones registradas para este ciclo.</td></tr>`;
                     }
 
+                    const avg = studentRecord.finalAverage || studentRecord.average || (countSubjAvgs > 0 ? (sumSubjAvgs / countSubjAvgs) : null);
                     const avgColor = avg !== null ? (parseFloat(avg) >= 60 ? '#16a34a' : '#dc2626') : '#64748b';
 
                     resultHtml += `
@@ -785,7 +1072,7 @@
     // Wrapper global para llamar desde el HTML directamente
     window.loadStudentHistoricalRecord = function(studentId) {
         if (window.EnccoCycleArchiver && typeof window.EnccoCycleArchiver.loadStudentHistoricalRecord === 'function') {
-            window.EnccoCycleArchiver.loadStudentHistoricalRecord(studentId);
+            return window.EnccoCycleArchiver.loadStudentHistoricalRecord(studentId);
         }
     };
 
