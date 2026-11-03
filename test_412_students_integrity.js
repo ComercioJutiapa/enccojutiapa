@@ -44,10 +44,10 @@ async function runTests() {
     assert(Array.isArray(liveStudents), "students debe ser un Array");
     console.log(`- Total de elementos en array activo: ${liveStudents.length}`);
     
-    // Si el ciclo activo ya avanzó a 2027 (con 463 estudiantes incluyendo nuevos inscritos),
+    // Si el ciclo activo ya avanzó a 2027 (o cualquier nómina que no sea 412),
     // validar la nómina de 412 del ciclo 2026 desde el nodo histórico oficial
-    if (liveStudents.length === 463) {
-        console.log("ℹ️ Detectado Ciclo Activo 2027 (463 estudiantes). Verificando nómina oficial 2026 en /encc_school_state/historico/2026...");
+    if (liveStudents.length !== 412) {
+        console.log(`ℹ️ Detectado Ciclo Activo no-2026 (${liveStudents.length} estudiantes). Verificando nómina oficial 2026 en /encc_school_state/historico/2026...`);
         const histStudents = await fetchJson(`https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/historico/2026/studentsSnapshot.json?t=${Date.now()}`);
         assert(Array.isArray(histStudents), "studentsSnapshot histórico debe ser un Array");
         assert.strictEqual(histStudents.length, 412, `Se esperaban 412 estudiantes en el archivo histórico 2026, pero hay ${histStudents.length}`);

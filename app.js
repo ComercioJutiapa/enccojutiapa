@@ -14873,8 +14873,11 @@ async function saveStudentForm(e) {
         try {
             document.dispatchEvent(new CustomEvent('encco:student-enrolled', { detail: studentObj }));
         } catch(evErr) {}
-        if (!studentId && typeof resetStudentEnrollmentForm === 'function') {
-            resetStudentEnrollmentForm();
+        
+        // 🧼 BLANQUEO Y RESETEO INMEDIATO: Tanto al inscribir nuevo como al editar la ficha de datos,
+        // dejar el formulario completamente limpio en blanco y restablecer botones y títulos.
+        if (typeof resetStudentEnrollmentForm === 'function') {
+            resetStudentEnrollmentForm(false);
         }
 
         // 🌟 Persistencia atómica directa y garantizada en Firestore y Realtime Database
@@ -14911,8 +14914,12 @@ async function saveStudentForm(e) {
         showToast(`Error al guardar en Firebase: ${err.message || err}`, 'danger');
     } finally {
         allEnrollSubmitBtns.forEach(btn => {
+            if (!btn) return;
             btn.disabled = false;
-            btn.innerHTML = btn.getAttribute('data-orig-html') || origBtnHtml;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Inscripción';
+            if (typeof btn.removeAttribute === 'function') {
+                btn.removeAttribute('data-orig-html');
+            }
         });
     }
 }
