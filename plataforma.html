@@ -1077,7 +1077,7 @@
                                     </div>
                                 </div>
                                 <div style="display:flex; gap:8px; flex:1.2; max-width:440px; min-width:240px; align-items:center;">
-                                    <input type="text" id="quickSireSearchCode" class="form-control form-control-sm" placeholder="Ej: D456GHT o CUI" style="font-weight:800; text-transform:uppercase; border:1.5px solid #0284c7; min-height:38px; height:38px; font-size:0.88rem; padding:6px 12px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); searchAndAutoFillByPersonalCode();}">
+                                    <input type="text" id="quickSireSearchCode" class="form-control form-control-sm" placeholder="Ej: D456GHT o CUI" style="font-weight:800; text-transform:uppercase; border:1.5px solid #0284c7; min-height:38px; height:38px; font-size:0.88rem; padding:6px 12px;" oninput="this.value = this.value.toUpperCase();" onkeydown="if(event.key==='Enter'){event.preventDefault(); searchAndAutoFillByPersonalCode();}">
                                     <button type="button" class="btn btn-primary btn-sm" onclick="searchAndAutoFillByPersonalCode()" style="background:#0284c7; border-color:#0284c7; font-weight:800; font-size:0.82rem; min-height:38px; height:38px; padding:0 14px; white-space:nowrap; display:inline-flex; align-items:center; gap:6px;">
                                         <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-llenar
                                     </button>
@@ -1132,7 +1132,7 @@
                                 <div class="compact-group">
                                     <label>Código Personal (MINEDUC)</label>
                                     <div style="display:flex; gap:4px;">
-                                        <input type="text" id="studentFormPersonalCode" class="form-control" placeholder="Ej: A123BCD" oninput="validateStudentFormLiveDuplicate()" style="text-transform:uppercase; font-weight:700;">
+                                        <input type="text" id="studentFormPersonalCode" class="form-control" placeholder="Ej: A123BCD" oninput="this.value = this.value.toUpperCase(); validateStudentFormLiveDuplicate();" style="text-transform:uppercase; font-weight:700;">
                                         <button type="button" class="btn btn-primary btn-xs" onclick="searchAndAutoFillByPersonalCode(document.getElementById('studentFormPersonalCode').value)" title="Buscar ficha" style="white-space:nowrap; font-weight:700; background:#0284c7; border-color:#0284c7; padding:2px 8px;">
                                             <i class="fa-solid fa-magnifying-glass"></i>
                                         </button>

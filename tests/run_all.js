@@ -39,7 +39,8 @@ const CRITICAL_SUITES = [
     'tests/test_historical_grade_persistence_and_isolation.js',
     'tests/test_student_enrollment_form_reset.js',
     'tests/test_zero_disk_footprint_and_respaldos_rbac.js',
-    'tests/test_cycle_2027_zero_grades.js'
+    'tests/test_cycle_2027_zero_grades.js',
+    'tests/test_personal_code_uppercase_normalization.js'
 ];
 
 console.log('================================================================================');

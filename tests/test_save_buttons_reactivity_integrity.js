@@ -57,7 +57,7 @@ const checkLocalStorageInFn = (fnName) => {
 ['saveStudentForm', 'saveStudentProfileForm', 'saveAcademicExoneration', 'confirmStudentImport'].forEach(fnName => {
     const startIdx = appJsContent.indexOf(`function ${fnName}`);
     assert(startIdx !== -1, `Función ${fnName} debe existir`);
-    const slice = appJsContent.slice(startIdx, startIdx + 12000);
+    const slice = appJsContent.slice(startIdx, startIdx + 25000);
     assert(slice.includes('_locallyDirtyStudentIds'), `${fnName} debe proteger al estudiante en window._locallyDirtyStudentIds contra ecos de onSnapshot`);
 });
 

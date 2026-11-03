@@ -271,7 +271,13 @@
     function searchAndAutoFillByPersonalCode(codeToSearch = null) {
         let code = (codeToSearch || 
                    document.getElementById('quickSireSearchCode')?.value || 
-                   document.getElementById('studentFormPersonalCode')?.value || '').trim();
+                   document.getElementById('studentFormPersonalCode')?.value || '').trim().toUpperCase();
+
+        // Normalizar de inmediato el campo en pantalla a mayúsculas
+        const inputQuickEl = document.getElementById('quickSireSearchCode');
+        if (inputQuickEl && inputQuickEl.value) inputQuickEl.value = inputQuickEl.value.toUpperCase();
+        const pCodeInputEl = document.getElementById('studentFormPersonalCode');
+        if (pCodeInputEl && pCodeInputEl.value) pCodeInputEl.value = pCodeInputEl.value.toUpperCase();
 
         if (!code) {
             if (window.EnccoDialog && typeof window.EnccoDialog.alert === 'function') {
@@ -331,7 +337,7 @@
 
             setVal('studentFormFirstName', fName);
             setVal('studentFormLastName', lName);
-            setVal('studentFormPersonalCode', found.personalCode || found.codigoPersonal || code.toUpperCase());
+            setVal('studentFormPersonalCode', String(found.personalCode || found.codigoPersonal || code || '').trim().toUpperCase());
             setVal('studentFormCui', found.cui || '');
             setVal('studentFormBirthDate', found.birthDate || '');
             if (typeof window.calculateStudentAge === 'function') window.calculateStudentAge();

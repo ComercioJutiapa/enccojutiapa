@@ -8011,6 +8011,7 @@ function deduplicateStudentsCollection(students) {
     const result = [];
     students.forEach(s => {
         if (!s) return;
+        if (s.personalCode) s.personalCode = String(s.personalCode).trim().toUpperCase();
         const key = (s.carne || s.personalCode || s.id || '').trim();
         const rawName = (s.name || ((s.firstName || '') + ' ' + (s.lastName || ''))).trim();
         const nameKey = rawName ? (rawName + '_' + (s.grade || '') + '_' + (s.section || '')).trim().toLowerCase() : '';
@@ -10601,6 +10602,9 @@ function applyIncomingCloudState(incomingState, force = false) {
         if (!window._rtdbStudentIndexMap) window._rtdbStudentIndexMap = new Map();
         if (!window._rtdbIndexToIdMap) window._rtdbIndexToIdMap = new Map();
         incomingState.students.forEach((st, idx) => {
+            if (st && st.personalCode) {
+                st.personalCode = String(st.personalCode).trim().toUpperCase();
+            }
             if (st && st.id) {
                 window._rtdbStudentIndexMap.set(st.id, idx);
                 window._rtdbIndexToIdMap.set(idx, st.id);
@@ -14372,7 +14376,7 @@ function openEditStudentModal(studentId) {
     if (btmBtn) btmBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Guardar Cambios';
 
     setVal('studentFormCarne', student.carne);
-    setVal('studentFormPersonalCode', student.personalCode);
+    setVal('studentFormPersonalCode', (typeof normalizePersonalCode === 'function' ? normalizePersonalCode(student.personalCode) : (student.personalCode || '').toUpperCase()));
     setVal('studentFormCui', student.cui);
     setVal('studentFormFirstName', student.firstName);
     setVal('studentFormLastName', student.lastName);
@@ -14645,10 +14649,20 @@ function checkStudentDuplicateEnrollment(data, excludeId = null) {
     });
 }
 
+// 🔤 NORMALIZACIÓN INSTITUCIONAL DE CÓDIGO PERSONAL MINEDUC
+// Siempre en mayúsculas aunque se ingrese en minúsculas
+function normalizePersonalCode(code) {
+    if (!code) return '';
+    return String(code).trim().toUpperCase();
+}
+window.normalizePersonalCode = normalizePersonalCode;
+
 function validateStudentFormLiveDuplicate() {
     const studentId = document.getElementById('studentFormId')?.value;
     const carne = document.getElementById('studentFormCarne')?.value.trim();
-    const personalCode = document.getElementById('studentFormPersonalCode')?.value.trim();
+    const pCodeEl = document.getElementById('studentFormPersonalCode');
+    if (pCodeEl && pCodeEl.value) pCodeEl.value = pCodeEl.value.toUpperCase();
+    const personalCode = normalizePersonalCode(pCodeEl?.value);
     const cui = document.getElementById('studentFormCui')?.value.trim();
     const firstName = document.getElementById('studentFormFirstName')?.value.trim();
     const lastName = document.getElementById('studentFormLastName')?.value.trim();
@@ -14685,7 +14699,9 @@ async function saveStudentForm(e) {
 
     const studentId = document.getElementById('studentFormId')?.value?.trim();
     const carne = document.getElementById('studentFormCarne')?.value?.trim() || ('ENCCO-' + Date.now().toString().slice(-4));
-    const personalCode = document.getElementById('studentFormPersonalCode')?.value?.trim() || '';
+    const personalCode = (typeof normalizePersonalCode === 'function') 
+        ? normalizePersonalCode(document.getElementById('studentFormPersonalCode')?.value) 
+        : (document.getElementById('studentFormPersonalCode')?.value?.trim() || '').toUpperCase();
     const cui = document.getElementById('studentFormCui')?.value?.trim() || '';
     const firstName = document.getElementById('studentFormFirstName')?.value?.trim() || '';
     const lastName = document.getElementById('studentFormLastName')?.value?.trim() || '';
@@ -20350,7 +20366,7 @@ function previewStudentImport(e) {
                 }
             }
 
-            const personalCode = cols[colIdxCodPersonal] || '';
+            const personalCode = (cols[colIdxCodPersonal] || '').trim().toUpperCase();
             const cui = cols[colIdxCui] || '';
             const carne = cols[colIdxCarne] || ('ENCCO-' + (STATE.activeCycle || '2026') + '-' + Math.floor(100 + Math.random()*900));
             const phone = cols[colIdxTelefono] || '';
