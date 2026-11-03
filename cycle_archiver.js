@@ -11,6 +11,47 @@
 (function(window) {
     'use strict';
 
+    // Catálogo oficial CNB de cursos por grado para Perito Contador
+    const OFFICIAL_CNB_GRADE_COURSES = {
+        '4': [
+            'Matemática Comercial',
+            'Introducción a la Economía',
+            'Administración y Organización de Empresas',
+            'Redacción y Correspondencia Mercantil',
+            'Contabilidad de Sociedades',
+            'Inglés Comercial I',
+            'Fundamentos de Derecho',
+            'Computación I',
+            'Caligrafía y Ortografía'
+        ],
+        '5': [
+            'Cálculo Mercantil y Financiero',
+            'Mecanografía',
+            'Contabilidad de Costos',
+            'Geografía Económica',
+            'Catalogación y Archivo',
+            'Legislación Fiscal y Aduanera',
+            'Finanzas Públicas',
+            'Computación II',
+            'Inglés Comercial II'
+        ],
+        '6': [
+            'Auditoría',
+            'Computación III',
+            'Contabilidad Bancaria',
+            'Contabilidad Gubernamental e Integrada',
+            'Derecho Mercantil y Laboral',
+            'Estadística Comercial',
+            'Organización de Empresas y Técnicas de Oficina',
+            'Práctica Supervisada',
+            'Seminario sobre Problemas Socioeconómicos de Guatemala',
+            'Ética Profesional y Relaciones Humanas'
+        ]
+    };
+    if (typeof window !== 'undefined') {
+        window.OFFICIAL_GRADE_SUBJECTS = OFFICIAL_CNB_GRADE_COURSES;
+    }
+
     const EnccoCycleArchiver = {
         _isArchiving: false,
         _historicalSnapshot: null,
@@ -383,9 +424,14 @@
                             retainedCount++;
                         }
 
-                        // Inicializar estructura limpia de cursos para el nuevo grado (si el catálogo existe)
-                        if (window.OFFICIAL_GRADE_SUBJECTS && normalized.gradeNum && Array.isArray(window.OFFICIAL_GRADE_SUBJECTS[normalized.gradeNum])) {
-                            window.OFFICIAL_GRADE_SUBJECTS[normalized.gradeNum].forEach(subjName => {
+                        // Inicializar estructura limpia de cursos para el nuevo grado (todas las notas estrictamente en 0)
+                        cloned.grades = {};
+                        cloned.gradebookDetails = {};
+                        const gradeNumKey = String(normalized.gradeNum || '');
+                        const officialSubjs = (window.OFFICIAL_GRADE_SUBJECTS && window.OFFICIAL_GRADE_SUBJECTS[gradeNumKey]) ||
+                                              OFFICIAL_CNB_GRADE_COURSES[gradeNumKey];
+                        if (Array.isArray(officialSubjs)) {
+                            officialSubjs.forEach(subjName => {
                                 cloned.grades[subjName] = [0, 0, 0, 0];
                             });
                         }
