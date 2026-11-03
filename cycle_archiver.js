@@ -199,19 +199,18 @@
                     }
                 }
 
-                // 3. Respaldo local de contingencia
+                // 3. Respaldo en memoria de sesión volátil (Cero persistencia en disco duro)
+                if (!this._sessionCache) this._sessionCache = {};
+                this._sessionCache[targetCycle] = archivePayload;
+                if (typeof sessionStorage !== 'undefined') {
+                    try {
+                        sessionStorage.setItem(`ENCCO_HISTORICO_${targetCycle}`, JSON.stringify(archivePayload));
+                    } catch(e) {}
+                }
                 if (typeof localStorage !== 'undefined') {
                     try {
-                        localStorage.setItem(`ENCCO_HISTORICO_${targetCycle}`, JSON.stringify(archivePayload));
-                    } catch(lsErr) {
-                        try {
-                            localStorage.setItem(`ENCCO_HISTORICO_${targetCycle}`, JSON.stringify({
-                                cycle: targetCycle,
-                                archivedAt: archivePayload.archivedAt,
-                                summary: archivePayload.summary
-                            }));
-                        } catch(e) {}
-                    }
+                        localStorage.removeItem(`ENCCO_HISTORICO_${targetCycle}`);
+                    } catch(e) {}
                 }
 
                 // Esperar escritura con límite de 10 segundos
@@ -400,8 +399,11 @@
                     window.STATE.students = promotedStudents;
                     try {
                         if (window.STATE.attendanceRecords && Object.keys(window.STATE.attendanceRecords).length > 0) {
+                            if (typeof sessionStorage !== 'undefined') {
+                                sessionStorage.setItem('ENCCO_ATTENDANCE_MASTER_BACKUP', JSON.stringify(window.STATE.attendanceRecords));
+                            }
                             if (typeof localStorage !== 'undefined') {
-                                localStorage.setItem('ENCCO_ATTENDANCE_MASTER_BACKUP', JSON.stringify(window.STATE.attendanceRecords));
+                                localStorage.removeItem('ENCCO_ATTENDANCE_MASTER_BACKUP');
                             }
                         }
                     } catch(e) {}
@@ -545,23 +547,39 @@
             try {
                 let archivedData = null;
 
-                // 1. Intentar desde caché local primero (validando que tenga registros reales)
-                if (typeof localStorage !== 'undefined') {
+                // 1. Intentar desde memoria de sesión volátil (RAM / sessionStorage) primero
+                if (this._sessionCache && this._sessionCache[targetCycle]) {
+                    const memData = this._sessionCache[targetCycle];
+                    const stList = (memData && (memData.studentsSnapshot || memData.students));
+                    if (Array.isArray(stList) && stList.length > 0) {
+                        // Descartar dummy residual corrupto sin nombres válidos o de <= 3 registros en ciclo 2026
+                        if (targetCycle === '2026' && stList.length <= 3 && (!stList[0] || !stList[0].name)) {
+                            delete this._sessionCache[targetCycle];
+                        } else {
+                            archivedData = memData;
+                        }
+                    }
+                } else if (typeof sessionStorage !== 'undefined') {
                     try {
-                        const localCached = localStorage.getItem(`ENCCO_HISTORICO_${targetCycle}`);
-                        if (localCached) {
-                            const parsed = JSON.parse(localCached);
+                        const sessCached = sessionStorage.getItem(`ENCCO_HISTORICO_${targetCycle}`);
+                        if (sessCached) {
+                            const parsed = JSON.parse(sessCached);
                             const stList = (parsed && (parsed.studentsSnapshot || parsed.students));
                             if (Array.isArray(stList) && stList.length > 0) {
-                                // Descartar dummy residual corrupto sin nombres válidos o de <= 3 registros en ciclo 2026
                                 if (targetCycle === '2026' && stList.length <= 3 && (!stList[0] || !stList[0].name)) {
-                                    localStorage.removeItem(`ENCCO_HISTORICO_${targetCycle}`);
+                                    sessionStorage.removeItem(`ENCCO_HISTORICO_${targetCycle}`);
                                 } else {
                                     archivedData = parsed;
+                                    if (!this._sessionCache) this._sessionCache = {};
+                                    this._sessionCache[targetCycle] = parsed;
                                 }
                             }
                         }
                     } catch(e) {}
+                }
+                // Limpiar cualquier residuo en localStorage para garantizar cero persistencia en disco
+                if (typeof localStorage !== 'undefined') {
+                    try { localStorage.removeItem(`ENCCO_HISTORICO_${targetCycle}`); } catch(e) {}
                 }
 
                 // 2. Descargar bajo demanda desde Firebase RTDB (/encc_school_state/historico/{targetCycle}.json como ruta canónica prioritaria)
@@ -598,10 +616,17 @@
                     throw new Error(`No se encontraron registros archivados oficiales para el ciclo ${targetCycle}.`);
                 }
 
-                // Actualizar inmediatamente la caché local válida
+                // Guardar en RAM de sesión y sessionStorage (cero persistencia en disco duro)
+                if (!this._sessionCache) this._sessionCache = {};
+                this._sessionCache[targetCycle] = archivedData;
+                if (typeof sessionStorage !== 'undefined') {
+                    try {
+                        sessionStorage.setItem(`ENCCO_HISTORICO_${targetCycle}`, JSON.stringify(archivedData));
+                    } catch(e) {}
+                }
                 if (typeof localStorage !== 'undefined') {
                     try {
-                        localStorage.setItem(`ENCCO_HISTORICO_${targetCycle}`, JSON.stringify(archivedData));
+                        localStorage.removeItem(`ENCCO_HISTORICO_${targetCycle}`);
                     } catch(e) {}
                 }
 
@@ -835,9 +860,11 @@
          */
         exportCycleBackupFile(cycleYear = null) {
             const role = ((window.STATE && window.STATE.currentRole) || '').toLowerCase();
-            const isAllowed = (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) ||
-                              (typeof isDirectorRole === 'function' && isDirectorRole(role)) ||
-                              ['director', 'direccion', 'admin'].includes(role);
+            const isAllowed = (typeof canAccessBackup === 'function')
+                ? canAccessBackup(role)
+                : ((typeof isSuperUserRole === 'function' && isSuperUserRole(role)) ||
+                   (typeof isDirectorRole === 'function' && isDirectorRole(role)) ||
+                   ['director', 'direccion', 'admin'].includes(role));
             if (!isAllowed) {
                 if (typeof showToast === 'function') {
                     showToast('Acceso restringido: La descarga de respaldo institucional es una potestad exclusiva de Dirección.', 'danger');
@@ -916,20 +943,37 @@
             contentEl.innerHTML = '';
 
             try {
-                // 1. Obtener lista de ciclos históricos disponibles desde STATE o localStorage
+                // 1. Obtener lista de ciclos históricos disponibles desde STATE, _sessionCache o sessionStorage
                 const STATE = window.STATE || {};
                 const cycles = (STATE.cycles || []).filter(c => c && (c.status === 'Histórico' || c.isArchived || c.isHistorico));
                 
-                // También buscar claves de localStorage con prefijo ENCCO_HISTORICO_
                 const localCycles = new Set(cycles.map(c => String(c.year || c.name || c.id || '').replace(/^cyc-/, '')).filter(Boolean));
-                if (typeof localStorage !== 'undefined') {
-                    for (let i = 0; i < localStorage.length; i++) {
-                        const key = localStorage.key(i);
+                if (this._sessionCache) {
+                    Object.keys(this._sessionCache).forEach(yr => { if (yr) localCycles.add(yr); });
+                }
+                if (typeof sessionStorage !== 'undefined') {
+                    for (let i = 0; i < sessionStorage.length; i++) {
+                        const key = sessionStorage.key(i);
                         if (key && key.startsWith('ENCCO_HISTORICO_')) {
                             const yr = key.replace('ENCCO_HISTORICO_', '');
                             if (yr) localCycles.add(yr);
                         }
                     }
+                }
+                // Si existe ciclo 2026 y aún no está registrado, agregarlo como histórico por defecto
+                if (!localCycles.has('2026') && STATE.activeCycle !== '2026') {
+                    localCycles.add('2026');
+                }
+                // Limpiar posibles residuos en localStorage
+                if (typeof localStorage !== 'undefined') {
+                    try {
+                        for (let i = localStorage.length - 1; i >= 0; i--) {
+                            const key = localStorage.key(i);
+                            if (key && key.startsWith('ENCCO_HISTORICO_')) {
+                                localStorage.removeItem(key);
+                            }
+                        }
+                    } catch(e) {}
                 }
 
                 const yearsToCheck = Array.from(localCycles).sort((a, b) => Number(b) - Number(a)); // más reciente primero
@@ -950,26 +994,26 @@
                 for (const yr of yearsToCheck) {
                     let archiveData = null;
 
-                    // Primero intentar desde localStorage (validando que tenga registros válidos)
-                    if (typeof localStorage !== 'undefined') {
-                        const localKey = `ENCCO_HISTORICO_${yr}`;
-                        const localRaw = localStorage.getItem(localKey);
-                        if (localRaw) {
+                    // Primero intentar desde memoria de sesión volátil (_sessionCache o sessionStorage)
+                    if (this._sessionCache && this._sessionCache[yr]) {
+                        archiveData = this._sessionCache[yr];
+                    } else if (typeof sessionStorage !== 'undefined') {
+                        const sessKey = `ENCCO_HISTORICO_${yr}`;
+                        const sessRaw = sessionStorage.getItem(sessKey);
+                        if (sessRaw) {
                             try {
-                                const parsed = JSON.parse(localRaw);
+                                const parsed = JSON.parse(sessRaw);
                                 const stList = parsed && (parsed.studentsSnapshot || parsed.students);
                                 if (Array.isArray(stList) && stList.length > 0) {
-                                    if (yr === '2026' && stList.length <= 3 && (!stList[0] || !stList[0].name)) {
-                                        // ignorar dummy residual
-                                    } else {
-                                        archiveData = parsed;
-                                    }
+                                    archiveData = parsed;
+                                    if (!this._sessionCache) this._sessionCache = {};
+                                    this._sessionCache[yr] = parsed;
                                 }
                             } catch(e) { /* continúa */ }
                         }
                     }
 
-                    // Si no está en localStorage válido, intentar Firebase (Prioridad: /encc_school_state/historico/{yr}.json)
+                    // Si no está en memoria de sesión, intentar Firebase (Prioridad: /encc_school_state/historico/{yr}.json)
                     if (!archiveData && typeof fetch === 'function') {
                         try {
                             const dbUrl = this.getFirebaseUrl();

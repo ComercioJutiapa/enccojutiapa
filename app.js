@@ -1439,6 +1439,29 @@ function canAccessBackupAndAudit(role = null) {
 }
 window.canAccessBackupAndAudit = canAccessBackupAndAudit;
 
+// 🔒 RBAC ESTRICTO: ACCESO Y CREACIÓN DE RESPALDOS INSTITUCIONALES (BACKUPS)
+// Restringido de forma absoluta a Dirección, Superusuario y Administrador.
+// Queda estrictamente PROHIBIDO y bloqueado para Docentes, Secretarías, Auxiliares, Estudiantes, etc.
+function canAccessBackup(role = null) {
+    if (typeof isSuperUserRole === 'function' && isSuperUserRole(role)) return true;
+    if (typeof isDirectorRole === 'function' && isDirectorRole(role)) return true;
+    const curRole = (role || (window.EnccoAuthStore ? window.EnccoAuthStore.getRole() : (window.STATE ? STATE.currentRole : '')) || '').trim().toLowerCase();
+    const userRole = (window.STATE && STATE.currentUser && STATE.currentUser.role) ? String(STATE.currentUser.role).trim().toLowerCase() : '';
+    const rLower = curRole || userRole;
+    if (!rLower || rLower === 'guest') return false;
+
+    const authorizedBackupRoles = [
+        'director',
+        'direccion',
+        'directora',
+        'super_usuario',
+        'superadmin',
+        'admin'
+    ];
+    return authorizedBackupRoles.includes(rLower);
+}
+window.canAccessBackup = canAccessBackup;
+
 // 📲 REGLA INSTITUCIONAL: ACCESO EXCLUSIVO A WHATSAPP
 // Restringido estrictamente a Dirección, Auxiliatura y Secretaría
 function canRoleUseWhatsApp(role = null) {
@@ -3097,15 +3120,15 @@ window.exportAuditLogCSV = exportAuditLogCSV;
 // 🛡️ CENTRO MAESTRO DE RESPALDO Y BÓVEDA SEGURA INSTITUCIONAL
 // ======================================================================
 function openUniversalBackupModal() {
-    if (typeof canAccessBackupAndAudit === 'function' && !canAccessBackupAndAudit()) {
+    if (typeof canAccessBackup === 'function' && !canAccessBackup()) {
         if (typeof showToast === 'function') {
-            showToast("Acceso Restringido: El Respaldo Maestro está disponible exclusivamente para Dirección, Secretaría y Superusuario.", "warning");
+            showToast("Acceso Restringido: El Respaldo Maestro está disponible exclusivamente para Dirección y Administración.", "danger");
         }
         return;
     }
     const badge = document.getElementById('backupLastRecordedBadge');
     if (badge) {
-        const lastTime = localStorage.getItem('ENCCO_LAST_BACKUP_TIME');
+        const lastTime = (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('ENCCO_LAST_BACKUP_TIME') : null) || (typeof localStorage !== 'undefined' ? localStorage.getItem('ENCCO_LAST_BACKUP_TIME') : null);
         if (lastTime) {
             const dt = new Date(lastTime);
             badge.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> Último respaldo: ${dt.toLocaleDateString('es-GT')} ${dt.toLocaleTimeString('es-GT', { hour:'2-digit', minute:'2-digit' })}`;
@@ -3124,9 +3147,9 @@ window.closeUniversalBackupModal = closeUniversalBackupModal;
 
 function exportSystemSafeBackup() {
     const backupCategory = arguments[0] || 'all';
-    if (typeof canAccessBackupAndAudit === 'function' && !canAccessBackupAndAudit()) {
+    if (typeof canAccessBackup === 'function' && !canAccessBackup()) {
         if (typeof showToast === 'function') {
-            showToast("Acceso Restringido: La descarga de respaldo institucional está disponible exclusivamente para Dirección, Secretaría y Superusuario.", "warning");
+            showToast("Acceso Restringido: La descarga de respaldo institucional está disponible exclusivamente para Dirección y Administración.", "danger");
         }
         return;
     }
@@ -3223,7 +3246,12 @@ function exportSystemSafeBackup() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        localStorage.setItem('ENCCO_LAST_BACKUP_TIME', now.toISOString());
+        if (typeof sessionStorage !== 'undefined') {
+            try { sessionStorage.setItem('ENCCO_LAST_BACKUP_TIME', now.toISOString()); } catch(e) {}
+        }
+        if (typeof localStorage !== 'undefined') {
+            try { localStorage.removeItem('ENCCO_LAST_BACKUP_TIME'); } catch(e) {}
+        }
         recordAuditLog('BACKUP_EXPORT', 'Sistema', `Respaldo oficial descargado (${labelCategory}) con ${backupData.checksum.totalStudents} estudiantes y registros.`);
 
         const badge = document.getElementById('backupLastRecordedBadge');
@@ -9835,19 +9863,20 @@ function synchronizeGlobalDynamicUI() {
 
 function updateTopRoleBar() {
     const curR = (STATE.currentRole || '').toLowerCase();
-    const canBackupAudit = typeof canAccessBackupAndAudit === 'function' ? canAccessBackupAndAudit(curR) : ['director', 'direccion', 'secretaria', 'secretario', 'admin', 'super_usuario'].includes(curR);
+    const canBackup = typeof canAccessBackup === 'function' ? canAccessBackup(curR) : ['director', 'direccion', 'admin', 'super_usuario'].includes(curR);
+    const canAudit = typeof canAccessBackupAndAudit === 'function' ? canAccessBackupAndAudit(curR) : ['director', 'direccion', 'secretaria', 'secretario', 'admin', 'super_usuario'].includes(curR);
 
     const btnMasterBackup = document.getElementById('btnHeaderMasterBackup');
     if (btnMasterBackup) {
-        btnMasterBackup.style.display = canBackupAudit ? 'inline-flex' : 'none';
+        btnMasterBackup.style.display = canBackup ? 'inline-flex' : 'none';
     }
     const btnAuditLog = document.getElementById('btnHeaderAuditLog');
     if (btnAuditLog) {
-        btnAuditLog.style.display = canBackupAudit ? 'inline-flex' : 'none';
+        btnAuditLog.style.display = canAudit ? 'inline-flex' : 'none';
     }
     const btnExportHeader = document.getElementById('btnExportSafeBackupHeader');
     if (btnExportHeader) {
-        btnExportHeader.style.display = canBackupAudit ? 'inline-flex' : 'none';
+        btnExportHeader.style.display = canBackup ? 'inline-flex' : 'none';
     }
 
     const group = document.getElementById('topRoleSwitcherGroup');
@@ -9922,6 +9951,7 @@ function updateTopRoleBar() {
         `;
     }
 }
+window.updateTopRoleBar = updateTopRoleBar;
 
 async function performLogout() {
     if (window._isLoggingOut) return;
@@ -9941,13 +9971,34 @@ async function performLogout() {
             if (window.EnccoInactivityTimer && typeof window.EnccoInactivityTimer.stop === 'function') {
                 window.EnccoInactivityTimer.stop();
             }
-            sessionStorage.clear();
-            localStorage.removeItem('ENCCO_AUTH_USER');
-            localStorage.removeItem('ENCCO_AUTH_ROLE');
-            localStorage.removeItem('ENCCO_AUTH_TOKEN');
-            localStorage.removeItem('ENCCO_AUTH_BRIDGE');
-            localStorage.removeItem('ENCCO_AUTH_TIMESTAMP');
-            localStorage.removeItem('ENCCO_AUTH_REMEMBER');
+            if (typeof sessionStorage !== 'undefined') {
+                sessionStorage.clear();
+            }
+            if (typeof localStorage !== 'undefined') {
+                const keysToPurge = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k !== 'ENCCO_FIREBASE_URL' && k !== 'ENCCO_BUILD_VERSION') {
+                        if (k.startsWith('ENCCO_') || k.startsWith('encc_') || k.startsWith('firebase:')) {
+                            keysToPurge.push(k);
+                        }
+                    }
+                }
+                keysToPurge.forEach(k => {
+                    try { localStorage.removeItem(k); } catch(e) {}
+                });
+                localStorage.removeItem('ENCCO_APP_STATE');
+                localStorage.removeItem('ENCCO_HISTORICO_2026');
+                localStorage.removeItem('ENCCO_HISTORICO_2027');
+                localStorage.removeItem('ENCCO_ATTENDANCE_MASTER_BACKUP');
+                localStorage.removeItem('ENCCO_LAST_BACKUP_TIME');
+                localStorage.removeItem('ENCCO_AUTH_USER');
+                localStorage.removeItem('ENCCO_AUTH_ROLE');
+                localStorage.removeItem('ENCCO_AUTH_TOKEN');
+                localStorage.removeItem('ENCCO_AUTH_BRIDGE');
+                localStorage.removeItem('ENCCO_AUTH_TIMESTAMP');
+                localStorage.removeItem('ENCCO_AUTH_REMEMBER');
+            }
         } catch(e) {}
         if (typeof window !== 'undefined' && window.location) {
             window.location.replace(baseUrl + '/index.html');
@@ -10012,11 +10063,9 @@ async function performLogout() {
         }
     } catch(e) {}
 
-    // 4. Guardar atómicamente en almacenamiento local
+    // 4. Limpieza de datos en memoria volátil (Cero persistencia de datos sensibles en almacenamiento local)
     try {
-        if (typeof saveStateToLocalStorage === 'function') {
-            saveStateToLocalStorage();
-        }
+        // No persistir datos sensibles en disco al cerrar sesión
     } catch(e) {}
 
     // 5. Desconectar listeners de EventSource y BroadcastChannel
@@ -23953,9 +24002,9 @@ window.saveCloudDatabaseConfig = typeof saveFirebaseDatabaseConfig === 'function
 window.toggleDbProviderFields = function() {};
 
 function exportDataBackupJSON() {
-    if (typeof canAccessBackupAndAudit === 'function' && !canAccessBackupAndAudit()) {
+    if (typeof canAccessBackup === 'function' && !canAccessBackup()) {
         if (typeof showToast === 'function') {
-            showToast("Acceso denegado: Esta función está reservada para Dirección, Secretaría o Superusuario.", "warning");
+            showToast("Acceso denegado: Esta función está reservada exclusivamente para Dirección y Administración.", "danger");
         }
         return;
     }
@@ -23978,9 +24027,9 @@ function exportDataBackupJSON() {
 window.exportDataBackupJSON = exportDataBackupJSON;
 
 async function importDataBackupJSON(e) {
-    if (typeof canAccessBackupAndAudit === 'function' && !canAccessBackupAndAudit()) {
+    if (typeof canAccessBackup === 'function' && !canAccessBackup()) {
         if (typeof showToast === 'function') {
-            showToast("Acceso denegado: La restauración de respaldos está restringida a Dirección, Secretaría o Superusuario.", "error");
+            showToast("Acceso denegado: La restauración de respaldos está restringida exclusivamente a Dirección y Administración.", "danger");
         }
         if (e && e.target) e.target.value = '';
         return;
@@ -26682,27 +26731,36 @@ async function saveStudentSubjectGradeAtomic(studentIdentifier, subjectIdentifie
             }
         }
 
-        // Actualizar caché de localStorage para este ciclo histórico
-        if (typeof localStorage !== 'undefined') {
+        // Actualizar memoria de sesión volátil (_sessionCache y sessionStorage) con cero persistencia en disco
+        const updateHistCache = (cacheObj) => {
+            if (!cacheObj) return;
+            if (!cacheObj.calificacionesSnapshot) cacheObj.calificacionesSnapshot = {};
+            cacheObj.calificacionesSnapshot[califKey] = califPayload;
+            const cIdx = (cacheObj.studentsSnapshot || []).findIndex(s => s && s.id === student.id);
+            if (cIdx !== -1) {
+                if (!cacheObj.studentsSnapshot[cIdx].grades) cacheObj.studentsSnapshot[cIdx].grades = {};
+                if (!cacheObj.studentsSnapshot[cIdx].gradebookDetails) cacheObj.studentsSnapshot[cIdx].gradebookDetails = {};
+                cacheObj.studentsSnapshot[cIdx].grades[subjectName] = student.grades[subjectName];
+                if (!cacheObj.studentsSnapshot[cIdx].gradebookDetails[subjectName]) cacheObj.studentsSnapshot[cIdx].gradebookDetails[subjectName] = {};
+                cacheObj.studentsSnapshot[cIdx].gradebookDetails[subjectName][uStr] = currentUnitDetails;
+            }
+        };
+
+        if (window.EnccoCycleArchiver && window.EnccoCycleArchiver._sessionCache && window.EnccoCycleArchiver._sessionCache[histCycle]) {
+            updateHistCache(window.EnccoCycleArchiver._sessionCache[histCycle]);
+        }
+        if (typeof sessionStorage !== 'undefined') {
             try {
-                const cacheRaw = localStorage.getItem(`ENCCO_HISTORICO_${histCycle}`);
-                if (cacheRaw) {
-                    const cacheObj = JSON.parse(cacheRaw);
-                    if (cacheObj) {
-                        if (!cacheObj.calificacionesSnapshot) cacheObj.calificacionesSnapshot = {};
-                        cacheObj.calificacionesSnapshot[califKey] = califPayload;
-                        const cIdx = (cacheObj.studentsSnapshot || []).findIndex(s => s && s.id === student.id);
-                        if (cIdx !== -1) {
-                            if (!cacheObj.studentsSnapshot[cIdx].grades) cacheObj.studentsSnapshot[cIdx].grades = {};
-                            if (!cacheObj.studentsSnapshot[cIdx].gradebookDetails) cacheObj.studentsSnapshot[cIdx].gradebookDetails = {};
-                            cacheObj.studentsSnapshot[cIdx].grades[subjectName] = student.grades[subjectName];
-                            if (!cacheObj.studentsSnapshot[cIdx].gradebookDetails[subjectName]) cacheObj.studentsSnapshot[cIdx].gradebookDetails[subjectName] = {};
-                            cacheObj.studentsSnapshot[cIdx].gradebookDetails[subjectName][uStr] = currentUnitDetails;
-                        }
-                        localStorage.setItem(`ENCCO_HISTORICO_${histCycle}`, JSON.stringify(cacheObj));
-                    }
+                const sRaw = sessionStorage.getItem(`ENCCO_HISTORICO_${histCycle}`);
+                if (sRaw) {
+                    const cacheObj = JSON.parse(sRaw);
+                    updateHistCache(cacheObj);
+                    sessionStorage.setItem(`ENCCO_HISTORICO_${histCycle}`, JSON.stringify(cacheObj));
                 }
-            } catch(cErr) {}
+            } catch(e) {}
+        }
+        if (typeof localStorage !== 'undefined') {
+            try { localStorage.removeItem(`ENCCO_HISTORICO_${histCycle}`); } catch(e) {}
         }
 
         if (typeof showToast === 'function') {
@@ -27054,29 +27112,38 @@ async function saveBulkStudentGradesAtomic(courseStudents, subjectIdentifier, un
                 console.warn("[Histórico Bulk] Error persistiendo notas:", hErr);
             }
         }
-        // Actualizar caché de localStorage para este ciclo histórico
-        if (typeof localStorage !== 'undefined') {
-            try {
-                const cacheRaw = localStorage.getItem(`ENCCO_HISTORICO_${histCycle}`);
-                if (cacheRaw) {
-                    const cacheObj = JSON.parse(cacheRaw);
-                    if (cacheObj) {
-                        if (!cacheObj.calificacionesSnapshot) cacheObj.calificacionesSnapshot = {};
-                        gradeRecords.forEach(item => {
-                            cacheObj.calificacionesSnapshot[item.compositeGradeKey] = item.gradePayload;
-                            const cIdx = (cacheObj.studentsSnapshot || []).findIndex(s => s && s.id === item.student.id);
-                            if (cIdx !== -1) {
-                                if (!cacheObj.studentsSnapshot[cIdx].grades) cacheObj.studentsSnapshot[cIdx].grades = {};
-                                if (!cacheObj.studentsSnapshot[cIdx].gradebookDetails) cacheObj.studentsSnapshot[cIdx].gradebookDetails = {};
-                                cacheObj.studentsSnapshot[cIdx].grades[effectiveSubject] = item.student.grades[effectiveSubject];
-                                if (!cacheObj.studentsSnapshot[cIdx].gradebookDetails[effectiveSubject]) cacheObj.studentsSnapshot[cIdx].gradebookDetails[effectiveSubject] = {};
-                                cacheObj.studentsSnapshot[cIdx].gradebookDetails[effectiveSubject][effectiveUnit] = item.student.gradebookDetails[effectiveSubject][effectiveUnit];
-                            }
-                        });
-                        localStorage.setItem(`ENCCO_HISTORICO_${histCycle}`, JSON.stringify(cacheObj));
-                    }
+        // Actualizar memoria de sesión volátil (_sessionCache y sessionStorage) con cero persistencia en disco
+        const updateHistCacheBulk = (cacheObj) => {
+            if (!cacheObj) return;
+            if (!cacheObj.calificacionesSnapshot) cacheObj.calificacionesSnapshot = {};
+            gradeRecords.forEach(item => {
+                cacheObj.calificacionesSnapshot[item.compositeGradeKey] = item.gradePayload;
+                const cIdx = (cacheObj.studentsSnapshot || []).findIndex(s => s && s.id === item.student.id);
+                if (cIdx !== -1) {
+                    if (!cacheObj.studentsSnapshot[cIdx].grades) cacheObj.studentsSnapshot[cIdx].grades = {};
+                    if (!cacheObj.studentsSnapshot[cIdx].gradebookDetails) cacheObj.studentsSnapshot[cIdx].gradebookDetails = {};
+                    cacheObj.studentsSnapshot[cIdx].grades[effectiveSubject] = item.student.grades[effectiveSubject];
+                    if (!cacheObj.studentsSnapshot[cIdx].gradebookDetails[effectiveSubject]) cacheObj.studentsSnapshot[cIdx].gradebookDetails[effectiveSubject] = {};
+                    cacheObj.studentsSnapshot[cIdx].gradebookDetails[effectiveSubject][effectiveUnit] = item.student.gradebookDetails[effectiveSubject][effectiveUnit];
                 }
-            } catch(cErr) {}
+            });
+        };
+
+        if (window.EnccoCycleArchiver && window.EnccoCycleArchiver._sessionCache && window.EnccoCycleArchiver._sessionCache[histCycle]) {
+            updateHistCacheBulk(window.EnccoCycleArchiver._sessionCache[histCycle]);
+        }
+        if (typeof sessionStorage !== 'undefined') {
+            try {
+                const sRaw = sessionStorage.getItem(`ENCCO_HISTORICO_${histCycle}`);
+                if (sRaw) {
+                    const cacheObj = JSON.parse(sRaw);
+                    updateHistCacheBulk(cacheObj);
+                    sessionStorage.setItem(`ENCCO_HISTORICO_${histCycle}`, JSON.stringify(cacheObj));
+                }
+            } catch(e) {}
+        }
+        if (typeof localStorage !== 'undefined') {
+            try { localStorage.removeItem(`ENCCO_HISTORICO_${histCycle}`); } catch(e) {}
         }
         return true;
     }
@@ -45568,6 +45635,12 @@ window.selectAllPromotedStudents = selectAllPromotedStudents;
 window.executeCyclePromotion = executeCyclePromotion;
 window.printCurrentSectionSireReport = printCurrentSectionSireReport;
 function downloadCyclePreArchivingBackup() {
+    if (typeof canAccessBackup === 'function' && !canAccessBackup()) {
+        if (typeof showToast === 'function') {
+            showToast('Acceso denegado: La descarga de respaldos es potestad exclusiva de Dirección y Administración.', 'danger');
+        }
+        return false;
+    }
     if (!checkPromotionPermissions()) return false;
     if (window.EnccoCycleArchiver && typeof window.EnccoCycleArchiver.exportCycleBackupFile === 'function') {
         return window.EnccoCycleArchiver.exportCycleBackupFile();
@@ -52096,10 +52169,10 @@ if (document.readyState === 'loading') {
 // ==========================================================================
 async function exportDatabaseBackupJSON() {
     const currentRole = (STATE.currentRole || (STATE.currentUser && STATE.currentUser.role) || '').toLowerCase();
-    const isDirectorOrAdmin = ['director', 'admin', 'super_usuario'].includes(currentRole);
+    const isDirectorOrAdmin = (typeof canAccessBackup === 'function') ? canAccessBackup(currentRole) : ['director', 'admin', 'super_usuario'].includes(currentRole);
     if (!isDirectorOrAdmin) {
         if (typeof showToast === 'function') {
-            showToast('Acceso restringido: La copia de seguridad es exclusiva para Dirección.', 'danger');
+            showToast('Acceso restringido: La copia de seguridad es exclusiva para Dirección y Administración.', 'danger');
         }
         return;
     }

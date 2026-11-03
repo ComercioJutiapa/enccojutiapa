@@ -184,9 +184,10 @@ assert.ok(archiver, 'EnccoCycleArchiver debe estar inicializado');
     assert.strictEqual(sandbox.window.STATE.students[0].grades['Finanzas Públicas'][3], 85, 'Nota en memoria debe ser 85');
     assert.strictEqual(sandbox.window.STATE.students[0].gradebookDetails['Finanzas Públicas']['4'].total, 85, 'Gradebook en memoria debe ser 85');
 
-    // Verificar que el caché de localStorage se actualizó con la nueva nota
-    const cached2026 = JSON.parse(mockStorage['ENCCO_HISTORICO_2026']);
-    assert.strictEqual(cached2026.studentsSnapshot[0].grades['Finanzas Públicas'][3], 85, 'Caché local debe tener 85');
+    // Verificar que el caché de memoria volátil/sessionStorage se actualizó con la nueva nota
+    const cached2026 = archiver._sessionCache['2026'] || JSON.parse(mockStorage['session_ENCCO_HISTORICO_2026']);
+    assert.strictEqual(cached2026.studentsSnapshot[0].grades['Finanzas Públicas'][3], 85, 'Caché de sesión debe tener 85');
+    assert.strictEqual(mockStorage['ENCCO_HISTORICO_2026'], undefined, 'No debe persistir en localStorage');
     console.log('  ✅ Persistencia histórica y aislamiento del ciclo 2027 comprobados al 100%.');
 
     // 3. Salir de modo histórico y verificar restauración de 2027
