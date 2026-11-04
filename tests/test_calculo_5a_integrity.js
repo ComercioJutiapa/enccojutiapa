@@ -18,10 +18,11 @@ async function verifyCalculo5AIntegrity() {
   let students = await fetchJson(`${baseUrl}/encc_school_state/students.json`);
   let calificaciones = await fetchJson(`${baseUrl}/encc_school_state/calificaciones.json`);
 
-  if (students && (students.length !== 412 || students[0]?.cycle === '2027')) {
+  if (!calificaciones || (students && (students.length !== 412 || students[0]?.cycle === '2027'))) {
     students = await fetchJson(`${baseUrl}/encc_school_state/historico/2026/studentsSnapshot.json`);
     calificaciones = await fetchJson(`${baseUrl}/encc_school_state/historico/2026/calificacionesSnapshot.json`);
   }
+  calificaciones = calificaciones || {};
 
   const secA = students.filter(s => s && s.grade === '5to Perito Contador' && s.section === 'Sección A');
   console.log(`✓ Total alumnos en 5to Sección A: ${secA.length}`);

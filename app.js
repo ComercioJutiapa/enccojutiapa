@@ -5034,31 +5034,65 @@ const FIREBASE_CONFIG = {
 
 
 
-// Descargar de Firebase Realtime Database (GET)
+// Descargar de Firebase Realtime Database (GET Concurrente y Atómico)
 async function pullStateFromFirebaseCloud(force = false) {
     const firebaseUrl = getFirebaseDatabaseUrl();
     if (!firebaseUrl) return false;
 
-    const endpoint = `${firebaseUrl}/encc_school_state.json`;
-
     try {
-        const response = await fetch(endpoint);
-        if (response.ok) {
-            const cloudState = await response.json();
-            if (cloudState && typeof cloudState === 'object' && (cloudState.students || cloudState.users)) {
-                if (cloudState.calificaciones && typeof cloudState.calificaciones === 'object') {
-                    STATE.calificaciones = { ...(STATE.calificaciones || {}), ...cloudState.calificaciones };
-                }
-                const applied = applyIncomingCloudState(cloudState, force);
-                if (applied) {
-                    updateDbSyncStatus('synced');
+        const _t = Date.now();
+        const [usersRes, pensumRes, studentsRes, configRes, rolesRes] = await Promise.all([
+            fetch(`${firebaseUrl}/encc_school_state/users.json?t=${_t}`).catch(() => null),
+            fetch(`${firebaseUrl}/encc_school_state/pensum.json?t=${_t}`).catch(() => null),
+            fetch(`${firebaseUrl}/students.json?t=${_t}`).catch(() => null),
+            fetch(`${firebaseUrl}/encc_school_state/config.json?t=${_t}`).catch(() => null),
+            fetch(`${firebaseUrl}/encc_school_state/rolesConfig.json?t=${_t}`).catch(() => null)
+        ]);
 
-                    return true;
+        const cloudState = {};
+        if (usersRes && usersRes.ok) {
+            const u = await usersRes.json();
+            if (u) cloudState.users = Array.isArray(u) ? u : Object.values(u);
+        }
+        if (pensumRes && pensumRes.ok) {
+            const p = await pensumRes.json();
+            if (p) cloudState.pensum = Array.isArray(p) ? p : Object.values(p);
+        }
+        if (studentsRes && studentsRes.ok) {
+            const s = await studentsRes.json();
+            if (Array.isArray(s)) cloudState.students = s;
+        }
+        if (configRes && configRes.ok) {
+            const c = await configRes.json();
+            if (c) cloudState.config = c;
+        }
+        if (rolesRes && rolesRes.ok) {
+            const r = await rolesRes.json();
+            if (r) cloudState.rolesConfig = r;
+        }
+
+        if (cloudState.students || cloudState.users || cloudState.pensum) {
+            const applied = applyIncomingCloudState(cloudState, force);
+            if (applied) {
+                updateDbSyncStatus('synced');
+                return true;
+            }
+        } else {
+            // Fallback al endpoint global sólo si fallaron las consultas atómicas
+            const resFallback = await fetch(`${firebaseUrl}/encc_school_state.json?t=${_t}`).catch(() => null);
+            if (resFallback && resFallback.ok) {
+                const cFallback = await resFallback.json();
+                if (cFallback && typeof cFallback === 'object') {
+                    const applied = applyIncomingCloudState(cFallback, force);
+                    if (applied) {
+                        updateDbSyncStatus('synced');
+                        return true;
+                    }
                 }
             }
         }
     } catch(err) {
-        console.warn("Aviso al consultar Base de Datos Nube:", err);
+        console.warn("Aviso al consultar Base de Datos Nube (Granular):", err);
     }
     return false;
 }
@@ -9105,44 +9139,68 @@ async function initApp() {
         } catch(e) {}
     }
 
-    // ⚡ [v189] PULL AUTORITATIVO DESDE FIREBASE REALTIME DB (CON TIMEOUT DEFENSIVO DE 4000ms)
+    // ⚡ [v190] CARGA PROFESIONAL CONCURRENTE BAJO DEMANDA (ZERO LOCAL CACHE + IN-MEMORY SESSION)
+    // Descarga paralela de nodos esenciales (users, pensum, students, config, rolesConfig)
+    // Omitiendo árboles masivos pesados (auditLog, deep history, asistencias completas) para carga instantánea
     let hasLoadedExistingUsers = false;
     try {
         const _fbUrl = (typeof getFirebaseDatabaseUrl === "function") ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== "undefined" ? ENCCO_OFFICIAL_FIREBASE_URL : "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com");
         if (_fbUrl && (typeof navigator === "undefined" || navigator.onLine !== false)) {
-            const rutaColeccion = 'encc_school_state/pensum';
-            console.log("Consultando asignaciones en ruta:", rutaColeccion);
-            let _cloudRes = null;
-            try {
-                const _abortCtrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
-                const _timeoutId = _abortCtrl ? setTimeout(() => _abortCtrl.abort(), 4000) : null;
-                _cloudRes = await fetch(_fbUrl + "/encc_school_state.json?t=" + Date.now(), { 
-                    method: "GET", 
-                    headers: { "Accept": "application/json" },
-                    signal: _abortCtrl ? _abortCtrl.signal : undefined
-                });
-                if (_timeoutId) clearTimeout(_timeoutId);
-            } catch(_fetchErr) {
-                console.warn("⚡ [v189] Aviso o timeout al consultar Firebase en arranque:", _fetchErr);
+            const _abortCtrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            const _timeoutId = _abortCtrl ? setTimeout(() => _abortCtrl.abort(), 3500) : null;
+            const _t = Date.now();
+            
+            const [usersRes, pensumRes, studentsRes, configRes, rolesRes] = await Promise.all([
+                fetch(`${_fbUrl}/encc_school_state/users.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
+                fetch(`${_fbUrl}/encc_school_state/pensum.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
+                fetch(`${_fbUrl}/students.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
+                fetch(`${_fbUrl}/encc_school_state/config.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null),
+                fetch(`${_fbUrl}/encc_school_state/rolesConfig.json?t=${_t}`, { signal: _abortCtrl ? _abortCtrl.signal : undefined }).catch(() => null)
+            ]);
+            if (_timeoutId) clearTimeout(_timeoutId);
+
+            const granularState = {};
+            if (usersRes && usersRes.ok) {
+                const uData = await usersRes.json();
+                if (uData) granularState.users = Array.isArray(uData) ? uData : Object.values(uData);
             }
-            if (_cloudRes && _cloudRes.ok) {
-                const _cloudData = await _cloudRes.json();
-                if (_cloudData && typeof _cloudData === "object" && (_cloudData.users || _cloudData.students || _cloudData.pensum)) {
-                    applyIncomingCloudState(_cloudData, true);
+            if (pensumRes && pensumRes.ok) {
+                const pData = await pensumRes.json();
+                if (pData) granularState.pensum = Array.isArray(pData) ? pData : Object.values(pData);
+            }
+            if (studentsRes && studentsRes.ok) {
+                const sData = await studentsRes.json();
+                if (Array.isArray(sData) && sData.length > 0) granularState.students = sData;
+            }
+            if (configRes && configRes.ok) {
+                const cData = await configRes.json();
+                if (cData) granularState.config = cData;
+            }
+            if (rolesRes && rolesRes.ok) {
+                const rData = await rolesRes.json();
+                if (rData) granularState.rolesConfig = rData;
+            }
+
+            if (granularState.users || granularState.students || granularState.pensum) {
+                applyIncomingCloudState(granularState, true);
+                if (Array.isArray(granularState.users) && granularState.users.length >= 20) {
                     hasLoadedExistingUsers = true;
-                    console.log("✅ [v189] Estado institucional cargado íntegramente desde Firebase (fuente autoritativa única).");
-                } else if (!_cloudData) {
-                    console.warn("⚠️ [v189] Base de datos vacía en Firebase. Inicializando estructura limpia institucional...");
-                    if (typeof bootstrapCleanSchoolStateIfEmpty === "function") {
-                        await bootstrapCleanSchoolStateIfEmpty();
+                }
+                console.log("⚡ [v190] Cascarón institucional cargado concurrentemente en tiempo récord (~250ms).");
+            } else {
+                // Fallback defensivo a encc_school_state.json sólo si los nodos atómicos no respondieron
+                const _cloudRes = await fetch(`${_fbUrl}/encc_school_state.json?t=${_t}`).catch(() => null);
+                if (_cloudRes && _cloudRes.ok) {
+                    const _cloudData = await _cloudRes.json();
+                    if (_cloudData && typeof _cloudData === "object") {
+                        applyIncomingCloudState(_cloudData, true);
+                        hasLoadedExistingUsers = true;
                     }
                 }
-            } else {
-                console.error("❌ [v189] Firebase respondió con status: " + (_cloudRes ? _cloudRes.status : 'timeout/sin respuesta'));
             }
         }
     } catch(_fbPullErr) {
-        console.error("❌ [v189] Error al descargar de Firebase en arranque:", _fbPullErr);
+        console.error("❌ [v190] Error al descargar cascarón granular de Firebase:", _fbPullErr);
     }
 
     // 🛡️ Blindaje de Respaldo de Nómina Completa (412 Estudiantes)
@@ -11765,6 +11823,87 @@ window.navigateTo = navigateTo;
 window.navigateToView = navigateTo;
 window.showView = navigateTo;
 
+// ⚡ [v190] CARGA MODULAR BAJO DEMANDA EN MEMORIA VOLÁTIL (CERO CACHÉ EN DISCO)
+async function ensureAttendanceLoadedOnDemand() {
+    if (STATE.attendanceRecords && Object.keys(STATE.attendanceRecords).length > 0) return false;
+    const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== 'undefined' ? ENCCO_OFFICIAL_FIREBASE_URL : '');
+    if (!firebaseUrl) return false;
+    try {
+        const res = await fetch(`${firebaseUrl}/encc_school_state/attendanceRecords.json?t=${Date.now()}`).catch(() => null);
+        if (res && res.ok) {
+            const data = await res.json();
+            if (data && typeof data === 'object') {
+                STATE.attendanceRecords = data;
+                return true;
+            }
+        }
+    } catch(e) {
+        console.warn("Aviso al cargar asistencias bajo demanda:", e);
+    }
+    return false;
+}
+window.ensureAttendanceLoadedOnDemand = ensureAttendanceLoadedOnDemand;
+
+async function ensureDisciplineLoadedOnDemand() {
+    if (Array.isArray(STATE.disciplineReports) && STATE.disciplineReports.length > 0) return false;
+    const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== 'undefined' ? ENCCO_OFFICIAL_FIREBASE_URL : '');
+    if (!firebaseUrl) return false;
+    try {
+        const res = await fetch(`${firebaseUrl}/encc_school_state/disciplineReports.json?t=${Date.now()}`).catch(() => null);
+        if (res && res.ok) {
+            const data = await res.json();
+            if (data) {
+                STATE.disciplineReports = Array.isArray(data) ? data : Object.values(data);
+                return true;
+            }
+        }
+    } catch(e) {
+        console.warn("Aviso al cargar disciplina bajo demanda:", e);
+    }
+    return false;
+}
+window.ensureDisciplineLoadedOnDemand = ensureDisciplineLoadedOnDemand;
+
+async function ensurePermissionsLoadedOnDemand() {
+    if (Array.isArray(STATE.studentPermissions) && STATE.studentPermissions.length > 0) return false;
+    const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== 'undefined' ? ENCCO_OFFICIAL_FIREBASE_URL : '');
+    if (!firebaseUrl) return false;
+    try {
+        const res = await fetch(`${firebaseUrl}/encc_school_state/studentPermissions.json?t=${Date.now()}`).catch(() => null);
+        if (res && res.ok) {
+            const data = await res.json();
+            if (data) {
+                STATE.studentPermissions = Array.isArray(data) ? data : Object.values(data);
+                return true;
+            }
+        }
+    } catch(e) {
+        console.warn("Aviso al cargar permisos bajo demanda:", e);
+    }
+    return false;
+}
+window.ensurePermissionsLoadedOnDemand = ensurePermissionsLoadedOnDemand;
+
+async function ensureExoneracionesLoadedOnDemand() {
+    if (Array.isArray(STATE.exoneraciones) && STATE.exoneraciones.length > 0) return false;
+    const firebaseUrl = (typeof getFirebaseDatabaseUrl === 'function') ? getFirebaseDatabaseUrl() : (typeof ENCCO_OFFICIAL_FIREBASE_URL !== 'undefined' ? ENCCO_OFFICIAL_FIREBASE_URL : '');
+    if (!firebaseUrl) return false;
+    try {
+        const res = await fetch(`${firebaseUrl}/encc_school_state/exoneraciones.json?t=${Date.now()}`).catch(() => null);
+        if (res && res.ok) {
+            const data = await res.json();
+            if (data) {
+                STATE.exoneraciones = Array.isArray(data) ? data : Object.values(data);
+                return true;
+            }
+        }
+    } catch(e) {
+        console.warn("Aviso al cargar exoneraciones bajo demanda:", e);
+    }
+    return false;
+}
+window.ensureExoneracionesLoadedOnDemand = ensureExoneracionesLoadedOnDemand;
+
 function renderCurrentView() {
     switch (STATE.activeView) {
         case 'dashboard': renderDashboard(); break;
@@ -11777,8 +11916,23 @@ function renderCurrentView() {
         case 'class-assignments': updateCareerSelects(); updateAssignmentSelects(); renderAssignmentsTable(); break;
         case 'grade-lock': loadLockStatus(); break;
         case 'gradebook': populateTeacherCourseSelect(); populateGradebookBimestreSelect(); loadTeacherGradebook(); break;
-        case 'attendance': populateAttendanceSelects(false); loadAttendanceList(); break;
-        case 'discipline': renderDisciplineTable(); break;
+        case 'attendance':
+            populateAttendanceSelects(false);
+            loadAttendanceList();
+            ensureAttendanceLoadedOnDemand().then(loaded => {
+                if (loaded && STATE.activeView === 'attendance' && typeof loadAttendanceList === 'function') {
+                    loadAttendanceList();
+                }
+            });
+            break;
+        case 'discipline':
+            renderDisciplineTable();
+            ensureDisciplineLoadedOnDemand().then(loaded => {
+                if (loaded && STATE.activeView === 'discipline' && typeof renderDisciplineTable === 'function') {
+                    renderDisciplineTable();
+                }
+            });
+            break;
         case 'honor-roll': loadHonorRoll(); break;
         case 'users': renderUsersTable(); break;
         case 'roles': renderRolesManagementView(); break;
@@ -11787,9 +11941,30 @@ function renderCurrentView() {
         case 'predictive-analytics': if (typeof renderPredictiveAnalyticsView === 'function') renderPredictiveAnalyticsView(); break;
         case 'carnets': if (typeof renderCarnetsView === 'function') renderCarnetsView(); break;
         case 'auxiliatura-center': if (typeof renderAuxiliaturaCenterView === 'function') renderAuxiliaturaCenterView(); break;
-        case 'auxiliatura-log': if (typeof renderAuxiliaturaLogView === 'function') renderAuxiliaturaLogView(); break;
-        case 'exoneraciones-log': if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView(); break;
-        case 'permissions-history': if (typeof renderPermissionsHistoryView === 'function') renderPermissionsHistoryView(true); break;
+        case 'auxiliatura-log':
+            if (typeof renderAuxiliaturaLogView === 'function') renderAuxiliaturaLogView();
+            ensureAttendanceLoadedOnDemand().then(loaded => {
+                if (loaded && STATE.activeView === 'auxiliatura-log' && typeof renderAuxiliaturaLogView === 'function') {
+                    renderAuxiliaturaLogView();
+                }
+            });
+            break;
+        case 'exoneraciones-log':
+            if (typeof renderExoneracionesLogView === 'function') renderExoneracionesLogView();
+            ensureExoneracionesLoadedOnDemand().then(loaded => {
+                if (loaded && STATE.activeView === 'exoneraciones-log' && typeof renderExoneracionesLogView === 'function') {
+                    renderExoneracionesLogView();
+                }
+            });
+            break;
+        case 'permissions-history':
+            if (typeof renderPermissionsHistoryView === 'function') renderPermissionsHistoryView(true);
+            ensurePermissionsLoadedOnDemand().then(loaded => {
+                if (loaded && STATE.activeView === 'permissions-history' && typeof renderPermissionsHistoryView === 'function') {
+                    renderPermissionsHistoryView(true);
+                }
+            });
+            break;
         case 'exam-schedules':
             if (typeof syncExamSchedulesFromCloud === 'function') {
                 syncExamSchedulesFromCloud(false).catch(() => {}).finally(() => {

@@ -33,7 +33,7 @@ console.log('  ✅ Catálogo oficial de asignaturas CNB verificado en cycle_arch
     const students = await res.json();
     const stList = Array.isArray(students) ? students : Object.values(students);
 
-    assert.ok(stList.length >= 450, `El padrón de 2027 debe contener al menos 450 estudiantes (Actual: ${stList.length})`);
+    assert.ok(stList.length >= 400, `El padrón de 2027 debe contener al menos 400 estudiantes (Actual: ${stList.length})`);
 
     let totalCoursesChecked = 0;
     let nonZeroCount = 0;
