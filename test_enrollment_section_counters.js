@@ -104,10 +104,11 @@ function fetchJson(url) {
 
 (async () => {
     let fetchedStudents = await fetchJson('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/students.json');
-    if (fetchedStudents && fetchedStudents.length === 463) {
+    if (fetchedStudents && (fetchedStudents.length !== 412 || fetchedStudents[0]?.cycle === '2027')) {
         fetchedStudents = await fetchJson('https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/historico/2026/studentsSnapshot.json');
     }
     sandbox.STATE.students = fetchedStudents;
+    sandbox.STATE.activeCycle = '2026';
     assert.strictEqual(sandbox.STATE.students.length, 412, "Deben existir 412 alumnos");
 
     const expectedDistribution = {

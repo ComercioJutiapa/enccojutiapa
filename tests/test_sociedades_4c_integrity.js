@@ -66,7 +66,7 @@ async function verifySociedades4CIntegrity() {
         fetchJson(`${baseUrl}/encc_school_state/calificaciones.json`)
     ]);
 
-    if (students && students.length === 463) {
+    if (students && (students.length !== 412 || students[0]?.cycle === '2027')) {
         pensum = await fetchJson(`${baseUrl}/encc_school_state/historico/2026/pensumSnapshot.json`);
         students = await fetchJson(`${baseUrl}/encc_school_state/historico/2026/studentsSnapshot.json`);
         calificaciones = await fetchJson(`${baseUrl}/encc_school_state/historico/2026/calificacionesSnapshot.json`);

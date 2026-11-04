@@ -41,7 +41,8 @@ const CRITICAL_SUITES = [
     'tests/test_zero_disk_footprint_and_respaldos_rbac.js',
     'tests/test_cycle_2027_zero_grades.js',
     'tests/test_personal_code_uppercase_normalization.js',
-    'tests/test_student_deletion_rbac_and_cloud_sync.js'
+    'tests/test_student_deletion_rbac_and_cloud_sync.js',
+    'tests/test_cycle_data_isolation.js'
 ];
 
 console.log('================================================================================');

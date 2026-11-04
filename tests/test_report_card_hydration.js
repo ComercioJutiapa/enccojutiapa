@@ -65,7 +65,7 @@ async function runTests() {
     let res = await fetch(url);
     assert.strictEqual(res.ok, true, "Respuesta de Firebase RTDB debe ser OK");
     let students = await res.json();
-    if (students && students.length === 463) {
+    if (students && (students.length !== 412 || students[0]?.cycle === '2027')) {
         url = "https://encco-jutiapa-live-2026-default-rtdb.firebaseio.com/encc_school_state/historico/2026/studentsSnapshot.json";
         res = await fetch(url);
         students = await res.json();

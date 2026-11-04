@@ -413,6 +413,8 @@
                         cloned.section = normalized.section;
                         cloned.gradeCode = normalized.gradeCode;
                         cloned.gradeLabel = normalized.gradeLabel;
+                        cloned.cycle = targetNewCycle;
+                        cloned.academicCycle = targetNewCycle;
                         cloned.status = (override && override.status === 'Pendiente') ? 'Pendiente' : 'Activo';
                         cloned.statusSire = 'INSCRITO';
                         cloned.active = true;
@@ -715,7 +717,14 @@
                 window.STATE.viewingHistoricalCycle = targetCycle;
                 window.STATE.activeCycle = targetCycle;
                 window.STATE.academicCycle = targetCycle;
-                window.STATE.students = JSON.parse(JSON.stringify(histStudents));
+                const cleanHistStudents = JSON.parse(JSON.stringify(histStudents)).map(s => {
+                    if (s) {
+                        s.cycle = targetCycle;
+                        s.academicCycle = targetCycle;
+                    }
+                    return s;
+                });
+                window.STATE.students = cleanHistStudents;
                 window.STATE.attendanceRecords = JSON.parse(JSON.stringify(histAttendance));
                 window.STATE.disciplineReports = JSON.parse(JSON.stringify(histDiscipline));
                 window.STATE.studentPermissions = JSON.parse(JSON.stringify(histPermissions));
@@ -789,13 +798,20 @@
                 if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem('ENCCO_STATE_BEFORE_HISTORICAL');
             } else {
                 const fbUrl = this.getFirebaseUrl();
-                fetch(`${fbUrl}/encc_school_state/students.json`).then(r => r.json()).then(cloudStudents => {
+                Promise.all([
+                    fetch(`${fbUrl}/encc_school_state/students.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${fbUrl}/encc_school_state/calificaciones.json`).then(r => r.json()).catch(() => null),
+                    fetch(`${fbUrl}/encc_school_state/attendanceRecords.json`).then(r => r.json()).catch(() => null)
+                ]).then(([cloudStudents, cloudCalif, cloudAtt]) => {
                     if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
                         window.STATE.students = cloudStudents;
-                        if (typeof renderStudentsTable === 'function') renderStudentsTable();
-                        if (typeof renderBoletasTable === 'function') renderBoletasTable();
-                        if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
                     }
+                    window.STATE.calificaciones = cloudCalif || {};
+                    window.STATE.attendanceRecords = cloudAtt || {};
+                    if (typeof renderStudentsTable === 'function') renderStudentsTable();
+                    if (typeof renderBoletasTable === 'function') renderBoletasTable();
+                    if (typeof loadTeacherGradebook === 'function') loadTeacherGradebook();
+                    if (typeof renderDashboard === 'function') renderDashboard();
                 }).catch(() => {});
                 window.STATE.activeCycle = '2027';
                 window.STATE.academicCycle = '2027';

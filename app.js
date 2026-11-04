@@ -1007,8 +1007,17 @@ function ensureOfficialCycles() {
                 id: "cyc-2026",
                 name: "2026",
                 year: "2026",
-                status: "Activo",
+                status: "Histórico",
+                isArchived: true,
                 description: "Ciclo Escolar Oficial MINEDUC 2026"
+            },
+            {
+                id: "cyc-2027",
+                name: "2027",
+                year: "2027",
+                status: "Activo",
+                isArchived: false,
+                description: "Ciclo Escolar Oficial 2027"
             }
         ];
     }
@@ -1017,33 +1026,49 @@ function ensureOfficialCycles() {
     STATE.cycles.forEach(c => {
         const yr = (c.year || c.name || '').toString().match(/\d{4}/);
         c.year = yr ? yr[0] : '2026';
-        // Normalizar name al a?o limpio para consistencia total en selectores
         if (c.name.includes('Ciclo')) {
             c.name = c.year;
         }
+        if (c.name === '2026') {
+            c.status = (STATE.activeCycle === '2026' && !STATE.isHistoricalReadOnlyMode) ? 'Activo' : 'Histórico';
+            c.isArchived = (c.status === 'Histórico');
+        }
     });
 
-    // Garantizar que exista el ciclo 2026
+    // Garantizar que existan los ciclos 2026 y 2027
     const has2026 = STATE.cycles.some(c => c.name === '2026' || c.year === '2026');
     if (!has2026) {
         STATE.cycles.unshift({
             id: "cyc-2026",
             name: "2026",
             year: "2026",
-            status: "Activo",
+            status: "Histórico",
+            isArchived: true,
             description: "Ciclo Escolar Oficial MINEDUC 2026"
+        });
+    }
+
+    const has2027 = STATE.cycles.some(c => c.name === '2027' || c.year === '2027');
+    if (!has2027) {
+        STATE.cycles.push({
+            id: "cyc-2027",
+            name: "2027",
+            year: "2027",
+            status: "Activo",
+            isArchived: false,
+            description: "Ciclo Escolar Oficial 2027"
         });
     }
 
     // Normalizar ciclo activo
     if (!STATE.activeCycle || STATE.activeCycle.includes('Ciclo')) {
         const yr = (STATE.activeCycle || '').toString().match(/\d{4}/);
-        STATE.activeCycle = yr ? yr[0] : '2026';
+        STATE.activeCycle = yr ? yr[0] : '2027';
     }
 
     const activeObj = STATE.cycles.find(c => c.name === STATE.activeCycle || c.year === STATE.activeCycle);
     if (!activeObj && STATE.cycles.length > 0) {
-        STATE.activeCycle = STATE.cycles[0].name;
+        STATE.activeCycle = STATE.cycles[STATE.cycles.length - 1].name;
     }
 }
 window.ensureOfficialCycles = ensureOfficialCycles;
@@ -2239,6 +2264,13 @@ const EnccoCloudSync = {
     async patchNode(nodeName, partialData) {
         if (!nodeName || typeof partialData !== 'object') return false;
 
+        // 🛡️ GUARDA ESTRICTA DE MODO HISTÓRICO (SOLO LECTURA):
+        // Prohibido alterar la base de datos activa desde una vista histórica
+        if (typeof STATE !== 'undefined' && STATE && (STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle)) {
+            console.warn(`🛡️ [EnccoCloudSync.patchNode] Escritura bloqueada en /${nodeName}: modo histórico activo (${STATE.historicalViewingCycle || STATE.activeCycle}).`);
+            return false;
+        }
+
         // 🛡️ GUARDA ESTRICTA DE ASISTENCIAS: Prohibido vaciar o resetear registros de asistencia
         if ((nodeName === 'attendanceRecords' || nodeName.startsWith('attendanceRecords')) && (!partialData || typeof partialData !== 'object' || Object.keys(partialData).length === 0)) {
             console.warn(`🛡️ [EnccoCloudSync.patchNode] Bloqueado intento de vaciar asistencias con objeto vacío.`);
@@ -2334,6 +2366,13 @@ const EnccoCloudSync = {
 
     async syncNode(nodeName, data) {
         if (!nodeName) return false;
+
+        // 🛡️ GUARDA ESTRICTA DE MODO HISTÓRICO (SOLO LECTURA):
+        // Prohibido alterar la base de datos activa desde una vista histórica
+        if (typeof STATE !== 'undefined' && STATE && (STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle)) {
+            console.warn(`🛡️ [EnccoCloudSync.syncNode] Escritura bloqueada en /${nodeName}: modo histórico activo (${STATE.historicalViewingCycle || STATE.activeCycle}).`);
+            return false;
+        }
         if ((nodeName === 'students' || nodeName.startsWith('students')) && (!Array.isArray(data) || data.length < 50)) {
             console.warn(`🛡️ [EnccoCloudSync] Intento de sincronizar colección de estudiantes truncada (${Array.isArray(data) ? data.length : typeof data}). Operación cancelada para proteger integridad.`);
             return false;
@@ -5294,10 +5333,12 @@ function initFirebaseRealtimeConnection() {
                         }
                         if (incomingList && incomingList.length > 0) {
                             const isHistoryActive = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
-                            if (!isHistoryActive) {
-                                const delSet = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
-                                incomingList = incomingList.filter(s => s && s.id && !delSet.has(s.id) && (!s.personalCode || !delSet.has(s.personalCode)) && (!s.carne || !delSet.has(s.carne)));
+                            if (isHistoryActive) {
+                                // 🛡️ Modo histórico activo: ignorar ingesta en vivo del ciclo activo para no alterar el historial
+                                return;
                             }
+                            const delSet = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
+                            incomingList = incomingList.filter(s => s && s.id && !delSet.has(s.id) && (!s.personalCode || !delSet.has(s.personalCode)) && (!s.carne || !delSet.has(s.carne)));
                             if (!window._rtdbStudentIndexMap) window._rtdbStudentIndexMap = new Map();
                             if (!window._rtdbIndexToIdMap) window._rtdbIndexToIdMap = new Map();
                             incomingList.forEach((st, idx) => {
@@ -5361,6 +5402,8 @@ function initFirebaseRealtimeConnection() {
                             if (typeof renderExoneracionesLogView === 'function' && STATE.activeView === 'exoneraciones-log') renderExoneracionesLogView();
                         }
                     } else if (cleanPath.startsWith('students/')) {
+                        const isHistoryActive = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
+                        if (isHistoryActive) return;
                         const subParts = cleanPath.split('/');
                         const rtdbIdx = parseInt(subParts[1]);
                         let targetStudent = null;
@@ -5430,6 +5473,8 @@ function initFirebaseRealtimeConnection() {
                             if (typeof renderExoneracionesLogView === 'function' && STATE.activeView === 'exoneraciones-log') renderExoneracionesLogView();
                         }
                     } else if (cleanPath === 'attendanceRecords' || cleanPath.startsWith('attendanceRecords/')) {
+                        const isHistoryActive = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
+                        if (isHistoryActive) return;
                         if (nodeData && typeof nodeData === 'object') {
                             if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
                             const dirtyMap = window._localDirtyAttendanceCells || {};
@@ -5515,12 +5560,16 @@ function initFirebaseRealtimeConnection() {
                             }
                         }
                     } else if (cleanPath === 'disciplineReports') {
+                        const isHistoryActive = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
+                        if (isHistoryActive) return;
                         if (Array.isArray(nodeData)) {
                             const deletedDisc = Array.isArray(STATE.deletedDisciplineIds) ? new Set(STATE.deletedDisciplineIds) : new Set();
                             STATE.disciplineReports = nodeData.filter(d => d && d.id && !deletedDisc.has(d.id));
                             if (typeof renderDisciplineTable === 'function') renderDisciplineTable();
                         }
                     } else if (cleanPath === 'studentPermissions') {
+                        const isHistoryActive = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
+                        if (isHistoryActive) return;
                         if (Array.isArray(nodeData)) {
                             const deletedPerms = Array.isArray(STATE.deletedPermissionIds) ? new Set(STATE.deletedPermissionIds) : new Set();
                             const activeNodeData = nodeData.filter(p => p && p.id && !deletedPerms.has(p.id));
@@ -5611,6 +5660,8 @@ function initFirebaseRealtimeConnection() {
                             }
                         }
                     } else if (cleanPath === 'exoneraciones' || cleanPath.startsWith('exoneraciones')) {
+                        const isHistoryActive = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
+                        if (isHistoryActive) return;
                         if (nodeData && typeof nodeData === 'object') {
                             const deletedExons = Array.isArray(STATE.deletedExonerationIds) ? new Set(STATE.deletedExonerationIds) : new Set();
                             if (!STATE.exoneraciones) STATE.exoneraciones = {};
@@ -6683,10 +6734,27 @@ function isStudentAssignedToTeacher(student, teacherUser) {
 }
 window.isStudentAssignedToTeacher = isStudentAssignedToTeacher;
 
+function getCycleFilteredStudents(studentsList = null, targetCycle = null) {
+    const list = studentsList || (typeof window !== 'undefined' && window.STATE?.students) || (typeof STATE !== 'undefined' && STATE?.students) || [];
+    const stObj = (typeof window !== 'undefined' && window.STATE) ? window.STATE : (typeof STATE !== 'undefined' ? STATE : null);
+    const tgt = String(targetCycle || stObj?.historicalViewingCycle || stObj?.viewingHistoricalCycle || stObj?.activeCycle || '2027').trim();
+    if (!tgt) return list;
+    return list.filter(s => {
+        if (!s) return false;
+        const c = String(s.cycle || s.academicCycle || '').trim();
+        if (!c) return true;
+        return c === tgt;
+    });
+}
+window.getCycleFilteredStudents = getCycleFilteredStudents;
+
 function getAuthorizedStudents(teacherUser, role) {
     const user = teacherUser || window.STATE?.currentUser;
     const r = (role || window.STATE?.currentRole || user?.role || '').toLowerCase().trim();
-    const allStudents = (window.STATE?.students || []);
+    const rawStudents = (window.STATE?.students || []);
+    const allStudents = (typeof getCycleFilteredStudents === 'function')
+        ? getCycleFilteredStudents(rawStudents)
+        : rawStudents;
 
     if (hasGlobalStudentAccess(user, r)) {
         return allStudents;
@@ -6974,8 +7042,9 @@ function getAttendanceStudents(gradeCode, currentCourseObj = null) {
 
     const qSec = getCleanSectionLetter(qGradeObj ? qGradeObj.section : (currentCourseObj ? (currentCourseObj.section || currentCourseObj.gradeCode) : gradeCode));
 
-    // 1. Filtrado principal: TODOS los estudiantes del grado y sección (sin exclusión por activo/inactivo)
-    let students = (STATE.students || []).filter(s => {
+    // 1. Filtrado principal: TODOS los estudiantes del grado y sección del ciclo activo o visualizado
+    const baseList = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents(STATE.students) : (STATE.students || []);
+    let students = baseList.filter(s => {
         if (!s) return false;
 
         // Coincidencia directa por código exacto de grado
@@ -7037,9 +7106,12 @@ function getStudentsCountByGradeAndSection(gradeName, sectionName, gradeCode = '
     const cleanSec = (sectionName || '').replace(/^Sección\s+/i, '').trim().toUpperCase();
     const cleanGName = (gradeName || '').toLowerCase().trim();
     const gWord = cleanGName.split(' ')[0]; // '4to', '5to', '6to'
+    const targetCycle = String(window.STATE?.historicalViewingCycle || window.STATE?.viewingHistoricalCycle || window.STATE?.activeCycle || '').trim();
 
     return window.STATE.students.filter(s => {
         if (!s || s.status === 'Retirado') return false;
+        const stCycle = String(s.cycle || s.academicCycle || '').trim();
+        if (targetCycle && stCycle && stCycle !== targetCycle) return false;
         
         if (gradeCode && s.gradeCode && s.gradeCode.trim().toLowerCase() === gradeCode.trim().toLowerCase()) {
             return true;
@@ -10598,7 +10670,9 @@ function applyIncomingCloudState(incomingState, force = false) {
         }
     }
 
-    if (incomingState.calificaciones && typeof incomingState.calificaciones === 'object') {
+    const isHistoryActive = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
+
+    if (!isHistoryActive && incomingState.calificaciones && typeof incomingState.calificaciones === 'object') {
         STATE.calificaciones = { ...(STATE.calificaciones || {}), ...incomingState.calificaciones };
     }
 
@@ -10619,12 +10693,11 @@ function applyIncomingCloudState(incomingState, force = false) {
     if (Array.isArray(incomingState.deletedStudentIds) && incomingState.deletedStudentIds.length > 0) {
         STATE.deletedStudentIds = Array.from(new Set([...(STATE.deletedStudentIds || []), ...incomingState.deletedStudentIds]));
     }
-    const isHistoryActive = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
     if (!isHistoryActive && Array.isArray(incomingState.students)) {
         const deletedStus = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
         incomingState.students = incomingState.students.filter(s => s && s.id && !deletedStus.has(s.id) && !deletedStus.has(s.personalCode) && !deletedStus.has(s.carne));
     }
-    if (Array.isArray(incomingState.students) && incomingState.students.length > 0) {
+    if (!isHistoryActive && Array.isArray(incomingState.students) && incomingState.students.length > 0) {
         if (!window._rtdbStudentIndexMap) window._rtdbStudentIndexMap = new Map();
         if (!window._rtdbIndexToIdMap) window._rtdbIndexToIdMap = new Map();
         incomingState.students.forEach((st, idx) => {
@@ -10874,7 +10947,7 @@ function applyIncomingCloudState(incomingState, force = false) {
 
     // 5. Asistencia y Disciplina (Fusión protegida anti-sobrescritura multidimensional y anti-regresión en clics)
     const isActivelyClickingAttendance = Boolean(window._lastLocalAttendanceClickTime && (Date.now() - window._lastLocalAttendanceClickTime < 4500));
-    if (incomingState.attendanceRecords && typeof incomingState.attendanceRecords === 'object') {
+    if (!isHistoryActive && incomingState.attendanceRecords && typeof incomingState.attendanceRecords === 'object') {
         if (!STATE.attendanceRecords) STATE.attendanceRecords = {};
         const dirtyCells = window._localDirtyAttendanceCells || {};
         const nowTs = Date.now();
@@ -10944,7 +11017,7 @@ function applyIncomingCloudState(incomingState, force = false) {
         });
         if (typeof updateAuxiliaturaBadge === 'function') updateAuxiliaturaBadge();
     }
-    if (incomingState.disciplineReports) {
+    if (!isHistoryActive && incomingState.disciplineReports) {
         const deletedDisc = Array.isArray(STATE.deletedDisciplineIds) ? new Set(STATE.deletedDisciplineIds) : new Set();
         const cloudDisc = (Array.isArray(incomingState.disciplineReports)
             ? incomingState.disciplineReports
@@ -10956,7 +11029,7 @@ function applyIncomingCloudState(incomingState, force = false) {
             renderDisciplineTable();
         }
     }
-    if (incomingState.studentPermissions) {
+    if (!isHistoryActive && incomingState.studentPermissions) {
         const deletedPerms = Array.isArray(STATE.deletedPermissionIds) ? new Set(STATE.deletedPermissionIds) : new Set();
         const cloudPerms = (Array.isArray(incomingState.studentPermissions)
             ? incomingState.studentPermissions
@@ -11366,13 +11439,17 @@ function changeAcademicCycle(cycle) {
     if (!cycle) return;
 
     // 📦 Si se selecciona un ciclo histórico archivado, activar modo de consulta histórica de solo lectura
-    if (window.EnccoCycleArchiver && window.STATE && Array.isArray(window.STATE.cycles)) {
-        const found = window.STATE.cycles.find(c => c.name === cycle || c.year === cycle);
-        if (found && (found.status === 'Histórico' || found.isArchived)) {
-            EnccoCycleArchiver.loadHistoricalCycle(cycle);
+    const cycleYear = String(cycle).trim();
+    if (window.EnccoCycleArchiver && window.STATE) {
+        const cycles = Array.isArray(window.STATE.cycles) ? window.STATE.cycles : [];
+        const found = cycles.find(c => c.name === cycleYear || c.year === cycleYear);
+        const isHistorical = (found && (found.status === 'Histórico' || found.isArchived)) || (cycleYear === '2026' && cycleYear !== window.STATE.activeCycle);
+        if (isHistorical) {
+            EnccoCycleArchiver.loadHistoricalCycle(cycleYear);
             return;
         } else if (window.STATE.isHistoricalReadOnlyMode) {
             EnccoCycleArchiver.exitHistoricalView();
+            return;
         }
     }
 
@@ -26473,9 +26550,10 @@ function getSortedGradebookStudents(gradeCode, targetPensum = null) {
         }
     }
 
-    const baseStudents = (isDocente && currentUser && typeof getAuthorizedStudents === 'function')
+    const rawBase = (isDocente && currentUser && typeof getAuthorizedStudents === 'function')
         ? getAuthorizedStudents(currentUser, 'docente')
         : (STATE.students || []);
+    const baseStudents = (typeof getCycleFilteredStudents === 'function') ? getCycleFilteredStudents(rawBase) : rawBase;
 
     const rawG = `${gradeCode || ''} ${targetGradeObj ? (targetGradeObj.name + ' ' + targetGradeObj.section) : ''} ${targetPensum ? (targetPensum.grade + ' ' + targetPensum.section + ' ' + (targetPensum.gradeCode || '')) : ''}`.toUpperCase();
     let gGradeNum = 0;
@@ -46002,6 +46080,7 @@ function initFirestoreModularLiveListeners() {
         // 2. 📝 ESCUCHAR CALIFICACIONES Y ESTUDIANTES ('students') EN TIEMPO REAL (FUSIÓN PROFUNDA POR MATERIA)
         try {
             const unsubStudents = onSnapshot(collection(db, 'students'), (snap) => {
+                if (window.STATE && (window.STATE.isHistoricalReadOnlyMode || window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle)) return;
                 if (!snap || snap.empty) return;
                 // Snapshot listener activo sin bloqueos locales
 
@@ -46583,6 +46662,7 @@ function initFirestoreModularLiveListeners() {
         // 10. ⚖️ ESCUCHAR REPORTES DISCIPLINARIOS ('disciplina') EN TIEMPO REAL
         try {
             const unsubDisciplina = onSnapshot(collection(db, 'disciplina'), (snap) => {
+                if (window.STATE && (window.STATE.isHistoricalReadOnlyMode || window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle)) return;
                 if (!snap) return;
                 const items = [];
                 snap.forEach(d => {
@@ -46610,6 +46690,7 @@ function initFirestoreModularLiveListeners() {
         // 11. 📌 ESCUCHAR ANOTACIONES Y BITÁCORA DEL ESTUDIANTE ('studentAnnotations') EN TIEMPO REAL
         try {
             const unsubAnnotations = onSnapshot(collection(db, 'studentAnnotations'), (snap) => {
+                if (window.STATE && (window.STATE.isHistoricalReadOnlyMode || window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle)) return;
                 if (!snap) return;
                 if (!Array.isArray(STATE.studentAnnotations)) STATE.studentAnnotations = [];
                 let changed = false;
