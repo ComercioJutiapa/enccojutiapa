@@ -2095,6 +2095,9 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
     if (Array.isArray(STATE.students) && STATE.students.length >= 350) {
         cleanPayload.students = STATE.students.filter(s => s && s.id && s.name);
     }
+    if (Array.isArray(STATE.deletedStudentIds) && STATE.deletedStudentIds.length > 0) {
+        cleanPayload.deletedStudentIds = STATE.deletedStudentIds;
+    }
     if (Array.isArray(STATE.pensum) && STATE.pensum.length >= 28) {
         const validCourses = STATE.pensum.filter(p => p && (p.subject || p.name) && (p.grade || p.gradeCode));
         if (validCourses.length >= 28) {
@@ -2138,7 +2141,7 @@ async function pushStateToFirebaseCloud(showToastNotification = false) {
 
         if (response.ok) {
             // [v270] Sincronizar colecciones tipo Array mediante PUT a sus nodos para truncar y eliminar permanentemente
-            const arrayNodesToSync = ['students', 'pensum', 'announcements', 'disciplineReports', 'studentPermissions', 'gradeEditRequests', 'cycles', 'careers', 'users', 'rolesConfig', 'gradesList'];
+            const arrayNodesToSync = ['students', 'pensum', 'announcements', 'disciplineReports', 'studentPermissions', 'gradeEditRequests', 'cycles', 'careers', 'users', 'rolesConfig', 'gradesList', 'deletedStudentIds'];
             const syncPromises = [];
             for (const nodeKey of arrayNodesToSync) {
                 if (cleanPayload[nodeKey] !== undefined) {
@@ -5268,6 +5271,19 @@ function initFirebaseRealtimeConnection() {
                                 if (typeof renderGradesTable === 'function') renderGradesTable();
                             }
                         }
+                    } else if (cleanPath === 'deletedStudentIds') {
+                        if (Array.isArray(nodeData)) {
+                            STATE.deletedStudentIds = Array.from(new Set([...(STATE.deletedStudentIds || []), ...nodeData]));
+                            if (Array.isArray(STATE.students)) {
+                                const delSet = new Set(STATE.deletedStudentIds);
+                                const prevLen = STATE.students.length;
+                                STATE.students = STATE.students.filter(s => s && !delSet.has(s.id) && (!s.personalCode || !delSet.has(s.personalCode)) && (!s.carne || !delSet.has(s.carne)));
+                                if (STATE.students.length !== prevLen) {
+                                    if (typeof renderStudentsTable === 'function' && STATE.activeView === 'students') renderStudentsTable();
+                                    if (typeof updateDashboardKPIs === 'function') updateDashboardKPIs();
+                                }
+                            }
+                        }
                     } else if (cleanPath === 'students') {
                         let incomingList = null;
                         if (Array.isArray(nodeData)) {
@@ -5276,6 +5292,8 @@ function initFirebaseRealtimeConnection() {
                             incomingList = Object.values(nodeData).filter(Boolean);
                         }
                         if (incomingList && incomingList.length > 0) {
+                            const delSet = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
+                            incomingList = incomingList.filter(s => s && s.id && !delSet.has(s.id) && (!s.personalCode || !delSet.has(s.personalCode)) && (!s.carne || !delSet.has(s.carne)));
                             if (!window._rtdbStudentIndexMap) window._rtdbStudentIndexMap = new Map();
                             if (!window._rtdbIndexToIdMap) window._rtdbIndexToIdMap = new Map();
                             incomingList.forEach((st, idx) => {
@@ -10594,6 +10612,9 @@ function applyIncomingCloudState(incomingState, force = false) {
     }
 
     // 3. Ingreso de Notas y Calificaciones (Fusión inteligente multiusuario y mapeo de índices)
+    if (Array.isArray(incomingState.deletedStudentIds) && incomingState.deletedStudentIds.length > 0) {
+        STATE.deletedStudentIds = Array.from(new Set([...(STATE.deletedStudentIds || []), ...incomingState.deletedStudentIds]));
+    }
     const deletedStus = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
     if (Array.isArray(incomingState.students)) {
         incomingState.students = incomingState.students.filter(s => s && s.id && !deletedStus.has(s.id) && !deletedStus.has(s.personalCode) && !deletedStus.has(s.carne));
@@ -14132,84 +14153,218 @@ function checkEnrolmentPermissions() {
     return true;
 }
 
-async function deleteStudent(studentId) {
-    if (!checkEnrolmentPermissions()) return;
-    const student = (STATE.students || []).find(s => s.id === studentId);
-    if (!student) return;
+function canDeleteStudent(role = null) {
+    let targetRole = role;
+    if (targetRole === null || targetRole === undefined || targetRole === '') {
+        targetRole = (window.STATE && STATE.currentRole) 
+            || (window.EnccoAuthStore && typeof window.EnccoAuthStore.getRole === 'function' ? window.EnccoAuthStore.getRole() : null)
+            || (window.STATE && STATE.currentUser && STATE.currentUser.role)
+            || '';
+    }
+    if (!targetRole) return false;
+    const r = String(targetRole).trim().toLowerCase();
+    return (typeof isSuperUserRole === 'function' && isSuperUserRole(r)) 
+        || (typeof isDirectorRole === 'function' && isDirectorRole(r)) 
+        || ['secretaria', 'secretaría', 'secretario', 'admin', 'director', 'direccion', 'directora', 'super_usuario', 'superadmin', 'superuser'].includes(r);
+}
+window.canDeleteStudent = canDeleteStudent;
 
-    const sName = formatStudentDisplayName(student, 'lastFirst');
+async function deleteStudent(studentId) {
+    if (typeof canDeleteStudent === 'function' && !canDeleteStudent()) {
+        if (typeof showToast === 'function') {
+            showToast("Acceso denegado: Solo Super Usuario, Dirección o Secretaría tienen autorización para eliminar estudiantes.", "danger");
+        }
+        return false;
+    }
+
+    if (window.STATE && window.STATE.isHistoricalViewingMode) {
+        if (typeof showToast === 'function') {
+            showToast("Operación bloqueada: Los registros del archivo histórico escolar son de solo lectura.", "warning");
+        }
+        return false;
+    }
+
+    const student = (STATE.students || []).find(s => s && (
+        String(s.id) === String(studentId) ||
+        (s.carne && String(s.carne) === String(studentId)) ||
+        (s.personalCode && String(s.personalCode) === String(studentId))
+    ));
+    if (!student) {
+        if (typeof showToast === 'function') {
+            showToast("Estudiante no encontrado en los registros activos.", "warning");
+        }
+        return false;
+    }
+
+    const sName = (typeof formatStudentDisplayName === 'function')
+        ? formatStudentDisplayName(student, 'lastFirst')
+        : (student.name || `${student.lastName || ''} ${student.firstName || ''}`.trim());
+
+    const confirmMsg = `¿Está seguro de que desea eliminar permanentemente al estudiante "${sName}" (${student.carne || student.personalCode || ''})?\n\nEsta acción borrará de forma irreversible su expediente, calificaciones y registros asociados tanto en la plataforma como en Firebase.`;
+
     const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
         ? await window.EnccoDialog.confirm({
             title: 'Eliminar Estudiante Permanentemente',
-            message: `¿Está seguro de eliminar permanentemente al estudiante "${sName}" (${student.carne || ''})?\n\nEsta acción borrará expediente, notas y registros de disciplina asociados.`,
+            message: confirmMsg,
             type: 'danger',
-            confirmText: 'Eliminar Estudiante',
+            confirmText: 'Sí, Eliminar Definitivamente',
             cancelText: 'Cancelar'
         })
-        : true;
+        : (typeof confirm === 'function' ? confirm(confirmMsg) : false);
 
-    if (confirmed) {
-        STATE.deletedStudentIds = STATE.deletedStudentIds || [];
-        if (!STATE.deletedStudentIds.includes(studentId)) {
-            STATE.deletedStudentIds.push(studentId);
-        }
-        if (student.personalCode && !STATE.deletedStudentIds.includes(student.personalCode)) {
-            STATE.deletedStudentIds.push(student.personalCode);
-        }
-        if (student.carne && !STATE.deletedStudentIds.includes(student.carne)) {
-            STATE.deletedStudentIds.push(student.carne);
-        }
-
-        STATE.students = (STATE.students || []).filter(s => s.id !== studentId);
-        
-        // Limpiar reportes de disciplina del estudiante
-        if (STATE.disciplineReports) {
-            STATE.disciplineReports = STATE.disciplineReports.filter(d => d.studentId !== studentId);
-        }
-
-        // 🚀 RESPUESTA INSTANTÁNEA EN LA INTERFAZ (Actualización optimista a 0ms)
-        STATE.lastModified = Date.now();
-        saveStateToLocalStorage();
-        renderStudentsTable();
-        updateDashboardKPIs();
-        updateUserAlertsUI();
-        renderCurrentDashboardAlerts();
-        renderTeacherGradeProgressTable();
-        populateAttendanceSelects(false);
-        showToast(`El estudiante "${sName}" ha sido eliminado del sistema.`, "info");
-        try {
-            recordAuditLog('STUDENT_DELETE', 'Secretaría', `Estudiante eliminado: "${sName}" (${student.carne || ''}) con grado: ${student.grade || student.gradeCode || 'N/A'}`, studentId);
-        } catch(e) {}
-
-        // 🌟 Persistencia atómica en Firestore y RTDB en segundo plano
-        (async () => {
-            if (window.FirebaseModular && window.FirebaseModular.db) {
-                try {
-                    const { db, doc, deleteDoc } = window.FirebaseModular;
-                    if (typeof deleteDoc === 'function') {
-                        await deleteDoc(doc(db, 'students', studentId));
-                        try { await deleteDoc(doc(db, 'estudiantes', studentId)); } catch(e) {}
-                    }
-                } catch(fsErr) {
-                    console.warn("Aviso al eliminar estudiante en Firestore:", fsErr);
-                }
-            }
-
-            if (typeof EnccoCloudSync !== 'undefined') {
-                try {
-                    if (EnccoCloudSync.deleteNode) {
-                        await EnccoCloudSync.deleteNode(`students/${studentId}`).catch(() => {});
-                    }
-                    if (EnccoCloudSync.syncNode) {
-                        await EnccoCloudSync.syncNode('students', STATE.students);
-                    }
-                } catch(rtdbErr) {
-                    console.warn("Aviso al sincronizar students en RTDB:", rtdbErr);
-                }
-            }
-        })();
+    if (!confirmed) {
+        return false;
     }
+
+    const resolvedId = student.id;
+    const personalCode = student.personalCode;
+    const carne = student.carne;
+
+    // 1. Proteger listas de eliminados para evitar resurrección por snapshots concurrentes
+    STATE.deletedStudentIds = STATE.deletedStudentIds || [];
+    if (resolvedId && !STATE.deletedStudentIds.includes(resolvedId)) {
+        STATE.deletedStudentIds.push(resolvedId);
+    }
+    if (personalCode && !STATE.deletedStudentIds.includes(personalCode)) {
+        STATE.deletedStudentIds.push(personalCode);
+    }
+    if (carne && !STATE.deletedStudentIds.includes(carne)) {
+        STATE.deletedStudentIds.push(carne);
+    }
+
+    // 2. Limpiar dirty set local
+    if (window._locallyDirtyStudentIds) {
+        if (resolvedId) window._locallyDirtyStudentIds.delete(resolvedId);
+        if (personalCode) window._locallyDirtyStudentIds.delete(personalCode);
+    }
+
+    // 3. Remover de la colección de estudiantes en memoria
+    STATE.students = (STATE.students || []).filter(s => 
+        s && s.id !== resolvedId && 
+        (!personalCode || s.personalCode !== personalCode) && 
+        (!carne || s.carne !== carne)
+    );
+
+    // 4. Limpieza coherente de submódulos asociados
+    if (Array.isArray(STATE.disciplineReports)) {
+        STATE.disciplineReports = STATE.disciplineReports.filter(d => 
+            d && d.studentId !== resolvedId && 
+            (!carne || d.carne !== carne) && 
+            (!personalCode || d.personalCode !== personalCode)
+        );
+    }
+    if (Array.isArray(STATE.studentPermissions)) {
+        STATE.studentPermissions = STATE.studentPermissions.filter(p => 
+            p && p.studentId !== resolvedId && 
+            (!carne || p.carne !== carne)
+        );
+    }
+    if (STATE.exoneraciones && typeof STATE.exoneraciones === 'object') {
+        if (resolvedId && STATE.exoneraciones[resolvedId]) delete STATE.exoneraciones[resolvedId];
+        if (personalCode && STATE.exoneraciones[personalCode]) delete STATE.exoneraciones[personalCode];
+    }
+    if (Array.isArray(STATE.studentAnnotations)) {
+        STATE.studentAnnotations = STATE.studentAnnotations.filter(a => a && a.studentId !== resolvedId);
+    }
+    if (Array.isArray(STATE.attendanceAlerts)) {
+        STATE.attendanceAlerts = STATE.attendanceAlerts.filter(a => a && a.studentId !== resolvedId);
+    }
+
+    // 5. Cerrar modales si se estaba visualizando o editando al estudiante eliminado
+    if (STATE.selectedStudentId === resolvedId || STATE.selectedStudentId === personalCode || STATE.selectedStudentId === carne) {
+        STATE.selectedStudentId = null;
+        if (typeof closeStudentProfileModal === 'function') closeStudentProfileModal();
+        if (typeof closeStudentModal === 'function') closeStudentModal();
+    }
+    const currentFormId = document.getElementById('studentFormId')?.value?.trim();
+    if (currentFormId && (currentFormId === resolvedId || currentFormId === personalCode || currentFormId === carne)) {
+        if (typeof resetStudentEnrollmentForm === 'function') {
+            resetStudentEnrollmentForm(false);
+        }
+    }
+
+    // 6. Actualización reactiva instantánea a 0ms en todas las vistas vinculadas
+    const nowTime = Date.now();
+    STATE.lastModified = nowTime;
+    STATE._lastSavedLocally = nowTime;
+    if (typeof saveStateToLocalStorage === 'function') saveStateToLocalStorage();
+
+    if (typeof renderStudentsTable === 'function') renderStudentsTable();
+    if (typeof updateDashboardKPIs === 'function') updateDashboardKPIs();
+    if (typeof updateUserAlertsUI === 'function') updateUserAlertsUI();
+    if (typeof renderCurrentDashboardAlerts === 'function') renderCurrentDashboardAlerts();
+    if (typeof renderTeacherGradeProgressTable === 'function') renderTeacherGradeProgressTable();
+    if (typeof populateAttendanceSelects === 'function') populateAttendanceSelects(false);
+    if (typeof updateEnrollmentSectionLiveBadge === 'function') updateEnrollmentSectionLiveBadge();
+    if (typeof renderEnrollmentSectionsDistribution === 'function') renderEnrollmentSectionsDistribution();
+    if (typeof loadAttendanceList === 'function' && STATE.activeView === 'attendance') loadAttendanceList();
+    if (typeof renderGradebookTable === 'function' && STATE.activeView === 'gradebook') renderGradebookTable();
+    if (typeof loadHonorRoll === 'function' && (STATE.activeView === 'honor-roll' || STATE.activeView === 'reports')) loadHonorRoll();
+    if (typeof renderGradeStatsView === 'function' && STATE.activeView === 'grade-stats') renderGradeStatsView();
+
+    if (typeof showToast === 'function') {
+        showToast(`El estudiante "${sName}" ha sido eliminado definitivamente del sistema.`, "info");
+    }
+    try {
+        if (typeof recordAuditLog === 'function') {
+            recordAuditLog('STUDENT_DELETE', STATE.currentRole || 'Secretaría', `Estudiante eliminado permanentemente: "${sName}" (${carne || personalCode || resolvedId})`, resolvedId);
+        }
+    } catch(e) {}
+
+    // 7. Persistencia y eliminación en Firebase (Firestore + Realtime Database)
+    try {
+        // A) Firestore
+        if (window.FirebaseModular && window.FirebaseModular.db) {
+            try {
+                const { db, doc, deleteDoc } = window.FirebaseModular;
+                if (typeof deleteDoc === 'function') {
+                    const deleteOps = [];
+                    if (resolvedId) {
+                        deleteOps.push(deleteDoc(doc(db, 'students', resolvedId)).catch(() => {}));
+                        deleteOps.push(deleteDoc(doc(db, 'estudiantes', resolvedId)).catch(() => {}));
+                    }
+                    if (personalCode) {
+                        deleteOps.push(deleteDoc(doc(db, 'students', personalCode)).catch(() => {}));
+                        deleteOps.push(deleteDoc(doc(db, 'estudiantes', personalCode)).catch(() => {}));
+                    }
+                    if (carne) {
+                        deleteOps.push(deleteDoc(doc(db, 'students', carne)).catch(() => {}));
+                        deleteOps.push(deleteDoc(doc(db, 'estudiantes', carne)).catch(() => {}));
+                    }
+                    await Promise.all(deleteOps);
+                }
+            } catch(fsErr) {
+                console.warn("Aviso al eliminar estudiante en Firestore:", fsErr);
+            }
+        }
+
+        // B) Firebase Realtime Database
+        if (typeof EnccoCloudSync !== 'undefined') {
+            try {
+                if (EnccoCloudSync.deleteNode) {
+                    if (resolvedId) await EnccoCloudSync.deleteNode(`students/${resolvedId}`).catch(() => {});
+                    if (personalCode) await EnccoCloudSync.deleteNode(`students/${personalCode}`).catch(() => {});
+                }
+                if (EnccoCloudSync.syncNode) {
+                    await EnccoCloudSync.syncNode('students', STATE.students);
+                    await EnccoCloudSync.syncNode('deletedStudentIds', STATE.deletedStudentIds);
+                }
+            } catch(rtdbErr) {
+                console.warn("Aviso al sincronizar students en RTDB tras eliminación:", rtdbErr);
+            }
+        }
+
+        // C) Respaldo de sincronización general en la nube
+        if (typeof pushStateToFirebaseCloud === 'function') {
+            await pushStateToFirebaseCloud(false);
+        }
+    } catch(syncErr) {
+        console.error("Error en sincronización con Firebase tras eliminación:", syncErr);
+    }
+
+    return true;
 }
+window.deleteStudent = deleteStudent;
 
 function calculateStudentAge(birthDateString = null) {
     const input = document.getElementById('studentFormBirthDate');
@@ -16441,6 +16596,12 @@ function openStudentProfileModal(id) {
     const profExonBtn = document.getElementById('profExonerateBtn');
     if (profExonBtn) {
         profExonBtn.style.display = canExonerate ? 'inline-flex' : 'none';
+    }
+
+    const canDelete = (typeof canDeleteStudent === 'function') ? canDeleteStudent(STATE.currentRole) : canEdit;
+    const profDeleteBtn = document.getElementById('profDeleteStudentBtn');
+    if (profDeleteBtn) {
+        profDeleteBtn.style.display = canDelete ? 'inline-flex' : 'none';
     }
 
     // 1. Cabecera del Perfil

@@ -5280,6 +5280,9 @@
                         <button type="button" class="btn btn-outline-dark" onclick="printStudentFullFicha(STATE.selectedStudentId)" title="Imprimir Ficha Integral de Datos, Asistencia, Faltas y Conducta del Estudiante" style="font-weight:700; border-color:#0f172a; color:#0f172a;">
                             <i class="fa-solid fa-print"></i> Imprimir Ficha Integral
                         </button>
+                        <button type="button" id="profDeleteStudentBtn" class="btn btn-outline-danger" onclick="deleteStudent(STATE.selectedStudentId)" title="Eliminar estudiante definitivamente del sistema" style="display:none; font-weight:700; background:#fff1f2; border:1px solid #fecdd3; color:#e11d48;">
+                            <i class="fa-solid fa-trash-can"></i> Eliminar Estudiante
+                        </button>
                     </div>
                     <div style="display:flex; gap:10px; flex-wrap:wrap;">
                         <button type="button" id="profExonerateBtn" class="btn btn-outline-info role-restricted" data-allowed="admin,director,secretaria,profesor_auxiliar" onclick="closeStudentProfileModal(); openAcademicExonerationModal(STATE.selectedStudentId);" title="Gestionar exoneraciones o consideraciones individuales de notas">
