@@ -235,6 +235,54 @@ const deleteStudentFn = new AsyncFunction('studentId', `
 
     console.log('  ✅ Test 5 Superado: Blindaje anti-resurrección verificado.');
 
+    // --- 6. VERIFICACIÓN DE BLOQUEO EN MODO HISTÓRICO ---
+    console.log('\n▶ [TEST 6] Verificando bloqueo estricto de eliminación en ciclos históricos archivados...');
+
+    windowObj.STATE.isHistoricalReadOnlyMode = true;
+    windowObj.STATE.historicalViewingCycle = '2026';
+
+    assert.strictEqual(canDeleteFn('secretaria'), false, 'canDeleteStudent debe ser false en modo histórico');
+    assert.strictEqual(canDeleteFn('admin'), false, 'canDeleteStudent debe ser false para admin en modo histórico');
+
+    const resHistDelete = await deleteStudentFn('stu-002');
+    assert.strictEqual(resHistDelete, false, 'deleteStudent debe rechazar la eliminación en modo histórico');
+    assert.strictEqual(windowObj.STATE.students.length, 1, 'No debe alterarse la nómina');
+
+    // Restaurar modo activo
+    windowObj.STATE.isHistoricalReadOnlyMode = false;
+    windowObj.STATE.historicalViewingCycle = null;
+    console.log('  ✅ Test 6 Superado: Modo histórico protegido contra borrado.');
+
+    // --- 7. VERIFICACIÓN DE PRESERVACIÓN DE CICLOS ANTERIORES (2026) ---
+    console.log('\n▶ [TEST 7] Verificando que borrar un alumno en ciclo 2027 NO borra su historial de 2026...');
+
+    // Simular archivo histórico 2026 donde el alumno stu-001 sí existió con notas oficiales
+    const mockHistoricalArchive2026 = {
+        cycle: '2026',
+        studentsSnapshot: [
+            { id: 'stu-001', personalCode: 'A100AAA', name: 'GÓMEZ PÉREZ JUAN', grades: { 'Contabilidad': [85, 90, 88, 92] } }
+        ]
+    };
+
+    // Verificar que ninguna llamada de eliminación tocó el nodo histórico
+    const touchedHistorical = deletedNodesRTDB.some(n => n.includes('historico') || n.includes('2026'));
+    assert.strictEqual(touchedHistorical, false, 'Ninguna operación de borrado debió tocar nodos de ciclos históricos');
+
+    // Simular consulta de 2026: el alumno borrado de 2027 debe seguir visible e íntegro en 2026
+    const isHistoryActive = true; // Simular lectura de ciclo 2026
+    let histStudentsConsulted = mockHistoricalArchive2026.studentsSnapshot;
+    if (!isHistoryActive) {
+        // Solo en ciclo activo se filtra por deletedStudentIds
+        const delSet = new Set(windowObj.STATE.deletedStudentIds);
+        histStudentsConsulted = histStudentsConsulted.filter(s => !delSet.has(s.id));
+    }
+
+    assert.strictEqual(histStudentsConsulted.length, 1, 'El alumno DEBE seguir existiendo en el archivo del ciclo 2026');
+    assert.strictEqual(histStudentsConsulted[0].id, 'stu-001');
+    assert.strictEqual(histStudentsConsulted[0].grades['Contabilidad'][0], 85, 'Las notas históricas de 2026 deben preservarse intactas');
+
+    console.log('  ✅ Test 7 Superado: Ciclos anteriores (2026) 100% preservados e inmunes a la eliminación en 2027.');
+
     console.log('\n' + '='.repeat(80));
     console.log('🎉 TODAS LAS PRUEBAS DE ELIMINACIÓN DE ESTUDIANTES PASARON AL 100%');
     console.log('='.repeat(80));

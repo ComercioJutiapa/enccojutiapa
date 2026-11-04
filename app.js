@@ -5274,7 +5274,8 @@ function initFirebaseRealtimeConnection() {
                     } else if (cleanPath === 'deletedStudentIds') {
                         if (Array.isArray(nodeData)) {
                             STATE.deletedStudentIds = Array.from(new Set([...(STATE.deletedStudentIds || []), ...nodeData]));
-                            if (Array.isArray(STATE.students)) {
+                            const isHistoryActive = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
+                            if (!isHistoryActive && Array.isArray(STATE.students)) {
                                 const delSet = new Set(STATE.deletedStudentIds);
                                 const prevLen = STATE.students.length;
                                 STATE.students = STATE.students.filter(s => s && !delSet.has(s.id) && (!s.personalCode || !delSet.has(s.personalCode)) && (!s.carne || !delSet.has(s.carne)));
@@ -5292,8 +5293,11 @@ function initFirebaseRealtimeConnection() {
                             incomingList = Object.values(nodeData).filter(Boolean);
                         }
                         if (incomingList && incomingList.length > 0) {
-                            const delSet = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
-                            incomingList = incomingList.filter(s => s && s.id && !delSet.has(s.id) && (!s.personalCode || !delSet.has(s.personalCode)) && (!s.carne || !delSet.has(s.carne)));
+                            const isHistoryActive = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
+                            if (!isHistoryActive) {
+                                const delSet = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
+                                incomingList = incomingList.filter(s => s && s.id && !delSet.has(s.id) && (!s.personalCode || !delSet.has(s.personalCode)) && (!s.carne || !delSet.has(s.carne)));
+                            }
                             if (!window._rtdbStudentIndexMap) window._rtdbStudentIndexMap = new Map();
                             if (!window._rtdbIndexToIdMap) window._rtdbIndexToIdMap = new Map();
                             incomingList.forEach((st, idx) => {
@@ -10615,8 +10619,9 @@ function applyIncomingCloudState(incomingState, force = false) {
     if (Array.isArray(incomingState.deletedStudentIds) && incomingState.deletedStudentIds.length > 0) {
         STATE.deletedStudentIds = Array.from(new Set([...(STATE.deletedStudentIds || []), ...incomingState.deletedStudentIds]));
     }
-    const deletedStus = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
-    if (Array.isArray(incomingState.students)) {
+    const isHistoryActive = !!(STATE.isHistoricalReadOnlyMode || STATE.historicalViewingCycle || STATE.viewingHistoricalCycle);
+    if (!isHistoryActive && Array.isArray(incomingState.students)) {
+        const deletedStus = Array.isArray(STATE.deletedStudentIds) ? new Set(STATE.deletedStudentIds) : new Set();
         incomingState.students = incomingState.students.filter(s => s && s.id && !deletedStus.has(s.id) && !deletedStus.has(s.personalCode) && !deletedStus.has(s.carne));
     }
     if (Array.isArray(incomingState.students) && incomingState.students.length > 0) {
@@ -14154,6 +14159,10 @@ function checkEnrolmentPermissions() {
 }
 
 function canDeleteStudent(role = null) {
+    // Si la plataforma está en modo de consulta de ciclo histórico, la eliminación está bloqueada
+    if (window.STATE && (window.STATE.isHistoricalReadOnlyMode || window.STATE.isHistoricalViewingMode || window.STATE.historicalViewingCycle || window.STATE.viewingHistoricalCycle)) {
+        return false;
+    }
     let targetRole = role;
     if (targetRole === null || targetRole === undefined || targetRole === '') {
         targetRole = (window.STATE && STATE.currentRole) 
@@ -14170,6 +14179,21 @@ function canDeleteStudent(role = null) {
 window.canDeleteStudent = canDeleteStudent;
 
 async function deleteStudent(studentId) {
+    // 🛡️ SALVAGUARDA ESTRICTA DE CICLOS HISTÓRICOS:
+    // La eliminación opera ÚNICAMENTE en el ciclo escolar activo. Los ciclos históricos están 100% blindados.
+    const isHistorical = !!(window.STATE && (
+        window.STATE.isHistoricalReadOnlyMode || 
+        window.STATE.isHistoricalViewingMode || 
+        window.STATE.historicalViewingCycle || 
+        window.STATE.viewingHistoricalCycle
+    ));
+    if (isHistorical) {
+        if (typeof showToast === 'function') {
+            showToast(`Operación bloqueada: El ciclo escolar ${window.STATE.historicalViewingCycle || 'anterior'} está archivado como histórico (Solo Lectura). Los estudiantes solo pueden eliminarse en el ciclo escolar activo.`, "warning");
+        }
+        return false;
+    }
+
     if (typeof canDeleteStudent === 'function' && !canDeleteStudent()) {
         if (typeof showToast === 'function') {
             showToast("Acceso denegado: Solo Super Usuario, Dirección o Secretaría tienen autorización para eliminar estudiantes.", "danger");
@@ -14177,12 +14201,7 @@ async function deleteStudent(studentId) {
         return false;
     }
 
-    if (window.STATE && window.STATE.isHistoricalViewingMode) {
-        if (typeof showToast === 'function') {
-            showToast("Operación bloqueada: Los registros del archivo histórico escolar son de solo lectura.", "warning");
-        }
-        return false;
-    }
+    const activeCycleName = String(window.STATE.activeCycle || window.STATE.academicCycle || '2027').trim();
 
     const student = (STATE.students || []).find(s => s && (
         String(s.id) === String(studentId) ||
@@ -14191,7 +14210,7 @@ async function deleteStudent(studentId) {
     ));
     if (!student) {
         if (typeof showToast === 'function') {
-            showToast("Estudiante no encontrado en los registros activos.", "warning");
+            showToast(`Estudiante no encontrado en la nómina del ciclo activo ${activeCycleName}.`, "warning");
         }
         return false;
     }
@@ -14200,14 +14219,14 @@ async function deleteStudent(studentId) {
         ? formatStudentDisplayName(student, 'lastFirst')
         : (student.name || `${student.lastName || ''} ${student.firstName || ''}`.trim());
 
-    const confirmMsg = `¿Está seguro de que desea eliminar permanentemente al estudiante "${sName}" (${student.carne || student.personalCode || ''})?\n\nEsta acción borrará de forma irreversible su expediente, calificaciones y registros asociados tanto en la plataforma como en Firebase.`;
+    const confirmMsg = `¿Está seguro de que desea eliminar al estudiante "${sName}" (${student.carne || student.personalCode || ''}) del Ciclo Escolar Activo (${activeCycleName})?\n\nEsta acción borrará únicamente su asignación y registros de este ciclo escolar en curso. Sus antecedentes e historial de ciclos anteriores (como 2026) se mantendrán 100% protegidos e intactos.`;
 
     const confirmed = (window.EnccoDialog && typeof window.EnccoDialog.confirm === 'function')
         ? await window.EnccoDialog.confirm({
-            title: 'Eliminar Estudiante Permanentemente',
+            title: `Eliminar Estudiante del Ciclo Activo ${activeCycleName}`,
             message: confirmMsg,
             type: 'danger',
-            confirmText: 'Sí, Eliminar Definitivamente',
+            confirmText: 'Sí, Eliminar del Ciclo Activo',
             cancelText: 'Cancelar'
         })
         : (typeof confirm === 'function' ? confirm(confirmMsg) : false);
